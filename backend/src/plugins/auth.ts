@@ -2,11 +2,16 @@ import type { FastifyPluginAsync, FastifyRequest, FastifyReply } from 'fastify';
 import fp from 'fastify-plugin';
 import { createClient } from '@supabase/supabase-js';
 
-const PUBLIC_PATHS = new Set(['/health', '/api/survey']);
+const isPublicPath = (path: string): boolean => {
+  if (path === '/health' || path === '/api/survey') return true;
+  if (path.startsWith('/api/exam/')) return true;
+  return false;
+};
 
 export const authPlugin: FastifyPluginAsync = fp(async (app) => {
   app.addHook('onRequest', async (req: FastifyRequest, reply: FastifyReply) => {
-    if (PUBLIC_PATHS.has(req.routeOptions?.url ?? req.url)) return;
+    const url = req.routeOptions?.url ?? req.url;
+    if (isPublicPath(url)) return;
 
     const header = req.headers.authorization;
     if (!header?.startsWith('Bearer ')) {
