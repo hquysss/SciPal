@@ -1,2 +1,1 @@
-// Populated in Task 6
-export {};
+export * from './useLanguage';
