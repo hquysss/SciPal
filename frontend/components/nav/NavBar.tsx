@@ -28,19 +28,31 @@ export function NavBar({ currentSubject }: NavBarProps) {
         </Link>
 
         {/* Navigation Links */}
-        <nav className="flex items-center gap-2 sm:gap-3">
+        <nav className="flex items-center gap-1.5 sm:gap-2.5">
           <SubjectSwitcher current={currentSubject} />
           <Link
             href="/glossary"
-            className="rounded-lg px-2.5 py-1.5 text-xs font-semibold text-white/90 hover:text-white hover:bg-white/10 transition"
+            className="rounded-lg px-2 py-1 text-xs font-semibold text-white/90 hover:text-white hover:bg-white/10 transition"
           >
             Từ điển
           </Link>
           <Link
+            href="/exam"
+            className="rounded-lg px-2 py-1 text-xs font-semibold text-white/90 hover:text-white hover:bg-white/10 transition"
+          >
+            Thi thử
+          </Link>
+          <Link
             href="/progress"
-            className="rounded-lg px-2.5 py-1.5 text-xs font-semibold text-white/90 hover:text-white hover:bg-white/10 transition hidden md:block"
+            className="rounded-lg px-2 py-1 text-xs font-semibold text-white/90 hover:text-white hover:bg-white/10 transition hidden md:block"
           >
             Tiến trình
+          </Link>
+          <Link
+            href="/profile"
+            className="rounded-lg px-2 py-1 text-xs font-semibold text-white/90 hover:text-white hover:bg-white/10 transition"
+          >
+            Hồ sơ
           </Link>
         </nav>
 
