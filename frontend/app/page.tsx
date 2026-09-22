@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { SubjectGrid } from '@/features/subjects/SubjectGrid';
+import { DemandPollBanner } from '@/features/survey/DemandPollBanner';
 
 export default function HomePage() {
   return (
@@ -107,6 +108,9 @@ export default function HomePage() {
           </div>
 
           <SubjectGrid />
+
+          {/* S12 Subject Demand Poll (§9.7) */}
+          <DemandPollBanner />
         </section>
       </main>
     </div>

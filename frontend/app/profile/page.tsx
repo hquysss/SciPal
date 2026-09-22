@@ -5,6 +5,7 @@ import { NavBar } from '@/components/nav/NavBar';
 import { getUserProfile } from '@/features/profile/profileQueries';
 import { ProfileCard } from '@/features/profile/ProfileCard';
 import { AccountSettings } from '@/features/profile/AccountSettings';
+import { FeatureRequestBoard } from '@/features/survey/FeatureRequestBoard';
 
 export const dynamic = 'force-dynamic';
 
@@ -60,6 +61,9 @@ export default async function ProfilePage() {
 
         {/* Account & Learning Settings */}
         <AccountSettings currentRole={role} />
+
+        {/* Feature Request & Innovation Board (§9.7) */}
+        <FeatureRequestBoard />
       </main>
     </div>
   );

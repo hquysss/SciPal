@@ -2,6 +2,7 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { postScoreLesson } from '@/lib/api';
+import { PostLessonSurvey } from '@/features/survey/PostLessonSurvey';
 
 export function LessonCompletionBar({
   lessonId,
@@ -73,6 +74,10 @@ export function LessonCompletionBar({
             >
               Bài tiếp theo →
             </Link>
+          </div>
+
+          <div className="mt-6 pt-6 border-t border-dashed border-gray-200 text-left">
+            <PostLessonSurvey lessonId={lessonId} />
           </div>
         </div>
       )}
