@@ -8,3 +8,6 @@ dist/
 .DS_Store
 coverage/
 .superpowers/
+backend/PassSupabase.txt
+*.pem
+*.key
