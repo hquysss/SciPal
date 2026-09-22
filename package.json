@@ -2,7 +2,10 @@
   "name": "scipal",
   "private": true,
   "packageManager": "pnpm@9.15.9",
-  "engines": { "node": ">=20.0.0", "pnpm": ">=9.0.0" },
+  "engines": {
+    "node": ">=20.0.0",
+    "pnpm": ">=9.0.0"
+  },
   "scripts": {
     "dev": "turbo run dev",
     "build": "turbo run build",
@@ -11,8 +14,9 @@
     "typecheck": "turbo run typecheck"
   },
   "devDependencies": {
+    "@types/node": "^20.0.0",
+    "supabase": "^2.117.0",
     "turbo": "^2.0.0",
-    "typescript": "^5.5.0",
-    "@types/node": "^20.0.0"
+    "typescript": "^5.5.0"
   }
 }
