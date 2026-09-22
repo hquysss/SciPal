@@ -2,7 +2,7 @@ import type { FastifyPluginAsync, FastifyRequest, FastifyReply } from 'fastify';
 import fp from 'fastify-plugin';
 import { createClient } from '@supabase/supabase-js';
 
-const PUBLIC_PATHS = new Set(['/health']);
+const PUBLIC_PATHS = new Set(['/health', '/api/survey']);
 
 export const authPlugin: FastifyPluginAsync = fp(async (app) => {
   app.addHook('onRequest', async (req: FastifyRequest, reply: FastifyReply) => {

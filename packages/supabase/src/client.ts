@@ -7,8 +7,8 @@ import type { Database } from './types';
 export interface CookieStore {
   get?: (name: string) => { value: string } | undefined;
   getAll?: () => { name: string; value: string }[];
-  set?: (name: string, value: string, options?: unknown) => void;
-  setAll?: (cookies: { name: string; value: string; options?: unknown }[]) => void;
+  set?: (...args: any[]) => any;
+  setAll?: (...args: any[]) => any;
 }
 
 /** Use in React components (browser) */
