@@ -6,6 +6,7 @@ import { authPlugin } from './plugins/auth.js';
 import { scoreRoutes } from './routes/score.js';
 import { surveyRoutes } from './routes/survey.js';
 import { examRoutes } from './routes/exam.js';
+import { authoringRoutes } from './routes/authoring.js';
 
 const app = Fastify({ logger: true });
 
@@ -15,6 +16,7 @@ await app.register(authPlugin);
 await app.register(scoreRoutes);
 await app.register(surveyRoutes);
 await app.register(examRoutes);
+await app.register(authoringRoutes);
 
 app.get('/health', async () => ({ status: 'ok' }));
 
