@@ -8,6 +8,7 @@ import { surveyRoutes } from './routes/survey.js';
 import { examRoutes } from './routes/exam.js';
 import { authoringRoutes } from './routes/authoring.js';
 import { classRoutes } from './routes/classes.js';
+import { accountsRoutes } from './routes/accounts.js';
 
 const app = Fastify({ logger: true });
 
@@ -19,6 +20,7 @@ await app.register(surveyRoutes);
 await app.register(examRoutes);
 await app.register(authoringRoutes);
 await app.register(classRoutes);
+await app.register(accountsRoutes);
 
 app.get('/health', async () => ({ status: 'ok' }));
 
