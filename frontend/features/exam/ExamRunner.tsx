@@ -175,10 +175,10 @@ export function ExamRunner({
   return (
     <div className="space-y-6">
       {/* Top sticky timer bar */}
-      <div className="sticky top-16 z-30 flex items-center justify-between rounded-2xl border border-emerald-950/10 bg-gray-900/95 px-5 py-3.5 text-white shadow-md backdrop-blur-md dark:border-white/10">
+      <div className="sticky top-20 z-30 flex items-center justify-between rounded-2xl border border-emerald-950/10 bg-gray-900/95 px-6 py-4 text-white shadow-md backdrop-blur-md dark:border-white/10">
         <div className="flex items-center gap-3">
           <div
-            className={`flex items-center gap-2 rounded-xl px-3 py-1 font-mono text-base font-black transition ${
+            className={`flex items-center gap-2 rounded-xl px-3.5 py-1.5 font-mono text-lg font-black transition ${
               isUrgent
                 ? 'animate-pulse bg-red-500/20 text-red-400 border border-red-500/40'
                 : 'bg-white/10 text-emerald-300'
@@ -189,7 +189,7 @@ export function ExamRunner({
               {String(minutes).padStart(2, '0')}:{String(seconds).padStart(2, '0')}
             </span>
           </div>
-          <span className="text-xs font-medium text-gray-300 hidden sm:inline">
+          <span className="text-sm font-semibold text-gray-300 hidden sm:inline">
             {t({ en: 'Time Remaining', vi: 'Thời gian còn lại' })}
           </span>
         </div>
@@ -198,7 +198,7 @@ export function ExamRunner({
           <button
             onClick={handleSubmit}
             disabled={submitting}
-            className="rounded-xl bg-emerald-600 px-4 py-2 text-xs font-bold text-white shadow-xs hover:bg-emerald-500 active:scale-95 transition disabled:opacity-50"
+            className="rounded-xl bg-emerald-600 px-5 py-2.5 text-sm font-bold text-white shadow-sm hover:bg-emerald-500 active:scale-95 transition disabled:opacity-50"
           >
             {submitting
               ? t({ en: 'Submitting...', vi: 'Đang nộp bài...' })
@@ -211,11 +211,11 @@ export function ExamRunner({
       {currentQ && (
         <div className="rounded-3xl border border-emerald-950/10 bg-white/90 p-6 sm:p-8 shadow-xs backdrop-blur-md dark:border-white/10 dark:bg-card/90 space-y-6">
           <div className="flex items-center justify-between border-b border-gray-100 pb-3 dark:border-gray-800">
-            <div className="flex items-center gap-2">
-              <span className="rounded-lg bg-emerald-100 px-2.5 py-1 font-mono text-xs font-black text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300">
+            <div className="flex items-center gap-2.5">
+              <span className="rounded-lg bg-emerald-100 px-3 py-1 font-mono text-sm font-black text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300">
                 {t({ en: 'Question', vi: 'Câu' })} {currentIndex + 1} / {questions.length}
               </span>
-              <span className="rounded-full bg-gray-100 px-2.5 py-0.5 text-[11px] font-semibold text-gray-600 uppercase dark:bg-gray-800 dark:text-gray-300">
+              <span className="rounded-full bg-gray-100 px-3 py-1 text-xs font-bold text-gray-600 uppercase dark:bg-gray-800 dark:text-gray-300">
                 {currentQ.difficulty ?? 'medium'}
               </span>
             </div>
@@ -224,7 +224,7 @@ export function ExamRunner({
             </span>
           </div>
 
-          <p className="text-base sm:text-lg font-medium leading-relaxed text-gray-900 dark:text-white">
+          <p className="text-lg sm:text-xl font-bold leading-relaxed text-gray-950 dark:text-white">
             {lang === 'en' ? currentQ.data.stem.en : currentQ.data.stem.vi}
           </p>
 
@@ -238,14 +238,14 @@ export function ExamRunner({
                 <button
                   key={opt.id}
                   onClick={() => setAnswers({ ...answers, [currentIndex]: opt.id })}
-                  className={`group flex w-full items-center gap-3.5 rounded-2xl border p-4 text-left text-sm font-medium transition duration-150 active:scale-[0.99] ${
+                  className={`group flex w-full items-center gap-4 rounded-2xl border p-4 sm:p-5 text-left text-base font-semibold transition duration-150 active:scale-[0.99] ${
                     isSelected
-                      ? 'border-emerald-600 bg-emerald-50/80 text-emerald-950 shadow-xs ring-2 ring-emerald-500/20 dark:border-emerald-500 dark:bg-emerald-950/40 dark:text-emerald-100'
-                      : 'border-gray-200/80 bg-white/70 hover:border-emerald-500/50 hover:bg-gray-50 dark:border-gray-800 dark:bg-card/70 dark:text-gray-200 dark:hover:bg-gray-800'
+                      ? 'border-emerald-600 bg-emerald-50/90 text-emerald-950 shadow-xs ring-2 ring-emerald-500/20 dark:border-emerald-500 dark:bg-emerald-950/40 dark:text-emerald-100'
+                      : 'border-gray-200/90 bg-white hover:border-emerald-500/60 hover:bg-emerald-50/30 dark:border-gray-800 dark:bg-card/70 dark:text-gray-200 dark:hover:bg-gray-800'
                   }`}
                 >
                   <span
-                    className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-xl font-mono text-xs font-black transition ${
+                    className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl font-mono text-sm font-black transition ${
                       isSelected
                         ? 'bg-emerald-600 text-white shadow-xs'
                         : 'border border-gray-300 bg-gray-100 text-gray-700 group-hover:border-emerald-400 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300'
@@ -266,14 +266,14 @@ export function ExamRunner({
             <button
               disabled={currentIndex === 0}
               onClick={() => setCurrentIndex((i) => i - 1)}
-              className="rounded-xl border border-gray-200 bg-white px-4 py-2 text-xs font-bold text-gray-700 shadow-2xs hover:bg-gray-50 disabled:opacity-40 transition dark:border-gray-700 dark:bg-card dark:text-gray-300"
+              className="rounded-xl border border-gray-200 bg-white px-5 py-2.5 text-sm font-bold text-gray-700 shadow-2xs hover:bg-gray-50 disabled:opacity-40 transition dark:border-gray-700 dark:bg-card dark:text-gray-300"
             >
               ← {t({ en: 'Previous', vi: 'Câu trước' })}
             </button>
             <button
               disabled={currentIndex === questions.length - 1}
               onClick={() => setCurrentIndex((i) => i + 1)}
-              className="rounded-xl bg-gray-900 px-5 py-2 text-xs font-bold text-white shadow-xs hover:bg-gray-800 disabled:opacity-40 transition dark:bg-white dark:text-gray-900"
+              className="rounded-xl bg-gray-900 px-6 py-2.5 text-sm font-bold text-white shadow-xs hover:bg-gray-800 disabled:opacity-40 transition dark:bg-white dark:text-gray-900"
             >
               {t({ en: 'Next Question', vi: 'Câu tiếp theo' })} →
             </button>

@@ -4,17 +4,19 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useLanguage } from '@scipal/hooks';
 import { createBrowserClient } from '@/lib/supabase';
+import { AccountHelpModal } from '@/features/auth/AccountHelpModal';
 
 interface AccountSettingsProps {
   currentRole?: string;
   onRoleChange?: (role: 'student' | 'teacher') => void;
 }
 
-export function AccountSettings({ currentRole = 'student', onRoleChange }: AccountSettingsProps) {
+export function AccountSettings({ currentRole = 'student' }: AccountSettingsProps) {
   const { lang, setLang, t } = useLanguage();
   const router = useRouter();
-  const [role, setRole] = useState(currentRole);
   const [signingOut, setSigningOut] = useState(false);
+  const [showHelpModal, setShowHelpModal] = useState(false);
+  const [bilingualTooltips, setBilingualTooltips] = useState(true);
 
   const handleSignOut = async () => {
     setSigningOut(true);
@@ -24,127 +26,183 @@ export function AccountSettings({ currentRole = 'student', onRoleChange }: Accou
     } catch (err) {
       console.warn('Sign out warning:', err);
     } finally {
-      router.push('/');
+      if (typeof document !== 'undefined') {
+        document.cookie = 'scipal_session=; path=/; max-age=0; SameSite=Lax';
+      }
+      if (typeof localStorage !== 'undefined') {
+        localStorage.removeItem('scipal_demo_user');
+        localStorage.removeItem('scipal_demo_role');
+      }
+      router.push('/login');
       router.refresh();
     }
   };
 
-  const toggleRole = (newRole: 'student' | 'teacher') => {
-    setRole(newRole);
-    onRoleChange?.(newRole);
-    try {
-      localStorage.setItem('scipal_demo_role', newRole);
-    } catch {}
-    router.refresh();
-  };
-
   return (
-    <div className="rounded-3xl border border-gray-200/80 bg-white/90 p-6 sm:p-8 shadow-xs backdrop-blur-md dark:border-white/10 dark:bg-card/90 space-y-6">
-      <div className="flex items-center justify-between border-b border-gray-100 pb-4 dark:border-gray-800">
-        <div>
-          <h3 className="text-base sm:text-lg font-bold text-gray-900 dark:text-white">
-            {t({ en: 'Account & Workspace Settings', vi: 'Cài đặt tài khoản & Không gian học tập' })}
-          </h3>
-          <p className="text-xs text-gray-500 dark:text-gray-400">
-            {t({
-              en: 'Personalize language, learning mode and role experience',
-              vi: 'Tùy biến ngôn ngữ, chế độ hiển thị và trải nghiệm vai trò',
-            })}
-          </p>
-        </div>
-        <span className="font-mono text-xs text-emerald-600 bg-emerald-50 dark:bg-emerald-950/50 dark:text-emerald-300 px-2.5 py-1 rounded-full font-bold">
-          S8
-        </span>
-      </div>
-
-      <div className="space-y-4">
-        {/* Language setting */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-gray-100 pb-4 dark:border-gray-800">
+    <>
+      <div className="rounded-3xl border border-gray-200/80 bg-white/90 p-6 sm:p-8 shadow-xs backdrop-blur-md dark:border-white/10 dark:bg-card/90 space-y-6">
+        {/* Header */}
+        <div className="flex items-center justify-between border-b border-gray-100 pb-4 dark:border-gray-800">
           <div>
-            <div className="text-sm font-semibold text-gray-900 dark:text-white">
-              🌐 {t({ en: 'Display Language', vi: 'Ngôn ngữ hiển thị chính' })}
-            </div>
-            <div className="text-xs text-gray-500 dark:text-gray-400">
+            <h3 className="text-base sm:text-lg font-bold text-gray-900 dark:text-white">
               {t({
-                en: 'Toggle standard bilingual lesson delivery (EN / VI)',
-                vi: 'Chuyển đổi ngôn ngữ hiển thị bài học và thuật ngữ khoa học',
+                en: 'Account & Learning Preferences',
+                vi: 'Cài đặt Tài khoản & Không gian Học tập',
               })}
+            </h3>
+            <p className="text-xs text-gray-500 dark:text-gray-400">
+              {t({
+                en: 'Institutional credentials and bilingual delivery options',
+                vi: 'Thông tin tài khoản trường cấp và tùy chọn hiển thị song ngữ',
+              })}
+            </p>
+          </div>
+          <span className="font-mono text-xs text-emerald-600 bg-emerald-50 dark:bg-emerald-950/50 dark:text-emerald-300 px-2.5 py-1 rounded-full font-bold">
+            S8 · PROFILE
+          </span>
+        </div>
+
+        <div className="space-y-5">
+          {/* Read-Only Institutional Record Box (Katha Style) */}
+          <div className="rounded-2xl border border-emerald-200/70 bg-emerald-50/50 p-4 dark:border-emerald-900/40 dark:bg-emerald-950/20">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-xs font-bold uppercase tracking-wider text-emerald-900 dark:text-emerald-300 flex items-center gap-1.5">
+                <span>🏛️</span>
+                <span>
+                  {t({ en: 'Institutional Record', vi: 'Hồ sơ Định danh Trường học' })}
+                </span>
+              </span>
+              <span className="rounded-full bg-emerald-200/60 px-2 py-0.5 font-mono text-[10px] font-bold text-emerald-900 dark:bg-emerald-900 dark:text-emerald-200">
+                🔒 {t({ en: 'Managed by Admin', vi: 'Admin quản lý' })}
+              </span>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+              <div>
+                <span className="text-gray-500 dark:text-gray-400 block font-mono text-[11px]">
+                  {t({ en: 'ACCOUNT ROLE', vi: 'VAI TRÒ TÀI KHOẢN' })}
+                </span>
+                <span className="font-bold text-gray-900 dark:text-white">
+                  {currentRole === 'teacher'
+                    ? t({ en: 'Teacher (Teaching Studio Access)', vi: 'Giáo viên (Được cấp quyền soạn bài)' })
+                    : t({ en: 'Student (High School Curriculum)', vi: 'Học sinh (Lớp học chuẩn THPT)' })}
+                </span>
+              </div>
+              <div>
+                <span className="text-gray-500 dark:text-gray-400 block font-mono text-[11px]">
+                  {t({ en: 'SECURITY STATUS', vi: 'TRẠNG THÁI BẢO MẬT' })}
+                </span>
+                <span className="font-bold text-emerald-700 dark:text-emerald-400">
+                  ● {t({ en: 'Active Session (Verified)', vi: 'Phiên hoạt động an toàn' })}
+                </span>
+              </div>
             </div>
           </div>
-          <div className="flex items-center gap-1.5 self-start sm:self-auto rounded-xl border border-gray-200 bg-gray-50 p-1 dark:border-gray-700 dark:bg-gray-800">
+
+          {/* Display Language setting */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-gray-100 pb-4 dark:border-gray-800">
+            <div>
+              <div className="text-sm font-semibold text-gray-900 dark:text-white flex items-center gap-1.5">
+                <span>🌐</span>
+                <span>{t({ en: 'Display Language', vi: 'Ngôn ngữ hiển thị chính' })}</span>
+              </div>
+              <div className="text-xs text-gray-500 dark:text-gray-400">
+                {t({
+                  en: 'Toggle standard bilingual lesson delivery (EN / VI)',
+                  vi: 'Chuyển đổi ngôn ngữ hiển thị bài học và thuật ngữ khoa học',
+                })}
+              </div>
+            </div>
+            <div className="flex items-center gap-1.5 self-start sm:self-auto rounded-xl border border-gray-200 bg-gray-50 p-1 dark:border-gray-700 dark:bg-gray-800">
+              <button
+                onClick={() => setLang('vi')}
+                className={`rounded-lg px-3 py-1 text-xs font-bold transition ${
+                  lang === 'vi'
+                    ? 'bg-emerald-600 text-white shadow-xs'
+                    : 'text-gray-600 hover:text-gray-900 dark:text-gray-300'
+                }`}
+              >
+                Tiếng Việt (VI)
+              </button>
+              <button
+                onClick={() => setLang('en')}
+                className={`rounded-lg px-3 py-1 text-xs font-bold transition ${
+                  lang === 'en'
+                    ? 'bg-emerald-600 text-white shadow-xs'
+                    : 'text-gray-600 hover:text-gray-900 dark:text-gray-300'
+                }`}
+              >
+                English (EN)
+              </button>
+            </div>
+          </div>
+
+          {/* Bilingual Term Tooltips Preference */}
+          <div className="flex items-center justify-between gap-3 border-b border-gray-100 pb-4 dark:border-gray-800">
+            <div>
+              <div className="text-sm font-semibold text-gray-900 dark:text-white flex items-center gap-1.5">
+                <span>📖</span>
+                <span>
+                  {t({ en: 'Bilingual Scientific Terms', vi: 'Hiển thị chú giải thuật ngữ' })}
+                </span>
+              </div>
+              <div className="text-xs text-gray-500 dark:text-gray-400">
+                {t({
+                  en: 'Highlight and expand international terms in lesson theory',
+                  vi: 'Làm nổi bật và hiển thị thẻ từ vựng song ngữ trong bài giảng',
+                })}
+              </div>
+            </div>
             <button
-              onClick={() => setLang('vi')}
-              className={`rounded-lg px-3 py-1 text-xs font-bold transition ${
-                lang === 'vi'
-                  ? 'bg-emerald-600 text-white shadow-xs'
-                  : 'text-gray-600 hover:text-gray-900 dark:text-gray-300'
+              type="button"
+              onClick={() => setBilingualTooltips(!bilingualTooltips)}
+              className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+                bilingualTooltips ? 'bg-emerald-600' : 'bg-gray-300 dark:bg-gray-700'
               }`}
+              role="switch"
+              aria-checked={bilingualTooltips}
             >
-              Tiếng Việt (VI)
+              <span
+                className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-sm ring-0 transition duration-200 ease-in-out ${
+                  bilingualTooltips ? 'translate-x-5' : 'translate-x-0'
+                }`}
+              />
             </button>
+          </div>
+
+          {/* Support and Assistance (Katha Style) */}
+          <div className="flex items-center justify-between text-xs text-gray-500 dark:text-gray-400">
+            <span>
+              {t({
+                en: 'Need to update class or reset school password?',
+                vi: 'Cần cập nhật lớp hoặc cấp lại mật khẩu trường?',
+              })}
+            </span>
             <button
-              onClick={() => setLang('en')}
-              className={`rounded-lg px-3 py-1 text-xs font-bold transition ${
-                lang === 'en'
-                  ? 'bg-emerald-600 text-white shadow-xs'
-                  : 'text-gray-600 hover:text-gray-900 dark:text-gray-300'
-              }`}
+              type="button"
+              onClick={() => setShowHelpModal(true)}
+              className="font-bold text-emerald-700 hover:text-emerald-800 underline underline-offset-2 dark:text-emerald-400 transition"
             >
-              English (EN)
+              {t({ en: 'Institutional Support', vi: 'Hỗ trợ nhà trường' })}
             </button>
           </div>
         </div>
 
-        {/* Demo Role Switcher */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-gray-100 pb-4 dark:border-gray-800">
-          <div>
-            <div className="text-sm font-semibold text-gray-900 dark:text-white">
-              🎭 {t({ en: 'User Role Mode (Demo Preview)', vi: 'Chế độ trải nghiệm vai trò' })}
-            </div>
-            <div className="text-xs text-gray-500 dark:text-gray-400">
-              {t({
-                en: 'Switch between Student and Teacher perspectives to inspect S10 & S11 tools',
-                vi: 'Chuyển giữa góc nhìn Học sinh và Giáo viên để trải nghiệm công cụ S10 & S11',
-              })}
-            </div>
-          </div>
-          <div className="flex items-center gap-1.5 self-start sm:self-auto rounded-xl border border-gray-200 bg-gray-50 p-1 dark:border-gray-700 dark:bg-gray-800">
-            <button
-              onClick={() => toggleRole('student')}
-              className={`rounded-lg px-3 py-1 text-xs font-bold transition ${
-                role === 'student'
-                  ? 'bg-blue-600 text-white shadow-xs'
-                  : 'text-gray-600 hover:text-gray-900 dark:text-gray-300'
-              }`}
-            >
-              👨‍🎓 {t({ en: 'Student', vi: 'Học sinh' })}
-            </button>
-            <button
-              onClick={() => toggleRole('teacher')}
-              className={`rounded-lg px-3 py-1 text-xs font-bold transition ${
-                role === 'teacher'
-                  ? 'bg-purple-600 text-white shadow-xs'
-                  : 'text-gray-600 hover:text-gray-900 dark:text-gray-300'
-              }`}
-            >
-              👩‍🏫 {t({ en: 'Teacher', vi: 'Giáo viên' })}
-            </button>
-          </div>
+        {/* Sign out section */}
+        <div className="pt-2">
+          <button
+            onClick={handleSignOut}
+            disabled={signingOut}
+            className="w-full rounded-2xl border border-red-200 bg-red-50/50 py-3.5 text-center text-sm font-bold text-red-600 transition hover:bg-red-100/80 active:scale-[0.99] disabled:opacity-50 dark:border-red-900/50 dark:bg-red-950/20 dark:text-red-400 cursor-pointer"
+          >
+            {signingOut
+              ? t({ en: 'Signing out securely...', vi: 'Đang đăng xuất an toàn...' })
+              : t({ en: 'Sign Out of SciPal', vi: 'Đăng xuất khỏi tài khoản SciPal' })}
+          </button>
         </div>
       </div>
 
-      {/* Sign out section */}
-      <div className="pt-2">
-        <button
-          onClick={handleSignOut}
-          disabled={signingOut}
-          className="w-full rounded-2xl border border-red-200 bg-red-50/50 py-3 text-center text-sm font-bold text-red-600 transition hover:bg-red-100/80 active:scale-[0.99] disabled:opacity-50 dark:border-red-900/50 dark:bg-red-950/20 dark:text-red-400"
-        >
-          {signingOut
-            ? t({ en: 'Signing out...', vi: 'Đang đăng xuất...' })
-            : t({ en: 'Sign Out of SciPal', vi: 'Đăng xuất khỏi tài khoản SciPal' })}
-        </button>
-      </div>
-    </div>
+      {/* Institutional Help Modal */}
+      <AccountHelpModal isOpen={showHelpModal} onClose={() => setShowHelpModal(false)} />
+    </>
   );
 }

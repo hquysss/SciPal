@@ -13,13 +13,20 @@ interface ProfileCardProps {
 export function ProfileCard({ displayName, role, avatarUrl, stats }: ProfileCardProps) {
   const { lang, t } = useLanguage();
 
-  const initials = displayName
-    .split(' ')
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((w) => w[0])
-    .join('')
-    .toUpperCase() || 'SP';
+  const initials =
+    displayName
+      .split(' ')
+      .filter(Boolean)
+      .slice(0, 2)
+      .map((w) => w[0])
+      .join('')
+      .toUpperCase() || 'SP';
+
+  const institutionalId = role === 'teacher' ? 'GV-2026-TIN01' : 'HS-2026-11A1-08';
+  const institutionalClass =
+    role === 'teacher'
+      ? t({ en: 'Informatics & Natural Sciences Dept', vi: 'Tổ Tin học & KHTN' })
+      : t({ en: 'Grade 11A1 · Specialized High School', vi: 'Lớp 11A1 · THPT Chuyên' });
 
   return (
     <div className="relative overflow-hidden rounded-3xl border border-emerald-950/10 bg-white/90 p-6 sm:p-8 shadow-xs backdrop-blur-md transition hover:shadow-md dark:border-white/10 dark:bg-card/90">
@@ -28,9 +35,9 @@ export function ProfileCard({ displayName, role, avatarUrl, stats }: ProfileCard
         SP
       </div>
 
-      <div className="relative z-10 flex flex-col sm:flex-row sm:items-center justify-between gap-6">
-        <div className="flex items-center gap-4">
-          <div className="relative flex h-18 w-18 shrink-0 items-center justify-center rounded-2xl border-2 border-emerald-600/30 bg-gradient-to-br from-emerald-100 to-teal-100 text-2xl font-black text-emerald-800 shadow-inner dark:from-emerald-950 dark:to-teal-900 dark:text-emerald-200">
+      <div className="relative z-10 flex flex-col sm:flex-row sm:items-start justify-between gap-6">
+        <div className="flex items-start gap-4">
+          <div className="relative flex h-20 w-20 shrink-0 items-center justify-center rounded-2xl border-2 border-emerald-600/30 bg-gradient-to-br from-emerald-100 to-teal-100 text-2xl font-black text-emerald-800 shadow-inner dark:from-emerald-950 dark:to-teal-900 dark:text-emerald-200">
             {avatarUrl ? (
               <img
                 src={avatarUrl}
@@ -48,7 +55,7 @@ export function ProfileCard({ displayName, role, avatarUrl, stats }: ProfileCard
             </span>
           </div>
 
-          <div className="space-y-1">
+          <div className="space-y-1.5">
             <div className="flex flex-wrap items-center gap-2">
               <h2 className="text-xl sm:text-2xl font-black tracking-tight text-gray-900 dark:text-white">
                 {displayName}
@@ -65,8 +72,26 @@ export function ProfileCard({ displayName, role, avatarUrl, stats }: ProfileCard
                   : t({ en: 'Student', vi: 'Học sinh' })}
               </span>
             </div>
-            <p className="text-xs font-mono text-gray-500 dark:text-gray-400">
-              {t({ en: 'SciPal Academy Explorer', vi: 'Thành viên khám phá SciPal' })}
+
+            {/* Institutional metadata row (Katha style) */}
+            <div className="flex flex-wrap items-center gap-2 text-xs">
+              <span className="inline-flex items-center gap-1 rounded-lg bg-gray-100 px-2 py-0.5 font-mono font-semibold text-gray-700 dark:bg-gray-800 dark:text-gray-300">
+                <span>🆔 {institutionalId}</span>
+              </span>
+              <span className="text-gray-400">•</span>
+              <span className="font-medium text-gray-600 dark:text-gray-300">
+                🏫 {institutionalClass}
+              </span>
+            </div>
+
+            <p className="text-[11px] font-mono text-emerald-700 dark:text-emerald-400 flex items-center gap-1">
+              <span>🔒</span>
+              <span>
+                {t({
+                  en: 'Verified institutional account issued by school administration',
+                  vi: 'Tài khoản được xác thực và cấp phát bởi nhà trường',
+                })}
+              </span>
             </p>
           </div>
         </div>

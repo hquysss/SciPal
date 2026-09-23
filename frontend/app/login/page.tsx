@@ -1,7 +1,6 @@
 'use client';
 
 import { Suspense, useEffect, useRef, useState, type FormEvent } from 'react';
-import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useLanguage } from '@scipal/hooks';
 import { createBrowserClient } from '@/lib/supabase';
@@ -9,6 +8,11 @@ import { LoginLanguageSwitch } from './LoginLanguageSwitch';
 import { LoginThemeToggle } from './LoginThemeToggle';
 import { SciPalMascot } from './SciPalMascot';
 import { ScienceDnaHelix, ScienceAlgorithmTree } from './ScienceHelixes';
+import {
+  InformaticsSlideGraphic,
+  PhysicsSlideGraphic,
+  ChemistrySlideGraphic,
+} from './ScienceSlideIllustrations';
 import './login.css';
 import {
   ArrowRightIcon,
@@ -52,6 +56,7 @@ function LoginContent() {
           ? 'Deep bilingual exploration of computational complexity, sorting algorithms, and recursion.'
           : 'Học sâu về độ phức tạp tính toán, thuật toán sắp xếp và kỹ thuật đệ quy chuẩn THPT.',
       bgGradient: 'from-emerald-950 via-teal-950 to-slate-950',
+      Graphic: InformaticsSlideGraphic,
     },
     {
       id: 'physics',
@@ -64,6 +69,7 @@ function LoginContent() {
           ? 'Interactive physical simulations connecting waves and frequencies with rigorous mathematics.'
           : 'Mô phỏng tương tác kết nối hiện tượng giao thoa sóng với hệ thống toán học chuẩn mực.',
       bgGradient: 'from-sky-950 via-indigo-950 to-slate-950',
+      Graphic: PhysicsSlideGraphic,
     },
     {
       id: 'chemistry',
@@ -76,6 +82,7 @@ function LoginContent() {
           ? 'Molecular reaction models and energetic bonds designed for intuitive retention and test success.'
           : 'Mô hình phản ứng phân tử và liên kết năng lượng giúp nắm chắc lý thuyết và thi đạt điểm cao.',
       bgGradient: 'from-amber-950 via-orange-950 to-slate-950',
+      Graphic: ChemistrySlideGraphic,
     },
   ];
 
@@ -271,35 +278,28 @@ function LoginContent() {
         {/* Left hero: editorial science pane */}
         <section className="katha-login-hero" aria-labelledby="katha-login-hero-title">
           <div className="katha-login-hero-art" aria-hidden="true">
-            <ScienceDnaHelix className="katha-login-vine katha-login-vine-left" />
-            <ScienceAlgorithmTree className="katha-login-vine katha-login-vine-right" />
+            <ScienceDnaHelix className="katha-login-vine" />
           </div>
 
           <header className="katha-login-hero-head">
             <p className="katha-login-eyebrow">
               <AtomOrbitMark className="katha-login-eyebrow-mark text-emerald-600 dark:text-emerald-400" />
               <span>
-                SciPal · {lang === 'en' ? 'Digital Science Laboratory' : 'Phòng Thí Nghiệm KHTN Số THPT'}
+                SciPal · {lang === 'en' ? 'Natural Sciences Lab' : 'Không gian Khoa học Tự nhiên'}
               </span>
             </p>
-            <Link
-              href="/"
-              className="text-xs font-semibold text-emerald-700 dark:text-emerald-400 hover:underline inline-flex items-center gap-1"
-            >
-              ← {lang === 'en' ? 'Home' : 'Trang chủ'}
-            </Link>
           </header>
 
           <div className="katha-login-hero-body">
             <h1 id="katha-login-hero-title" className="katha-login-hero-title">
               {lang === 'en'
-                ? 'Bilingual Science Laboratory for High School.'
-                : 'Không gian Học tập Khoa học Tự nhiên Song ngữ.'}
+                ? 'Explore Natural Sciences Through Every Lesson.'
+                : 'Khám phá Khoa học Tự nhiên qua từng bài học.'}
             </h1>
             <p className="katha-login-hero-note">
               {lang === 'en'
-                ? 'Connecting algorithmic informatics, physics simulations, and chemistry formulations into an authoritative self-learning loop.'
-                : 'Kết nối tư duy thuật toán tin học, mô phỏng dao động vật lý và phản ứng hóa học thành chu trình học tập chủ động và sâu sắc.'}
+                ? 'Step into interactive simulations, algorithmic thinking, and bilingual concept mastery.'
+                : 'Bước vào những bài học tương tác, thuật toán trực quan và không gian học tập số của SciPal.'}
             </p>
           </div>
 
@@ -311,31 +311,35 @@ function LoginContent() {
             onBlur={() => setSlidePaused(false)}
           >
             <div className="katha-login-photo">
-              {scienceSlides.map((slide, idx) => (
-                <div
-                  key={slide.id}
-                  className={`katha-login-slide ${idx === activeSlide ? 'is-active' : ''}`}
-                  aria-hidden={idx !== activeSlide}
-                >
-                  <div className={`absolute inset-0 bg-gradient-to-br ${slide.bgGradient} opacity-95`} />
-                  <div className="pointer-events-none absolute inset-0 bg-science-grid opacity-25" />
-                  <div className="katha-login-photo-shade" aria-hidden="true" />
+              {scienceSlides.map((slide, idx) => {
+                const SlideGraphic = slide.Graphic;
+                return (
+                  <div
+                    key={slide.id}
+                    className={`katha-login-slide ${idx === activeSlide ? 'is-active' : ''}`}
+                    aria-hidden={idx !== activeSlide}
+                  >
+                    <div className={`absolute inset-0 bg-gradient-to-br ${slide.bgGradient} opacity-95`} />
+                    <div className="pointer-events-none absolute inset-0 bg-science-grid opacity-25" />
+                    <SlideGraphic />
+                    <div className="katha-login-photo-shade" aria-hidden="true" />
 
-                  <div className="katha-login-slide-badge">
-                    <span className="katha-login-slide-word">{slide.word}</span>
-                    <span className="katha-login-slide-phonetic">[{slide.phonetic}]</span>
-                    <span className="katha-login-slide-tag">{slide.tag}</span>
-                  </div>
-
-                  <figcaption className="katha-login-photo-caption">
-                    <span className="katha-login-photo-caption-rule" aria-hidden="true" />
-                    <div className="katha-login-photo-caption-content">
-                      <strong className="katha-login-photo-caption-title">{slide.title}</strong>
-                      <span className="katha-login-photo-caption-text">{slide.desc}</span>
+                    <div className="katha-login-slide-badge">
+                      <span className="katha-login-slide-word">{slide.word}</span>
+                      <span className="katha-login-slide-phonetic">[{slide.phonetic}]</span>
+                      <span className="katha-login-slide-tag">{slide.tag}</span>
                     </div>
-                  </figcaption>
-                </div>
-              ))}
+
+                    <figcaption className="katha-login-photo-caption">
+                      <span className="katha-login-photo-caption-rule" aria-hidden="true" />
+                      <div className="katha-login-photo-caption-content">
+                        <strong className="katha-login-photo-caption-title">{slide.title}</strong>
+                        <span className="katha-login-photo-caption-text">{slide.desc}</span>
+                      </div>
+                    </figcaption>
+                  </div>
+                );
+              })}
             </div>
 
             {/* Slide Navigation Dots */}
@@ -358,12 +362,16 @@ function LoginContent() {
 
           <p className="katha-login-archive" aria-hidden="true">
             <span className="katha-login-archive-rule" />
-            <span>VIETNAM NATURAL SCIENCES · ACADEMIC LAB STATION 2026</span>
+            <span>VIETNAM</span>
           </p>
         </section>
 
         {/* Right pane: quiet login */}
         <section className="katha-login-pane" aria-labelledby="katha-login-form-title">
+          <div className="katha-login-pane-art" aria-hidden="true">
+            <ScienceAlgorithmTree className="katha-login-vine katha-login-vine-right" />
+          </div>
+
           <div className="katha-login-card">
             <div className="katha-login-header-row">
               <div className="katha-login-brand">
@@ -371,7 +379,7 @@ function LoginContent() {
                 <div className="katha-login-brand-text">
                   <span className="katha-login-brand-name">SCIPAL</span>
                   <span className="katha-login-brand-khmer">
-                    {lang === 'en' ? 'HIGH SCHOOL DIGITAL SCIENCE LAB' : 'PHÒNG THÍ NGHIỆM KHTN SỐ'}
+                    {lang === 'en' ? 'HIGH SCHOOL SCIENCE LAB' : 'PHÒNG THÍ NGHIỆM KHTN SỐ'}
                   </span>
                 </div>
               </div>
@@ -379,28 +387,22 @@ function LoginContent() {
             </div>
 
             <div className="katha-login-heading">
-              <h2 id="katha-login-form-title" className="flex items-center gap-2.5">
-                <span>{lang === 'en' ? 'Sign In' : 'Đăng nhập'}</span>
-                <span
-                  className="scipal-login-atom-mark inline-flex items-center text-emerald-600 dark:text-emerald-400"
-                  aria-hidden="true"
-                  title="SciPal Science Lab"
-                >
-                  <AtomOrbitMark className="size-7" />
+              <h2 id="katha-login-form-title">
+                {lang === 'en' ? 'Welcome back' : 'Chào mừng trở lại'}{' '}
+                <span className="katha-login-sparkle" aria-hidden="true">
+                  ✨
                 </span>
               </h2>
               <p>
                 {lang === 'en'
-                  ? 'Access your issued academic portal and learning records.'
-                  : 'Đăng nhập vào cổng học tập bằng tài khoản do nhà trường cấp.'}
+                  ? 'Continue your journey exploring bilingual sciences.'
+                  : 'Tiếp tục hành trình khám phá khoa học tự nhiên của bạn.'}
               </p>
             </div>
 
             <form className="katha-login-form" onSubmit={handleSubmit} noValidate>
               <label className="katha-login-label" htmlFor="login-email">
-                <span>
-                  {lang === 'en' ? 'School Email or Username' : 'Email trường cấp hoặc Tên tài khoản'}
-                </span>
+                <span>{lang === 'en' ? 'Email' : 'Email'}</span>
                 <div className="katha-login-input-wrap">
                   <MailIcon className="katha-login-input-icon" />
                   <input
@@ -415,9 +417,7 @@ function LoginContent() {
                       if (emailFormatError) setEmailFormatError(null);
                     }}
                     onBlur={(event) => handleEmailBlur(event.target.value)}
-                    placeholder={
-                      lang === 'en' ? 'student.11a1@scipal.edu.vn' : 'hocsinh.11a1@scipal.edu.vn'
-                    }
+                    placeholder="name@gmail.com"
                     disabled={submitting}
                     aria-invalid={Boolean(error || emailFormatError)}
                     aria-describedby={emailFormatError ? 'login-email-error' : undefined}
@@ -471,7 +471,7 @@ function LoginContent() {
                     {rememberMe && <CheckIcon />}
                   </span>
                   <span className="katha-login-remember-text">
-                    {lang === 'en' ? 'Remember account' : 'Ghi nhớ tài khoản'}
+                    {lang === 'en' ? 'Remember login' : 'Ghi nhớ đăng nhập'}
                   </span>
                 </label>
 
@@ -481,7 +481,7 @@ function LoginContent() {
                   onClick={() => setShowHelp(true)}
                   className="katha-login-help-trigger"
                 >
-                  {lang === 'en' ? 'Need help?' : 'Cần trợ giúp?'}
+                  {lang === 'en' ? 'Need account help?' : 'Cần hỗ trợ tài khoản?'}
                 </button>
               </div>
 
@@ -513,11 +513,11 @@ function LoginContent() {
             </form>
 
             <p className="katha-login-footnote">
-              <ShieldCheckIcon className="size-5 text-emerald-600 dark:text-emerald-400 shrink-0" />
+              <span className="katha-login-sparkle" aria-hidden="true">✨</span>
               <span>
                 {lang === 'en'
-                  ? 'Quantum-Ready TLS 1.3 Encryption · High School Science Cloud'
-                  : 'Bảo mật giao thức lượng tử TLS 1.3 · Hệ sinh thái KHTN THPT'}
+                  ? 'Private learning workspace by SciPal.'
+                  : 'Không gian học tập riêng tư của SciPal.'}
               </span>
             </p>
           </div>

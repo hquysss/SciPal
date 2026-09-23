@@ -1,5 +1,5 @@
 'use client';
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 
 export type Lang = 'en' | 'vi';
 
@@ -7,10 +7,13 @@ const STORAGE_KEY = 'scipal-lang';
 const DEFAULT_LANG: Lang = 'vi';
 
 function readLang(): Lang {
-  if (typeof localStorage === 'undefined') return DEFAULT_LANG;
+  if (typeof window === 'undefined' || typeof localStorage === 'undefined') return DEFAULT_LANG;
   const stored = localStorage.getItem(STORAGE_KEY);
   return stored === 'en' || stored === 'vi' ? stored : DEFAULT_LANG;
 }
+
+// Global subscribers for all useLanguage instances across the app
+const subscribers = new Set<(l: Lang) => void>();
 
 export interface UseLanguageResult {
   lang:    Lang;
@@ -22,11 +25,29 @@ export interface UseLanguageResult {
 export function useLanguage(): UseLanguageResult {
   const [lang, setLangState] = useState<Lang>(readLang);
 
+  useEffect(() => {
+    // Sync on mount
+    setLangState(readLang());
+
+    const handleChange = (newLang: Lang) => {
+      setLangState(newLang);
+    };
+
+    subscribers.add(handleChange);
+    return () => {
+      subscribers.delete(handleChange);
+    };
+  }, []);
+
   const setLang = useCallback((l: Lang) => {
     setLangState(l);
     if (typeof localStorage !== 'undefined') {
       localStorage.setItem(STORAGE_KEY, l);
     }
+    if (typeof document !== 'undefined') {
+      document.cookie = `${STORAGE_KEY}=${l}; path=/; max-age=31536000; SameSite=Lax`;
+    }
+    subscribers.forEach((notify) => notify(l));
   }, []);
 
   const t = useCallback(

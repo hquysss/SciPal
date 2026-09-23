@@ -1,15 +1,16 @@
 'use client';
 import { useState } from 'react';
 import { useLanguage } from '@scipal/hooks';
+import { SUBJECT_CONFIG } from '@/lib/subject-config';
 import type { TermItem } from './termQueries';
 
 const FILTER_SUBJECTS = [
-  { id: 'all', label: 'Tất cả môn' },
-  { id: 'informatics', label: 'Tin học', color: '#16a34a' },
-  { id: 'math', label: 'Toán học', color: '#2563eb' },
-  { id: 'physics', label: 'Vật lí', color: '#7c3aed' },
-  { id: 'chemistry', label: 'Hoá học', color: '#0d9488' },
-  { id: 'biology', label: 'Sinh học', color: '#65a30d' },
+  { id: 'all', label: 'Tất cả môn', color: undefined },
+  ...Object.values(SUBJECT_CONFIG).map((s) => ({
+    id: s.slug,
+    label: s.nameVi,
+    color: s.accentColor,
+  })),
 ];
 
 export function GlossarySearch({ terms }: { terms: TermItem[] }) {

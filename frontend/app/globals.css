@@ -57,8 +57,12 @@
   * {
     @apply border-border;
   }
+  html {
+    font-size: 16px;
+    -webkit-text-size-adjust: 100%;
+  }
   body {
-    @apply bg-[#fafaf9] text-gray-900 antialiased;
+    @apply bg-[#fafaf9] text-gray-900 antialiased text-base leading-relaxed;
     font-family: var(--font-sans);
   }
 }

@@ -1,7 +1,6 @@
 import Link from 'next/link';
 import { cookies } from 'next/headers';
 import { createServerClient } from '@scipal/supabase';
-import { NavBar } from '@/components/nav/NavBar';
 import { getUserProfile } from '@/features/profile/profileQueries';
 import { ProfileCard } from '@/features/profile/ProfileCard';
 import { AccountSettings } from '@/features/profile/AccountSettings';
@@ -31,8 +30,6 @@ export default async function ProfilePage() {
 
   return (
     <div className="relative min-h-[calc(100vh-3.5rem)] bg-science-grid pb-20">
-      <NavBar />
-
       <main className="relative mx-auto max-w-2xl px-4 py-8 sm:px-6 sm:py-12 space-y-6">
         {/* Breadcrumb navigation */}
         <nav className="flex items-center gap-2 text-xs font-mono text-gray-500">

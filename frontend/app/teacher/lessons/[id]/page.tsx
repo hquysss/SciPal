@@ -1,5 +1,4 @@
 import Link from 'next/link';
-import { NavBar } from '@/components/nav/NavBar';
 import { LessonEditor } from '@/features/authoring/LessonEditor';
 import { getAuthoringLesson } from '@/features/authoring/authoringQueries';
 
@@ -15,8 +14,6 @@ export default async function LessonAuthoringStudioPage({
 
   return (
     <div className="relative min-h-[calc(100vh-3.5rem)] bg-science-grid pb-20">
-      <NavBar />
-
       <main className="relative mx-auto max-w-6xl px-4 py-6 sm:px-6 sm:py-8 space-y-6">
         {/* Breadcrumb */}
         <nav className="flex items-center gap-2 text-xs font-mono text-gray-500">

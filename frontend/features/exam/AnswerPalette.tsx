@@ -15,11 +15,11 @@ export function AnswerPalette({ total, currentIndex, answers, onSelect }: Answer
 
   return (
     <div className="rounded-2xl border border-emerald-900/10 bg-white/90 p-4 sm:p-5 shadow-xs backdrop-blur-md dark:border-white/10 dark:bg-card/90">
-      <div className="flex items-center justify-between mb-3 border-b border-gray-100 pb-2 dark:border-gray-800">
-        <h4 className="text-xs font-mono font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">
+      <div className="flex items-center justify-between mb-3 border-b border-gray-100 pb-2.5 dark:border-gray-800">
+        <h4 className="text-sm font-bold uppercase tracking-wider text-gray-700 dark:text-gray-300">
           📋 {t({ en: 'Question Grid', vi: 'Bảng theo dõi câu hỏi' })}
         </h4>
-        <span className="font-mono text-xs font-bold text-emerald-700 bg-emerald-50 dark:bg-emerald-950/60 dark:text-emerald-300 px-2 py-0.5 rounded-full">
+        <span className="font-mono text-sm font-bold text-emerald-800 bg-emerald-50 dark:bg-emerald-950/60 dark:text-emerald-300 px-3 py-1 rounded-full">
           {answeredCount} / {total} {t({ en: 'answered', vi: 'đã làm' })}
         </span>
       </div>
@@ -33,7 +33,7 @@ export function AnswerPalette({ total, currentIndex, answers, onSelect }: Answer
               key={i}
               onClick={() => onSelect(i)}
               aria-label={`Câu ${i + 1}`}
-              className={`relative flex h-10 w-full items-center justify-center rounded-xl font-mono text-xs font-bold transition duration-150 active:scale-95 ${
+              className={`relative flex h-11 w-full items-center justify-center rounded-xl font-mono text-sm font-black transition duration-150 active:scale-95 ${
                 isCurrent
                   ? 'border-2 border-emerald-600 bg-emerald-50 text-emerald-800 shadow-xs ring-2 ring-emerald-500/20 dark:border-emerald-400 dark:bg-emerald-950/60 dark:text-emerald-200'
                   : isAnswered
