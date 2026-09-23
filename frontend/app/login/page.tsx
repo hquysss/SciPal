@@ -386,7 +386,7 @@ function LoginContent() {
                   aria-hidden="true"
                   title="SciPal Science Lab"
                 >
-                  <AtomOrbitMark className="size-6" />
+                  <AtomOrbitMark className="size-7" />
                 </span>
               </h2>
               <p>
@@ -513,7 +513,7 @@ function LoginContent() {
             </form>
 
             <p className="katha-login-footnote">
-              <ShieldCheckIcon className="size-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+              <ShieldCheckIcon className="size-5 text-emerald-600 dark:text-emerald-400 shrink-0" />
               <span>
                 {lang === 'en'
                   ? 'Quantum-Ready TLS 1.3 Encryption · High School Science Cloud'
