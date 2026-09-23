@@ -112,16 +112,16 @@
 /* Seam — a fine emerald line dividing the two halves */
 .katha-login-seam {
   position: absolute;
-  top: 6%;
-  bottom: 6%;
+  top: 4%;
+  bottom: 4%;
   left: 56%;
   z-index: 4;
   width: 1px;
   background: linear-gradient(
     to bottom,
     transparent,
-    color-mix(in srgb, var(--lg-gold) 45%, transparent) 25%,
-    color-mix(in srgb, var(--lg-gold) 45%, transparent) 75%,
+    color-mix(in srgb, var(--lg-gold) 50%, transparent) 20%,
+    color-mix(in srgb, var(--lg-gold) 50%, transparent) 80%,
     transparent
   );
   pointer-events: none;
@@ -131,11 +131,11 @@
   position: absolute;
   top: 50%;
   left: 50%;
-  width: 8px;
-  height: 8px;
+  width: 9px;
+  height: 9px;
   background: var(--lg-gold);
   border-radius: 2px;
-  box-shadow: 0 0 0 4px color-mix(in srgb, var(--lg-gold) 22%, transparent);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--lg-gold) 24%, transparent), 0 0 12px var(--lg-gold);
   transform: translate(-50%, -50%) rotate(45deg);
 }
 
@@ -163,6 +163,40 @@
   overflow: hidden;
   color: var(--lg-gold);
   pointer-events: none;
+}
+
+.katha-login-vine {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: -1.6rem;
+  width: 5.5rem;
+  opacity: 0.28;
+  color: var(--lg-gold);
+  pointer-events: none;
+  animation: login-vine-sway 12s ease-in-out infinite alternate;
+}
+
+.katha-login-vine-right {
+  left: auto;
+  right: -1.6rem;
+  rotate: 180deg;
+  animation-delay: -6s;
+}
+
+@keyframes login-vine-sway {
+  from {
+    transform: translateY(-8px);
+  }
+  to {
+    transform: translateY(8px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .katha-login-vine {
+    animation: none;
+  }
 }
 
 .katha-login-hero-head,
