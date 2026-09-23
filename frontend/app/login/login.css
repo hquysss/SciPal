@@ -805,8 +805,8 @@
   color: color-mix(in srgb, var(--lg-muted) 65%, transparent);
 }
 
-.katha-login-input-wrap input:hover:not(:disabled) {
-  border-color: color-mix(in srgb, var(--lg-ink) 35%, transparent);
+.katha-login-input-wrap input:hover:not(:disabled):not(:focus) {
+  border-color: color-mix(in srgb, var(--accent, #10b981) 50%, var(--lg-field-line));
 }
 
 .katha-login-input-wrap input:disabled {
@@ -970,6 +970,7 @@
 }
 
 .katha-login-submit {
+  position: relative;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -991,14 +992,6 @@
     0 14px 28px -12px color-mix(in srgb, var(--lg-primary) 45%, transparent),
     inset 0 1px 0 rgba(255, 255, 255, 0.15);
   transition: transform 180ms ease, box-shadow 180ms ease, filter 180ms ease, background 180ms ease;
-}
-
-.katha-login-submit:hover:not(:disabled) {
-  background: linear-gradient(135deg, color-mix(in srgb, var(--lg-primary) 85%, #fff), var(--lg-primary));
-  box-shadow:
-    0 18px 32px -12px color-mix(in srgb, var(--lg-primary) 50%, transparent),
-    inset 0 1px 0 rgba(255, 255, 255, 0.22);
-  transform: translateY(-1px);
 }
 
 .katha-login-submit:active:not(:disabled) {
@@ -1472,6 +1465,11 @@
   box-shadow: var(--login-inset);
 }
 
+:root .katha-login-page .katha-login-input-wrap input:hover:not(:disabled):not(:focus),
+.dark .katha-login-page .katha-login-input-wrap input:hover:not(:disabled):not(:focus) {
+  border-color: color-mix(in srgb, var(--accent, #10b981) 55%, var(--lg-field-line));
+}
+
 :root .katha-login-page .katha-login-input-wrap input:focus,
 .dark .katha-login-page .katha-login-input-wrap input:focus {
   border-color: var(--accent, #10b981);
@@ -1493,6 +1491,8 @@
 
 :root .katha-login-page .katha-login-submit,
 .dark .katha-login-page .katha-login-submit {
+  position: relative;
+  overflow: hidden;
   border: 1px solid transparent;
   border-radius: 1rem;
   background: linear-gradient(135deg, var(--accent, #16a34a) 0%, #059669 100%);
@@ -1527,6 +1527,8 @@
   inset: 0;
   z-index: 0;
   content: '';
+  border-radius: inherit;
+  pointer-events: none;
   background: linear-gradient(135deg, #34d399 50%, #059669 100%);
   opacity: 0;
   transform: none;
