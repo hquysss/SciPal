@@ -982,28 +982,63 @@
 /* Submit */
 .katha-login-submit {
   position: relative;
+  overflow: hidden;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 0.55rem;
   width: 100%;
   min-height: 3.5rem;
-  border: 0;
-  border-radius: 1rem;
-  background: linear-gradient(135deg, var(--lg-primary), #15803d);
+  border: 1px solid transparent;
+  border-radius: 0.85rem;
+  background: linear-gradient(135deg, var(--lg-primary), #059669);
   color: #ffffff;
   font-size: 1rem;
   font-weight: 700;
-  letter-spacing: 0.02em;
+  letter-spacing: 0.03em;
   cursor: pointer;
-  box-shadow: 0 10px 24px -8px rgba(22, 163, 74, 0.5);
-  transition: transform 180ms ease, box-shadow 180ms ease, background 180ms ease;
+  box-shadow: 0 4px 14px rgba(5, 150, 105, 0.35);
+  transition: transform 200ms ease, box-shadow 200ms ease, background 200ms ease;
+}
+
+.katha-login-submit::before {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  background: linear-gradient(
+    112deg,
+    transparent 25%,
+    rgba(255, 255, 255, 0.35) 50%,
+    transparent 75%
+  );
+  content: '';
+  opacity: 0;
+  pointer-events: none;
+  transform: translateX(-125%);
+}
+
+.katha-login-submit > * {
+  position: relative;
+  z-index: 1;
+}
+
+.katha-login-submit:hover:not(:disabled)::before,
+.katha-login-submit:focus-visible::before {
+  opacity: 1;
+  animation: katha-login-button-gloss 1.1s ease-out both;
 }
 
 .katha-login-submit:hover:not(:disabled) {
-  background: linear-gradient(135deg, #22c55e, var(--lg-primary));
-  box-shadow: 0 14px 28px -8px rgba(22, 163, 74, 0.6);
+  background: linear-gradient(135deg, #10b981, var(--lg-primary));
+  box-shadow: 0 0 35px rgba(16, 185, 129, 0.5), 0 8px 24px rgba(5, 150, 105, 0.4);
   transform: translateY(-1px);
+}
+
+.katha-login-submit:focus-visible {
+  outline: none;
+  box-shadow:
+    0 0 0 4px var(--lg-field-focus-ring),
+    0 0 35px rgba(16, 185, 129, 0.5);
 }
 
 .katha-login-submit:active:not(:disabled) {
@@ -1024,6 +1059,22 @@
 
 .katha-login-submit:hover:not(:disabled) .katha-login-submit-arrow {
   transform: translateX(3px);
+}
+
+@keyframes katha-login-button-gloss {
+  from {
+    transform: translateX(-125%);
+  }
+  to {
+    transform: translateX(125%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .katha-login-submit::before {
+    display: none;
+    animation: none;
+  }
 }
 
 .katha-login-spinner {
