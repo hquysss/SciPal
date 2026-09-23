@@ -1,7 +1,7 @@
 # Thiết Kế Chi Tiết: Nâng Cấp Giao Diện & Toàn Bộ Hiệu Ứng Login SciPal Chuẩn Katha
 
 **Ngày lập**: 2026-09-23  
-**Trạng thái**: Draft / Đang chờ duyệt  
+**Trạng thái**: Đã duyệt (Approved) — Tiếp nhận phản hồi: thay thế ngôi sao `✨` bằng họa tiết hình thoi học thuật (`DiamondMark`)  
 **Định hướng**: Phương án A — Chuyển giao trọn vẹn 100% linh hồn thẩm mỹ và 10 tầng hiệu ứng thị giác của Katha sang SciPal với hệ màu Ngọc Lục Bảo (Emerald/Mint/Gold) và cơ chế Fluid Scaling đa chiều.
 
 ---
@@ -89,8 +89,8 @@ Katha sử dụng bảng màu Warm Ivory & Angkor Gold (Daylight) và Deep Indig
 ### Tầng 5: Button Dynamic Gloss & Radiant Aura (Nút bấm lóa sáng & Nảy xúc giác)
 - **Mô tả**: Nút đăng nhập sở hữu hiệu ứng bóng gương tráng bạc (`katha-login-button-gloss`) lướt qua khi rê chuột, kết hợp hiệu ứng nảy nhẹ quang học và vầng hào quang rực rỡ.
 
-### Tầng 6: Sparkle Twinkle ✨ (Ngôi sao phát quang)
-- **Mô tả**: Biểu tượng ngôi sao ✨ cạnh tiêu đề "Đăng nhập" xoay nghiêng 6 độ, nở nhẹ 116% và tỏa bóng hào quang ngọc lục bảo rực rỡ với chu kỳ 3s nhịp nhàng.
+### Tầng 6: Academic Diamond Mark ⬦ (Họa tiết hình thoi học thuật)
+- **Mô tả**: Thay thế biểu tượng ngôi sao emoji `✨` bằng họa tiết hình thoi vector học thuật (`DiamondMark`) sắc sảo, thanh lịch đồng bộ với mấu ngọc ở Seam divider. Họa tiết có ánh sáng viền xanh ngọc bích nhẹ nhàng, tạo nét tôn nghiêm và khoa học.
 
 ### Tầng 7: Anti-Autofill Ugly Box (Triệt tiêu nền vàng trình duyệt)
 - **Mô tả**: Trình duyệt Chromium thường ép nền màu vàng/xanh khi chọn tài khoản đã lưu, phá vỡ thiết kế. Sử dụng kỹ thuật `box-shadow: 0 0 0 1000px var(--lg-field) inset` kết hợp `transition: background-color 9999s` để giữ bề mặt ô nhập luôn hoàn hảo.
@@ -119,7 +119,7 @@ Katha sử dụng bảng màu Warm Ivory & Angkor Gold (Daylight) và Deep Indig
 │  │ • Subtitle: Tin học, Lý, Hóa │ • HEADER ROW:                      │ │
 │  │ • CAROUSEL PHOTO (Drift 24s) │   [🍀 SCIPAL LAB]   [MASCOT CHIBI] │ │
 │  │   - Slide Badge [Term·Tag]   │                     [BUBBLE POP UP]│ │
-│  │   - Sheen Sweep hover        │ • HEADING: Đăng nhập ✨            │ │
+│  │   - Sheen Sweep hover        │ • HEADING: Đăng nhập [DiamondMark] │ │
 │  │   - Caption bar              │ • FORM (Tactile Inset Inputs):     │ │
 │  │ • Carousel Dots Navigation   │   - Email input (anti-autofill)    │ │
 │  │ • Botanical Vines (12s sway) │   - Password input + eye toggle    │ │
