@@ -30,8 +30,6 @@
   --lg-field-line: rgba(15, 23, 42, 0.14);
   --lg-field-focus-line: var(--accent, #16a34a);
   --lg-field-focus-ring: rgba(22, 163, 74, 0.2);
-  --login-inset: inset 4px 4px 8px rgba(15, 23, 42, 0.06), inset -4px -4px 8px #ffffff;
-  --login-glow: inset 0 0 10px rgba(5, 150, 105, 0.35), inset 0 0 10px rgba(16, 185, 129, 0.25), 0 0 20px rgba(16, 185, 129, 0.25);
 
   position: relative;
   display: grid;
@@ -62,8 +60,6 @@
   --lg-field-line: rgba(255, 255, 255, 0.16);
   --lg-field-focus-line: #10b981;
   --lg-field-focus-ring: rgba(16, 185, 129, 0.24);
-  --login-inset: inset 5px 5px 10px #040609, inset -5px -5px 10px #18202e;
-  --login-glow: inset 0 0 10px rgba(16, 185, 129, 0.5), 0 0 25px rgba(16, 185, 129, 0.4);
 }
 
 /* Precision Laboratory Coordinate Grid */
@@ -796,13 +792,13 @@
   width: 100%;
   height: 3.5rem;
   padding: 0 3.1rem 0 3rem;
-  border: 1.5px solid var(--lg-field-line);
-  border-radius: 0.85rem;
-  background: color-mix(in srgb, var(--lg-field) 94%, var(--lg-page));
+  border: 1px solid var(--lg-field-line);
+  border-radius: 0.95rem;
+  background: var(--lg-field);
   color: var(--lg-ink);
+  font: inherit;
   font-size: 1rem;
-  box-shadow: var(--login-inset);
-  transition: border-color 200ms ease-in-out, box-shadow 200ms ease-in-out, background 200ms ease-in-out;
+  transition: border-color 180ms ease, box-shadow 180ms ease, background 180ms ease;
 }
 
 .katha-login-input-wrap input::placeholder {
@@ -810,65 +806,31 @@
 }
 
 .katha-login-input-wrap input:hover:not(:disabled) {
-  border-color: color-mix(in srgb, var(--lg-gold) 45%, var(--lg-field-line));
+  border-color: color-mix(in srgb, var(--lg-ink) 35%, transparent);
 }
 
-.katha-login-input-wrap input:focus {
-  outline: none;
-  border-color: var(--lg-field-focus-line);
-  background: var(--lg-field);
-  box-shadow: var(--login-glow);
-}
-
-.katha-login-input-wrap input:-webkit-autofill,
-.katha-login-input-wrap input:-webkit-autofill:hover,
-.katha-login-input-wrap input:-webkit-autofill:focus {
-  -webkit-text-fill-color: var(--lg-ink);
-  -webkit-box-shadow: var(--login-inset), 0 0 0 1000px var(--lg-field) inset !important;
-  box-shadow: var(--login-inset), 0 0 0 1000px var(--lg-field) inset !important;
-  transition: background-color 9999s ease-out;
-}
-
-:root[data-theme='dark'] .katha-login-page .katha-login-input-wrap,
-.dark .katha-login-page .katha-login-input-wrap {
-  --lg-field: #111622;
-  padding: 0.25rem;
-  border-radius: 1rem;
-  background: linear-gradient(135deg, #18202e 0%, #0e121a 100%);
-  box-shadow: 7px 7px 16px rgba(0, 0, 0, 0.4), -5px -5px 14px rgba(255, 255, 255, 0.03);
-}
-
-:root[data-theme='dark'] .katha-login-page .katha-login-input-wrap input,
-.dark .katha-login-page .katha-login-input-wrap input {
-  height: 3.35rem;
-  border-radius: 0.75rem;
-  background: #090d16;
-  box-shadow: var(--login-inset);
+.katha-login-input-wrap input:disabled {
+  opacity: 0.6;
 }
 
 .katha-login-input-icon {
   position: absolute;
   top: 50%;
   left: 1rem;
-  width: 1.2rem;
-  height: 1.2rem;
+  width: 1.1rem;
+  height: 1.1rem;
   transform: translateY(-50%);
   pointer-events: none;
-}
-
-:root[data-theme='dark'] .katha-login-page .katha-login-input-icon,
-.dark .katha-login-page .katha-login-input-icon {
-  left: 1.2rem;
 }
 
 .katha-login-password-toggle {
   position: absolute;
   top: 50%;
-  right: 0.5rem;
+  right: 0.4rem;
   display: grid;
   place-items: center;
-  width: 2.5rem;
-  height: 2.5rem;
+  width: 2.6rem;
+  height: 2.6rem;
   border: 0;
   border-radius: 0.75rem;
   background: transparent;
@@ -878,14 +840,15 @@
   transition: color 180ms ease, background 180ms ease;
 }
 
-:root[data-theme='dark'] .katha-login-page .katha-login-password-toggle,
-.dark .katha-login-page .katha-login-password-toggle {
-  right: 0.75rem;
-}
-
 .katha-login-password-toggle:hover {
   color: var(--lg-ink);
-  background: color-mix(in srgb, var(--lg-ink) 8%, transparent);
+  background: color-mix(in srgb, var(--lg-ink) 7%, transparent);
+}
+
+.katha-login-password-toggle svg {
+  width: 1.15rem;
+  height: 1.15rem;
+  flex-shrink: 0;
 }
 
 .katha-login-field-error {
@@ -1006,66 +969,36 @@
   margin: 0;
 }
 
-/* Submit */
 .katha-login-submit {
-  position: relative;
-  overflow: hidden;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 0.55rem;
   width: 100%;
   min-height: 3.5rem;
-  border: 1px solid transparent;
-  border-radius: 0.85rem;
+  overflow: hidden;
+  border: 1px solid color-mix(in srgb, var(--lg-primary) 40%, transparent);
+  border-radius: 0.95rem;
   background: linear-gradient(135deg, var(--lg-primary), #059669);
   color: #ffffff;
-  font-size: 1rem;
-  font-weight: 700;
-  letter-spacing: 0.03em;
+  font: inherit;
+  font-size: 0.98rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
   cursor: pointer;
-  box-shadow: 0 4px 14px rgba(5, 150, 105, 0.35);
-  transition: transform 200ms ease, box-shadow 200ms ease, background 200ms ease;
-}
-
-.katha-login-submit::before {
-  position: absolute;
-  inset: 0;
-  z-index: 0;
-  background: linear-gradient(
-    112deg,
-    transparent 25%,
-    rgba(255, 255, 255, 0.35) 50%,
-    transparent 75%
-  );
-  content: '';
-  opacity: 0;
-  pointer-events: none;
-  transform: translateX(-125%);
-}
-
-.katha-login-submit > * {
-  position: relative;
-  z-index: 1;
-}
-
-.katha-login-submit:hover:not(:disabled)::before,
-.katha-login-submit:focus-visible::before {
-  opacity: 1;
-  animation: katha-login-button-gloss 1.1s ease-out both;
+  box-shadow:
+    0 14px 28px -12px color-mix(in srgb, var(--lg-primary) 45%, transparent),
+    inset 0 1px 0 rgba(255, 255, 255, 0.15);
+  transition: transform 180ms ease, box-shadow 180ms ease, filter 180ms ease, background 180ms ease;
 }
 
 .katha-login-submit:hover:not(:disabled) {
-  background: linear-gradient(135deg, #10b981, var(--lg-primary));
-  box-shadow: 0 0 35px rgba(16, 185, 129, 0.5), 0 8px 24px rgba(5, 150, 105, 0.4);
-  transform: translateY(-1px);
-}
-
-.katha-login-submit:focus-visible {
-  outline: none;
+  background: linear-gradient(135deg, color-mix(in srgb, var(--lg-primary) 85%, #fff), var(--lg-primary));
   box-shadow:
-    0 0 0 4px var(--lg-field-focus-ring),
-    0 0 35px rgba(16, 185, 129, 0.5);
+    0 18px 32px -12px color-mix(in srgb, var(--lg-primary) 50%, transparent),
+    inset 0 1px 0 rgba(255, 255, 255, 0.22);
+  transform: translateY(-1px);
 }
 
 .katha-login-submit:active:not(:disabled) {
@@ -1073,35 +1006,19 @@
 }
 
 .katha-login-submit:disabled {
-  opacity: 0.65;
   cursor: wait;
+  opacity: 0.62;
 }
 
 .katha-login-submit-arrow {
-  width: 1.2rem;
-  height: 1.2rem;
+  width: 1.15rem;
+  height: 1.15rem;
   flex-shrink: 0;
   transition: transform 180ms ease;
 }
 
 .katha-login-submit:hover:not(:disabled) .katha-login-submit-arrow {
   transform: translateX(3px);
-}
-
-@keyframes katha-login-button-gloss {
-  from {
-    transform: translateX(-125%);
-  }
-  to {
-    transform: translateX(125%);
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .katha-login-submit::before {
-    display: none;
-    animation: none;
-  }
 }
 
 .katha-login-spinner {
@@ -1516,3 +1433,133 @@
     font-size: 0.68rem;
   }
 }
+
+/* ============================================================
+ * Input and button effects from Uiverse.io by Smit-Prajapati.
+ * Ported directly from Katha (frontend/src/app/login/login.css:2028-2135).
+ * Keep the light-theme surfaces and the open login layout.
+ * ============================================================ */
+:root[data-theme='dark'] .katha-login-page .katha-login-input-wrap,
+.dark .katha-login-page .katha-login-input-wrap {
+  --lg-field: #111622;
+  padding: 0.3rem;
+  border-radius: 1rem;
+  background: linear-gradient(135deg, #18202e 0%, #0e121a 100%);
+  box-shadow: 7px 7px 16px rgba(0, 0, 0, 0.4), -5px -5px 14px rgba(255, 255, 255, 0.03);
+}
+
+:root[data-theme='dark'] .katha-login-page .katha-login-input-icon,
+.dark .katha-login-page .katha-login-input-icon {
+  left: 1.3rem;
+}
+
+:root[data-theme='dark'] .katha-login-page .katha-login-password-toggle,
+.dark .katha-login-page .katha-login-password-toggle {
+  right: 0.7rem;
+}
+
+.katha-login-input-wrap input {
+  --login-inset: inset 5px 5px 10px rgb(15 23 42 / 8%), inset -5px -5px 10px rgb(255 255 255 / 80%), 0 0 100px rgb(52 211 153 / 0%), 0 0 100px rgb(16 185 129 / 0%);
+  --login-glow: inset 0 0 10px rgb(5 150 105 / 50%), inset 0 0 10px rgb(52 211 153 / 50%), 0 0 100px rgb(52 211 153 / 50%), 0 0 100px rgb(16 185 129 / 50%);
+  box-shadow: var(--login-inset);
+  transition: border-color 200ms ease-in-out, box-shadow 200ms ease-in-out;
+}
+
+:root[data-theme='dark'] .katha-login-input-wrap input,
+.dark .katha-login-input-wrap input {
+  --login-inset: inset 5px 5px 10px #040609, inset -5px -5px 10px #18202e, 0 0 100px rgb(52 211 153 / 0%), 0 0 100px rgb(16 185 129 / 0%);
+  background: #090d16;
+  box-shadow: var(--login-inset);
+}
+
+:root .katha-login-page .katha-login-input-wrap input:focus,
+.dark .katha-login-page .katha-login-input-wrap input:focus {
+  border-color: var(--accent, #10b981);
+  outline: none;
+  box-shadow: var(--login-glow);
+}
+
+.katha-login-page .katha-login-input-wrap input:-webkit-autofill {
+  -webkit-text-fill-color: var(--lg-ink);
+  box-shadow: var(--login-inset), inset 0 0 0 1000px var(--lg-field);
+  transition: border-color 200ms ease-in-out, box-shadow 200ms ease-in-out, background-color 9999s ease-out;
+}
+
+.katha-login-page .katha-login-input-wrap input:-webkit-autofill:focus,
+.dark .katha-login-page .katha-login-input-wrap input:-webkit-autofill:focus {
+  border-color: var(--accent, #10b981);
+  box-shadow: var(--login-glow), inset 0 0 0 1000px var(--lg-field);
+}
+
+:root .katha-login-page .katha-login-submit,
+.dark .katha-login-page .katha-login-submit {
+  border: 1px solid transparent;
+  border-radius: 1rem;
+  background: linear-gradient(135deg, var(--accent, #16a34a) 0%, #059669 100%);
+  color: #ffffff;
+  box-shadow: 0 0 1px rgb(16 185 129 / 50%), 0 0 1px rgb(5 150 105 / 50%);
+  transition: background 200ms ease-in-out, box-shadow 200ms ease-in-out;
+}
+
+:root[data-theme='dark'] .katha-login-page .katha-login-submit,
+.dark .katha-login-page .katha-login-submit {
+  border: 0.3rem solid #0e121a;
+}
+
+:root[data-theme='dark'] .katha-login-page .katha-login-submit:not(:hover):not(:focus-visible),
+.dark .katha-login-page .katha-login-submit:not(:hover):not(:focus-visible) {
+  box-shadow: 7px 7px 16px rgba(0, 0, 0, 0.4), -5px -5px 14px rgba(255, 255, 255, 0.03);
+}
+
+:root .katha-login-page .katha-login-submit:hover:not(:disabled),
+:root .katha-login-page .katha-login-submit:focus-visible,
+.dark .katha-login-page .katha-login-submit:hover:not(:disabled),
+.dark .katha-login-page .katha-login-submit:focus-visible {
+  background: linear-gradient(135deg, #34d399 0%, #059669 100%);
+  box-shadow: 0 0 100px rgb(52 211 153 / 50%), 0 0 100px rgb(16 185 129 / 50%);
+  filter: none;
+  transform: none;
+}
+
+/* Cross-fade the gradient; CSS gradient stops do not interpolate smoothly. */
+.katha-login-page .katha-login-submit::before {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  content: '';
+  background: linear-gradient(135deg, #34d399 50%, #059669 100%);
+  opacity: 0;
+  transform: none;
+  animation: none;
+  transition: opacity 200ms ease-in-out;
+}
+
+.katha-login-page .katha-login-submit > * {
+  position: relative;
+  z-index: 1;
+}
+
+.katha-login-page .katha-login-submit:hover:not(:disabled)::before,
+.katha-login-page .katha-login-submit:focus-visible::before,
+.dark .katha-login-page .katha-login-submit:hover:not(:disabled)::before,
+.dark .katha-login-page .katha-login-submit:focus-visible::before {
+  opacity: 1;
+  transform: none;
+  animation: none;
+}
+
+.katha-login-page .katha-login-submit:focus-visible,
+.dark .katha-login-page .katha-login-submit:focus-visible {
+  outline: 2px solid var(--accent, #10b981);
+  outline-offset: 4px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .katha-login-page .katha-login-input-wrap input,
+  .katha-login-page .katha-login-input-wrap input:-webkit-autofill,
+  .katha-login-page .katha-login-submit,
+  .katha-login-page .katha-login-submit::before {
+    transition: none;
+  }
+}
+
