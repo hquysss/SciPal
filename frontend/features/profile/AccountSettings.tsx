@@ -46,8 +46,8 @@ export function AccountSettings({ currentRole = 'student' }: AccountSettingsProp
           <div>
             <h3 className="text-base sm:text-lg font-bold text-gray-900 dark:text-white">
               {t({
-                en: 'Account & Learning Preferences',
-                vi: 'Cài đặt Tài khoản & Không gian Học tập',
+                en: 'Account',
+                vi: 'Tài khoản',
               })}
             </h3>
             <p className="text-xs text-gray-500 dark:text-gray-400">
@@ -58,7 +58,7 @@ export function AccountSettings({ currentRole = 'student' }: AccountSettingsProp
             </p>
           </div>
           <span className="font-mono text-xs text-emerald-600 bg-emerald-50 dark:bg-emerald-950/50 dark:text-emerald-300 px-2.5 py-1 rounded-full font-bold">
-            S8 · PROFILE
+            PROFILE
           </span>
         </div>
 
@@ -73,18 +73,18 @@ export function AccountSettings({ currentRole = 'student' }: AccountSettingsProp
                 </span>
               </span>
               <span className="rounded-full bg-emerald-200/60 px-2 py-0.5 font-mono text-[10px] font-bold text-emerald-900 dark:bg-emerald-900 dark:text-emerald-200">
-                🔒 {t({ en: 'Managed by Admin', vi: 'Admin quản lý' })}
+                🔒
               </span>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
               <div>
                 <span className="text-gray-500 dark:text-gray-400 block font-mono text-[11px]">
-                  {t({ en: 'ACCOUNT ROLE', vi: 'VAI TRÒ TÀI KHOẢN' })}
+                  {t({ en: 'ROLE', vi: 'VAI TRÒ' })}
                 </span>
                 <span className="font-bold text-gray-900 dark:text-white">
                   {currentRole === 'teacher'
-                    ? t({ en: 'Teacher (Teaching Studio Access)', vi: 'Giáo viên (Được cấp quyền soạn bài)' })
-                    : t({ en: 'Student (High School Curriculum)', vi: 'Học sinh (Lớp học chuẩn THPT)' })}
+                    ? t({ en: 'Teacher', vi: 'Giáo viên' })
+                    : t({ en: 'Student', vi: 'Học sinh' })}
                 </span>
               </div>
               <div>
@@ -92,7 +92,7 @@ export function AccountSettings({ currentRole = 'student' }: AccountSettingsProp
                   {t({ en: 'SECURITY STATUS', vi: 'TRẠNG THÁI BẢO MẬT' })}
                 </span>
                 <span className="font-bold text-emerald-700 dark:text-emerald-400">
-                  ● {t({ en: 'Active Session (Verified)', vi: 'Phiên hoạt động an toàn' })}
+                  ● {t({ en: 'Verified', vi: 'Xác thực' })}
                 </span>
               </div>
             </div>
@@ -103,12 +103,12 @@ export function AccountSettings({ currentRole = 'student' }: AccountSettingsProp
             <div>
               <div className="text-sm font-semibold text-gray-900 dark:text-white flex items-center gap-1.5">
                 <span>🌐</span>
-                <span>{t({ en: 'Display Language', vi: 'Ngôn ngữ hiển thị chính' })}</span>
+                <span>{t({ en: 'Language', vi: 'Ngôn ngữ' })}</span>
               </div>
               <div className="text-xs text-gray-500 dark:text-gray-400">
                 {t({
-                  en: 'Toggle standard bilingual lesson delivery (EN / VI)',
-                  vi: 'Chuyển đổi ngôn ngữ hiển thị bài học và thuật ngữ khoa học',
+                  en: 'Language switching',
+                  vi: 'Chuyển đổi ngôn ngữ',
                 })}
               </div>
             </div>
@@ -173,8 +173,8 @@ export function AccountSettings({ currentRole = 'student' }: AccountSettingsProp
           <div className="flex items-center justify-between text-xs text-gray-500 dark:text-gray-400">
             <span>
               {t({
-                en: 'Need to update class or reset school password?',
-                vi: 'Cần cập nhật lớp hoặc cấp lại mật khẩu trường?',
+                en: 'Need to update class or reset password?',
+                vi: 'Cần cập nhật lớp hoặc cấp lại mật khẩu?',
               })}
             </span>
             <button
@@ -182,7 +182,7 @@ export function AccountSettings({ currentRole = 'student' }: AccountSettingsProp
               onClick={() => setShowHelpModal(true)}
               className="font-bold text-emerald-700 hover:text-emerald-800 underline underline-offset-2 dark:text-emerald-400 transition"
             >
-              {t({ en: 'Institutional Support', vi: 'Hỗ trợ nhà trường' })}
+              {t({ en: 'Support', vi: 'Hỗ trợ' })}
             </button>
           </div>
         </div>
@@ -195,8 +195,8 @@ export function AccountSettings({ currentRole = 'student' }: AccountSettingsProp
             className="w-full rounded-2xl border border-red-200 bg-red-50/50 py-3.5 text-center text-sm font-bold text-red-600 transition hover:bg-red-100/80 active:scale-[0.99] disabled:opacity-50 dark:border-red-900/50 dark:bg-red-950/20 dark:text-red-400 cursor-pointer"
           >
             {signingOut
-              ? t({ en: 'Signing out securely...', vi: 'Đang đăng xuất an toàn...' })
-              : t({ en: 'Sign Out of SciPal', vi: 'Đăng xuất khỏi tài khoản SciPal' })}
+              ? t({ en: 'Signing out...', vi: 'Đang đăng xuất...' })
+              : t({ en: 'Sign Out', vi: 'Đăng Xuất' })}
           </button>
         </div>
       </div>

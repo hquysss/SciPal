@@ -1,54 +1,70 @@
 import { NextResponse, type NextRequest } from 'next/server';
+import { createServerClient } from '@scipal/supabase';
 
-export function middleware(request: NextRequest) {
+function isProtectedPath(pathname: string) {
+  return (
+    pathname === '/profile' ||
+    pathname.startsWith('/profile/') ||
+    pathname === '/progress' ||
+    pathname.startsWith('/progress/') ||
+    pathname === '/teacher' ||
+    pathname.startsWith('/teacher/') ||
+    pathname.startsWith('/exam/')
+  );
+}
+
+export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  // 1. Bypass Next.js internals, static files, and assets
-  if (
-    pathname.startsWith('/_next') ||
-    pathname.startsWith('/api') ||
-    pathname.includes('.') ||
-    pathname === '/favicon.ico'
-  ) {
-    return NextResponse.next();
-  }
+  // Lessons, the glossary, exam list, and home are public content.
+  if (!isProtectedPath(pathname)) return NextResponse.next();
 
-  // 2. Check for active session / auth token in cookies
-  const cookies = request.cookies.getAll();
-  const isAuthenticated = cookies.some(
-    (c) =>
-      (c.name === 'scipal_session' && c.value === 'active') ||
-      c.name.startsWith('sb-') ||
-      c.name.includes('auth-token'),
-  );
+  const loginUrl = new URL('/login', request.url);
+  loginUrl.searchParams.set('redirect', pathname + request.nextUrl.search);
 
-  const isLoginPage = pathname === '/login';
-
-  // 3. If authenticated and trying to access /login, redirect to Home
-  if (isLoginPage && isAuthenticated) {
-    return NextResponse.redirect(new URL('/', request.url));
-  }
-
-  // 4. If NOT authenticated and trying to access any protected page, force redirect to /login
-  if (!isAuthenticated && !isLoginPage) {
-    const loginUrl = new URL('/login', request.url);
-    if (pathname !== '/') {
-      loginUrl.searchParams.set('redirect', pathname);
-    }
+  if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
     return NextResponse.redirect(loginUrl);
   }
 
-  return NextResponse.next();
+  const cookieUpdates: Array<{
+    name: string;
+    value: string;
+    options: Parameters<NextResponse['cookies']['set']>[2];
+  }> = [];
+  const supabase = createServerClient({
+    getAll: () => request.cookies.getAll(),
+    set: (name: string, value: string, options: Parameters<NextResponse['cookies']['set']>[2]) => {
+      request.cookies.set(name, value);
+      cookieUpdates.push({ name, value, options });
+    },
+  });
+
+  let user = null;
+  try {
+    const { data, error } = await supabase.auth.getUser();
+    if (!error) user = data.user;
+  } catch {
+    // A failed auth service cannot turn an unverified cookie into a session.
+  }
+
+  let response: NextResponse;
+  if (!user) {
+    response = NextResponse.redirect(loginUrl);
+  } else if (
+    (pathname === '/teacher' || pathname.startsWith('/teacher/')) &&
+    !['teacher', 'admin'].includes(user.app_metadata?.app_role)
+  ) {
+    response = NextResponse.redirect(new URL('/profile', request.url));
+  } else {
+    response = NextResponse.next({ request });
+  }
+
+  for (const { name, value, options } of cookieUpdates) {
+    response.cookies.set(name, value, options);
+  }
+  return response;
 }
 
 export const config = {
-  matcher: [
-    /*
-     * Match all request paths except:
-     * - _next/static (static files)
-     * - _next/image (image optimization files)
-     * - favicon.ico, images, and public files with extensions
-     */
-    '/((?!_next/static|_next/image|favicon.ico).*)',
-  ],
+  matcher: ['/profile/:path*', '/progress/:path*', '/teacher/:path*', '/exam/:path+'],
 };

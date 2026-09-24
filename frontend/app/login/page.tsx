@@ -1,6 +1,7 @@
 'use client';
 
 import { Suspense, useEffect, useRef, useState, type FormEvent } from 'react';
+import Image from 'next/image';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useLanguage } from '@scipal/hooks';
 import { createBrowserClient } from '@/lib/supabase';
@@ -33,7 +34,11 @@ function LoginContent() {
   const { lang } = useLanguage();
   const router = useRouter();
   const searchParams = useSearchParams();
-  const targetDestination = searchParams.get('redirect') || '/';
+  const requestedDestination = searchParams.get('redirect');
+  const targetDestination = requestedDestination?.startsWith('/') &&
+    !requestedDestination.startsWith('//') && !requestedDestination.includes('\\')
+    ? requestedDestination
+    : '/';
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -134,8 +139,8 @@ function LoginContent() {
     if (trimmed.includes('@') && !emailRegex.test(trimmed)) {
       setEmailFormatError(
         lang === 'en'
-          ? 'Invalid email format (e.g. name@school.edu.vn)'
-          : 'Định dạng email chưa hợp lệ (vd: hocsinh@truong.edu.vn)',
+          ? 'Invalid email format (e.g. name@gmail.com)'
+          : 'Định dạng email chưa hợp lệ (vd: name@gmail.com)',
       );
     } else {
       setEmailFormatError(null);
@@ -175,61 +180,33 @@ function LoginContent() {
       });
 
       if (signInError) {
-        // Mock fallback for standard educational domains in dev environment
-        if (
-          emailTrimmed.includes('student') ||
-          emailTrimmed.includes('teacher') ||
-          emailTrimmed.includes('scipal') ||
-          emailTrimmed.includes('thpt') ||
-          emailTrimmed.includes('hocsinh') ||
-          emailTrimmed.includes('giaovien')
-        ) {
-          const role =
-            emailTrimmed.includes('teacher') || emailTrimmed.includes('giaovien')
-              ? 'teacher'
-              : 'student';
-
-          if (typeof document !== 'undefined') {
-            document.cookie = 'scipal_session=active; path=/; max-age=604800; SameSite=Lax';
-          }
-          if (typeof localStorage !== 'undefined') {
-            localStorage.setItem('scipal_demo_role', role);
-            localStorage.setItem('scipal_demo_user', emailTrimmed);
-          }
-          router.push(targetDestination);
-          router.refresh();
-          return;
-        }
-
         setError(
           signInError.message.includes('Invalid login credentials')
             ? lang === 'en'
               ? 'Invalid credentials. Please verify your issued account information.'
               : 'Thông tin đăng nhập không chính xác. Vui lòng kiểm tra lại tài khoản được cấp.'
-            : signInError.message,
+            : /failed to fetch|fetch failed|network/i.test(signInError.message)
+              ? lang === 'en'
+                ? 'Cannot connect to sign-in. Please check your connection and try again.'
+                : 'Không thể kết nối để đăng nhập. Vui lòng kiểm tra mạng và thử lại.'
+              : signInError.message,
         );
       } else if (data.session) {
-        if (typeof document !== 'undefined') {
-          document.cookie = 'scipal_session=active; path=/; max-age=604800; SameSite=Lax';
-        }
-        router.push(targetDestination);
+        router.replace(targetDestination);
         router.refresh();
+      } else {
+        setError(
+          lang === 'en'
+            ? 'Sign-in did not create a session. Please try again.'
+            : 'Đăng nhập chưa tạo được phiên làm việc. Vui lòng thử lại.',
+        );
       }
     } catch {
-      // Fallback
-      const role =
-        emailTrimmed.includes('teacher') || emailTrimmed.includes('giaovien')
-          ? 'teacher'
-          : 'student';
-      if (typeof document !== 'undefined') {
-        document.cookie = 'scipal_session=active; path=/; max-age=604800; SameSite=Lax';
-      }
-      if (typeof localStorage !== 'undefined') {
-        localStorage.setItem('scipal_demo_role', role);
-        localStorage.setItem('scipal_demo_user', emailTrimmed);
-      }
-      router.push(targetDestination);
-      router.refresh();
+      setError(
+        lang === 'en'
+          ? 'Cannot connect to sign-in. Please check your connection and try again.'
+          : 'Không thể kết nối để đăng nhập. Vui lòng kiểm tra mạng và thử lại.',
+      );
     } finally {
       setSubmitting(false);
     }
@@ -285,7 +262,7 @@ function LoginContent() {
             <p className="katha-login-eyebrow">
               <AtomOrbitMark className="katha-login-eyebrow-mark text-emerald-600 dark:text-emerald-400" />
               <span>
-                SciPal · {lang === 'en' ? 'Natural Sciences Lab' : 'Không gian Khoa học Tự nhiên'}
+                SciPal · {lang === 'en' ? 'Visual Learning Space' : 'Không gian học tập trực quan'}
               </span>
             </p>
           </header>
@@ -293,8 +270,8 @@ function LoginContent() {
           <div className="katha-login-hero-body">
             <h1 id="katha-login-hero-title" className="katha-login-hero-title">
               {lang === 'en'
-                ? 'Explore Natural Sciences Through Every Lesson.'
-                : 'Khám phá Khoa học Tự nhiên qua từng bài học.'}
+                ? 'Explore through each lesson.'
+                : 'Khám phá qua từng bài học.'}
             </h1>
             <p className="katha-login-hero-note">
               {lang === 'en'
@@ -375,7 +352,14 @@ function LoginContent() {
           <div className="katha-login-card">
             <div className="katha-login-header-row">
               <div className="katha-login-brand">
-                <span className="katha-login-brand-logo-icon">🍀</span>
+                <Image
+                  src="/logo.svg"
+                  alt="SciPal Logo"
+                  width={44}
+                  height={44}
+                  className="katha-login-brand-logo"
+                  priority
+                />
                 <div className="katha-login-brand-text">
                   <span className="katha-login-brand-name">SCIPAL</span>
                   <span className="katha-login-brand-khmer">
@@ -587,4 +571,3 @@ export default function LoginPage() {
     </Suspense>
   );
 }
-

@@ -33,7 +33,7 @@ export async function getUserProfile(userId: string): Promise<UserProfileData> {
     return {
       profile: profile ?? {
         id: userId,
-        display_name: 'Học viên SciPal',
+        display_name: 'Học Sinh',
         role: 'student',
         avatar_url: null,
       },
@@ -48,7 +48,7 @@ export async function getUserProfile(userId: string): Promise<UserProfileData> {
     return {
       profile: {
         id: userId,
-        display_name: 'Học viên SciPal',
+        display_name: 'Học Sinh',
         role: 'student',
         avatar_url: null,
       },

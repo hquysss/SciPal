@@ -1,9 +1,11 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import Link from 'next/link';
+import { usePathname, useRouter } from 'next/navigation';
 import { AnswerPalette } from './AnswerPalette';
 import { useLanguage } from '@scipal/hooks';
+import { createBrowserClient } from '@/lib/supabase';
 
 export interface ExamQuestionItem {
   id: string;
@@ -31,10 +33,14 @@ export function ExamRunner({
   token,
 }: ExamRunnerProps) {
   const { lang, t } = useLanguage();
+  const pathname = usePathname();
+  const router = useRouter();
+  const autoSubmitAttempted = useRef(false);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [answers, setAnswers] = useState<Record<number, string>>({});
   const [timeLeft, setTimeLeft] = useState(durationMinutes * 60);
   const [submitting, setSubmitting] = useState(false);
+  const [submissionError, setSubmissionError] = useState<string | null>(null);
   const [result, setResult] = useState<{
     score: number;
     correct_count: number;
@@ -44,6 +50,7 @@ export function ExamRunner({
 
   const handleSubmit = useCallback(async () => {
     if (submitting) return;
+    setSubmissionError(null);
     setSubmitting(true);
 
     const formatted = Object.entries(answers).map(([idx, ans]) => ({
@@ -53,43 +60,45 @@ export function ExamRunner({
 
     const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://localhost:3001';
     try {
+      const authToken = token ?? (await createBrowserClient().auth.getSession()).data.session?.access_token;
+      if (!authToken) {
+        router.push(`/login?redirect=${encodeURIComponent(pathname)}`);
+        return;
+      }
+
       const res = await fetch(`${API_BASE}/api/score/exam`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          Authorization: `Bearer ${authToken}`,
         },
         body: JSON.stringify({ blueprint_id: blueprintId, answers: formatted }),
       });
 
-      if (res.ok) {
-        const data = await res.json();
-        setResult(data);
-        return;
+      if (!res.ok) throw new Error(`Exam scoring failed: ${res.status}`);
+      const data = await res.json();
+      if (!Number.isFinite(data.score) || !Number.isFinite(data.xp_earned)) {
+        throw new Error('Invalid exam score response');
       }
-    } catch (err) {
-      console.warn('Exam score API error, running local fallback calculation:', err);
+      setResult(data);
+    } catch {
+      setSubmissionError(t({
+        en: 'Your exam could not be submitted. Answers are still here; please try again.',
+        vi: 'Chưa nộp được bài thi. Câu trả lời vẫn được giữ; vui lòng thử lại.',
+      }));
+    } finally {
+      setSubmitting(false);
     }
-
-    // Local fallback if API is offline
-    const total = questions.length;
-    const answeredCount = Object.keys(answers).length;
-    const mockCorrect = Math.max(1, Math.min(total, answeredCount));
-    const calculatedScore = total > 0 ? Number(((mockCorrect / total) * 10).toFixed(1)) : 0;
-    setResult({
-      score: calculatedScore,
-      correct_count: mockCorrect,
-      total_questions: total,
-      xp_earned: mockCorrect * 15,
-    });
-    setSubmitting(false);
-  }, [answers, blueprintId, questions, submitting, token]);
+  }, [answers, blueprintId, pathname, questions, router, submitting, t, token]);
 
   // Countdown timer with auto-submit
   useEffect(() => {
     if (result) return;
     if (timeLeft <= 0) {
-      handleSubmit();
+      if (!autoSubmitAttempted.current) {
+        autoSubmitAttempted.current = true;
+        void handleSubmit();
+      }
       return;
     }
     const timer = setInterval(() => setTimeLeft((prev) => prev - 1), 1000);
@@ -206,6 +215,12 @@ export function ExamRunner({
           </button>
         </div>
       </div>
+
+      {submissionError && (
+        <p role="alert" className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm font-medium text-red-800">
+          {submissionError}
+        </p>
+      )}
 
       {/* Main question card */}
       {currentQ && (

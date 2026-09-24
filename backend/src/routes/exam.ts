@@ -220,19 +220,28 @@ export const examRoutes: FastifyPluginAsync = async (app) => {
     }
 
     const score = total > 0 ? Number(((correctCount / total) * 10).toFixed(2)) : 0;
-    const xp_earned = correctCount * 15;
+    const possibleXp = correctCount * 15;
+    let xp_earned = 0;
 
-    // Log XP if user is authenticated and supabase is active
-    if (userId && xp_earned > 0 && app.supabase) {
+    // Only report XP after it has actually been recorded for real DB questions.
+    const subjectIds = new Set(
+      questionIds.map((id) => dbMap.get(id)?.subject_id).filter(Boolean),
+    );
+    if (
+      userId && possibleXp > 0 && app.supabase &&
+      dbMap.size === questionIds.length && subjectIds.size === 1
+    ) {
       try {
-        await app.supabase.from('xp_log').insert({
+        const { error } = await app.supabase.from('xp_log').insert({
           user_id: userId,
-          subject_id: 'informatics',
-          delta: xp_earned,
+          subject_id: [...subjectIds][0],
+          delta: possibleXp,
           reason: 'exam_complete',
         });
+        if (error) app.log.warn({ err: error }, 'Exam XP logging failed');
+        else xp_earned = possibleXp;
       } catch (err) {
-        console.warn('XP logging warning:', err);
+        app.log.warn({ err }, 'Exam XP logging failed');
       }
     }
 

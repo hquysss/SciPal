@@ -4,13 +4,15 @@
 Triển khai toàn bộ 12 màn hình (S1–S12) theo **Đặc tả khung chung SciPal v1.5** với môn Tin học (Informatics) làm môn học tham chiếu chuẩn.
 
 ## Current Task
-**HOÀN THÀNH 100% TOÀN BỘ 12 MÀN HÌNH (S1–S12)** theo Đặc tả khung chung SciPal v1.5:
-- **Plan 0: Foundation (12/12 tasks — 100%)**
-- **Plan 1: Core Web Screens S1–S7 (10/10 tasks — 100%)**
-- **Plan 2: Advanced Screens & Workflows S8–S12 (6/6 tasks — 100%)**
-- Nâng cấp toàn diện mỹ học theo ngôn ngữ thiết kế **Warm Editorial Science Lab & Tactile Field Notebook** (`@frontend-design`).
+**Ổn định web và nghiệm thu chức năng thực tế (23/09/2026).** Các route S1–S12 đã có giao diện, nhưng trạng thái “100%” của lần bàn giao trước chỉ phản ánh việc có mã màn hình và build được; chưa chứng minh toàn bộ luồng hoạt động end-to-end.
+- Đã sửa navbar mobile bị tràn ngang, menu môn học dùng click/bàn phím, và đường đi của khách giữa trang chủ, bài học, từ điển.
+- Đã giới hạn các trang cá nhân/thi/giáo viên theo phiên Supabase đã xác minh; bỏ đăng nhập demo tự nhận mọi tài khoản khi lỗi.
+- Đã bỏ thông báo XP/điểm giả trên client khi API thất bại; API bài học chỉ báo XP khi lưu được dữ liệu và không cộng lại bài đã hoàn thành.
+- Đang tiếp tục đối chiếu các màn hình với dữ liệu và API thật trước khi gọi web hoàn chỉnh.
 
 ## Completed
+
+Các mục Plan 0–2 dưới đây là **ghi nhận triển khai ban đầu**, không phải kết quả nghiệm thu end-to-end. Những điểm chưa đúng thực tế được ghi ở “Known Issues / Blockers”.
 
 ### 1. Plan 2: Advanced Screens & Workflows (S8–S12) (6/6 tasks — 100%):
 - **Task 1: S8 — Hồ sơ cá nhân & Cài đặt (Profile & User Settings)**:
@@ -52,22 +54,28 @@ Triển khai toàn bộ 12 màn hình (S1–S12) theo **Đặc tả khung chung 
 - Turborepo 2 + pnpm, 4 shared packages (`@scipal/types`, `@scipal/ui`, `@scipal/hooks`, `@scipal/supabase`), Supabase Postgres migrations 0001–0004 + RLS, Fastify backend với multi-AI provider (Claude/OpenAI).
 
 ## In Progress
-- Tất cả các tasks của Plan 0, Plan 1, và Plan 2 đã hoàn thành 100%.
+- Rà và hoàn thiện những luồng còn dựa vào dữ liệu mẫu hoặc thiếu API thật; ưu tiên AI Tutor, thi thử, studio giáo viên và trạng thái dữ liệu cá nhân.
 
 ## Next Steps
-1. Khởi chạy phát triển ứng dụng di động Expo 52 (`mobile/`) đồng bộ các màn hình đã dựng trên Web.
-2. Nạp thêm dữ liệu bài giảng mẫu cho môn Toán, Vật lí, Hóa học và Sinh học dựa trên kết quả khảo sát nhu cầu §9.7.
-3. Tích hợp thanh toán hoặc chứng chỉ hoàn thành khóa học theo lộ trình tiếp theo.
+1. Hoàn thiện `POST /api/ai/chat`, truyền token thật và kiểm thử luồng SSE trước khi quảng bá AI Tutor là hoạt động.
+2. Thay danh sách đề thi và câu hỏi demo bằng blueprint thật; kiểm tra đáp án, chấm điểm toàn bộ đề và ghi XP một cách nguyên tử/idempotent.
+3. Thay dữ liệu giả trong trang giáo viên, lớp học, hồ sơ/tiến trình bằng dữ liệu Supabase hoặc trạng thái rỗng/lỗi rõ ràng; nghiệm thu với tài khoản học sinh và giáo viên thật.
+4. Rà song ngữ EN/VI trên toàn bộ màn hình và bỏ `--accent` khỏi `:root` để tuân thủ SubjectProvider.
 
 ## Recent Decisions
+- **23/09 — Điều hướng/auth**: Trang học công khai cho khách; trang tiến trình, hồ sơ, phòng thi và studio cần phiên Supabase thật. Quyền giáo viên lấy từ `app_metadata.app_role`.
+- **23/09 — Kết quả thật**: Client không tự giả lập XP/điểm khi API lỗi; lỗi lưu phải hiển thị để người học thử lại.
 - **Mỹ học @frontend-design**: Chuẩn hóa phong cách *Warm Editorial Science Lab & Tactile Field Notebook* cho cả 12 màn hình.
 - **Server-Authoritative**: Chấm điểm thi và bài học hoàn toàn chạy trên backend Fastify. Không bao giờ gửi answer keys xuống client.
 - **Bilingual Standard**: Tất cả màn hình đọc ngôn ngữ đồng bộ qua hook `useLanguage()`.
 - **Cấu trúc Monorepo**: `backend/`, `frontend/`, `mobile/` đặt tại root, tuân thủ nghiêm ngặt cô lập bí mật `SUPABASE_SERVICE_ROLE_KEY`.
 
 ## Known Issues / Blockers
-- Không có lỗi typecheck hay build blocker nào tồn tại.
-- Cần cung cấp `NEXT_PUBLIC_SUPABASE_URL` và `NEXT_PUBLIC_SUPABASE_ANON_KEY` trong môi trường sản xuất thực tế.
+- Build/typecheck/test qua nhưng chưa có kiểm thử end-to-end với phiên Supabase thật; môi trường hiện tại trả lỗi kết nối khi thử đăng nhập bằng tài khoản thử.
+- Backend chưa đăng ký route `/api/ai/chat`; nút AI Tutor trên bài học hiện chưa có luồng hoàn chỉnh.
+- Đề thi, một số bài học, hồ sơ, lớp học và studio còn dữ liệu/fallback demo; không được xem là dữ liệu cá nhân thật.
+- Chấm điểm bài học hiện dùng mốc 100 XP phía server nhưng chưa xác minh quiz theo đặc tả; thao tác ghi `progress`/`xp_log` chưa ở một transaction DB.
+- Một số nội dung giao diện chưa đổi theo ngôn ngữ EN; `frontend/app/globals.css` còn đặt `--accent` trên `:root` trái quy tắc dự án.
 
 ## Important Files
 - `docs/superpowers/specs/2026-09-22-scipal-foundation-design.md` — Đặc tả khung chung v1.5 chính thức.

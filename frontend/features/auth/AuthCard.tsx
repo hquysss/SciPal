@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState, type FormEvent } from 'react';
+import Image from 'next/image';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useLanguage } from '@scipal/hooks';
 import { createBrowserClient } from '@/lib/supabase';
@@ -13,7 +14,11 @@ export function AuthCard() {
   const { lang, t } = useLanguage();
   const router = useRouter();
   const searchParams = useSearchParams();
-  const targetDestination = searchParams.get('redirect') || '/';
+  const requestedDestination = searchParams.get('redirect');
+  const targetDestination = requestedDestination?.startsWith('/') &&
+    !requestedDestination.startsWith('//') && !requestedDestination.includes('\\')
+    ? requestedDestination
+    : '/';
 
   const [identifier, setIdentifier] = useState('');
   const [password, setPassword] = useState('');
@@ -54,8 +59,8 @@ export function AuthCard() {
     if (trimmed.includes('@') && !EMAIL_REGEX.test(trimmed)) {
       setEmailFormatError(
         t({
-          en: 'Invalid email address format (e.g. name@school.edu.vn)',
-          vi: 'Định dạng email chưa hợp lệ (vd: hocsinh@truong.edu.vn)',
+          en: 'Invalid email address format (e.g. name@gmail.com)',
+          vi: 'Định dạng email chưa hợp lệ (vd: name@gmail.com)',
         }),
       );
     } else {
@@ -101,61 +106,33 @@ export function AuthCard() {
       });
 
       if (error) {
-        // Fallback for valid school credentials in mock/dev environment
-        if (
-          emailToUse.includes('student') ||
-          emailToUse.includes('teacher') ||
-          emailToUse.includes('scipal') ||
-          emailToUse.includes('thpt') ||
-          emailToUse.includes('hocsinh') ||
-          emailToUse.includes('giaovien')
-        ) {
-          const role =
-            emailToUse.includes('teacher') || emailToUse.includes('giaovien')
-              ? 'teacher'
-              : 'student';
-
-          if (typeof document !== 'undefined') {
-            document.cookie = 'scipal_session=active; path=/; max-age=604800; SameSite=Lax';
-          }
-          if (typeof localStorage !== 'undefined') {
-            localStorage.setItem('scipal_demo_role', role);
-            localStorage.setItem('scipal_demo_user', emailToUse);
-          }
-          router.push(targetDestination);
-          router.refresh();
-          return;
-        }
-
         setErrorMsg(
           error.message.includes('Invalid login credentials')
             ? t({
                 en: 'Invalid credentials. Please verify your issued account details.',
                 vi: 'Thông tin tài khoản hoặc mật khẩu không chính xác.',
               })
-            : error.message,
+            : /failed to fetch|fetch failed|network/i.test(error.message)
+              ? t({
+                  en: 'Cannot connect to sign-in. Please check your connection and try again.',
+                  vi: 'Không thể kết nối để đăng nhập. Vui lòng kiểm tra mạng và thử lại.',
+                })
+              : error.message,
         );
       } else if (data.session) {
-        if (typeof document !== 'undefined') {
-          document.cookie = 'scipal_session=active; path=/; max-age=604800; SameSite=Lax';
-        }
-        router.push(targetDestination);
+        router.replace(targetDestination);
         router.refresh();
+      } else {
+        setErrorMsg(t({
+          en: 'Sign-in did not create a session. Please try again.',
+          vi: 'Đăng nhập chưa tạo được phiên làm việc. Vui lòng thử lại.',
+        }));
       }
     } catch {
-      // Offline fallback
-      const role =
-        emailToUse.includes('teacher') || emailToUse.includes('giaovien') ? 'teacher' : 'student';
-
-      if (typeof document !== 'undefined') {
-        document.cookie = 'scipal_session=active; path=/; max-age=604800; SameSite=Lax';
-      }
-      if (typeof localStorage !== 'undefined') {
-        localStorage.setItem('scipal_demo_role', role);
-        localStorage.setItem('scipal_demo_user', emailToUse);
-      }
-      router.push(targetDestination);
-      router.refresh();
+      setErrorMsg(t({
+        en: 'Cannot connect to sign-in. Please check your connection and try again.',
+        vi: 'Không thể kết nối để đăng nhập. Vui lòng kiểm tra mạng và thử lại.',
+      }));
     } finally {
       setSubmitting(false);
     }
@@ -168,9 +145,14 @@ export function AuthCard() {
         <div className="border-b border-gray-100 bg-emerald-50/50 p-6 sm:p-8 dark:border-gray-800 dark:bg-emerald-950/20">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-emerald-600 text-2xl font-bold text-white shadow-md">
-                🍀
-              </span>
+              <Image
+                src="/logo.svg"
+                alt="SciPal Logo"
+                width={44}
+                height={44}
+                className="h-11 w-11 rounded-2xl shadow-md"
+                priority
+              />
               <div>
                 <span className="font-mono text-[11px] font-bold uppercase tracking-widest text-emerald-800 dark:text-emerald-300">
                   SciPal · Lab Access

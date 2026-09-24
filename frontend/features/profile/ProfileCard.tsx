@@ -134,9 +134,6 @@ export function ProfileCard({ displayName, role, avatarUrl, stats }: ProfileCard
             <span className="text-xs font-bold uppercase tracking-wider text-purple-900 dark:text-purple-300">
               🛠️ {t({ en: 'Teacher Teaching Studio', vi: 'Không gian sư phạm giáo viên' })}
             </span>
-            <span className="rounded-full bg-purple-200/80 px-2 py-0.5 text-[10px] font-mono font-bold text-purple-900 dark:bg-purple-900 dark:text-purple-200">
-              S10 & S11
-            </span>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
             <Link

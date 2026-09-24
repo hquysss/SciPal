@@ -54,3 +54,7 @@ Khi hoàn tất công việc:
    - Các lệnh kiểm tra đã chạy và kết quả cụ thể.
    - Vấn đề còn tồn đọng hoặc câu hỏi mở (nếu có).
 4. Người dùng luôn là người phê duyệt cuối cùng (Final Reviewer).
+
+## 5. Giới hạn sử dụng model
+- **Cấm gọi hoặc chọn Astra 6 (`gpt-6-astra`)** cho bất kỳ tác vụ SciPal nào, dù là model chính, agent phụ, reviewer hay agent được ủy quyền.
+- Nếu một cấu hình tự gán Astra 6, không khởi chạy lời gọi hoặc giao việc cho model đó; tiếp tục trực tiếp bằng model hiện tại hoặc chọn model khác.

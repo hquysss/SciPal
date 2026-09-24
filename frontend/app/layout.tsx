@@ -15,6 +15,10 @@ const beVietnamPro = Be_Vietnam_Pro({
 export const metadata: Metadata = {
   title: 'SciPal — Học khoa học tự nhiên',
   description: 'Nền tảng học tập song ngữ cho học sinh THPT Việt Nam',
+  icons: {
+    icon: '/favicon.svg',
+    apple: '/favicon.svg',
+  },
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

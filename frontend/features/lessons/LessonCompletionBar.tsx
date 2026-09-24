@@ -1,7 +1,9 @@
 'use client';
 import { useState } from 'react';
 import Link from 'next/link';
+import { usePathname, useRouter } from 'next/navigation';
 import { postScoreLesson } from '@/lib/api';
+import { createBrowserClient } from '@/lib/supabase';
 import { PostLessonSurvey } from '@/features/survey/PostLessonSurvey';
 
 export function LessonCompletionBar({
@@ -11,19 +13,31 @@ export function LessonCompletionBar({
   lessonId: string;
   subjectSlug: string;
 }) {
+  const pathname = usePathname();
+  const router = useRouter();
   const [completed, setCompleted] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [xp, setXp] = useState(100);
+  const [xp, setXp] = useState(0);
+  const [error, setError] = useState<string | null>(null);
 
   const handleComplete = async () => {
+    setError(null);
     setLoading(true);
     try {
-      const res = await postScoreLesson({ lesson_id: lessonId, answers: [] }, 'demo-token');
+      const { data: { session } } = await createBrowserClient().auth.getSession();
+      if (!session) {
+        router.push(`/login?redirect=${encodeURIComponent(pathname)}`);
+        return;
+      }
+
+      const res = await postScoreLesson({ lesson_id: lessonId, answers: [] }, session.access_token);
+      if (!Number.isFinite(res.xp_earned) || res.xp_earned < 0) {
+        throw new Error('Invalid score response');
+      }
       setXp(res.xp_earned);
       setCompleted(true);
     } catch {
-      // Offline fallback
-      setCompleted(true);
+      setError('Chưa thể lưu tiến trình. Vui lòng thử lại khi kết nối ổn định.');
     } finally {
       setLoading(false);
     }
@@ -45,9 +59,10 @@ export function LessonCompletionBar({
             className="inline-flex items-center gap-2 rounded-full px-6 py-2.5 text-sm font-bold text-white shadow-sm hover:scale-105 active:scale-95 transition disabled:opacity-50"
             style={{ backgroundColor: 'var(--accent, #16a34a)' }}
           >
-            <span>{loading ? 'Đang ghi nhận...' : 'Đánh dấu hoàn thành (+100 XP)'}</span>
+            <span>{loading ? 'Đang ghi nhận...' : 'Đánh dấu hoàn thành'}</span>
             <span aria-hidden="true">✓</span>
           </button>
+          {error && <p role="alert" className="text-sm font-medium text-red-700">{error}</p>}
         </div>
       ) : (
         <div className="space-y-3 animate-in fade-in zoom-in-95 duration-200">
@@ -55,7 +70,7 @@ export function LessonCompletionBar({
             🎉
           </div>
           <h3 className="text-lg font-extrabold text-emerald-700">
-            Xuất sắc! Bạn đã nhận được +{xp} XP
+            {xp > 0 ? `Xuất sắc! Bạn đã nhận được +${xp} XP` : 'Bài học đã được ghi nhận hoàn thành'}
           </h3>
           <p className="text-xs text-gray-500">
             Tiến trình đã được lưu lại trong hồ sơ cá nhân.

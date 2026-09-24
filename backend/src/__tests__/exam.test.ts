@@ -64,3 +64,27 @@ describe('Exam Route Sanitization & Server Scoring', () => {
     expect(res.statusCode).toBe(401);
   });
 });
+
+it('does not promise exam XP when there is no database to record it', async () => {
+  const app = Fastify();
+  app.addHook('onRequest', async (request) => {
+    (request as typeof request & { user: { id: string } }).user = {
+      id: '00000000-0000-0000-0000-000000000001',
+    };
+  });
+  await app.register(examRoutes);
+  await app.ready();
+
+  const res = await app.inject({
+    method: 'POST',
+    url: '/api/score/exam',
+    payload: {
+      blueprint_id: 'demo-bp',
+      answers: [{ question_id: 'q-demo-1', selected_option: 'opt-b' }],
+    },
+  });
+
+  expect(res.statusCode).toBe(200);
+  expect(res.json().xp_earned).toBe(0);
+  await app.close();
+});
