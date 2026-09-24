@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import type { FastifyPluginAsync, FastifyReply, FastifyRequest } from 'fastify';
-import { BlockSchema } from '@scipal/types';
+import { BlockSchema } from '../schemas/blocks.js';
 
 interface AuthoringUser {
   id?: string;
