@@ -9,7 +9,7 @@ export interface ChatMessage {
 export function useAiChat(lessonId: string, subjectSlug: string, token: string | null) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [loading, setLoading] = useState(false);
-  const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://localhost:3001';
+  const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL ?? 'https://sci-pal-backend.vercel.app';
 
   const send = useCallback(async (text: string, lang: 'en' | 'vi') => {
     const userMsg: ChatMessage = { role: 'user', content: text };

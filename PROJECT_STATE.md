@@ -63,6 +63,9 @@ Các mục Plan 0–2 dưới đây là **ghi nhận triển khai ban đầu**, 
 4. Rà song ngữ EN/VI trên toàn bộ màn hình và bỏ `--accent` khỏi `:root` để tuân thủ SubjectProvider.
 
 ## Recent Decisions
+- **25/09 — Navbar theo quyền**: Mục cần đăng nhập chỉ hiện khi có user; menu Môn học, Teacher, Admin và thanh điều hướng mobile mở/đóng theo trục dọc từ mép trên. Menu theo role tự đóng khi nhấn Escape, bấm ngoài hoặc đổi trang. Navbar hiển thị tên tài khoản và nút đăng xuất ở mép phải.
+- **24/09 — Quản lý tài khoản admin**: Thêm trang `/admin/accounts` để admin tạo tài khoản học sinh/giáo viên, đổi role và xóa tài khoản; route và API đều kiểm tra quyền admin.
+- **24/09 — S10 duyệt bài**: Giáo viên tạo/sửa bản nháp hoặc bài bị từ chối rồi gửi vào hàng chờ; nội dung chờ duyệt bị khóa. Chỉ `app_metadata.app_role = admin` mới duyệt/từ chối; duyệt sẽ đặt `published = true`.
 - **23/09 — Điều hướng/auth**: Trang học công khai cho khách; trang tiến trình, hồ sơ, phòng thi và studio cần phiên Supabase thật. Quyền giáo viên lấy từ `app_metadata.app_role`.
 - **23/09 — Kết quả thật**: Client không tự giả lập XP/điểm khi API lỗi; lỗi lưu phải hiển thị để người học thử lại.
 - **Mỹ học @frontend-design**: Chuẩn hóa phong cách *Warm Editorial Science Lab & Tactile Field Notebook* cho cả 12 màn hình.
@@ -71,9 +74,10 @@ Các mục Plan 0–2 dưới đây là **ghi nhận triển khai ban đầu**, 
 - **Cấu trúc Monorepo**: `backend/`, `frontend/`, `mobile/` đặt tại root, tuân thủ nghiêm ngặt cô lập bí mật `SUPABASE_SERVICE_ROLE_KEY`.
 
 ## Known Issues / Blockers
-- Build/typecheck/test qua nhưng chưa có kiểm thử end-to-end với phiên Supabase thật; môi trường hiện tại trả lỗi kết nối khi thử đăng nhập bằng tài khoản thử.
+- Luồng duyệt S10 cần áp dụng migration `0006_lesson_review_workflow.sql` vào Supabase đang cấu hình trước khi API dùng các cột `created_by`, `review_status`, `reviewed_by`, `reviewed_at`.
+- S10 verification: backend API and shared types typecheck passed. `https://sci-pal-backend.vercel.app/health` responds HTTP 200 and CORS allows `http://localhost:3000`; authenticated lesson flows remain unverified because migration `0006` is not applied to the remote Supabase schema. Web typecheck currently reports React typing mismatches (TS2786/TS2322 in login, TheoryRenderer, UI primitives, and SubjectContext).
 - Backend chưa đăng ký route `/api/ai/chat`; nút AI Tutor trên bài học hiện chưa có luồng hoàn chỉnh.
-- Đề thi, một số bài học, hồ sơ, lớp học và studio còn dữ liệu/fallback demo; không được xem là dữ liệu cá nhân thật.
+- Đề thi, hồ sơ, lớp học và một số khu vực chưa chuyển dữ liệu thật vẫn còn dữ liệu/fallback demo; không được xem là dữ liệu cá nhân thật.
 - Chấm điểm bài học hiện dùng mốc 100 XP phía server nhưng chưa xác minh quiz theo đặc tả; thao tác ghi `progress`/`xp_log` chưa ở một transaction DB.
 - Một số nội dung giao diện chưa đổi theo ngôn ngữ EN; `frontend/app/globals.css` còn đặt `--accent` trên `:root` trái quy tắc dự án.
 

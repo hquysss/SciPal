@@ -5,7 +5,7 @@ import { useLanguage } from '@scipal/hooks';
 
 interface ProfileCardProps {
   displayName: string;
-  role: 'student' | 'teacher';
+  role: 'student' | 'teacher' | 'admin';
   avatarUrl?: string | null;
   stats: { totalXP: number; completedLessons: number; longestStreak: number };
 }
@@ -22,11 +22,17 @@ export function ProfileCard({ displayName, role, avatarUrl, stats }: ProfileCard
       .join('')
       .toUpperCase() || 'SP';
 
-  const institutionalId = role === 'teacher' ? 'GV-2026-TIN01' : 'HS-2026-11A1-08';
+  const institutionalId = role === 'teacher'
+    ? 'GV-2026-TIN01'
+    : role === 'admin'
+      ? 'AD-SCIPAL'
+      : 'HS-2026-11A1-08';
   const institutionalClass =
     role === 'teacher'
       ? t({ en: 'Informatics & Natural Sciences Dept', vi: 'Tổ Tin học & KHTN' })
-      : t({ en: 'Grade 11A1 · Specialized High School', vi: 'Lớp 11A1 · THPT Chuyên' });
+      : role === 'admin'
+        ? t({ en: 'SciPal content administration', vi: 'Quản trị nội dung SciPal' })
+        : t({ en: 'Grade 11A1 · Specialized High School', vi: 'Lớp 11A1 · THPT Chuyên' });
 
   return (
     <div className="relative overflow-hidden rounded-3xl border border-emerald-950/10 bg-white/90 p-6 sm:p-8 shadow-xs backdrop-blur-md transition hover:shadow-md dark:border-white/10 dark:bg-card/90">
@@ -62,14 +68,16 @@ export function ProfileCard({ displayName, role, avatarUrl, stats }: ProfileCard
               </h2>
               <span
                 className={`rounded-full px-2.5 py-0.5 text-[11px] font-bold uppercase tracking-wider ${
-                  role === 'teacher'
+                  role === 'teacher' || role === 'admin'
                     ? 'border border-purple-300 bg-purple-100 text-purple-800 dark:border-purple-800 dark:bg-purple-950/50 dark:text-purple-300'
                     : 'border border-emerald-300 bg-emerald-100 text-emerald-800 dark:border-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-300'
                 }`}
               >
                 {role === 'teacher'
                   ? t({ en: 'Teacher', vi: 'Giáo viên' })
-                  : t({ en: 'Student', vi: 'Học sinh' })}
+                  : role === 'admin'
+                    ? t({ en: 'Admin', vi: 'Quản trị viên' })
+                    : t({ en: 'Student', vi: 'Học sinh' })}
               </span>
             </div>
 
@@ -149,6 +157,30 @@ export function ProfileCard({ displayName, role, avatarUrl, stats }: ProfileCard
             >
               <span>📝 {t({ en: 'Lesson Authoring Studio', vi: 'Soạn thảo bài học' })}</span>
               <span className="font-mono text-[10px]">→</span>
+            </Link>
+          </div>
+        </div>
+      )}
+
+      {role === 'admin' && (
+        <div className="relative z-10 mt-6 rounded-2xl border border-purple-200 bg-purple-50/80 p-4 shadow-inner dark:border-purple-900/50 dark:bg-purple-950/30">
+          <div className="mb-3 flex items-center justify-between">
+            <span className="text-xs font-bold uppercase tracking-wider text-purple-900 dark:text-purple-300">
+              🛡️ {t({ en: 'Content review', vi: 'Kiểm duyệt nội dung' })}
+            </span>
+          </div>
+          <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
+            <Link
+              href="/admin/lessons/review"
+              className="inline-flex items-center justify-center gap-2 rounded-xl bg-purple-700 px-4 py-2.5 text-xs font-bold text-white shadow-xs transition hover:bg-purple-800"
+            >
+              {t({ en: 'Review submitted lessons', vi: 'Duyệt bài giáo viên gửi' })} →
+            </Link>
+            <Link
+              href="/teacher/lessons"
+              className="inline-flex items-center justify-center gap-2 rounded-xl border border-purple-300 bg-white px-4 py-2.5 text-xs font-bold text-purple-800 transition hover:bg-purple-100/80 dark:border-purple-800 dark:bg-card dark:text-purple-300"
+            >
+              {t({ en: 'Open lesson studio', vi: 'Mở Studio bài học' })} →
             </Link>
           </div>
         </div>

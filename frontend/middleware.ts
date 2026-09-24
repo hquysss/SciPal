@@ -9,6 +9,8 @@ function isProtectedPath(pathname: string) {
     pathname.startsWith('/progress/') ||
     pathname === '/teacher' ||
     pathname.startsWith('/teacher/') ||
+    pathname === '/admin' ||
+    pathname.startsWith('/admin/') ||
     pathname.startsWith('/exam/')
   );
 }
@@ -55,6 +57,11 @@ export async function middleware(request: NextRequest) {
     !['teacher', 'admin'].includes(user.app_metadata?.app_role)
   ) {
     response = NextResponse.redirect(new URL('/profile', request.url));
+  } else if (
+    (pathname === '/admin' || pathname.startsWith('/admin/')) &&
+    user.app_metadata?.app_role !== 'admin'
+  ) {
+    response = NextResponse.redirect(new URL('/profile', request.url));
   } else {
     response = NextResponse.next({ request });
   }
@@ -66,5 +73,5 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/profile/:path*', '/progress/:path*', '/teacher/:path*', '/exam/:path+'],
+  matcher: ['/profile/:path*', '/progress/:path*', '/teacher/:path*', '/admin/:path*', '/exam/:path+'],
 };

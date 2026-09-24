@@ -10,6 +10,7 @@ export const dynamic = 'force-dynamic';
 
 export default async function ProfilePage() {
   let user: { id: string; email?: string } | null = null;
+  let appRole: string | undefined;
 
   try {
     const cookieStore = await cookies();
@@ -17,7 +18,11 @@ export default async function ProfilePage() {
     const {
       data: { user: authUser },
     } = await supabase.auth.getUser();
-    if (authUser) user = authUser;
+    if (authUser) {
+      user = authUser;
+      const role = authUser.app_metadata?.app_role;
+      if (typeof role === 'string') appRole = role;
+    }
   } catch (err) {
     console.warn('Profile auth check warning:', err);
   }
@@ -26,7 +31,11 @@ export default async function ProfilePage() {
   const { profile, stats } = await getUserProfile(userId);
 
   const displayName = profile?.display_name ?? user?.email?.split('@')[0] ?? 'Học viên SciPal';
-  const role = ((profile?.role as 'student' | 'teacher') ?? 'student');
+  const role = appRole === 'admin'
+    ? 'admin'
+    : appRole === 'teacher'
+      ? 'teacher'
+      : ((profile?.role as 'student' | 'teacher') ?? 'student');
 
   return (
     <div className="relative min-h-[calc(100vh-3.5rem)] bg-science-grid pb-20">

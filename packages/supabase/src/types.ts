@@ -94,6 +94,10 @@ export interface Database {
           blocks: Block[];
           sort_order: number;
           published: boolean;
+          created_by: string | null;
+          review_status: 'draft' | 'pending' | 'approved' | 'rejected';
+          reviewed_by: string | null;
+          reviewed_at: string | null;
           created_at: string;
           updated_at: string;
         };
@@ -108,6 +112,10 @@ export interface Database {
           blocks?: Block[];
           sort_order?: number;
           published?: boolean;
+          created_by?: string | null;
+          review_status?: 'draft' | 'pending' | 'approved' | 'rejected';
+          reviewed_by?: string | null;
+          reviewed_at?: string | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -122,6 +130,10 @@ export interface Database {
           blocks?: Block[];
           sort_order?: number;
           published?: boolean;
+          created_by?: string | null;
+          review_status?: 'draft' | 'pending' | 'approved' | 'rejected';
+          reviewed_by?: string | null;
+          reviewed_at?: string | null;
           created_at?: string;
           updated_at?: string;
         };

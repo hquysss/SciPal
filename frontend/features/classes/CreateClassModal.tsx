@@ -27,7 +27,7 @@ export function CreateClassModal({ open, onClose, onCreated, token }: CreateClas
     setLoading(true);
     setError(null);
 
-    const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://localhost:3001';
+      const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL ?? 'https://sci-pal-backend.vercel.app';
 
     try {
       const res = await fetch(`${API_BASE}/api/classes`, {

@@ -89,9 +89,3 @@ export default async function LessonPage({
     </SubjectProvider>
   );
 }
-
-export async function generateStaticParams() {
-  return [
-    { subject: 'informatics', lesson: 'binary-search' },
-  ];
-}

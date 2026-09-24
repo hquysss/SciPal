@@ -15,7 +15,7 @@ export function DemandPollBanner() {
           <div className="space-y-1 max-w-xl">
             <div className="flex items-center gap-2">
               <span className="rounded-full bg-emerald-600/10 px-2.5 py-0.5 font-mono text-[11px] font-bold text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300">
-                🗳️ Khảo sát người học (§9.7)
+                🗳️ Khảo sát người học
               </span>
               <span className="text-xs text-gray-500">Mở bình chọn 2026</span>
             </div>

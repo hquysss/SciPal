@@ -84,7 +84,9 @@ export function AccountSettings({ currentRole = 'student' }: AccountSettingsProp
                 <span className="font-bold text-gray-900 dark:text-white">
                   {currentRole === 'teacher'
                     ? t({ en: 'Teacher', vi: 'Giáo viên' })
-                    : t({ en: 'Student', vi: 'Học sinh' })}
+                    : currentRole === 'admin'
+                      ? t({ en: 'Admin', vi: 'Quản trị viên' })
+                      : t({ en: 'Student', vi: 'Học sinh' })}
                 </span>
               </div>
               <div>

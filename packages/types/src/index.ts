@@ -1,3 +1,3 @@
-export * from './block';
-export * from './question';
-export * from './subject';
+export * from './block.js';
+export * from './question.js';
+export * from './subject.js';

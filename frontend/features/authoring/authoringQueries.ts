@@ -1,61 +1,100 @@
 import type { Block } from '@scipal/types';
 
+export type LessonReviewStatus = 'draft' | 'pending' | 'approved' | 'rejected';
+
 export interface AuthoringLessonData {
   id: string;
+  topic_id: string;
+  subject_id: string;
+  subject_slug: string;
+  subject_name_en: string;
+  subject_name_vi: string;
+  topic_name_en: string;
+  topic_name_vi: string;
+  slug: string;
   title_vi: string;
   title_en: string;
-  subject_slug: string;
+  grade: number;
   published: boolean;
+  review_status: LessonReviewStatus;
+  created_by: string | null;
+  reviewed_by: string | null;
+  reviewed_at: string | null;
+  created_at: string;
+  updated_at: string;
+  block_count: number;
   blocks: Block[];
 }
 
-export async function getAuthoringLesson(lessonId: string): Promise<AuthoringLessonData> {
-  const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://localhost:3001';
+export interface AuthoringSubjectOption {
+  id: string;
+  slug: string;
+  name_en: string;
+  name_vi: string;
+}
 
+export interface AuthoringTopicOption {
+  id: string;
+  subject_id: string;
+  name_en: string;
+  name_vi: string;
+  sort_order: number;
+}
+
+export class AuthoringApiError extends Error {
+  constructor(message: string, readonly status?: number) {
+    super(message);
+    this.name = 'AuthoringApiError';
+  }
+}
+
+const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL ?? 'https://sci-pal-backend.vercel.app';
+
+async function requestJson<T>(path: string, token: string): Promise<T> {
+  const response = await fetch(`${API_BASE}${path}`, {
+    headers: { Authorization: `Bearer ${token}` },
+    cache: 'no-store',
+  });
+
+  let payload: unknown;
   try {
-    const res = await fetch(`${API_BASE}/api/lessons/${lessonId}`, {
-      cache: 'no-store',
-    });
-    if (res.ok) {
-      const data = await res.json();
-      return data.lesson;
-    }
-  } catch (err) {
-    console.warn('getAuthoringLesson fetch error, returning fallback:', err);
+    payload = await response.json();
+  } catch {
+    payload = null;
   }
 
-  // Fallback demo lesson for authoring preview
-  return {
-    id: lessonId,
-    title_vi: 'Thuật toán Tìm kiếm nhị phân',
-    title_en: 'Binary Search Algorithm',
-    subject_slug: 'informatics',
-    published: true,
-    blocks: [
-      {
-        type: 'theory',
-        content: {
-          en: '### Divide and Conquer Principle\nBinary search works on sorted arrays by repeatedly dividing the search interval in half.',
-          vi: '### Nguyên lý Chia để trị\nTìm kiếm nhị phân áp dụng trên dãy đã sắp xếp bằng cách liên tục chia đôi khoảng tìm kiếm.',
-        },
-      },
-      {
-        type: 'formula',
-        katex: 'T(n) = \\mathcal{O}(\\log n)',
-        caption: {
-          en: 'Logarithmic Time Complexity',
-          vi: 'Độ phức tạp thời gian logarit',
-        },
-      },
-      {
-        type: 'code',
-        tabs: [
-          {
-            lang: 'python',
-            code: 'def binary_search(arr, target):\n    low, high = 0, len(arr) - 1\n    while low <= high:\n        mid = (low + high) // 2\n        if arr[mid] == target:\n            return mid\n        elif arr[mid] < target:\n            low = mid + 1\n        else:\n            high = mid - 1\n    return -1\n',
-          },
-        ],
-      },
-    ],
-  };
+  if (!response.ok) {
+    const message =
+      typeof payload === 'object' && payload !== null && 'error' in payload && typeof payload.error === 'string'
+        ? payload.error
+        : 'Không thể tải dữ liệu từ máy chủ.';
+    throw new AuthoringApiError(message, response.status);
+  }
+
+  return payload as T;
+}
+
+export async function getAuthoringOptions(token: string): Promise<{
+  subjects: AuthoringSubjectOption[];
+  topics: AuthoringTopicOption[];
+}> {
+  return requestJson('/api/authoring/options', token);
+}
+
+export async function getTeacherLessons(token: string): Promise<AuthoringLessonData[]> {
+  const data = await requestJson<{ lessons: AuthoringLessonData[] }>('/api/authoring/lessons', token);
+  return data.lessons;
+}
+
+export async function getPendingReviewLessons(token: string): Promise<AuthoringLessonData[]> {
+  const data = await requestJson<{ lessons: AuthoringLessonData[] }>('/api/authoring/reviews', token);
+  return data.lessons;
+}
+
+export async function getAuthoringLesson(lessonId: string, token: string): Promise<AuthoringLessonData> {
+  const data = await requestJson<{ lesson: AuthoringLessonData }>(
+    `/api/authoring/lessons/${encodeURIComponent(lessonId)}`,
+    token,
+  );
+  return data.lesson;
 }

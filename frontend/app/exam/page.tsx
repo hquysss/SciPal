@@ -57,7 +57,7 @@ export default function ExamListPage() {
           </Link>
           <span>/</span>
           <span className="font-semibold text-emerald-700 dark:text-emerald-400">
-            Phòng thi thử trực tuyến (S9)
+            Phòng thi thử trực tuyến
           </span>
         </nav>
 
@@ -69,7 +69,7 @@ export default function ExamListPage() {
 
           <div className="relative z-10 max-w-xl space-y-3">
             <span className="rounded-full bg-emerald-500/20 border border-emerald-400/30 px-3 py-1 font-mono text-xs font-bold uppercase tracking-wider text-emerald-300">
-              Exam Mode · S9 Server-Authoritative
+              Exam Mode · Server-Authoritative
             </span>
             <h1 className="text-2xl sm:text-3xl font-black tracking-tight">
               Phòng thi thử & Đánh giá năng lực

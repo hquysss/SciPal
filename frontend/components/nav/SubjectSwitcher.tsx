@@ -92,7 +92,7 @@ export function SubjectSwitcher({ current, mobile = false, onNavigate }: Subject
     return (
       <div className="rounded-2xl border border-emerald-100 bg-emerald-50/70 p-2">
         <p className="px-3 py-1.5 font-mono text-xs font-bold uppercase tracking-wider text-emerald-900">
-          {lang === 'en' ? 'Explore subjects' : 'Khám phá môn học'}
+          {lang === 'en' ? 'Subjects' : 'Môn học'}
         </p>
         {subjects}
       </div>
@@ -108,21 +108,17 @@ export function SubjectSwitcher({ current, mobile = false, onNavigate }: Subject
         onClick={() => setOpen((value) => !value)}
         className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-semibold text-white/95 transition hover:bg-white/10 hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
       >
-        <span>{lang === 'en' ? 'Explore Subjects' : 'Khám phá môn học'}</span>
-        <span className={`text-xs text-white/70 transition-transform duration-200 ${open ? 'rotate-180' : ''}`} aria-hidden="true">▼</span>
+        <span>{lang === 'en' ? 'Subjects' : 'Môn học'}</span>
+        <span className={`text-xs text-white/70 transition-transform duration-200 motion-reduce:transition-none ${open ? 'rotate-180' : ''}`} aria-hidden="true">▼</span>
       </button>
 
-      {open && (
-        <div
-          id="subject-switcher-list"
-          className="absolute left-0 top-full z-50 w-64 rounded-2xl border border-gray-100 bg-white p-2 text-gray-900 shadow-xl"
-        >
-          <p className="px-3 py-1.5 font-mono text-xs font-bold uppercase tracking-wider text-gray-500">
-            {lang === 'en' ? 'Natural Sciences' : 'Môn khoa học tự nhiên'}
-          </p>
-          {subjects}
-        </div>
-      )}
+      <div
+        id="subject-switcher-list"
+        aria-hidden={!open}
+        className={`absolute left-0 top-full z-50 mt-2 w-64 origin-top rounded-2xl border border-gray-100 bg-white p-2 text-gray-900 shadow-xl transition-[opacity,transform,visibility] duration-200 ease-out motion-reduce:transition-none ${open ? 'visible scale-y-100 opacity-100' : 'invisible pointer-events-none scale-y-0 opacity-0'}`}
+      >
+        {subjects}
+      </div>
     </div>
   );
 }

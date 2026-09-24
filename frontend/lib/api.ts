@@ -1,5 +1,5 @@
 // Thin client for backend/ routes (AI chat, scoring, survey)
-const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://localhost:3001';
+const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL ?? 'https://sci-pal-backend.vercel.app';
 
 export async function postAIChat(
   body: { lesson_id: string; messages: unknown[]; subject_slug: string; language: 'en' | 'vi' },

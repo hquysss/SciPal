@@ -2,7 +2,7 @@ import type { ClassRoomItem } from './ClassList';
 import type { StudentMember } from './StudentRoster';
 
 export async function getTeacherClasses(teacherId?: string): Promise<ClassRoomItem[]> {
-  const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://localhost:3001';
+  const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL ?? 'https://sci-pal-backend.vercel.app';
 
   try {
     const res = await fetch(`${API_BASE}/api/classes`, { cache: 'no-store' });
@@ -47,7 +47,7 @@ export async function getClassRoster(classId: string): Promise<{
   classRoom: { name: string; invite_code: string };
   members: StudentMember[];
 }> {
-  const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://localhost:3001';
+  const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL ?? 'https://sci-pal-backend.vercel.app';
 
   try {
     const res = await fetch(`${API_BASE}/api/classes/${classId}/roster`, { cache: 'no-store' });

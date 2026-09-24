@@ -45,10 +45,22 @@ CREATE TABLE IF NOT EXISTS lessons (
   blocks     jsonb NOT NULL DEFAULT '[]',
   sort_order int  NOT NULL DEFAULT 0,
   published  bool NOT NULL DEFAULT false,
+  created_by uuid REFERENCES auth.users(id) ON DELETE SET NULL,
+  review_status text NOT NULL DEFAULT 'approved'
+    CHECK (review_status IN ('draft', 'pending', 'approved', 'rejected')),
+  reviewed_by uuid REFERENCES auth.users(id) ON DELETE SET NULL,
+  reviewed_at timestamptz,
   created_at timestamptz DEFAULT now(),
   updated_at timestamptz DEFAULT now(),
   UNIQUE(subject_id, slug)
 );
+
+CREATE INDEX IF NOT EXISTS lessons_author_review_idx
+  ON lessons (created_by, review_status, updated_at DESC);
+
+CREATE INDEX IF NOT EXISTS lessons_pending_review_idx
+  ON lessons (created_at ASC)
+  WHERE review_status = 'pending';
 
 CREATE TABLE IF NOT EXISTS terms (
   id             uuid PRIMARY KEY DEFAULT gen_random_uuid(),

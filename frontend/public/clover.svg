@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="130" height="130" viewBox="0 0 130 130">
+  <defs>
+    <path id="leafH" d="M0 0 C -11 -9, -18 -22, 0 -27 C 18 -22, 11 -9, 0 0 Z"/>
+    <g id="clover">
+      <use href="#leafH" transform="rotate(45)"/><use href="#leafH" transform="rotate(135)"/>
+      <use href="#leafH" transform="rotate(225)"/><use href="#leafH" transform="rotate(315)"/>
+    </g>
+  </defs>
+  <g fill="#0E8A45" fill-opacity="0.055">
+    <use href="#clover" transform="translate(34,40) scale(0.55) rotate(12)"/>
+    <use href="#clover" transform="translate(96,96) scale(0.72) rotate(-16)"/>
+    <use href="#clover" transform="translate(112,26) scale(0.4) rotate(30)"/>
+  </g>
+</svg>

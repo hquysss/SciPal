@@ -58,7 +58,7 @@ export function ExamRunner({
       selected_option: ans,
     }));
 
-    const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://localhost:3001';
+      const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL ?? 'https://sci-pal-backend.vercel.app';
     try {
       const authToken = token ?? (await createBrowserClient().auth.getSession()).data.session?.access_token;
       if (!authToken) {
