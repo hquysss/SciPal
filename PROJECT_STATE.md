@@ -64,6 +64,7 @@ Các mục Plan 0–2 dưới đây là **ghi nhận triển khai ban đầu**, 
 
 ## Recent Decisions
 - **25/09 — Navbar theo quyền**: Mục cần đăng nhập chỉ hiện khi có user; menu Môn học, Teacher, Admin và thanh điều hướng mobile mở/đóng theo trục dọc từ mép trên. Menu theo role tự đóng khi nhấn Escape, bấm ngoài hoặc đổi trang. Navbar hiển thị tên tài khoản và nút đăng xuất ở mép phải.
+- **25/09 — Họa tiết navbar**: Dùng `frontend/public/clover.svg` làm họa tiết cỏ bốn lá lặp mờ trên nền navbar xanh; giữ nguyên logo và các mục điều hướng.
 - **24/09 — Quản lý tài khoản admin**: Thêm trang `/admin/accounts` để admin tạo tài khoản học sinh/giáo viên, đổi role và xóa tài khoản; route và API đều kiểm tra quyền admin.
 - **24/09 — S10 duyệt bài**: Giáo viên tạo/sửa bản nháp hoặc bài bị từ chối rồi gửi vào hàng chờ; nội dung chờ duyệt bị khóa. Chỉ `app_metadata.app_role = admin` mới duyệt/từ chối; duyệt sẽ đặt `published = true`.
 - **23/09 — Điều hướng/auth**: Trang học công khai cho khách; trang tiến trình, hồ sơ, phòng thi và studio cần phiên Supabase thật. Quyền giáo viên lấy từ `app_metadata.app_role`.

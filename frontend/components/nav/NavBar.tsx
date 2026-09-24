@@ -167,7 +167,17 @@ export function NavBar({ currentSubject }: NavBarProps) {
 
   return (
     <header className="sticky top-0 z-40 w-full border-b border-emerald-600/30 bg-emerald-700/95 text-white shadow-xs backdrop-blur-md">
-      <div className="mx-auto flex h-16 max-w-7xl items-center justify-between gap-3 px-4 sm:px-6">
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-0 z-0"
+        style={{
+          backgroundImage: "url('/clover.svg')",
+          backgroundRepeat: 'repeat',
+          backgroundSize: '130px 130px',
+          filter: 'brightness(0) invert(1)',
+        }}
+      />
+      <div className="relative z-10 mx-auto flex h-16 max-w-7xl items-center justify-between gap-3 px-4 sm:px-6">
         <Link href="/" className="group flex shrink-0 items-center gap-3 font-bold text-white">
           <Image
             src="/logo.svg"
