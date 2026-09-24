@@ -25,5 +25,12 @@ await app.register(accountsRoutes);
 app.get('/health', async () => ({ status: 'ok' }));
 
 const port = Number(process.env.PORT ?? (process.env.VERCEL ? 3000 : 3001));
-await app.listen({ port, host: '0.0.0.0' });
-console.log(`API running on port ${port}`);
+if (process.env.VERCEL) {
+  void app.listen({ port }).catch((error) => {
+    app.log.error(error);
+    process.exit(1);
+  });
+} else {
+  await app.listen({ port, host: '0.0.0.0' });
+  console.log(`API running on port ${port}`);
+}
