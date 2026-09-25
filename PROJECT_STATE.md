@@ -75,8 +75,9 @@ Các mục Plan 0–2 dưới đây là **ghi nhận triển khai ban đầu**, 
 - **Cấu trúc Monorepo**: `backend/`, `frontend/`, `mobile/` đặt tại root, tuân thủ nghiêm ngặt cô lập bí mật `SUPABASE_SERVICE_ROLE_KEY`.
 
 ## Known Issues / Blockers
-- Luồng duyệt S10 cần áp dụng migration `0006_lesson_review_workflow.sql` vào Supabase đang cấu hình trước khi API dùng các cột `created_by`, `review_status`, `reviewed_by`, `reviewed_at`.
-- S10 verification: backend API and shared types typecheck passed. `https://sci-pal-backend.vercel.app/health` responds HTTP 200 and CORS allows `http://localhost:3000`; authenticated lesson flows remain unverified because migration `0006` is not applied to the remote Supabase schema. Web typecheck currently reports React typing mismatches (TS2786/TS2322 in login, TheoryRenderer, UI primitives, and SubjectContext).
+- Supabase migration history sync (25/09): linked project already contains the `0006` lesson review columns. Remote migration history was repaired for local versions `0001`–`0006`; `pnpm exec supabase migration list --linked` now matches and `pnpm exec supabase db push --dry-run --linked` reports no pending migrations. This repaired tracking only; it did not re-run the SQL files.
+- The live schema still differs from the old migration chain: `resources` uses `type`/`is_external` instead of `category`, `assignments` uses `due_date` instead of `due_at`, and the survey insert policy has a different name. A reproducible local reset remains unverified; `supabase db pull` could not generate the reconciliation migration because Docker/Podman is unavailable.
+- S10 verification: backend API and shared types typecheck passed. `https://sci-pal-backend.vercel.app/health` responds HTTP 200 and CORS allows `http://localhost:3000`; authenticated lesson flows remain unverified. Web typecheck currently reports React typing mismatches (TS2786/TS2322 in login, TheoryRenderer, UI primitives, and SubjectContext).
 - Backend chưa đăng ký route `/api/ai/chat`; nút AI Tutor trên bài học hiện chưa có luồng hoàn chỉnh.
 - Đề thi, hồ sơ, lớp học và một số khu vực chưa chuyển dữ liệu thật vẫn còn dữ liệu/fallback demo; không được xem là dữ liệu cá nhân thật.
 - Chấm điểm bài học hiện dùng mốc 100 XP phía server nhưng chưa xác minh quiz theo đặc tả; thao tác ghi `progress`/`xp_log` chưa ở một transaction DB.
