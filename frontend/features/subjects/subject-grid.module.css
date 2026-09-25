@@ -1,17 +1,53 @@
 .grid {
-  display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
-  align-items: stretch;
-  gap: 14px;
+  position: relative;
+  min-width: 0;
+  overflow: hidden;
+  -webkit-mask-image: linear-gradient(to right, transparent 0, #000 5%, #000 95%, transparent 100%);
+  mask-image: linear-gradient(to right, transparent 0, #000 5%, #000 95%, transparent 100%);
 }
 
-.grid > div {
-  height: 100%;
+.track {
+  display: flex;
+  width: max-content;
+  animation: subject-marquee 32s linear infinite;
+}
+
+.group {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: stretch;
+  gap: 14px;
+  padding-right: 14px;
+}
+
+.group > div {
+  display: flex;
+  flex: 0 0 auto;
+}
+
+.grid:focus-within .track {
+  animation-play-state: paused;
+}
+
+.grid:has(.activeAction:focus-visible) .track {
+  animation: none;
+  transform: translateX(0);
+}
+
+.grid:active .track {
+  animation-play-state: paused;
+}
+
+@media (hover: hover) {
+  .grid:hover .track {
+    animation-play-state: paused;
+  }
 }
 
 .card {
   display: flex;
-  height: 100%;
+  width: 228px;
+  flex: 0 0 228px;
   min-height: 236px;
   flex-direction: column;
   border: 1px solid color-mix(in srgb, var(--accent) 18%, #e1e9e3);
@@ -157,18 +193,21 @@
 }
 
 @media (max-width: 1080px) {
-  .grid {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+  .card {
+    width: 220px;
+    flex-basis: 220px;
   }
 }
 
 @media (max-width: 650px) {
-  .grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+  .group {
     gap: 10px;
+    padding-right: 10px;
   }
 
   .card {
+    width: 214px;
+    flex-basis: 214px;
     min-height: 222px;
     padding: 12px;
   }
@@ -186,11 +225,9 @@
 }
 
 @media (max-width: 365px) {
-  .grid {
-    grid-template-columns: minmax(0, 1fr);
-  }
-
   .card {
+    width: 204px;
+    flex-basis: 204px;
     min-height: 212px;
   }
 
@@ -200,7 +237,30 @@
   }
 }
 
+@keyframes subject-marquee {
+  from {
+    transform: translateX(-50%);
+  }
+
+  to {
+    transform: translateX(0);
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
+  .grid {
+    overflow-x: auto;
+    scrollbar-width: thin;
+  }
+
+  .track {
+    animation: none;
+  }
+
+  .duplicateGroup {
+    display: none;
+  }
+
   .card,
   .subjectIcon,
   .activeAction {

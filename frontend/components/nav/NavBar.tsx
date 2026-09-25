@@ -191,7 +191,7 @@ export function NavBar({ currentSubject }: NavBarProps) {
           <span className="flex flex-col">
             <span className="text-xl font-black leading-tight tracking-tight">SciPal</span>
             <span className="hidden font-mono text-xs font-semibold uppercase tracking-wider text-emerald-200/90 sm:block">
-              {lang === 'en' ? 'Natural Sciences' : 'Sách '}
+              {lang === 'en' ? 'EdTech' : 'EdTech'}
             </span>
           </span>
         </Link>

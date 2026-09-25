@@ -1,0 +1,238 @@
+.screen {
+  position: fixed;
+  z-index: 10000;
+  inset: 0;
+  display: grid;
+  overflow: hidden;
+  place-items: center;
+  background:
+    radial-gradient(ellipse at 50% 38%, rgba(205, 243, 219, 0.55), transparent 36rem),
+    #f5faf6;
+  color: #1a2b20;
+}
+
+.grid {
+  position: absolute;
+  inset: -1px;
+  background-image:
+    linear-gradient(to right, rgba(18, 79, 46, 0.045) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(18, 79, 46, 0.045) 1px, transparent 1px);
+  background-size: 32px 32px;
+  mask-image: radial-gradient(ellipse at center, #000 18%, transparent 82%);
+  pointer-events: none;
+}
+
+.glow {
+  position: absolute;
+  top: 14%;
+  left: 50%;
+  width: min(64vw, 670px);
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(155, 223, 178, 0.2), transparent 68%);
+  filter: blur(18px);
+  pointer-events: none;
+  transform: translateX(-50%);
+  animation: glow-breathe 5s ease-in-out infinite alternate;
+}
+
+.content {
+  position: relative;
+  width: min(calc(100% - 40px), 430px);
+  padding: 36px 32px 31px;
+  border: 1px solid rgba(196, 222, 204, 0.88);
+  border-radius: 28px;
+  background: rgba(255, 255, 255, 0.82);
+  box-shadow:
+    0 30px 90px rgba(30, 83, 48, 0.1),
+    0 6px 22px rgba(30, 83, 48, 0.045);
+  text-align: center;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  animation: content-enter 650ms cubic-bezier(0.2, 0.7, 0.25, 1) both;
+}
+
+.mark {
+  display: grid;
+  width: 68px;
+  height: 68px;
+  place-items: center;
+  margin: 0 auto;
+  border: 1px solid #c5e7ce;
+  border-radius: 22px;
+  background: linear-gradient(145deg, #effbf2, #dff4e5);
+  color: #13844b;
+  box-shadow: 0 12px 28px rgba(26, 135, 73, 0.12);
+  animation: mark-float 2.8s ease-in-out infinite;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin: 23px 0 0;
+  color: #708077;
+  font-size: 0.65rem;
+  font-weight: 750;
+  letter-spacing: 0.105em;
+  line-height: 1.5;
+  text-transform: uppercase;
+}
+
+.brand > span:first-child {
+  color: #168249;
+}
+
+.brandDivider {
+  color: #a5b3a8;
+}
+
+.content h1 {
+  margin: 10px 0 0;
+  color: #1d2c22;
+  font-size: clamp(1.4rem, 5vw, 1.75rem);
+  font-weight: 820;
+  letter-spacing: -0.045em;
+  line-height: 1.25;
+}
+
+.message {
+  margin: 9px 0 0;
+  color: #6c7b70;
+  font-size: 0.86rem;
+  line-height: 1.6;
+}
+
+.progressWrap {
+  margin-top: 29px;
+  text-align: left;
+}
+
+.progressTrack {
+  height: 8px;
+  overflow: hidden;
+  border: 1px solid #e1ebe3;
+  border-radius: 999px;
+  background: #edf3ee;
+}
+
+.progressFill {
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #158648, #19b76c 70%, #35c77d);
+  box-shadow: 0 0 15px rgba(24, 169, 91, 0.25);
+  transition: width 240ms cubic-bezier(0.2, 0.7, 0.25, 1);
+}
+
+.progressMeta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 9px;
+  color: #819087;
+  font-size: 0.68rem;
+  font-weight: 650;
+}
+
+.progressMeta span:last-child {
+  color: #19834d;
+  font-variant-numeric: tabular-nums;
+}
+
+.loadingDots {
+  display: flex;
+  justify-content: center;
+  gap: 6px;
+  margin-top: 27px;
+}
+
+.loadingDots span {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: #8fbf9b;
+  animation: dot-pulse 1s ease-in-out infinite;
+}
+
+.loadingDots span:nth-child(2) {
+  animation-delay: 140ms;
+}
+
+.loadingDots span:nth-child(3) {
+  animation-delay: 280ms;
+}
+
+@keyframes content-enter {
+  from {
+    opacity: 0;
+    transform: translateY(14px) scale(0.99);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes mark-float {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+
+  50% {
+    transform: translateY(-4px);
+  }
+}
+
+@keyframes glow-breathe {
+  from {
+    opacity: 0.55;
+    transform: translateX(-50%) scale(0.94);
+  }
+
+  to {
+    opacity: 0.9;
+    transform: translateX(-50%) scale(1.05);
+  }
+}
+
+@keyframes dot-pulse {
+  0%,
+  100% {
+    opacity: 0.35;
+    transform: scale(0.8);
+  }
+
+  50% {
+    opacity: 1;
+    transform: scale(1.15);
+  }
+}
+
+@media (max-width: 480px) {
+  .content {
+    padding: 32px 22px 27px;
+    border-radius: 24px;
+  }
+
+  .brand {
+    gap: 6px;
+    font-size: 0.57rem;
+    letter-spacing: 0.075em;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .glow,
+  .content,
+  .mark,
+  .loadingDots span {
+    animation: none;
+  }
+
+  .progressFill {
+    transition: none;
+  }
+}

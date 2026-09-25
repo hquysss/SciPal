@@ -63,6 +63,8 @@ Các mục Plan 0–2 dưới đây là **ghi nhận triển khai ban đầu**, 
 4. Rà song ngữ EN/VI trên toàn bộ màn hình và bỏ `--accent` khỏi `:root` để tuân thủ SubjectProvider.
 
 ## Recent Decisions
+- **25/09 — Liên hệ footer và thẻ môn học**: Đưa Contact us vào footer với liên kết Facebook/email để thay thông tin sau; marquee môn học cho phép bấm cả bản sao đang hiển thị, dừng khi hover/focus/touch và fade hai mép. Tôn trọng `prefers-reduced-motion`.
+- **25/09 — Loading toàn cục**: Thêm fallback `frontend/app/loading.tsx` ở cấp root để mọi route dùng chung màn hình tải toàn trang với thanh tiến trình EN/VI; route content được thay vào sau khi segment sẵn sàng. Tiến trình là ước lượng giao diện và tuân thủ `prefers-reduced-motion`.
 - **25/09 — Trang chủ công khai**: Giới thiệu SciPal như không gian học nhiều môn khoa học tự nhiên. Tin học là môn đang có học liệu và dữ liệu ví dụ cho chat Tutor, không phải chủ đề chính của thương hiệu. Chat tự phát theo từng lượt khi card vào khung nhìn mỗi lần ghé landing, giữ transcript đầy đủ sau đó, không có nút phát lại hoặc nhãn “Hội thoại minh họa”. Ghi chú nhỏ vẫn nêu câu trả lời được chuẩn bị sẵn và chưa kết nối AI trực tiếp. Navbar giữ nguyên.
 - **25/09 — Lối vào trang chủ**: Thêm liên kết `Trang chủ` / `Home` tới `/` trong menu navbar desktop và mobile; các mục và hành vi khác giữ nguyên.
 - **25/09 — Navbar theo quyền**: Mục cần đăng nhập chỉ hiện khi có user; menu Môn học, Teacher, Admin và thanh điều hướng mobile mở/đóng theo trục dọc từ mép trên. Menu theo role tự đóng khi nhấn Escape, bấm ngoài hoặc đổi trang. Navbar hiển thị tên tài khoản và nút đăng xuất ở mép phải.

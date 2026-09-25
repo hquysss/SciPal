@@ -1,11 +1,14 @@
 'use client';
 
+import { useEffect, useRef } from 'react';
+import Image from 'next/image';
 import Link from 'next/link';
 import {
   ArrowRight,
   BookOpen,
   Compass,
   Languages,
+  Mail,
   Search,
   Sparkles,
 } from 'lucide-react';
@@ -14,6 +17,9 @@ import { DemandPollBanner } from '@/features/survey/DemandPollBanner';
 import { SubjectGrid } from '@/features/subjects/SubjectGrid';
 import { TutorDemoCard } from './TutorDemoCard';
 import styles from './landing.module.css';
+
+const CONTACT_FACEBOOK_URL = 'https://www.facebook.com/nguoivietchimtayto/';
+const CONTACT_EMAIL = 'tuilangus@gmail.com';
 
 const featureCards = [
   {
@@ -82,9 +88,51 @@ const learningSteps = [
 
 export function LandingPage() {
   const { t, lang } = useLanguage();
+  const pageRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const page = pageRef.current;
+    if (
+      !page ||
+      window.matchMedia('(prefers-reduced-motion: reduce)').matches ||
+      !('IntersectionObserver' in window)
+    ) {
+      return;
+    }
+
+    const revealTargets = Array.from(
+      page.querySelectorAll<HTMLElement>('[data-landing-reveal]'),
+    );
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (!entry.isIntersecting) return;
+          entry.target.classList.add(styles.revealed);
+          observer.unobserve(entry.target);
+        });
+      },
+      { threshold: 0.12, rootMargin: '0px 0px -5% 0px' },
+    );
+
+    revealTargets.forEach((target, index) => {
+      const isInitiallyVisible =
+        target.getBoundingClientRect().top < window.innerHeight * 0.95;
+
+      if (isInitiallyVisible) {
+        target.classList.add(styles.revealed);
+        return;
+      }
+
+      target.style.setProperty('--reveal-delay', `${(index % 4) * 65}ms`);
+      target.classList.add(styles.revealPending);
+      observer.observe(target);
+    });
+
+    return () => observer.disconnect();
+  }, []);
 
   return (
-    <div className={styles.page}>
+    <div className={styles.page} ref={pageRef}>
       <div className={styles.ambient} aria-hidden="true" />
       <main className={styles.shell}>
         <section className={styles.hero} aria-labelledby="landing-title">
@@ -94,8 +142,8 @@ export function LandingPage() {
                 <Sparkles size={15} />
               </span>
               {t({
-                en: 'A science learning space for high school',
-                vi: 'Không gian học khoa học dành cho học sinh THPT',
+                en: 'Study space for high school students',
+                vi: 'Không gian học tập dành cho học sinh THPT',
               })}
             </p>
             <h1 id="landing-title" className={styles.heroTitle} data-language={lang}>
@@ -104,8 +152,8 @@ export function LandingPage() {
             </h1>
             <p className={styles.heroDescription}>
               {t({
-                en: 'A bilingual science learning space for Vietnamese high school students, with course content growing across subjects.',
-                vi: 'Không gian học khoa học song ngữ dành cho học sinh THPT Việt Nam, với học liệu đang được mở rộng theo từng môn.',
+                en: 'A bilingual study space for Vietnamese high school students, with course content growing across subjects.',
+                vi: 'Không gian học tập song ngữ dành cho học sinh THPT Việt Nam, với học liệu đang được mở rộng theo từng môn.',
               })}
             </p>
 
@@ -126,7 +174,7 @@ export function LandingPage() {
               </span>
               <span>
                 <BookOpen size={16} aria-hidden="true" />
-                {t({ en: 'Five high-school subjects', vi: '5 môn học THPT' })}
+                {t({ en: 'high-school subjects', vi: 'môn học THPT' })}
               </span>
             </div>
           </div>
@@ -137,9 +185,9 @@ export function LandingPage() {
         </section>
 
         <section className={styles.contentSection} id="mon-hoc" aria-labelledby="subjects-title">
-          <div className={styles.sectionHeading}>
+          <div className={styles.sectionHeading} data-landing-reveal>
             <p className={styles.sectionEyebrow}>
-              {t({ en: 'Five subjects to explore', vi: 'Khám phá 5 môn học' })}
+              {t({ en: 'Explore the subject', vi: 'Khám phá môn học' })}
             </p>
             <h2 id="subjects-title" className={styles.sectionTitle}>
               {t({ en: 'Choose a subject to explore', vi: 'Chọn môn học để khám phá' })}
@@ -155,7 +203,7 @@ export function LandingPage() {
         </section>
 
         <section className={styles.contentSection} aria-labelledby="features-title">
-          <div className={styles.sectionHeading}>
+          <div className={styles.sectionHeading} data-landing-reveal>
             <p className={styles.sectionEyebrow}>
               {t({ en: 'A closer look at SciPal', vi: 'Khám phá SciPal' })}
             </p>
@@ -168,7 +216,7 @@ export function LandingPage() {
               const Icon = feature.icon;
 
               return (
-                <article className={styles.featureCard} key={feature.title.en}>
+                <article className={styles.featureCard} data-landing-reveal key={feature.title.en}>
                   <span className={styles.featureIcon} aria-hidden="true">
                     <Icon size={21} strokeWidth={1.8} />
                   </span>
@@ -185,7 +233,7 @@ export function LandingPage() {
           id="cach-hoc"
           aria-labelledby="learning-title"
         >
-          <div className={styles.sectionHeading}>
+          <div className={styles.sectionHeading} data-landing-reveal>
             <p className={styles.sectionEyebrow}>
               {t({ en: 'A simple path forward', vi: 'Lộ trình học tập gọn nhẹ' })}
             </p>
@@ -204,7 +252,7 @@ export function LandingPage() {
               const Icon = step.icon;
 
               return (
-                <article className={styles.stepCard} key={step.number}>
+                <article className={styles.stepCard} data-landing-reveal key={step.number}>
                   <div className={styles.stepTopline}>
                     <span className={styles.stepNumber}>{step.number}</span>
                     <span className={styles.stepIcon} aria-hidden="true">
@@ -219,7 +267,7 @@ export function LandingPage() {
           </div>
         </section>
 
-        <section className={styles.startPanel} aria-labelledby="start-title">
+        <section className={styles.startPanel} data-landing-reveal aria-labelledby="start-title">
           <div className={styles.startCopy}>
             <p className={styles.startEyebrow}>
               {t({ en: 'Your next idea starts here', vi: 'Ý tưởng tiếp theo bắt đầu từ đây' })}
@@ -240,7 +288,7 @@ export function LandingPage() {
           </a>
         </section>
 
-        <section className={styles.pollSection} aria-label={t({
+        <section className={styles.pollSection} data-landing-reveal aria-label={t({
           en: 'Subject demand poll',
           vi: 'Khảo sát môn học tiếp theo',
         })}>
@@ -256,17 +304,33 @@ export function LandingPage() {
             </span>
             <span>
               <strong>SciPal</strong>
-              <small>{t({ en: 'Natural sciences, made approachable', vi: 'Học khoa học tự nhiên dễ gần hơn' })}</small>
+              <small>{t({ en: 'Learning made easy with SciPal.', vi: 'Học tập dễ dàng cùng với SciPal.' })}</small>
             </span>
           </Link>
-          <nav className={styles.footerLinks} aria-label={t({
-            en: 'Footer links',
-            vi: 'Liên kết cuối trang',
-          })}>
-            <a href="#mon-hoc">{t({ en: 'Subjects', vi: 'Môn học' })}</a>
-            <Link href="/glossary">{t({ en: 'Glossary', vi: 'Từ điển' })}</Link>
-            <Link href="/login">{t({ en: 'Sign in', vi: 'Đăng nhập' })}</Link>
-          </nav>
+          <div className={styles.footerContact}>
+            <p className={styles.footerContactTitle}>
+              {t({ en: 'Contact us', vi: 'Liên hệ' })}
+            </p>
+            <nav className={styles.footerLinks} aria-label={t({
+              en: 'Contact SciPal',
+              vi: 'Liên hệ SciPal',
+            })}>
+              <a href={CONTACT_FACEBOOK_URL} target="_blank" rel="noopener noreferrer">
+                <Image
+                  src="/facebook-icon.svg"
+                  width={18}
+                  height={18}
+                  alt=""
+                  aria-hidden="true"
+                />
+                <span>Facebook</span>
+              </a>
+              <a href={`mailto:${CONTACT_EMAIL}`}>
+                <Mail size={17} aria-hidden="true" />
+                <span>{t({ en: 'Email', vi: 'Email' })}</span>
+              </a>
+            </nav>
+          </div>
           <p className={styles.footerCopyright}>© SciPal</p>
         </div>
       </footer>

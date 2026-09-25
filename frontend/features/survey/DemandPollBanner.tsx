@@ -21,14 +21,14 @@ export function DemandPollBanner() {
             </div>
             <h3 className="text-lg font-black text-gray-900 dark:text-white">
               {t({
-                en: 'Which Natural Science subject should SciPal build next?',
-                vi: 'Bạn muốn SciPal hoàn thiện môn Khoa học Tự nhiên nào tiếp theo?',
+                en: 'Which subject would you like SciPal to build next?',
+                vi: 'Bạn muốn SciPal hoàn thiện môn học nào tiếp theo?',
               })}
             </h3>
             <p className="text-xs text-gray-600 dark:text-gray-300 leading-relaxed">
               {t({
-                en: 'Cast your vote for Mathematics, Physics, Chemistry, or Biology. We prioritize new interactive lessons based on community demand.',
-                vi: 'Bình chọn cho Toán học, Vật lí, Hóa học hoặc Sinh học. Đội ngũ giáo viên và kỹ sư sẽ ưu tiên phát triển môn có lượng bình chọn cao nhất!',
+                en: 'Cast your vote. We prioritize new interactive lessons based on community demand.',
+                vi: 'Bình chọn. Đội ngũ giáo viên và kỹ sư sẽ ưu tiên phát triển môn có lượng bình chọn cao nhất!',
               })}
             </p>
           </div>
