@@ -147,8 +147,8 @@ export function TutorDemoCard() {
       <footer className={styles.tutorFooter}>
         <p>
           {t({
-            en: 'Preview: replies are prepared in advance and do not connect to live AI.',
-            vi: 'Bản xem trước: câu trả lời được chuẩn bị sẵn, chưa kết nối AI trực tiếp.',
+            en: 'Preview',
+            vi: 'Bản xem trước',
           })}
         </p>
       </footer>

@@ -50,8 +50,8 @@ const featureCards = [
     icon: Sparkles,
     title: { en: 'Chat with your AI Tutor', vi: 'Trò chuyện cùng gia sư AI' },
     description: {
-      en: 'See a helpful explanation and follow-up question. Replies in this preview are prepared in advance.',
-      vi: 'Xem lời giải thích và câu hỏi gợi mở. Phản hồi trong bản xem trước này được chuẩn bị sẵn.',
+      en: 'See a helpful explanation and follow-up question.',
+      vi: 'Xem lời giải thích và câu hỏi gợi mở.',
     },
   },
 ] as const;
