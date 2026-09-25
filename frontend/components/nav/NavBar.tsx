@@ -140,6 +140,7 @@ export function NavBar({ currentSubject }: NavBarProps) {
 
   if (pathname === '/login') return null;
 
+  const homeLinkLabel = lang === 'en' ? 'Home' : 'Trang chủ';
   const links = [
     { href: '/glossary', label: lang === 'en' ? 'Glossary' : 'Từ điển' },
     { href: '/exam', label: lang === 'en' ? 'Exams' : 'Thi thử' },
@@ -196,6 +197,13 @@ export function NavBar({ currentSubject }: NavBarProps) {
         </Link>
 
         <nav aria-label={lang === 'en' ? 'Main navigation' : 'Điều hướng chính'} className="hidden items-center gap-1 lg:flex">
+          <Link
+            href="/"
+            aria-current={pathname === '/' ? 'page' : undefined}
+            className="rounded-lg px-3 py-1.5 text-sm font-semibold text-white/90 transition hover:bg-white/10 hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-white"
+          >
+            {homeLinkLabel}
+          </Link>
           <SubjectSwitcher current={currentSubject} />
           {links.map((link) => (
             <Link
@@ -326,6 +334,14 @@ export function NavBar({ currentSubject }: NavBarProps) {
         className={`absolute inset-x-0 top-full z-40 max-h-[calc(100dvh-4rem)] origin-top overflow-y-auto border-b border-emerald-200 bg-white p-4 text-gray-900 shadow-xl transition-[opacity,transform,visibility] duration-200 ease-out motion-reduce:transition-none lg:hidden ${mobileOpen ? 'visible scale-y-100 opacity-100' : 'invisible pointer-events-none scale-y-0 opacity-0'}`}
       >
           <div className="mx-auto max-w-xl space-y-2">
+            <Link
+              href="/"
+              onClick={() => setMobileOpen(false)}
+              aria-current={pathname === '/' ? 'page' : undefined}
+              className={`block rounded-xl px-4 py-3 text-sm font-semibold transition hover:bg-emerald-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-600 ${pathname === '/' ? 'bg-emerald-50 text-emerald-900' : 'text-gray-800'}`}
+            >
+              {homeLinkLabel}
+            </Link>
             <SubjectSwitcher current={currentSubject} mobile onNavigate={() => setMobileOpen(false)} />
             {links.map((link) => (
               <Link

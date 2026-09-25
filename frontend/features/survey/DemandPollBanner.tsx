@@ -15,9 +15,9 @@ export function DemandPollBanner() {
           <div className="space-y-1 max-w-xl">
             <div className="flex items-center gap-2">
               <span className="rounded-full bg-emerald-600/10 px-2.5 py-0.5 font-mono text-[11px] font-bold text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300">
-                🗳️ Khảo sát người học
+                🗳️ {t({ en: 'Learner poll', vi: 'Khảo sát người học' })}
               </span>
-              <span className="text-xs text-gray-500">Mở bình chọn 2026</span>
+              <span className="text-xs text-gray-500">{t({ en: 'Community input', vi: 'Ý kiến cộng đồng' })}</span>
             </div>
             <h3 className="text-lg font-black text-gray-900 dark:text-white">
               {t({
@@ -36,7 +36,7 @@ export function DemandPollBanner() {
           <button
             type="button"
             onClick={() => setModalOpen(true)}
-            className="inline-flex shrink-0 items-center justify-center gap-2 rounded-2xl bg-emerald-600 px-6 py-3 text-xs font-bold text-white shadow-sm hover:bg-emerald-700 active:scale-95 transition"
+            className="inline-flex shrink-0 items-center justify-center gap-2 min-h-[44px] rounded-2xl bg-emerald-600 px-6 py-3 text-xs font-bold text-white shadow-sm hover:bg-emerald-700 active:scale-95 transition"
           >
             <span>{t({ en: 'Vote Now', vi: 'Bình chọn môn tiếp theo' })}</span>
             <span aria-hidden="true">→</span>
