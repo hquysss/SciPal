@@ -10,6 +10,7 @@ import { OnlinePill } from './OnlinePill';
 import { SubjectSwitcher } from './SubjectSwitcher';
 import type { SubjectSlug } from '@/lib/subject-config';
 import { createBrowserClient } from '@/lib/supabase';
+import { adoptAccountLevel, getShell, safeSessionStorage } from '@/lib/theme/shellTheme';
 
 interface NavBarProps {
   currentSubject?: SubjectSlug;
@@ -18,6 +19,7 @@ interface NavBarProps {
 type AppRole = 'student' | 'teacher' | 'admin';
 
 type AuthUser = {
+  id?: string;
   app_metadata?: Record<string, unknown>;
   user_metadata?: Record<string, unknown>;
   email?: string | null;
@@ -89,6 +91,17 @@ export function NavBar({ currentSubject }: NavBarProps) {
           const user = error ? null : data.user;
           setAppRole(getAppRole(user));
           setDisplayName(getDisplayName(user));
+          if (user?.id) {
+            void supabase
+              .from('profiles')
+              .select('preferred_education_level')
+              .eq('id', user.id)
+              .maybeSingle()
+              .then(({ data: profile, error: profileError }) => {
+                if (!mounted || profileError) return;
+                adoptAccountLevel(profile?.preferred_education_level, safeSessionStorage(), getShell());
+              });
+          }
         }
       }).catch(() => {
         if (mounted) {

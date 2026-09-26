@@ -1,5 +1,7 @@
 import {
   LEVEL_SESSION_KEY,
+  parseEducationLevel,
+  writeSessionEducationLevel,
   type EducationLevel,
 } from '../../features/landing/educationLevel';
 
@@ -82,4 +84,23 @@ export function buildBootScript({ darkMode }: { darkMode: boolean }): string {
     themePart +
     '})();'
   );
+}
+
+/** Account level wins: keep it for this tab (so the boot script sees it) and theme the shell now. */
+export function adoptAccountLevel(
+  raw: unknown,
+  storage: Pick<Storage, 'setItem'> | null,
+  shell: ShellElement | null,
+): EducationLevel | null {
+  const level = parseEducationLevel(raw);
+  if (!level) return null;
+  if (storage) {
+    try {
+      writeSessionEducationLevel(storage, level);
+    } catch {
+      // Storage blocked: the shell is still themed for this page.
+    }
+  }
+  applyShellLevel(shell, level);
+  return level;
 }

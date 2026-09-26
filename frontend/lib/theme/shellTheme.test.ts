@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  adoptAccountLevel,
   applyShellLevel,
   applyShellTheme,
   buildBootScript,
@@ -102,5 +103,27 @@ describe('boot script', () => {
     expect(() => runBoot(buildBootScript({ darkMode: true }), 'throw', 'throw')).not.toThrow();
     const attrs = runBoot(buildBootScript({ darkMode: true }), throwingStorage, throwingStorage);
     expect(attrs.size).toBe(0);
+  });
+});
+
+describe('adoptAccountLevel', () => {
+  it('stores a valid account level for the tab and applies it to the shell', () => {
+    const shell = fakeShell();
+    const values: Record<string, string> = {};
+    expect(adoptAccountLevel('lower_secondary', fakeStorage(values), shell)).toBe('lower_secondary');
+    expect(values[LEVEL_SESSION_KEY]).toBe('lower_secondary');
+    expect(shell.attrs.get('data-level')).toBe('lower_secondary');
+  });
+
+  it.each([null, undefined, '', 'THPT'])('leaves the shell alone for %s', (raw) => {
+    const shell = fakeShell();
+    expect(adoptAccountLevel(raw, fakeStorage({}), shell)).toBeNull();
+    expect(shell.attrs.size).toBe(0);
+  });
+
+  it('still themes the shell when storage is blocked', () => {
+    const shell = fakeShell();
+    expect(adoptAccountLevel('primary', throwingStorage, shell)).toBe('primary');
+    expect(shell.attrs.get('data-level')).toBe('primary');
   });
 });
