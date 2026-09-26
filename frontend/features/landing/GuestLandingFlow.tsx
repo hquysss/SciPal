@@ -61,7 +61,6 @@ export function GuestLandingFlow({
       <LevelGate
         currentLevel={sessionLevel}
         isAuthenticated={false}
-        informatics={informatics}
         saveError={storageError || saveError}
         onGuestSelect={handleGuestSelect}
       />
