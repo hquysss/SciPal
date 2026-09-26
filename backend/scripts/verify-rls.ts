@@ -26,7 +26,7 @@ const options = { auth: { persistSession: false, autoRefreshToken: false } };
 // Anonymous visitor
 const anon = createClient(url, anonKey, options);
 const questions = await anon.from('questions').select('id, data').limit(1);
-check('anon cannot read questions', Boolean(questions.error) || (questions.data ?? []).length === 0, questions.error?.message);
+check('anon cannot read questions', Boolean(questions.error), questions.error?.message);
 const subjects = await anon.from('subjects').select('id').limit(1);
 check('anon can read subjects', !subjects.error, subjects.error?.message);
 const anonSurvey = await anon.from('surveys').insert({ type: 'demand', payload: { probe: true } });
@@ -53,6 +53,18 @@ check('user cannot insert xp_log', Boolean(xpInsert.error));
 const xpRead = await client.from('xp_log').select('delta').eq('user_id', uid);
 check('user can still read own xp_log', !xpRead.error, xpRead.error?.message);
 
+const userQuestions = await client.from('questions').select('id, data').limit(1);
+check('user cannot read questions', Boolean(userQuestions.error), userQuestions.error?.message);
+
+const userBlueprints = await client.from('exam_blueprints').select('id').limit(1);
+check('user cannot read exam_blueprints', Boolean(userBlueprints.error), userBlueprints.error?.message);
+
+const xpUpdate = await client.from('xp_log').update({ delta: 999 }).eq('user_id', uid);
+check('user cannot update own xp_log', Boolean(xpUpdate.error), xpUpdate.error?.message);
+
+const progressDelete = await client.from('progress').delete().eq('user_id', uid);
+check('user cannot delete own progress', Boolean(progressDelete.error), progressDelete.error?.message);
+
 const roleUpdate = await client.from('profiles').update({ role: 'teacher' }).eq('id', uid);
 check('user cannot change profiles.role', Boolean(roleUpdate.error));
 
@@ -60,8 +72,14 @@ const profile = await client.from('profiles').select('preferred_education_level'
 const levelUpdate = await client
   .from('profiles')
   .update({ preferred_education_level: profile.data?.preferred_education_level ?? null })
-  .eq('id', uid);
-check('user can still save education level', !levelUpdate.error, levelUpdate.error?.message);
+  .eq('id', uid)
+  .select('id')
+  .single();
+check(
+  'user can still save education level',
+  !levelUpdate.error && levelUpdate.data?.id === uid,
+  levelUpdate.error?.message,
+);
 
 const rooms = await client.from('class_rooms').select('id').limit(1);
 check('class_rooms select has no policy recursion', !rooms.error, rooms.error?.message);
