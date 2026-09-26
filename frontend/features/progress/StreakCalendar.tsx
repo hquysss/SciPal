@@ -1,82 +1,121 @@
 'use client';
 
-interface StreakRow {
-  subject_id: string;
-  current_streak: number;
-  last_active: string | null;
-  subjects: { name_vi: string; accent_color: string } | null;
+import type { CSSProperties } from 'react';
+import { Flame } from 'lucide-react';
+import { useLanguage } from '@scipal/hooks';
+import type { ProgressSummary } from './progressQueries';
+
+type StreakRow = ProgressSummary['streaks'][number];
+
+const DAY_LABELS = [
+  { en: 'Sun', vi: 'CN' },
+  { en: 'Mon', vi: 'T2' },
+  { en: 'Tue', vi: 'T3' },
+  { en: 'Wed', vi: 'T4' },
+  { en: 'Thu', vi: 'T5' },
+  { en: 'Fri', vi: 'T6' },
+  { en: 'Sat', vi: 'T7' },
+];
+
+/** Heatmap cell colour: four levels of the level's action colour. */
+export function streakCellClass(count: number): string {
+  if (!Number.isFinite(count) || count <= 0) return 'bg-surface-sunken';
+  if (count === 1) return 'bg-[color-mix(in_srgb,var(--action)_30%,var(--surface))]';
+  if (count <= 3) return 'bg-[color-mix(in_srgb,var(--action)_60%,var(--surface))]';
+  return 'bg-action';
 }
 
-const DAY_LABELS = ['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'];
+const DAY_MS = 86_400_000;
+
+/** Subjects whose current streak covers `dateStr` (the streak ends on `last_active`). */
+export function activeSubjectsOn(streaks: StreakRow[], dateStr: string): number {
+  const day = Date.parse(dateStr);
+  return streaks.filter((s) => {
+    if (!s.last_active || s.current_streak <= 0) return false;
+    const end = Date.parse(s.last_active.slice(0, 10));
+    const start = end - (s.current_streak - 1) * DAY_MS;
+    return day >= start && day <= end;
+  }).length;
+}
 
 export function StreakCalendar({ streaks }: { streaks: StreakRow[] }) {
+  const { lang, t } = useLanguage();
   const today = new Date();
   const days = Array.from({ length: 7 }, (_, i) => {
     const d = new Date(today);
     d.setDate(today.getDate() - (6 - i));
+    const dateStr = d.toISOString().slice(0, 10);
     return {
-      dateStr: d.toISOString().slice(0, 10),
-      dayLabel: DAY_LABELS[d.getDay()],
+      dateStr,
+      dayLabel: t(DAY_LABELS[d.getDay()]),
       isToday: i === 6,
+      count: activeSubjectsOn(streaks, dateStr),
     };
   });
 
   return (
-    <div className="rounded-2xl border border-gray-200/80 bg-white p-6 shadow-xs">
-      <div className="flex items-center justify-between mb-4">
+    <section className="rounded-xl border border-line bg-surface p-6">
+      <div className="mb-4 flex items-center justify-between">
         <div>
-          <h3 className="text-base font-bold text-gray-900">Chuỗi ngày học liên tục</h3>
-          <p className="text-xs text-gray-400">7 ngày gần nhất</p>
+          <h2 className="text-lg font-bold text-ink">{t({ en: 'Learning streak', vi: 'Chuỗi ngày học liên tục' })}</h2>
+          <p className="text-sm text-ink-muted">{t({ en: 'Last 7 days', vi: '7 ngày gần nhất' })}</p>
         </div>
-        <span className="text-2xl" aria-hidden="true">🔥</span>
+        <Flame aria-hidden="true" className="h-6 w-6 text-warning" />
       </div>
 
       {/* 7-day heat track */}
-      <div className="grid grid-cols-7 gap-2 sm:gap-3">
+      <ol className="grid grid-cols-7 gap-2 sm:gap-3">
         {days.map((d) => {
-          const active = streaks.some(
-            (s) => s.last_active && s.last_active >= d.dateStr,
-          );
+          const label = t({
+            en: `${d.dateStr}: ${d.count} ${d.count === 1 ? 'subject' : 'subjects'} active`,
+            vi: `${d.dateStr}: ${d.count} môn có hoạt động`,
+          });
           return (
-            <div key={d.dateStr} className="flex flex-col items-center gap-1.5">
-              <span className="text-[11px] font-mono text-gray-400 font-medium">
-                {d.dayLabel}
-              </span>
+            <li key={d.dateStr} className="flex flex-col items-center gap-1.5">
+              <span className="text-sm text-ink-muted">{d.dayLabel}</span>
               <div
-                title={d.dateStr}
-                className={`w-full h-12 rounded-xl flex items-center justify-center transition ${
-                  active
-                    ? 'bg-amber-500 text-white shadow-xs font-bold text-sm'
-                    : 'bg-gray-100 text-gray-300'
-                } ${d.isToday ? 'ring-2 ring-amber-400/50' : ''}`}
+                role="img"
+                title={label}
+                aria-label={label}
+                className={`flex h-12 w-full items-center justify-center rounded-lg text-sm font-semibold ${streakCellClass(d.count)} ${
+                  d.count >= 4 ? 'text-action-ink' : 'text-ink'
+                } ${d.isToday ? 'outline outline-2 outline-offset-2 outline-focus' : ''}`}
               >
-                {active ? '✓' : '·'}
+                {d.count > 0 ? d.count : ''}
               </div>
-            </div>
+            </li>
           );
         })}
+      </ol>
+      <div className="mt-3 flex items-center justify-end gap-1.5 text-sm text-ink-muted" aria-hidden="true">
+        <span>{t({ en: 'Less', vi: 'Ít' })}</span>
+        {[0, 1, 2, 4].map((n) => (
+          <span key={n} className={`h-3 w-3 rounded-sm border border-line ${streakCellClass(n)}`} />
+        ))}
+        <span>{t({ en: 'More', vi: 'Nhiều' })}</span>
       </div>
 
-      {/* Subject Streak Badges */}
-      <div className="mt-5 flex flex-wrap gap-2.5 pt-4 border-t border-gray-100">
-        {streaks.map((s) => (
-          <div
-            key={s.subject_id}
-            className="inline-flex items-center gap-2 rounded-xl bg-gray-50 border border-gray-100 px-3.5 py-1.5 text-xs"
-          >
-            <span
-              className="h-2 w-2 rounded-full"
-              style={{ backgroundColor: s.subjects?.accent_color ?? '#16a34a' }}
-            />
-            <span className="font-semibold text-gray-700">
-              {s.subjects?.name_vi ?? 'Môn học'}:
-            </span>
-            <span className="font-mono font-bold text-amber-600">
-              {s.current_streak} ngày
-            </span>
-          </div>
-        ))}
-      </div>
-    </div>
+      {/* Subject streak chips */}
+      {streaks.length > 0 && (
+        <ul className="mt-5 flex flex-wrap gap-2.5 border-t border-line pt-4">
+          {streaks.map((s) => (
+            <li
+              key={s.subject_id}
+              data-subject-scope=""
+              style={{ '--accent': s.subjects?.accent_color ?? 'var(--action)' } as CSSProperties}
+              className="inline-flex items-center gap-2 rounded-lg border border-line bg-surface-sunken px-3.5 py-1.5 text-sm"
+            >
+              <span aria-hidden="true" className="h-2 w-2 rounded-full bg-accent" />
+              <span className="font-semibold text-ink">
+                {(lang === 'en' ? s.subjects?.name_en : s.subjects?.name_vi) ?? t({ en: 'Subject', vi: 'Môn học' })}:
+              </span>
+              <span className="font-bold tabular-nums text-ink">
+                {t({ en: `${s.current_streak} ${s.current_streak === 1 ? 'day' : 'days'}`, vi: `${s.current_streak} ngày` })}
+              </span>
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
   );
 }
