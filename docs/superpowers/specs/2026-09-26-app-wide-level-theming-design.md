@@ -34,7 +34,7 @@ Mỗi cấp mượn chất liệu từ đồ dùng học sinh cấp đó cầm h
 
 ### 2.1 Bảng màu
 
-> **Cập nhật 26/09 (sau giai đoạn 0–1):** Người dùng thấy mực tím Tiểu học xấu và yêu cầu màu rực rỡ, sống động hơn. Ba bảng cấp học đổi sang tông bão hoà; điểm nhấn là navbar màu đặc: Tiểu học vàng hướng dương `#FFC83D` (chữ tối), THCS xanh điện `#2156F5`, THPT xanh ngọc `#12C28A` (chữ tối). Hành động giữ đủ tương phản làm chữ trên nền giấy. Bảng trung tính giữ nguyên.
+> **Cập nhật 26/09 (sau giai đoạn 0–1):** Người dùng thấy mực tím Tiểu học xấu và yêu cầu màu rực rỡ, sống động hơn. Ba bảng cấp học đổi sang tông bão hoà; hành động là hồng mâm xôi (Tiểu học), xanh cobalt (THCS), xanh ngọc (THPT). Navbar màu đặc bị người dùng từ chối; **navbar dùng đúng màu giấy của trang** (`nav` = `paper`, `nav-ink` = `ink`) cho mọi bảng, kể cả trung tính; màu cấp chỉ ở nút đăng nhập, công tắc và mục đang chọn.
 
 | Bảng | paper | surface | ink | muted | line | action |
 |---|---|---|---|---|---|---|
@@ -57,7 +57,7 @@ Màu trạng thái dùng chung:
 
 Đo tương phản sơ bộ (26/09): ink/paper 11.9–15.7:1; muted và action trên paper/surface 6.7–10.5:1; danger/success trên surface ≥ 5.6:1. `line` (1.3–1.8:1) chỉ là dòng kẻ trang trí; viền điều khiển dùng `edge`.
 
-Toàn bộ giá trị (kể cả `surface-sunken`, `edge`, `action-hover`, `action-ink`, `focus`, `nav`, `*-surface`, `pattern-ink`) nằm trong plan giai đoạn 0–1 (`docs/superpowers/plans/2026-09-26-level-theming-foundation.md`) và đã qua kiểm tra §6 bằng script ngày 26/09. `nav` của bảng trung tính là `#15803D` (chữ trắng 5.0:1) thay vì `#16A34A` (3.3:1, không đạt).
+Toàn bộ giá trị (kể cả `surface-sunken`, `edge`, `action-hover`, `action-ink`, `focus`, `nav`, `*-surface`, `pattern-ink`) nằm trong plan giai đoạn 0–1 (`docs/superpowers/plans/2026-09-26-level-theming-foundation.md`) và đã qua kiểm tra §6 bằng script ngày 26/09. `nav` của mọi bảng bằng `paper` (cập nhật 26/09).
 
 ### 2.2 Chữ
 

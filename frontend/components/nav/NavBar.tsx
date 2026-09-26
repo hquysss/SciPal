@@ -182,7 +182,7 @@ export function NavBar({ currentSubject }: NavBarProps) {
   };
 
   return (
-    <header className="sticky top-0 z-40 w-full border-b border-[color-mix(in_srgb,var(--nav-ink)_20%,transparent)] bg-nav text-nav-ink">
+    <header className="sticky top-0 z-40 w-full border-b border-line bg-nav text-nav-ink">
       <div className="relative z-10 mx-auto flex h-16 max-w-7xl items-center justify-between gap-3 px-4 sm:px-6">
         <Link href="/" prefetch={pathname !== '/'} className="group flex shrink-0 items-center gap-3 font-bold text-nav-ink">
           <Image
@@ -305,7 +305,7 @@ export function NavBar({ currentSubject }: NavBarProps) {
                 type="button"
                 onClick={handleSignOut}
                 disabled={signingOut}
-                className="inline-flex shrink-0 items-center rounded-full border border-[color-mix(in_srgb,var(--nav-ink)_30%,transparent)] bg-nav-ink px-3 py-2 text-sm font-bold text-nav transition hover:opacity-90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-nav-ink disabled:cursor-wait disabled:opacity-60"
+                className="inline-flex shrink-0 items-center rounded-full border border-[color-mix(in_srgb,var(--nav-ink)_30%,transparent)] bg-action px-3 py-2 text-sm font-bold text-action-ink transition hover:bg-action-hover focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-nav-ink disabled:cursor-wait disabled:opacity-60"
               >
                 {signingOut
                   ? (lang === 'en' ? 'Signing out…' : 'Đang đăng xuất…')
@@ -316,7 +316,7 @@ export function NavBar({ currentSubject }: NavBarProps) {
             <Link
               href="/login"
               prefetch={pathname !== '/'}
-              className="ml-auto inline-flex shrink-0 items-center gap-2 rounded-full bg-nav-ink px-4 py-2 text-sm font-bold text-nav shadow-md transition duration-150 hover:opacity-90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-nav-ink"
+              className="ml-auto inline-flex shrink-0 items-center gap-2 rounded-full bg-action px-4 py-2 text-sm font-bold text-action-ink shadow-md transition duration-150 hover:bg-action-hover focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-nav-ink"
             >
               {lang === 'en' ? 'Sign In' : 'Đăng nhập'} <span aria-hidden="true">→</span>
             </Link>
@@ -332,7 +332,7 @@ export function NavBar({ currentSubject }: NavBarProps) {
             aria-expanded={mobileOpen}
             aria-controls="mobile-navigation"
             onClick={() => setMobileOpen((value) => !value)}
-            className="flex h-11 w-11 items-center justify-center rounded-xl border border-transparent bg-nav-ink text-nav text-xl transition hover:opacity-90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-nav-ink"
+            className="flex h-11 w-11 items-center justify-center rounded-xl border border-edge bg-surface text-ink text-xl transition hover:bg-surface-sunken focus-visible:outline focus-visible:outline-2 focus-visible:outline-nav-ink"
           >
             <span aria-hidden="true">{mobileOpen ? '×' : '☰'}</span>
           </button>
