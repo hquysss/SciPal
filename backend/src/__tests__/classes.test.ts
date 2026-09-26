@@ -157,6 +157,32 @@ describe('class route authorization', () => {
     await app.close();
   });
 
+  it('sums roster XP across more than one page', async () => {
+    const page1 = Array.from({ length: 1000 }, () => ({ user_id: 's1', delta: 1 }));
+    const page2 = [{ user_id: 's1', delta: 5 }];
+    const app = await buildClassApp(teacher, {
+      class_rooms: mockQuery({
+        data: { id: CLASS_ID, name: '10A1', subject_id: 's', invite_code: 'ABC123', teacher_id: 'teacher-1' },
+        error: null,
+      }),
+      class_members: mockQuery({
+        data: [{ student_id: 's1', joined_at: '2026-09-20', profiles: { display_name: 'An' } }],
+        error: null,
+      }),
+      xp_log: [
+        mockQuery({ data: page1, error: null }),
+        mockQuery({ data: page2, error: null }),
+      ],
+      progress: mockQuery({ data: [], error: null }),
+    });
+
+    const res = await app.inject({ method: 'GET', url: `/api/classes/${CLASS_ID}/roster` });
+
+    expect(res.statusCode).toBe(200);
+    expect(res.json().members[0].total_xp).toBe(1005);
+    await app.close();
+  });
+
   it('returns 503 instead of mock data when storage is missing', async () => {
     const app = await buildClassApp(teacher);
     const res = await app.inject({ method: 'GET', url: '/api/classes' });

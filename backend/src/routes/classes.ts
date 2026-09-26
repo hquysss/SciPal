@@ -23,6 +23,30 @@ export function newInviteCode(): string {
   return crypto.randomBytes(3).toString('hex').toUpperCase();
 }
 
+const ROSTER_PAGE_SIZE = 1000;
+
+/**
+ * Page through a supabase query past PostgREST's 1000-row response cap.
+ * `buildQuery` must build and return a fresh query (calling `supabase.from(table)...`)
+ * for the given page range; paging stops once a page returns fewer than
+ * PAGE_SIZE rows, or immediately on error.
+ */
+async function fetchAllRows<T>(
+  buildQuery: (from: number, to: number) => PromiseLike<{ data: T[] | null; error: { message?: string } | null }>,
+): Promise<{ rows: T[]; error: { message?: string } | null }> {
+  const rows: T[] = [];
+  let from = 0;
+  for (;;) {
+    const { data, error } = await buildQuery(from, from + ROSTER_PAGE_SIZE - 1);
+    if (error) return { rows, error };
+    const page = data ?? [];
+    rows.push(...page);
+    if (page.length < ROSTER_PAGE_SIZE) break;
+    from += ROSTER_PAGE_SIZE;
+  }
+  return { rows, error: null };
+}
+
 export const classRoutes: FastifyPluginAsync = async (app) => {
   const requireUser = async (request: FastifyRequest, reply: FastifyReply) => {
     if (!getUser(request)?.id) return reply.code(401).send({ error: 'Phiên đăng nhập không hợp lệ.' });
@@ -188,17 +212,21 @@ export const classRoutes: FastifyPluginAsync = async (app) => {
 
     if (memberIds.length > 0) {
       const [xpRes, progressRes] = await Promise.all([
-        supabase.from('xp_log').select('user_id, delta').in('user_id', memberIds),
-        supabase.from('progress').select('user_id').in('user_id', memberIds),
+        fetchAllRows<{ user_id: string; delta: number }>((from, to) =>
+          supabase.from('xp_log').select('user_id, delta').in('user_id', memberIds).range(from, to),
+        ),
+        fetchAllRows<{ user_id: string }>((from, to) =>
+          supabase.from('progress').select('user_id').in('user_id', memberIds).range(from, to),
+        ),
       ]);
       if (xpRes.error || progressRes.error) {
         request.log.error({ err: xpRes.error ?? progressRes.error }, 'Failed to read roster stats');
         return reply.code(500).send({ error: 'Không tải được số liệu học sinh.' });
       }
-      for (const row of (xpRes.data ?? []) as Array<{ user_id: string; delta: number }>) {
+      for (const row of xpRes.rows) {
         xpByStudent.set(row.user_id, (xpByStudent.get(row.user_id) ?? 0) + row.delta);
       }
-      for (const row of (progressRes.data ?? []) as Array<{ user_id: string }>) {
+      for (const row of progressRes.rows) {
         lessonsByStudent.set(row.user_id, (lessonsByStudent.get(row.user_id) ?? 0) + 1);
       }
     }

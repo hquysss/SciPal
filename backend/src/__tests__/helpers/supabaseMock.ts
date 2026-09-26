@@ -8,11 +8,13 @@ export interface QueryResult {
 export interface MockBuilder {
   eqCalls: Array<[string, unknown]>;
   inserted: unknown[];
+  rangeCalls: Array<[number, number]>;
   select(...args: unknown[]): MockBuilder;
   eq(column: string, value: unknown): MockBuilder;
   in(column: string, values: unknown[]): MockBuilder;
   order(...args: unknown[]): MockBuilder;
   insert(row: unknown): MockBuilder;
+  range(from: number, to: number): MockBuilder;
   maybeSingle(): Promise<QueryResult>;
   single(): Promise<QueryResult>;
   then<T1 = QueryResult, T2 = never>(
@@ -26,6 +28,7 @@ export function mockQuery(result: QueryResult): MockBuilder {
   const builder: MockBuilder = {
     eqCalls: [],
     inserted: [],
+    rangeCalls: [],
     select: () => builder,
     eq: (column, value) => {
       builder.eqCalls.push([column, value]);
@@ -35,6 +38,10 @@ export function mockQuery(result: QueryResult): MockBuilder {
     order: () => builder,
     insert: (row) => {
       builder.inserted.push(row);
+      return builder;
+    },
+    range: (from, to) => {
+      builder.rangeCalls.push([from, to]);
       return builder;
     },
     maybeSingle: async () => result,
