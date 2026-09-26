@@ -5,7 +5,7 @@ export function navToggleButton(pressed: boolean): string {
   const base =
     'inline-flex min-h-11 min-w-11 items-center justify-center rounded-full px-3 text-sm font-semibold transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-nav-ink';
   return pressed
-    ? `${base} bg-action text-action-ink`
+    ? `${base} bg-nav-ink text-nav`
     : `${base} hover:bg-[color-mix(in_srgb,var(--nav-ink)_12%,transparent)]`;
 }
 
@@ -15,5 +15,5 @@ export const SURFACE_TOGGLE_GROUP =
 export function surfaceToggleButton(pressed: boolean): string {
   const base =
     'inline-flex min-h-11 min-w-11 items-center justify-center rounded-full px-3 text-sm font-semibold transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus';
-  return pressed ? `${base} bg-action text-action-ink` : `${base} hover:bg-surface-sunken`;
+  return pressed ? `${base} bg-nav-ink text-nav` : `${base} hover:bg-surface-sunken`;
 }

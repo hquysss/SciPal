@@ -27,23 +27,23 @@ Mỗi cấp mượn chất liệu từ đồ dùng học sinh cấp đó cầm h
 
 | Cấp | Chất liệu | Hoạ tiết nền |
 |---|---|---|
-| Tiểu học | Hộp sáp màu: vàng hướng dương, hồng mâm xôi, cam sáp | Bút chì, gọt bút chì, thước kẻ, hộp bút, bảng con, phấn màu |
-| THCS | Bút bi xanh điện, bút dạ quang xanh ngọc | Compa, ê-ke, thước đo độ, bút bi, máy tính cầm tay |
-| THPT | Bảng xanh ngọc lục bảo, phấn màu | Phấn và giẻ lau, bình tam giác, máy tính cầm tay, kính lúp, bàn phím/chuột |
+| Tiểu học | Nâu nhạt: bìa vở, bút chì gỗ | Bút chì, gọt bút chì, thước kẻ, hộp bút, bảng con, phấn màu |
+| THCS | Xanh dương: bút bi | Compa, ê-ke, thước đo độ, bút bi, máy tính cầm tay |
+| THPT | Xanh lá: bảng lớp, phấn | Phấn và giẻ lau, bình tam giác, máy tính cầm tay, kính lúp, bàn phím/chuột |
 | Trung tính (chưa rõ cấp) | Giấy trắng | Lẫn vài món của cả ba cấp |
 
 ### 2.1 Bảng màu
 
-> **Cập nhật 26/09 (sau giai đoạn 0–1):** Người dùng thấy mực tím Tiểu học xấu và yêu cầu màu rực rỡ, sống động hơn. Ba bảng cấp học đổi sang tông bão hoà; hành động là hồng mâm xôi (Tiểu học), xanh cobalt (THCS), xanh ngọc (THPT). Navbar màu đặc bị người dùng từ chối; **navbar dùng đúng màu giấy của trang** (`nav` = `paper`, `nav-ink` = `ink`) cho mọi bảng, kể cả trung tính; màu cấp chỉ ở nút đăng nhập, công tắc và mục đang chọn.
+> **Cập nhật 26/09 (sau giai đoạn 0–1, theo người dùng):** Bỏ mực tím. Màu chính: Tiểu học nâu nhạt (navbar `#D2AE85` chữ `#2A1A0C`, hành động `#8B5A2B`), THCS xanh dương (navbar `#2563EB`, hành động `#1D4ED8`), THPT xanh lá (navbar `#15803D`, hành động `#166534`). Navbar tô màu chính của cấp; trung tính giữ `#15803D`. Bảng dưới đây đã cập nhật theo giá trị hiện hành.
 
 | Bảng | paper | surface | ink | muted | line | action |
 |---|---|---|---|---|---|---|
-| primary / light | `#F5F9FF` | `#FFFFFF` | `#1E1B16` | `#554E44` | `#D7E6F7` | `#C8105A` |
-| primary / dark | `#16181F` | `#1F2230` | `#F3F1EC` | `#B8B4AC` | `#343849` | `#FF7AAE` |
-| lower_secondary / light | `#F3F7FF` | `#FFFFFF` | `#0B1F4A` | `#3E5075` | `#CCDBF7` | `#1747D1` |
+| primary / light | `#FAF5EE` | `#FFFFFF` | `#2A1D12` | `#5E4A36` | `#E8D9C6` | `#8B5A2B` |
+| primary / dark | `#1C1712` | `#26201A` | `#F4ECE2` | `#C9B8A4` | `#3E342A` | `#E0B98C` |
+| lower_secondary / light | `#F3F7FF` | `#FFFFFF` | `#0B1F4A` | `#3E5075` | `#CCDBF7` | `#1D4ED8` |
 | lower_secondary / dark | `#0E1424` | `#151E36` | `#E8EEFF` | `#A9B7D6` | `#26345A` | `#7FA8FF` |
-| upper_secondary / light | `#F1FAF6` | `#FFFFFF` | `#0D2A20` | `#3F5A4F` | `#C9E8DA` | `#007A55` |
-| upper_secondary / dark | `#0F2A22` | `#153529` | `#EAF7F1` | `#B3CFC3` | `#2A5244` | `#5CE0B0` |
+| upper_secondary / light | `#F2F8F3` | `#FFFFFF` | `#0F2A1A` | `#3F5A48` | `#CFE5D5` | `#166534` |
+| upper_secondary / dark | `#0F2419` | `#163222` | `#EAF6EE` | `#B3CDBB` | `#2A4A36` | `#6EE7A0` |
 | neutral / light | `#F7F7F3` | `#FFFFFF` | `#202922` | `#49574E` | `#D8DED8` | `#275B42` |
 | neutral / dark | `#151A17` | `#1D2420` | `#E9EEEA` | `#AAB6AE` | `#323B35` | `#8FD3AE` |
 
@@ -57,7 +57,7 @@ Màu trạng thái dùng chung:
 
 Đo tương phản sơ bộ (26/09): ink/paper 11.9–15.7:1; muted và action trên paper/surface 6.7–10.5:1; danger/success trên surface ≥ 5.6:1. `line` (1.3–1.8:1) chỉ là dòng kẻ trang trí; viền điều khiển dùng `edge`.
 
-Toàn bộ giá trị (kể cả `surface-sunken`, `edge`, `action-hover`, `action-ink`, `focus`, `nav`, `*-surface`, `pattern-ink`) nằm trong plan giai đoạn 0–1 (`docs/superpowers/plans/2026-09-26-level-theming-foundation.md`) và đã qua kiểm tra §6 bằng script ngày 26/09. `nav` của mọi bảng bằng `paper` (cập nhật 26/09).
+Toàn bộ giá trị (kể cả `surface-sunken`, `edge`, `action-hover`, `action-ink`, `focus`, `nav`, `*-surface`, `pattern-ink`) nằm trong plan giai đoạn 0–1 (`docs/superpowers/plans/2026-09-26-level-theming-foundation.md`) và đã qua kiểm tra §6 bằng script ngày 26/09. `nav` là màu chính của cấp; bảng trung tính `#15803D` (chữ trắng 5.0:1).
 
 ### 2.2 Chữ
 
@@ -177,7 +177,7 @@ Mọi điều khiển: vùng chạm ≥ 44px, focus hiển thị bằng `focus`,
 |---|---|---|---|
 | 0 | Nền tảng | `themes.ts`, `renderThemeCss`, thẻ bao app-shell, script trước khi hiển thị, nút sáng/tối, `LevelScope`, cơ chế hoạ tiết + 1 hoạ tiết mẫu, bỏ `--accent` khỏi `:root`, bỏ Inter, test chặn màu thô + baseline, cập nhật quy tắc dự án | Plan A |
 | 1 | Primitive | §5 | Plan A |
-| 2 | Khung app | Navbar dùng `nav` (bỏ `!important`, bỏ hoạ tiết cỏ), footer, loading, not-found, login, landing + cổng chọn cấp sang token chung (Tiểu học sang hộp sáp màu), vẽ đủ 4 bộ hoạ tiết | Plan riêng |
+| 2 | Khung app | Navbar dùng `nav` (bỏ `!important`, bỏ hoạ tiết cỏ), footer, loading, not-found, login, landing + cổng chọn cấp sang token chung (Tiểu học sang nâu nhạt), vẽ đủ 4 bộ hoạ tiết | Plan riêng |
 | 3 | Luồng học | Trang môn, trang bài dạng trang vở, 7 block renderer, quiz sửa bằng bút đỏ, AI Tutor, glossary | Plan riêng |
 | 4 | Cá nhân | Tiến trình, hồ sơ, thi thử, khảo sát | Plan riêng |
 | 5 | Giáo viên/admin | Studio soạn bài, lớp học, duyệt bài, tài khoản; baseline về 0 | Plan riêng |

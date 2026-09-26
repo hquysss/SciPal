@@ -10,7 +10,7 @@ SciPal should feel like a warm, modern field notebook for curious Vietnamese lea
 
 ### App-wide level theme
 
-- Tám bảng màu: Tiểu học (hộp sáp màu: hành động hồng mâm xôi), THCS (bút bi xanh điện, dạ quang xanh ngọc), THPT (bảng xanh ngọc lục bảo) và trung tính (chưa rõ cấp), mỗi bảng có sáng và tối. Giá trị nằm ở `packages/ui/src/theme/palettes.ts`, CSS sinh bằng `renderThemeCss()` và in trong root layout.
+- Tám bảng màu: Tiểu học (nâu nhạt, bìa vở và bút chì gỗ), THCS (xanh dương, bút bi), THPT (xanh lá, bảng lớp) và trung tính (chưa rõ cấp), mỗi bảng có sáng và tối. Giá trị nằm ở `packages/ui/src/theme/palettes.ts`, CSS sinh bằng `renderThemeCss()` và in trong root layout.
 - Vai token (spec §3.2): `paper`, `surface`, `surface-sunken`, `ink`, `ink-muted`, `line` (chỉ trang trí), `edge` (viền điều khiển ≥ 3:1), `action`, `action-hover`, `action-ink`, `focus`, `nav`, `nav-ink`, `danger`/`success`/`warning` và `*-surface`, `pattern-ink`, `pattern-opacity`. Tailwind: `bg-paper`, `text-ink`, `border-edge`…
 - Accent môn (`--accent`, `--accent-ink`) chỉ là "nhãn vở": nhãn, icon, dải lề, thanh tiến độ; không tô nền trang, thẻ hay nút chính.
 - Đỏ (`danger`) chỉ cho lỗi và phần sửa đáp án quiz.
@@ -20,7 +20,7 @@ SciPal should feel like a warm, modern field notebook for curious Vietnamese lea
 
 ### Navbar
 
-Navbar dùng đúng màu giấy của trang (`nav` = `paper`) với viền dưới `line`; màu cấp chỉ ở nút đăng nhập, công tắc EN/VI và mục đang chọn.
+Navbar tô màu chính của cấp: Tiểu học nâu nhạt `#D2AE85` (chữ nâu đậm), THCS xanh dương `#2563EB`, THPT xanh lá `#15803D`, chưa chọn cấp `#15803D`. Nút đăng nhập và công tắc đang chọn đảo màu (`bg-nav-ink text-nav`).
 
 ### Portal
 

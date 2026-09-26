@@ -44,63 +44,63 @@ const DARK_STATUS = {
 } as const;
 
 export const THEME_PALETTES: Record<ThemeLevel, Record<ThemeMode, ThemePalette>> = {
-  // Hộp sáp màu: vàng hướng dương, hồng mâm xôi, cam sáp
+  // Tiểu học: nâu nhạt của bìa vở, bút chì gỗ
   primary: {
     light: {
-      paper: '#F5F9FF', surface: '#FFFFFF', surfaceSunken: '#EAF2FC',
-      ink: '#1E1B16', muted: '#554E44', line: '#D7E6F7', edge: '#74849C',
-      action: '#C8105A', actionHover: '#A80C4B', actionInk: '#FFFFFF', focus: '#C8105A',
-      nav: '#F5F9FF', navInk: '#1E1B16',
+      paper: '#FAF5EE', surface: '#FFFFFF', surfaceSunken: '#F3EADF',
+      ink: '#2A1D12', muted: '#5E4A36', line: '#E8D9C6', edge: '#9A8468',
+      action: '#8B5A2B', actionHover: '#6F4520', actionInk: '#FFFFFF', focus: '#8B5A2B',
+      nav: '#D2AE85', navInk: '#2A1A0C',
       ...LIGHT_STATUS,
-      patternInk: '#FF7A00', patternOpacity: 0.08,
+      patternInk: '#8B5A2B', patternOpacity: 0.06,
     },
     dark: {
-      paper: '#16181F', surface: '#1F2230', surfaceSunken: '#12141A',
-      ink: '#F3F1EC', muted: '#B8B4AC', line: '#343849', edge: '#7A7F94',
-      action: '#FF7AAE', actionHover: '#FF9CC3', actionInk: '#16181F', focus: '#FFC83D',
-      nav: '#16181F', navInk: '#F3F1EC',
+      paper: '#1C1712', surface: '#26201A', surfaceSunken: '#16120E',
+      ink: '#F4ECE2', muted: '#C9B8A4', line: '#3E342A', edge: '#8A7A68',
+      action: '#E0B98C', actionHover: '#EBCDA8', actionInk: '#1C1712', focus: '#E0B98C',
+      nav: '#D2AE85', navInk: '#2A1A0C',
       ...DARK_STATUS,
-      patternInk: '#FFC83D', patternOpacity: 0.07,
+      patternInk: '#E0B98C', patternOpacity: 0.07,
     },
   },
-  // Bút bi xanh điện, bút dạ quang xanh ngọc
+  // THCS: xanh dương của bút bi
   lower_secondary: {
     light: {
       paper: '#F3F7FF', surface: '#FFFFFF', surfaceSunken: '#E6EEFF',
       ink: '#0B1F4A', muted: '#3E5075', line: '#CCDBF7', edge: '#7189B8',
-      action: '#1747D1', actionHover: '#1239A8', actionInk: '#FFFFFF', focus: '#1747D1',
-      nav: '#F3F7FF', navInk: '#0B1F4A',
+      action: '#1D4ED8', actionHover: '#1E40AF', actionInk: '#FFFFFF', focus: '#1D4ED8',
+      nav: '#2563EB', navInk: '#FFFFFF',
       ...LIGHT_STATUS,
-      patternInk: '#00A9CC', patternOpacity: 0.08,
+      patternInk: '#2563EB', patternOpacity: 0.07,
     },
     dark: {
       paper: '#0E1424', surface: '#151E36', surfaceSunken: '#0A0F1C',
       ink: '#E8EEFF', muted: '#A9B7D6', line: '#26345A', edge: '#6A7CA8',
-      action: '#7FA8FF', actionHover: '#A3C0FF', actionInk: '#0E1424', focus: '#5CE1FF',
-      nav: '#0E1424', navInk: '#E8EEFF',
+      action: '#7FA8FF', actionHover: '#A3C0FF', actionInk: '#0E1424', focus: '#7FA8FF',
+      nav: '#2563EB', navInk: '#FFFFFF',
       ...DARK_STATUS,
-      patternInk: '#5CE1FF', patternOpacity: 0.07,
+      patternInk: '#7FA8FF', patternOpacity: 0.07,
     },
   },
-  // Bảng xanh ngọc lục bảo, phấn màu
+  // THPT: xanh lá của bảng lớp
   upper_secondary: {
     light: {
-      paper: '#F1FAF6', surface: '#FFFFFF', surfaceSunken: '#E2F4EC',
-      ink: '#0D2A20', muted: '#3F5A4F', line: '#C9E8DA', edge: '#5F8A77',
-      action: '#007A55', actionHover: '#00613F', actionInk: '#FFFFFF', focus: '#007A55',
-      nav: '#F1FAF6', navInk: '#0D2A20',
+      paper: '#F2F8F3', surface: '#FFFFFF', surfaceSunken: '#E3F0E6',
+      ink: '#0F2A1A', muted: '#3F5A48', line: '#CFE5D5', edge: '#6B8F76',
+      action: '#166534', actionHover: '#14532D', actionInk: '#FFFFFF', focus: '#166534',
+      nav: '#15803D', navInk: '#FFFFFF',
       ...LIGHT_STATUS,
-      patternInk: '#00A370', patternOpacity: 0.08,
+      patternInk: '#15803D', patternOpacity: 0.06,
     },
     dark: {
-      paper: '#0F2A22', surface: '#153529', surfaceSunken: '#0B211A',
-      ink: '#EAF7F1', muted: '#B3CFC3', line: '#2A5244', edge: '#6FA08B',
-      action: '#5CE0B0', actionHover: '#86EAC5', actionInk: '#0F2A22', focus: '#FFD84D',
-      nav: '#0F2A22', navInk: '#EAF7F1',
+      paper: '#0F2419', surface: '#163222', surfaceSunken: '#0B1C13',
+      ink: '#EAF6EE', muted: '#B3CDBB', line: '#2A4A36', edge: '#6F9A7E',
+      action: '#6EE7A0', actionHover: '#95EEBA', actionInk: '#0F2419', focus: '#6EE7A0',
+      nav: '#15803D', navInk: '#FFFFFF',
       danger: '#FFB0A5', dangerSurface: '#3F2226',
       success: '#9EDBAB', successSurface: '#1B3A26',
       warning: '#F2C66D', warningSurface: '#3A2F12',
-      patternInk: '#5CE0B0', patternOpacity: 0.06,
+      patternInk: '#6EE7A0', patternOpacity: 0.06,
     },
   },
   // Chưa rõ cấp: giấy trắng, xanh thương hiệu trên navbar
@@ -109,7 +109,7 @@ export const THEME_PALETTES: Record<ThemeLevel, Record<ThemeMode, ThemePalette>>
       paper: '#F7F7F3', surface: '#FFFFFF', surfaceSunken: '#EEF0EB',
       ink: '#202922', muted: '#49574E', line: '#D8DED8', edge: '#7F8B83',
       action: '#275B42', actionHover: '#1B4934', actionInk: '#FFFFFF', focus: '#275B42',
-      nav: '#F7F7F3', navInk: '#202922',
+      nav: '#15803D', navInk: '#FFFFFF',
       ...LIGHT_STATUS,
       patternInk: '#275B42', patternOpacity: 0.05,
     },
@@ -117,7 +117,7 @@ export const THEME_PALETTES: Record<ThemeLevel, Record<ThemeMode, ThemePalette>>
       paper: '#151A17', surface: '#1D2420', surfaceSunken: '#101412',
       ink: '#E9EEEA', muted: '#AAB6AE', line: '#323B35', edge: '#737F77',
       action: '#8FD3AE', actionHover: '#AEE0C3', actionInk: '#151A17', focus: '#8FD3AE',
-      nav: '#151A17', navInk: '#E9EEEA',
+      nav: '#123821', navInk: '#E9EEEA',
       ...DARK_STATUS,
       patternInk: '#8FD3AE', patternOpacity: 0.06,
     },
