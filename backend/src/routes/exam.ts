@@ -7,6 +7,19 @@ interface ExamAnswer {
   short_answer?: string;
 }
 
+export const MAX_EXAM_ANSWERS = 200;
+
+/** Keep the first answer per question; drop entries without a string question_id. */
+export function dedupeAnswers(answers: unknown[]): ExamAnswer[] {
+  const seen = new Map<string, ExamAnswer>();
+  for (const raw of answers) {
+    const answer = raw as ExamAnswer | null;
+    if (!answer || typeof answer.question_id !== 'string') continue;
+    if (!seen.has(answer.question_id)) seen.set(answer.question_id, answer);
+  }
+  return [...seen.values()];
+}
+
 export const examRoutes: FastifyPluginAsync = async (app) => {
   // Fetch blueprint questions without exposing answers
   app.get('/api/exam/:blueprintId/questions', async (request, reply) => {
@@ -161,18 +174,26 @@ export const examRoutes: FastifyPluginAsync = async (app) => {
   // Score exam server-side
   app.post('/api/score/exam', async (request, reply) => {
     const { blueprint_id, answers } = (request.body ?? {}) as {
-      blueprint_id?: string;
-      answers?: ExamAnswer[];
+      blueprint_id?: unknown;
+      answers?: unknown;
     };
 
-    if (!answers || !Array.isArray(answers)) {
+    if (typeof blueprint_id !== 'string' || !blueprint_id.trim() || blueprint_id.length > 64) {
+      return reply.status(400).send({ error: 'blueprint_id required' });
+    }
+    if (!Array.isArray(answers)) {
       return reply.status(400).send({ error: 'Answers array required' });
     }
+    if (answers.length > MAX_EXAM_ANSWERS) {
+      return reply.status(400).send({ error: 'Too many answers' });
+    }
 
+    const blueprintId = blueprint_id.trim();
+    const uniqueAnswers = dedupeAnswers(answers);
     const user = (request as any).user as { id?: string; sub?: string } | undefined;
     const userId = user?.id ?? user?.sub;
 
-    const questionIds = answers.map((a) => a.question_id);
+    const questionIds = uniqueAnswers.map((a) => a.question_id);
     let dbMap = new Map<string, any>();
 
     if (app.supabase && questionIds.length > 0) {
@@ -186,19 +207,19 @@ export const examRoutes: FastifyPluginAsync = async (app) => {
       }
     }
 
-    // Fallback answer map for demo questions
-    const fallbackAnswers: Record<string, { type: string; answer: string; subject_id: string }> = {
-      'q-demo-1': { type: 'mc', answer: 'opt-b', subject_id: 'informatics' },
-      'q-demo-2': { type: 'mc', answer: 'opt-c', subject_id: 'informatics' },
-      'q-demo-3': { type: 'mc', answer: 'opt-b', subject_id: 'informatics' },
-      'q-demo-4': { type: 'mc', answer: 'opt-d', subject_id: 'informatics' },
-      'q-demo-5': { type: 'mc', answer: 'opt-a', subject_id: 'informatics' },
+    // Fallback answer map for demo questions (never earns XP — see below)
+    const fallbackAnswers: Record<string, { type: string; answer: string }> = {
+      'q-demo-1': { type: 'mc', answer: 'opt-b' },
+      'q-demo-2': { type: 'mc', answer: 'opt-c' },
+      'q-demo-3': { type: 'mc', answer: 'opt-b' },
+      'q-demo-4': { type: 'mc', answer: 'opt-d' },
+      'q-demo-5': { type: 'mc', answer: 'opt-a' },
     };
 
     let correctCount = 0;
-    const total = answers.length;
+    const total = uniqueAnswers.length;
 
-    for (const ans of answers) {
+    for (const ans of uniqueAnswers) {
       const dbQ = dbMap.get(ans.question_id);
       if (dbQ) {
         const data = dbQ.data as Record<string, unknown>;
@@ -222,8 +243,10 @@ export const examRoutes: FastifyPluginAsync = async (app) => {
     const score = total > 0 ? Number(((correctCount / total) * 10).toFixed(2)) : 0;
     const possibleXp = correctCount * 15;
     let xp_earned = 0;
+    let already_awarded = false;
 
-    // Only report XP after it has actually been recorded for real DB questions.
+    // XP only for real DB questions of a single subject, once per user per blueprint
+    // (enforced by xp_log_exam_once_idx).
     const subjectIds = new Set(
       questionIds.map((id) => dbMap.get(id)?.subject_id).filter(Boolean),
     );
@@ -236,9 +259,10 @@ export const examRoutes: FastifyPluginAsync = async (app) => {
           user_id: userId,
           subject_id: [...subjectIds][0],
           delta: possibleXp,
-          reason: 'exam_complete',
+          reason: `exam_complete:${blueprintId}`,
         });
-        if (error) app.log.warn({ err: error }, 'Exam XP logging failed');
+        if (error?.code === '23505') already_awarded = true;
+        else if (error) app.log.warn({ err: error }, 'Exam XP logging failed');
         else xp_earned = possibleXp;
       } catch (err) {
         app.log.warn({ err }, 'Exam XP logging failed');
@@ -250,6 +274,7 @@ export const examRoutes: FastifyPluginAsync = async (app) => {
       correct_count: correctCount,
       total_questions: total,
       xp_earned,
+      already_awarded,
     });
   });
 };
