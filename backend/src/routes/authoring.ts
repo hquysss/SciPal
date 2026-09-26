@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import type { FastifyPluginAsync, FastifyReply, FastifyRequest } from 'fastify';
 import { BlockSchema } from '../schemas/blocks.js';
+import { makeSlug, planNewTopic, toSubjectOptions, type ExistingTopic, type SubjectCatalogRow } from '../authoring/topicPlanning.js';
 
 interface AuthoringUser {
   id?: string;
@@ -24,16 +25,6 @@ function asText(value: unknown, maxLength: number): string | undefined {
   if (typeof value !== 'string') return undefined;
   const text = value.trim();
   return text.length > 0 && text.length <= maxLength ? text : undefined;
-}
-
-function makeSlug(value: string): string {
-  return value
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .toLowerCase()
-    .trim()
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-+|-+$/g, '');
 }
 
 function withRelations(row: Record<string, any>) {
@@ -72,31 +63,137 @@ export const authoringRoutes: FastifyPluginAsync = async (app) => {
   };
 
   app.get('/api/authoring/options', {
-    preHandler: [verifyTeacherOnly],
+    preHandler: [verifyTeacher],
     handler: async (request, reply) => {
       const supabase = app.supabase;
       if (!supabase) {
         return reply.code(503).send({ error: 'Dịch vụ lưu trữ bài học chưa sẵn sàng.' });
       }
 
-      const [{ data: subjects, error: subjectsError }, { data: topics, error: topicsError }] =
-        await Promise.all([
-          supabase
-            .from('subjects')
-            .select('id, slug, name_en, name_vi')
-            .order('sort_order'),
-          supabase
-            .from('topics')
-            .select('id, subject_id, name_en, name_vi, sort_order')
-            .order('sort_order'),
-        ]);
+      const [
+        { data: subjects, error: subjectsError },
+        { data: topics, error: topicsError },
+        { data: tracks, error: tracksError },
+      ] = await Promise.all([
+        supabase
+          .from('subjects')
+          .select('id, slug, name_en, name_vi, sort_order, subject_grade_catalog(grade, active)')
+          .order('sort_order'),
+        supabase
+          .from('topics')
+          .select('id, subject_id, grade, name_en, name_vi, sort_order')
+          .order('sort_order'),
+        supabase
+          .from('subject_tracks')
+          .select('id, subject_id, slug, name_en, name_vi, grades')
+          .order('sort_order'),
+      ]);
 
-      if (subjectsError || topicsError) {
-        request.log.error({ err: subjectsError ?? topicsError }, 'Failed to load authoring options');
+      const loadError = subjectsError ?? topicsError ?? tracksError;
+      if (loadError) {
+        request.log.error({ err: loadError }, 'Failed to load authoring options');
         return reply.code(500).send({ error: 'Không tải được danh sách môn học và chủ đề.' });
       }
 
-      return reply.send({ subjects: subjects ?? [], topics: topics ?? [] });
+      return reply.send({
+        subjects: toSubjectOptions((subjects ?? []) as SubjectCatalogRow[]),
+        topics: topics ?? [],
+        tracks: tracks ?? [],
+      });
+    },
+  });
+
+  app.post('/api/authoring/topics', {
+    preHandler: [verifyTeacher],
+    handler: async (request, reply) => {
+      const supabase = app.supabase;
+      const user = getUser(request);
+      if (!supabase) {
+        return reply.code(503).send({ error: 'Dịch vụ lưu trữ bài học chưa sẵn sàng.' });
+      }
+      if (!user?.id) return reply.code(401).send({ error: 'Phiên đăng nhập không hợp lệ.' });
+
+      const body = (request.body ?? {}) as Record<string, unknown>;
+      const subjectId = asText(body.subject_id, 64);
+      const grade = Number(body.grade);
+      const nameEn = asText(body.name_en, 200);
+      const nameVi = asText(body.name_vi, 200);
+      const sortOrder = body.sort_order === undefined ? undefined : Number(body.sort_order);
+
+      if (!subjectId || !UUID_PATTERN.test(subjectId)) {
+        return reply.code(400).send({ error: 'Vui lòng chọn môn học hợp lệ.' });
+      }
+      if (!Number.isInteger(grade) || grade < 1 || grade > 12) {
+        return reply.code(400).send({ error: 'Vui lòng chọn lớp (1–12).' });
+      }
+      if (!nameEn || !nameVi) {
+        return reply.code(400).send({ error: 'Vui lòng nhập tên chủ đề tiếng Việt và tiếng Anh (tối đa 200 ký tự).' });
+      }
+      if (sortOrder !== undefined && (!Number.isInteger(sortOrder) || sortOrder < 0)) {
+        return reply.code(400).send({ error: 'Thứ tự chủ đề không hợp lệ.' });
+      }
+
+      const { data: subject, error: subjectError } = await supabase
+        .from('subjects')
+        .select('id')
+        .eq('id', subjectId)
+        .maybeSingle();
+      if (subjectError) {
+        request.log.error({ err: subjectError, subjectId }, 'Failed to verify topic subject');
+        return reply.code(500).send({ error: 'Không xác minh được môn học đã chọn.' });
+      }
+      if (!subject) return reply.code(400).send({ error: 'Môn học đã chọn không tồn tại.' });
+
+      const { data: catalogRow, error: catalogError } = await supabase
+        .from('subject_grade_catalog')
+        .select('id')
+        .eq('subject_id', subjectId)
+        .eq('grade', grade)
+        .eq('active', true)
+        .limit(1)
+        .maybeSingle();
+      if (catalogError) {
+        request.log.error({ err: catalogError, subjectId, grade }, 'Failed to check subject catalog');
+        return reply.code(500).send({ error: 'Không xác minh được lớp của môn học.' });
+      }
+      if (!catalogRow) {
+        return reply.code(400).send({ error: 'Lớp này không thuộc chương trình của môn đã chọn.' });
+      }
+
+      const { data: existing, error: existingError } = await supabase
+        .from('topics')
+        .select('id, slug, grade, name_en, name_vi, sort_order')
+        .eq('subject_id', subjectId);
+      if (existingError) {
+        request.log.error({ err: existingError, subjectId }, 'Failed to list subject topics');
+        return reply.code(500).send({ error: 'Không kiểm tra được chủ đề hiện có.' });
+      }
+
+      const plan = planNewTopic((existing ?? []) as ExistingTopic[], { grade, name_en: nameEn, name_vi: nameVi });
+      if (plan.kind === 'duplicate') {
+        return reply.code(409).send({ error: 'Chủ đề này đã có.', topic: plan.topic });
+      }
+
+      const { data: topic, error: insertError } = await supabase
+        .from('topics')
+        .insert({
+          subject_id: subjectId,
+          grade,
+          kind: 'core',
+          slug: plan.slug,
+          name_en: nameEn,
+          name_vi: nameVi,
+          sort_order: sortOrder ?? plan.sort_order,
+        })
+        .select('id, subject_id, grade, name_en, name_vi, sort_order')
+        .single();
+      if (insertError) {
+        request.log.error({ err: insertError, subjectId }, 'Failed to create topic');
+        if (insertError.code === '23505') return reply.code(409).send({ error: 'Chủ đề này đã có.' });
+        return reply.code(500).send({ error: 'Không tạo được chủ đề.' });
+      }
+
+      return reply.code(201).send({ topic });
     },
   });
 
