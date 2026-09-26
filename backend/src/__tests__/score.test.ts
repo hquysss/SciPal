@@ -4,6 +4,7 @@ import { authPlugin } from '../plugins/auth.js';
 import { scoreRoutes } from '../routes/score.js';
 import { surveyRoutes } from '../routes/survey.js';
 import type { SupabaseClient } from '@supabase/supabase-js';
+import { mockQuery, mockSupabase } from './helpers/supabaseMock.js';
 
 describe('Score and Survey Routes', () => {
   const app = Fastify();
@@ -90,5 +91,20 @@ it('does not grant XP twice for an already completed lesson', async () => {
   expect(res.statusCode).toBe(200);
   expect(res.json().xp_earned).toBe(0);
   expect(xpWrites).toBe(0);
+  await app.close();
+});
+
+it('only scores lessons whose status is published', async () => {
+  const lessons = mockQuery({ data: null, error: null });
+  const app = Fastify();
+  app.decorate('supabase', mockSupabase({ lessons }));
+  app.addHook('onRequest', async (request) => {
+    (request as typeof request & { user: { id: string } }).user = { id: '00000000-0000-0000-0000-000000000001' };
+  });
+  await app.register(scoreRoutes);
+  await app.ready();
+  const res = await app.inject({ method: 'POST', url: '/api/score/lesson', payload: { lesson_id: 'lesson-1', answers: [] } });
+  expect(res.statusCode).toBe(404);
+  expect(lessons.eqCalls).toContainEqual(['status', 'published']);
   await app.close();
 });

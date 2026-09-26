@@ -7,6 +7,9 @@ interface AuthoringUser {
   app_metadata?: { app_role?: string };
 }
 
+const LESSON_LIST_COLUMNS =
+  'id, topic_id, subject_id, slug, title_en, title_vi, grade, blocks, sort_order, status, review_note, published_at, created_by, reviewed_by, reviewed_at, created_at, updated_at, subjects(slug, name_en, name_vi), topics(name_en, name_vi)';
+
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 function getUser(request: FastifyRequest): AuthoringUser | undefined {
@@ -110,9 +113,7 @@ export const authoringRoutes: FastifyPluginAsync = async (app) => {
 
       let query = supabase
         .from('lessons')
-        .select(
-          'id, topic_id, subject_id, slug, title_en, title_vi, grade, blocks, sort_order, published, created_by, review_status, reviewed_by, reviewed_at, created_at, updated_at, subjects(slug, name_en, name_vi), topics(name_en, name_vi)',
-        )
+        .select(LESSON_LIST_COLUMNS)
         .order('updated_at', { ascending: false });
       if (user.app_metadata?.app_role !== 'admin') query = query.eq('created_by', user.id);
 
@@ -136,10 +137,8 @@ export const authoringRoutes: FastifyPluginAsync = async (app) => {
 
       const { data, error } = await supabase
         .from('lessons')
-        .select(
-          'id, topic_id, subject_id, slug, title_en, title_vi, grade, blocks, sort_order, published, created_by, review_status, reviewed_by, reviewed_at, created_at, updated_at, subjects(slug, name_en, name_vi), topics(name_en, name_vi)',
-        )
-        .eq('review_status', 'pending')
+        .select(LESSON_LIST_COLUMNS)
+        .eq('status', 'pending_review')
         .order('created_at', { ascending: true });
 
       if (error) {
@@ -266,9 +265,8 @@ export const authoringRoutes: FastifyPluginAsync = async (app) => {
           title_vi: titleVi,
           grade,
           blocks: [],
-          published: false,
+          status: 'draft',
           created_by: user.id,
-          review_status: 'draft',
         })
         .select('*')
         .single();
@@ -312,7 +310,7 @@ export const authoringRoutes: FastifyPluginAsync = async (app) => {
 
       const { data: current, error: readError } = await supabase
         .from('lessons')
-        .select('id, created_by, review_status, published, updated_at')
+        .select('id, created_by, status, updated_at')
         .eq('id', id)
         .maybeSingle();
 
@@ -325,10 +323,10 @@ export const authoringRoutes: FastifyPluginAsync = async (app) => {
       if (current.created_by !== user.id) {
         return reply.code(404).send({ error: 'Không tìm thấy bài giảng.' });
       }
-      if (current.review_status === 'approved' || current.published) {
+      if (current.status === 'published') {
         return reply.code(403).send({ error: 'Bài đã được admin duyệt.' });
       }
-      if (current.review_status !== 'draft' && current.review_status !== 'rejected') {
+      if (current.status !== 'draft' && current.status !== 'rejected') {
         return reply.code(409).send({ error: 'Bài học không ở trạng thái có thể gửi duyệt.' });
       }
       if (current.updated_at !== expectedUpdatedAt) {
@@ -341,8 +339,8 @@ export const authoringRoutes: FastifyPluginAsync = async (app) => {
           title_en: titleEn,
           title_vi: titleVi,
           blocks: parsedBlocks.data,
-          review_status: 'pending',
-          published: false,
+          status: 'pending_review',
+          review_note: null,
           reviewed_by: null,
           reviewed_at: null,
           updated_at: new Date().toISOString(),
@@ -377,6 +375,10 @@ export const authoringRoutes: FastifyPluginAsync = async (app) => {
       if (body.decision !== 'approve' && body.decision !== 'reject') {
         return reply.code(400).send({ error: 'Lựa chọn duyệt bài không hợp lệ.' });
       }
+      const note = body.note === undefined ? undefined : asText(body.note, 1000);
+      if (body.note !== undefined && body.note !== '' && !note) {
+        return reply.code(400).send({ error: 'Ghi chú duyệt bài tối đa 1000 ký tự.' });
+      }
       const expectedUpdatedAt = asText(body.expected_updated_at, 64);
       if (!expectedUpdatedAt) {
         return reply.code(400).send({ error: 'Thiếu phiên bản bài học cần duyệt.' });
@@ -384,7 +386,7 @@ export const authoringRoutes: FastifyPluginAsync = async (app) => {
 
       const { data: current, error: readError } = await supabase
         .from('lessons')
-        .select('id, review_status, updated_at')
+        .select('id, status, updated_at')
         .eq('id', id)
         .maybeSingle();
       if (readError) {
@@ -392,7 +394,7 @@ export const authoringRoutes: FastifyPluginAsync = async (app) => {
         return reply.code(500).send({ error: 'Không xác minh được trạng thái bài học.' });
       }
       if (!current) return reply.code(404).send({ error: 'Không tìm thấy bài giảng.' });
-      if (current.review_status !== 'pending') {
+      if (current.status !== 'pending_review') {
         return reply.code(409).send({ error: 'Bài giảng không còn ở trạng thái chờ duyệt.' });
       }
       if (current.updated_at !== expectedUpdatedAt) {
@@ -400,17 +402,19 @@ export const authoringRoutes: FastifyPluginAsync = async (app) => {
       }
 
       const approved = body.decision === 'approve';
+      const now = new Date().toISOString();
       const { data: lesson, error: updateError } = await supabase
         .from('lessons')
         .update({
-          review_status: approved ? 'approved' : 'rejected',
-          published: approved,
+          status: approved ? 'published' : 'rejected',
+          review_note: approved ? null : note ?? null,
+          published_at: approved ? now : null,
           reviewed_by: user.id,
-          reviewed_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
+          reviewed_at: now,
+          updated_at: now,
         })
         .eq('id', id)
-        .eq('review_status', 'pending')
+        .eq('status', 'pending_review')
         .eq('updated_at', current.updated_at)
         .select('*')
         .maybeSingle();
@@ -444,7 +448,7 @@ export const authoringRoutes: FastifyPluginAsync = async (app) => {
       }
       const { data: current, error: readError } = await supabase
         .from('lessons')
-        .select('id, created_by, review_status, published, updated_at')
+        .select('id, created_by, status, updated_at')
         .eq('id', id)
         .maybeSingle();
 
@@ -456,20 +460,20 @@ export const authoringRoutes: FastifyPluginAsync = async (app) => {
       if (current.updated_at !== expectedUpdatedAt) {
         return reply.code(409).send({ error: 'Bài học đã thay đổi. Tải lại trước khi lưu tiếp.' });
       }
-      if (current.review_status === 'pending') {
+      if (current.status === 'pending_review') {
         return reply.code(409).send({ error: 'Bài đang chờ admin duyệt nên tạm khóa chỉnh sửa.' });
       }
       if (!isAdmin && current.created_by !== user.id) {
         return reply.code(404).send({ error: 'Không tìm thấy bài giảng.' });
       }
-      if (!isAdmin && (current.review_status === 'approved' || current.published)) {
+      if (!isAdmin && current.status === 'published') {
         return reply.code(403).send({ error: 'Bài đã được duyệt; chỉ admin mới có thể chỉnh sửa.' });
       }
-      if (!isAdmin && body.published !== undefined) {
-        return reply.code(403).send({ error: 'Giáo viên không có quyền xuất bản bài học.' });
+      if (body.published !== undefined) {
+        return reply.code(400).send({ error: 'Trường published đã ngừng dùng; hãy gửi status.' });
       }
-      if (isAdmin && body.published === true && current.review_status !== 'approved') {
-        return reply.code(400).send({ error: 'Hãy duyệt bài ở hàng chờ trước khi xuất bản.' });
+      if (!isAdmin && body.status !== undefined) {
+        return reply.code(403).send({ error: 'Giáo viên không có quyền xuất bản bài học.' });
       }
 
       const updateData: Record<string, unknown> = { updated_at: new Date().toISOString() };
@@ -490,11 +494,19 @@ export const authoringRoutes: FastifyPluginAsync = async (app) => {
         }
         updateData.blocks = parsedBlocks.data;
       }
-      if (isAdmin && body.published !== undefined) {
-        if (typeof body.published !== 'boolean') {
-          return reply.code(400).send({ error: 'Trạng thái xuất bản không hợp lệ.' });
+      if (isAdmin && body.status !== undefined) {
+        if (body.status !== 'draft' && body.status !== 'published') {
+          return reply.code(400).send({ error: 'Admin chỉ có thể đặt trạng thái draft hoặc published.' });
         }
-        updateData.published = body.published;
+        updateData.status = body.status;
+        if (body.status === 'published') {
+          updateData.published_at = updateData.updated_at;
+          updateData.reviewed_by = user.id;
+          updateData.reviewed_at = updateData.updated_at;
+          updateData.review_note = null;
+        } else {
+          updateData.published_at = null;
+        }
       }
       if (Object.keys(updateData).length === 1) {
         return reply.code(400).send({ error: 'Không có thay đổi để lưu.' });
