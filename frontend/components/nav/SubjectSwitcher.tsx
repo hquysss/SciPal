@@ -1,5 +1,6 @@
 'use client';
 
+import type React from 'react';
 import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useParams, usePathname } from 'next/navigation';
@@ -50,8 +51,9 @@ export function SubjectSwitcher({ current, mobile = false, onNavigate }: Subject
     const content = (
       <>
         <span
-          className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-xs font-black text-white"
-          style={{ backgroundColor: subject.accentColor }}
+          data-subject-scope=""
+          className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-[color-mix(in_srgb,var(--accent)_14%,var(--surface))] text-xs font-black text-accent-ink"
+          style={{ '--accent': subject.accentColor } as React.CSSProperties}
           aria-hidden="true"
         >
           {subject.icon}

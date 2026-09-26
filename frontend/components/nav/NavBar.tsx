@@ -449,7 +449,7 @@ export function NavBar({ currentSubject }: NavBarProps) {
                   type="button"
                   onClick={handleSignOut}
                   disabled={signingOut}
-                  className="shrink-0 rounded-xl border border-red-200 bg-red-50 px-4 py-2.5 text-sm font-bold text-red-700 transition hover:bg-red-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-red-600 disabled:cursor-wait disabled:opacity-60"
+                  className="min-h-11 shrink-0 rounded-xl border border-[color-mix(in_srgb,var(--danger)_30%,transparent)] bg-danger-surface px-4 py-2.5 text-sm font-bold text-danger transition hover:bg-[color-mix(in_srgb,var(--danger-surface),var(--danger)_10%)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-danger disabled:cursor-wait disabled:opacity-60"
                 >
                   {signingOut
                     ? (lang === 'en' ? 'Signing out…' : 'Đang đăng xuất…')
