@@ -48,6 +48,20 @@ Menu, popover hay dialog render qua portal phải gắn vào trong `[data-app-sh
 - Lựa chọn trong đề là radio thật trong `fieldset`/`legend`; kết quả chỉ dùng số liệu server trả về (điểm, số câu đúng), câu đúng/sai kèm `CircleCheck`/`CircleX`.
 - Khảo sát: đánh giá sao là `radiogroup` (phím mũi tên), sao chọn `text-action`; modal khảo sát dùng nền mờ `color-mix(ink 60%)`, Escape đóng và trả focus; ô icon môn theo quy tắc nhãn accent.
 
+### Sáng/tối
+
+- Ba lựa chọn: Theo hệ thống (mặc định), Sáng, Tối — nút trên navbar desktop, trong menu mobile, ở Profile và trang đăng nhập; lưu `localStorage['scipal-theme']`, script boot áp lên `[data-app-shell]` trước khi vẽ. Không bao giờ gắn `data-theme`/`.dark` lên `<html>`.
+- Ở chế độ tối `action` là màu sáng, nên chữ trên nền `action` luôn dùng `action-ink` (không viết cứng trắng). Mảng đặt cố định trên ảnh minh hoạ (huy hiệu slide đăng nhập) giữ chữ sáng cố định.
+- Khối code (Monaco) chuyển `vs-dark` theo `useShellDark()`.
+
+### Trạng thái bài giảng
+
+Một nguồn: `LessonStatusBadge` (`features/authoring/lessonStatusBadge.tsx`) — bản nháp `secondary`, chờ duyệt `warning`, đã xuất bản `success`, cần chỉnh sửa `destructive`; nhãn song ngữ lấy từ `lessonStatus.ts`. Trạng thái lạ hiện nguyên giá trị với `secondary`.
+
+### Khu giáo viên/admin
+
+Bảng (`Table`) cho danh sách tài khoản và học sinh, cuộn ngang trong khung ở 375px; hộp thoại dùng `Dialog` (Esc đóng, focus vào ô đầu, trả focus khi đóng); `font-mono` chỉ cho mã mời lớp và khối code. Trang server dùng `PageBreadcrumb` và `Bi` để song ngữ.
+
 ### Palette
 
 | Role | Token | Value | Usage |

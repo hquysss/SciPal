@@ -145,7 +145,7 @@ Thứ tự: `profiles.preferred_education_level` (tài khoản) → `sessionStor
 - "Theo hệ thống" = không có `data-theme`; CSS dùng `@media (prefers-color-scheme: dark)` với `[data-app-shell]:not([data-theme="light"])`.
 - Nút đổi trong navbar cạnh công tắc EN/VI và trong Profile; nhãn song ngữ qua `useLanguage`.
 - Tailwind `darkMode` đổi sang selector `[data-theme="dark"]`; mục tiêu là không còn class `dark:`.
-- **Cờ `DARK_MODE_ENABLED`** (mặc định `false` từ giai đoạn 0 đến hết giai đoạn 5): khi tắt, CSS không sinh khối `prefers-color-scheme`, script bỏ qua `scipal-theme`, nút đổi không hiện. Lý do: các màn hình chưa chuyển token vẫn viết cứng nền sáng, bật sớm sẽ ra giao diện nửa tối nửa sáng. Trang `/dev/theme` luôn xem được cả hai chế độ để kiểm tra trong lúc phát triển. Bật cờ là bước cuối của giai đoạn 5.
+- **Cờ `DARK_MODE_ENABLED`** (mặc định `false` từ giai đoạn 0 đến hết giai đoạn 5): khi tắt, CSS không sinh khối `prefers-color-scheme`, script bỏ qua `scipal-theme`, nút đổi không hiện. Lý do: các màn hình chưa chuyển token vẫn viết cứng nền sáng, bật sớm sẽ ra giao diện nửa tối nửa sáng. Trang `/dev/theme` luôn xem được cả hai chế độ để kiểm tra trong lúc phát triển. Bật cờ là bước cuối của giai đoạn 5. **Cờ đã bật ngày 26/09/2026** (giai đoạn 5 hoàn tất; baseline màu thô rỗng).
 
 ### 4.5 Script trước khi hiển thị
 
