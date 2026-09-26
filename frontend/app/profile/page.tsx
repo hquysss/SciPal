@@ -1,7 +1,10 @@
 import Link from 'next/link';
 import { cookies } from 'next/headers';
+import { redirect } from 'next/navigation';
 import { createServerClient } from '@scipal/supabase';
 import { getUserProfile } from '@/features/profile/profileQueries';
+import { LoadErrorNotice } from '@/components/feedback/LoadErrorNotice';
+import { parseEducationLevel, resolveEducationLevel, type EducationLevel } from '@/features/landing/educationLevel';
 import { ProfileCard } from '@/features/profile/ProfileCard';
 import { AccountSettings } from '@/features/profile/AccountSettings';
 import { FeatureRequestBoard } from '@/features/survey/FeatureRequestBoard';
@@ -11,24 +14,33 @@ export const dynamic = 'force-dynamic';
 export default async function ProfilePage() {
   let user: { id: string; email?: string } | null = null;
   let appRole: string | undefined;
+  let accountLevel: EducationLevel | null = null;
+  const cookieStore = await cookies();
+  let supabase: ReturnType<typeof createServerClient> | null = null;
 
   try {
-    const cookieStore = await cookies();
-    const supabase = createServerClient(cookieStore as any);
-    const {
-      data: { user: authUser },
-    } = await supabase.auth.getUser();
-    if (authUser) {
+    supabase = createServerClient(cookieStore);
+    const { data: { user: authUser }, error: authError } = await supabase.auth.getUser();
+    if (!authError && authUser) {
       user = authUser;
       const role = authUser.app_metadata?.app_role;
       if (typeof role === 'string') appRole = role;
+
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('preferred_education_level')
+        .eq('id', authUser.id)
+        .maybeSingle();
+      if (!error) accountLevel = parseEducationLevel(data?.preferred_education_level);
     }
   } catch (err) {
     console.warn('Profile auth check warning:', err);
   }
 
-  const userId = user?.id ?? 'demo-explorer-user';
-  const { profile, stats } = await getUserProfile(userId);
+  const educationPreference = resolveEducationLevel(accountLevel, null);
+
+  if (!user) redirect('/login?redirect=%2Fprofile');
+  const { profile, stats, loadFailed } = await getUserProfile(user.id);
 
   const displayName = profile?.display_name ?? user?.email?.split('@')[0] ?? 'Học viên SciPal';
   const role = appRole === 'admin'
@@ -51,10 +63,13 @@ export default async function ProfilePage() {
           </span>
         </nav>
 
-        {!user && (
-          <div className="rounded-2xl border border-amber-200 bg-amber-50/90 p-4 text-xs font-medium text-amber-800 shadow-xs dark:border-amber-800/50 dark:bg-amber-950/40 dark:text-amber-300">
-            💡 <strong>Chế độ xem trước hồ sơ (Demo Explorer):</strong> Bạn đang trải nghiệm giao diện với dữ liệu học tập mẫu. Đăng nhập qua Supabase để đồng bộ tiến trình học tập cá nhân.
-          </div>
+        {loadFailed && (
+          <LoadErrorNotice
+            message={{
+              en: 'We could not load your learning stats. The numbers below may be incomplete — please reload.',
+              vi: 'Chưa tải được số liệu học tập. Số liệu bên dưới có thể chưa đầy đủ — vui lòng tải lại trang.',
+            }}
+          />
         )}
 
         {/* Profile Stats Card */}
@@ -66,7 +81,11 @@ export default async function ProfilePage() {
         />
 
         {/* Account & Learning Settings */}
-        <AccountSettings currentRole={role} />
+        <AccountSettings
+          currentRole={role}
+          educationPreference={educationPreference}
+          isAuthenticated
+        />
 
         {/* Feature Request & Innovation Board (§9.7) */}
         <FeatureRequestBoard />

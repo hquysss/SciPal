@@ -1,6 +1,7 @@
 'use client';
 
 import { Suspense, useEffect, useRef, useState, type FormEvent } from 'react';
+import Link from 'next/link';
 import Image from 'next/image';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useLanguage } from '@scipal/hooks';
@@ -350,6 +351,11 @@ function LoginContent() {
           </div>
 
           <div className="katha-login-card">
+            <Link href="/" className="katha-login-home-link">
+              <ArrowRightIcon className="katha-login-home-link-icon" />
+              <span>{lang === 'en' ? 'Home' : 'Trang chủ'}</span>
+            </Link>
+
             <div className="katha-login-header-row">
               <div className="katha-login-brand">
                 <Image

@@ -4,18 +4,21 @@ import { createContext, useContext, type ReactNode } from 'react';
 import { getAccentColor, SUBJECT_TOKENS, type SubjectToken } from './tokens';
 
 interface SubjectContextValue {
-  slug:  string;
-  token: SubjectToken | undefined;
+  slug:        string;
+  token:       SubjectToken | undefined;
+  accentColor: string;
 }
 
 const SubjectContext = createContext<SubjectContextValue>({
-  slug:  '',
-  token: undefined,
+  slug:        '',
+  token:       undefined,
+  accentColor: getAccentColor(''),
 });
 
 interface SubjectProviderProps {
-  slug:     string;
-  children: ReactNode;
+  slug:        string;
+  accentColor?: string;
+  children:    ReactNode;
 }
 
 /**
@@ -23,12 +26,14 @@ interface SubjectProviderProps {
  * It sets --accent on the container element so all themed
  * children pick up the right color without touching :root.
  */
-export function SubjectProvider({ slug, children }: SubjectProviderProps) {
-  const accentColor = getAccentColor(slug);
+export function SubjectProvider({ slug, accentColor: catalogAccent, children }: SubjectProviderProps) {
+  const accentColor = catalogAccent && /^#[0-9a-f]{6}$/i.test(catalogAccent)
+    ? catalogAccent
+    : getAccentColor(slug);
   const token       = SUBJECT_TOKENS[slug];
 
   return (
-    <SubjectContext.Provider value={{ slug, token }}>
+    <SubjectContext.Provider value={{ slug, token, accentColor }}>
       <div style={{ '--accent': accentColor } as React.CSSProperties}>
         {children}
       </div>
@@ -41,6 +46,5 @@ export function useSubject(): SubjectContextValue {
 }
 
 export function useAccent(): string {
-  const { slug } = useSubject();
-  return getAccentColor(slug);
+  return useSubject().accentColor;
 }

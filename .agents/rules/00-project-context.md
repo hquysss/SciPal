@@ -1,7 +1,7 @@
 # Project Context
 
 ## 1. Mục đích dự án (Project Purpose)
-SciPal là nền tảng học tập khoa học tự nhiên song ngữ (EN/VI) cho học sinh THPT Việt Nam (lớp 10, 11, 12).
+SciPal là nền tảng học tập song ngữ (EN/VI) theo toàn bộ Chương trình GDPT 2018 cho học sinh Việt Nam lớp 1–12. Học liệu hiện phát hành cho THPT (lớp 10–12), ưu tiên Tin học; catalog hiển thị đầy đủ môn theo từng lớp, môn chưa có học liệu ở trạng thái `compiling` ("Đang biên soạn"). Xem foundation spec v1.8.
 - Môn học tham chiếu đầu tiên: **Tin học (Informatics)**.
 - Mở rộng theo kiến trúc "Cắm dữ liệu": Toán, Vật lí, Hoá học, Sinh học.
 - Triết lý cốt lõi: **Xây dựng bộ khung giao diện 1 lần, nạp nội dung theo môn qua dữ liệu**.

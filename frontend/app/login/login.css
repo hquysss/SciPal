@@ -503,6 +503,54 @@
   max-width: 25.5rem;
 }
 
+.katha-login-home-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-height: 2.75rem;
+  margin-bottom: 1rem;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--lg-line);
+  border-radius: 0.75rem;
+  background: color-mix(in srgb, var(--lg-gold) 6%, var(--lg-pane));
+  color: var(--lg-ink-soft);
+  font-size: 0.875rem;
+  font-weight: 600;
+  text-decoration: none;
+  transition:
+    background-color 160ms ease-out,
+    border-color 160ms ease-out,
+    color 160ms ease-out,
+    transform 160ms ease-out;
+}
+
+.katha-login-home-link:hover {
+  border-color: color-mix(in srgb, var(--lg-gold) 48%, var(--lg-line));
+  background: color-mix(in srgb, var(--lg-gold) 11%, var(--lg-pane));
+  color: var(--lg-ink);
+}
+
+.katha-login-home-link:active {
+  transform: translateY(1px);
+}
+
+.katha-login-home-link:focus-visible {
+  outline: 2px solid var(--lg-field-focus-line);
+  outline-offset: 3px;
+}
+
+.katha-login-home-link-icon {
+  width: 1rem;
+  height: 1rem;
+  transform: rotate(180deg);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .katha-login-home-link {
+    transition: none;
+  }
+}
+
 .katha-login-brand,
 .katha-login-heading,
 .katha-login-form,

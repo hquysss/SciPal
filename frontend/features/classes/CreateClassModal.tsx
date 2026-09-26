@@ -38,7 +38,7 @@ export function CreateClassModal({ open, onClose, onCreated, token }: CreateClas
         },
         body: JSON.stringify({
           name: name.trim(),
-          subject_id: subjectSlug,
+          subject_slug: subjectSlug,
         }),
       });
 
@@ -52,18 +52,11 @@ export function CreateClassModal({ open, onClose, onCreated, token }: CreateClas
       const errData = await res.json().catch(() => ({}));
       setError(errData.error ?? 'Không thể tạo lớp học.');
     } catch (err) {
-      console.warn('Create class error, fallback simulation:', err);
-      // Fallback simulation
-      const mock = {
-        id: `class-${Date.now()}`,
-        name: name.trim(),
-        subject_id: subjectSlug,
-        invite_code: Math.random().toString(36).substring(2, 8).toUpperCase(),
-        created_at: new Date().toISOString(),
-      };
-      onCreated(mock);
-      setName('');
-      onClose();
+      console.warn('Create class error:', err);
+      setError(t({
+        en: 'Could not reach the server. Please check your connection and try again.',
+        vi: 'Không kết nối được máy chủ. Vui lòng kiểm tra mạng và thử lại.',
+      }));
     } finally {
       setLoading(false);
     }

@@ -1,6 +1,20 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { createServerClient } from '@scipal/supabase';
 
+const LEGACY_LEVEL_COOKIE = 'scipal_education_level';
+
+function clearLegacyLevelCookie(request: NextRequest, response: NextResponse) {
+  if (!request.cookies.has(LEGACY_LEVEL_COOKIE)) return;
+  response.cookies.set(LEGACY_LEVEL_COOKIE, '', {
+    path: '/',
+    maxAge: 0,
+    expires: new Date(0),
+    httpOnly: true,
+    sameSite: 'lax',
+    secure: process.env.NODE_ENV === 'production',
+  });
+}
+
 function isProtectedPath(pathname: string) {
   return (
     pathname === '/profile' ||
@@ -19,13 +33,19 @@ export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   // Lessons, the glossary, exam list, and home are public content.
-  if (!isProtectedPath(pathname)) return NextResponse.next();
+  if (!isProtectedPath(pathname)) {
+    const response = NextResponse.next();
+    clearLegacyLevelCookie(request, response);
+    return response;
+  }
 
   const loginUrl = new URL('/login', request.url);
   loginUrl.searchParams.set('redirect', pathname + request.nextUrl.search);
 
   if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
-    return NextResponse.redirect(loginUrl);
+    const response = NextResponse.redirect(loginUrl);
+    clearLegacyLevelCookie(request, response);
+    return response;
   }
 
   const cookieUpdates: Array<{
@@ -69,9 +89,10 @@ export async function middleware(request: NextRequest) {
   for (const { name, value, options } of cookieUpdates) {
     response.cookies.set(name, value, options);
   }
+  clearLegacyLevelCookie(request, response);
   return response;
 }
 
 export const config = {
-  matcher: ['/profile/:path*', '/progress/:path*', '/teacher/:path*', '/admin/:path*', '/exam/:path+'],
+  matcher: ['/', '/profile/:path*', '/progress/:path*', '/teacher/:path*', '/admin/:path*', '/exam/:path+'],
 };

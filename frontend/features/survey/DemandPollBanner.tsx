@@ -1,12 +1,13 @@
 'use client';
 
-import { useState } from 'react';
+import { useCallback, useState } from 'react';
 import { SubjectDemandModal } from './SubjectDemandModal';
 import { useLanguage } from '@scipal/hooks';
 
 export function DemandPollBanner() {
   const { t } = useLanguage();
   const [modalOpen, setModalOpen] = useState(false);
+  const closeModal = useCallback(() => setModalOpen(false), []);
 
   return (
     <>
@@ -21,14 +22,14 @@ export function DemandPollBanner() {
             </div>
             <h3 className="text-lg font-black text-gray-900 dark:text-white">
               {t({
-                en: 'Which subject would you like SciPal to build next?',
-                vi: 'Bạn muốn SciPal hoàn thiện môn học nào tiếp theo?',
+                en: 'Which subjects are you interested in?',
+                vi: 'Bạn quan tâm đến những môn học nào?',
               })}
             </h3>
             <p className="text-xs text-gray-600 dark:text-gray-300 leading-relaxed">
               {t({
-                en: 'Cast your vote. We prioritize new interactive lessons based on community demand.',
-                vi: 'Bình chọn. Đội ngũ giáo viên và kỹ sư sẽ ưu tiên phát triển môn có lượng bình chọn cao nhất!',
+                en: 'Your response helps SciPal understand what learners want to explore.',
+                vi: 'Ý kiến của bạn giúp SciPal hiểu người học muốn khám phá điều gì.',
               })}
             </p>
           </div>
@@ -36,7 +37,7 @@ export function DemandPollBanner() {
           <button
             type="button"
             onClick={() => setModalOpen(true)}
-            className="inline-flex shrink-0 items-center justify-center gap-2 min-h-[44px] rounded-2xl bg-emerald-600 px-6 py-3 text-xs font-bold text-white shadow-sm hover:bg-emerald-700 active:scale-95 transition"
+            className="inline-flex min-h-11 shrink-0 items-center justify-center gap-2 rounded-2xl bg-emerald-600 px-6 py-3 text-xs font-bold text-white shadow-sm transition hover:bg-emerald-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-700"
           >
             <span>{t({ en: 'Vote Now', vi: 'Bình chọn môn tiếp theo' })}</span>
             <span aria-hidden="true">→</span>
@@ -44,7 +45,7 @@ export function DemandPollBanner() {
         </div>
       </div>
 
-      <SubjectDemandModal open={modalOpen} onClose={() => setModalOpen(false)} />
+      <SubjectDemandModal open={modalOpen} onClose={closeModal} />
     </>
   );
 }

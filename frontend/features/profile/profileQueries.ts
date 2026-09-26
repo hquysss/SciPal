@@ -13,50 +13,39 @@ export interface UserProfileData {
     completedLessons: number;
     longestStreak: number;
   };
+  /** True when any stats query failed; stats are then zeros, not real values. */
+  loadFailed: boolean;
 }
+
+const EMPTY_STATS: UserProfileData['stats'] = { totalXP: 0, completedLessons: 0, longestStreak: 0 };
 
 export async function getUserProfile(userId: string): Promise<UserProfileData> {
   try {
-    const cookieStore = await cookies();
-    const supabase = createServerClient(cookieStore as any);
+    const supabase = createServerClient(await cookies());
 
-    const [{ data: profile }, { data: xpLogs }, { data: progress }, { data: streaks }] = await Promise.all([
-      supabase.from('profiles').select('*').eq('id', userId).single(),
+    const [profileRes, xpRes, progressRes, streakRes] = await Promise.all([
+      supabase.from('profiles').select('id, display_name, role, avatar_url').eq('id', userId).maybeSingle(),
       supabase.from('xp_log').select('delta').eq('user_id', userId),
-      supabase.from('progress').select('id, score').eq('user_id', userId),
+      supabase.from('progress').select('id').eq('user_id', userId),
       supabase.from('streaks').select('longest_streak').eq('user_id', userId),
     ]);
 
-    const totalXP = (xpLogs ?? []).reduce((sum, row) => sum + (row.delta ?? 0), 0);
-    const longestStreak = (streaks ?? []).reduce((max, s) => Math.max(max, s.longest_streak ?? 0), 0);
+    if (profileRes.error || xpRes.error || progressRes.error || streakRes.error) {
+      console.warn('getUserProfile query failed:', profileRes.error ?? xpRes.error ?? progressRes.error ?? streakRes.error);
+      return { profile: profileRes.data ?? null, stats: EMPTY_STATS, loadFailed: true };
+    }
 
     return {
-      profile: profile ?? {
-        id: userId,
-        display_name: 'Học Sinh',
-        role: 'student',
-        avatar_url: null,
-      },
+      profile: profileRes.data ?? null,
       stats: {
-        totalXP,
-        completedLessons: (progress ?? []).length,
-        longestStreak,
+        totalXP: (xpRes.data ?? []).reduce((sum, row) => sum + (row.delta ?? 0), 0),
+        completedLessons: (progressRes.data ?? []).length,
+        longestStreak: (streakRes.data ?? []).reduce((max, s) => Math.max(max, s.longest_streak ?? 0), 0),
       },
+      loadFailed: false,
     };
   } catch (err) {
-    console.warn('getUserProfile fetch error, using fallback:', err);
-    return {
-      profile: {
-        id: userId,
-        display_name: 'Học Sinh',
-        role: 'student',
-        avatar_url: null,
-      },
-      stats: {
-        totalXP: 350,
-        completedLessons: 4,
-        longestStreak: 5,
-      },
-    };
+    console.warn('getUserProfile failed:', err);
+    return { profile: null, stats: EMPTY_STATS, loadFailed: true };
   }
 }

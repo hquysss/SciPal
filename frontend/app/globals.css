@@ -89,3 +89,23 @@
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
 }
+
+body:has([data-scipal-level]) > header button[aria-controls='mobile-navigation'] {
+  min-width: 44px;
+  min-height: 44px;
+}
+
+body:has([data-scipal-level='primary']) > header {
+  border-bottom-color: rgb(109 48 23 / 55%) !important;
+  background-color: #8a3e1f !important;
+}
+
+body:has([data-scipal-level='lower_secondary']) > header {
+  border-bottom-color: rgb(25 59 108 / 55%) !important;
+  background-color: #245398 !important;
+}
+
+body:has([data-scipal-level='upper_secondary']) > header {
+  border-bottom-color: rgb(6 61 37 / 55%) !important;
+  background-color: #0c633b !important;
+}
