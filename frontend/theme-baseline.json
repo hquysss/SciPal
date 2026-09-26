@@ -1,5 +1,4 @@
 {
-  "app/[subject]/[lesson]/page.tsx": 11,
   "app/[subject]/page.tsx": 12,
   "app/admin/lessons/review/page.tsx": 56,
   "app/dev/landing-showcase/page.tsx": 3,
