@@ -1,5 +1,4 @@
 {
-  "app/[subject]/page.tsx": 12,
   "app/admin/lessons/review/page.tsx": 56,
   "app/dev/landing-showcase/page.tsx": 3,
   "app/dev/profile-level-showcase/page.tsx": 3,
@@ -29,8 +28,6 @@
   "features/exam/ExamRunner.tsx": 140,
   "features/glossary/GlossarySearch.tsx": 32,
   "features/lessons/LessonCompletionBar.tsx": 16,
-  "features/lessons/SubjectPageNotices.tsx": 6,
-  "features/lessons/TopicAccordion.tsx": 21,
   "features/profile/AccountSettings.tsx": 93,
   "features/profile/EducationLevelSetting.tsx": 52,
   "features/profile/ProfileCard.tsx": 106,

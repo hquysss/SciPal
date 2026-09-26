@@ -1,6 +1,7 @@
 'use client';
 import { useState } from 'react';
 import Link from 'next/link';
+import { ChevronDown, ChevronRight } from 'lucide-react';
 import { useLanguage } from '@scipal/hooks';
 
 interface Lesson {
@@ -19,88 +20,62 @@ interface Topic {
 }
 
 export function TopicAccordion({ topics, subjectSlug }: { topics: Topic[]; subjectSlug: string }) {
-  const { lang } = useLanguage();
+  const { lang, t } = useLanguage();
   const [open, setOpen] = useState<string | null>(topics[0]?.id ?? null);
 
   return (
-    <div className="space-y-4">
+    <div className="flex flex-col gap-3">
       {topics.map((topic, topicIdx) => {
         const isOpen = open === topic.id;
+        const panelId = `topic-${topic.id}`;
         return (
-          <div
-            key={topic.id}
-            className="rounded-2xl border border-gray-200/80 bg-white overflow-hidden shadow-xs transition-all duration-200"
-          >
-            {/* Header button */}
-            <button
-              className="flex w-full items-center justify-between px-6 py-4 text-left font-bold text-gray-900 hover:bg-gray-50/80 transition"
-              onClick={() => setOpen(isOpen ? null : topic.id)}
-              aria-expanded={isOpen}
-            >
-              <div className="flex items-center gap-3">
-                <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-gray-100 font-mono text-xs font-bold text-gray-600">
+          <section key={topic.id} className="overflow-hidden rounded-xl border border-line bg-surface">
+            <h3>
+              <button
+                type="button"
+                className="flex min-h-11 w-full items-center gap-3 px-5 py-4 text-left transition-colors hover:bg-surface-sunken focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-focus"
+                onClick={() => setOpen(isOpen ? null : topic.id)}
+                aria-expanded={isOpen}
+                aria-controls={panelId}
+              >
+                <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-surface-sunken text-sm font-semibold text-ink-muted">
                   {topicIdx + 1}
                 </span>
-                <div>
-                  <span className="text-base font-bold text-gray-900 block">
-                    {lang === 'en' ? topic.name_en : topic.name_vi}
+                <span className="flex-1">
+                  <span className="block text-base font-semibold text-ink">{lang === 'en' ? topic.name_en : topic.name_vi}</span>
+                  <span className="block text-sm text-ink-muted">
+                    {t({
+                      en: `${topic.lessons.length} ${topic.lessons.length === 1 ? 'lesson' : 'lessons'}`,
+                      vi: `${topic.lessons.length} bài học`,
+                    })}
                   </span>
-                  <span className="text-[11px] font-mono text-gray-400">
-                    {topic.lessons.length} bài học trong chủ đề
-                  </span>
-                </div>
-              </div>
-
-              <div className="flex items-center gap-2">
-                <span
-                  className={`text-xs text-gray-400 transform transition-transform duration-200 ${
-                    isOpen ? 'rotate-180' : ''
-                  }`}
-                  aria-hidden="true"
-                >
-                  ▼
                 </span>
-              </div>
-            </button>
-
-            {/* Lesson list */}
+                <ChevronDown
+                  aria-hidden="true"
+                  className={`h-5 w-5 text-ink-muted transition-transform motion-reduce:transition-none ${isOpen ? 'rotate-180' : ''}`}
+                />
+              </button>
+            </h3>
             {isOpen && (
-              <div className="border-t border-gray-100 bg-gray-50/40 p-2">
-                <ul className="space-y-1.5">
-                  {topic.lessons.map((lesson, lessonIdx) => (
-                    <li key={lesson.id}>
-                      <Link
-                        href={`/${subjectSlug}/${lesson.slug}`}
-                        className="flex items-center justify-between rounded-xl px-4 py-3 bg-white border border-gray-100 hover:border-gray-300 hover:shadow-xs transition group"
-                      >
-                        <div className="flex items-center gap-3">
-                          <span className="flex h-6 w-6 items-center justify-center rounded-md bg-emerald-50 text-[11px] font-bold text-emerald-700">
-                            {lessonIdx + 1}
-                          </span>
-                          <div>
-                            <span className="text-sm font-semibold text-gray-800 group-hover:text-emerald-700 transition block">
-                              {lang === 'en' ? lesson.title_en : lesson.title_vi}
-                            </span>
-                            <span className="text-[11px] font-mono text-gray-400">
-                              {lang === 'en' ? lesson.title_vi : lesson.title_en}
-                            </span>
-                          </div>
-                        </div>
-
-                        <span
-                          className="inline-flex items-center gap-1 text-xs font-bold px-3 py-1 rounded-full text-white shadow-xs group-hover:scale-105 transition duration-150"
-                          style={{ backgroundColor: 'var(--accent, #16a34a)' }}
-                        >
-                          <span>Học ngay</span>
-                          <span aria-hidden="true">→</span>
-                        </span>
-                      </Link>
-                    </li>
-                  ))}
-                </ul>
-              </div>
+              <ol id={panelId} className="flex flex-col border-t border-line">
+                {topic.lessons.map((lesson, lessonIdx) => (
+                  <li key={lesson.id} className="border-b border-line last:border-0">
+                    <Link
+                      href={`/${subjectSlug}/${lesson.slug}`}
+                      className="flex min-h-11 items-center gap-3 px-5 py-3 transition-colors hover:bg-surface-sunken focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-focus"
+                    >
+                      <span className="w-6 shrink-0 text-sm text-ink-muted">{lessonIdx + 1}.</span>
+                      <span className="flex-1">
+                        <span className="block text-sm font-semibold text-ink">{lang === 'en' ? lesson.title_en : lesson.title_vi}</span>
+                        <span className="block text-sm text-ink-muted">{lang === 'en' ? lesson.title_vi : lesson.title_en}</span>
+                      </span>
+                      <ChevronRight aria-hidden="true" className="h-4 w-4 shrink-0 text-action" />
+                    </Link>
+                  </li>
+                ))}
+              </ol>
             )}
-          </div>
+          </section>
         );
       })}
     </div>
