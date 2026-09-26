@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { renderToStaticMarkup } from 'react-dom/server';
 import { RequireAdmin } from './RequireAdmin';
 
 // Mock next/navigation
@@ -15,31 +15,31 @@ vi.mock('@scipal/hooks', () => ({
 
 describe('RequireAdmin', () => {
   it('renders loading when status is loading', () => {
-    render(
+    const html = renderToStaticMarkup(
       <RequireAdmin authStatus="loading" appRole={undefined}>
         <div>secret</div>
       </RequireAdmin>
     );
-    expect(screen.queryByText('secret')).toBeNull();
-    expect(screen.getByText(/verifying/i)).toBeTruthy();
+    expect(html).not.toContain('secret');
+    expect(html).toMatch(/verifying/i);
   });
 
   it('renders access denied when authenticated but not admin', () => {
-    render(
+    const html = renderToStaticMarkup(
       <RequireAdmin authStatus="authenticated" appRole="student">
         <div>secret</div>
       </RequireAdmin>
     );
-    expect(screen.queryByText('secret')).toBeNull();
-    expect(screen.getByText(/access denied/i)).toBeTruthy();
+    expect(html).not.toContain('secret');
+    expect(html).toMatch(/access denied/i);
   });
 
   it('renders children when admin', () => {
-    render(
+    const html = renderToStaticMarkup(
       <RequireAdmin authStatus="authenticated" appRole="admin">
         <div>secret</div>
       </RequireAdmin>
     );
-    expect(screen.getByText('secret')).toBeTruthy();
+    expect(html).toContain('secret');
   });
 });
