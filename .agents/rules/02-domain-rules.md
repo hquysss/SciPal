@@ -10,7 +10,9 @@
 - **CẤM** hard-code màu đại diện cho môn học (ví dụ: cấm viết cứng `bg-green-600` cho thẻ bài học môn Tin học).
 - Luôn đọc màu qua CSS variable `--accent` hoặc hàm `useAccent()` / `getAccentColor(slug)` từ `@scipal/ui`.
 - Bắt buộc bọc mọi khu vực hiển thị nội dung theo môn trong `<SubjectProvider slug={subjectSlug}>`.
-- **Màu thương hiệu (Brand Color)**: `SCIPAL_GREEN` (`#16a34a`) chỉ dùng cho Logo cỏ 4 lá và Navbar nền trên cùng, không dùng thay thế cho màu môn học.
+- **Màu thương hiệu (Brand Color)**: `SCIPAL_GREEN` (`#16a34a`) chỉ dùng cho logo cỏ 4 lá. Nền navbar dùng token `nav` theo cấp học (bảng trung tính: `#15803D`).
+- **Màu giao diện chỉ qua token**: trong `.tsx` dùng class ngữ nghĩa (`bg-paper`, `text-ink`, `border-edge`, `bg-action`…) từ `packages/ui/src/theme/palettes.ts`; không dùng class màu Tailwind thô, mã hex hay `dark:`. Test `frontend/lib/theme/rawColors.test.ts` chặn tái phạm.
+- **Cấp học và chế độ màu** gắn trên `[data-app-shell]` (root layout) hoặc `LevelScope`, không bao giờ trên `:root`/`<html>`. Nội dung portal phải gắn vào trong `[data-app-shell]`.
 
 ## 3. Quy chuẩn khối nội dung bài học (Block Schema Validation)
 Mọi phần tử trong `lessons.blocks` (JSONB) bắt buộc phải thỏa mãn `BlockSchema` (`packages/types/src/block.ts`). 7 loại block hợp lệ gồm:

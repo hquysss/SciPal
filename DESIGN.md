@@ -1,12 +1,26 @@
 # SciPal Web Design System
 
-Scope: public landing, level selection, and the level preference in Profile. This document extends the approved product brief at `docs/superpowers/specs/2026-09-25-public-landing-field-notebook-design.md`; it does not change the global app theme.
+Scope: toàn bộ web frontend. Nguồn giá trị màu: `packages/ui/src/theme/palettes.ts`; spec: `docs/superpowers/specs/2026-09-26-app-wide-level-theming-design.md`.
 
 ## 1. Atmosphere & Identity
 
 SciPal should feel like a warm, modern field notebook for curious Vietnamese learners: clear enough to start studying immediately, with enough material depth to invite exploration. The signature is a real learning question drawn through a bilingual notebook diagram; paper, annotations, and the marked midpoint explain the idea instead of acting as decoration. A level choice is the front door to that notebook, and every level must make its actual learning status plain.
 
 ## 2. Color
+
+### App-wide level theme
+
+- Tám bảng màu: Tiểu học (vở ô li, mực tím), THCS (giấy kẻ, bút bi xanh), THPT (bảng xanh, phấn trắng) và trung tính (chưa rõ cấp), mỗi bảng có sáng và tối. Giá trị nằm ở `packages/ui/src/theme/palettes.ts`, CSS sinh bằng `renderThemeCss()` và in trong root layout.
+- Vai token (spec §3.2): `paper`, `surface`, `surface-sunken`, `ink`, `ink-muted`, `line` (chỉ trang trí), `edge` (viền điều khiển ≥ 3:1), `action`, `action-hover`, `action-ink`, `focus`, `nav`, `nav-ink`, `danger`/`success`/`warning` và `*-surface`, `pattern-ink`, `pattern-opacity`. Tailwind: `bg-paper`, `text-ink`, `border-edge`…
+- Accent môn (`--accent`, `--accent-ink`) chỉ là "nhãn vở": nhãn, icon, dải lề, thanh tiến độ; không tô nền trang, thẻ hay nút chính.
+- Đỏ (`danger`) chỉ cho lỗi và phần sửa đáp án quiz.
+- Hoạ tiết đồ dùng học tập chỉ hiện trên `paper`; tắt bằng `data-pattern="off"` (phòng thi), khi `prefers-contrast: more` và khi in.
+- Chế độ tối có sẵn nhưng tắt bằng `DARK_MODE_ENABLED` tới hết giai đoạn 5.
+- Các bảng `--landing-*`/`--gate-*` bên dưới sẽ chuyển thành bí danh trỏ về token chung ở giai đoạn 2.
+
+### Portal
+
+Menu, popover hay dialog render qua portal phải gắn vào trong `[data-app-shell]` để nhận token; gắn thẳng vào `body` sẽ mất màu.
 
 ### Palette
 
@@ -96,8 +110,8 @@ The gate stylesheet consumes the shared 4px `--space-*` scale and type scale thr
 ### Font Stack
 
 - Display: Be Vietnam Pro, already loaded by the root layout.
-- Body: Inter, already loaded by the root layout.
-- Measurement and code: JetBrains Mono, only for grade ranges, sequence values, and code-like labels.
+- Body: Be Vietnam Pro (one family for the whole app; Inter was removed).
+- Code: JetBrains Mono, chỉ cho khối code.
 
 ### Rules
 
