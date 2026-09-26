@@ -9,6 +9,7 @@ describe('authPlugin', () => {
     await app.register(authPlugin);
     app.get('/protected', async () => ({ ok: true }));
     app.get('/health', async () => ({ status: 'ok' }));
+    app.post('/api/survey', async (request) => ({ user: (request as any).user ?? null }));
     await app.ready();
   });
 
@@ -31,5 +32,16 @@ describe('authPlugin', () => {
       headers: { Authorization: 'Bearer not-a-jwt' },
     });
     expect(res.statusCode).toBe(401);
+  });
+
+  it('lets a public path through with an invalid token, without a user', async () => {
+    const res = await app.inject({
+      method: 'POST',
+      url: '/api/survey',
+      headers: { Authorization: 'Bearer expired-or-garbage' },
+      payload: {},
+    });
+    expect(res.statusCode).toBe(200);
+    expect(res.json()).toEqual({ user: null });
   });
 });

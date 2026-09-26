@@ -1,4 +1,6 @@
 // Thin client for backend/ routes (AI chat, scoring, survey)
+import { getAccessToken } from './session';
+
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL ?? 'https://sci-pal-backend.vercel.app';
 
 export async function postAIChat(
@@ -29,8 +31,9 @@ export async function postSurvey(
   body: { type: string; payload: unknown },
   token?: string,
 ): Promise<void> {
-  const headers: HeadersInit = { 'Content-Type': 'application/json' };
-  if (token) headers['Authorization'] = `Bearer ${token}`;
+  const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+  const authToken = token ?? (await getAccessToken());
+  if (authToken) headers['Authorization'] = `Bearer ${authToken}`;
   const response = await fetch(`${API_BASE}/api/survey`, {
     method: 'POST',
     headers,

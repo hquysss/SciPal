@@ -26,16 +26,6 @@ describe('Score and Survey Routes', () => {
     expect(res.statusCode).toBe(401);
   });
 
-  it('POST /api/survey is accessible anonymously', async () => {
-    const res = await app.inject({
-      method: 'POST',
-      url: '/api/survey',
-      payload: { type: 'demand', payload: { subject: 'informatics', grade: 11 } },
-    });
-    expect(res.statusCode).toBe(201);
-    expect(res.json()).toEqual({ ok: true });
-  });
-
   it('POST /api/survey returns 400 when missing payload', async () => {
     const res = await app.inject({
       method: 'POST',
