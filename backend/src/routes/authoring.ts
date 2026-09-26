@@ -1,11 +1,15 @@
 import { randomUUID } from 'node:crypto';
 import type { FastifyPluginAsync, FastifyReply, FastifyRequest } from 'fastify';
 import { BlockSchema } from '../schemas/blocks.js';
+import { makeSlug, planNewTopic, toSubjectOptions, type ExistingTopic, type SubjectCatalogRow } from '../authoring/topicPlanning.js';
 
 interface AuthoringUser {
   id?: string;
   app_metadata?: { app_role?: string };
 }
+
+const LESSON_LIST_COLUMNS =
+  'id, topic_id, subject_id, slug, title_en, title_vi, grade, blocks, sort_order, status, review_note, published_at, created_by, reviewed_by, reviewed_at, created_at, updated_at, subjects(slug, name_en, name_vi), topics(name_en, name_vi)';
 
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
@@ -21,16 +25,6 @@ function asText(value: unknown, maxLength: number): string | undefined {
   if (typeof value !== 'string') return undefined;
   const text = value.trim();
   return text.length > 0 && text.length <= maxLength ? text : undefined;
-}
-
-function makeSlug(value: string): string {
-  return value
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .toLowerCase()
-    .trim()
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-+|-+$/g, '');
 }
 
 function withRelations(row: Record<string, any>) {
@@ -69,32 +63,137 @@ export const authoringRoutes: FastifyPluginAsync = async (app) => {
   };
 
   app.get('/api/authoring/options', {
-    preHandler: [verifyTeacherOnly],
+    preHandler: [verifyTeacher],
     handler: async (request, reply) => {
       const supabase = app.supabase;
       if (!supabase) {
         return reply.code(503).send({ error: 'Dịch vụ lưu trữ bài học chưa sẵn sàng.' });
       }
 
-      const [{ data: subjects, error: subjectsError }, { data: topics, error: topicsError }] =
-        await Promise.all([
-          supabase
-            .from('subjects')
-            .select('id, slug, name_en, name_vi')
-            .eq('status', 'active')
-            .order('sort_order'),
-          supabase
-            .from('topics')
-            .select('id, subject_id, name_en, name_vi, sort_order')
-            .order('sort_order'),
-        ]);
+      const [
+        { data: subjects, error: subjectsError },
+        { data: topics, error: topicsError },
+        { data: tracks, error: tracksError },
+      ] = await Promise.all([
+        supabase
+          .from('subjects')
+          .select('id, slug, name_en, name_vi, sort_order, subject_grade_catalog(grade, active)')
+          .order('sort_order'),
+        supabase
+          .from('topics')
+          .select('id, subject_id, grade, name_en, name_vi, sort_order')
+          .order('sort_order'),
+        supabase
+          .from('subject_tracks')
+          .select('id, subject_id, slug, name_en, name_vi, grades')
+          .order('sort_order'),
+      ]);
 
-      if (subjectsError || topicsError) {
-        request.log.error({ err: subjectsError ?? topicsError }, 'Failed to load authoring options');
+      const loadError = subjectsError ?? topicsError ?? tracksError;
+      if (loadError) {
+        request.log.error({ err: loadError }, 'Failed to load authoring options');
         return reply.code(500).send({ error: 'Không tải được danh sách môn học và chủ đề.' });
       }
 
-      return reply.send({ subjects: subjects ?? [], topics: topics ?? [] });
+      return reply.send({
+        subjects: toSubjectOptions((subjects ?? []) as SubjectCatalogRow[]),
+        topics: topics ?? [],
+        tracks: tracks ?? [],
+      });
+    },
+  });
+
+  app.post('/api/authoring/topics', {
+    preHandler: [verifyTeacher],
+    handler: async (request, reply) => {
+      const supabase = app.supabase;
+      const user = getUser(request);
+      if (!supabase) {
+        return reply.code(503).send({ error: 'Dịch vụ lưu trữ bài học chưa sẵn sàng.' });
+      }
+      if (!user?.id) return reply.code(401).send({ error: 'Phiên đăng nhập không hợp lệ.' });
+
+      const body = (request.body ?? {}) as Record<string, unknown>;
+      const subjectId = asText(body.subject_id, 64);
+      const grade = Number(body.grade);
+      const nameEn = asText(body.name_en, 200);
+      const nameVi = asText(body.name_vi, 200);
+      const sortOrder = body.sort_order === undefined ? undefined : Number(body.sort_order);
+
+      if (!subjectId || !UUID_PATTERN.test(subjectId)) {
+        return reply.code(400).send({ error: 'Vui lòng chọn môn học hợp lệ.' });
+      }
+      if (!Number.isInteger(grade) || grade < 1 || grade > 12) {
+        return reply.code(400).send({ error: 'Vui lòng chọn lớp (1–12).' });
+      }
+      if (!nameEn || !nameVi) {
+        return reply.code(400).send({ error: 'Vui lòng nhập tên chủ đề tiếng Việt và tiếng Anh (tối đa 200 ký tự).' });
+      }
+      if (sortOrder !== undefined && (!Number.isInteger(sortOrder) || sortOrder < 0)) {
+        return reply.code(400).send({ error: 'Thứ tự chủ đề không hợp lệ.' });
+      }
+
+      const { data: subject, error: subjectError } = await supabase
+        .from('subjects')
+        .select('id')
+        .eq('id', subjectId)
+        .maybeSingle();
+      if (subjectError) {
+        request.log.error({ err: subjectError, subjectId }, 'Failed to verify topic subject');
+        return reply.code(500).send({ error: 'Không xác minh được môn học đã chọn.' });
+      }
+      if (!subject) return reply.code(400).send({ error: 'Môn học đã chọn không tồn tại.' });
+
+      const { data: catalogRow, error: catalogError } = await supabase
+        .from('subject_grade_catalog')
+        .select('id')
+        .eq('subject_id', subjectId)
+        .eq('grade', grade)
+        .eq('active', true)
+        .limit(1)
+        .maybeSingle();
+      if (catalogError) {
+        request.log.error({ err: catalogError, subjectId, grade }, 'Failed to check subject catalog');
+        return reply.code(500).send({ error: 'Không xác minh được lớp của môn học.' });
+      }
+      if (!catalogRow) {
+        return reply.code(400).send({ error: 'Lớp này không thuộc chương trình của môn đã chọn.' });
+      }
+
+      const { data: existing, error: existingError } = await supabase
+        .from('topics')
+        .select('id, slug, grade, name_en, name_vi, sort_order')
+        .eq('subject_id', subjectId);
+      if (existingError) {
+        request.log.error({ err: existingError, subjectId }, 'Failed to list subject topics');
+        return reply.code(500).send({ error: 'Không kiểm tra được chủ đề hiện có.' });
+      }
+
+      const plan = planNewTopic((existing ?? []) as ExistingTopic[], { grade, name_en: nameEn, name_vi: nameVi });
+      if (plan.kind === 'duplicate') {
+        return reply.code(409).send({ error: 'Chủ đề này đã có.', topic: plan.topic });
+      }
+
+      const { data: topic, error: insertError } = await supabase
+        .from('topics')
+        .insert({
+          subject_id: subjectId,
+          grade,
+          kind: 'core',
+          slug: plan.slug,
+          name_en: nameEn,
+          name_vi: nameVi,
+          sort_order: sortOrder ?? plan.sort_order,
+        })
+        .select('id, subject_id, grade, name_en, name_vi, sort_order')
+        .single();
+      if (insertError) {
+        request.log.error({ err: insertError, subjectId }, 'Failed to create topic');
+        if (insertError.code === '23505') return reply.code(409).send({ error: 'Chủ đề này đã có.' });
+        return reply.code(500).send({ error: 'Không tạo được chủ đề.' });
+      }
+
+      return reply.code(201).send({ topic });
     },
   });
 
@@ -110,9 +209,7 @@ export const authoringRoutes: FastifyPluginAsync = async (app) => {
 
       let query = supabase
         .from('lessons')
-        .select(
-          'id, topic_id, subject_id, slug, title_en, title_vi, grade, blocks, sort_order, published, created_by, review_status, reviewed_by, reviewed_at, created_at, updated_at, subjects(slug, name_en, name_vi), topics(name_en, name_vi)',
-        )
+        .select(LESSON_LIST_COLUMNS)
         .order('updated_at', { ascending: false });
       if (user.app_metadata?.app_role !== 'admin') query = query.eq('created_by', user.id);
 
@@ -136,10 +233,8 @@ export const authoringRoutes: FastifyPluginAsync = async (app) => {
 
       const { data, error } = await supabase
         .from('lessons')
-        .select(
-          'id, topic_id, subject_id, slug, title_en, title_vi, grade, blocks, sort_order, published, created_by, review_status, reviewed_by, reviewed_at, created_at, updated_at, subjects(slug, name_en, name_vi), topics(name_en, name_vi)',
-        )
-        .eq('review_status', 'pending')
+        .select(LESSON_LIST_COLUMNS)
+        .eq('status', 'pending_review')
         .order('created_at', { ascending: true });
 
       if (error) {
@@ -195,7 +290,8 @@ export const authoringRoutes: FastifyPluginAsync = async (app) => {
       const titleEn = asText(body.title_en, 200);
       const titleVi = asText(body.title_vi, 200);
       const topicId = asText(body.topic_id, 64);
-      const grade = body.grade === undefined ? 10 : Number(body.grade);
+      const grade = body.grade === undefined || body.grade === null ? NaN : Number(body.grade);
+      const trackId = body.track_id === undefined || body.track_id === null ? undefined : asText(body.track_id, 64);
 
       if (!titleEn || !titleVi) {
         return reply.code(400).send({ error: 'Vui lòng nhập tiêu đề tiếng Việt và tiếng Anh (tối đa 200 ký tự).' });
@@ -203,13 +299,16 @@ export const authoringRoutes: FastifyPluginAsync = async (app) => {
       if (!topicId || !UUID_PATTERN.test(topicId)) {
         return reply.code(400).send({ error: 'Vui lòng chọn chủ đề hợp lệ cho bài học.' });
       }
-      if (!Number.isInteger(grade) || ![10, 11, 12].includes(grade)) {
-        return reply.code(400).send({ error: 'Khối lớp phải là 10, 11 hoặc 12.' });
+      if (!Number.isInteger(grade) || grade < 1 || grade > 12) {
+        return reply.code(400).send({ error: 'Vui lòng chọn lớp (1–12).' });
+      }
+      if (body.track_id !== undefined && body.track_id !== null && (!trackId || !UUID_PATTERN.test(trackId))) {
+        return reply.code(400).send({ error: 'Định hướng không hợp lệ.' });
       }
 
       const { data: topic, error: topicError } = await supabase
         .from('topics')
-        .select('id, subject_id')
+        .select('id, subject_id, grade')
         .eq('id', topicId)
         .maybeSingle();
 
@@ -218,19 +317,53 @@ export const authoringRoutes: FastifyPluginAsync = async (app) => {
         return reply.code(500).send({ error: 'Không xác minh được chủ đề đã chọn.' });
       }
       if (!topic) return reply.code(400).send({ error: 'Chủ đề đã chọn không tồn tại.' });
+      if (topic.grade !== null && topic.grade !== undefined && topic.grade !== grade) {
+        return reply.code(400).send({ error: 'Lớp của bài phải trùng lớp của chủ đề.' });
+      }
 
       const { data: subject, error: subjectError } = await supabase
         .from('subjects')
         .select('id')
         .eq('id', topic.subject_id)
-        .eq('status', 'active')
         .maybeSingle();
 
       if (subjectError) {
         request.log.error({ err: subjectError, subjectId: topic.subject_id }, 'Failed to verify lesson subject');
         return reply.code(500).send({ error: 'Không xác minh được môn học đã chọn.' });
       }
-      if (!subject) return reply.code(400).send({ error: 'Môn học đã chọn hiện chưa hoạt động.' });
+      if (!subject) return reply.code(400).send({ error: 'Môn học đã chọn không tồn tại.' });
+
+      const { data: catalogRow, error: catalogError } = await supabase
+        .from('subject_grade_catalog')
+        .select('id')
+        .eq('subject_id', subject.id)
+        .eq('grade', grade)
+        .eq('active', true)
+        .limit(1)
+        .maybeSingle();
+      if (catalogError) {
+        request.log.error({ err: catalogError, subjectId: subject.id, grade }, 'Failed to check subject catalog');
+        return reply.code(500).send({ error: 'Không xác minh được lớp của môn học.' });
+      }
+      if (!catalogRow) {
+        return reply.code(400).send({ error: 'Lớp này không thuộc chương trình của môn đã chọn.' });
+      }
+
+      if (trackId) {
+        const { data: track, error: trackError } = await supabase
+          .from('subject_tracks')
+          .select('id, subject_id, grades')
+          .eq('id', trackId)
+          .maybeSingle();
+        if (trackError) {
+          request.log.error({ err: trackError, trackId }, 'Failed to verify lesson track');
+          return reply.code(500).send({ error: 'Không xác minh được định hướng đã chọn.' });
+        }
+        const grades = Array.isArray(track?.grades) ? (track.grades as number[]) : [];
+        if (!track || track.subject_id !== subject.id || !grades.includes(grade)) {
+          return reply.code(400).send({ error: 'Định hướng không thuộc môn và lớp đã chọn.' });
+        }
+      }
 
       const baseSlug = makeSlug(titleEn) || 'bai-hoc';
       let slug = baseSlug;
@@ -265,10 +398,10 @@ export const authoringRoutes: FastifyPluginAsync = async (app) => {
           title_en: titleEn,
           title_vi: titleVi,
           grade,
+          track_id: trackId ?? null,
           blocks: [],
-          published: false,
+          status: 'draft',
           created_by: user.id,
-          review_status: 'draft',
         })
         .select('*')
         .single();
@@ -312,7 +445,7 @@ export const authoringRoutes: FastifyPluginAsync = async (app) => {
 
       const { data: current, error: readError } = await supabase
         .from('lessons')
-        .select('id, created_by, review_status, published, updated_at')
+        .select('id, created_by, status, updated_at')
         .eq('id', id)
         .maybeSingle();
 
@@ -325,10 +458,10 @@ export const authoringRoutes: FastifyPluginAsync = async (app) => {
       if (current.created_by !== user.id) {
         return reply.code(404).send({ error: 'Không tìm thấy bài giảng.' });
       }
-      if (current.review_status === 'approved' || current.published) {
+      if (current.status === 'published') {
         return reply.code(403).send({ error: 'Bài đã được admin duyệt.' });
       }
-      if (current.review_status !== 'draft' && current.review_status !== 'rejected') {
+      if (current.status !== 'draft' && current.status !== 'rejected') {
         return reply.code(409).send({ error: 'Bài học không ở trạng thái có thể gửi duyệt.' });
       }
       if (current.updated_at !== expectedUpdatedAt) {
@@ -341,8 +474,8 @@ export const authoringRoutes: FastifyPluginAsync = async (app) => {
           title_en: titleEn,
           title_vi: titleVi,
           blocks: parsedBlocks.data,
-          review_status: 'pending',
-          published: false,
+          status: 'pending_review',
+          review_note: null,
           reviewed_by: null,
           reviewed_at: null,
           updated_at: new Date().toISOString(),
@@ -377,6 +510,10 @@ export const authoringRoutes: FastifyPluginAsync = async (app) => {
       if (body.decision !== 'approve' && body.decision !== 'reject') {
         return reply.code(400).send({ error: 'Lựa chọn duyệt bài không hợp lệ.' });
       }
+      const note = body.note === undefined ? undefined : asText(body.note, 1000);
+      if (body.note !== undefined && body.note !== '' && !note) {
+        return reply.code(400).send({ error: 'Ghi chú duyệt bài tối đa 1000 ký tự.' });
+      }
       const expectedUpdatedAt = asText(body.expected_updated_at, 64);
       if (!expectedUpdatedAt) {
         return reply.code(400).send({ error: 'Thiếu phiên bản bài học cần duyệt.' });
@@ -384,7 +521,7 @@ export const authoringRoutes: FastifyPluginAsync = async (app) => {
 
       const { data: current, error: readError } = await supabase
         .from('lessons')
-        .select('id, review_status, updated_at')
+        .select('id, status, updated_at')
         .eq('id', id)
         .maybeSingle();
       if (readError) {
@@ -392,7 +529,7 @@ export const authoringRoutes: FastifyPluginAsync = async (app) => {
         return reply.code(500).send({ error: 'Không xác minh được trạng thái bài học.' });
       }
       if (!current) return reply.code(404).send({ error: 'Không tìm thấy bài giảng.' });
-      if (current.review_status !== 'pending') {
+      if (current.status !== 'pending_review') {
         return reply.code(409).send({ error: 'Bài giảng không còn ở trạng thái chờ duyệt.' });
       }
       if (current.updated_at !== expectedUpdatedAt) {
@@ -400,17 +537,19 @@ export const authoringRoutes: FastifyPluginAsync = async (app) => {
       }
 
       const approved = body.decision === 'approve';
+      const now = new Date().toISOString();
       const { data: lesson, error: updateError } = await supabase
         .from('lessons')
         .update({
-          review_status: approved ? 'approved' : 'rejected',
-          published: approved,
+          status: approved ? 'published' : 'rejected',
+          review_note: approved ? null : note ?? null,
+          published_at: approved ? now : null,
           reviewed_by: user.id,
-          reviewed_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
+          reviewed_at: now,
+          updated_at: now,
         })
         .eq('id', id)
-        .eq('review_status', 'pending')
+        .eq('status', 'pending_review')
         .eq('updated_at', current.updated_at)
         .select('*')
         .maybeSingle();
@@ -444,7 +583,7 @@ export const authoringRoutes: FastifyPluginAsync = async (app) => {
       }
       const { data: current, error: readError } = await supabase
         .from('lessons')
-        .select('id, created_by, review_status, published, updated_at')
+        .select('id, created_by, status, updated_at')
         .eq('id', id)
         .maybeSingle();
 
@@ -456,20 +595,20 @@ export const authoringRoutes: FastifyPluginAsync = async (app) => {
       if (current.updated_at !== expectedUpdatedAt) {
         return reply.code(409).send({ error: 'Bài học đã thay đổi. Tải lại trước khi lưu tiếp.' });
       }
-      if (current.review_status === 'pending') {
+      if (current.status === 'pending_review') {
         return reply.code(409).send({ error: 'Bài đang chờ admin duyệt nên tạm khóa chỉnh sửa.' });
       }
       if (!isAdmin && current.created_by !== user.id) {
         return reply.code(404).send({ error: 'Không tìm thấy bài giảng.' });
       }
-      if (!isAdmin && (current.review_status === 'approved' || current.published)) {
+      if (!isAdmin && current.status === 'published') {
         return reply.code(403).send({ error: 'Bài đã được duyệt; chỉ admin mới có thể chỉnh sửa.' });
       }
-      if (!isAdmin && body.published !== undefined) {
-        return reply.code(403).send({ error: 'Giáo viên không có quyền xuất bản bài học.' });
+      if (body.published !== undefined) {
+        return reply.code(400).send({ error: 'Trường published đã ngừng dùng; hãy gửi status.' });
       }
-      if (isAdmin && body.published === true && current.review_status !== 'approved') {
-        return reply.code(400).send({ error: 'Hãy duyệt bài ở hàng chờ trước khi xuất bản.' });
+      if (!isAdmin && body.status !== undefined) {
+        return reply.code(403).send({ error: 'Giáo viên không có quyền xuất bản bài học.' });
       }
 
       const updateData: Record<string, unknown> = { updated_at: new Date().toISOString() };
@@ -490,11 +629,22 @@ export const authoringRoutes: FastifyPluginAsync = async (app) => {
         }
         updateData.blocks = parsedBlocks.data;
       }
-      if (isAdmin && body.published !== undefined) {
-        if (typeof body.published !== 'boolean') {
-          return reply.code(400).send({ error: 'Trạng thái xuất bản không hợp lệ.' });
+      if (isAdmin && body.status !== undefined) {
+        if (body.status !== 'draft' && body.status !== 'published') {
+          return reply.code(400).send({ error: 'Admin chỉ có thể đặt trạng thái draft hoặc published.' });
         }
-        updateData.published = body.published;
+        updateData.status = body.status;
+        // Stamp publish metadata only on a transition, so edits keep the original approver.
+        if (body.status !== current.status) {
+          if (body.status === 'published') {
+            updateData.published_at = updateData.updated_at;
+            updateData.reviewed_by = user.id;
+            updateData.reviewed_at = updateData.updated_at;
+            updateData.review_note = null;
+          } else {
+            updateData.published_at = null;
+          }
+        }
       }
       if (Object.keys(updateData).length === 1) {
         return reply.code(400).send({ error: 'Không có thay đổi để lưu.' });

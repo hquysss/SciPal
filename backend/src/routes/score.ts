@@ -16,7 +16,7 @@ export const scoreRoutes: FastifyPluginAsync = async (app) => {
       .from('lessons')
       .select('subject_id')
       .eq('id', lesson_id)
-      .eq('published', true)
+      .eq('status', 'published')
       .maybeSingle();
     if (lessonError) {
       app.log.warn({ err: lessonError }, 'Lesson lookup failed during scoring');

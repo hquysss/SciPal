@@ -72,6 +72,7 @@ export function SubjectSwitcher({ current, mobile = false, onNavigate }: Subject
       <Link
         key={subject.slug}
         href={`/${subject.slug}`}
+        prefetch={pathname !== '/'}
         onClick={() => {
           setOpen(false);
           onNavigate?.();

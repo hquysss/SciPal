@@ -76,6 +76,7 @@ describe('Supabase Client Package', () => {
       type SubjectRow = Tables<'subjects'>;
       type SubjectInsert = TablesInsert<'subjects'>;
       type SubjectUpdate = TablesUpdate<'subjects'>;
+      type ProfileUpdate = TablesUpdate<'profiles'>;
 
       const subjectRow: SubjectRow = {
         id: '123e4567-e89b-12d3-a456-426614174000',
@@ -84,7 +85,7 @@ describe('Supabase Client Package', () => {
         name_vi: 'Tin học',
         accent_color: '#16a34a',
         icon: '</>',
-        status: 'active',
+        icon_url: null,
         sort_order: 0,
         created_at: '2026-09-22T00:00:00Z',
       };
@@ -98,12 +99,16 @@ describe('Supabase Client Package', () => {
       };
 
       const subjectUpdate: SubjectUpdate = {
-        status: 'upcoming',
+        icon_url: 'https://example.com/math.svg',
+      };
+      const profileUpdate: ProfileUpdate = {
+        preferred_education_level: 'primary',
       };
 
       expect(subjectRow.slug).toBe('informatics');
       expect(subjectInsert.slug).toBe('math');
-      expect(subjectUpdate.status).toBe('upcoming');
+      expect(subjectUpdate.icon_url).toBe('https://example.com/math.svg');
+      expect(profileUpdate.preferred_education_level).toBe('primary');
     });
 
     it('allows valid Lesson row with typed blocks', () => {
@@ -127,7 +132,14 @@ describe('Supabase Client Package', () => {
           },
         ],
         sort_order: 1,
-        published: true,
+        created_by: null,
+        status: 'published',
+        track_id: null,
+        digital_competency: null,
+        review_note: null,
+        published_at: '2026-09-22T00:00:00Z',
+        reviewed_by: null,
+        reviewed_at: null,
         created_at: '2026-09-22T00:00:00Z',
         updated_at: '2026-09-22T00:00:00Z',
       };

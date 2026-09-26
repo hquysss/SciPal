@@ -11,10 +11,12 @@
     "build": "turbo run build",
     "test": "turbo run test",
     "lint": "turbo run lint",
-    "typecheck": "turbo run typecheck"
+    "typecheck": "turbo run typecheck",
+    "doctor": "npx react-doctor@latest"
   },
   "devDependencies": {
     "@types/node": "^20.0.0",
+    "react-doctor": "^0.9.14",
     "supabase": "^2.117.0",
     "turbo": "^2.0.0",
     "typescript": "^5.5.0"

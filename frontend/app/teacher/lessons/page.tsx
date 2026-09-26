@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { getTeacherLessons, AuthoringApiError } from '@/features/authoring/authoringQueries';
 import { getAuthoringSession } from '@/features/authoring/serverAuth';
+import { lessonStatusLabel, lessonStatusTone, TONE_CLASS } from '@/features/authoring/lessonStatus';
 
 export const dynamic = 'force-dynamic';
 
@@ -9,14 +10,6 @@ function formatUpdatedAt(value: string) {
   return Number.isNaN(date.getTime())
     ? '—'
     : new Intl.DateTimeFormat('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' }).format(date);
-}
-
-function statusLabel(reviewStatus: string, published: boolean) {
-  if (published) return '● Đã duyệt & xuất bản';
-  if (reviewStatus === 'pending') return '◷ Chờ admin duyệt';
-  if (reviewStatus === 'rejected') return '○ Cần chỉnh sửa';
-  if (reviewStatus === 'draft') return '○ Bản nháp';
-  return '● Đã duyệt · Bản nháp';
 }
 
 export default async function TeacherLessonsPage() {
@@ -102,16 +95,8 @@ export default async function TeacherLessonsPage() {
                       <span className="rounded-full bg-purple-100 px-2.5 py-0.5 font-mono text-[11px] font-bold text-purple-800 dark:bg-purple-950/60 dark:text-purple-300">
                         {item.subject_name_vi} {item.grade}
                       </span>
-                      <span
-                        className={`rounded-full px-2 py-0.5 text-[11px] font-bold ${
-                          item.published
-                            ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300'
-                            : item.review_status === 'rejected'
-                              ? 'bg-red-100 text-red-800 dark:bg-red-950/60 dark:text-red-300'
-                              : 'bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300'
-                        }`}
-                      >
-                        {statusLabel(item.review_status, item.published)}
+                      <span className={`rounded-full px-2 py-0.5 text-[11px] font-bold ${TONE_CLASS[lessonStatusTone(item.status)]}`}>
+                        {lessonStatusLabel(item.status).vi}
                       </span>
                       <span className="text-xs font-mono text-gray-400">Cập nhật: {formatUpdatedAt(item.updated_at)}</span>
                     </div>
@@ -122,7 +107,7 @@ export default async function TeacherLessonsPage() {
                   </div>
 
                   <div className="flex items-center gap-2">
-                    {item.published ? (
+                    {item.status === 'published' ? (
                       <Link
                         href={`/${item.subject_slug}/${item.slug}`}
                         className="rounded-xl border border-gray-200 bg-white px-3.5 py-2 text-xs font-bold text-gray-700 transition hover:bg-gray-50 dark:border-gray-700 dark:bg-card dark:text-gray-300"

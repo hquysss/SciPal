@@ -1,6 +1,8 @@
 import Link from 'next/link';
 import { cookies } from 'next/headers';
+import { redirect } from 'next/navigation';
 import { createServerClient } from '@scipal/supabase';
+import { LoadErrorNotice } from '@/components/feedback/LoadErrorNotice';
 import { StreakCalendar } from '@/features/progress/StreakCalendar';
 import { BadgeWall } from '@/features/progress/BadgeWall';
 import { getUserProgress } from '@/features/progress/progressQueries';
@@ -8,19 +10,11 @@ import { getUserProgress } from '@/features/progress/progressQueries';
 export const dynamic = 'force-dynamic';
 
 export default async function ProgressPage() {
-  let userId = 'anon-demo-user';
-  try {
-    const cookieStore = await cookies();
-    const supabase = createServerClient(cookieStore as any);
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-    if (user) userId = user.id;
-  } catch (err) {
-    console.warn('ProgressPage auth lookup:', err);
-  }
+  const supabase = createServerClient(await cookies());
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) redirect('/login?redirect=%2Fprogress');
 
-  const { completedLessons, streaks, totalXP, badges } = await getUserProgress(userId);
+  const { completedLessons, streaks, totalXP, badges, loadFailed } = await getUserProgress(user.id);
 
   return (
     <div className="relative min-h-[calc(100vh-3.5rem)] bg-science-grid pb-20">
@@ -33,6 +27,15 @@ export default async function ProgressPage() {
           <span>/</span>
           <span className="font-semibold text-emerald-700">Tiến trình học tập</span>
         </nav>
+
+        {loadFailed && (
+          <LoadErrorNotice
+            message={{
+              en: 'We could not load your progress. Please reload the page.',
+              vi: 'Chưa tải được tiến trình học tập. Vui lòng tải lại trang.',
+            }}
+          />
+        )}
 
         {/* Gamified Header Card */}
         <header className="rounded-3xl p-6 sm:p-8 bg-gradient-to-br from-emerald-800 to-teal-900 text-white shadow-lg relative overflow-hidden">

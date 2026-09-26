@@ -53,9 +53,9 @@ export default async function LessonAuthoringStudioPage({
           initialTitleVi={lesson.title_vi}
           initialTitleEn={lesson.title_en}
           initialBlocks={lesson.blocks}
-          initialPublished={lesson.published}
           initialUpdatedAt={lesson.updated_at}
-          reviewStatus={lesson.review_status}
+          initialStatus={lesson.status}
+          initialReviewNote={lesson.review_note}
           canReview={role === 'admin'}
         />
       </main>

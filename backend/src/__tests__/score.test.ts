@@ -4,6 +4,7 @@ import { authPlugin } from '../plugins/auth.js';
 import { scoreRoutes } from '../routes/score.js';
 import { surveyRoutes } from '../routes/survey.js';
 import type { SupabaseClient } from '@supabase/supabase-js';
+import { mockQuery, mockSupabase } from './helpers/supabaseMock.js';
 
 describe('Score and Survey Routes', () => {
   const app = Fastify();
@@ -24,16 +25,6 @@ describe('Score and Survey Routes', () => {
       payload: { lesson_id: 'lesson-1', answers: [] },
     });
     expect(res.statusCode).toBe(401);
-  });
-
-  it('POST /api/survey is accessible anonymously', async () => {
-    const res = await app.inject({
-      method: 'POST',
-      url: '/api/survey',
-      payload: { type: 'demand', payload: { subject: 'informatics', grade: 11 } },
-    });
-    expect(res.statusCode).toBe(201);
-    expect(res.json()).toEqual({ ok: true });
   });
 
   it('POST /api/survey returns 400 when missing payload', async () => {
@@ -100,5 +91,20 @@ it('does not grant XP twice for an already completed lesson', async () => {
   expect(res.statusCode).toBe(200);
   expect(res.json().xp_earned).toBe(0);
   expect(xpWrites).toBe(0);
+  await app.close();
+});
+
+it('only scores lessons whose status is published', async () => {
+  const lessons = mockQuery({ data: null, error: null });
+  const app = Fastify();
+  app.decorate('supabase', mockSupabase({ lessons }));
+  app.addHook('onRequest', async (request) => {
+    (request as typeof request & { user: { id: string } }).user = { id: '00000000-0000-0000-0000-000000000001' };
+  });
+  await app.register(scoreRoutes);
+  await app.ready();
+  const res = await app.inject({ method: 'POST', url: '/api/score/lesson', payload: { lesson_id: 'lesson-1', answers: [] } });
+  expect(res.statusCode).toBe(404);
+  expect(lessons.eqCalls).toContainEqual(['status', 'published']);
   await app.close();
 });

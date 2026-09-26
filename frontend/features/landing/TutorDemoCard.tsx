@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { Code2, Sparkles, UserRound } from 'lucide-react';
+import { Sun, Sparkles, UserRound } from 'lucide-react';
 import { useLanguage } from '@scipal/hooks';
 import styles from './landing.module.css';
 
@@ -14,7 +14,10 @@ export function TutorDemoCard() {
     const conversation = conversationRef.current;
     if (!conversation) return;
 
-    if (!('IntersectionObserver' in window)) {
+    if (
+      window.matchMedia('(prefers-reduced-motion: reduce)').matches ||
+      !('IntersectionObserver' in window)
+    ) {
       setIsPlaying(true);
       return;
     }
@@ -42,7 +45,7 @@ export function TutorDemoCard() {
               {t({ en: 'AI Tutor', vi: 'Gia sư AI' })}
             </p>
             <h2 id="tutor-demo-title" className={styles.tutorTitle}>
-              {t({ en: 'A small idea, made clear', vi: 'Gỡ rối một khái niệm nhỏ' })}
+              {t({ en: 'A small idea, made clear', vi: 'Gỡ rối một hiện tượng nhỏ' })}
             </h2>
           </div>
         </div>
@@ -51,46 +54,41 @@ export function TutorDemoCard() {
       <div className={styles.tutorBody}>
         <div className={styles.lessonContext}>
           <span className={styles.contextIcon} aria-hidden="true">
-            <Code2 size={17} />
+            <Sun size={17} />
           </span>
           <span className={styles.contextText}>
-            <span>{t({ en: 'INFORMATICS · GRADE 11', vi: 'TIN HỌC · LỚP 11' })}</span>
-            <strong>{t({ en: 'Binary search', vi: 'Tìm kiếm nhị phân' })}</strong>
+            <span>{t({ en: 'SCIENCE INQUIRY', vi: 'CÂU HỎI KHOA HỌC' })}</span>
+            <strong>{t({ en: 'Changing shadows', vi: 'Bóng thay đổi' })}</strong>
           </span>
         </div>
 
         <div
-          className={styles.binaryVisual}
+          className={styles.inquiryVisual}
           role="img"
           aria-label={t({
-            en: 'Sorted numbers used in binary search',
-            vi: 'Dãy số được dùng trong tìm kiếm nhị phân',
+            en: 'A vertical object casts a longer shadow when the Sun appears low and a shorter shadow when it appears higher.',
+            vi: 'Một vật thẳng đứng tạo bóng dài hơn khi Mặt Trời ở thấp và bóng ngắn hơn khi Mặt Trời lên cao.',
           })}
         >
-          <div className={styles.binaryVisualTop}>
-            <span>{t({ en: 'Sorted list', vi: 'Dãy đã sắp xếp' })}</span>
-            <span>{t({ en: 'Find 23', vi: 'Tìm số 23' })}</span>
+          <div className={styles.inquiryVisualTop}>
+            <span>{t({ en: 'Compare the Sun’s height', vi: 'So sánh độ cao Mặt Trời' })}</span>
+            <span>{t({ en: 'Same object', vi: 'Cùng một vật' })}</span>
           </div>
-          <ol className={styles.binaryList}>
-            {[4, 9, 12, 18, 23, 31, 42].map((value, index) => {
-              const cellClass = index < 3
-                ? styles.arrayCellDiscarded
-                : index === 3
-                  ? styles.arrayCellMiddle
-                  : styles.arrayCellSearch;
-
-              return (
-                <li className={styles.arrayCell + ' ' + cellClass} key={value}>
-                  {value}
-                </li>
-              );
-            })}
+          <ol className={styles.inquiryNotes}>
+            <li className={styles.inquiryStep}>
+              <span>{t({ en: 'Sun appears low', vi: 'Mặt Trời ở thấp' })}</span>
+              <strong>{t({ en: 'Longer shadow', vi: 'Bóng dài hơn' })}</strong>
+            </li>
+            <li className={styles.inquiryStep + ' ' + styles.inquiryObservation}>
+              <span>{t({ en: 'Sun appears higher', vi: 'Mặt Trời lên cao' })}</span>
+              <strong>{t({ en: 'Shorter shadow', vi: 'Bóng ngắn hơn' })}</strong>
+            </li>
           </ol>
-          <div className={styles.binaryCaption}>
-            <span className={styles.middleMarker} aria-hidden="true" />
-            <span>{t({ en: 'Middle value: 18', vi: 'Giá trị ở giữa: 18' })}</span>
-            <span className={styles.binaryConclusion}>
-              {t({ en: '18 < 23 · keep the right half', vi: '18 < 23 · xét nửa bên phải' })}
+          <div className={styles.inquiryCaption}>
+            <span className={styles.observationMarker} aria-hidden="true" />
+            <span>{t({ en: 'Observe before explaining', vi: 'Quan sát trước khi giải thích' })}</span>
+            <span className={styles.inquiryConclusion}>
+              {t({ en: 'Sun higher → shadow shorter', vi: 'Mặt Trời cao → bóng ngắn' })}
             </span>
           </div>
         </div>
@@ -110,8 +108,8 @@ export function TutorDemoCard() {
               </span>
               <p>
                 {t({
-                  en: 'Why must binary search use a sorted list?',
-                  vi: 'Vì sao tìm kiếm nhị phân cần dãy đã sắp xếp?',
+                  en: 'Why does a vertical object cast a shorter shadow as the Sun rises?',
+                  vi: 'Vì sao bóng của một vật thẳng đứng ngắn lại khi Mặt Trời lên cao?',
                 })}
               </p>
             </div>
@@ -127,8 +125,8 @@ export function TutorDemoCard() {
               </span>
               <p>
                 {t({
-                  en: 'At each step, we compare the middle element with the target. The order tells us which half can be discarded; without a sorted list, that conclusion is not valid.',
-                  vi: 'Mỗi bước ta so sánh với phần tử ở giữa. Thứ tự của dãy cho biết có thể bỏ nửa nào; nếu dãy chưa sắp xếp, kết luận đó không còn đúng.',
+                  en: 'Light travels in straight lines. When sunlight reaches the same upright object from a higher angle, the shadow on level ground becomes shorter.',
+                  vi: 'Ánh sáng truyền theo đường thẳng. Khi ánh nắng chiếu vào cùng một vật thẳng đứng từ góc cao hơn, bóng trên mặt đất sẽ ngắn lại.',
                 })}
               </p>
             </div>
@@ -137,8 +135,8 @@ export function TutorDemoCard() {
           <p className={styles.followupPrompt}>
             <span>{t({ en: 'Try this', vi: 'Thử nghĩ xem' })}</span>
             {t({
-              en: 'If the middle element is smaller than your target, which half would you search next?',
-              vi: 'Nếu phần tử ở giữa nhỏ hơn giá trị cần tìm, em sẽ tìm tiếp ở nửa nào?',
+              en: 'How could you compare the shadow at two different times?',
+              vi: 'Em có thể so sánh bóng ở hai thời điểm khác nhau như thế nào?',
             })}
           </p>
         </div>
@@ -147,8 +145,8 @@ export function TutorDemoCard() {
       <footer className={styles.tutorFooter}>
         <p>
           {t({
-            en: 'Preview',
-            vi: 'Bản xem trước',
+            en: 'This preview uses a prepared answer; live AI tutoring is not connected here yet.',
+            vi: 'Câu trả lời trong bản xem trước được chuẩn bị sẵn; gia sư AI trực tiếp chưa kết nối ở đây.',
           })}
         </p>
       </footer>

@@ -57,8 +57,8 @@ export function AccountHelpModal({ isOpen, onClose }: AccountHelpModalProps) {
             </span>
             <h3 id="account-help-title" className="text-lg font-bold text-gray-950 dark:text-white">
               {t({
-                en: 'Institutional Account Policy',
-                vi: 'Chính sách Tài khoản Cấp phát',
+                en: 'Account help',
+                vi: 'Hỗ trợ tài khoản',
               })}
             </h3>
           </div>
@@ -66,7 +66,7 @@ export function AccountHelpModal({ isOpen, onClose }: AccountHelpModalProps) {
             ref={closeBtnRef}
             type="button"
             onClick={onClose}
-            className="flex h-8 w-8 items-center justify-center rounded-full text-gray-400 hover:bg-gray-100 hover:text-gray-700 dark:hover:bg-gray-800 dark:hover:text-gray-200 transition"
+            className="flex min-h-11 min-w-11 items-center justify-center rounded-full text-gray-400 hover:bg-gray-100 hover:text-gray-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-700 dark:hover:bg-gray-800 dark:hover:text-gray-200 transition"
             aria-label={t({ en: 'Close', vi: 'Đóng' })}
           >
             ✕
@@ -74,46 +74,19 @@ export function AccountHelpModal({ isOpen, onClose }: AccountHelpModalProps) {
         </div>
 
         {/* Content Body */}
-        <div className="py-5 space-y-4 text-sm text-gray-600 dark:text-gray-300 leading-relaxed">
-          <div className="rounded-2xl border border-amber-200/70 bg-amber-50/70 p-4 text-amber-900 dark:border-amber-900/40 dark:bg-amber-950/30 dark:text-amber-200">
-            <p className="font-semibold mb-1">
-              {t({
-                en: 'Accounts are issued directly by your school administration.',
-                vi: 'Tài khoản được nhà trường hoặc ban quản trị cấp phát trực tiếp.',
-              })}
-            </p>
-            <p className="text-xs">
-              {t({
-                en: 'SciPal operates as an authorized natural science learning environment. Public registration is permanently closed to ensure curriculum integrity and student verification.',
-                vi: 'SciPal hoạt động như một môi trường học tập khoa học tự nhiên chuẩn mực. Hệ thống không mở đăng ký tự do để bảo đảm tính chuẩn xác và phân lớp học sinh.',
-              })}
-            </p>
-          </div>
-
-          <div className="space-y-2">
-            <h4 className="font-bold text-gray-900 dark:text-white">
-              {t({
-                en: 'Forgot your password or haven’t received credentials?',
-                vi: 'Quên mật khẩu hoặc chưa nhận được thông tin tài khoản?',
-              })}
-            </h4>
-            <ul className="list-disc pl-5 space-y-1 text-xs sm:text-sm">
-              <li>
-                <strong>{t({ en: 'For Students:', vi: 'Dành cho Học sinh:' })}</strong>{' '}
-                {t({
-                  en: 'Contact your Class Homeroom Teacher or your school’s Informatics/ICT teacher.',
-                  vi: 'Liên hệ Giáo viên chủ nhiệm hoặc Giáo viên bộ môn Tin học tại trường của bạn.',
-                })}
-              </li>
-              <li>
-                <strong>{t({ en: 'For Teachers:', vi: 'Dành cho Giáo viên:' })}</strong>{' '}
-                {t({
-                  en: 'Contact your school’s Academic Affairs Office or the SciPal System Administrator.',
-                  vi: 'Liên hệ Tổ trưởng Chuyên môn hoặc Ban Quản trị Hệ thống SciPal nhà trường.',
-                })}
-              </li>
-            </ul>
-          </div>
+        <div className="space-y-3 py-5 text-sm leading-relaxed text-gray-600 dark:text-gray-300">
+          <p>
+            {t({
+              en: 'For help signing in or resetting your password, email SciPal support.',
+              vi: 'Nếu cần hỗ trợ đăng nhập hoặc đặt lại mật khẩu, hãy gửi email cho SciPal.',
+            })}
+          </p>
+          <a
+            href="mailto:tuilangus@gmail.com"
+            className="inline-flex min-h-11 items-center rounded-xl border border-emerald-700 px-4 font-semibold text-emerald-800 hover:bg-emerald-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-700 dark:text-emerald-300 dark:hover:bg-emerald-950/40"
+          >
+            tuilangus@gmail.com
+          </a>
         </div>
 
         {/* Footer */}
@@ -121,7 +94,7 @@ export function AccountHelpModal({ isOpen, onClose }: AccountHelpModalProps) {
           <button
             type="button"
             onClick={onClose}
-            className="rounded-2xl bg-emerald-700 px-6 py-2.5 text-sm font-bold text-white shadow-xs hover:bg-emerald-600 transition"
+            className="min-h-11 rounded-2xl bg-emerald-700 px-6 text-sm font-bold text-white shadow-xs hover:bg-emerald-600 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-700 transition"
           >
             {t({ en: 'Understood', vi: 'Đã hiểu' })}
           </button>

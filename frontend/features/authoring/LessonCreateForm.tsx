@@ -1,34 +1,115 @@
 'use client';
 
-import { useState, type FormEvent } from 'react';
+import { useMemo, useState, type FormEvent } from 'react';
 import { useRouter } from 'next/navigation';
 import { createBrowserClient } from '@scipal/supabase';
 import { useLanguage } from '@scipal/hooks';
-import type { AuthoringSubjectOption, AuthoringTopicOption } from './authoringQueries';
+import { EDUCATION_LEVEL_LABELS } from '../landing/educationLevel';
+import type { AuthoringSubjectOption, AuthoringTopicOption, AuthoringTrackOption } from './authoringQueries';
+import { buildSubjectChoices, topicsFor, tracksFor } from './lessonFormOptions';
+import { createAuthoringTopic } from './topicApi';
 
 interface LessonCreateFormProps {
   subjects: AuthoringSubjectOption[];
   topics: AuthoringTopicOption[];
+  tracks: AuthoringTrackOption[];
 }
 
-export function LessonCreateForm({ subjects, topics }: LessonCreateFormProps) {
+const NEW_TOPIC = '__new__';
+
+const FIELD_CLASS =
+  'w-full rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-sm font-normal text-gray-900 outline-none focus:border-purple-500 disabled:opacity-60 dark:border-gray-700 dark:bg-gray-900 dark:text-white';
+const LABEL_CLASS = 'block space-y-1.5 text-sm font-semibold text-gray-700 dark:text-gray-300';
+
+async function getAccessToken(): Promise<string | null> {
+  const { data: { session } } = await createBrowserClient().auth.getSession();
+  return session?.access_token ?? null;
+}
+
+export function LessonCreateForm({ subjects, topics, tracks }: LessonCreateFormProps) {
   const { lang, t } = useLanguage();
   const router = useRouter();
+  const choiceGroups = useMemo(() => buildSubjectChoices(subjects), [subjects]);
+  const choices = useMemo(() => choiceGroups.flatMap((group) => group.items), [choiceGroups]);
+
+  const [choiceKey, setChoiceKey] = useState('');
+  const [grade, setGrade] = useState<number | null>(null);
+  const [trackId, setTrackId] = useState('');
+  const [topicId, setTopicId] = useState('');
+  const [localTopics, setLocalTopics] = useState(topics);
+  const [newTopicEn, setNewTopicEn] = useState('');
+  const [newTopicVi, setNewTopicVi] = useState('');
+  const [creatingTopic, setCreatingTopic] = useState(false);
+  const [topicNotice, setTopicNotice] = useState<string | null>(null);
   const [titleVi, setTitleVi] = useState('');
   const [titleEn, setTitleEn] = useState('');
-  const [topicId, setTopicId] = useState('');
-  const [grade, setGrade] = useState(10);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const choice = choices.find((item) => item.key === choiceKey) ?? null;
+  const availableTracks = choice && grade !== null ? tracksFor(tracks, choice.subjectId, grade) : [];
+  const availableTopics = choice && grade !== null ? topicsFor(localTopics, choice.subjectId, grade) : [];
+  const name = (item: { name_en: string; name_vi: string }) => (lang === 'en' ? item.name_en : item.name_vi);
+
+  const canSubmit = Boolean(
+    choice && grade !== null && topicId && topicId !== NEW_TOPIC && titleVi.trim() && titleEn.trim(),
+  );
+
+  const handleChoiceChange = (value: string) => {
+    setChoiceKey(value);
+    setGrade(null);
+    setTrackId('');
+    setTopicId('');
+    setTopicNotice(null);
+  };
+
+  const handleGradeChange = (value: string) => {
+    setGrade(value ? Number(value) : null);
+    setTrackId('');
+    setTopicId('');
+    setTopicNotice(null);
+  };
+
+  const handleCreateTopic = async () => {
+    if (!choice || grade === null) return;
+    setError(null);
+    setTopicNotice(null);
+    setCreatingTopic(true);
+    try {
+      const token = await getAccessToken();
+      if (!token) {
+        router.push(`/login?redirect=${encodeURIComponent('/teacher/lessons/new-lesson')}`);
+        return;
+      }
+      const result = await createAuthoringTopic(token, {
+        subject_id: choice.subjectId,
+        grade,
+        name_en: newTopicEn.trim(),
+        name_vi: newTopicVi.trim(),
+      });
+      setLocalTopics((prev) => (prev.some((topic) => topic.id === result.topic.id) ? prev : [...prev, result.topic]));
+      setTopicId(result.topic.id);
+      setNewTopicEn('');
+      setNewTopicVi('');
+      if (result.kind === 'existing') {
+        setTopicNotice(t({ en: 'This topic already exists; it has been selected.', vi: 'Chủ đề này đã có; đã chọn sẵn.' }));
+      }
+    } catch (topicError) {
+      setError(topicError instanceof Error ? topicError.message : t({ en: 'The topic could not be created.', vi: 'Không tạo được chủ đề.' }));
+    } finally {
+      setCreatingTopic(false);
+    }
+  };
+
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    if (!canSubmit || grade === null) return;
     setError(null);
     setSaving(true);
 
     try {
-      const { data: { session } } = await createBrowserClient().auth.getSession();
-      if (!session) {
+      const token = await getAccessToken();
+      if (!token) {
         router.push(`/login?redirect=${encodeURIComponent('/teacher/lessons/new-lesson')}`);
         return;
       }
@@ -38,9 +119,15 @@ export function LessonCreateForm({ subjects, topics }: LessonCreateFormProps) {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${session.access_token}`,
+          Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({ title_vi: titleVi, title_en: titleEn, topic_id: topicId, grade }),
+        body: JSON.stringify({
+          title_vi: titleVi,
+          title_en: titleEn,
+          topic_id: topicId,
+          grade,
+          ...(trackId ? { track_id: trackId } : {}),
+        }),
       });
       const data = await response.json().catch(() => ({}));
 
@@ -81,7 +168,93 @@ export function LessonCreateForm({ subjects, topics }: LessonCreateFormProps) {
       </div>
 
       <div className="grid gap-5 sm:grid-cols-2">
-        <label className="block space-y-1.5 text-sm font-semibold text-gray-700 dark:text-gray-300">
+        <label className={LABEL_CLASS}>
+          <span>{t({ en: 'Subject', vi: 'Môn học' })}</span>
+          <select value={choiceKey} onChange={(event) => handleChoiceChange(event.target.value)} required className={FIELD_CLASS}>
+            <option value="">{t({ en: 'Select a subject', vi: 'Chọn môn học' })}</option>
+            {choiceGroups.map((group) => (
+              <optgroup key={group.level} label={t(EDUCATION_LEVEL_LABELS[group.level])}>
+                {group.items.map((item) => (
+                  <option key={item.key} value={item.key}>{name(item)}</option>
+                ))}
+              </optgroup>
+            ))}
+          </select>
+        </label>
+
+        <label className={LABEL_CLASS}>
+          <span>{t({ en: 'Grade', vi: 'Lớp' })}</span>
+          <select
+            value={grade ?? ''}
+            onChange={(event) => handleGradeChange(event.target.value)}
+            required
+            disabled={!choice}
+            className={FIELD_CLASS}
+          >
+            <option value="">{t({ en: 'Select a grade', vi: 'Chọn lớp' })}</option>
+            {choice?.grades.map((value) => (
+              <option key={value} value={value}>{t({ en: `Grade ${value}`, vi: `Lớp ${value}` })}</option>
+            ))}
+          </select>
+        </label>
+
+        {availableTracks.length > 0 && (
+          <label className={LABEL_CLASS}>
+            <span>{t({ en: 'Track', vi: 'Định hướng' })}</span>
+            <select value={trackId} onChange={(event) => setTrackId(event.target.value)} className={FIELD_CLASS}>
+              <option value="">{t({ en: 'None', vi: 'Không chọn' })}</option>
+              {availableTracks.map((track) => (
+                <option key={track.id} value={track.id}>{name(track)}</option>
+              ))}
+            </select>
+          </label>
+        )}
+
+        <label className={LABEL_CLASS}>
+          <span>{t({ en: 'Topic', vi: 'Chủ đề' })}</span>
+          <select
+            value={topicId}
+            onChange={(event) => {
+              setTopicId(event.target.value);
+              setTopicNotice(null);
+            }}
+            required
+            disabled={!choice || grade === null}
+            className={FIELD_CLASS}
+          >
+            <option value="">{t({ en: 'Select a topic', vi: 'Chọn chủ đề' })}</option>
+            {availableTopics.map((topic) => (
+              <option key={topic.id} value={topic.id}>{name(topic)}</option>
+            ))}
+            <option value={NEW_TOPIC}>{t({ en: '+ Create a new topic', vi: '+ Tạo chủ đề mới' })}</option>
+          </select>
+          {topicNotice && <span className="block text-xs font-normal text-emerald-700">{topicNotice}</span>}
+        </label>
+      </div>
+
+      {topicId === NEW_TOPIC && (
+        <div className="grid gap-4 rounded-2xl border border-purple-200/70 bg-purple-50/50 p-4 sm:grid-cols-[1fr_1fr_auto] sm:items-end dark:border-purple-900/50 dark:bg-purple-950/20">
+          <label className={LABEL_CLASS}>
+            <span>{t({ en: 'Topic name (Vietnamese)', vi: 'Tên chủ đề tiếng Việt' })}</span>
+            <input value={newTopicVi} onChange={(event) => setNewTopicVi(event.target.value)} maxLength={200} className={FIELD_CLASS} />
+          </label>
+          <label className={LABEL_CLASS}>
+            <span>{t({ en: 'Topic name (English)', vi: 'Tên chủ đề tiếng Anh' })}</span>
+            <input value={newTopicEn} onChange={(event) => setNewTopicEn(event.target.value)} maxLength={200} className={FIELD_CLASS} />
+          </label>
+          <button
+            type="button"
+            onClick={handleCreateTopic}
+            disabled={creatingTopic || !newTopicVi.trim() || !newTopicEn.trim()}
+            className="rounded-xl bg-purple-700 px-4 py-2.5 text-sm font-bold text-white transition hover:bg-purple-800 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            {creatingTopic ? t({ en: 'Creating…', vi: 'Đang tạo…' }) : t({ en: 'Create topic', vi: 'Tạo chủ đề' })}
+          </button>
+        </div>
+      )}
+
+      <div className="grid gap-5 sm:grid-cols-2">
+        <label className={LABEL_CLASS}>
           <span>{t({ en: 'Vietnamese title', vi: 'Tiêu đề tiếng Việt' })}</span>
           <input
             value={titleVi}
@@ -89,10 +262,10 @@ export function LessonCreateForm({ subjects, topics }: LessonCreateFormProps) {
             maxLength={200}
             required
             placeholder={t({ en: 'e.g. Introduction to algorithms', vi: 'Ví dụ: Nhập môn thuật toán' })}
-            className="w-full rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-sm font-normal text-gray-900 outline-none focus:border-purple-500 dark:border-gray-700 dark:bg-gray-900 dark:text-white"
+            className={FIELD_CLASS}
           />
         </label>
-        <label className="block space-y-1.5 text-sm font-semibold text-gray-700 dark:text-gray-300">
+        <label className={LABEL_CLASS}>
           <span>{t({ en: 'English title', vi: 'Tiêu đề tiếng Anh' })}</span>
           <input
             value={titleEn}
@@ -100,46 +273,8 @@ export function LessonCreateForm({ subjects, topics }: LessonCreateFormProps) {
             maxLength={200}
             required
             placeholder={t({ en: 'e.g. Introduction to Algorithms', vi: 'Ví dụ: Introduction to Algorithms' })}
-            className="w-full rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-sm font-normal text-gray-900 outline-none focus:border-purple-500 dark:border-gray-700 dark:bg-gray-900 dark:text-white"
+            className={FIELD_CLASS}
           />
-        </label>
-
-        <label className="block space-y-1.5 text-sm font-semibold text-gray-700 dark:text-gray-300">
-          <span>{t({ en: 'Subject and topic', vi: 'Môn học và chủ đề' })}</span>
-          <select
-            value={topicId}
-            onChange={(event) => setTopicId(event.target.value)}
-            required
-            disabled={topics.length === 0}
-            className="w-full rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-sm font-normal text-gray-900 outline-none focus:border-purple-500 disabled:opacity-60 dark:border-gray-700 dark:bg-gray-900 dark:text-white"
-          >
-            <option value="">{t({ en: 'Select a topic', vi: 'Chọn chủ đề' })}</option>
-            {subjects.map((subject) =>
-              topics
-                .filter((topic) => topic.subject_id === subject.id)
-                .map((topic) => (
-                  <option key={topic.id} value={topic.id}>
-                    {lang === 'en' ? subject.name_en : subject.name_vi} · {lang === 'en' ? topic.name_en : topic.name_vi}
-                  </option>
-                )),
-            )}
-          </select>
-          {topics.length === 0 && (
-            <span className="block text-xs font-normal text-amber-700">
-              {t({ en: 'No active subject topics are available.', vi: 'Chưa có chủ đề thuộc môn học đang hoạt động.' })}
-            </span>
-          )}
-        </label>
-
-        <label className="block space-y-1.5 text-sm font-semibold text-gray-700 dark:text-gray-300">
-          <span>{t({ en: 'Grade', vi: 'Khối lớp' })}</span>
-          <select
-            value={grade}
-            onChange={(event) => setGrade(Number(event.target.value))}
-            className="w-full rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-sm font-normal text-gray-900 outline-none focus:border-purple-500 dark:border-gray-700 dark:bg-gray-900 dark:text-white"
-          >
-            {[10, 11, 12].map((value) => <option key={value} value={value}>{value}</option>)}
-          </select>
         </label>
       </div>
 
@@ -159,7 +294,7 @@ export function LessonCreateForm({ subjects, topics }: LessonCreateFormProps) {
           </button>
           <button
             type="submit"
-            disabled={saving || topics.length === 0}
+            disabled={saving || !canSubmit}
             className="rounded-xl bg-purple-700 px-4 py-2.5 text-sm font-bold text-white transition hover:bg-purple-800 disabled:cursor-not-allowed disabled:opacity-50"
           >
             {saving

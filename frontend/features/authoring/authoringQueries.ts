@@ -1,6 +1,8 @@
 import type { Block } from '@scipal/types';
 
-export type LessonReviewStatus = 'draft' | 'pending' | 'approved' | 'rejected';
+import type { LessonStatus } from '@scipal/supabase';
+
+export type { LessonStatus };
 
 export interface AuthoringLessonData {
   id: string;
@@ -15,8 +17,9 @@ export interface AuthoringLessonData {
   title_vi: string;
   title_en: string;
   grade: number;
-  published: boolean;
-  review_status: LessonReviewStatus;
+  status: LessonStatus;
+  review_note: string | null;
+  published_at: string | null;
   created_by: string | null;
   reviewed_by: string | null;
   reviewed_at: string | null;
@@ -31,14 +34,26 @@ export interface AuthoringSubjectOption {
   slug: string;
   name_en: string;
   name_vi: string;
+  sort_order: number;
+  grades: number[];
 }
 
 export interface AuthoringTopicOption {
   id: string;
   subject_id: string;
+  grade: number | null;
   name_en: string;
   name_vi: string;
   sort_order: number;
+}
+
+export interface AuthoringTrackOption {
+  id: string;
+  subject_id: string;
+  slug: string;
+  name_en: string;
+  name_vi: string;
+  grades: number[];
 }
 
 export class AuthoringApiError extends Error {
@@ -77,6 +92,7 @@ async function requestJson<T>(path: string, token: string): Promise<T> {
 export async function getAuthoringOptions(token: string): Promise<{
   subjects: AuthoringSubjectOption[];
   topics: AuthoringTopicOption[];
+  tracks: AuthoringTrackOption[];
 }> {
   return requestJson('/api/authoring/options', token);
 }

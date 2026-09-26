@@ -1,28 +1,86 @@
+.levelCatalog,
+.highSchoolCatalog {
+  min-width: 0;
+}
+
+.highSchoolCatalog {
+  display: grid;
+  gap: var(--landing-space-6, 1.5rem);
+}
+
+.cardTopline {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--landing-space-2, 0.5rem);
+}
+
+.grade {
+  color: var(--landing-muted, #4b6052);
+  font-family: var(--landing-font-measure, monospace);
+  font-size: var(--landing-type-label, 0.75rem);
+  font-weight: 650;
+  letter-spacing: var(--landing-tracking-label, 0.04em);
+}
+
+.statusActive,
+.statusUpcoming {
+  display: inline-flex;
+  min-height: 2rem;
+  align-items: center;
+  border: var(--landing-border, 1px) solid var(--landing-line, #d8ded8);
+  border-radius: 999px;
+  background: var(--landing-surface, #fff);
+  padding: 0.35rem 0.75rem;
+  color: var(--landing-muted, #4b6052);
+  font-size: var(--landing-type-label, 0.75rem);
+  font-weight: 650;
+  line-height: var(--landing-leading-compact, 1.45);
+}
+
+.statusActive {
+  border-color: color-mix(in srgb, var(--accent, #16a34a) 34%, var(--landing-line, #d8ded8));
+  background: color-mix(in srgb, var(--accent, #16a34a) 8%, var(--landing-surface, #fff));
+  color: var(--accent, #16a34a);
+}
+
+.subjectIcon {
+  display: grid;
+  flex: 0 0 auto;
+  place-items: center;
+  border: var(--landing-border, 1px) solid color-mix(in srgb, var(--accent, #16a34a) 28%, var(--landing-line, #d8ded8));
+  border-radius: var(--landing-radius-card, 1rem);
+  background: color-mix(in srgb, var(--accent, #16a34a) 9%, var(--landing-surface, #fff));
+  color: var(--accent, #16a34a);
+  font-family: var(--landing-font-measure, monospace);
+  font-weight: 750;
+}
+
 .grid {
   position: relative;
   min-width: 0;
   overflow: hidden;
-  -webkit-mask-image: linear-gradient(to right, transparent 0, #000 5%, #000 95%, transparent 100%);
-  mask-image: linear-gradient(to right, transparent 0, #000 5%, #000 95%, transparent 100%);
+  -webkit-mask-image: linear-gradient(to right, transparent 0, #000 4%, #000 96%, transparent 100%);
+  mask-image: linear-gradient(to right, transparent 0, #000 4%, #000 96%, transparent 100%);
 }
 
 .track {
   display: flex;
   width: max-content;
-  animation: subject-marquee 32s linear infinite;
+  animation: subject-marquee 36s linear infinite;
 }
 
 .group {
   display: flex;
   flex: 0 0 auto;
   align-items: stretch;
-  gap: 14px;
-  padding-right: 14px;
+  gap: var(--landing-space-4, 1rem);
+  padding-right: var(--landing-space-4, 1rem);
 }
 
-.group > div {
-  display: flex;
-  flex: 0 0 auto;
+.duplicateGroup {
+  composes: group;
 }
 
 .grid:focus-within .track {
@@ -44,197 +102,176 @@
   }
 }
 
+.levelGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 18em), 1fr));
+  gap: var(--landing-space-4, 1rem);
+}
+
 .card {
   display: flex;
-  width: 228px;
-  flex: 0 0 228px;
-  min-height: 236px;
+  min-width: 0;
+  min-height: 13.5rem;
+  flex: 0 0 min(18rem, 80vw);
   flex-direction: column;
-  border: 1px solid color-mix(in srgb, var(--accent) 18%, #e1e9e3);
-  border-radius: 18px;
-  background: rgba(255, 255, 255, 0.88);
-  padding: 15px;
-  transition: transform 170ms ease, border-color 170ms ease, box-shadow 170ms ease;
+  border: var(--landing-border, 1px) solid color-mix(in srgb, var(--accent, #16a34a) 20%, var(--landing-line, #d8ded8));
+  border-radius: var(--landing-radius-card, 1rem);
+  background: var(--landing-surface, #fff);
+  padding: var(--landing-space-4, 1rem);
+  transition: border-color var(--landing-motion-fast, 150ms) ease-out, box-shadow var(--landing-motion-fast, 150ms) ease-out, transform var(--landing-motion-fast, 150ms) ease-out;
+}
+
+.levelGrid .card {
+  width: 100%;
+  flex: initial;
+}
+
+.cardScope {
+  width: min(18rem, 80vw);
+}
+
+.cardScope .card {
+  width: 100%;
+  flex: initial;
 }
 
 .activeCard {
-  background:
-    linear-gradient(145deg, color-mix(in srgb, var(--accent) 6%, #fff), #fff 72%);
-  box-shadow: 0 8px 24px color-mix(in srgb, var(--accent) 11%, transparent);
+  background: color-mix(in srgb, var(--accent, #16a34a) 4%, var(--landing-surface, #fff));
+  box-shadow: 0 8px 26px color-mix(in srgb, var(--accent, #16a34a) 9%, transparent);
 }
 
 .activeCard:hover {
-  transform: translateY(-3px);
-  border-color: color-mix(in srgb, var(--accent) 48%, #fff);
-  box-shadow: 0 13px 28px color-mix(in srgb, var(--accent) 15%, transparent);
+  transform: translateY(-2px);
+  border-color: color-mix(in srgb, var(--accent, #16a34a) 45%, var(--landing-line, #d8ded8));
 }
 
 .cardTopline {
-  display: flex;
-  min-height: 23px;
-  align-items: center;
-  justify-content: space-between;
-  gap: 6px;
+  align-items: flex-start;
 }
 
 .grade {
-  color: #849087;
-  font-size: 0.57rem;
-  font-weight: 750;
-  letter-spacing: 0.07em;
+  max-width: 60%;
+  font-size: var(--landing-type-micro, 0.6875rem);
 }
 
-.statusActive,
-.statusUpcoming {
-  display: inline-flex;
-  min-height: 22px;
-  align-items: center;
-  border-radius: 999px;
-  padding: 3px 7px;
-  font-size: 0.56rem;
-  font-weight: 750;
-  white-space: nowrap;
-}
-
-.statusActive {
-  background: color-mix(in srgb, var(--accent) 11%, #fff);
-  color: var(--accent);
-}
-
-.statusUpcoming {
-  border: 1px solid #e9e7d7;
-  background: #fbfaf3;
-  color: #7c7353;
+.cardTopline .statusActive,
+.cardTopline .statusUpcoming {
+  min-height: 1.75rem;
+  padding: 0.25rem 0.6rem;
+  font-size: var(--landing-type-micro, 0.6875rem);
 }
 
 .subjectInfo {
   display: flex;
+  min-width: 0;
   flex: 1;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 16px 0 18px;
+  padding: var(--landing-space-5, 1.25rem) 0;
   text-align: center;
 }
 
 .subjectIcon {
-  display: grid;
-  width: 57px;
-  height: 57px;
-  place-items: center;
-  border: 1px solid color-mix(in srgb, var(--accent) 25%, #fff);
-  border-radius: 17px;
-  background: color-mix(in srgb, var(--accent) 9%, #fff);
-  color: var(--accent);
-  font-family: var(--font-jetbrains-mono), monospace;
-  font-size: 1.22rem;
-  font-weight: 800;
-  transition: transform 170ms ease;
+  width: 3.5rem;
+  height: 3.5rem;
+  border-radius: var(--landing-radius-control, 0.75rem);
+  font-size: 1.25rem;
+  transition: transform var(--landing-motion-fast, 150ms) ease-out;
 }
 
 .activeCard:hover .subjectIcon {
-  transform: scale(1.06) rotate(-2deg);
+  transform: scale(1.04);
 }
 
 .subjectInfo h3 {
-  margin: 11px 0 0;
-  color: #223229;
-  font-size: 0.92rem;
-  font-weight: 780;
+  margin: var(--landing-space-3, 0.75rem) 0 0;
+  color: var(--landing-ink, #17251d);
+  font-size: var(--landing-type-card-title, 1.125rem);
+  font-weight: 750;
+  line-height: var(--landing-leading-title, 1.25);
 }
 
 .subjectInfo p {
-  margin: 2px 0 0;
-  color: #829087;
-  font-size: 0.64rem;
+  margin: var(--landing-space-1, 0.25rem) 0 0;
+  color: var(--landing-muted, #4b6052);
+  font-size: var(--landing-type-small, 0.875rem);
+  line-height: var(--landing-leading-copy, 1.55);
 }
 
 .cardAction {
-  border-top: 1px solid #edf1ed;
-  padding-top: 11px;
+  border-top: var(--landing-border, 1px) solid var(--landing-line, #d8ded8);
+  padding-top: var(--landing-space-3, 0.75rem);
 }
 
 .activeAction,
 .disabledAction {
   display: inline-flex;
   width: 100%;
-  min-height: 44px;
+  min-height: 2.75rem;
   align-items: center;
   justify-content: center;
-  gap: 8px;
-  border-radius: 11px;
-  font: inherit;
-  font-size: 0.68rem;
-  font-weight: 760;
+  gap: var(--landing-space-2, 0.5rem);
+  border: var(--landing-border, 1px) solid transparent;
+  border-radius: var(--landing-radius-control, 0.75rem);
+  padding: var(--landing-space-2, 0.5rem);
+  font-size: var(--landing-type-label, 0.8125rem);
+  font-weight: 700;
+  line-height: var(--landing-leading-compact, 1.45);
+  text-align: center;
   text-decoration: none;
 }
 
 .activeAction {
-  background: var(--accent);
+  background: var(--accent, #16a34a);
   color: #fff;
-  transition: filter 150ms ease, transform 150ms ease;
+  transition: filter var(--landing-motion-fast, 150ms) ease-out, transform var(--landing-motion-fast, 150ms) ease-out;
 }
 
 .activeAction:hover {
   transform: translateY(-1px);
-  filter: brightness(0.93);
-}
-
-.activeAction:focus-visible {
-  outline: 3px solid color-mix(in srgb, var(--accent) 45%, #fff);
-  outline-offset: 2px;
+  filter: brightness(0.94);
 }
 
 .disabledAction {
-  border: 1px solid #e9edea;
-  background: #f7f9f7;
-  color: #99a39b;
-  cursor: not-allowed;
+  background: color-mix(in srgb, var(--landing-line, #d8ded8) 35%, var(--landing-surface, #fff));
+  color: var(--landing-muted, #4b6052);
 }
 
-@media (max-width: 1080px) {
-  .card {
-    width: 220px;
-    flex-basis: 220px;
-  }
+.catalogMessage {
+  max-width: 64ch;
+  margin: 0;
+  border: var(--landing-border, 1px) solid var(--landing-line, #d8ded8);
+  border-radius: var(--landing-radius-card, 1rem);
+  background: var(--landing-surface, #fff);
+  padding: var(--landing-space-5, 1.25rem);
+  color: var(--landing-muted, #4b6052);
+  font-size: var(--landing-type-body, 1rem);
+  line-height: var(--landing-leading-copy, 1.65);
 }
 
-@media (max-width: 650px) {
-  .group {
-    gap: 10px;
-    padding-right: 10px;
-  }
-
-  .card {
-    width: 214px;
-    flex-basis: 214px;
-    min-height: 222px;
-    padding: 12px;
-  }
-
-  .cardTopline {
-    align-items: flex-start;
-    flex-direction: column;
-    gap: 4px;
-  }
-
-  .statusActive,
-  .statusUpcoming {
-    font-size: 0.53rem;
-  }
+.catalogMessage p {
+  margin: 0;
 }
 
-@media (max-width: 365px) {
-  .card {
-    width: 204px;
-    flex-basis: 204px;
-    min-height: 212px;
-  }
+.retryAction {
+  min-height: 2.75rem;
+  margin-top: var(--landing-space-3, 0.75rem);
+  border: 0;
+  border-radius: var(--landing-radius-control, 0.75rem);
+  background: var(--landing-action, #0c633b);
+  padding: 0.65rem 1rem;
+  color: #fff;
+  font: inherit;
+  font-size: var(--landing-type-label, 0.875rem);
+  font-weight: 700;
+  cursor: pointer;
+}
 
-  .cardTopline {
-    align-items: center;
-    flex-direction: row;
-  }
+.activeAction:focus-visible,
+.retryAction:focus-visible {
+  outline: var(--landing-focus-width, 3px) solid var(--landing-focus, #8a3e1f);
+  outline-offset: var(--landing-focus-offset, 3px);
 }
 
 @keyframes subject-marquee {
@@ -271,4 +308,3 @@
     transform: none;
   }
 }
-

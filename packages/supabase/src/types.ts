@@ -8,6 +8,12 @@ export type Json =
   | { [key: string]: Json | undefined }
   | Json[];
 
+export type EducationLevel = 'primary' | 'lower_secondary' | 'upper_secondary';
+export type LessonStatus = 'draft' | 'pending_review' | 'published' | 'rejected';
+export type CurriculumRole = 'required' | 'elective_choice' | 'optional' | 'required_activity';
+export type CodeLanguage = 'python' | 'cpp';
+export interface BilingualText { en: string; vi: string }
+
 export interface Database {
   public: {
     Tables: {
@@ -19,7 +25,7 @@ export interface Database {
           name_vi: string;
           accent_color: string;
           icon: string;
-          status: 'active' | 'upcoming';
+          icon_url: string | null;
           sort_order: number;
           created_at: string;
         };
@@ -30,7 +36,7 @@ export interface Database {
           name_vi: string;
           accent_color: string;
           icon: string;
-          status?: 'active' | 'upcoming';
+          icon_url?: string | null;
           sort_order?: number;
           created_at?: string;
         };
@@ -41,11 +47,80 @@ export interface Database {
           name_vi?: string;
           accent_color?: string;
           icon?: string;
-          status?: 'active' | 'upcoming';
+          icon_url?: string | null;
           sort_order?: number;
           created_at?: string;
         };
         Relationships: [];
+      };
+      curriculum_versions: {
+        Row: {
+          id: string;
+          code: string;
+          name_vi: string;
+          issued_by: string;
+          source_ref: Record<string, unknown>;
+          effective_from: string;
+          effective_to: string | null;
+          status: 'draft' | 'active' | 'retired';
+          created_at: string;
+        };
+        Insert: never;
+        Update: never;
+        Relationships: [];
+      };
+      subject_grade_catalog: {
+        Row: {
+          id: string;
+          curriculum_version_id: string;
+          subject_id: string;
+          grade: number;
+          curriculum_role: CurriculumRole;
+          source_ref: Record<string, unknown>;
+          sort_order: number;
+          active: boolean;
+          created_at: string;
+        };
+        Insert: never;
+        Update: never;
+        Relationships: [
+          {
+            foreignKeyName: 'subject_grade_catalog_subject_id_fkey';
+            columns: ['subject_id'];
+            isOneToOne: false;
+            referencedRelation: 'subjects';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'subject_grade_catalog_curriculum_version_id_fkey';
+            columns: ['curriculum_version_id'];
+            isOneToOne: false;
+            referencedRelation: 'curriculum_versions';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
+      subject_tracks: {
+        Row: {
+          id: string;
+          subject_id: string;
+          slug: string;
+          name_en: string;
+          name_vi: string;
+          grades: number[];
+          sort_order: number;
+        };
+        Insert: never;
+        Update: never;
+        Relationships: [
+          {
+            foreignKeyName: 'subject_tracks_subject_id_fkey';
+            columns: ['subject_id'];
+            isOneToOne: false;
+            referencedRelation: 'subjects';
+            referencedColumns: ['id'];
+          },
+        ];
       };
       topics: {
         Row: {
@@ -55,6 +130,8 @@ export interface Database {
           name_en: string;
           name_vi: string;
           sort_order: number;
+          grade: number | null;
+          kind: 'core' | 'elective_topic';
         };
         Insert: {
           id?: string;
@@ -63,6 +140,8 @@ export interface Database {
           name_en: string;
           name_vi: string;
           sort_order?: number;
+          grade?: number | null;
+          kind?: 'core' | 'elective_topic';
         };
         Update: {
           id?: string;
@@ -71,6 +150,8 @@ export interface Database {
           name_en?: string;
           name_vi?: string;
           sort_order?: number;
+          grade?: number | null;
+          kind?: 'core' | 'elective_topic';
         };
         Relationships: [
           {
@@ -93,9 +174,12 @@ export interface Database {
           grade: number;
           blocks: Block[];
           sort_order: number;
-          published: boolean;
           created_by: string | null;
-          review_status: 'draft' | 'pending' | 'approved' | 'rejected';
+          status: LessonStatus;
+          track_id: string | null;
+          digital_competency: BilingualText | null;
+          review_note: string | null;
+          published_at: string | null;
           reviewed_by: string | null;
           reviewed_at: string | null;
           created_at: string;
@@ -111,9 +195,12 @@ export interface Database {
           grade?: number;
           blocks?: Block[];
           sort_order?: number;
-          published?: boolean;
           created_by?: string | null;
-          review_status?: 'draft' | 'pending' | 'approved' | 'rejected';
+          status?: LessonStatus;
+          track_id?: string | null;
+          digital_competency?: BilingualText | null;
+          review_note?: string | null;
+          published_at?: string | null;
           reviewed_by?: string | null;
           reviewed_at?: string | null;
           created_at?: string;
@@ -129,9 +216,12 @@ export interface Database {
           grade?: number;
           blocks?: Block[];
           sort_order?: number;
-          published?: boolean;
           created_by?: string | null;
-          review_status?: 'draft' | 'pending' | 'approved' | 'rejected';
+          status?: LessonStatus;
+          track_id?: string | null;
+          digital_competency?: BilingualText | null;
+          review_note?: string | null;
+          published_at?: string | null;
           reviewed_by?: string | null;
           reviewed_at?: string | null;
           created_at?: string;
@@ -334,6 +424,8 @@ export interface Database {
           display_name: string | null;
           role: 'student' | 'teacher';
           avatar_url: string | null;
+          preferred_education_level: EducationLevel | null;
+          preferred_code_language: CodeLanguage | null;
           created_at: string;
         };
         Insert: {
@@ -341,6 +433,8 @@ export interface Database {
           display_name?: string | null;
           role?: 'student' | 'teacher';
           avatar_url?: string | null;
+          preferred_education_level?: EducationLevel | null;
+          preferred_code_language?: CodeLanguage | null;
           created_at?: string;
         };
         Update: {
@@ -348,6 +442,8 @@ export interface Database {
           display_name?: string | null;
           role?: 'student' | 'teacher';
           avatar_url?: string | null;
+          preferred_education_level?: EducationLevel | null;
+          preferred_code_language?: CodeLanguage | null;
           created_at?: string;
         };
         Relationships: [];

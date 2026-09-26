@@ -22,18 +22,6 @@ export function ProfileCard({ displayName, role, avatarUrl, stats }: ProfileCard
       .join('')
       .toUpperCase() || 'SP';
 
-  const institutionalId = role === 'teacher'
-    ? 'GV-2026-TIN01'
-    : role === 'admin'
-      ? 'AD-SCIPAL'
-      : 'HS-2026-11A1-08';
-  const institutionalClass =
-    role === 'teacher'
-      ? t({ en: 'Informatics & Natural Sciences Dept', vi: 'Tổ Tin học & KHTN' })
-      : role === 'admin'
-        ? t({ en: 'SciPal content administration', vi: 'Quản trị nội dung SciPal' })
-        : t({ en: 'Grade 11A1 · Specialized High School', vi: 'Lớp 11A1 · THPT Chuyên' });
-
   return (
     <div className="relative overflow-hidden rounded-3xl border border-emerald-950/10 bg-white/90 p-6 sm:p-8 shadow-xs backdrop-blur-md transition hover:shadow-md dark:border-white/10 dark:bg-card/90">
       {/* Subtle field notebook background badge */}
@@ -53,12 +41,6 @@ export function ProfileCard({ displayName, role, avatarUrl, stats }: ProfileCard
             ) : (
               <span>{initials}</span>
             )}
-            <span
-              className="absolute -bottom-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full border-2 border-white bg-emerald-500 text-[10px] text-white shadow-xs"
-              title="Online"
-            >
-              ✓
-            </span>
           </div>
 
           <div className="space-y-1.5">
@@ -81,26 +63,6 @@ export function ProfileCard({ displayName, role, avatarUrl, stats }: ProfileCard
               </span>
             </div>
 
-            {/* Institutional metadata row (Katha style) */}
-            <div className="flex flex-wrap items-center gap-2 text-xs">
-              <span className="inline-flex items-center gap-1 rounded-lg bg-gray-100 px-2 py-0.5 font-mono font-semibold text-gray-700 dark:bg-gray-800 dark:text-gray-300">
-                <span>🆔 {institutionalId}</span>
-              </span>
-              <span className="text-gray-400">•</span>
-              <span className="font-medium text-gray-600 dark:text-gray-300">
-                🏫 {institutionalClass}
-              </span>
-            </div>
-
-            <p className="text-[11px] font-mono text-emerald-700 dark:text-emerald-400 flex items-center gap-1">
-              <span>🔒</span>
-              <span>
-                {t({
-                  en: 'Verified institutional account issued by school administration',
-                  vi: 'Tài khoản được xác thực và cấp phát bởi nhà trường',
-                })}
-              </span>
-            </p>
           </div>
         </div>
       </div>

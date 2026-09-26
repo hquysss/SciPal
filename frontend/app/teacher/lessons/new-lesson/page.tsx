@@ -44,7 +44,7 @@ export default async function NewTeacherLessonPage() {
             <Link href="/teacher/lessons/new-lesson" className="mt-3 inline-flex font-semibold underline">Thử lại</Link>
           </div>
         ) : (
-          <LessonCreateForm subjects={options.subjects} topics={options.topics} />
+          <LessonCreateForm subjects={options.subjects} topics={options.topics} tracks={options.tracks ?? []} />
         )}
       </main>
     </div>

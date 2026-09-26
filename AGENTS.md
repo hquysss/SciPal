@@ -1,6 +1,6 @@
 # SciPal — Agent Entry Point
 
-> **SciPal** là nền tảng học tập khoa học tự nhiên song ngữ (EN/VI) dành cho học sinh THPT Việt Nam (ưu tiên môn Tin học), xây dựng trên kiến trúc monorepo: Web (Next.js 15), Mobile (Expo 52), Backend (Fastify 4), cơ sở dữ liệu Supabase Postgres + RLS.
+> **SciPal** là nền tảng học tập song ngữ (EN/VI) theo toàn bộ Chương trình GDPT 2018 cho học sinh Việt Nam lớp 1–12 (hiện phát hành THPT, ưu tiên môn Tin học; môn chưa có học liệu hiển thị "Đang biên soạn"), xây dựng trên kiến trúc monorepo: Web (Next.js 15), Mobile (Expo 52), Backend (Fastify 4), cơ sở dữ liệu Supabase Postgres + RLS.
 
 ## Nguyên tắc bất biến (Core Invariants)
 

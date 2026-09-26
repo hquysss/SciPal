@@ -1,6 +1,9 @@
 import Link from 'next/link';
+import { notFound } from 'next/navigation';
 import { StudentRoster } from '@/features/classes/StudentRoster';
 import { getClassRoster } from '@/features/classes/classQueries';
+import { getAuthoringSession } from '@/features/authoring/serverAuth';
+import { LoadErrorNotice } from '@/components/feedback/LoadErrorNotice';
 
 export const dynamic = 'force-dynamic';
 
@@ -10,7 +13,26 @@ export default async function ClassDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const { classRoom, members } = await getClassRoster(id);
+  const { token } = await getAuthoringSession(`/teacher/classes/${id}`);
+  const result = await getClassRoster(id, token);
+  if (result.kind === 'not_found') notFound();
+
+  if (result.kind === 'error') {
+    return (
+      <div className="relative min-h-[calc(100vh-3.5rem)] bg-science-grid pb-20">
+        <main className="relative mx-auto max-w-4xl px-4 py-6 sm:px-6 sm:py-8">
+          <LoadErrorNotice
+            message={{
+              en: 'We could not load this class. Please reload the page.',
+              vi: 'Chưa tải được lớp học này. Vui lòng tải lại trang.',
+            }}
+          />
+        </main>
+      </div>
+    );
+  }
+
+  const { classRoom, members } = result;
 
   return (
     <div className="relative min-h-[calc(100vh-3.5rem)] bg-science-grid pb-20">

@@ -179,7 +179,7 @@ export function NavBar({ currentSubject }: NavBarProps) {
         }}
       />
       <div className="relative z-10 mx-auto flex h-16 max-w-7xl items-center justify-between gap-3 px-4 sm:px-6">
-        <Link href="/" className="group flex shrink-0 items-center gap-3 font-bold text-white">
+        <Link href="/" prefetch={pathname !== '/'} className="group flex shrink-0 items-center gap-3 font-bold text-white">
           <Image
             src="/logo.svg"
             alt="SciPal Logo"
@@ -199,6 +199,7 @@ export function NavBar({ currentSubject }: NavBarProps) {
         <nav aria-label={lang === 'en' ? 'Main navigation' : 'Điều hướng chính'} className="hidden items-center gap-1 lg:flex">
           <Link
             href="/"
+            prefetch={pathname !== '/'}
             aria-current={pathname === '/' ? 'page' : undefined}
             className="rounded-lg px-3 py-1.5 text-sm font-semibold text-white/90 transition hover:bg-white/10 hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-white"
           >
@@ -209,6 +210,7 @@ export function NavBar({ currentSubject }: NavBarProps) {
             <Link
               key={link.href}
               href={link.href}
+              prefetch={pathname !== '/'}
               aria-current={pathname === link.href ? 'page' : undefined}
               className="rounded-lg px-3 py-1.5 text-sm font-semibold text-white/90 transition hover:bg-white/10 hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-white"
             >
@@ -238,6 +240,7 @@ export function NavBar({ currentSubject }: NavBarProps) {
                   <Link
                     key={link.href}
                     href={link.href}
+                    prefetch={pathname !== '/'}
                     onClick={() => setOpenNavGroup(null)}
                     aria-current={pathname === link.href ? 'page' : undefined}
                     className={`block rounded-lg px-3 py-2.5 text-sm font-semibold transition hover:bg-emerald-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-600 dark:hover:bg-white/10 ${pathname === link.href ? 'bg-emerald-50 text-emerald-900 dark:bg-white/10 dark:text-white' : 'text-gray-700 dark:text-gray-200'}`}
@@ -271,6 +274,7 @@ export function NavBar({ currentSubject }: NavBarProps) {
                   <Link
                     key={link.href}
                     href={link.href}
+                    prefetch={pathname !== '/'}
                     onClick={() => setOpenNavGroup(null)}
                     aria-current={pathname === link.href ? 'page' : undefined}
                     className={`block rounded-lg px-3 py-2.5 text-sm font-semibold transition hover:bg-emerald-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-600 dark:hover:bg-white/10 ${pathname === link.href ? 'bg-emerald-50 text-emerald-900 dark:bg-white/10 dark:text-white' : 'text-gray-700 dark:text-gray-200'}`}
@@ -305,6 +309,7 @@ export function NavBar({ currentSubject }: NavBarProps) {
           ) : (
             <Link
               href="/login"
+              prefetch={pathname !== '/'}
               className="ml-auto inline-flex shrink-0 items-center gap-2 rounded-full bg-emerald-900 px-4 py-2 text-sm font-bold text-white shadow-md transition duration-150 hover:bg-emerald-950 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
             >
               {lang === 'en' ? 'Sign In' : 'Đăng nhập'} <span aria-hidden="true">→</span>
@@ -336,6 +341,7 @@ export function NavBar({ currentSubject }: NavBarProps) {
           <div className="mx-auto max-w-xl space-y-2">
             <Link
               href="/"
+              prefetch={pathname !== '/'}
               onClick={() => setMobileOpen(false)}
               aria-current={pathname === '/' ? 'page' : undefined}
               className={`block rounded-xl px-4 py-3 text-sm font-semibold transition hover:bg-emerald-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-600 ${pathname === '/' ? 'bg-emerald-50 text-emerald-900' : 'text-gray-800'}`}
@@ -347,6 +353,7 @@ export function NavBar({ currentSubject }: NavBarProps) {
               <Link
                 key={link.href}
                 href={link.href}
+                prefetch={pathname !== '/'}
                 onClick={() => setMobileOpen(false)}
                 aria-current={pathname === link.href ? 'page' : undefined}
                 className={`block rounded-xl px-4 py-3 text-sm font-semibold transition hover:bg-emerald-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-600 ${pathname === link.href ? 'bg-emerald-50 text-emerald-900' : 'text-gray-800'}`}
@@ -378,6 +385,7 @@ export function NavBar({ currentSubject }: NavBarProps) {
                       <Link
                         key={link.href}
                         href={link.href}
+                        prefetch={pathname !== '/'}
                         onClick={() => { setOpenNavGroup(null); setMobileOpen(false); }}
                         aria-current={pathname === link.href ? 'page' : undefined}
                         className={`block rounded-xl px-4 py-3 text-sm font-semibold transition hover:bg-emerald-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-600 ${pathname === link.href ? 'bg-emerald-50 text-emerald-900' : 'text-gray-700'}`}
@@ -413,6 +421,7 @@ export function NavBar({ currentSubject }: NavBarProps) {
                       <Link
                         key={link.href}
                         href={link.href}
+                        prefetch={pathname !== '/'}
                         onClick={() => { setOpenNavGroup(null); setMobileOpen(false); }}
                         aria-current={pathname === link.href ? 'page' : undefined}
                         className={`block rounded-xl px-4 py-3 text-sm font-semibold transition hover:bg-emerald-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-600 ${pathname === link.href ? 'bg-emerald-50 text-emerald-900' : 'text-gray-700'}`}
@@ -444,6 +453,7 @@ export function NavBar({ currentSubject }: NavBarProps) {
             {!appRole && (
               <Link
                 href="/login"
+                prefetch={pathname !== '/'}
                 onClick={() => setMobileOpen(false)}
                 className="block rounded-xl bg-emerald-700 px-4 py-3 text-center text-sm font-bold text-white transition hover:bg-emerald-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-600"
               >
