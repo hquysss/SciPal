@@ -5,13 +5,17 @@ import { useRouter } from 'next/navigation';
 import { useLanguage } from '@scipal/hooks';
 import { createBrowserClient } from '@/lib/supabase';
 import { AccountHelpModal } from '@/features/auth/AccountHelpModal';
+import { EducationLevelSetting } from './EducationLevelSetting';
+import type { resolveEducationLevel } from '@/features/landing/educationLevel';
 
 interface AccountSettingsProps {
   currentRole?: string;
+  educationPreference: ReturnType<typeof resolveEducationLevel>;
+  isAuthenticated: boolean;
   onRoleChange?: (role: 'student' | 'teacher') => void;
 }
 
-export function AccountSettings({ currentRole = 'student' }: AccountSettingsProps) {
+export function AccountSettings({ currentRole = 'student', educationPreference, isAuthenticated }: AccountSettingsProps) {
   const { lang, setLang, t } = useLanguage();
   const router = useRouter();
   const [signingOut, setSigningOut] = useState(false);
@@ -52,8 +56,8 @@ export function AccountSettings({ currentRole = 'student' }: AccountSettingsProp
             </h3>
             <p className="text-xs text-gray-500 dark:text-gray-400">
               {t({
-                en: 'Institutional credentials and bilingual delivery options',
-                vi: 'Thông tin tài khoản trường cấp và tùy chọn hiển thị song ngữ',
+                en: 'Account details and learning preferences',
+                vi: 'Thông tin tài khoản và tùy chọn học tập',
               })}
             </p>
           </div>
@@ -63,42 +67,23 @@ export function AccountSettings({ currentRole = 'student' }: AccountSettingsProp
         </div>
 
         <div className="space-y-5">
-          {/* Read-Only Institutional Record Box (Katha Style) */}
-          <div className="rounded-2xl border border-emerald-200/70 bg-emerald-50/50 p-4 dark:border-emerald-900/40 dark:bg-emerald-950/20">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-xs font-bold uppercase tracking-wider text-emerald-900 dark:text-emerald-300 flex items-center gap-1.5">
-                <span>🏛️</span>
-                <span>
-                  {t({ en: 'Institutional Record', vi: 'Hồ sơ Định danh Trường học' })}
-                </span>
-              </span>
-              <span className="rounded-full bg-emerald-200/60 px-2 py-0.5 font-mono text-[10px] font-bold text-emerald-900 dark:bg-emerald-900 dark:text-emerald-200">
-                🔒
-              </span>
+          <div className="rounded-2xl border border-gray-200 bg-gray-50/70 p-4 dark:border-gray-700 dark:bg-gray-900/40">
+            <div className="text-xs font-bold uppercase tracking-wider text-gray-600 dark:text-gray-300">
+              {t({ en: 'SciPal role', vi: 'Vai trò trong SciPal' })}
             </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
-              <div>
-                <span className="text-gray-500 dark:text-gray-400 block font-mono text-[11px]">
-                  {t({ en: 'ROLE', vi: 'VAI TRÒ' })}
-                </span>
-                <span className="font-bold text-gray-900 dark:text-white">
-                  {currentRole === 'teacher'
-                    ? t({ en: 'Teacher', vi: 'Giáo viên' })
-                    : currentRole === 'admin'
-                      ? t({ en: 'Admin', vi: 'Quản trị viên' })
-                      : t({ en: 'Student', vi: 'Học sinh' })}
-                </span>
-              </div>
-              <div>
-                <span className="text-gray-500 dark:text-gray-400 block font-mono text-[11px]">
-                  {t({ en: 'SECURITY STATUS', vi: 'TRẠNG THÁI BẢO MẬT' })}
-                </span>
-                <span className="font-bold text-emerald-700 dark:text-emerald-400">
-                  ● {t({ en: 'Verified', vi: 'Xác thực' })}
-                </span>
-              </div>
-            </div>
+            <p className="mt-1 text-sm font-semibold text-gray-900 dark:text-white">
+              {currentRole === 'teacher'
+                ? t({ en: 'Teacher', vi: 'Giáo viên' })
+                : currentRole === 'admin'
+                  ? t({ en: 'Admin', vi: 'Quản trị viên' })
+                  : t({ en: 'Student', vi: 'Học sinh' })}
+            </p>
+            <p className="mt-1 text-xs text-gray-600 dark:text-gray-400">
+              {t({ en: 'This role reflects SciPal access and does not verify a school or class.', vi: 'Vai trò này phản ánh quyền trong SciPal, không xác minh trường hoặc lớp học.' })}
+            </p>
           </div>
+
+          <EducationLevelSetting preference={educationPreference} isAuthenticated={isAuthenticated} />
 
           {/* Display Language setting */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-gray-100 pb-4 dark:border-gray-800">
@@ -175,8 +160,8 @@ export function AccountSettings({ currentRole = 'student' }: AccountSettingsProp
           <div className="flex items-center justify-between text-xs text-gray-500 dark:text-gray-400">
             <span>
               {t({
-                en: 'Need to update class or reset password?',
-                vi: 'Cần cập nhật lớp hoặc cấp lại mật khẩu?',
+                en: 'Need help with your account or password?',
+                vi: 'Cần hỗ trợ về tài khoản hoặc mật khẩu?',
               })}
             </span>
             <button
@@ -203,7 +188,6 @@ export function AccountSettings({ currentRole = 'student' }: AccountSettingsProp
         </div>
       </div>
 
-      {/* Institutional Help Modal */}
       <AccountHelpModal isOpen={showHelpModal} onClose={() => setShowHelpModal(false)} />
     </>
   );

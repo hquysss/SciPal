@@ -9,6 +9,7 @@ Triển khai toàn bộ 12 màn hình (S1–S12) theo **Đặc tả khung chung 
 - Đã giới hạn các trang cá nhân/thi/giáo viên theo phiên Supabase đã xác minh; bỏ đăng nhập demo tự nhận mọi tài khoản khi lỗi.
 - Đã bỏ thông báo XP/điểm giả trên client khi API thất bại; API bài học chỉ báo XP khi lưu được dữ liệu và không cộng lại bài đã hoàn thành.
 - Đang tiếp tục đối chiếu các màn hình với dữ liệu và API thật trước khi gọi web hoàn chỉnh.
+- **26/09 — Landing theo cấp học:** Đã triển khai cổng chọn Tiểu học/THCS/THPT, lưu lựa chọn khách trong `sessionStorage` của tab đến khi đóng tab, và ghi lựa chọn tài khoản vào `profiles` qua RLS; thêm đổi cấp trong Profile và catalog riêng theo cấp. Navbar cùng switch EN/VI luôn hiện; khách tải lại tab vẫn giữ lựa chọn, tab mới hiện cổng chọn. QA local xác nhận THPT có 5 môn, hai cấp nhỏ có trạng thái danh mục trống hợp lệ. Hạng mục local đã kiểm tra; chưa áp migration/seed từ xa hoặc deploy.
 
 ## Completed
 
@@ -55,14 +56,17 @@ Các mục Plan 0–2 dưới đây là **ghi nhận triển khai ban đầu**, 
 
 ## In Progress
 - Rà và hoàn thiện những luồng còn dựa vào dữ liệu mẫu hoặc thiếu API thật; ưu tiên AI Tutor, thi thử, studio giáo viên và trạng thái dữ liệu cá nhân.
+- Landing cấp học đã qua build và QA local. Còn xác minh đồng bộ tài khoản bằng người dùng/thiết bị thật và quy trình phát hành sau khi duyệt migration/seed.
 
 ## Next Steps
 1. Hoàn thiện `POST /api/ai/chat`, truyền token thật và kiểm thử luồng SSE trước khi quảng bá AI Tutor là hoạt động.
 2. Thay danh sách đề thi và câu hỏi demo bằng blueprint thật; kiểm tra đáp án, chấm điểm toàn bộ đề và ghi XP một cách nguyên tử/idempotent.
 3. Thay dữ liệu giả trong trang giáo viên, lớp học, hồ sơ/tiến trình bằng dữ liệu Supabase hoặc trạng thái rỗng/lỗi rõ ràng; nghiệm thu với tài khoản học sinh và giáo viên thật.
 4. Rà song ngữ EN/VI trên toàn bộ màn hình và bỏ `--accent` khỏi `:root` để tuân thủ SubjectProvider.
+5. Phát hành landing sau khi kiểm tra schema từ xa: áp migration cấp học và 10 dòng seed `upcoming`, kiểm thử ghi `profiles.preferred_education_level` qua RLS bằng tài khoản thật, deploy frontend rồi smoke-test `/`, `/profile`, ba cấp học và `/informatics`.
 
 ## Recent Decisions
+- **26/09 — Landing theo cấp học:** Bắt buộc chọn Tiểu học, THCS hoặc THPT; hai cấp nhỏ hiển thị “Sắp ra mắt” cho tới khi có học liệu/route thật. Mỗi cấp có catalog riêng, không lấy Tin học làm nhận diện sản phẩm. Khách giữ cấp trong `sessionStorage` của tab đến khi đóng; không dùng cookie hoặc `localStorage`. Tài khoản chỉ đọc/ghi `preferred_education_level` qua DB/RLS; có thể đổi cấp trong Profile. Navbar giữ switch EN/VI duy nhất cả khi cổng chọn hiện. Production local QA đã kiểm tra VI/EN, tải lại cùng tab và tab mới. Tắt prefetch tự động ở navbar trên `/`: request count 40 → 32 so với bản ngay trước đó; các phép đo LCP lab dao động và không chứng minh cải thiện CWV.
 - **25/09 — Liên hệ footer và thẻ môn học**: Đưa Contact us vào footer với liên kết Facebook/email để thay thông tin sau; marquee môn học cho phép bấm cả bản sao đang hiển thị, dừng khi hover/focus/touch và fade hai mép. Tôn trọng `prefers-reduced-motion`.
 - **25/09 — Loading toàn cục**: Thêm fallback `frontend/app/loading.tsx` ở cấp root để mọi route dùng chung màn hình tải toàn trang với thanh tiến trình EN/VI; route content được thay vào sau khi segment sẵn sàng. Tiến trình là ước lượng giao diện và tuân thủ `prefers-reduced-motion`.
 - **25/09 — Trang chủ công khai**: Giới thiệu SciPal như không gian học nhiều môn khoa học tự nhiên. Tin học là môn đang có học liệu và dữ liệu ví dụ cho chat Tutor, không phải chủ đề chính của thương hiệu. Chat tự phát theo từng lượt khi card vào khung nhìn mỗi lần ghé landing, giữ transcript đầy đủ sau đó, không có nút phát lại hoặc nhãn “Hội thoại minh họa”. Ghi chú nhỏ vẫn nêu câu trả lời được chuẩn bị sẵn và chưa kết nối AI trực tiếp. Navbar giữ nguyên.
@@ -79,6 +83,7 @@ Các mục Plan 0–2 dưới đây là **ghi nhận triển khai ban đầu**, 
 - **Cấu trúc Monorepo**: `backend/`, `frontend/`, `mobile/` đặt tại root, tuân thủ nghiêm ngặt cô lập bí mật `SUPABASE_SERVICE_ROLE_KEY`.
 
 ## Known Issues / Blockers
+- Landing cấp học: migration `20260925124223_landing_education_levels.sql` và 10 dòng môn `upcoming` chưa áp dụng vào Supabase từ xa; đồng bộ tài khoản đa thiết bị chưa được kiểm chứng bằng test account thật. Khách được kiểm tra cùng tab giữ lựa chọn khi tải lại và tab mới quay về gate. Catalog-error đã được kiểm tra bằng fixture dev; trạng thái dữ liệu production vẫn là live THPT và catalog trống cho hai cấp nhỏ.
 - Supabase migration history sync (25/09): linked project already contains the `0006` lesson review columns. Remote migration history was repaired for local versions `0001`–`0006`; `pnpm exec supabase migration list --linked` now matches and `pnpm exec supabase db push --dry-run --linked` reports no pending migrations. This repaired tracking only; it did not re-run the SQL files.
 - The live schema still differs from the old migration chain: `resources` uses `type`/`is_external` instead of `category`, `assignments` uses `due_date` instead of `due_at`, and the survey insert policy has a different name. A reproducible local reset remains unverified; `supabase db pull` could not generate the reconciliation migration because Docker/Podman is unavailable.
 - S10 verification: backend API and shared types typecheck passed. `https://sci-pal-backend.vercel.app/health` responds HTTP 200 and CORS allows `http://localhost:3000`; authenticated lesson flows remain unverified. Web typecheck currently reports React typing mismatches (TS2786/TS2322 in login, TheoryRenderer, UI primitives, and SubjectContext).

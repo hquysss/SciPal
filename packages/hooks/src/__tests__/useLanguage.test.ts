@@ -29,9 +29,16 @@ describe('useLanguage', () => {
     expect(localStorage.getItem('scipal-lang')).toBe('en');
   });
 
+  it('updates the document language when the visitor changes languages', () => {
+    const { result } = renderHook(() => useLanguage());
+    act(() => result.current.setLang('en'));
+    expect(document.documentElement.lang).toBe('en');
+  });
+
   it('reads persisted language on mount', () => {
     localStorage.setItem('scipal-lang', 'en');
     const { result } = renderHook(() => useLanguage());
     expect(result.current.lang).toBe('en');
+    expect(document.documentElement.lang).toBe('en');
   });
 });

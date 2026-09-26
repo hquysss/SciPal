@@ -8,6 +8,8 @@ export type Json =
   | { [key: string]: Json | undefined }
   | Json[];
 
+export type EducationLevel = 'primary' | 'lower_secondary' | 'upper_secondary';
+
 export interface Database {
   public: {
     Tables: {
@@ -19,6 +21,7 @@ export interface Database {
           name_vi: string;
           accent_color: string;
           icon: string;
+          education_level: EducationLevel;
           status: 'active' | 'upcoming';
           sort_order: number;
           created_at: string;
@@ -30,6 +33,7 @@ export interface Database {
           name_vi: string;
           accent_color: string;
           icon: string;
+          education_level?: EducationLevel;
           status?: 'active' | 'upcoming';
           sort_order?: number;
           created_at?: string;
@@ -41,6 +45,7 @@ export interface Database {
           name_vi?: string;
           accent_color?: string;
           icon?: string;
+          education_level?: EducationLevel;
           status?: 'active' | 'upcoming';
           sort_order?: number;
           created_at?: string;
@@ -334,6 +339,7 @@ export interface Database {
           display_name: string | null;
           role: 'student' | 'teacher';
           avatar_url: string | null;
+          preferred_education_level: EducationLevel | null;
           created_at: string;
         };
         Insert: {
@@ -341,6 +347,7 @@ export interface Database {
           display_name?: string | null;
           role?: 'student' | 'teacher';
           avatar_url?: string | null;
+          preferred_education_level?: EducationLevel | null;
           created_at?: string;
         };
         Update: {
@@ -348,6 +355,7 @@ export interface Database {
           display_name?: string | null;
           role?: 'student' | 'teacher';
           avatar_url?: string | null;
+          preferred_education_level?: EducationLevel | null;
           created_at?: string;
         };
         Relationships: [];

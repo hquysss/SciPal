@@ -23,11 +23,15 @@ export interface UseLanguageResult {
 }
 
 export function useLanguage(): UseLanguageResult {
-  const [lang, setLangState] = useState<Lang>(readLang);
+  const [lang, setLangState] = useState<Lang>(DEFAULT_LANG);
 
   useEffect(() => {
     // Sync on mount
-    setLangState(readLang());
+    const savedLang = readLang();
+    setLangState(savedLang);
+    if (typeof document !== 'undefined') {
+      document.documentElement.lang = savedLang;
+    }
 
     const handleChange = (newLang: Lang) => {
       setLangState(newLang);
@@ -46,6 +50,7 @@ export function useLanguage(): UseLanguageResult {
     }
     if (typeof document !== 'undefined') {
       document.cookie = `${STORAGE_KEY}=${l}; path=/; max-age=31536000; SameSite=Lax`;
+      document.documentElement.lang = l;
     }
     subscribers.forEach((notify) => notify(l));
   }, []);

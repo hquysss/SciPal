@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { cookies } from 'next/headers';
 import { createServerClient } from '@scipal/supabase';
 import { getUserProfile } from '@/features/profile/profileQueries';
+import { parseEducationLevel, resolveEducationLevel, type EducationLevel } from '@/features/landing/educationLevel';
 import { ProfileCard } from '@/features/profile/ProfileCard';
 import { AccountSettings } from '@/features/profile/AccountSettings';
 import { FeatureRequestBoard } from '@/features/survey/FeatureRequestBoard';
@@ -11,21 +12,30 @@ export const dynamic = 'force-dynamic';
 export default async function ProfilePage() {
   let user: { id: string; email?: string } | null = null;
   let appRole: string | undefined;
+  let accountLevel: EducationLevel | null = null;
+  const cookieStore = await cookies();
+  let supabase: ReturnType<typeof createServerClient> | null = null;
 
   try {
-    const cookieStore = await cookies();
-    const supabase = createServerClient(cookieStore as any);
-    const {
-      data: { user: authUser },
-    } = await supabase.auth.getUser();
-    if (authUser) {
+    supabase = createServerClient(cookieStore);
+    const { data: { user: authUser }, error: authError } = await supabase.auth.getUser();
+    if (!authError && authUser) {
       user = authUser;
       const role = authUser.app_metadata?.app_role;
       if (typeof role === 'string') appRole = role;
+
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('preferred_education_level')
+        .eq('id', authUser.id)
+        .maybeSingle();
+      if (!error) accountLevel = parseEducationLevel(data?.preferred_education_level);
     }
   } catch (err) {
     console.warn('Profile auth check warning:', err);
   }
+
+  const educationPreference = resolveEducationLevel(accountLevel, null);
 
   const userId = user?.id ?? 'demo-explorer-user';
   const { profile, stats } = await getUserProfile(userId);
@@ -66,7 +76,11 @@ export default async function ProfilePage() {
         />
 
         {/* Account & Learning Settings */}
-        <AccountSettings currentRole={role} />
+        <AccountSettings
+          currentRole={role}
+          educationPreference={educationPreference}
+          isAuthenticated={user !== null}
+        />
 
         {/* Feature Request & Innovation Board (§9.7) */}
         <FeatureRequestBoard />

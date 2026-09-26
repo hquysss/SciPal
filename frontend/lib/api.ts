@@ -31,5 +31,10 @@ export async function postSurvey(
 ): Promise<void> {
   const headers: HeadersInit = { 'Content-Type': 'application/json' };
   if (token) headers['Authorization'] = `Bearer ${token}`;
-  await fetch(`${API_BASE}/api/survey`, { method: 'POST', headers, body: JSON.stringify(body) });
+  const response = await fetch(`${API_BASE}/api/survey`, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify(body),
+  });
+  if (!response.ok) throw new Error(`survey failed: ${response.status}`);
 }
