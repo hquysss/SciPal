@@ -38,7 +38,7 @@ export function AccountHelpModal({ isOpen, onClose }: AccountHelpModalProps) {
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-gray-950/60 backdrop-blur-xs transition-opacity duration-200"
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[color-mix(in_srgb,var(--ink)_60%,transparent)] backdrop-blur-xs transition-opacity duration-200"
       role="dialog"
       aria-modal="true"
       aria-labelledby="account-help-title"
@@ -46,16 +46,16 @@ export function AccountHelpModal({ isOpen, onClose }: AccountHelpModalProps) {
     >
       <div
         ref={modalRef}
-        className="w-full max-w-lg overflow-hidden rounded-3xl border border-gray-200/90 bg-white p-6 sm:p-8 shadow-2xl dark:border-white/10 dark:bg-gray-900 transition-transform duration-200"
+        className="w-full max-w-lg overflow-hidden rounded-3xl border border-line bg-surface p-6 sm:p-8 shadow-2xl transition-transform duration-200"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="flex items-center justify-between border-b border-gray-100 pb-4 dark:border-gray-800">
+        <div className="flex items-center justify-between border-b border-line pb-4">
           <div className="flex items-center gap-3">
-            <span className="flex h-10 w-10 items-center justify-center rounded-2xl bg-emerald-100 text-lg font-bold text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">
+            <span className="flex h-10 w-10 items-center justify-center rounded-2xl bg-surface-sunken text-lg font-bold text-action">
               🏛️
             </span>
-            <h3 id="account-help-title" className="text-lg font-bold text-gray-950 dark:text-white">
+            <h3 id="account-help-title" className="text-lg font-bold text-ink">
               {t({
                 en: 'Account help',
                 vi: 'Hỗ trợ tài khoản',
@@ -66,7 +66,7 @@ export function AccountHelpModal({ isOpen, onClose }: AccountHelpModalProps) {
             ref={closeBtnRef}
             type="button"
             onClick={onClose}
-            className="flex min-h-11 min-w-11 items-center justify-center rounded-full text-gray-400 hover:bg-gray-100 hover:text-gray-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-700 dark:hover:bg-gray-800 dark:hover:text-gray-200 transition"
+            className="flex min-h-11 min-w-11 items-center justify-center rounded-full text-ink-muted hover:bg-surface-sunken hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus transition"
             aria-label={t({ en: 'Close', vi: 'Đóng' })}
           >
             ✕
@@ -74,7 +74,7 @@ export function AccountHelpModal({ isOpen, onClose }: AccountHelpModalProps) {
         </div>
 
         {/* Content Body */}
-        <div className="space-y-3 py-5 text-sm leading-relaxed text-gray-600 dark:text-gray-300">
+        <div className="space-y-3 py-5 text-sm leading-relaxed text-ink-muted">
           <p>
             {t({
               en: 'For help signing in or resetting your password, email SciPal support.',
@@ -83,18 +83,18 @@ export function AccountHelpModal({ isOpen, onClose }: AccountHelpModalProps) {
           </p>
           <a
             href="mailto:tuilangus@gmail.com"
-            className="inline-flex min-h-11 items-center rounded-xl border border-emerald-700 px-4 font-semibold text-emerald-800 hover:bg-emerald-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-700 dark:text-emerald-300 dark:hover:bg-emerald-950/40"
+            className="inline-flex min-h-11 items-center rounded-xl border border-action px-4 font-semibold text-action hover:bg-surface-sunken focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
           >
             tuilangus@gmail.com
           </a>
         </div>
 
         {/* Footer */}
-        <div className="flex items-center justify-end border-t border-gray-100 pt-4 dark:border-gray-800">
+        <div className="flex items-center justify-end border-t border-line pt-4">
           <button
             type="button"
             onClick={onClose}
-            className="min-h-11 rounded-2xl bg-emerald-700 px-6 text-sm font-bold text-white shadow-xs hover:bg-emerald-600 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-700 transition"
+            className="min-h-11 rounded-2xl bg-action px-6 text-sm font-bold text-action-ink shadow-xs hover:bg-action-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus transition"
           >
             {t({ en: 'Understood', vi: 'Đã hiểu' })}
           </button>

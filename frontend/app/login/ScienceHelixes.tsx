@@ -61,7 +61,7 @@ export function ScienceDnaHelix({ className = '' }: { className?: string }) {
             {/* Nucleotide nodes */}
             <circle cx={x1} cy={y + 40} r="2.8" fill="currentColor" />
             <circle cx={x2} cy={y + 40} r="2.8" fill="currentColor" />
-            <circle cx="50" cy={y + 40} r="1.5" fill="#ffffff" fillOpacity="0.8" />
+            <circle cx="50" cy={y + 40} r="1.5" fill="var(--surface)" fillOpacity="0.8" />
           </g>
         );
       })}

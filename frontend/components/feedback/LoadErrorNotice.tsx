@@ -2,20 +2,19 @@
 
 import Link from 'next/link';
 import { useLanguage } from '@scipal/hooks';
+import { Alert } from '../ui/alert';
+import { buttonVariants } from '../ui/button';
 
 export function LoadErrorNotice({ message, retryHref }: { message: { en: string; vi: string }; retryHref?: string }) {
   const { t } = useLanguage();
   return (
-    <div
-      role="alert"
-      className="rounded-2xl border border-red-200 bg-red-50/90 p-4 text-sm font-medium text-red-800 dark:border-red-900/50 dark:bg-red-950/40 dark:text-red-300"
-    >
-      {t(message)}
+    <Alert tone="danger">
+      <p>{t(message)}</p>
       {retryHref && (
-        <Link href={retryHref} className="ml-2 font-semibold underline">
+        <Link href={retryHref} className={buttonVariants({ variant: 'outline', className: 'mt-3' })}>
           {t({ en: 'Try again', vi: 'Thử lại' })}
         </Link>
       )}
-    </div>
+    </Alert>
   );
 }

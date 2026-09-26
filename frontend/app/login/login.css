@@ -14,10 +14,8 @@
   --color-katha-surface: var(--background, #fafaf9);
   --color-katha-surface-light: var(--card, #ffffff);
   --color-katha-text: var(--foreground, #171717);
-  --color-katha-gold: var(--accent, #16a34a);
-  --color-katha-primary: var(--accent, #16a34a);
-  --color-katha-primary-light: #22c55e;
-  --color-katha-heritage: #15803d;
+  --color-katha-primary-light: var(--action-hover);
+  --color-katha-heritage: var(--action-hover);
   --color-katha-field: var(--input, #ffffff);
   --color-katha-on-solid: #ffffff;
   --color-katha-error: var(--destructive, #dc2626);
@@ -29,14 +27,14 @@
   --lg-ink: var(--foreground, #171717);
   --lg-ink-soft: color-mix(in srgb, var(--foreground, #171717) 82%, transparent);
   --lg-muted: color-mix(in srgb, var(--foreground, #171717) 58%, transparent);
-  --lg-gold: var(--accent, #16a34a);
-  --lg-gold-soft: color-mix(in srgb, var(--accent, #16a34a) 75%, #ffffff);
-  --lg-primary: var(--accent, #16a34a);
+  --lg-gold: var(--action);
+  --lg-gold-soft: var(--surface-sunken);
+  --lg-primary: var(--action);
   --lg-line: color-mix(in srgb, var(--foreground, #171717) 12%, transparent);
   --lg-field: var(--card, #ffffff);
   --lg-field-line: color-mix(in srgb, var(--foreground, #171717) 16%, transparent);
-  --lg-field-focus-line: var(--accent, #16a34a);
-  --lg-field-focus-ring: color-mix(in srgb, var(--accent, #16a34a) 18%, transparent);
+  --lg-field-focus-line: var(--focus);
+  --lg-field-focus-ring: color-mix(in srgb, var(--focus) 22%, transparent);
 
   position: relative;
   display: grid;
@@ -48,7 +46,7 @@
   background-color: var(--lg-page);
 }
 
-:root[data-theme='dark'] .katha-login-page {
+[data-app-shell][data-theme='dark'] .katha-login-page {
   --lg-page: var(--background, #09090b);
   --lg-shell: var(--card, #1f2937);
   --lg-hero: color-mix(in srgb, var(--background, #09090b) 45%, var(--card, #1f2937));
@@ -56,14 +54,14 @@
   --lg-ink: var(--foreground, #f9fafb);
   --lg-ink-soft: color-mix(in srgb, var(--foreground, #f9fafb) 84%, transparent);
   --lg-muted: color-mix(in srgb, var(--foreground, #f9fafb) 55%, transparent);
-  --lg-gold: var(--accent, #16a34a);
-  --lg-gold-soft: color-mix(in srgb, var(--accent, #16a34a) 80%, #ffffff);
-  --lg-primary: var(--accent, #16a34a);
+  --lg-gold: var(--action);
+  --lg-gold-soft: var(--surface-sunken);
+  --lg-primary: var(--action);
   --lg-line: color-mix(in srgb, var(--foreground, #f9fafb) 18%, transparent);
   --lg-field: var(--background, #09090b);
   --lg-field-line: color-mix(in srgb, var(--foreground, #f9fafb) 22%, transparent);
-  --lg-field-focus-line: var(--accent, #16a34a);
-  --lg-field-focus-ring: color-mix(in srgb, var(--accent, #16a34a) 24%, transparent);
+  --lg-field-focus-line: var(--focus);
+  --lg-field-focus-ring: color-mix(in srgb, var(--focus) 22%, transparent);
 }
 
 /* Subtle science-lab grid and emerald ambient light */
@@ -92,11 +90,11 @@
   pointer-events: none;
 }
 
-:root[data-theme='dark'] .katha-login-page::before {
+[data-app-shell][data-theme='dark'] .katha-login-page::before {
   opacity: 0.06;
 }
 
-:root[data-theme='dark'] .katha-login-page::after {
+[data-app-shell][data-theme='dark'] .katha-login-page::after {
   opacity: 0.06;
 }
 
@@ -119,7 +117,7 @@
     0 12px 32px -20px color-mix(in srgb, var(--lg-gold) 18%, transparent);
 }
 
-:root[data-theme='dark'] .katha-login-shell {
+[data-app-shell][data-theme='dark'] .katha-login-shell {
   border-color: color-mix(in srgb, var(--lg-gold) 22%, transparent);
   box-shadow:
     0 40px 95px -45px rgba(0, 0, 0, 0.85),
@@ -278,7 +276,7 @@
     inset 0 0 0 1px color-mix(in srgb, var(--lg-gold) 15%, transparent);
 }
 
-:root[data-theme='dark'] .katha-login-photo {
+[data-app-shell][data-theme='dark'] .katha-login-photo {
   box-shadow:
     0 26px 50px -28px rgba(0, 0, 0, 0.8),
     inset 0 0 0 1px color-mix(in srgb, var(--lg-gold) 20%, transparent);
@@ -291,7 +289,7 @@
   transition: transform 700ms cubic-bezier(0.22, 1, 0.36, 1), filter 400ms ease;
 }
 
-:root[data-theme='dark'] .katha-login-photo-img {
+[data-app-shell][data-theme='dark'] .katha-login-photo-img {
   filter: saturate(0.92) brightness(0.92);
 }
 
@@ -434,7 +432,7 @@
   box-shadow: 0 0 10px color-mix(in srgb, var(--lg-gold) 60%, transparent);
 }
 
-:root[data-theme='dark'] .katha-login-slide-badge {
+[data-app-shell][data-theme='dark'] .katha-login-slide-badge {
   background: rgba(10, 10, 15, 0.82);
   border-color: color-mix(in srgb, var(--lg-gold) 35%, transparent);
 }
@@ -620,7 +618,7 @@
   }
 }
 
-:root[data-theme='dark'] .katha-mascot-interactive {
+[data-app-shell][data-theme='dark'] .katha-mascot-interactive {
   filter: drop-shadow(0 8px 18px color-mix(in srgb, var(--lg-gold) 24%, transparent));
 }
 
@@ -647,7 +645,7 @@
   pointer-events: none;
 }
 
-:root[data-theme='dark'] .katha-mascot-pedestal {
+[data-app-shell][data-theme='dark'] .katha-mascot-pedestal {
   background: radial-gradient(ellipse at center, color-mix(in srgb, var(--lg-gold) 25%, transparent) 0%, transparent 75%);
 }
 
@@ -674,7 +672,7 @@
   z-index: 25;
 }
 
-:root[data-theme='dark'] .katha-mascot-bubble {
+[data-app-shell][data-theme='dark'] .katha-mascot-bubble {
   background: color-mix(in srgb, var(--lg-pane) 90%, var(--lg-gold) 10%);
   border-color: color-mix(in srgb, var(--lg-gold) 45%, transparent);
   box-shadow:
@@ -842,7 +840,7 @@
   box-shadow: 0 0 0 3.5px var(--lg-field-focus-ring);
 }
 
-:root[data-theme='dark'] .katha-login-input-wrap input:focus {
+[data-app-shell][data-theme='dark'] .katha-login-input-wrap input:focus {
   background: var(--lg-field);
   border-color: var(--lg-gold);
   box-shadow: 0 0 0 3.5px color-mix(in srgb, var(--lg-gold) 24%, transparent);
@@ -928,7 +926,7 @@
   color: #ffffff;
 }
 
-:root[data-theme='dark'] .katha-login-checkbox-box.checked {
+[data-app-shell][data-theme='dark'] .katha-login-checkbox-box.checked {
   border-color: var(--lg-gold);
   background: var(--lg-gold);
   color: #17161e;
@@ -978,7 +976,7 @@
   animation: katha-login-error-enter 320ms cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
-:root[data-theme='dark'] .katha-login-error {
+[data-app-shell][data-theme='dark'] .katha-login-error {
   border-color: color-mix(in srgb, var(--color-katha-error, oklch(0.66 0.19 25)) 40%, transparent);
   background: color-mix(in srgb, var(--color-katha-error, oklch(0.66 0.19 25)) 16%, transparent);
   color: oklch(0.85 0.10 25);
@@ -1054,7 +1052,7 @@
   transform: translateX(3px);
 }
 
-:root[data-theme='dark'] .katha-login-submit {
+[data-app-shell][data-theme='dark'] .katha-login-submit {
   border-color: color-mix(in srgb, var(--lg-gold) 45%, transparent);
   background: linear-gradient(135deg, var(--lg-gold), color-mix(in srgb, var(--lg-gold) 75%, var(--color-katha-heritage, oklch(0.62 0.14 38))));
   color: #17161e;
@@ -1063,7 +1061,7 @@
     inset 0 1px 0 rgba(255, 255, 255, 0.25);
 }
 
-:root[data-theme='dark'] .katha-login-submit:hover:not(:disabled) {
+[data-app-shell][data-theme='dark'] .katha-login-submit:hover:not(:disabled) {
   background: linear-gradient(135deg, color-mix(in srgb, var(--lg-gold) 85%, #fff), var(--lg-gold));
   box-shadow:
     0 18px 32px -12px color-mix(in srgb, var(--lg-gold) 50%, transparent),
@@ -1150,7 +1148,7 @@
   transition: background 200ms ease, border-color 200ms ease;
 }
 
-:root[data-theme='dark'] .login-theme-toggle-track {
+[data-app-shell][data-theme='dark'] .login-theme-toggle-track {
   border-color: color-mix(in srgb, var(--lg-gold) 28%, transparent);
   background: var(--lg-field);
 }
@@ -1222,7 +1220,7 @@
   box-shadow: 0 10px 24px -12px color-mix(in srgb, var(--color-katha-text) 22%, transparent);
 }
 
-:root[data-theme='dark'] .login-language-switch {
+[data-app-shell][data-theme='dark'] .login-language-switch {
   border-color: color-mix(in srgb, var(--lg-gold) 26%, transparent);
   background: var(--lg-field);
   box-shadow: 0 10px 24px -12px rgba(0, 0, 0, 0.75);
@@ -1260,7 +1258,7 @@
   color: #ffffff;
 }
 
-:root[data-theme='dark'] .login-language-option.is-active {
+[data-app-shell][data-theme='dark'] .login-language-option.is-active {
   background: var(--lg-gold);
   color: #17161e;
 }
@@ -1378,12 +1376,12 @@
   transform: translateY(-1px);
 }
 
-:root[data-theme='dark'] .katha-login-modal-btn {
+[data-app-shell][data-theme='dark'] .katha-login-modal-btn {
   background: var(--lg-gold);
   color: #17161e;
 }
 
-:root[data-theme='dark'] .katha-login-modal-btn:hover {
+[data-app-shell][data-theme='dark'] .katha-login-modal-btn:hover {
   background: var(--lg-gold-soft);
 }
 /* ============================================================
@@ -1400,7 +1398,7 @@
   user-select: none;
 }
 
-:root[data-theme='dark'] .katha-login-sparkle {
+[data-app-shell][data-theme='dark'] .katha-login-sparkle {
   filter: drop-shadow(0 0 10px color-mix(in srgb, var(--lg-gold) 70%, transparent));
 }
 
@@ -2087,7 +2085,7 @@
  * Input and button effects from Uiverse.io by Smit-Prajapati.
  * Keep the light-theme surfaces and the open login layout.
  */
-:root[data-theme='dark'] .katha-login-page .katha-login-input-wrap {
+[data-app-shell][data-theme='dark'] .katha-login-page .katha-login-input-wrap {
   --lg-field: #23272f;
   padding: 0.3rem;
   border-radius: 1rem;
@@ -2095,23 +2093,23 @@
   box-shadow: 7px 7px 16px rgb(14 16 19 / 28%), -5px -5px 14px rgb(56 62 75 / 16%);
 }
 
-:root[data-theme='dark'] .katha-login-page .katha-login-input-icon {
+[data-app-shell][data-theme='dark'] .katha-login-page .katha-login-input-icon {
   left: 1.3rem;
 }
 
-:root[data-theme='dark'] .katha-login-page .katha-login-password-toggle {
+[data-app-shell][data-theme='dark'] .katha-login-page .katha-login-password-toggle {
   right: 0.7rem;
 }
 
 .katha-login-input-wrap input {
-  --login-inset: inset 5px 5px 10px rgb(15 23 42 / 12%), inset -5px -5px 10px rgb(255 255 255 / 80%), 0 0 100px rgb(22 163 74 / 0%), 0 0 100px rgb(34 197 94 / 0%);
-  --login-glow: inset 0 0 10px rgb(22 163 74 / 50%), inset 0 0 10px rgb(34 197 94 / 50%), 0 0 100px rgb(34 197 94 / 50%), 0 0 100px rgb(22 163 74 / 50%);
+  --login-inset: inset 5px 5px 10px rgb(15 23 42 / 12%), inset -5px -5px 10px rgb(255 255 255 / 80%), 0 0 100px transparent, 0 0 100px transparent;
+  --login-glow: inset 0 0 10px color-mix(in srgb, var(--focus) 50%, transparent), inset 0 0 10px color-mix(in srgb, var(--action) 50%, transparent), 0 0 100px color-mix(in srgb, var(--action) 50%, transparent), 0 0 100px color-mix(in srgb, var(--focus) 50%, transparent);
   box-shadow: var(--login-inset);
   transition: border-color 200ms ease-in-out, box-shadow 200ms ease-in-out;
 }
 
-:root[data-theme='dark'] .katha-login-input-wrap input {
-  --login-inset: inset 5px 5px 10px #0e1013, inset -5px -5px 10px #383e4b, 0 0 100px rgb(34 197 94 / 0%), 0 0 100px rgb(22 163 74 / 0%);
+[data-app-shell][data-theme='dark'] .katha-login-input-wrap input {
+  --login-inset: inset 5px 5px 10px #0e1013, inset -5px -5px 10px #383e4b, 0 0 100px transparent, 0 0 100px transparent;
   background: var(--lg-field);
   box-shadow: var(--login-inset);
 }
@@ -2138,22 +2136,22 @@
   border-radius: 1rem;
   background: linear-gradient(135deg, var(--lg-primary) 0%, var(--color-katha-primary-light) 100%);
   color: var(--primary-foreground, #ffffff);
-  box-shadow: 0 0 1px rgb(22 163 74 / 50%), 0 0 1px rgb(34 197 94 / 50%);
+  box-shadow: 0 0 1px color-mix(in srgb, var(--action) 50%, transparent), 0 0 1px color-mix(in srgb, var(--action-hover) 50%, transparent);
   transition: background 200ms ease-in-out, box-shadow 200ms ease-in-out;
 }
 
-:root[data-theme='dark'] .katha-login-page .katha-login-submit {
+[data-app-shell][data-theme='dark'] .katha-login-page .katha-login-submit {
   border: 0.3rem solid #1b1f26;
 }
 
-:root[data-theme='dark'] .katha-login-page .katha-login-submit:not(:hover):not(:focus-visible) {
+[data-app-shell][data-theme='dark'] .katha-login-page .katha-login-submit:not(:hover):not(:focus-visible) {
   box-shadow: 7px 7px 16px rgb(14 16 19 / 28%), -5px -5px 14px rgb(56 62 75 / 16%);
 }
 
 :root .katha-login-page .katha-login-submit:hover:not(:disabled),
 :root .katha-login-page .katha-login-submit:focus-visible {
   background: linear-gradient(135deg, var(--lg-primary) 0%, var(--color-katha-primary-light) 100%);
-  box-shadow: 0 0 100px rgb(34 197 94 / 50%), 0 0 100px rgb(22 163 74 / 50%);
+  box-shadow: 0 0 100px color-mix(in srgb, var(--action-hover) 50%, transparent), 0 0 100px color-mix(in srgb, var(--action) 50%, transparent);
   filter: none;
   transform: none;
 }
@@ -2199,11 +2197,25 @@
   animation: katha-login-error-enter 200ms ease-out both;
 }
 
-:root[data-theme='dark'] .katha-login-field-error {
+[data-app-shell][data-theme='dark'] .katha-login-field-error {
   color: var(--color-katha-error, oklch(0.85 0.10 25));
 }
 
 :root[data-content-language='km'] .katha-login-field-error {
   font-family: var(--font-khmer);
   letter-spacing: 0;
+}
+
+/* Slide art: two tones of the level's navbar colour. */
+.katha-login-slide {
+  --art-1: var(--nav-ink);
+  --art-2: color-mix(in srgb, var(--nav-ink) 78%, var(--nav));
+  --art-3: color-mix(in srgb, var(--nav-ink) 55%, var(--nav));
+  --art-4: color-mix(in srgb, var(--nav-ink) 30%, var(--nav));
+  --art-deep: color-mix(in srgb, var(--nav) 62%, #000);
+}
+
+.katha-login-slide-bg {
+  background: linear-gradient(135deg, var(--nav), var(--art-deep));
+  opacity: 0.97;
 }
