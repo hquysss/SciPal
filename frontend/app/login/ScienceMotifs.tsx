@@ -139,7 +139,7 @@ export function QuantumNodeMark({ className = 'size-3' }: { className?: string }
         fill="currentColor"
         fillOpacity="0.9"
       />
-      <circle cx="6" cy="6" r="1.2" fill="#ffffff" />
+      <circle cx="6" cy="6" r="1.2" fill="var(--surface)" />
     </svg>
   );
 }

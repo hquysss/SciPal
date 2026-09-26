@@ -16,8 +16,8 @@
   --color-katha-text: var(--foreground, #171717);
   --color-katha-gold: var(--accent, #16a34a);
   --color-katha-primary: var(--accent, #16a34a);
-  --color-katha-primary-light: #22c55e;
-  --color-katha-heritage: #15803d;
+  --color-katha-primary-light: var(--action-hover);
+  --color-katha-heritage: var(--action-hover);
   --color-katha-field: var(--input, #ffffff);
   --color-katha-on-solid: #ffffff;
   --color-katha-error: var(--destructive, #dc2626);
@@ -2206,4 +2206,18 @@
 :root[data-content-language='km'] .katha-login-field-error {
   font-family: var(--font-khmer);
   letter-spacing: 0;
+}
+
+/* Slide art: two tones of the level's navbar colour. */
+.katha-login-slide {
+  --art-1: var(--nav-ink);
+  --art-2: color-mix(in srgb, var(--nav-ink) 78%, var(--nav));
+  --art-3: color-mix(in srgb, var(--nav-ink) 55%, var(--nav));
+  --art-4: color-mix(in srgb, var(--nav-ink) 30%, var(--nav));
+  --art-deep: color-mix(in srgb, var(--nav) 62%, #000);
+}
+
+.katha-login-slide-bg {
+  background: linear-gradient(135deg, var(--nav), var(--art-deep));
+  opacity: 0.97;
 }

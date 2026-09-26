@@ -61,7 +61,6 @@ function LoginContent() {
         lang === 'en'
           ? 'Deep bilingual exploration of computational complexity, sorting algorithms, and recursion.'
           : 'Học sâu về độ phức tạp tính toán, thuật toán sắp xếp và kỹ thuật đệ quy chuẩn THPT.',
-      bgGradient: 'from-emerald-950 via-teal-950 to-slate-950',
       Graphic: InformaticsSlideGraphic,
     },
     {
@@ -74,7 +73,6 @@ function LoginContent() {
         lang === 'en'
           ? 'Interactive physical simulations connecting waves and frequencies with rigorous mathematics.'
           : 'Mô phỏng tương tác kết nối hiện tượng giao thoa sóng với hệ thống toán học chuẩn mực.',
-      bgGradient: 'from-sky-950 via-indigo-950 to-slate-950',
       Graphic: PhysicsSlideGraphic,
     },
     {
@@ -87,7 +85,6 @@ function LoginContent() {
         lang === 'en'
           ? 'Molecular reaction models and energetic bonds designed for intuitive retention and test success.'
           : 'Mô hình phản ứng phân tử và liên kết năng lượng giúp nắm chắc lý thuyết và thi đạt điểm cao.',
-      bgGradient: 'from-amber-950 via-orange-950 to-slate-950',
       Graphic: ChemistrySlideGraphic,
     },
   ];
@@ -261,7 +258,7 @@ function LoginContent() {
 
           <header className="katha-login-hero-head">
             <p className="katha-login-eyebrow">
-              <AtomOrbitMark className="katha-login-eyebrow-mark text-emerald-600 dark:text-emerald-400" />
+              <AtomOrbitMark className="katha-login-eyebrow-mark text-action" />
               <span>
                 SciPal · {lang === 'en' ? 'Visual Learning Space' : 'Không gian học tập trực quan'}
               </span>
@@ -297,7 +294,7 @@ function LoginContent() {
                     className={`katha-login-slide ${idx === activeSlide ? 'is-active' : ''}`}
                     aria-hidden={idx !== activeSlide}
                   >
-                    <div className={`absolute inset-0 bg-gradient-to-br ${slide.bgGradient} opacity-95`} />
+                    <div className="katha-login-slide-bg absolute inset-0" />
                     <div className="pointer-events-none absolute inset-0 bg-science-grid opacity-25" />
                     <SlideGraphic />
                     <div className="katha-login-photo-shade" aria-hidden="true" />
@@ -536,7 +533,7 @@ function LoginContent() {
           >
             <div className="katha-login-modal-header">
               <h3 id="katha-help-title">
-                <QuantumNodeMark className="katha-login-eyebrow-mark text-emerald-600 dark:text-emerald-400" />
+                <QuantumNodeMark className="katha-login-eyebrow-mark text-action" />
                 {lang === 'en' ? 'Institutional Account Notice' : 'Chính sách Tài khoản Cấp phát'}
               </h3>
               <button
