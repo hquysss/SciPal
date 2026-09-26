@@ -26,8 +26,6 @@ export interface Database {
           accent_color: string;
           icon: string;
           icon_url: string | null;
-          education_level: EducationLevel;
-          status: 'active' | 'upcoming';
           sort_order: number;
           created_at: string;
         };
@@ -39,8 +37,6 @@ export interface Database {
           accent_color: string;
           icon: string;
           icon_url?: string | null;
-          education_level?: EducationLevel;
-          status?: 'active' | 'upcoming';
           sort_order?: number;
           created_at?: string;
         };
@@ -52,8 +48,6 @@ export interface Database {
           accent_color?: string;
           icon?: string;
           icon_url?: string | null;
-          education_level?: EducationLevel;
-          status?: 'active' | 'upcoming';
           sort_order?: number;
           created_at?: string;
         };
@@ -180,9 +174,7 @@ export interface Database {
           grade: number;
           blocks: Block[];
           sort_order: number;
-          published: boolean;
           created_by: string | null;
-          review_status: 'draft' | 'pending' | 'approved' | 'rejected';
           status: LessonStatus;
           track_id: string | null;
           digital_competency: BilingualText | null;
@@ -203,9 +195,7 @@ export interface Database {
           grade?: number;
           blocks?: Block[];
           sort_order?: number;
-          published?: boolean;
           created_by?: string | null;
-          review_status?: 'draft' | 'pending' | 'approved' | 'rejected';
           status?: LessonStatus;
           track_id?: string | null;
           digital_competency?: BilingualText | null;
@@ -226,9 +216,7 @@ export interface Database {
           grade?: number;
           blocks?: Block[];
           sort_order?: number;
-          published?: boolean;
           created_by?: string | null;
-          review_status?: 'draft' | 'pending' | 'approved' | 'rejected';
           status?: LessonStatus;
           track_id?: string | null;
           digital_competency?: BilingualText | null;

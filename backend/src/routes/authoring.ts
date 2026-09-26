@@ -84,7 +84,6 @@ export const authoringRoutes: FastifyPluginAsync = async (app) => {
           supabase
             .from('subjects')
             .select('id, slug, name_en, name_vi')
-            .eq('status', 'active')
             .order('sort_order'),
           supabase
             .from('topics')
@@ -222,14 +221,13 @@ export const authoringRoutes: FastifyPluginAsync = async (app) => {
         .from('subjects')
         .select('id')
         .eq('id', topic.subject_id)
-        .eq('status', 'active')
         .maybeSingle();
 
       if (subjectError) {
         request.log.error({ err: subjectError, subjectId: topic.subject_id }, 'Failed to verify lesson subject');
         return reply.code(500).send({ error: 'Không xác minh được môn học đã chọn.' });
       }
-      if (!subject) return reply.code(400).send({ error: 'Môn học đã chọn hiện chưa hoạt động.' });
+      if (!subject) return reply.code(400).send({ error: 'Môn học đã chọn không tồn tại.' });
 
       const baseSlug = makeSlug(titleEn) || 'bai-hoc';
       let slug = baseSlug;

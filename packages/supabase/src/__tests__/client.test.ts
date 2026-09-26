@@ -86,8 +86,6 @@ describe('Supabase Client Package', () => {
         accent_color: '#16a34a',
         icon: '</>',
         icon_url: null,
-        education_level: 'upper_secondary',
-        status: 'active',
         sort_order: 0,
         created_at: '2026-09-22T00:00:00Z',
       };
@@ -101,7 +99,7 @@ describe('Supabase Client Package', () => {
       };
 
       const subjectUpdate: SubjectUpdate = {
-        status: 'upcoming',
+        icon_url: 'https://example.com/math.svg',
       };
       const profileUpdate: ProfileUpdate = {
         preferred_education_level: 'primary',
@@ -109,7 +107,7 @@ describe('Supabase Client Package', () => {
 
       expect(subjectRow.slug).toBe('informatics');
       expect(subjectInsert.slug).toBe('math');
-      expect(subjectUpdate.status).toBe('upcoming');
+      expect(subjectUpdate.icon_url).toBe('https://example.com/math.svg');
       expect(profileUpdate.preferred_education_level).toBe('primary');
     });
 
@@ -134,9 +132,7 @@ describe('Supabase Client Package', () => {
           },
         ],
         sort_order: 1,
-        published: true,
         created_by: null,
-        review_status: 'approved',
         status: 'published',
         track_id: null,
         digital_competency: null,

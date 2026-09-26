@@ -29,7 +29,7 @@ d:\Code\SciPal\
 │   └── supabase/       # @scipal/supabase — Typed clients (createBrowserClient, createServerClient)
 ├── supabase/
 │   ├── migrations/     # SQL migrations: 0001_subjects, 0002_content, 0003_user_data, 0004_rls
-│   └── seed/           # Seed data: 5 môn học (subjects.sql), bài mẫu Tin học (informatics_sample.sql)
+│   └── catalog/        # Nguồn catalog GDPT 2018 (gdpt2018.json) — sinh migration catalog
 ├── docs/
 │   └── superpowers/    # Specs (v1.5) và implementation plans (Plan 0, Plan 1, Plan 2)
 ├── AGENTS.md           # Entry point chỉ mục cho AI agents
