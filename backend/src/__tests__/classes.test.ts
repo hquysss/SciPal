@@ -74,7 +74,14 @@ describe('class route authorization', () => {
   it('creates a class for the calling teacher, resolving the subject slug', async () => {
     const subjects = mockQuery({ data: { id: 'subject-uuid' }, error: null });
     const insert = mockQuery({
-      data: { id: CLASS_ID, name: '10A1', subject_id: 'subject-uuid', invite_code: 'ABC123', created_at: '2026-09-26' },
+      data: {
+        id: CLASS_ID,
+        name: '10A1',
+        subject_id: 'subject-uuid',
+        invite_code: 'ABC123',
+        created_at: '2026-09-26',
+        subjects: { slug: 'informatics', name_en: 'Informatics', name_vi: 'Tin học' },
+      },
       error: null,
     });
     const app = await buildClassApp(teacher, { subjects, class_rooms: insert });
@@ -89,6 +96,8 @@ describe('class route authorization', () => {
     expect(subjects.eqCalls).toContainEqual(['slug', 'informatics']);
     expect(insert.inserted[0]).toMatchObject({ teacher_id: 'teacher-1', subject_id: 'subject-uuid', name: '10A1' });
     expect(res.json().class_room.student_count).toBe(0);
+    expect(res.json().class_room.subject_name_en).toBe('Informatics');
+    expect(res.json().class_room).not.toHaveProperty('subjects');
     await app.close();
   });
 
@@ -105,15 +114,24 @@ describe('class route authorization', () => {
 
   it('lists only the calling teacher classes with student counts', async () => {
     const rooms = mockQuery({
-      data: [{ id: CLASS_ID, name: '10A1', subject_id: 's', invite_code: 'ABC123', created_at: 'x', class_members: [{ count: 3 }] }],
+      data: [{
+        id: CLASS_ID,
+        name: '10A1',
+        subject_id: 's',
+        invite_code: 'ABC123',
+        created_at: 'x',
+        class_members: [{ count: 3 }],
+        subjects: { slug: 'informatics', name_en: 'Informatics', name_vi: 'Tin học' },
+      }],
       error: null,
     });
     const app = await buildClassApp(teacher, { class_rooms: rooms });
     const res = await app.inject({ method: 'GET', url: '/api/classes' });
     expect(res.statusCode).toBe(200);
     expect(rooms.eqCalls).toContainEqual(['teacher_id', 'teacher-1']);
-    expect(res.json().classes[0]).toMatchObject({ id: CLASS_ID, student_count: 3 });
+    expect(res.json().classes[0]).toMatchObject({ id: CLASS_ID, student_count: 3, subject_name_vi: 'Tin học' });
     expect(res.json().classes[0]).not.toHaveProperty('class_members');
+    expect(res.json().classes[0]).not.toHaveProperty('subjects');
     await app.close();
   });
 

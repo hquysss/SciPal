@@ -12,6 +12,9 @@ export interface ClassRoomItem {
   invite_code: string;
   student_count?: number;
   created_at: string;
+  subject_slug?: string;
+  subject_name_en?: string;
+  subject_name_vi?: string;
 }
 
 interface ClassListProps {
@@ -71,7 +74,7 @@ export function ClassList({ initialClasses, token }: ClassListProps) {
             <div className="space-y-3">
               <div className="flex items-center justify-between gap-2">
                 <span className="rounded-full bg-purple-100 px-2.5 py-0.5 font-mono text-[11px] font-bold text-purple-800 dark:bg-purple-950/60 dark:text-purple-300 uppercase">
-                  {cls.subject_id}
+                  {t({ en: cls.subject_name_en || cls.subject_slug || '', vi: cls.subject_name_vi || cls.subject_slug || '' })}
                 </span>
                 <span className="text-xs font-mono text-gray-500">
                   👥 {cls.student_count ?? 0} học sinh

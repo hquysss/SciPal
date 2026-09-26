@@ -19,6 +19,21 @@ function isAdmin(user: ClassUser | undefined): boolean {
   return user?.app_metadata?.app_role === 'admin';
 }
 
+type SubjectEmbed = { slug?: string; name_en?: string; name_vi?: string } | null | undefined;
+
+function flattenSubject<T extends Record<string, unknown> & { subjects?: SubjectEmbed | SubjectEmbed[] }>(
+  row: T,
+): Omit<T, 'subjects'> & { subject_slug: string; subject_name_en: string; subject_name_vi: string } {
+  const { subjects, ...rest } = row;
+  const subject = Array.isArray(subjects) ? subjects[0] : subjects;
+  return {
+    ...rest,
+    subject_slug: subject?.slug ?? '',
+    subject_name_en: subject?.name_en ?? '',
+    subject_name_vi: subject?.name_vi ?? '',
+  } as Omit<T, 'subjects'> & { subject_slug: string; subject_name_en: string; subject_name_vi: string };
+}
+
 export function newInviteCode(): string {
   return crypto.randomBytes(3).toString('hex').toUpperCase();
 }
@@ -69,7 +84,7 @@ export const classRoutes: FastifyPluginAsync = async (app) => {
 
     let query = supabase
       .from('class_rooms')
-      .select('id, name, subject_id, invite_code, created_at, class_members(count)')
+      .select('id, name, subject_id, invite_code, created_at, class_members(count), subjects(slug, name_en, name_vi)')
       .order('created_at', { ascending: false });
     if (!isAdmin(user)) query = query.eq('teacher_id', user.id!);
 
@@ -82,8 +97,9 @@ export const classRoutes: FastifyPluginAsync = async (app) => {
     const classes = (data ?? []).map((row) => {
       const { class_members: counts, ...room } = row as Record<string, unknown> & {
         class_members?: Array<{ count: number }>;
+        subjects?: SubjectEmbed | SubjectEmbed[];
       };
-      return { ...room, student_count: counts?.[0]?.count ?? 0 };
+      return { ...flattenSubject(room as Record<string, unknown> & { subjects?: SubjectEmbed | SubjectEmbed[] }), student_count: counts?.[0]?.count ?? 0 };
     });
     return reply.send({ classes });
   });
@@ -122,14 +138,16 @@ export const classRoutes: FastifyPluginAsync = async (app) => {
       const { data, error } = await supabase
         .from('class_rooms')
         .insert({ teacher_id: user.id, subject_id: subject.id, name, invite_code: newInviteCode() })
-        .select('id, name, subject_id, invite_code, created_at')
+        .select('id, name, subject_id, invite_code, created_at, subjects(slug, name_en, name_vi)')
         .single();
       if (error?.code === '23505') continue; // invite code collision — retry
       if (error || !data) {
         request.log.error({ err: error }, 'Failed to create class');
         return reply.code(500).send({ error: 'Không tạo được lớp học.' });
       }
-      return reply.code(201).send({ class_room: { ...data, student_count: 0 } });
+      return reply.code(201).send({
+        class_room: { ...flattenSubject(data as Record<string, unknown> & { subjects?: SubjectEmbed | SubjectEmbed[] }), student_count: 0 },
+      });
     }
     return reply.code(500).send({ error: 'Không tạo được mã lớp. Vui lòng thử lại.' });
   });
