@@ -30,11 +30,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <style id="scipal-theme" dangerouslySetInnerHTML={{ __html: renderThemeCss({ systemDark: DARK_MODE_ENABLED }) }} />
         <noscript>
           <style>
-            {`body:has([data-scipal-level-gate], [data-level]) div[hidden][id^="S:"] {
+            {`body:has([data-scipal-level-gate], [data-scipal-level]) div[hidden][id^="S:"] {
               display: contents !important;
             }
 
-            body:has([data-scipal-level-gate], [data-level]) main[role="status"][aria-busy="true"] {
+            body:has([data-scipal-level-gate], [data-scipal-level]) main[role="status"][aria-busy="true"] {
               display: none !important;
             }`}
           </style>

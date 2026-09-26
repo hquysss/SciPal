@@ -104,3 +104,15 @@ export function adoptAccountLevel(
   applyShellLevel(shell, level);
   return level;
 }
+
+/** Sign-out: the next guest in this tab must choose their own level. */
+export function forgetAccountLevel(storage: Pick<Storage, 'removeItem'> | null, shell: ShellElement | null): void {
+  if (storage) {
+    try {
+      storage.removeItem(LEVEL_SESSION_KEY);
+    } catch {
+      // Storage blocked: nothing was stored for this tab.
+    }
+  }
+  applyShellLevel(shell, null);
+}

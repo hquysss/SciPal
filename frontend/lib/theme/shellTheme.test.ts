@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   adoptAccountLevel,
+  forgetAccountLevel,
   applyShellLevel,
   applyShellTheme,
   buildBootScript,
@@ -125,5 +126,24 @@ describe('adoptAccountLevel', () => {
     const shell = fakeShell();
     expect(adoptAccountLevel('primary', throwingStorage, shell)).toBe('primary');
     expect(shell.attrs.get('data-level')).toBe('primary');
+  });
+});
+
+describe('forgetAccountLevel', () => {
+  it('drops the adopted level on sign-out so the next guest in the tab starts neutral', () => {
+    const shell = fakeShell();
+    const values: Record<string, string> = {};
+    const storage = { ...fakeStorage(values), removeItem: (key: string) => void delete values[key] };
+    adoptAccountLevel('primary', storage, shell);
+    forgetAccountLevel(storage, shell);
+    expect(values[LEVEL_SESSION_KEY]).toBeUndefined();
+    expect(shell.attrs.get('data-level')).toBe('neutral');
+  });
+
+  it('survives blocked storage', () => {
+    const shell = fakeShell();
+    expect(() => forgetAccountLevel({ removeItem: () => { throw new Error('SecurityError'); } }, shell)).not.toThrow();
+    expect(shell.attrs.get('data-level')).toBe('neutral');
+    expect(() => forgetAccountLevel(null, null)).not.toThrow();
   });
 });

@@ -11,7 +11,7 @@ import { OnlinePill } from './OnlinePill';
 import { SubjectSwitcher } from './SubjectSwitcher';
 import type { SubjectSlug } from '@/lib/subject-config';
 import { createBrowserClient } from '@/lib/supabase';
-import { adoptAccountLevel, getShell, safeSessionStorage } from '@/lib/theme/shellTheme';
+import { adoptAccountLevel, forgetAccountLevel, getShell, safeSessionStorage } from '@/lib/theme/shellTheme';
 
 interface NavBarProps {
   currentSubject?: SubjectSlug;
@@ -142,6 +142,7 @@ export function NavBar({ currentSubject }: NavBarProps) {
         localStorage.removeItem('scipal_demo_user');
         localStorage.removeItem('scipal_demo_role');
       }
+      forgetAccountLevel(safeSessionStorage(), getShell());
       setAppRole(null);
       setDisplayName(null);
       setSigningOut(false);

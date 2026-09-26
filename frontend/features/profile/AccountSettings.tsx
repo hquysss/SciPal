@@ -8,6 +8,7 @@ import { AccountHelpModal } from '@/features/auth/AccountHelpModal';
 import { EducationLevelSetting } from './EducationLevelSetting';
 import type { resolveEducationLevel } from '@/features/landing/educationLevel';
 import { ThemeToggle } from '@/components/nav/ThemeToggle';
+import { forgetAccountLevel, getShell, safeSessionStorage } from '@/lib/theme/shellTheme';
 
 interface AccountSettingsProps {
   currentRole?: string;
@@ -38,6 +39,7 @@ export function AccountSettings({ currentRole = 'student', educationPreference, 
         localStorage.removeItem('scipal_demo_user');
         localStorage.removeItem('scipal_demo_role');
       }
+      forgetAccountLevel(safeSessionStorage(), getShell());
       router.push('/login');
       router.refresh();
     }
