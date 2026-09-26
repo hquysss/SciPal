@@ -103,9 +103,53 @@ async function buildScoringApp(tables: Parameters<typeof mockSupabase>[0]) {
 }
 
 const dbQuestion = { id: 'q1', type: 'mc', data: { answer: 'a' }, subject_id: 'subject-1' };
+const BLUEPRINT_ID = '22222222-2222-4222-8222-222222222222';
 
 describe('POST /api/score/exam integrity', () => {
   it('counts a repeated question only once', async () => {
+    const xpLog = mockQuery({ data: null, error: null });
+    const scoringApp = await buildScoringApp({
+      questions: mockQuery({ data: [dbQuestion], error: null }),
+      exam_blueprints: mockQuery({ data: { id: BLUEPRINT_ID }, error: null }),
+      xp_log: xpLog,
+    });
+
+    const res = await scoringApp.inject({
+      method: 'POST',
+      url: '/api/score/exam',
+      payload: {
+        blueprint_id: BLUEPRINT_ID,
+        answers: Array.from({ length: 5 }, () => ({ question_id: 'q1', selected_option: 'a' })),
+      },
+    });
+
+    expect(res.statusCode).toBe(200);
+    expect(res.json()).toMatchObject({ correct_count: 1, total_questions: 1, xp_earned: 15, already_awarded: false });
+    expect(xpLog.inserted).toEqual([
+      { user_id: 'student-1', subject_id: 'subject-1', delta: 15, reason: `exam_complete:${BLUEPRINT_ID.toLowerCase()}` },
+    ]);
+    await scoringApp.close();
+  });
+
+  it('treats unique violation as already awarded', async () => {
+    const scoringApp = await buildScoringApp({
+      questions: mockQuery({ data: [dbQuestion], error: null }),
+      exam_blueprints: mockQuery({ data: { id: BLUEPRINT_ID }, error: null }),
+      xp_log: mockQuery({ data: null, error: { code: '23505', message: 'duplicate key' } }),
+    });
+
+    const res = await scoringApp.inject({
+      method: 'POST',
+      url: '/api/score/exam',
+      payload: { blueprint_id: BLUEPRINT_ID, answers: [{ question_id: 'q1', selected_option: 'a' }] },
+    });
+
+    expect(res.statusCode).toBe(200);
+    expect(res.json()).toMatchObject({ correct_count: 1, xp_earned: 0, already_awarded: true });
+    await scoringApp.close();
+  });
+
+  it('does not award XP for a non-UUID blueprint id', async () => {
     const xpLog = mockQuery({ data: null, error: null });
     const scoringApp = await buildScoringApp({
       questions: mockQuery({ data: [dbQuestion], error: null }),
@@ -117,32 +161,36 @@ describe('POST /api/score/exam integrity', () => {
       url: '/api/score/exam',
       payload: {
         blueprint_id: 'bp-1',
-        answers: Array.from({ length: 5 }, () => ({ question_id: 'q1', selected_option: 'a' })),
+        answers: [{ question_id: 'q1', selected_option: 'a' }],
       },
     });
 
     expect(res.statusCode).toBe(200);
-    expect(res.json()).toMatchObject({ correct_count: 1, total_questions: 1, xp_earned: 15, already_awarded: false });
-    expect(xpLog.inserted).toEqual([
-      { user_id: 'student-1', subject_id: 'subject-1', delta: 15, reason: 'exam_complete:bp-1' },
-    ]);
+    expect(res.json()).toMatchObject({ correct_count: 1, xp_earned: 0, already_awarded: false });
+    expect(xpLog.inserted).toEqual([]);
     await scoringApp.close();
   });
 
-  it('treats unique violation as already awarded', async () => {
+  it('does not award XP for a blueprint that does not exist', async () => {
+    const xpLog = mockQuery({ data: null, error: null });
     const scoringApp = await buildScoringApp({
       questions: mockQuery({ data: [dbQuestion], error: null }),
-      xp_log: mockQuery({ data: null, error: { code: '23505', message: 'duplicate key' } }),
+      exam_blueprints: mockQuery({ data: null, error: null }),
+      xp_log: xpLog,
     });
 
     const res = await scoringApp.inject({
       method: 'POST',
       url: '/api/score/exam',
-      payload: { blueprint_id: 'bp-1', answers: [{ question_id: 'q1', selected_option: 'a' }] },
+      payload: {
+        blueprint_id: BLUEPRINT_ID,
+        answers: [{ question_id: 'q1', selected_option: 'a' }],
+      },
     });
 
     expect(res.statusCode).toBe(200);
-    expect(res.json()).toMatchObject({ correct_count: 1, xp_earned: 0, already_awarded: true });
+    expect(res.json()).toMatchObject({ xp_earned: 0, already_awarded: false });
+    expect(xpLog.inserted).toEqual([]);
     await scoringApp.close();
   });
 

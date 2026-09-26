@@ -250,20 +250,39 @@ export const examRoutes: FastifyPluginAsync = async (app) => {
     const subjectIds = new Set(
       questionIds.map((id) => dbMap.get(id)?.subject_id).filter(Boolean),
     );
+
+    // UUID validation: only award XP for valid UUID blueprint ids
+    const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    const isValidUuid = uuidPattern.test(blueprintId);
+
     if (
       userId && possibleXp > 0 && app.supabase &&
-      dbMap.size === questionIds.length && subjectIds.size === 1
+      dbMap.size === questionIds.length && subjectIds.size === 1 &&
+      isValidUuid
     ) {
       try {
-        const { error } = await app.supabase.from('xp_log').insert({
-          user_id: userId,
-          subject_id: [...subjectIds][0],
-          delta: possibleXp,
-          reason: `exam_complete:${blueprintId}`,
-        });
-        if (error?.code === '23505') already_awarded = true;
-        else if (error) app.log.warn({ err: error }, 'Exam XP logging failed');
-        else xp_earned = possibleXp;
+        // Check if blueprint exists in database
+        const { data: blueprint, error: blueprintError } = await app.supabase
+          .from('exam_blueprints')
+          .select('id')
+          .eq('id', blueprintId)
+          .maybeSingle();
+
+        if (blueprintError) {
+          app.log.warn({ err: blueprintError }, 'Blueprint lookup failed');
+        } else if (blueprint) {
+          // Blueprint exists, award XP
+          const { error } = await app.supabase.from('xp_log').insert({
+            user_id: userId,
+            subject_id: [...subjectIds][0],
+            delta: possibleXp,
+            reason: `exam_complete:${blueprintId.toLowerCase()}`,
+          });
+          if (error?.code === '23505') already_awarded = true;
+          else if (error) app.log.warn({ err: error }, 'Exam XP logging failed');
+          else xp_earned = possibleXp;
+        }
+        // If blueprint is null, award no XP (still return success response)
       } catch (err) {
         app.log.warn({ err }, 'Exam XP logging failed');
       }
