@@ -74,7 +74,7 @@ export function ClassList({ initialClasses, token }: ClassListProps) {
                   {cls.subject_id}
                 </span>
                 <span className="text-xs font-mono text-gray-500">
-                  👥 {cls.student_count ?? 28} học sinh
+                  👥 {cls.student_count ?? 0} học sinh
                 </span>
               </div>
 

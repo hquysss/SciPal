@@ -1,11 +1,14 @@
 import Link from 'next/link';
 import { ClassList } from '@/features/classes/ClassList';
 import { getTeacherClasses } from '@/features/classes/classQueries';
+import { getAuthoringSession } from '@/features/authoring/serverAuth';
+import { LoadErrorNotice } from '@/components/feedback/LoadErrorNotice';
 
 export const dynamic = 'force-dynamic';
 
 export default async function TeacherClassesPage() {
-  const initialClasses = await getTeacherClasses();
+  const { token } = await getAuthoringSession('/teacher/classes');
+  const result = await getTeacherClasses(token);
 
   return (
     <div className="relative min-h-[calc(100vh-3.5rem)] bg-science-grid pb-20">
@@ -45,7 +48,16 @@ export default async function TeacherClassesPage() {
         </header>
 
         {/* Active Classrooms */}
-        <ClassList initialClasses={initialClasses} />
+        {result.kind === 'ready' ? (
+          <ClassList initialClasses={result.classes} token={token} />
+        ) : (
+          <LoadErrorNotice
+            message={{
+              en: 'We could not load your classes. Please reload the page.',
+              vi: 'Chưa tải được danh sách lớp học. Vui lòng tải lại trang.',
+            }}
+          />
+        )}
       </main>
     </div>
   );
