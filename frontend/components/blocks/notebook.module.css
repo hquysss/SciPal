@@ -1,0 +1,54 @@
+/* Notebook sheet: a surface page with the subject accent as the margin strip. */
+.sheet {
+  position: relative;
+  border: 1px solid var(--line);
+  border-radius: 0.75rem;
+  background-color: var(--surface);
+  padding: 1.75rem 1.25rem 1.75rem 2rem;
+}
+
+.sheet::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0.75rem;
+  width: 3px;
+  border-radius: 2px;
+  background-color: var(--accent, var(--action));
+}
+
+@media (min-width: 640px) {
+  .sheet {
+    padding: 2.625rem 2.5rem 2.625rem 3.25rem;
+  }
+
+  .sheet::before {
+    left: 1.5rem;
+  }
+}
+
+/* Ruled lines every 1.75rem, starting at the top of each theory block so text sits on them. */
+.rules {
+  background-image: repeating-linear-gradient(
+    to bottom,
+    transparent 0,
+    transparent calc(1.75rem - 1px),
+    var(--line) calc(1.75rem - 1px),
+    var(--line) 1.75rem
+  );
+  background-position: 0 0;
+}
+
+/* Primary: squared "ô li" paper. */
+:global([data-level='primary']) .rules {
+  background-image:
+    repeating-linear-gradient(to bottom, transparent 0, transparent calc(1.75rem - 1px), var(--line) calc(1.75rem - 1px), var(--line) 1.75rem),
+    repeating-linear-gradient(to right, transparent 0, transparent calc(1.75rem - 1px), var(--line) calc(1.75rem - 1px), var(--line) 1.75rem);
+}
+
+@media print {
+  .rules {
+    background-image: none;
+  }
+}
