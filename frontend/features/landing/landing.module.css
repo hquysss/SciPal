@@ -9,7 +9,7 @@
   --landing-deep: #123d2b;
   --landing-focus: #8a3e1f;
   --landing-font-display: var(--font-be-vietnam), sans-serif;
-  --landing-font-body: var(--font-inter), Inter, sans-serif;
+  --landing-font-body: var(--font-be-vietnam), 'Be Vietnam Pro', sans-serif;
   --landing-font-measure: var(--font-jetbrains-mono), monospace;
   --landing-space-1: 0.25rem;
   --landing-space-2: 0.5rem;

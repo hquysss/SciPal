@@ -3,7 +3,7 @@ import sharedConfig from '@scipal/ui/tailwind.config';
 
 const config: Config = {
   ...sharedConfig,
-  darkMode: ['class'],
+  darkMode: ['selector', '[data-theme="dark"]'],
   content: [
     './app/**/*.{ts,tsx}',
     './components/**/*.{ts,tsx}',
