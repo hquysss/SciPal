@@ -42,7 +42,7 @@
 .statusActive {
   border-color: color-mix(in srgb, var(--accent, var(--action)) 34%, var(--landing-line, var(--line)));
   background: color-mix(in srgb, var(--accent, var(--action)) 8%, var(--landing-surface, var(--surface)));
-  color: var(--accent, var(--action));
+  color: var(--accent-ink, var(--accent, var(--action)));
 }
 
 .subjectIcon {
@@ -52,7 +52,7 @@
   border: var(--landing-border, 1px) solid color-mix(in srgb, var(--accent, var(--action)) 28%, var(--landing-line, var(--line)));
   border-radius: var(--landing-radius-card, 1rem);
   background: color-mix(in srgb, var(--accent, var(--action)) 9%, var(--landing-surface, var(--surface)));
-  color: var(--accent, var(--action));
+  color: var(--accent-ink, var(--accent, var(--action)));
   font-family: var(--landing-font-measure, monospace);
   font-weight: 750;
 }
