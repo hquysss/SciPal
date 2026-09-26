@@ -2,7 +2,7 @@
 
 **Ngày:** 2026-09-26
 **Trạng thái:** Chờ duyệt
-**Quan hệ tài liệu:** Bổ sung cho [đặc tả khung chung v1.9](./2026-09-22-scipal-foundation-design.md) (S3, S4, S9, S10). Spec này làm trên **schema hiện tại** (`published` + `review_status`), chưa triển khai schema v1.8/v1.9 (`status` bốn trạng thái, `subject_grade_catalog`, `subject_tracks`). Khi schema đó được làm, các quy tắc ở đây chuyển theo mà không đổi hành vi với người dùng.
+**Quan hệ tài liệu:** Bổ sung cho [đặc tả khung chung v1.9](./2026-09-22-scipal-foundation-design.md) (S3, S4, S9, S10). Spec này làm sau plan [v1.9 đợt 1](../plans/2026-09-26-v1.9-wave1-content-schema.md): dùng `lessons.status`, `subject_grade_catalog`, `subject_tracks`, `topics.grade/kind`.
 
 ---
 
@@ -45,30 +45,11 @@
 
 ### 4.1 Database — migration mới
 
-```sql
-ALTER TABLE lessons DROP CONSTRAINT <tên check grade hiện tại>;
-ALTER TABLE lessons ADD CONSTRAINT lessons_grade_range CHECK (grade BETWEEN 1 AND 12);
-
-ALTER TABLE topics ADD COLUMN grade int CHECK (grade BETWEEN 1 AND 12);
-CREATE INDEX topics_subject_grade_sort_idx ON topics (subject_id, grade, sort_order);
-```
-
-- Tên constraint hiện tại được tra trong migration/`pg_constraint` khi viết migration, không đoán.
-- `topics.grade` cho phép `null` để không vỡ dữ liệu cũ; chủ đề tạo mới qua API luôn có `grade`.
-- Không thêm dữ liệu nào trong migration.
-- RLS không đổi: `topics` public read, ghi chỉ qua backend service role.
+Không cần migration mới: cột và bảng đã có từ đợt 1.
 
 ### 4.2 Khoảng lớp theo cấp học
 
-Một hàm dùng chung ở backend:
-
-| `subjects.education_level` | Lớp hợp lệ |
-|---|---|
-| `primary` | 1–5 |
-| `lower_secondary` | 6–9 |
-| `upper_secondary` | 10–12 |
-
-Đây là khoảng tối đa theo cấp; khi có `subject_grade_catalog` sẽ thay bằng tra catalog theo từng lớp.
+Lớp hợp lệ của một môn = các `grade` có dòng `subject_grade_catalog` đang `active` của môn đó.
 
 ### 4.3 Backend API (`backend/src/routes/authoring.ts`, `exam.ts`)
 
@@ -79,7 +60,7 @@ Một hàm dùng chung ở backend:
 
 **`POST /api/authoring/topics`** (teacher, admin) — mới
 - Body: `{ subject_id, grade, name_en, name_vi, sort_order? }`.
-- Kiểm tra: `subject_id` là UUID và tồn tại; `grade` thuộc khoảng của cấp học môn đó; hai tên bắt buộc, tối đa 200 ký tự.
+- Kiểm tra: `subject_id` là UUID và tồn tại; `grade` có dòng catalog đang hiệu lực của môn đó; `kind` của chủ đề mặc định `core`; hai tên bắt buộc, tối đa 200 ký tự.
 - Đã có chủ đề cùng `subject_id + grade` và trùng `name_en` hoặc `name_vi` (không phân biệt hoa thường) → `409`, trả về chủ đề sẵn có để form chọn luôn.
 - `slug` = `g{grade}-{slug(name_en)}`, thêm hậu tố `-2`, `-3`… nếu trùng trong môn (khoá `UNIQUE(subject_id, slug)` hiện có).
 - `sort_order` mặc định = lớn nhất trong `subject_id + grade` + 1.
@@ -87,7 +68,8 @@ Một hàm dùng chung ở backend:
 
 **`POST /api/authoring/lessons`** (teacher, như hiện tại)
 - Bỏ yêu cầu môn `status = 'active'`.
-- `grade` bắt buộc, phải thuộc khoảng của cấp học môn chứa chủ đề.
+- `grade` bắt buộc, phải có dòng catalog đang hiệu lực của môn chứa chủ đề.
+- `track_id` (tuỳ chọn) phải thuộc `subject_tracks` của cùng môn và chứa `grade`.
 - Nếu `topic.grade` khác `null` thì phải bằng `grade` của bài; khác → `400`.
 - Các kiểm tra còn lại (tiêu đề, slug, `created_by`, `review_status = 'draft'`) giữ nguyên.
 
@@ -96,7 +78,7 @@ Một hàm dùng chung ở backend:
 - Không trả `sections` chi tiết hay câu hỏi.
 - Lỗi DB → `500`; không có đề → `200 { blueprints: [] }`.
 
-Luồng gửi duyệt, duyệt, từ chối và `PATCH` giữ nguyên. Bài chỉ hiện cho học sinh khi admin duyệt (`published = true`).
+Luồng gửi duyệt, duyệt, từ chối và `PATCH` giữ nguyên. Bài chỉ hiện cho học sinh khi admin duyệt (`status = 'published'`).
 
 ### 4.4 Form tạo bài (`LessonCreateForm.tsx`)
 
@@ -134,7 +116,7 @@ Nút "Tạo bản nháp" chỉ bật khi đủ môn, lớp, chủ đề và hai 
 - Truy vấn trả kết quả có phân biệt: `ok` / `not_found` / `error`.
   - `not_found` (không có môn hoặc không có bài đã xuất bản với slug đó) → 404.
   - `error` → trạng thái **"Chưa tải được dữ liệu"** / "Could not load" kèm nút thử lại; không 404, không coi là rỗng.
-- Trang môn chỉ hiện chủ đề có ít nhất một bài `published = true`, nhóm theo lớp (dùng `topics.grade`, nếu `null` thì lấy `lessons.grade`), sắp theo `sort_order`.
+- Trang môn chỉ hiện chủ đề có ít nhất một bài `status = 'published'`, nhóm theo lớp (dùng `topics.grade`, nếu `null` thì lấy `lessons.grade`), sắp theo `sort_order`.
 - Môn có trong DB nhưng chưa có bài xuất bản → trang môn hiện **"Đang biên soạn"** / "In development", không có danh sách bài giả.
 - Bỏ dòng mô tả cứng "Chương trình khoa học tự nhiên THPT…"; thay bằng cấp học của môn lấy từ `education_level`.
 
@@ -145,7 +127,7 @@ Nút "Tạo bản nháp" chỉ bật khi đủ môn, lớp, chủ đề và hai 
 
 ### 4.8 Dữ liệu demo
 
-- Xoá `supabase/seed/informatics_sample.sql` khỏi repo. `supabase/seed/subjects.sql` giữ lại vì đó là danh mục môn, không phải học liệu.
+- `supabase/seed/informatics_sample.sql` và `supabase/seed/subjects.sql` đã bị gỡ ở đợt 1 (danh mục môn nay là migration catalog sinh từ `supabase/catalog/gdpt2018.json`).
 - `supabase/full_schema_and_seed.sql` là snapshot lịch sử: thêm dòng cảnh báo ở đầu tệp rằng không được chạy để tạo môi trường mới vì chứa dữ liệu demo.
 - **Dữ liệu demo đã nằm trên Supabase không bị xoá tự động.** Kèm tệp `supabase/manual/remove_demo_content.sql`, gồm:
   1. Các câu `SELECT` liệt kê bài `binary-search`, chủ đề `topic-f-algorithms`, thuật ngữ `algorithm` của Tin học, và mọi đề thi đang có, để người phụ trách kiểm tra trước.
