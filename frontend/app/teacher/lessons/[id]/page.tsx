@@ -3,6 +3,9 @@ import { notFound } from 'next/navigation';
 import { LessonEditor } from '@/features/authoring/LessonEditor';
 import { AuthoringApiError, getAuthoringLesson } from '@/features/authoring/authoringQueries';
 import { getAuthoringSession } from '@/features/authoring/serverAuth';
+import { PageBreadcrumb } from '@/components/nav/PageBreadcrumb';
+import { Alert } from '@/components/ui/alert';
+import { Bi } from '@/components/ui/bilingual';
 
 export const dynamic = 'force-dynamic';
 
@@ -24,41 +27,39 @@ export default async function LessonAuthoringStudioPage({
 
     return (
       <main className="mx-auto max-w-3xl px-4 py-12">
-        <div role="alert" className="rounded-2xl border border-red-200 bg-red-50 p-6 text-red-900">
-          <h1 className="font-bold">Không tải được bài giảng</h1>
-          <p className="mt-2 text-sm">Dữ liệu không có sẵn từ máy chủ. Không hiển thị nội dung mẫu thay thế.</p>
-          <Link href={`/teacher/lessons/${encodeURIComponent(id)}`} className="mt-4 inline-flex font-semibold underline">
-            Thử tải lại
+        <Alert tone="danger" title={<Bi en="Could not load this lesson" vi="Không tải được bài giảng" />}>
+          <p><Bi en="The server did not return the lesson. No sample content is shown instead." vi="Dữ liệu không có sẵn từ máy chủ. Không hiển thị nội dung mẫu thay thế." /></p>
+          <Link href={`/teacher/lessons/${encodeURIComponent(id)}`} className="mt-2 inline-flex font-semibold underline underline-offset-4">
+            <Bi en="Reload" vi="Thử tải lại" />
           </Link>
-        </div>
+        </Alert>
       </main>
     );
   }
 
   return (
-    <div className="relative min-h-[calc(100vh-3.5rem)] bg-science-grid pb-20">
-      <main className="relative mx-auto max-w-6xl space-y-6 px-4 py-6 sm:px-6 sm:py-8">
-        <nav className="flex items-center gap-2 text-xs font-mono text-gray-500">
-          <Link href="/" className="transition hover:text-gray-900 dark:hover:text-white">Trang chủ</Link>
-          <span>/</span>
-          <Link href="/profile" className="transition hover:text-gray-900 dark:hover:text-white">Hồ sơ</Link>
-          <span>/</span>
-          <Link href="/teacher/lessons" className="transition hover:text-gray-900 dark:hover:text-white">Soạn thảo bài học</Link>
-          <span>/</span>
-          <span className="font-semibold text-purple-700 dark:text-purple-400">{lesson.title_vi}</span>
-        </nav>
+    <main className="mx-auto flex max-w-6xl flex-col gap-6 px-4 py-6 pb-20 sm:px-6 sm:py-8">
+      <PageBreadcrumb
+        items={[
+          { href: '/', label: { en: 'Home', vi: 'Trang chủ' } },
+          { href: '/profile', label: { en: 'Profile', vi: 'Hồ sơ' } },
+          { href: '/teacher/lessons', label: { en: 'Lesson studio', vi: 'Soạn bài' } },
+          { label: lesson.title_vi },
+        ]}
+      />
 
-        <LessonEditor
-          lessonId={lesson.id}
-          initialTitleVi={lesson.title_vi}
-          initialTitleEn={lesson.title_en}
-          initialBlocks={lesson.blocks}
-          initialUpdatedAt={lesson.updated_at}
-          initialStatus={lesson.status}
-          initialReviewNote={lesson.review_note}
-          canReview={role === 'admin'}
-        />
-      </main>
-    </div>
+      <LessonEditor
+        lessonId={lesson.id}
+        initialTitleVi={lesson.title_vi}
+        initialTitleEn={lesson.title_en}
+        initialBlocks={lesson.blocks}
+        initialUpdatedAt={lesson.updated_at}
+        initialStatus={lesson.status}
+        initialReviewNote={lesson.review_note}
+        canReview={role === 'admin'}
+        grade={lesson.grade}
+        subjectSlug={lesson.subject_slug}
+      />
+    </main>
   );
 }

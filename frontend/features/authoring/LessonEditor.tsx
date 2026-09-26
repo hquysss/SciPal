@@ -5,11 +5,31 @@ import { useRouter } from 'next/navigation';
 import { createBrowserClient } from '@scipal/supabase';
 import type { Block } from '@scipal/types';
 import { BlockPalette } from './BlockPalette';
+import { ArrowDown, ArrowUp, Eye, FileUp, Trash2 } from 'lucide-react';
+import { LevelScope, SubjectProvider } from '@scipal/ui';
 import { BlockRenderer } from '@/components/blocks/BlockRenderer';
+import { LessonSheet } from '@/components/blocks/LessonSheet';
+import { Alert } from '@/components/ui/alert';
+import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
+import { EmptyState } from '@/components/ui/empty-state';
+import { Field } from '@/components/ui/field';
+import { Input } from '@/components/ui/input';
+import { levelOfGrade } from '@/features/landing/educationLevel';
 import { useLanguage } from '@scipal/hooks';
 import type { LessonStatus } from './authoringQueries';
-import { lessonStatusLabel, lessonStatusTone, TONE_CLASS } from './lessonStatus';
+import { LessonStatusBadge } from './lessonStatusBadge';
 import { parseLessonImport } from './lessonImport';
+
+const BLOCK_TYPE_LABELS: Record<Block['type'], { en: string; vi: string }> = {
+  theory: { en: 'Theory', vi: 'Lý thuyết' },
+  code: { en: 'Code', vi: 'Mã nguồn' },
+  formula: { en: 'Formula', vi: 'Công thức' },
+  quiz: { en: 'Quiz', vi: 'Câu hỏi' },
+  interactive: { en: 'Simulation', vi: 'Mô phỏng' },
+  'term-ref': { en: 'Term', vi: 'Thuật ngữ' },
+  'resource-ref': { en: 'Resource', vi: 'Tài nguyên' },
+};
 
 interface LessonEditorProps {
   lessonId: string;
@@ -20,6 +40,8 @@ interface LessonEditorProps {
   initialStatus: LessonStatus;
   initialReviewNote: string | null;
   canReview: boolean;
+  grade: number;
+  subjectSlug: string;
 }
 
 export function LessonEditor({
@@ -31,6 +53,8 @@ export function LessonEditor({
   initialStatus,
   initialReviewNote,
   canReview,
+  grade,
+  subjectSlug,
 }: LessonEditorProps) {
   const { lang, t } = useLanguage();
   const router = useRouter();
@@ -113,7 +137,7 @@ export function LessonEditor({
     try {
       const { data: { session } } = await createBrowserClient().auth.getSession();
       if (!session) {
-        setMessage({ text: 'Phiên đăng nhập đã hết hạn. Hãy đăng nhập lại để lưu bài.', type: 'error' });
+        setMessage({ text: t({ en: 'Your session expired. Sign in again to save.', vi: 'Phiên đăng nhập đã hết hạn. Hãy đăng nhập lại để lưu bài.' }), type: 'error' });
         return;
       }
 
@@ -138,22 +162,22 @@ export function LessonEditor({
         applyLesson(data.lesson);
         setMessage({
           text: next === 'rejected'
-            ? 'Đã lưu chỉnh sửa. Bài vẫn chờ bạn gửi lại admin duyệt.'
+            ? t({ en: 'Saved. The lesson still needs to be sent for review again.', vi: 'Đã lưu chỉnh sửa. Bài vẫn chờ bạn gửi lại admin duyệt.' })
             : next === 'draft'
-              ? 'Đã lưu bản nháp.'
-              : 'Đã lưu thay đổi bài học thành công!',
+              ? t({ en: 'Draft saved.', vi: 'Đã lưu bản nháp.' })
+              : t({ en: 'Lesson saved.', vi: 'Đã lưu bài học.' }),
           type: 'success',
         });
       } else {
         const data = await res.json().catch(() => ({}));
         setMessage({
-          text: data.error ?? 'Lưu thất bại. Kiểm tra kết nối máy chủ.',
+          text: data.error ?? t({ en: 'Save failed. Check the server connection.', vi: 'Lưu thất bại. Kiểm tra kết nối máy chủ.' }),
           type: 'error',
         });
       }
     } catch {
       setMessage({
-        text: 'Không kết nối được máy chủ. Thay đổi chưa được lưu.',
+        text: t({ en: 'Cannot reach the server. Your changes were not saved.', vi: 'Không kết nối được máy chủ. Thay đổi chưa được lưu.' }),
         type: 'error',
       });
     } finally {
@@ -170,7 +194,7 @@ export function LessonEditor({
     try {
       const { data: { session } } = await createBrowserClient().auth.getSession();
       if (!session) {
-        setMessage({ text: 'Phiên đăng nhập đã hết hạn. Hãy đăng nhập lại để gửi bài.', type: 'error' });
+        setMessage({ text: t({ en: 'Your session expired. Sign in again to submit.', vi: 'Phiên đăng nhập đã hết hạn. Hãy đăng nhập lại để gửi bài.' }), type: 'error' });
         return;
       }
 
@@ -189,14 +213,14 @@ export function LessonEditor({
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
-        setMessage({ text: data.error ?? 'Không gửi được bài vào hàng chờ duyệt.', type: 'error' });
+        setMessage({ text: data.error ?? t({ en: 'Could not send the lesson for review.', vi: 'Không gửi được bài vào hàng chờ duyệt.' }), type: 'error' });
         return;
       }
 
       applyLesson(data.lesson);
-      setMessage({ text: 'Đã gửi bài vào hàng chờ admin duyệt.', type: 'success' });
+      setMessage({ text: t({ en: 'Sent for admin review.', vi: 'Đã gửi bài vào hàng chờ admin duyệt.' }), type: 'success' });
     } catch {
-      setMessage({ text: 'Không kết nối được máy chủ. Bài chưa được gửi duyệt.', type: 'error' });
+      setMessage({ text: t({ en: 'Cannot reach the server. The lesson was not sent for review.', vi: 'Không kết nối được máy chủ. Bài chưa được gửi duyệt.' }), type: 'error' });
     } finally {
       setSubmittingForReview(false);
     }
@@ -210,7 +234,7 @@ export function LessonEditor({
     try {
       const { data: { session } } = await createBrowserClient().auth.getSession();
       if (!session) {
-        setMessage({ text: 'Phiên đăng nhập đã hết hạn. Hãy đăng nhập lại để duyệt bài.', type: 'error' });
+        setMessage({ text: t({ en: 'Your session expired. Sign in again to review.', vi: 'Phiên đăng nhập đã hết hạn. Hãy đăng nhập lại để duyệt bài.' }), type: 'error' });
         return;
       }
 
@@ -228,7 +252,7 @@ export function LessonEditor({
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
-        setMessage({ text: data.error ?? 'Không lưu được kết quả duyệt bài.', type: 'error' });
+        setMessage({ text: data.error ?? t({ en: 'Could not save the review decision.', vi: 'Không lưu được kết quả duyệt bài.' }), type: 'error' });
         return;
       }
 
@@ -236,195 +260,142 @@ export function LessonEditor({
       router.push('/admin/lessons/review');
       router.refresh();
     } catch {
-      setMessage({ text: 'Không kết nối được máy chủ. Kết quả duyệt chưa được lưu.', type: 'error' });
+      setMessage({ text: t({ en: 'Cannot reach the server. The review decision was not saved.', vi: 'Không kết nối được máy chủ. Kết quả duyệt chưa được lưu.' }), type: 'error' });
     } finally {
       setReviewing(false);
     }
   };
 
+  const busy = saving || submittingForReview || reviewing;
+  const level = levelOfGrade(grade);
+
   return (
-    <div className="space-y-6">
-      {/* Studio Action Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 rounded-3xl border border-purple-200/80 bg-white/90 p-5 sm:p-6 shadow-xs backdrop-blur-md dark:border-purple-900/40 dark:bg-card/90">
-        <div className="space-y-1">
+    <div className="flex flex-col gap-6">
+      <Card className="flex-col gap-4 px-5 sm:flex-row sm:items-center sm:justify-between sm:px-6">
+        <div className="flex flex-col gap-1.5">
           <div className="flex flex-wrap items-center gap-2">
-            <span className="rounded-full bg-purple-100 px-2.5 py-0.5 font-mono text-[11px] font-bold text-purple-800 dark:bg-purple-950/60 dark:text-purple-300">
-              S10 Authoring Studio
-            </span>
-            <span className={`rounded-full px-2.5 py-0.5 text-xs font-bold ${TONE_CLASS[lessonStatusTone(status)]}`}>
-              {lessonStatusLabel(status)[lang === 'en' ? 'en' : 'vi']}
-            </span>
+            <LessonStatusBadge status={status} />
+            <span className="text-sm text-ink-muted">{t({ en: `Grade ${grade}`, vi: `Lớp ${grade}` })}</span>
           </div>
-          <h2 className="text-xl font-bold text-gray-900 dark:text-white">
-            Biên tập & Thiết kế bài giảng
-          </h2>
+          <h1 className="text-xl font-semibold text-ink">
+            {t({ en: 'Edit lesson', vi: 'Biên tập bài giảng' })}
+          </h1>
         </div>
 
         <div className="flex flex-wrap items-center gap-3">
           {canReview && (status === 'draft' || status === 'published') && (
-            <label className="flex cursor-pointer items-center gap-2 text-xs font-bold text-gray-700 dark:text-gray-300">
+            <label className="flex min-h-11 cursor-pointer items-center gap-2 text-sm font-semibold text-ink">
               <input
                 type="checkbox"
                 checked={publishChecked}
                 onChange={(e) => setPublishChecked(e.target.checked)}
-                className="h-4 w-4 rounded-sm border-gray-300 text-purple-600 focus:ring-purple-500"
+                className="h-5 w-5 accent-[var(--action)]"
               />
-              <span>Xuất bản cho học sinh</span>
+              <span>{t({ en: 'Publish to students', vi: 'Xuất bản cho học sinh' })}</span>
             </label>
           )}
 
           {canEditContent && (
-            <button
-              type="button"
-              onClick={handleSave}
-              disabled={saving || submittingForReview || reviewing}
-              className="rounded-xl bg-purple-700 px-5 py-2 text-xs font-bold text-white shadow-xs transition hover:bg-purple-800 active:scale-95 disabled:opacity-50"
-            >
+            <Button type="button" variant={canSubmitForReview ? 'outline' : 'default'} onClick={handleSave} disabled={busy}>
               {saving
-                ? 'Đang lưu...'
+                ? t({ en: 'Saving…', vi: 'Đang lưu…' })
                 : status === 'draft' && !canReview
-                  ? 'Lưu bản nháp'
-                  : 'Lưu bài giảng'}
-            </button>
+                  ? t({ en: 'Save draft', vi: 'Lưu bản nháp' })
+                  : t({ en: 'Save lesson', vi: 'Lưu bài giảng' })}
+            </Button>
           )}
           {canSubmitForReview && (
-            <button
-              type="button"
-              onClick={handleSubmitForReview}
-              disabled={saving || submittingForReview || reviewing}
-              className="rounded-xl bg-emerald-700 px-5 py-2 text-xs font-bold text-white shadow-xs transition hover:bg-emerald-800 disabled:cursor-not-allowed disabled:opacity-50"
-            >
+            <Button type="button" onClick={handleSubmitForReview} disabled={busy}>
               {submittingForReview
-                ? 'Đang gửi...'
+                ? t({ en: 'Sending…', vi: 'Đang gửi…' })
                 : status === 'rejected'
-                  ? 'Gửi duyệt lại'
-                  : 'Gửi admin duyệt'}
-            </button>
+                  ? t({ en: 'Send for review again', vi: 'Gửi duyệt lại' })
+                  : t({ en: 'Send for review', vi: 'Gửi admin duyệt' })}
+            </Button>
           )}
         </div>
-      </div>
+      </Card>
 
       {status === 'published' && !canReview && (
-        <p className="rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-800 dark:border-emerald-900 dark:bg-emerald-950/30 dark:text-emerald-300">
-          Bài đã được admin duyệt. Giáo viên không thể sửa nội dung đã xuất bản.
-        </p>
+        <Alert tone="success">
+          {t({ en: 'An admin approved this lesson. Published content cannot be edited by teachers.', vi: 'Bài đã được admin duyệt. Giáo viên không thể sửa nội dung đã xuất bản.' })}
+        </Alert>
       )}
 
       {!canReview && status === 'pending_review' && (
-        <p className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-200">
-          Bài đã gửi admin duyệt. Nội dung được khóa cho đến khi admin duyệt hoặc từ chối.
-        </p>
+        <Alert tone="warning" title={t({ en: 'Waiting for review', vi: 'Đang chờ duyệt' })}>
+          {t({ en: 'Content is locked until an admin approves or returns the lesson.', vi: 'Nội dung được khóa cho đến khi admin duyệt hoặc trả lại bài.' })}
+        </Alert>
       )}
 
       {!canReview && status === 'draft' && (
-        <p className="rounded-xl border border-gray-200 bg-gray-50 p-3 text-sm text-gray-600 dark:border-gray-800 dark:bg-gray-900 dark:text-gray-300">
-          Bài đang là bản nháp. Hoàn thiện tiêu đề và thêm ít nhất một khối, sau đó gửi admin duyệt.
-        </p>
+        <Alert tone="info">
+          {t({ en: 'This lesson is a draft. Fill in both titles and add at least one block, then send it for review.', vi: 'Bài đang là bản nháp. Hoàn thiện tiêu đề và thêm ít nhất một khối, sau đó gửi admin duyệt.' })}
+        </Alert>
       )}
       {!canReview && status === 'rejected' && (
-        <p className="rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-800 dark:border-red-900 dark:bg-red-950/30 dark:text-red-300">
-          Bài cần chỉnh sửa trước khi gửi admin duyệt lại.
-          {reviewNote && <span className="mt-1 block font-semibold">Ghi chú của admin: {reviewNote}</span>}
-        </p>
+        <Alert tone="danger" title={t({ en: 'Changes requested', vi: 'Cần chỉnh sửa' })}>
+          {t({ en: 'Update the lesson before sending it for review again.', vi: 'Bài cần chỉnh sửa trước khi gửi admin duyệt lại.' })}
+          {reviewNote && <span className="mt-1 block font-semibold">{t({ en: 'Admin note', vi: 'Ghi chú của admin' })}: {reviewNote}</span>}
+        </Alert>
       )}
 
       {canReview && status === 'pending_review' && (
-        <section className="flex flex-col gap-3 rounded-2xl border border-amber-200 bg-amber-50 p-4 dark:border-amber-900/50 dark:bg-amber-950/20 sm:flex-row sm:items-center sm:justify-between">
+        <Card className="gap-4 px-5">
           <div>
-            <h3 className="text-sm font-bold text-amber-950 dark:text-amber-200">Bài đang chờ admin duyệt</h3>
-            <p className="mt-1 text-xs text-amber-800 dark:text-amber-300">Kiểm tra nội dung xem trước rồi chọn duyệt hoặc yêu cầu chỉnh sửa.</p>
+            <h2 className="text-base font-semibold text-ink">{t({ en: 'This lesson is waiting for review', vi: 'Bài đang chờ admin duyệt' })}</h2>
+            <p className="mt-1 text-sm text-ink-muted">{t({ en: 'Check the preview, then approve it or ask for changes.', vi: 'Kiểm tra nội dung xem trước rồi chọn duyệt hoặc yêu cầu chỉnh sửa.' })}</p>
           </div>
-          <textarea
-            value={rejectNote}
-            onChange={(e) => setRejectNote(e.target.value)}
-            maxLength={1000}
-            rows={2}
-            placeholder="Ghi chú khi từ chối (không bắt buộc)"
-            className="w-full rounded-xl border border-amber-200 bg-white p-2 text-xs sm:max-w-xs dark:border-amber-900 dark:bg-card"
-          />
-          <div className="flex gap-2">
-            <button
-              type="button"
-              onClick={() => handleReview('reject')}
-              disabled={reviewing || saving}
-              className="rounded-xl border border-red-200 bg-white px-4 py-2 text-xs font-bold text-red-700 hover:bg-red-50 disabled:opacity-50 dark:border-red-900 dark:bg-card dark:text-red-300"
-            >
-              {reviewing ? 'Đang xử lý...' : 'Từ chối'}
-            </button>
-            <button
-              type="button"
-              onClick={() => handleReview('approve')}
-              disabled={reviewing || saving}
-              className="rounded-xl bg-emerald-700 px-4 py-2 text-xs font-bold text-white hover:bg-emerald-800 disabled:opacity-50"
-            >
-              Duyệt và xuất bản
-            </button>
+          <Field id="review-note" label={t({ en: 'Note for the teacher (optional)', vi: 'Ghi chú cho giáo viên (không bắt buộc)' })}>
+            {(control) => (
+              <textarea
+                {...control}
+                value={rejectNote}
+                onChange={(e) => setRejectNote(e.target.value)}
+                maxLength={1000}
+                rows={3}
+                className="min-h-[5rem] w-full rounded-lg border border-edge bg-surface p-3 text-base text-ink focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
+              />
+            )}
+          </Field>
+          <div className="flex flex-wrap gap-2">
+            <Button type="button" variant="destructive" onClick={() => handleReview('reject')} disabled={reviewing || saving}>
+              {reviewing ? t({ en: 'Working…', vi: 'Đang xử lý…' }) : t({ en: 'Ask for changes', vi: 'Yêu cầu chỉnh sửa' })}
+            </Button>
+            <Button type="button" onClick={() => handleReview('approve')} disabled={reviewing || saving}>
+              {t({ en: 'Approve and publish', vi: 'Duyệt và xuất bản' })}
+            </Button>
           </div>
-        </section>
+        </Card>
       )}
 
-      {message && (
-        <div
-          className={`rounded-2xl p-4 text-xs font-bold shadow-xs ${
-            message.type === 'success'
-              ? 'border border-emerald-300 bg-emerald-50 text-emerald-800 dark:border-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-300'
-              : 'border border-red-300 bg-red-50 text-red-800 dark:border-red-800 dark:bg-red-950/50 dark:text-red-300'
-          }`}
-        >
-          {message.text}
-        </div>
-      )}
+      <div aria-live="polite">
+        {message && <Alert tone={message.type === 'success' ? 'success' : 'danger'}>{message.text}</Alert>}
+      </div>
 
-      {/* Main Studio 2-Column Split */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Left: Authoring Controls */}
-        <div className="space-y-6">
-          {/* Title Metadata Card */}
-          <div className="rounded-3xl border border-gray-200/80 bg-white/90 p-5 sm:p-6 shadow-xs backdrop-blur-md dark:border-white/10 dark:bg-card/90 space-y-4">
-            <h3 className="text-sm font-mono font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">
-              Tiêu đề bài học song ngữ
-            </h3>
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+        <div className="flex min-w-0 flex-col gap-6">
+          <Card className="gap-4 px-5 sm:px-6">
+            <h2 className="text-base font-semibold text-ink">{t({ en: 'Lesson titles', vi: 'Tiêu đề bài học' })}</h2>
+            <Field id="lesson-title-vi" label={t({ en: 'Vietnamese title', vi: 'Tiêu đề tiếng Việt' })}>
+              {(control) => (
+                <Input {...control} value={titleVi} onChange={(e) => setTitleVi(e.target.value)} disabled={!canEditContent} placeholder="Ví dụ: Cấu trúc dữ liệu mảng" />
+              )}
+            </Field>
+            <Field id="lesson-title-en" label={t({ en: 'English title', vi: 'Tiêu đề tiếng Anh' })}>
+              {(control) => (
+                <Input {...control} value={titleEn} onChange={(e) => setTitleEn(e.target.value)} disabled={!canEditContent} placeholder="e.g. Array data structures" />
+              )}
+            </Field>
+          </Card>
 
-            <div>
-              <label className="text-xs font-semibold text-gray-700 dark:text-gray-300">
-                Tiêu đề Tiếng Việt (VI)
-              </label>
-              <input
-                type="text"
-                value={titleVi}
-                onChange={(e) => setTitleVi(e.target.value)}
-                disabled={!canEditContent}
-                placeholder="Ví dụ: Cấu trúc dữ liệu mảng"
-                className="mt-1 w-full rounded-xl border border-gray-200 bg-gray-50/50 p-2.5 text-sm font-medium outline-none focus:border-purple-600 focus:bg-white transition dark:border-gray-700 dark:bg-gray-800 dark:text-white"
-              />
-            </div>
-
-            <div>
-              <label className="text-xs font-semibold text-gray-700 dark:text-gray-300">
-                Tiêu đề Tiếng Anh (EN)
-              </label>
-              <input
-                type="text"
-                value={titleEn}
-                onChange={(e) => setTitleEn(e.target.value)}
-                disabled={!canEditContent}
-                placeholder="e.g. Array Data Structures"
-                className="mt-1 w-full rounded-xl border border-gray-200 bg-gray-50/50 p-2.5 text-sm font-medium outline-none focus:border-purple-600 focus:bg-white transition dark:border-gray-700 dark:bg-gray-800 dark:text-white"
-              />
-            </div>
-          </div>
-
-          {/* Block Palette */}
           {canEditContent && (
-            <div className="space-y-3">
+            <div className="flex flex-col gap-3">
               <div className="flex justify-end">
-                <button
-                  type="button"
-                  onClick={() => importInputRef.current?.click()}
-                  className="rounded-xl border border-purple-200 bg-white px-3.5 py-2 text-xs font-bold text-purple-800 transition hover:bg-purple-50 dark:border-purple-900 dark:bg-card dark:text-purple-300"
-                >
+                <Button type="button" variant="outline" onClick={() => importInputRef.current?.click()}>
+                  <FileUp aria-hidden="true" />
                   {t({ en: 'Import JSON', vi: 'Nhập từ JSON' })}
-                </button>
+                </Button>
                 <input
                   ref={importInputRef}
                   type="file"
@@ -437,105 +408,83 @@ export function LessonEditor({
             </div>
           )}
 
-          {/* Block Outline & Management */}
-          <div className="space-y-3">
-            <div className="flex items-center justify-between">
-              <h3 className="text-sm font-mono font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">
-                Danh sách khối nội dung ({blocks.length})
-              </h3>
-              <span className="text-xs text-gray-400">Kéo hoặc sắp xếp thứ tự</span>
-            </div>
+          <section className="flex flex-col gap-3" aria-labelledby="block-list-heading">
+            <h2 id="block-list-heading" className="text-base font-semibold text-ink">
+              {t({ en: 'Content blocks', vi: 'Khối nội dung' })} <span className="font-normal text-ink-muted">({blocks.length})</span>
+            </h2>
 
-            {blocks.map((b, idx) => (
-              <div
-                key={idx}
-                className="flex items-center justify-between rounded-2xl border border-gray-200 bg-white p-3.5 shadow-2xs transition hover:border-purple-300 dark:border-gray-800 dark:bg-card"
-              >
-                <div className="flex items-center gap-3">
-                  <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-gray-100 font-mono text-xs font-bold text-gray-600 dark:bg-gray-800 dark:text-gray-300">
-                    {idx + 1}
-                  </span>
-                  <div>
-                    <span className="font-mono text-xs font-bold uppercase text-purple-700 dark:text-purple-300">
-                      {b.type}
+            <ol className="flex flex-col gap-2">
+              {blocks.map((b, idx) => (
+                <li key={idx} className="flex items-center justify-between gap-3 rounded-lg border border-line bg-surface p-3">
+                  <div className="flex min-w-0 items-center gap-3">
+                    <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-surface-sunken text-sm font-semibold tabular-nums text-ink">
+                      {idx + 1}
                     </span>
-                    <p className="text-xs text-gray-500 truncate max-w-[200px] sm:max-w-xs">
-                      {b.type === 'theory'
-                        ? b.content.vi.slice(0, 40) + '...'
-                        : b.type === 'code'
-                        ? `Tabs: ${b.tabs.map((t) => t.lang).join(', ')}`
-                        : b.type === 'formula'
-                        ? b.katex
-                        : `ID: ${b.type}`}
+                    <div className="min-w-0">
+                      <p className="text-sm font-semibold text-ink">{t(BLOCK_TYPE_LABELS[b.type])}</p>
+                      <p className="max-w-[14rem] truncate text-sm text-ink-muted sm:max-w-xs">
+                        {b.type === 'theory'
+                          ? b.content.vi.slice(0, 40) + '…'
+                          : b.type === 'code'
+                          ? b.tabs.map((tab) => tab.lang).join(', ')
+                          : b.type === 'formula'
+                          ? b.katex
+                          : b.type}
+                      </p>
+                    </div>
+                  </div>
+
+                  {canEditContent && (
+                    <div className="flex shrink-0 items-center">
+                      <Button type="button" size="icon" variant="ghost" disabled={idx === 0} onClick={() => handleMoveBlock(idx, 'up')} aria-label={t({ en: `Move block ${idx + 1} up`, vi: `Đưa khối ${idx + 1} lên` })}>
+                        <ArrowUp aria-hidden="true" />
+                      </Button>
+                      <Button type="button" size="icon" variant="ghost" disabled={idx === blocks.length - 1} onClick={() => handleMoveBlock(idx, 'down')} aria-label={t({ en: `Move block ${idx + 1} down`, vi: `Đưa khối ${idx + 1} xuống` })}>
+                        <ArrowDown aria-hidden="true" />
+                      </Button>
+                      <Button type="button" size="icon" variant="ghost" className="text-danger" onClick={() => handleRemoveBlock(idx)} aria-label={t({ en: `Delete block ${idx + 1}`, vi: `Xóa khối ${idx + 1}` })}>
+                        <Trash2 aria-hidden="true" />
+                      </Button>
+                    </div>
+                  )}
+                </li>
+              ))}
+            </ol>
+          </section>
+        </div>
+
+        <section className="flex min-w-0 flex-col gap-3" aria-labelledby="preview-heading">
+          <h2 id="preview-heading" className="flex items-center gap-2 text-base font-semibold text-ink">
+            <Eye className="h-5 w-5 text-ink-muted" aria-hidden="true" />
+            {t({ en: 'Student preview', vi: 'Xem trước như học sinh' })}
+          </h2>
+
+          <LevelScope level={level} className="rounded-xl bg-paper p-3 sm:p-4">
+            <SubjectProvider slug={subjectSlug}>
+              <LessonSheet squared={level === 'primary'}>
+                <div className="flex flex-col gap-7">
+                  <header className="border-b border-line pb-4">
+                    <p className="text-2xl font-bold text-ink">
+                      {lang === 'en' ? titleEn || titleVi : titleVi}
                     </p>
-                  </div>
+                    <p lang={lang === 'en' ? 'vi' : 'en'} className="mt-1 text-sm text-ink-muted">
+                      {lang === 'en' ? titleVi : titleEn}
+                    </p>
+                  </header>
+
+                  {blocks.length === 0 ? (
+                    <EmptyState
+                      title={t({ en: 'No content yet', vi: 'Chưa có nội dung' })}
+                      description={t({ en: 'Add a block from the list on the left to start.', vi: 'Thêm khối ở cột bên trái để bắt đầu.' })}
+                    />
+                  ) : (
+                    blocks.map((block, i) => <BlockRenderer key={i} block={block} />)
+                  )}
                 </div>
-
-                {canEditContent && (
-                  <div className="flex items-center gap-1">
-                    <button
-                      type="button"
-                      disabled={idx === 0}
-                      onClick={() => handleMoveBlock(idx, 'up')}
-                      className="h-7 w-7 rounded-lg text-xs font-bold text-gray-500 transition hover:bg-gray-100 disabled:opacity-20"
-                      title="Lên trên"
-                    >
-                      ↑
-                    </button>
-                    <button
-                      type="button"
-                      disabled={idx === blocks.length - 1}
-                      onClick={() => handleMoveBlock(idx, 'down')}
-                      className="h-7 w-7 rounded-lg text-xs font-bold text-gray-500 transition hover:bg-gray-100 disabled:opacity-20"
-                      title="Xuống dưới"
-                    >
-                      ↓
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => handleRemoveBlock(idx)}
-                      className="h-7 w-7 rounded-lg text-xs font-bold text-red-500 transition hover:bg-red-50"
-                      title="Xóa khối"
-                    >
-                      ✕
-                    </button>
-                  </div>
-                )}
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Right: Live Interactive Student Preview */}
-        <div className="space-y-4">
-          <div className="flex items-center justify-between">
-            <h3 className="text-sm font-mono font-bold uppercase tracking-wider text-emerald-800 dark:text-emerald-300">
-              👁️ Xem trước tương tác (Học sinh sẽ thấy)
-            </h3>
-            <span className="rounded-full bg-emerald-100 px-2 py-0.5 font-mono text-[10px] font-bold text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300">
-              Trực quan thời gian thực
-            </span>
-          </div>
-
-          <div className="rounded-3xl border-2 border-dashed border-gray-200 bg-white/70 p-6 shadow-inner backdrop-blur-xs dark:border-gray-800 dark:bg-card/70 space-y-6 min-h-[500px]">
-            <div className="border-b border-gray-100 pb-4 dark:border-gray-800">
-              <h1 className="text-2xl font-black text-gray-900 dark:text-white">
-                {lang === 'en' ? titleEn || titleVi : titleVi}
-              </h1>
-              <p className="mt-1 text-xs font-mono text-gray-400">
-                {lang === 'en' ? titleVi : titleEn}
-              </p>
-            </div>
-
-            {blocks.length === 0 ? (
-              <div className="py-16 text-center text-xs font-mono text-gray-400">
-                Chưa có khối nội dung nào. Thêm khối ở bảng bên trái để bắt đầu!
-              </div>
-            ) : (
-              blocks.map((block, i) => <BlockRenderer key={i} block={block} />)
-            )}
-          </div>
-        </div>
+              </LessonSheet>
+            </SubjectProvider>
+          </LevelScope>
+        </section>
       </div>
     </div>
   );

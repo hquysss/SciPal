@@ -8,6 +8,8 @@ import { EDUCATION_LEVEL_LABELS } from '../landing/educationLevel';
 import type { AuthoringSubjectOption, AuthoringTopicOption, AuthoringTrackOption } from './authoringQueries';
 import { buildSubjectChoices, topicsFor, tracksFor } from './lessonFormOptions';
 import { createAuthoringTopic } from './topicApi';
+import { Alert } from '../../components/ui/alert';
+import { Button } from '../../components/ui/button';
 
 interface LessonCreateFormProps {
   subjects: AuthoringSubjectOption[];
@@ -18,8 +20,8 @@ interface LessonCreateFormProps {
 const NEW_TOPIC = '__new__';
 
 const FIELD_CLASS =
-  'w-full rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-sm font-normal text-gray-900 outline-none focus:border-purple-500 disabled:opacity-60 dark:border-gray-700 dark:bg-gray-900 dark:text-white';
-const LABEL_CLASS = 'block space-y-1.5 text-sm font-semibold text-gray-700 dark:text-gray-300';
+  'min-h-11 w-full rounded-lg border border-edge bg-surface px-3 text-base font-normal text-ink placeholder:text-ink-muted focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus disabled:cursor-not-allowed disabled:opacity-50';
+const LABEL_CLASS = 'flex flex-col gap-1.5 text-sm font-semibold text-ink';
 
 async function getAccessToken(): Promise<string | null> {
   const { data: { session } } = await createBrowserClient().auth.getSession();
@@ -154,12 +156,12 @@ export function LessonCreateForm({ subjects, topics, tracks }: LessonCreateFormP
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-6 rounded-3xl border border-gray-200/80 bg-white/90 p-5 shadow-xs backdrop-blur-md dark:border-white/10 dark:bg-card/90 sm:p-7">
+    <form onSubmit={handleSubmit} className="flex flex-col gap-6 rounded-xl border border-line bg-surface p-5 sm:p-7">
       <div>
-        <h2 className="text-lg font-bold text-gray-900 dark:text-white">
+        <h2 className="text-lg font-semibold text-ink">
           {t({ en: 'Lesson details', vi: 'Thông tin bài học' })}
         </h2>
-        <p className="mt-1 text-sm text-gray-500">
+        <p className="mt-1 max-w-prose text-sm text-ink-muted">
           {t({
             en: 'New lessons start as drafts. After adding content, submit them for admin review; students see them only after approval.',
             vi: 'Bài mới được tạo thành bản nháp. Sau khi hoàn thiện nội dung, bạn gửi admin duyệt; học sinh chỉ thấy bài đã được thông qua.',
@@ -226,14 +228,14 @@ export function LessonCreateForm({ subjects, topics, tracks }: LessonCreateFormP
             {availableTopics.map((topic) => (
               <option key={topic.id} value={topic.id}>{name(topic)}</option>
             ))}
-            <option value={NEW_TOPIC}>{t({ en: '+ Create a new topic', vi: '+ Tạo chủ đề mới' })}</option>
+            <option value={NEW_TOPIC}>{t({ en: 'Create a new topic…', vi: 'Tạo chủ đề mới…' })}</option>
           </select>
-          {topicNotice && <span className="block text-xs font-normal text-emerald-700">{topicNotice}</span>}
+          {topicNotice && <span role="status" className="text-sm font-normal text-success">{topicNotice}</span>}
         </label>
       </div>
 
       {topicId === NEW_TOPIC && (
-        <div className="grid gap-4 rounded-2xl border border-purple-200/70 bg-purple-50/50 p-4 sm:grid-cols-[1fr_1fr_auto] sm:items-end dark:border-purple-900/50 dark:bg-purple-950/20">
+        <div className="grid gap-4 rounded-lg border border-line bg-surface-sunken p-4 sm:grid-cols-[1fr_1fr_auto] sm:items-end">
           <label className={LABEL_CLASS}>
             <span>{t({ en: 'Topic name (Vietnamese)', vi: 'Tên chủ đề tiếng Việt' })}</span>
             <input value={newTopicVi} onChange={(event) => setNewTopicVi(event.target.value)} maxLength={200} className={FIELD_CLASS} />
@@ -242,14 +244,13 @@ export function LessonCreateForm({ subjects, topics, tracks }: LessonCreateFormP
             <span>{t({ en: 'Topic name (English)', vi: 'Tên chủ đề tiếng Anh' })}</span>
             <input value={newTopicEn} onChange={(event) => setNewTopicEn(event.target.value)} maxLength={200} className={FIELD_CLASS} />
           </label>
-          <button
+          <Button
             type="button"
             onClick={handleCreateTopic}
             disabled={creatingTopic || !newTopicVi.trim() || !newTopicEn.trim()}
-            className="rounded-xl bg-purple-700 px-4 py-2.5 text-sm font-bold text-white transition hover:bg-purple-800 disabled:cursor-not-allowed disabled:opacity-50"
           >
             {creatingTopic ? t({ en: 'Creating…', vi: 'Đang tạo…' }) : t({ en: 'Create topic', vi: 'Tạo chủ đề' })}
-          </button>
+          </Button>
         </div>
       )}
 
@@ -278,29 +279,21 @@ export function LessonCreateForm({ subjects, topics, tracks }: LessonCreateFormP
         </label>
       </div>
 
-      {error && <p role="alert" className="rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-800">{error}</p>}
+      {error && <Alert tone="danger">{error}</Alert>}
 
-      <div className="flex flex-wrap items-center justify-between gap-3 border-t border-gray-100 pt-5 dark:border-gray-800">
-        <p className="text-xs text-gray-500">
+      <div className="flex flex-wrap items-center justify-between gap-3 border-t border-line pt-5">
+        <p className="max-w-prose text-sm text-ink-muted">
           {t({ en: 'The lesson will be saved as a draft. You can submit it after adding content.', vi: 'Bài học được tạo ở trạng thái bản nháp. Bạn có thể gửi duyệt sau khi thêm nội dung.' })}
         </p>
         <div className="flex gap-2">
-          <button
-            type="button"
-            onClick={() => router.push('/teacher/lessons')}
-            className="rounded-xl border border-gray-200 px-4 py-2.5 text-sm font-semibold text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-300"
-          >
+          <Button type="button" variant="outline" onClick={() => router.push('/teacher/lessons')}>
             {t({ en: 'Cancel', vi: 'Hủy' })}
-          </button>
-          <button
-            type="submit"
-            disabled={saving || !canSubmit}
-            className="rounded-xl bg-purple-700 px-4 py-2.5 text-sm font-bold text-white transition hover:bg-purple-800 disabled:cursor-not-allowed disabled:opacity-50"
-          >
+          </Button>
+          <Button type="submit" disabled={saving || !canSubmit}>
             {saving
               ? t({ en: 'Submitting…', vi: 'Đang gửi…' })
               : t({ en: 'Create draft', vi: 'Tạo bản nháp' })}
-          </button>
+          </Button>
         </div>
       </div>
     </form>

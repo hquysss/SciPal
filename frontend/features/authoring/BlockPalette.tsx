@@ -1,12 +1,16 @@
 'use client';
 
 import type { Block } from '@scipal/types';
+import { BookOpen, Code2, FlaskConical, HelpCircle, Link2, Sigma, Tag, type LucideIcon } from 'lucide-react';
+import { useLanguage } from '@scipal/hooks';
+import { Button } from '../../components/ui/button';
 
 interface BlockPaletteProps {
   onAddBlock: (block: Block) => void;
 }
 
 export function BlockPalette({ onAddBlock }: BlockPaletteProps) {
+  const { t } = useLanguage();
   const addTheory = () => {
     onAddBlock({
       type: 'theory',
@@ -74,74 +78,29 @@ export function BlockPalette({ onAddBlock }: BlockPaletteProps) {
     });
   };
 
+  const items: { icon: LucideIcon; label: { en: string; vi: string }; add: () => void }[] = [
+    { icon: BookOpen, label: { en: 'Theory', vi: 'Lý thuyết' }, add: addTheory },
+    { icon: Code2, label: { en: 'Code', vi: 'Mã nguồn' }, add: addCode },
+    { icon: Sigma, label: { en: 'Formula', vi: 'Công thức' }, add: addFormula },
+    { icon: HelpCircle, label: { en: 'Quiz', vi: 'Câu hỏi' }, add: addQuiz },
+    { icon: FlaskConical, label: { en: 'Simulation', vi: 'Mô phỏng' }, add: addInteractive },
+    { icon: Tag, label: { en: 'Term', vi: 'Thuật ngữ' }, add: addTermRef },
+    { icon: Link2, label: { en: 'Resource', vi: 'Tài nguyên' }, add: addResourceRef },
+  ];
+
   return (
-    <div className="flex flex-wrap items-center gap-2 rounded-2xl border border-purple-200/80 bg-purple-50/70 p-3.5 shadow-2xs backdrop-blur-xs dark:border-purple-900/50 dark:bg-purple-950/30">
-      <span className="self-center text-xs font-mono font-bold uppercase tracking-wider text-purple-900 dark:text-purple-300 mr-2">
-        + Thêm khối nội dung:
-      </span>
-
-      <button
-        type="button"
-        onClick={addTheory}
-        className="inline-flex items-center gap-1.5 rounded-xl border border-purple-200 bg-white px-3 py-1.5 text-xs font-bold text-gray-800 shadow-2xs hover:bg-purple-100/60 active:scale-95 transition dark:border-purple-800 dark:bg-card dark:text-gray-200"
-      >
-        <span>📖</span>
-        <span>Lý thuyết</span>
-      </button>
-
-      <button
-        type="button"
-        onClick={addCode}
-        className="inline-flex items-center gap-1.5 rounded-xl border border-purple-200 bg-white px-3 py-1.5 text-xs font-bold text-gray-800 shadow-2xs hover:bg-purple-100/60 active:scale-95 transition dark:border-purple-800 dark:bg-card dark:text-gray-200"
-      >
-        <span>💻</span>
-        <span>Mã nguồn</span>
-      </button>
-
-      <button
-        type="button"
-        onClick={addFormula}
-        className="inline-flex items-center gap-1.5 rounded-xl border border-purple-200 bg-white px-3 py-1.5 text-xs font-bold text-gray-800 shadow-2xs hover:bg-purple-100/60 active:scale-95 transition dark:border-purple-800 dark:bg-card dark:text-gray-200"
-      >
-        <span>📐</span>
-        <span>Công thức (KaTeX)</span>
-      </button>
-
-      <button
-        type="button"
-        onClick={addQuiz}
-        className="inline-flex items-center gap-1.5 rounded-xl border border-purple-200 bg-white px-3 py-1.5 text-xs font-bold text-gray-800 shadow-2xs hover:bg-purple-100/60 active:scale-95 transition dark:border-purple-800 dark:bg-card dark:text-gray-200"
-      >
-        <span>❓</span>
-        <span>Câu hỏi trắc nghiệm</span>
-      </button>
-
-      <button
-        type="button"
-        onClick={addInteractive}
-        className="inline-flex items-center gap-1.5 rounded-xl border border-purple-200 bg-white px-3 py-1.5 text-xs font-bold text-gray-800 shadow-2xs hover:bg-purple-100/60 active:scale-95 transition dark:border-purple-800 dark:bg-card dark:text-gray-200"
-      >
-        <span>🔬</span>
-        <span>Mô phỏng</span>
-      </button>
-
-      <button
-        type="button"
-        onClick={addTermRef}
-        className="inline-flex items-center gap-1.5 rounded-xl border border-purple-200 bg-white px-3 py-1.5 text-xs font-bold text-gray-800 shadow-2xs hover:bg-purple-100/60 active:scale-95 transition dark:border-purple-800 dark:bg-card dark:text-gray-200"
-      >
-        <span>🏷️</span>
-        <span>Thuật ngữ</span>
-      </button>
-
-      <button
-        type="button"
-        onClick={addResourceRef}
-        className="inline-flex items-center gap-1.5 rounded-xl border border-purple-200 bg-white px-3 py-1.5 text-xs font-bold text-gray-800 shadow-2xs hover:bg-purple-100/60 active:scale-95 transition dark:border-purple-800 dark:bg-card dark:text-gray-200"
-      >
-        <span>🔗</span>
-        <span>Tài nguyên</span>
-      </button>
-    </div>
+    <section aria-labelledby="block-palette-heading" className="flex flex-col gap-3 rounded-xl border border-line bg-surface-sunken p-4">
+      <h2 id="block-palette-heading" className="text-sm font-semibold text-ink">
+        {t({ en: 'Add a block', vi: 'Thêm khối nội dung' })}
+      </h2>
+      <div className="flex flex-wrap gap-2">
+        {items.map(({ icon: Icon, label, add }) => (
+          <Button key={label.en} type="button" variant="outline" onClick={add}>
+            <Icon aria-hidden="true" />
+            {t(label)}
+          </Button>
+        ))}
+      </div>
+    </section>
   );
 }

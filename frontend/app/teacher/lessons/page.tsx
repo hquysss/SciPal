@@ -1,7 +1,13 @@
 import Link from 'next/link';
 import { getTeacherLessons, AuthoringApiError } from '@/features/authoring/authoringQueries';
 import { getAuthoringSession } from '@/features/authoring/serverAuth';
-import { lessonStatusLabel, lessonStatusTone, TONE_CLASS } from '@/features/authoring/lessonStatus';
+import { LessonStatusBadge } from '@/features/authoring/lessonStatusBadge';
+import { PageBreadcrumb } from '@/components/nav/PageBreadcrumb';
+import { Alert } from '@/components/ui/alert';
+import { Bi } from '@/components/ui/bilingual';
+import { buttonVariants } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
+import { EmptyState } from '@/components/ui/empty-state';
 
 export const dynamic = 'force-dynamic';
 
@@ -29,120 +35,101 @@ export default async function TeacherLessonsPage() {
   }
 
   return (
-    <div className="relative min-h-[calc(100vh-3.5rem)] bg-science-grid pb-20">
-      <main className="relative mx-auto max-w-5xl px-4 py-8 sm:px-6 sm:py-12 space-y-8">
-        <nav className="flex items-center gap-2 text-xs font-mono text-gray-500">
-          <Link href="/" className="hover:text-gray-900 transition dark:hover:text-white">Trang chủ</Link>
-          <span>/</span>
-          <Link href="/profile" className="hover:text-gray-900 transition dark:hover:text-white">Hồ sơ</Link>
-          <span>/</span>
-          <span className="font-semibold text-purple-700 dark:text-purple-400">Soạn thảo bài học (S10)</span>
-        </nav>
+    <main className="mx-auto flex max-w-5xl flex-col gap-8 px-4 py-8 pb-20 sm:px-6 sm:py-12">
+      <PageBreadcrumb
+        items={[
+          { href: '/', label: { en: 'Home', vi: 'Trang chủ' } },
+          { href: '/profile', label: { en: 'Profile', vi: 'Hồ sơ' } },
+          { label: { en: 'Lesson studio', vi: 'Soạn bài' } },
+        ]}
+      />
 
-        <header className="relative overflow-hidden rounded-3xl border border-purple-200/80 bg-gradient-to-br from-purple-900 to-indigo-950 p-6 text-white shadow-lg sm:p-10">
-          <div className="pointer-events-none absolute -right-6 -bottom-6 select-none text-9xl opacity-10">📝</div>
-          <div className="relative z-10 max-w-xl space-y-3">
-            <span className="rounded-full border border-purple-400/30 bg-purple-500/20 px-3 py-1 font-mono text-xs font-bold uppercase tracking-wider text-purple-200">
-              Teacher Content Studio · S10
-            </span>
-            <h1 className="text-2xl font-black tracking-tight sm:text-3xl">Quản lý & Soạn thảo bài giảng</h1>
-            <p className="text-sm leading-relaxed text-purple-200/90">
-              Bài mới bắt đầu là bản nháp. Sau khi hoàn thiện, giáo viên gửi admin duyệt trước khi bài xuất bản cho học sinh.
-            </p>
+      <header className="max-w-2xl">
+        <h1 className="text-3xl font-extrabold tracking-tight text-ink sm:text-4xl">
+          <Bi en="Lesson studio" vi="Soạn bài giảng" />
+        </h1>
+        <p className="mt-2 text-base text-ink-muted">
+          <Bi
+            en="New lessons start as drafts. When a draft is ready, send it to an admin for review before students can see it."
+            vi="Bài mới bắt đầu là bản nháp. Khi hoàn thiện, giáo viên gửi admin duyệt trước khi bài xuất bản cho học sinh."
+          />
+        </p>
+      </header>
+
+      <section className="flex flex-col gap-4">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <h2 className="text-lg font-semibold text-ink">
+            {role === 'admin' ? <Bi en="Lessons in SciPal" vi="Bài giảng trong SciPal" /> : <Bi en="Your lessons" vi="Bài giảng của bạn" />}
+            {lessons ? <span className="ml-2 font-normal text-ink-muted">({lessons.length})</span> : null}
+          </h2>
+          <div className="flex flex-wrap gap-2">
+            {role === 'admin' && (
+              <Link href="/admin/lessons/review" className={buttonVariants({ variant: 'outline' })}>
+                <Bi en="Review queue" vi="Hàng chờ duyệt" />
+              </Link>
+            )}
+            {role === 'teacher' && (
+              <Link href="/teacher/lessons/new-lesson" className={buttonVariants()}>
+                <Bi en="New lesson" vi="Soạn bài mới" />
+              </Link>
+            )}
           </div>
-        </header>
+        </div>
 
-        <section className="space-y-4">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <h2 className="text-lg font-bold text-gray-900 dark:text-white">
-              {role === 'admin' ? 'Bài giảng trong SciPal' : 'Bài giảng của bạn'}{lessons ? ` (${lessons.length})` : ''}
-            </h2>
-            <div className="flex flex-wrap gap-2">
-              {role === 'admin' && (
-                <Link
-                  href="/admin/lessons/review"
-                  className="inline-flex items-center gap-2 rounded-xl border border-purple-300 bg-white px-4 py-2 text-xs font-bold text-purple-800 transition hover:bg-purple-50 dark:bg-card dark:text-purple-300"
-                >
-                  Hàng chờ duyệt
-                </Link>
-              )}
-              {role === 'teacher' && (
-                <Link
-                  href="/teacher/lessons/new-lesson"
-                  className="inline-flex items-center gap-2 rounded-xl bg-purple-700 px-4 py-2 text-xs font-bold text-white shadow-xs transition hover:bg-purple-800 active:scale-95"
-                >
-                  <span>+ Soạn bài mới</span>
-                </Link>
-              )}
-            </div>
-          </div>
-
-          {loadError ? (
-            <div role="alert" className="rounded-2xl border border-red-200 bg-red-50 p-5 text-sm text-red-800">
-              <p className="font-bold">Không tải được danh sách bài giảng.</p>
-              <p className="mt-1">Kiểm tra kết nối máy chủ rồi thử tải lại. Không có dữ liệu mẫu thay thế.</p>
-              <Link href="/teacher/lessons" className="mt-3 inline-flex font-semibold underline">Thử lại</Link>
-            </div>
-          ) : lessons?.length ? (
-            <div className="grid grid-cols-1 gap-4">
-              {lessons.map((item) => (
-                <article
-                  key={item.id}
-                  className="flex flex-col justify-between gap-4 rounded-2xl border border-gray-200/80 bg-white/90 p-5 shadow-xs backdrop-blur-md transition hover:border-purple-300 hover:shadow-md dark:border-white/10 dark:bg-card/90 sm:flex-row sm:items-center sm:p-6"
-                >
-                  <div className="space-y-1.5">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <span className="rounded-full bg-purple-100 px-2.5 py-0.5 font-mono text-[11px] font-bold text-purple-800 dark:bg-purple-950/60 dark:text-purple-300">
-                        {item.subject_name_vi} {item.grade}
-                      </span>
-                      <span className={`rounded-full px-2 py-0.5 text-[11px] font-bold ${TONE_CLASS[lessonStatusTone(item.status)]}`}>
-                        {lessonStatusLabel(item.status).vi}
-                      </span>
-                      <span className="text-xs font-mono text-gray-400">Cập nhật: {formatUpdatedAt(item.updated_at)}</span>
+        {loadError ? (
+          <Alert tone="danger" title={<Bi en="Could not load your lessons." vi="Không tải được danh sách bài giảng." />}>
+            <p><Bi en="Check the server connection, then reload. No sample data is shown instead." vi="Kiểm tra kết nối máy chủ rồi thử tải lại. Không có dữ liệu mẫu thay thế." /></p>
+            <Link href="/teacher/lessons" className="mt-2 inline-flex font-semibold underline underline-offset-4">
+              <Bi en="Try again" vi="Thử lại" />
+            </Link>
+          </Alert>
+        ) : lessons?.length ? (
+          <ul className="flex flex-col gap-3">
+            {lessons.map((item) => (
+              <li key={item.id}>
+                <Card className="flex-col gap-4 px-5 sm:flex-row sm:items-center sm:justify-between">
+                  <div className="flex min-w-0 flex-col gap-1.5">
+                    <div className="flex flex-wrap items-center gap-2 text-sm">
+                      <span className="font-semibold text-ink-muted">{item.subject_name_vi} · <Bi en={`Grade ${item.grade}`} vi={`Lớp ${item.grade}`} /></span>
+                      <LessonStatusBadge status={item.status} />
+                      <span className="text-ink-muted"><Bi en="Updated" vi="Cập nhật" /> {formatUpdatedAt(item.updated_at)}</span>
                     </div>
-                    <h3 className="text-base font-bold text-gray-900 dark:text-white">{item.title_vi}</h3>
-                    <p className="text-xs font-mono text-gray-500 dark:text-gray-400">
-                      {item.title_en} · {item.block_count} khối nội dung · {item.topic_name_vi}
+                    <h3 className="text-base font-semibold text-ink">{item.title_vi}</h3>
+                    <p className="text-sm text-ink-muted">
+                      {item.title_en} · {item.block_count} <Bi en="blocks" vi="khối nội dung" /> · {item.topic_name_vi}
                     </p>
                   </div>
 
-                  <div className="flex items-center gap-2">
+                  <div className="flex flex-wrap items-center gap-2">
                     {item.status === 'published' ? (
-                      <Link
-                        href={`/${item.subject_slug}/${item.slug}`}
-                        className="rounded-xl border border-gray-200 bg-white px-3.5 py-2 text-xs font-bold text-gray-700 transition hover:bg-gray-50 dark:border-gray-700 dark:bg-card dark:text-gray-300"
-                      >
-                        Xem học sinh
+                      <Link href={`/${item.subject_slug}/${item.slug}`} className={buttonVariants({ variant: 'outline' })}>
+                        <Bi en="View as student" vi="Xem như học sinh" />
                       </Link>
                     ) : (
-                      <span className="rounded-xl border border-gray-100 px-3.5 py-2 text-xs font-semibold text-gray-400 dark:border-gray-800">
-                        Chưa xuất bản
-                      </span>
+                      <span className="text-sm text-ink-muted"><Bi en="Not published yet" vi="Chưa xuất bản" /></span>
                     )}
-                    <Link
-                      href={`/teacher/lessons/${item.id}`}
-                      className="inline-flex items-center gap-1.5 rounded-xl bg-purple-700 px-4 py-2 text-xs font-bold text-white shadow-xs transition hover:bg-purple-800 active:scale-95"
-                    >
-                      <span>Mở Studio soạn bài</span>
-                      <span className="text-[10px]">→</span>
+                    <Link href={`/teacher/lessons/${item.id}`} className={buttonVariants()}>
+                      <Bi en="Open in studio" vi="Mở trong studio" />
                     </Link>
                   </div>
-                </article>
-              ))}
-            </div>
-          ) : (
-            <div className="rounded-2xl border border-dashed border-gray-300 bg-white/70 p-8 text-center dark:border-gray-700 dark:bg-card/70">
-              <h3 className="font-bold text-gray-900 dark:text-white">{role === 'admin' ? 'Chưa có bài giảng nào' : 'Bạn chưa gửi bài giảng nào'}</h3>
-              <p className="mt-1 text-sm text-gray-500">{role === 'admin' ? 'Bài giáo viên tạo sẽ xuất hiện tại đây.' : 'Tạo bản nháp, thêm khối nội dung, rồi gửi admin duyệt.'}</p>
-              {role === 'teacher' && (
-                <Link href="/teacher/lessons/new-lesson" className="mt-4 inline-flex rounded-xl bg-purple-700 px-4 py-2 text-xs font-bold text-white hover:bg-purple-800">
-                  Soạn bài đầu tiên
-                </Link>
-              )}
-            </div>
-          )}
-        </section>
-      </main>
-    </div>
+                </Card>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <EmptyState
+            title={role === 'admin' ? <Bi en="No lessons yet" vi="Chưa có bài giảng nào" /> : <Bi en="You have not written a lesson yet" vi="Bạn chưa soạn bài giảng nào" />}
+            description={role === 'admin'
+              ? <Bi en="Lessons teachers create will appear here." vi="Bài giáo viên tạo sẽ xuất hiện tại đây." />
+              : <Bi en="Create a draft, add content blocks, then send it for review." vi="Tạo bản nháp, thêm khối nội dung, rồi gửi admin duyệt." />}
+            action={role === 'teacher' ? (
+              <Link href="/teacher/lessons/new-lesson" className={buttonVariants()}>
+                <Bi en="Write your first lesson" vi="Soạn bài đầu tiên" />
+              </Link>
+            ) : undefined}
+          />
+        )}
+      </section>
+    </main>
   );
 }
