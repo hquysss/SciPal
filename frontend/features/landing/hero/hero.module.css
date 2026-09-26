@@ -1,0 +1,66 @@
+.stage {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  overflow: hidden;
+  border-radius: 1.5rem;
+  background: linear-gradient(to bottom, var(--surface), var(--line) 38%);
+}
+
+.fallback,
+.canvas {
+  position: absolute;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.canvas {
+  opacity: 0;
+  transition: opacity 600ms ease;
+}
+
+.stage[data-hero-state='ready'] .canvas {
+  opacity: 1;
+}
+
+.fallback {
+  transition: opacity 600ms ease;
+}
+
+.stage[data-hero-state='ready'] .fallback {
+  opacity: 0;
+}
+
+.paper { fill: var(--paper); }
+.surface { fill: var(--surface); }
+.ink { fill: var(--ink); }
+.line { fill: var(--line); }
+.nav { fill: var(--nav); }
+.navInk { fill: var(--nav-ink); }
+.action { fill: var(--action); }
+
+.strokeLine {
+  stroke: var(--line);
+  stroke-width: 1.2;
+}
+
+.strokeInk {
+  stroke: var(--ink);
+  stroke-width: 4;
+  stroke-linecap: round;
+}
+
+.strokeInkThick {
+  fill: none;
+  stroke: var(--ink);
+  stroke-width: 5;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .canvas,
+  .fallback {
+    transition: none;
+  }
+}
