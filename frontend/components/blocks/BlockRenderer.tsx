@@ -4,13 +4,12 @@ import type { Block } from '@scipal/types';
 import { TheoryRenderer } from './TheoryRenderer';
 import { CodeRenderer } from './CodeRenderer';
 import { FormulaRenderer } from './FormulaRenderer';
-import { QuizBlock } from './QuizBlock';
 import { InteractiveRenderer } from './InteractiveRenderer';
 import { TermRefCard } from './TermRefCard';
 import { ResourceRefCard } from './ResourceRefCard';
 
 export function BlockRenderer({ block }: { block: Block }) {
-  const { lang } = useLanguage();
+  const { lang, t } = useLanguage();
 
   switch (block.type) {
     case 'theory':
@@ -21,8 +20,14 @@ export function BlockRenderer({ block }: { block: Block }) {
       return <FormulaRenderer block={block} lang={lang} />;
     case 'quiz':
       return (
-        <div className="my-4 rounded-xl border border-dashed border-gray-200 p-4 text-xs text-gray-500">
-          [Câu hỏi trắc nghiệm {block.question_id}]
+        <div role="note" className="rounded-lg border border-dashed border-edge bg-surface p-4 text-sm text-ink-muted">
+          <p className="font-semibold text-ink">{t({ en: 'Practice question coming soon', vi: 'Câu hỏi luyện tập sắp có' })}</p>
+          <p className="mt-1">
+            {t({
+              en: 'This question will appear here once practice checking is ready.',
+              vi: 'Câu hỏi sẽ hiện ở đây khi phần chấm luyện tập sẵn sàng.',
+            })}
+          </p>
         </div>
       );
     case 'interactive':

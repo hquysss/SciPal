@@ -15,8 +15,7 @@ export function TermRefCard({
   return (
     <Link
       href={`/glossary#${termId}`}
-      className="inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-semibold hover:bg-gray-50 transition shadow-xs"
-      style={{ borderColor: 'var(--accent, #16a34a)', color: 'var(--accent, #16a34a)' }}
+      className="inline-flex min-h-11 items-center gap-2 rounded-full border border-accent px-4 text-sm font-semibold text-accent-ink transition-colors hover:bg-[color-mix(in_srgb,var(--accent)_10%,var(--surface))] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
     >
       <span aria-hidden="true">📖</span>
       <span>{label}</span>
