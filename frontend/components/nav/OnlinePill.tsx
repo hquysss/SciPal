@@ -25,13 +25,13 @@ export function OnlinePill() {
     <span
       className={`inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold backdrop-blur-xs transition ${
         online
-          ? 'bg-emerald-900/40 text-emerald-100 border border-emerald-400/40'
-          : 'bg-rose-950/50 text-rose-200 border border-rose-400/40'
+          ? 'bg-[color-mix(in_srgb,var(--nav-ink)_12%,transparent)] text-nav-ink border border-[color-mix(in_srgb,var(--nav-ink)_30%,transparent)]'
+          : 'bg-[color-mix(in_srgb,var(--nav-ink)_12%,transparent)] text-nav-ink border border-[color-mix(in_srgb,var(--nav-ink)_30%,transparent)]'
       }`}
     >
       <span
         className={`h-2 w-2 rounded-full shadow-xs ${
-          online ? 'bg-emerald-400 animate-pulse' : 'bg-rose-400'
+          online ? 'bg-success animate-pulse' : 'bg-danger'
         }`}
       />
       <span className="hidden sm:inline font-mono">{label}</span>

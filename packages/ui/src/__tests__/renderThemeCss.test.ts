@@ -17,7 +17,7 @@ describe('renderThemeCss', () => {
 
   it('puts palette values into custom properties', () => {
     expect(css).toMatch(/\[data-level="neutral"\]\{[^}]*--nav:#15803D;/);
-    expect(css).toMatch(/\[data-level="primary"\]\{[^}]*--ink-muted:#5A5078;/);
+    expect(css).toMatch(/\[data-level="primary"\]\{[^}]*--ink-muted:#554E44;/);
     expect(css).toMatch(/\[data-level="primary"\]\{[^}]*--pattern-url:url\("\/patterns\/neutral\.svg"\);/);
     expect(css).toMatch(/\[data-level="primary"\]\{[^}]*--accent-ink-ratio:60%;/);
     expect(css).toMatch(/\[data-level="primary"\]\{[^}]*color-scheme:light;/);
