@@ -172,3 +172,26 @@ describe('authoring lesson status', () => {
     await app.close();
   });
 });
+
+describe('authoring publish timestamps', () => {
+  it('editing an already-published lesson keeps its original published_at and approver', async () => {
+    const write = mockQuery({ data: { id: LESSON_ID, status: 'published' }, error: null });
+    const app = await buildAuthoringApp(admin, {
+      lessons: [
+        mockQuery({ data: { id: LESSON_ID, created_by: teacher.id, status: 'published', updated_at: STAMP }, error: null }),
+        write,
+      ],
+    });
+    const res = await app.inject({
+      method: 'PATCH',
+      url: `/api/authoring/lessons/${LESSON_ID}`,
+      payload: { expected_updated_at: STAMP, status: 'published', title_vi: 'Tìm kiếm nhị phân' },
+    });
+    expect(res.statusCode).toBe(200);
+    const row = write.updated[0] as Record<string, unknown>;
+    expect(row).not.toHaveProperty('published_at');
+    expect(row).not.toHaveProperty('reviewed_by');
+    expect(row.title_vi).toBe('Tìm kiếm nhị phân');
+    await app.close();
+  });
+});

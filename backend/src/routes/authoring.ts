@@ -497,13 +497,16 @@ export const authoringRoutes: FastifyPluginAsync = async (app) => {
           return reply.code(400).send({ error: 'Admin chỉ có thể đặt trạng thái draft hoặc published.' });
         }
         updateData.status = body.status;
-        if (body.status === 'published') {
-          updateData.published_at = updateData.updated_at;
-          updateData.reviewed_by = user.id;
-          updateData.reviewed_at = updateData.updated_at;
-          updateData.review_note = null;
-        } else {
-          updateData.published_at = null;
+        // Stamp publish metadata only on a transition, so edits keep the original approver.
+        if (body.status !== current.status) {
+          if (body.status === 'published') {
+            updateData.published_at = updateData.updated_at;
+            updateData.reviewed_by = user.id;
+            updateData.reviewed_at = updateData.updated_at;
+            updateData.review_note = null;
+          } else {
+            updateData.published_at = null;
+          }
         }
       }
       if (Object.keys(updateData).length === 1) {
