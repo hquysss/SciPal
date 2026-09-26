@@ -75,3 +75,38 @@ describe('GDPT 2018 catalog source', () => {
     expect(errors.some((e) => e.includes('role'))).toBe(true);
   });
 });
+
+import { readFileSync } from 'node:fs';
+import { buildCatalogMigrationSql, CATALOG_MIGRATION_PATH } from '../catalog/buildCatalogSql.js';
+
+describe('generated catalog migration', () => {
+  const sql = buildCatalogMigrationSql(catalog);
+
+  it('matches the committed migration file (regenerate with the script if this fails)', () => {
+    // Normalise CRLF so a Windows checkout with core.autocrlf does not fake a drift.
+    expect(readFileSync(CATALOG_MIGRATION_PATH, 'utf8').replace(/\r\n/g, '\n')).toBe(sql);
+  });
+
+  it('renames legacy subjects only when they exist and the target does not', () => {
+    expect(sql).toContain(
+      "update public.subjects set slug = 'natural-science' where slug = 'lower-natural-science' and not exists (select 1 from public.subjects where slug = 'natural-science');",
+    );
+  });
+
+  it('refuses to delete legacy subjects that still have data', () => {
+    expect(sql).toContain("raise exception 'Legacy subject % is still referenced by %'");
+    expect(sql).toContain("delete from public.subjects where slug = any (array['primary-math','lower-math','lower-informatics','primary-stem-exploration','lower-stem-projects']);");
+  });
+
+  it('upserts every subject and one catalog row per subject-grade pair', () => {
+    for (const s of catalog.subjects) expect(sql).toContain(`('${s.slug}', `);
+    expect(sql.match(/^  \('[a-z0-9-]+', \d+, '[a-z_]+', \d+\)/gm)?.length).toBe(rows.length);
+    expect(sql).toContain('on conflict (curriculum_version_id, subject_id, grade) do update');
+  });
+
+  it('refuses to generate from an invalid catalog', () => {
+    const broken = structuredClone(catalog);
+    broken.subjects[0]!.accent_color = 'green';
+    expect(() => buildCatalogMigrationSql(broken)).toThrow(/accent_color/);
+  });
+});
