@@ -34,7 +34,7 @@ Mỗi cấp mượn chất liệu từ đồ dùng học sinh cấp đó cầm h
 
 ### 2.1 Bảng màu
 
-> **Cập nhật 26/09 (sau giai đoạn 0–1, theo người dùng):** Bỏ mực tím. Màu chính: Tiểu học nâu nhạt (navbar `#D2AE85` chữ `#2A1A0C`, hành động `#8B5A2B`), THCS xanh dương (navbar `#2563EB`, hành động `#1D4ED8`), THPT xanh lá (navbar `#15803D`, hành động `#166534`). Navbar tô màu chính của cấp; trung tính giữ `#15803D`. Bảng dưới đây đã cập nhật theo giá trị hiện hành.
+> **Cập nhật 26/09 (sau giai đoạn 0–1, theo người dùng):** Bỏ mực tím. Màu chính: Tiểu học nâu nhạt (navbar `#96693F` chữ trắng, hành động `#8B5A2B`), THCS xanh dương (navbar `#2563EB`, hành động `#1D4ED8`), THPT xanh lá (navbar `#15803D`, hành động `#166534`). Navbar tô màu chính của cấp; trung tính giữ `#15803D`. Bảng dưới đây đã cập nhật theo giá trị hiện hành.
 
 | Bảng | paper | surface | ink | muted | line | action |
 |---|---|---|---|---|---|---|

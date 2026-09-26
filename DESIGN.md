@@ -20,7 +20,7 @@ SciPal should feel like a warm, modern field notebook for curious Vietnamese lea
 
 ### Navbar
 
-Navbar tô màu chính của cấp: Tiểu học nâu nhạt `#D2AE85` (chữ nâu đậm), THCS xanh dương `#2563EB`, THPT xanh lá `#15803D`, chưa chọn cấp `#15803D`. Nút đăng nhập và công tắc đang chọn đảo màu (`bg-nav-ink text-nav`).
+Navbar tô màu chính của cấp: Tiểu học nâu nhạt `#96693F` (chữ trắng), THCS xanh dương `#2563EB`, THPT xanh lá `#15803D`, chưa chọn cấp `#15803D`. Nút đăng nhập và công tắc đang chọn đảo màu (`bg-nav-ink text-nav`).
 
 ### Portal
 
