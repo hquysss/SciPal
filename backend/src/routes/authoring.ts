@@ -290,7 +290,8 @@ export const authoringRoutes: FastifyPluginAsync = async (app) => {
       const titleEn = asText(body.title_en, 200);
       const titleVi = asText(body.title_vi, 200);
       const topicId = asText(body.topic_id, 64);
-      const grade = body.grade === undefined ? 10 : Number(body.grade);
+      const grade = body.grade === undefined || body.grade === null ? NaN : Number(body.grade);
+      const trackId = body.track_id === undefined || body.track_id === null ? undefined : asText(body.track_id, 64);
 
       if (!titleEn || !titleVi) {
         return reply.code(400).send({ error: 'Vui lòng nhập tiêu đề tiếng Việt và tiếng Anh (tối đa 200 ký tự).' });
@@ -298,13 +299,16 @@ export const authoringRoutes: FastifyPluginAsync = async (app) => {
       if (!topicId || !UUID_PATTERN.test(topicId)) {
         return reply.code(400).send({ error: 'Vui lòng chọn chủ đề hợp lệ cho bài học.' });
       }
-      if (!Number.isInteger(grade) || ![10, 11, 12].includes(grade)) {
-        return reply.code(400).send({ error: 'Khối lớp phải là 10, 11 hoặc 12.' });
+      if (!Number.isInteger(grade) || grade < 1 || grade > 12) {
+        return reply.code(400).send({ error: 'Vui lòng chọn lớp (1–12).' });
+      }
+      if (body.track_id !== undefined && body.track_id !== null && (!trackId || !UUID_PATTERN.test(trackId))) {
+        return reply.code(400).send({ error: 'Định hướng không hợp lệ.' });
       }
 
       const { data: topic, error: topicError } = await supabase
         .from('topics')
-        .select('id, subject_id')
+        .select('id, subject_id, grade')
         .eq('id', topicId)
         .maybeSingle();
 
@@ -313,6 +317,9 @@ export const authoringRoutes: FastifyPluginAsync = async (app) => {
         return reply.code(500).send({ error: 'Không xác minh được chủ đề đã chọn.' });
       }
       if (!topic) return reply.code(400).send({ error: 'Chủ đề đã chọn không tồn tại.' });
+      if (topic.grade !== null && topic.grade !== undefined && topic.grade !== grade) {
+        return reply.code(400).send({ error: 'Lớp của bài phải trùng lớp của chủ đề.' });
+      }
 
       const { data: subject, error: subjectError } = await supabase
         .from('subjects')
@@ -325,6 +332,38 @@ export const authoringRoutes: FastifyPluginAsync = async (app) => {
         return reply.code(500).send({ error: 'Không xác minh được môn học đã chọn.' });
       }
       if (!subject) return reply.code(400).send({ error: 'Môn học đã chọn không tồn tại.' });
+
+      const { data: catalogRow, error: catalogError } = await supabase
+        .from('subject_grade_catalog')
+        .select('id')
+        .eq('subject_id', subject.id)
+        .eq('grade', grade)
+        .eq('active', true)
+        .limit(1)
+        .maybeSingle();
+      if (catalogError) {
+        request.log.error({ err: catalogError, subjectId: subject.id, grade }, 'Failed to check subject catalog');
+        return reply.code(500).send({ error: 'Không xác minh được lớp của môn học.' });
+      }
+      if (!catalogRow) {
+        return reply.code(400).send({ error: 'Lớp này không thuộc chương trình của môn đã chọn.' });
+      }
+
+      if (trackId) {
+        const { data: track, error: trackError } = await supabase
+          .from('subject_tracks')
+          .select('id, subject_id, grades')
+          .eq('id', trackId)
+          .maybeSingle();
+        if (trackError) {
+          request.log.error({ err: trackError, trackId }, 'Failed to verify lesson track');
+          return reply.code(500).send({ error: 'Không xác minh được định hướng đã chọn.' });
+        }
+        const grades = Array.isArray(track?.grades) ? (track.grades as number[]) : [];
+        if (!track || track.subject_id !== subject.id || !grades.includes(grade)) {
+          return reply.code(400).send({ error: 'Định hướng không thuộc môn và lớp đã chọn.' });
+        }
+      }
 
       const baseSlug = makeSlug(titleEn) || 'bai-hoc';
       let slug = baseSlug;
@@ -359,6 +398,7 @@ export const authoringRoutes: FastifyPluginAsync = async (app) => {
           title_en: titleEn,
           title_vi: titleVi,
           grade,
+          track_id: trackId ?? null,
           blocks: [],
           status: 'draft',
           created_by: user.id,
