@@ -9,9 +9,9 @@ export function LoadErrorNotice({ message, retryHref }: { message: { en: string;
   const { t } = useLanguage();
   return (
     <Alert tone="danger">
-      <span>{t(message)}</span>
+      <p>{t(message)}</p>
       {retryHref && (
-        <Link href={retryHref} className={buttonVariants({ variant: 'outline', className: 'mt-3 flex w-fit' })}>
+        <Link href={retryHref} className={buttonVariants({ variant: 'outline', className: 'mt-3' })}>
           {t({ en: 'Try again', vi: 'Thử lại' })}
         </Link>
       )}

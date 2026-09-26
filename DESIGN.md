@@ -17,7 +17,7 @@ SciPal should feel like a warm, modern field notebook for curious Vietnamese lea
 - Hoạ tiết đồ dùng học tập chỉ hiện trên `paper`; tắt bằng `data-pattern="off"` (phòng thi), khi `prefers-contrast: more` và khi in.
 - Bốn bộ hoạ tiết ở `frontend/public/patterns/<level>.svg` (`PATTERN_URLS` trong `palettes.ts`): Tiểu học — bút chì, gọt bút chì, thước kẻ, hộp bút, bảng con, phấn màu; THCS — compa, ê-ke, thước đo độ, bút bi, máy tính cầm tay; THPT — phấn và giẻ lau bảng, bình tam giác, máy tính cầm tay, kính lúp, bàn phím và chuột; trung tính — bút chì, thước, ê-ke, compa, máy tính. Quy tắc (test `frontend/lib/theme/patterns.test.ts`): một màu `#000` (dùng làm `mask-image`), < 4 KB, `viewBox="0 0 320 320"`, không `<script>`, ảnh, `foreignObject`, `href` hay thuộc tính `on*`.
 - Chế độ tối có sẵn nhưng tắt bằng `DARK_MODE_ENABLED` tới hết giai đoạn 5.
-- Bảng `--landing-*` theo cấp đã là bí danh trỏ về token chung; `--gate-*` (cổng chọn cấp, trung tính) chuyển ở giai đoạn 2.
+- Bảng `--landing-*` theo cấp đã là bí danh trỏ về token chung; `--gate-*` (cổng chọn cấp, trung tính) vẫn viết cứng — việc còn lại của giai đoạn 2.
 
 ### Navbar
 

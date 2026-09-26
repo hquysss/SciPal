@@ -20,6 +20,15 @@ describe('LoadErrorNotice', () => {
     expect(countRawColors(html).total).toBe(0);
   });
 
+  it('puts the retry link on its own line below the message', () => {
+    const html = renderToStaticMarkup(
+      <LoadErrorNotice message={{ en: 'Could not load this lesson.', vi: 'Chưa tải được bài học.' }} retryHref="/informatics/bai-3" />,
+    );
+    expect(html).toMatch(/<p[^>]*>Chưa tải được bài học\.<\/p>/);
+    const linkClasses = html.match(/<a[^>]*class="([^"]*)"/)?.[1].split(/\s+/) ?? [];
+    expect(linkClasses.filter((c) => c === 'flex' || c === 'inline-flex')).toHaveLength(1);
+  });
+
   it('omits the link without a retry target', () => {
     const html = renderToStaticMarkup(<LoadErrorNotice message={{ en: 'x', vi: 'Lỗi' }} />);
     expect(html).not.toContain('<a');
