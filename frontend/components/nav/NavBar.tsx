@@ -6,6 +6,7 @@ import Image from 'next/image';
 import { usePathname, useRouter } from 'next/navigation';
 import { useLanguage } from '@scipal/hooks';
 import { LanguageToggle } from './LanguageToggle';
+import { ThemeToggle } from './ThemeToggle';
 import { OnlinePill } from './OnlinePill';
 import { SubjectSwitcher } from './SubjectSwitcher';
 import type { SubjectSlug } from '@/lib/subject-config';
@@ -293,6 +294,7 @@ export function NavBar({ currentSubject }: NavBarProps) {
         <div className="hidden min-w-0 flex-1 items-center gap-2 lg:flex xl:gap-3">
           <div className="hidden xl:block"><OnlinePill /></div>
           <LanguageToggle />
+          <ThemeToggle />
           {appRole ? (
             <div className="ml-auto flex shrink-0 items-center gap-2">
               <span className="max-w-24 truncate text-sm font-semibold text-white xl:max-w-36" title={displayName ?? undefined}>
@@ -322,6 +324,7 @@ export function NavBar({ currentSubject }: NavBarProps) {
 
         <div className="flex shrink-0 items-center gap-2 lg:hidden">
           <LanguageToggle />
+          <ThemeToggle />
           <button
             type="button"
             aria-label={mobileOpen ? (lang === 'en' ? 'Close menu' : 'Đóng menu') : (lang === 'en' ? 'Open menu' : 'Mở menu')}

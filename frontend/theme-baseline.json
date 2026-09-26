@@ -28,7 +28,6 @@
   "components/blocks/TermRefCard.tsx": 3,
   "components/blocks/TheoryRenderer.tsx": 1,
   "components/feedback/LoadErrorNotice.tsx": 9,
-  "components/nav/LanguageToggle.tsx": 12,
   "components/nav/NavBar.tsx": 122,
   "components/nav/OnlinePill.tsx": 8,
   "components/nav/SubjectSwitcher.tsx": 21,
