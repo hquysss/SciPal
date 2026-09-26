@@ -1,6 +1,6 @@
 import { createServerClient, type CookieStore, type Database } from '@scipal/supabase';
 import { SUBJECT_CONFIG } from '../../lib/subject-config';
-import type { EducationLevel } from './educationLevel';
+import { levelOfGrade, type EducationLevel } from './educationLevel';
 
 export interface LandingSubject {
   id: string;
@@ -29,11 +29,7 @@ export interface CatalogSubjectRow {
 
 const LEVEL_ORDER: EducationLevel[] = ['primary', 'lower_secondary', 'upper_secondary'];
 
-export function levelOfGrade(grade: number): EducationLevel {
-  if (grade <= 5) return 'primary';
-  if (grade <= 9) return 'lower_secondary';
-  return 'upper_secondary';
-}
+export { levelOfGrade };
 
 export function expandSubjectsByLevel(
   rows: CatalogSubjectRow[],

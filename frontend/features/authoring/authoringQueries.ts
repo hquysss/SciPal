@@ -34,14 +34,26 @@ export interface AuthoringSubjectOption {
   slug: string;
   name_en: string;
   name_vi: string;
+  sort_order: number;
+  grades: number[];
 }
 
 export interface AuthoringTopicOption {
   id: string;
   subject_id: string;
+  grade: number | null;
   name_en: string;
   name_vi: string;
   sort_order: number;
+}
+
+export interface AuthoringTrackOption {
+  id: string;
+  subject_id: string;
+  slug: string;
+  name_en: string;
+  name_vi: string;
+  grades: number[];
 }
 
 export class AuthoringApiError extends Error {
@@ -80,6 +92,7 @@ async function requestJson<T>(path: string, token: string): Promise<T> {
 export async function getAuthoringOptions(token: string): Promise<{
   subjects: AuthoringSubjectOption[];
   topics: AuthoringTopicOption[];
+  tracks: AuthoringTrackOption[];
 }> {
   return requestJson('/api/authoring/options', token);
 }

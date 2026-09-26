@@ -5,6 +5,18 @@ export type { EducationLevel } from '@scipal/supabase';
 
 const educationLevelSchema = z.enum(['primary', 'lower_secondary', 'upper_secondary']);
 
+export const EDUCATION_LEVEL_LABELS: Record<EducationLevel, { en: string; vi: string }> = {
+  primary: { en: 'Primary', vi: 'Tiểu học' },
+  lower_secondary: { en: 'Lower secondary', vi: 'THCS' },
+  upper_secondary: { en: 'Upper secondary', vi: 'THPT' },
+};
+
+export function levelOfGrade(grade: number): EducationLevel {
+  if (grade <= 5) return 'primary';
+  if (grade <= 9) return 'lower_secondary';
+  return 'upper_secondary';
+}
+
 export const LEVEL_SESSION_KEY = 'scipal_education_level_tab';
 
 type SessionStorageReader = Pick<Storage, 'getItem'>;
