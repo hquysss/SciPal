@@ -1,125 +1,50 @@
 import type { ExamQuestionItem } from './ExamRunner';
 
-export interface ExamBlueprintData {
-  blueprint: {
-    id: string;
-    title_en: string;
-    title_vi: string;
-    duration_minutes: number;
-    total_questions: number;
-  };
-  questions: ExamQuestionItem[];
+export interface BlueprintSummary {
+  id: string;
+  name: string;
+  grade: number | null;
+  subject_id: string | null;
+  subject_slug: string | null;
+  subject_name_en: string | null;
+  subject_name_vi: string | null;
+  question_count: number;
 }
 
-export async function getExamBlueprint(blueprintId: string): Promise<ExamBlueprintData> {
-  const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL ?? 'https://sci-pal-backend.vercel.app';
+export type BlueprintListResult = { kind: 'ok'; blueprints: BlueprintSummary[] } | { kind: 'error' };
 
+export type ExamDetailResult =
+  | { kind: 'ok'; blueprint: BlueprintSummary; questions: ExamQuestionItem[] }
+  | { kind: 'not_found' }
+  | { kind: 'error' };
+
+const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL ?? 'https://sci-pal-backend.vercel.app';
+
+export async function getExamBlueprints(): Promise<BlueprintListResult> {
   try {
-    const res = await fetch(`${API_BASE}/api/exam/${blueprintId}/questions`, {
-      cache: 'no-store',
-    });
-    if (res.ok) {
-      return await res.json();
-    }
+    const res = await fetch(`${API_BASE}/api/exam/blueprints`, { cache: 'no-store' });
+    if (!res.ok) return { kind: 'error' };
+    const payload = (await res.json()) as { blueprints?: unknown };
+    return Array.isArray(payload.blueprints)
+      ? { kind: 'ok', blueprints: payload.blueprints as BlueprintSummary[] }
+      : { kind: 'error' };
   } catch (err) {
-    console.warn('getExamBlueprint fetch error, returning fallback:', err);
+    console.warn('getExamBlueprints failed:', err);
+    return { kind: 'error' };
   }
+}
 
-  // Graceful fallback for demo / offline
-  return {
-    blueprint: {
-      id: blueprintId,
-      title_en: 'Informatics Benchmark Examination',
-      title_vi: 'Đề thi khảo sát năng lực Tin học',
-      duration_minutes: 45,
-      total_questions: 5,
-    },
-    questions: [
-      {
-        id: 'q-demo-1',
-        type: 'mc',
-        difficulty: 'medium',
-        data: {
-          stem: {
-            en: 'What is the worst-case time complexity of Binary Search on a sorted array of size N?',
-            vi: 'Độ phức tạp thời gian trong trường hợp xấu nhất của thuật toán Tìm kiếm nhị phân trên mảng đã sắp xếp kích thước N là gì?',
-          },
-          options: [
-            { id: 'opt-a', text: { en: 'O(1)', vi: 'O(1)' } },
-            { id: 'opt-b', text: { en: 'O(log N)', vi: 'O(log N)' } },
-            { id: 'opt-c', text: { en: 'O(N)', vi: 'O(N)' } },
-            { id: 'opt-d', text: { en: 'O(N log N)', vi: 'O(N log N)' } },
-          ],
-        },
-      },
-      {
-        id: 'q-demo-2',
-        type: 'mc',
-        difficulty: 'easy',
-        data: {
-          stem: {
-            en: 'Which Python keyword is used to define an anonymous or inline function?',
-            vi: 'Từ khóa nào trong Python được sử dụng để định nghĩa hàm ẩn danh (inline function)?',
-          },
-          options: [
-            { id: 'opt-a', text: { en: 'def', vi: 'def' } },
-            { id: 'opt-b', text: { en: 'func', vi: 'func' } },
-            { id: 'opt-c', text: { en: 'lambda', vi: 'lambda' } },
-            { id: 'opt-d', text: { en: 'inline', vi: 'inline' } },
-          ],
-        },
-      },
-      {
-        id: 'q-demo-3',
-        type: 'mc',
-        difficulty: 'hard',
-        data: {
-          stem: {
-            en: 'Which data structure operates on a Last-In, First-Out (LIFO) principle?',
-            vi: 'Cấu trúc dữ liệu nào hoạt động theo nguyên lý Vào sau, Ra trước (LIFO)?',
-          },
-          options: [
-            { id: 'opt-a', text: { en: 'Queue (Hàng đợi)', vi: 'Queue (Hàng đợi)' } },
-            { id: 'opt-b', text: { en: 'Stack (Ngăn xếp)', vi: 'Stack (Ngăn xếp)' } },
-            { id: 'opt-c', text: { en: 'Linked List (Danh sách liên kết)', vi: 'Linked List (Danh sách liên kết)' } },
-            { id: 'opt-d', text: { en: 'Binary Tree (Cây nhị phân)', vi: 'Binary Tree (Cây nhị phân)' } },
-          ],
-        },
-      },
-      {
-        id: 'q-demo-4',
-        type: 'mc',
-        difficulty: 'medium',
-        data: {
-          stem: {
-            en: 'In Python, which of the following collections is immutable?',
-            vi: 'Trong Python, kiểu tập hợp dữ liệu nào sau đây là bất biến (immutable)?',
-          },
-          options: [
-            { id: 'opt-a', text: { en: 'List', vi: 'List' } },
-            { id: 'opt-b', text: { en: 'Dictionary', vi: 'Dictionary' } },
-            { id: 'opt-c', text: { en: 'Set', vi: 'Set' } },
-            { id: 'opt-d', text: { en: 'Tuple', vi: 'Tuple' } },
-          ],
-        },
-      },
-      {
-        id: 'q-demo-5',
-        type: 'mc',
-        difficulty: 'medium',
-        data: {
-          stem: {
-            en: 'What does SQL stand for in database management?',
-            vi: 'Từ viết tắt SQL trong quản trị cơ sở dữ liệu có nghĩa là gì?',
-          },
-          options: [
-            { id: 'opt-a', text: { en: 'Structured Query Language', vi: 'Structured Query Language' } },
-            { id: 'opt-b', text: { en: 'Simple Question Language', vi: 'Simple Question Language' } },
-            { id: 'opt-c', text: { en: 'System Query Logic', vi: 'System Query Logic' } },
-            { id: 'opt-d', text: { en: 'Standard Quick Language', vi: 'Standard Quick Language' } },
-          ],
-        },
-      },
-    ],
-  };
+export async function getExamBlueprint(blueprintId: string): Promise<ExamDetailResult> {
+  try {
+    const res = await fetch(`${API_BASE}/api/exam/${encodeURIComponent(blueprintId)}/questions`, { cache: 'no-store' });
+    if (res.status === 404) return { kind: 'not_found' };
+    if (!res.ok) return { kind: 'error' };
+    const payload = (await res.json()) as { blueprint?: BlueprintSummary; questions?: unknown };
+    return payload.blueprint && Array.isArray(payload.questions)
+      ? { kind: 'ok', blueprint: payload.blueprint, questions: payload.questions as ExamQuestionItem[] }
+      : { kind: 'error' };
+  } catch (err) {
+    console.warn('getExamBlueprint failed:', err);
+    return { kind: 'error' };
+  }
 }

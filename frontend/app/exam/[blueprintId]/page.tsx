@@ -1,4 +1,6 @@
 import Link from 'next/link';
+import { notFound } from 'next/navigation';
+import { LoadErrorNotice } from '@/components/feedback/LoadErrorNotice';
 import { ExamRunner } from '@/features/exam/ExamRunner';
 import { getExamBlueprint } from '@/features/exam/examQueries';
 
@@ -10,7 +12,21 @@ export default async function ExamDetailPage({
   params: Promise<{ blueprintId: string }>;
 }) {
   const { blueprintId } = await params;
-  const { blueprint, questions } = await getExamBlueprint(blueprintId);
+  const result = await getExamBlueprint(blueprintId);
+  if (result.kind === 'not_found') notFound();
+  if (result.kind === 'error') {
+    return (
+      <div className="relative min-h-[calc(100vh-3.5rem)] bg-science-grid pb-20">
+        <main className="relative mx-auto max-w-3xl px-4 py-6 sm:px-6 sm:py-8">
+          <LoadErrorNotice
+            message={{ en: 'Could not load this exam.', vi: 'Chưa tải được đề thi.' }}
+            retryHref={`/exam/${blueprintId}`}
+          />
+        </main>
+      </div>
+    );
+  }
+  const { blueprint, questions } = result;
 
   return (
     <div className="relative min-h-[calc(100vh-3.5rem)] bg-science-grid pb-20">
@@ -26,7 +42,7 @@ export default async function ExamDetailPage({
           </Link>
           <span>/</span>
           <span className="font-semibold text-emerald-700 dark:text-emerald-400">
-            {blueprint.title_vi}
+            {blueprint.name}
           </span>
         </nav>
 
@@ -35,18 +51,15 @@ export default async function ExamDetailPage({
           <div>
             <div className="flex items-center gap-3">
               <span className="rounded-full bg-emerald-100 px-3 py-1 text-xs font-mono font-bold uppercase text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300">
-                Môn Tin học
+                {blueprint.subject_name_vi ?? 'Đề thi'}
               </span>
               <span className="font-mono text-sm font-semibold text-gray-600">
-                ⏱ {blueprint.duration_minutes} phút · {questions.length} câu
+                {questions.length} câu
               </span>
             </div>
             <h1 className="mt-3 text-2xl sm:text-3xl font-black tracking-tight text-gray-900 dark:text-white">
-              {blueprint.title_vi}
+              {blueprint.name}
             </h1>
-            <p className="mt-1 text-sm font-mono text-gray-500 dark:text-gray-400">
-              {blueprint.title_en}
-            </p>
           </div>
 
           <span className="self-start sm:self-auto rounded-xl border border-emerald-300 bg-emerald-50 px-4 py-2 font-mono text-sm font-bold text-emerald-800 dark:border-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-200">
@@ -57,9 +70,8 @@ export default async function ExamDetailPage({
         {/* Interactive Runner */}
         <ExamRunner
           blueprintId={blueprintId}
-          blueprintTitle={{ en: blueprint.title_en, vi: blueprint.title_vi }}
+          blueprintTitle={{ en: blueprint.name, vi: blueprint.name }}
           questions={questions}
-          durationMinutes={blueprint.duration_minutes}
         />
       </main>
     </div>

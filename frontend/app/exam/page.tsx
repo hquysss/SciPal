@@ -1,52 +1,12 @@
 import Link from 'next/link';
+import { getExamBlueprints } from '@/features/exam/examQueries';
+import { NoExamsNotice } from '@/features/exam/ExamListNotices';
+import { LoadErrorNotice } from '@/components/feedback/LoadErrorNotice';
 
 export const dynamic = 'force-dynamic';
 
-interface BlueprintItem {
-  id: string;
-  title_vi: string;
-  title_en: string;
-  subject: string;
-  duration_minutes: number;
-  total_questions: number;
-  difficulty: string;
-  description: string;
-}
-
-const DEMO_BLUEPRINTS: BlueprintItem[] = [
-  {
-    id: 'bp-informatics-10',
-    title_vi: 'Khảo sát năng lực Tin học 10 — Thuật toán & Lập trình',
-    title_en: 'Grade 10 Informatics — Algorithms & Python Programming',
-    subject: 'Tin học',
-    duration_minutes: 45,
-    total_questions: 20,
-    difficulty: 'Cơ bản - Nâng cao',
-    description: 'Kiểm tra thuật toán tìm kiếm nhị phân, cấu trúc dữ liệu cơ bản, và tư duy lập trình cấu trúc.',
-  },
-  {
-    id: 'bp-informatics-11',
-    title_vi: 'Đề kiểm tra Tin học 11 — Cơ sở dữ liệu & SQL',
-    title_en: 'Grade 11 Informatics — Databases & Relational SQL',
-    subject: 'Tin học',
-    duration_minutes: 45,
-    total_questions: 25,
-    difficulty: 'Trung bình',
-    description: 'Đánh giá kiến thức về bảng, khóa chính, quan hệ và các câu lệnh truy vấn dữ liệu SQL.',
-  },
-  {
-    id: 'bp-general-science',
-    title_vi: 'Thử thách Khoa học tự nhiên liên môn (STEM)',
-    title_en: 'Interdisciplinary Natural Science & STEM Challenge',
-    subject: 'Khoa học tự nhiên',
-    duration_minutes: 30,
-    total_questions: 15,
-    difficulty: 'Tổng hợp',
-    description: 'Bộ câu hỏi tích hợp tư duy thuật toán, mô phỏng vật lý và toán học ứng dụng.',
-  },
-];
-
-export default function ExamListPage() {
+export default async function ExamListPage() {
+  const result = await getExamBlueprints();
   return (
     <div className="relative min-h-[calc(100vh-3.5rem)] bg-science-grid pb-20">
       <main className="relative mx-auto max-w-4xl px-4 py-8 sm:px-6 sm:py-12 space-y-8">
@@ -82,57 +42,61 @@ export default function ExamListPage() {
 
         {/* Blueprint List */}
         <section className="space-y-4">
-          <div className="flex items-center justify-between">
-            <h2 className="text-lg font-bold text-gray-900 dark:text-white">
-              Đề thi có sẵn ({DEMO_BLUEPRINTS.length})
-            </h2>
-            <span className="font-mono text-xs text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/50 px-2.5 py-1 rounded-full font-bold">
-              Chấm điểm tự động
-            </span>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {DEMO_BLUEPRINTS.map((bp) => (
-              <div
-                key={bp.id}
-                className="group flex flex-col justify-between rounded-3xl border border-emerald-950/10 bg-white/90 p-6 shadow-xs backdrop-blur-md transition hover:border-emerald-500/50 hover:shadow-md dark:border-white/10 dark:bg-card/90"
-              >
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between gap-2">
-                    <span className="rounded-full bg-emerald-100 px-2.5 py-0.5 font-mono text-[11px] font-bold text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300">
-                      {bp.subject}
-                    </span>
-                    <span className="font-mono text-xs text-gray-500">
-                      ⏱ {bp.duration_minutes} phút
-                    </span>
-                  </div>
-
-                  <h3 className="text-base font-bold text-gray-900 group-hover:text-emerald-700 transition dark:text-white dark:group-hover:text-emerald-400">
-                    {bp.title_vi}
-                  </h3>
-                  <p className="text-xs font-mono text-gray-400">
-                    {bp.title_en}
-                  </p>
-                  <p className="text-xs text-gray-600 dark:text-gray-300 leading-relaxed">
-                    {bp.description}
-                  </p>
-                </div>
-
-                <div className="mt-6 pt-4 border-t border-gray-100 dark:border-gray-800 flex items-center justify-between">
-                  <span className="text-xs font-semibold text-gray-500">
-                    Độ khó: <span className="text-gray-800 dark:text-gray-200">{bp.difficulty}</span>
-                  </span>
-                  <Link
-                    href={`/exam/${bp.id}`}
-                    className="inline-flex items-center gap-1.5 rounded-xl bg-emerald-600 px-4 py-2 text-xs font-bold text-white shadow-xs hover:bg-emerald-700 active:scale-95 transition"
-                  >
-                    <span>Vào thi ngay</span>
-                    <span className="text-[10px]">→</span>
-                  </Link>
-                </div>
+          {result.kind === 'error' ? (
+            <LoadErrorNotice
+              message={{ en: 'Could not load exams.', vi: 'Chưa tải được danh sách đề thi.' }}
+              retryHref="/exam"
+            />
+          ) : result.blueprints.length === 0 ? (
+            <NoExamsNotice />
+          ) : (
+            <>
+              <div className="flex items-center justify-between">
+                <h2 className="text-lg font-bold text-gray-900 dark:text-white">
+                  Đề thi có sẵn ({result.blueprints.length})
+                </h2>
+                <span className="font-mono text-xs text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/50 px-2.5 py-1 rounded-full font-bold">
+                  Chấm điểm tự động
+                </span>
               </div>
-            ))}
-          </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {result.blueprints.map((bp) => (
+                  <div
+                    key={bp.id}
+                    className="group flex flex-col justify-between rounded-3xl border border-emerald-950/10 bg-white/90 p-6 shadow-xs backdrop-blur-md transition hover:border-emerald-500/50 hover:shadow-md dark:border-white/10 dark:bg-card/90"
+                  >
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between gap-2">
+                        {bp.subject_name_vi && (
+                          <span className="rounded-full bg-emerald-100 px-2.5 py-0.5 font-mono text-[11px] font-bold text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300">
+                            {bp.subject_name_vi}
+                          </span>
+                        )}
+                        <span className="font-mono text-xs text-gray-500">
+                          {bp.grade !== null ? `Lớp ${bp.grade} · ` : ''}{bp.question_count} câu
+                        </span>
+                      </div>
+
+                      <h3 className="text-base font-bold text-gray-900 group-hover:text-emerald-700 transition dark:text-white dark:group-hover:text-emerald-400">
+                        {bp.name}
+                      </h3>
+                    </div>
+
+                    <div className="mt-6 pt-4 border-t border-gray-100 dark:border-gray-800 flex items-center justify-end">
+                      <Link
+                        href={`/exam/${bp.id}`}
+                        className="inline-flex items-center gap-1.5 rounded-xl bg-emerald-600 px-4 py-2 text-xs font-bold text-white shadow-xs hover:bg-emerald-700 active:scale-95 transition"
+                      >
+                        <span>Vào thi ngay</span>
+                        <span className="text-[10px]">→</span>
+                      </Link>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
         </section>
       </main>
     </div>
