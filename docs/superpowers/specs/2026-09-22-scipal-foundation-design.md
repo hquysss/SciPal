@@ -1,9 +1,11 @@
 # SciPal — Đặc tả khung chung
 
-**Phiên bản:** 1.7
+**Phiên bản:** 1.9
 **Ngày cập nhật:** 2026-09-26
 **Ưu tiên:** Tin học (Informatics) first
 **Mới trong v1.7:** Khóa catalog đầy đủ theo từng lớp của Chương trình GDPT 2018; lớp là tab trong catalog, không phải bước onboarding; tách rõ `available` / `compiling` / `not_applicable`
+**Mới trong v1.8:** Phạm vi sản phẩm = toàn bộ Chương trình GDPT 2018 (không riêng khoa học tự nhiên); nhận diện mọi môn là dữ liệu trong `subjects`; `available` suy từ dữ liệu; định hướng môn (track); trạng thái duyệt cho lesson/question/resource; `topics.grade`; phiên thi `exam_attempts`; idempotency cho đồng bộ offline; đồng ý của người giám hộ; đánh số phần mở rộng thành E1–E12
+**Mới trong v1.9:** Icon ảnh theo môn (`subjects.icon_url`, fallback icon chữ); nhãn năng lực số cho mỗi bài (`lessons.digital_competency`); ngôn ngữ lập trình mặc định theo người dùng (`profiles.preferred_code_language`); bảng bài tập lập trình có test ẩn (`coding_exercises`); thứ tự demo Tin học 11 Chủ đề F với Bài 19 làm bài mẫu vàng
 
 **Quan hệ tài liệu:** Đây là đặc tả nền của toàn sản phẩm. [`2026-09-25-public-landing-field-notebook-design.md`](./2026-09-25-public-landing-field-notebook-design.md) là nguồn chuẩn cho bố cục và mỹ thuật S0/S2. Riêng tính hợp lệ của môn theo từng lớp, tab lớp trong catalog và trạng thái học liệu phải tuân theo v1.7 này; không được dùng catalog cấp học rộng để hiện môn sai lớp.
 
@@ -13,11 +15,13 @@
 
 ### 1.1 Phạm vi sản phẩm và thứ tự phát triển
 
-Tầm nhìn dài hạn của SciPal là không gian học các môn khoa học bằng tiếng Anh cho học sinh Việt Nam từ lớp 1 đến lớp 12, có AI hỗ trợ và nội dung song ngữ EN/VI. Phạm vi phát hành phải được trình bày trung thực theo từng giai đoạn:
+Tầm nhìn dài hạn của SciPal là không gian học **toàn bộ Chương trình giáo dục phổ thông 2018** bằng song ngữ EN/VI cho học sinh Việt Nam từ lớp 1 đến lớp 12, có AI hỗ trợ. SciPal không giới hạn ở khoa học tự nhiên: mọi môn học và hoạt động giáo dục trong catalog §2.1 đều thuộc phạm vi sản phẩm và được hiển thị; môn chưa có học liệu dùng trạng thái `compiling` (“Đang biên soạn”). Phạm vi phát hành học liệu phải được trình bày trung thực theo từng giai đoạn:
 
-- **hiện tại:** THPT (lớp 10–12), ưu tiên Tin học lớp 11 làm môn tham chiếu.
-- **Mở rộng kế tiếp:** Toán, Vật lí, Hoá học, Sinh học THPT khi có học liệu và route thật.
+- **Hiện tại:** THPT (lớp 10–12), ưu tiên Tin học lớp 11 làm môn tham chiếu cho khung chung.
+- **Mở rộng kế tiếp:** các môn THPT khác (ưu tiên Toán, Vật lí, Hoá học, Sinh học, rồi các môn còn lại) khi có học liệu đã duyệt.
 - **Tương lai:** Tiểu học và THCS. Trước khi có học liệu đã duyệt, hai cấp này vẫn có catalog chính thức theo từng lớp nhưng môn chưa có bài dùng trạng thái `compiling`; không mô phỏng bài học, AI trực tiếp, lớp học hoặc tiến độ như thể đã phát hành.
+
+Nhãn “Đang biên soạn” là cam kết lộ trình, không phải mốc thời gian: không hiển thị ngày dự kiến hoặc tỉ lệ hoàn thành khi chưa có kế hoạch học liệu được duyệt. Với môn có tính thực hành cao (Giáo dục thể chất, Giáo dục quốc phòng và an ninh, Nghệ thuật, Hoạt động trải nghiệm), học liệu SciPal là phần lý thuyết/từ vựng/hỗ trợ, không thay thế hoạt động trên lớp; copy của môn phải nói rõ điều này khi môn chuyển sang `available`.
 
 Việc chọn cấp học là sở thích khám phá nội dung, không tự suy ra lớp chính thức, vai trò tài khoản, quyền truy cập hay tiến độ của người dùng.
 
@@ -43,7 +47,9 @@ Mỗi màn hình được tách làm hai lớp:
 
 ## 2. Biến thể theo môn — màu · icon
 
-Mỗi môn khai báo một bộ nhận diện. Toàn bộ khung đọc biến màu này để tô — không hard-code màu ở bất kỳ màn hình nào. Bảng dưới là các token tham chiếu đã định nghĩa, không phải toàn bộ catalog chương trình; mọi môn mới trong `subject_grade_catalog` phải có tên EN/VI, icon và accent token trước khi card được phát hành.
+Mỗi môn khai báo một bộ nhận diện. Toàn bộ khung đọc biến màu này để tô — không hard-code màu ở bất kỳ màn hình nào. Nhận diện là **dữ liệu** trong bảng `subjects` (`name_en`, `name_vi`, `accent_color`, `icon`, đều `NOT NULL`), không phải hằng số trong code. Vì catalog đầy đủ hiện ngay từ Phase 0 (kể cả ở `compiling`), seed catalog phải cung cấp nhận diện cho **mọi** môn trong §2.1; migration/seed thất bại nếu thiếu. Bảng dưới chỉ là các token tham chiếu đã chốt cho nhóm môn ưu tiên, không phải toàn bộ danh sách; token của các môn còn lại được chọn khi seed, phải đạt tương phản WCAG 2.2 AA trên nền sáng/tối và không trùng `--scipal-green`.
+
+**Icon ảnh (tùy chọn):** `subjects.icon_url` trỏ tới SVG (ưu tiên) hoặc PNG nền trong suốt, khung vuông 256×256, chừa lề an toàn ~15% vì icon hiển thị trong khung tròn. Cả bộ icon dùng một phong cách chung (khuyến nghị flat/line một–hai màu theo accent của môn); cấp Tiểu học có thể dùng bộ minh hoạ riêng nhưng vẫn là dữ liệu, không phải component riêng. Thiếu `icon_url` → dùng `icon` chữ, nên có thể thay dần từng môn. Ảnh phải có `alt` song ngữ bằng tên môn và nguồn/giấy phép rõ ràng nếu không tự vẽ.
 
 | Môn | Tên tiếng Anh | Màu nhận diện | Icon | Status |
 |-----|--------------|---------------|------|--------|
@@ -125,10 +131,14 @@ Catalog dùng **Chương trình giáo dục phổ thông ban hành kèm Thông t
 
 Học sinh THPT chọn 4 môn trong nhóm 9 môn lựa chọn theo chương trình hiện hành. SciPal chỉ mô tả catalog; không tự suy ra tổ hợp cá nhân nếu người học chưa chọn.
 
+**Định danh môn qua các cấp:** Một môn giữ cùng `subject_id` khi tên và chương trình liên tục qua các cấp (ví dụ `mathematics` 1–12, `informatics` 6–12, `technology` 6–12). Môn có tên hoặc chương trình khác ở cấp khác là `subject_id` riêng: `informatics-technology` (Tin học và Công nghệ, 3–5) ≠ `informatics`; `science` (Khoa học, 4–5) ≠ `natural-science` (Khoa học tự nhiên, 6–9); `history-geography` (4–9) ≠ `history` / `geography` (10–12); `vietnamese` (1–5) ≠ `literature` (6–12); `ethics` (1–5) ≠ `civic-education` (6–9) ≠ `economic-law-education` (10–12). Slug route lấy từ `subjects.slug`.
+
+**Định hướng môn (track):** Ở THPT, Tin học có hai định hướng *Tin học ứng dụng* (`ict`) và *Khoa học máy tính* (`cs`); Công nghệ có *Công nghệ công nghiệp* (`industrial`) và *Công nghệ nông nghiệp* (`agricultural`). Track là dữ liệu trong `subject_tracks`, không phải môn riêng: catalog vẫn là một card môn–lớp; S3 hiện bộ lọc track khi môn có track ở lớp đó; bài học chung cho mọi track để `track = null`. Chuyên đề học tập lựa chọn của THPT được biểu diễn là topic có `kind = 'elective_topic'`, không phải môn mới.
+
 #### Quy tắc hiển thị và trạng thái
 
 - Catalog là ma trận theo **từng cặp `subject_id + grade`**, không phải một mảng môn chung cho cả cấp học. Dải lớp trong bảng trên phải được bung thành từng lớp khi seed dữ liệu.
-- `available`: cặp môn–lớp có ít nhất một bài đã xuất bản, route hoạt động và truy vấn đọc thành công. Card có link vào S3.
+- `available`: cặp môn–lớp có ít nhất một bài `status = 'published'` và truy vấn đọc thành công. Route S3/S4 là route chung `/[subject]` cho mọi môn nên không có điều kiện “route hoạt động” riêng theo môn; không dùng danh sách route hard-code hoặc cờ bật tay. Card có link vào S3.
 - `compiling`: môn có trong chương trình của đúng lớp đã chọn nhưng chưa có bài xuất bản. Card hiện nhãn **“Đang biên soạn”** / **“In development”**, không giả dữ liệu và không có link vào trang học trống.
 - `not_applicable`: môn không thuộc chương trình của lớp đã chọn. Không render card, không đưa vào tìm kiếm và không dùng nhãn “Đang biên soạn”. Ví dụ: lớp 4–5 không hiện `Khoa học tự nhiên` của THCS; lớp 6–7 không hiện `Khoa học` của tiểu học.
 - `error`: không xác định được trạng thái do lỗi tải dữ liệu. Hiện thông báo **“Chưa kiểm tra được”** và nút thử lại; tuyệt đối không biến lỗi thành `compiling`.
@@ -143,7 +153,9 @@ Học sinh THPT chọn 4 môn trong nhóm 9 môn lựa chọn theo chương trì
 | 3 | Tự nhiên và Xã hội; Tin học và Công nghệ; Ngoại ngữ 1 bắt buộc | Khoa học; Lịch sử và Địa lí |
 | 4–5 | Khoa học; Lịch sử và Địa lí; Tin học và Công nghệ | Tự nhiên và Xã hội; Khoa học tự nhiên |
 | 6–9 | Ngữ văn; Giáo dục công dân; Khoa học tự nhiên; Công nghệ; Tin học | Tiếng Việt; Đạo đức; Khoa học; Tin học và Công nghệ |
-| 10–12 | Lịch sử bắt buộc; Địa lí và 8 môn còn lại ở nhóm lựa chọn | Lịch sử và Địa lí; Khoa học tự nhiên |
+| 6–9 | Ngoại ngữ 2 và Tiếng dân tộc thiểu số ở vai trò `optional`; Nội dung giáo dục của địa phương ở vai trò `required` | Ngoại ngữ 2 ở vai trò `required` |
+| 10–12 | Lịch sử `required`; Địa lí, Giáo dục kinh tế và pháp luật, Vật lí, Hoá học, Sinh học, Công nghệ, Tin học, Âm nhạc, Mĩ thuật đều `elective_choice` (đúng 9 môn) | Lịch sử và Địa lí; Khoa học tự nhiên; Lịch sử ở vai trò `elective_choice` |
+| 11 (Tin học) | Track `ict` và `cs` trong cùng một card Tin học | Hai card Tin học riêng |
 
 **Nguồn chuẩn hóa:** [Văn bản hợp nhất Chương trình giáo dục phổ thông](https://moet.gov.vn/content/vanban/Lists/VBPQ/Attachments/1483/vbhn-chuong-trinh-tong-the.pdf) và [Văn bản hợp nhất Thông tư 32/2018 cùng các sửa đổi](https://moet.gov.vn/content/vanban/Lists/VBPQ/Attachments/1483/vbhn-ttu-322018-202021-132022-ttbgddt.pdf), Bộ Giáo dục và Đào tạo.
 
@@ -197,7 +209,7 @@ Claude API / OpenAI API       ← provider-agnostic interface
 | S9 | Exam Mode (Thi thử) | S7, `/api/score/exam`, blueprints |
 | S10 | Authoring (Soạn nội dung) | auth role + backend service role |
 | S11 | Class Management (Quản lí lớp) | S8, class_rooms, assignments |
-| S12 | Survey & Feedback (Khảo sát) | §9.7, S8 |
+| S12 | Survey & Feedback (Khảo sát) | E7, S8 |
 
 ---
 
@@ -267,15 +279,16 @@ Claude API / OpenAI API       ← provider-agnostic interface
 - Topic accordion: mỗi topic là một accordion group
   - Lesson cards bên trong: tiêu đề + status chip (chưa học / đang học / hoàn thành)
   - Progress bar theo màu `--accent`
-- Grade filter lấy từ `subject_grade_catalog`; chỉ cho chọn lớp thuộc cấp hiện tại và có bản ghi áp dụng của môn. Nếu URL thiếu/sai `grade`, chọn lớp nhỏ nhất có bài xuất bản, hoặc lớp áp dụng đầu tiên của môn.
-- Chỉ truy vấn `topics` và `lessons` của đúng `subject_id + grade`; không trộn bài của lớp khác để lấp trạng thái trống.
+- Grade filter lấy từ `subject_grade_catalog`; chỉ cho chọn lớp có bản ghi áp dụng của môn. Cấp đang xem suy ra từ `grade` trên URL (deep link không cần trạng thái S0). Nếu URL thiếu/sai `grade`, chọn lớp nhỏ nhất có bài xuất bản, hoặc lớp áp dụng đầu tiên của môn.
+- Track filter (chỉ khi môn có `subject_tracks` ở lớp đó), đọc/ghi `track` trên URL; bài `track = null` luôn hiện.
+- Chỉ truy vấn `topics` và `lessons` của đúng `subject_id + grade`; không trộn bài của lớp khác để lấp trạng thái trống. Topic không có bài đã xuất bản không được render.
 - Search bar (client-side filter)
 
 **Luồng nội dung:** Click một môn không mở thẳng bài. S3 luôn hiển thị danh sách `lớp → chủ đề → bài học`; người dùng chọn bài trong topic để vào S4.
 
 **Data:**
 ```
-topics (subject_id) → lessons (topic_id)
+topics (subject_id, grade) → lessons (topic_id, status = 'published', track?)
 ```
 
 ---
@@ -296,12 +309,13 @@ topics (subject_id) → lessons (topic_id)
 
 **Điều chỉnh theo lứa tuổi:** Dùng cùng block schema nhưng cấu hình mật độ chữ, độ dài đoạn, kiểu phản hồi và nhịp tương tác theo `education_level`. Tiểu học không dùng nguyên xi bố cục, copy hoặc khối lượng đọc của THPT.
 
-**7 loại block:**
+**8 loại block:**
 
 | Block type | Mô tả |
 |-----------|-------|
 | `theory` | Văn bản lý thuyết song ngữ, hỗ trợ Markdown + KaTeX inline |
-| `code` | Code editor multi-tab: Python / C++ / JavaScript |
+| `code` | Code editor multi-tab: Python / C++ / JavaScript. Tab mở đầu = `profiles.preferred_code_language` (khách: lưu trên thiết bị), đổi tab thì ghi nhớ lựa chọn; chỉ là tùy chọn hiển thị, không ảnh hưởng chấm điểm |
+| `exercise` | Bài tập lập trình tham chiếu `coding_exercises` (xem E9); client chỉ nhận đề + test mẫu công khai |
 | `formula` | Công thức KaTeX độc lập + caption song ngữ |
 | `quiz` | Câu hỏi nhúng (tham chiếu ID → bảng questions) |
 | `interactive` | Mô phỏng tương tác (xem bên dưới) |
@@ -319,7 +333,7 @@ topics (subject_id) → lessons (topic_id)
 | `bio-diagram` | Sơ đồ sinh học có nhãn tương tác | ✅ |
 
 **Hoàn thành bài học:**
-- Khi user cuộn tới cuối + trả lời đủ quiz → gọi `POST /api/score/lesson`
+- Khi user cuộn tới cuối + trả lời đủ quiz → gọi `POST /api/score/lesson` kèm `idempotency_key` sinh ở client (dùng lại khi retry/đồng bộ offline)
 - Server ghi `progress`, `xp_log`, kiểm tra `streak`, trả về badges mới
 - Client hiển thị "Chúc mừng" modal với XP + badge
 
@@ -333,15 +347,17 @@ topics (subject_id) → lessons (topic_id)
 - Chat panel (slide-up on mobile, side panel on web)
 - Header: avatar bot + tên môn + badge "AI" màu `--accent`
 - Message list: bubble chat song ngữ
-- Input: text field + mic button (§9.6 voice Q&A)
+- Input: text field + mic button (E6 voice Q&A)
 - Suggested prompts: 3–4 gợi ý dựa trên bài học hiện tại
 
 **API:**
 ```
 POST /api/ai/chat
-Body: { lesson_id, messages, language_mode: 'en'|'vi'|'parallel'|'scaffolded' }
+Body: { lesson_id?, subject_id?, grade?, messages, language_mode: 'en'|'vi'|'parallel'|'scaffolded' }
 → Stream SSE response
 ```
+
+Mở từ S4 → gửi `lesson_id`; backend tự suy subject/grade/objectives từ bài và bỏ qua `subject_id`/`grade` client gửi. Mở từ menu → không có `lesson_id`; gửi `subject_id` + `grade` (đã kiểm tra với catalog) làm ngữ cảnh chung, RAG chỉ lấy từ bài đã xuất bản của cặp đó. Thiếu cả hai → tutor chung, không RAG.
 
 **RAG context:**
 - Backend fetch lesson blocks + related terms từ Supabase
@@ -350,7 +366,7 @@ Body: { lesson_id, messages, language_mode: 'en'|'vi'|'parallel'|'scaffolded' }
 
 **Quy tắc sư phạm và an toàn:**
 - Ưu tiên gợi ý từng bước, câu hỏi dẫn dắt và giải thích; không đưa đáp án hoàn chỉnh ngay khi bài đang được chấm.
-- Không hoạt động trong phiên thi có giám sát.
+- Không hoạt động trong phiên thi: backend từ chối `/api/ai/chat` khi user có `exam_attempts` đang `in_progress` và chưa hết hạn.
 - Câu trả lời phải phân biệt nội dung trong học liệu với kiến thức bổ sung; không tự nhận là nguồn chính thức.
 - Áp dụng giới hạn nội dung theo lứa tuổi, cơ chế báo phản hồi và logging tối thiểu không chứa bí mật hoặc âm thanh thô.
 - UI chỉ gọi là AI trực tiếp khi `/api/ai/chat` đã đăng ký, xác thực và được kiểm thử end-to-end.
@@ -365,7 +381,7 @@ Body: { lesson_id, messages, language_mode: 'en'|'vi'|'parallel'|'scaffolded' }
 - Search bar + alphabet quick-jump (A–Z hoặc theo tiếng Việt)
 - Filter: Tất cả môn / Tin học / Toán / ...
 - Term card: term_en / term_vi · part_of_speech · definition (song ngữ) · ví dụ
-- Audio button (§9.6): phát âm term_en → TTS pre-generated URL
+- Audio button (E6): phát âm term_en → TTS pre-generated URL
 - "Xem trong bài học" link → S4 scroll tới block chứa term này
 
 **Nguồn chuẩn:** `terms` là nguồn dịch thuật ngữ duy nhất trong app. Mỗi mục từ có nguồn tham chiếu, trạng thái duyệt và ngày rà soát; tài liệu từ điển/SGK có bản quyền chỉ dùng để đối chiếu, không sao chép nguyên văn thành kho công khai.
@@ -385,8 +401,8 @@ Body: { lesson_id, messages, language_mode: 'en'|'vi'|'parallel'|'scaffolded' }
 
 **Layout:**
 - Header: tổng XP + level badge
-- Streak calendar: 7 ngày gần nhất (ô vuông màu `--accent` nếu có học)
-- Subject progress bars: mỗi môn 1 thanh tiến trình
+- Streak calendar: 7 ngày gần nhất của **streak tổng** (ô màu `--scipal-green` nếu có học bất kỳ môn nào)
+- Subject progress bars: mỗi môn 1 thanh tiến trình màu `--accent` của môn đó, kèm streak theo môn
 - Badge wall: grid huy hiệu (earned = màu, unearned = grayscale)
 - "Mục tiêu tuần này" (Weekly Goal) mini-section
 
@@ -400,7 +416,7 @@ Body: { lesson_id, messages, language_mode: 'en'|'vi'|'parallel'|'scaffolded' }
 
 **Layout:**
 - Avatar + display_name + role (student / teacher)
-- Thống kê: tổng bài hoàn thành · XP · ngày học liên tiếp dài nhất
+- Thống kê: tổng bài hoàn thành · XP · ngày học liên tiếp dài nhất (streak tổng)
 - Cài đặt: ngôn ngữ mặc định, thông báo, tài khoản
 - Đăng xuất
 - Nếu role = teacher → link sang S11 Class Management
@@ -411,7 +427,8 @@ Body: { lesson_id, messages, language_mode: 'en'|'vi'|'parallel'|'scaffolded' }
 
 **Layout:**
 - Chọn đề: theo grade + môn + blueprint_id
-- Timer countdown (configurable per blueprint)
+- Bắt đầu → `POST /api/exam/:blueprintId/attempts` tạo `exam_attempts` với `started_at`, `expires_at` do server tính từ blueprint
+- Timer countdown hiển thị theo `expires_at` của server; bài nộp sau `expires_at` + grace period nhỏ bị từ chối hoặc chấm theo quy tắc blueprint, không tin đồng hồ client
 - Question view: 1 câu / trang (có thể switch)
   - MC: 4 options
   - TrueFalse: 4 sub-statements
@@ -428,7 +445,7 @@ Body: { lesson_id, messages, language_mode: 'en'|'vi'|'parallel'|'scaffolded' }
 - Khối 12 dùng blueprint riêng theo môn, năm áp dụng và tài liệu chính thức; không hard-code một cấu trúc vĩnh viễn trong code.
 - Mỗi blueprint có `version`, `academic_year`, `source_ref`, `status` và quy tắc tính điểm.
 - Mỗi question gắn `objective_id`, subject, grade, difficulty và nguồn để sinh ma trận đề có thể kiểm tra.
-- Luyện tổ hợp chỉ ghép các môn trong phạm vi SciPal: Toán, Vật lí, Hoá học, Sinh học, Tin học. Tổ hợp là dữ liệu cập nhật theo năm, dùng chung engine đề; không tự gán mã xét tuyển hoặc tuyên bố được một trường chấp nhận khi chưa có nguồn.
+- Luyện tổ hợp ghép các môn THPT có trong catalog và có blueprint `published`; môn chưa có blueprint không xuất hiện trong lựa chọn tổ hợp. Tổ hợp là dữ liệu cập nhật theo năm, dùng chung engine đề; không tự gán mã xét tuyển hoặc tuyên bố được một trường chấp nhận khi chưa có nguồn.
 
 ---
 
@@ -437,7 +454,7 @@ Body: { lesson_id, messages, language_mode: 'en'|'vi'|'parallel'|'scaffolded' }
 **Phạm vi:** User đăng nhập bằng Supabase JWT. Backend xác minh `app_metadata.app_role` và quyền trên tài nguyên trước khi thực hiện hành động quản trị. `service_role` chỉ tồn tại trong backend, không bao giờ được cấp cho teacher, trình duyệt hoặc mobile.
 
 **Layout:**
-- Lesson editor: drag-drop block builder (7 block types)
+- Lesson editor: drag-drop block builder (8 block types)
 - Block palette: click to add block type
 - Theory block: rich text editor song ngữ (en/vi tabs)
 - Code block: Monaco editor với syntax highlight
@@ -449,9 +466,10 @@ Body: { lesson_id, messages, language_mode: 'en'|'vi'|'parallel'|'scaffolded' }
 
 **Data flow:**
 - Save draft → `PATCH /api/authoring/lessons/:id` (backend xác minh role rồi mới dùng service role nội bộ)
-- Approve bởi admin → set `published = true`; reject → trả về `rejected` kèm ghi chú
+- Approve bởi admin → `status = 'published'`, ghi `reviewed_by`, `reviewed_at`, `published_at`; reject → `status = 'rejected'` kèm `review_note`
+- Sửa bài đã `published` tạo bản nháp mới; bản đang xuất bản vẫn hiển thị cho tới khi bản mới được duyệt
 
-**Xuất bản:** Nội dung có nguồn tham chiếu, người duyệt, trạng thái `draft | pending_review | published | rejected` và thời điểm rà soát. Người soạn không mặc nhiên được tự duyệt nếu chính sách triển khai yêu cầu admin phê duyệt.
+**Xuất bản:** Lesson, question, term và resource dùng chung vòng đời `status: draft | pending_review | published | rejected` cùng `reviewed_by`, `reviewed_at`, `review_note`. Người soạn không mặc nhiên được tự duyệt nếu chính sách triển khai yêu cầu admin phê duyệt.
 
 ---
 
@@ -469,7 +487,7 @@ Body: { lesson_id, messages, language_mode: 'en'|'vi'|'parallel'|'scaffolded' }
 
 ---
 
-### S12 — Survey & Feedback (Khảo sát nhu cầu & Phản hồi — §9.7)
+### S12 — Survey & Feedback (Khảo sát nhu cầu & Phản hồi — E7)
 
 **Mục đích:**
 - Thu thập dữ liệu nhu cầu người dùng (môn nào muốn học trước, tính năng nào cần nhất)
@@ -483,7 +501,7 @@ Body: { lesson_id, messages, language_mode: 'en'|'vi'|'parallel'|'scaffolded' }
   - Dismiss after 2 seconds nếu user không tương tác
 - **Subject demand survey** (lần đầu vào app, hoặc trigger từ S2):
   - "Bạn muốn học môn nào nhất?" (checkbox, multiple)
-  - "Bạn học lớp mấy?" (10 / 11 / 12)
+  - "Bạn học lớp mấy?" (1–12, tùy chọn; chỉ lưu trong `surveys.payload` để thống kê nhu cầu, không ghi vào `profiles` và không dùng làm lớp chính thức)
   - "Mục tiêu của bạn?" (thi THPT / học thêm / yêu thích)
 - **Feature request** (trong S8 Profile):
   - Danh sách tính năng → vote up/down
@@ -559,6 +577,12 @@ type TermRefBlock = {
   term_id: string;       // uuid → terms table
 };
 
+// Programming exercise → coding_exercises (hidden tests stay server-side)
+type ExerciseBlock = {
+  type: 'exercise';
+  exercise_id: string;   // uuid → coding_exercises table
+};
+
 // External resource card
 type ResourceRefBlock = {
   type: 'resource-ref';
@@ -572,7 +596,8 @@ type Block =
   | QuizBlock
   | InteractiveBlock
   | TermRefBlock
-  | ResourceRefBlock;
+  | ResourceRefBlock
+  | ExerciseBlock;
 ```
 
 ---
@@ -637,16 +662,19 @@ type QuestionRecord = {
 --radius: 0.5rem;
 --scipal-green: #16a34a;   /* brand color — 4-leaf clover logo */
 
-/* Per-subject — set by SubjectProvider on a scope element */
+--surface: #ffffff;          /* redefined in dark theme */
+
+/* Per-subject — set by SubjectProvider on a scope element from subjects.accent_color.
+   Values below are reference seeds only; the source of truth is the subjects table. */
 --accent: #16a34a;          /* Informatics (green)   */
 /* --accent: #2563eb; */    /* Mathematics (blue)    */
 /* --accent: #7c3aed; */    /* Physics (violet)      */
 /* --accent: #0d9488; */    /* Chemistry (teal)      */
 /* --accent: #65a30d; */    /* Biology (lime)        */
 
-/* Derived semantic tokens (always from --accent) */
---accent-10: color-mix(in srgb, var(--accent) 10%, white);
---accent-20: color-mix(in srgb, var(--accent) 20%, white);
+/* Derived semantic tokens (always from --accent; mix with surface so dark mode works) */
+--accent-10: color-mix(in srgb, var(--accent) 10%, var(--surface));
+--accent-20: color-mix(in srgb, var(--accent) 20%, var(--surface));
 --btn-primary-bg: var(--accent);
 --progress-fill: var(--accent);
 --badge-border: var(--accent);
@@ -660,38 +688,50 @@ type QuestionRecord = {
 
 ```sql
 curriculum_versions (id, code, name_vi, issued_by, source_ref jsonb, effective_from, effective_to, status, created_at)
-subjects (id, slug, name_en, name_vi, accent_color, icon, sort_order, created_at)
+subjects (id, slug, name_en, name_vi, accent_color, icon, icon_url, sort_order, created_at)   -- name/accent/icon NOT NULL; icon_url nullable
 subject_grade_catalog (id, curriculum_version_id, subject_id, grade, curriculum_role, source_ref jsonb, sort_order, active, created_at)
-topics (id, subject_id, slug, name_en, name_vi, sort_order)
-lessons (id, topic_id, subject_id, slug, title_en, title_vi, grade, objectives jsonb, blocks jsonb, source_refs jsonb, sort_order, published, created_at, updated_at)
-terms (id, subject_id, term_en, term_vi, part_of_speech, definition_en, definition_vi, example_en, example_vi, audio_url, source_refs jsonb, review_status, reviewed_at, tags)
-questions (id, subject_id, lesson_id, type, difficulty, objective_id, grade, data jsonb, source_refs jsonb, created_at)
-exam_blueprints (id, name, grade, subject_id, version, academic_year, source_ref jsonb, sections jsonb, scoring_rules jsonb, status)
+subject_tracks (id, subject_id, slug, name_en, name_vi, grades int[], sort_order)
+topics (id, subject_id, grade, kind, slug, name_en, name_vi, sort_order)   -- kind: 'core' | 'elective_topic'
+lessons (id, topic_id, subject_id, track_id, slug, title_en, title_vi, grade, objectives jsonb, digital_competency jsonb, blocks jsonb, source_refs jsonb, sort_order,
+         status, reviewed_by, reviewed_at, review_note, published_at, created_at, updated_at)
+terms (id, subject_id, term_en, term_vi, part_of_speech, definition_en, definition_vi, example_en, example_vi, audio_url, source_refs jsonb,
+       status, reviewed_by, reviewed_at, review_note, tags)
+questions (id, subject_id, lesson_id, type, difficulty, objective_id, grade, data jsonb, source_refs jsonb,
+           status, reviewed_by, reviewed_at, review_note, created_at)
+exam_blueprints (id, name, grade, subject_id, version, academic_year, source_ref jsonb, sections jsonb, scoring_rules jsonb, duration_seconds, status)
 exam_combinations (id, slug, name_en, name_vi, subject_ids uuid[], academic_year, source_ref jsonb, active)
-resources (id, subject_id, url, title_en, title_vi, description_en, description_vi, category, license_note, sort_order)
+coding_exercises (id, lesson_id, subject_id, grade, prompt jsonb, starter_code jsonb, sample_tests jsonb, hidden_tests jsonb,
+                  limits jsonb, languages text[], source_refs jsonb, status, reviewed_by, reviewed_at, review_note)
+resources (id, subject_id, url, title_en, title_vi, description_en, description_vi, category, license_note, sort_order,
+           status, reviewed_by, reviewed_at, review_note)
 ```
+
+`status` của lesson/term/question/resource chỉ nhận `draft | pending_review | published | rejected`; không còn cột `published` boolean hay `review_status` riêng. `lessons.track_id` null = dùng chung mọi track; nếu khác null phải thuộc `subject_tracks` của cùng môn và lớp. `topics.grade` phải khớp `lessons.grade` của các bài bên trong.
 
 `subject_grade_catalog` có unique key `(curriculum_version_id, subject_id, grade)`. `grade` chỉ nhận 1–12; `curriculum_role` chỉ nhận `required | elective_choice | optional | required_activity`. Không dùng `subjects.education_level`, `min_grade/max_grade` hoặc một cờ `status` cấp môn làm nguồn quyết định vì chúng không biểu diễn được các thay đổi theo từng lớp.
 
-Trạng thái card là projection ở lớp đọc dữ liệu, không phải cờ biên tập thủ công: catalog đang hiệu lực + có bài cùng lớp đã xuất bản + route hoạt động → `available`; catalog đang hiệu lực nhưng chưa có bài xuất bản → `compiling`; không có catalog row → `not_applicable`; truy vấn thất bại → `error`. Seed bắt buộc bung mọi dải lớp thành các row riêng và có test chống trùng/thiếu cặp môn–lớp.
+Trạng thái card là projection ở lớp đọc dữ liệu, không phải cờ biên tập thủ công: catalog đang hiệu lực + có bài cùng lớp `status = 'published'` → `available`; catalog đang hiệu lực nhưng chưa có bài xuất bản → `compiling`; không có catalog row → `not_applicable`; truy vấn thất bại → `error`. Seed bắt buộc bung mọi dải lớp thành các row riêng và có test chống trùng/thiếu cặp môn–lớp.
 
 `source_refs` lưu dữ liệu thư mục tối thiểu: tên nguồn, cơ quan/tác giả, năm, URL hoặc mã tài liệu, phạm vi đã tham chiếu và ghi chú quyền sử dụng. Không lưu bản sao toàn văn chỉ vì tài liệu đã được dùng để đối chiếu.
 
 ### 9.2 User tables
 
 ```sql
-profiles (id, display_name, role, avatar_url, preferred_education_level, default_language_mode, created_at)
+profiles (id, display_name, role, avatar_url, preferred_education_level, default_language_mode, preferred_code_language, created_at)   -- preferred_code_language: 'python' | 'cpp' | null
 progress (id, user_id, lesson_id, completed_at, score)
-xp_log (id, user_id, subject_id, delta, reason, created_at)
-streaks (user_id, subject_id, current_streak, longest_streak, last_active)
+xp_log (id, user_id, subject_id, delta, reason, idempotency_key, created_at)   -- unique (user_id, idempotency_key)
+streaks (user_id, subject_id, current_streak, longest_streak, last_active)   -- subject_id null = streak tổng
+exam_attempts (id, user_id, blueprint_id, status, started_at, expires_at, submitted_at, score, answers jsonb)   -- status: in_progress | submitted | expired
 badges (id, subject_id, name_en, name_vi, icon, condition jsonb)
 user_badges (user_id, badge_id, earned_at)
 class_rooms (id, teacher_id, subject_id, name, invite_code, created_at)
 class_members (class_id, student_id, joined_at)
 assignments (id, class_id, lesson_id, blueprint_id, due_at, created_at)
-surveys (id, user_id, type, payload jsonb, created_at)   -- §9.7
-consent_records (id, user_id, policy_version, consent_type, granted_at, revoked_at)
+surveys (id, user_id, type, payload jsonb, created_at)   -- E7
+consent_records (id, user_id, policy_version, consent_type, granted_by, guardian_contact_hash, granted_at, revoked_at)
 ```
+
+`consent_records.granted_by` nhận `self | guardian`. Người dùng dưới 16 tuổi cần đồng ý của cha mẹ/người giám hộ theo Nghị định 13/2023/NĐ-CP trước khi xử lý dữ liệu cá nhân ngoài mức tối thiểu để vận hành tài khoản; chỉ lưu hash liên hệ người giám hộ, không lưu thêm thông tin phụ huynh nếu tính năng không cần.
 
 Tab lớp đang xem là navigation state của S2/S3, lấy từ `grade` trên URL và không lưu vào `profiles`. Chỉ `preferred_education_level` là sở thích khám phá được đồng bộ cho tài khoản; cả hai đều không phải hồ sơ lớp học đã xác minh.
 
@@ -700,7 +740,9 @@ Tab lớp đang xem là navigation state của S2/S3, lấy từ `grade` trên U
 - `profiles`, `progress`, `xp_log`, `streaks`, `user_badges`: user sees own rows only
 - `class_rooms`: teacher sees own; students see joined rooms
 - `class_members`, `assignments`: class members see
-- `curriculum_versions`, `subject_grade_catalog`, `subjects`, `topics`, bài `lessons` đã xuất bản, `terms` đã duyệt và `resources`: public read theo đúng trường cần thiết; write = backend service role sau authorization
+- `exam_attempts`: user thấy attempt của mình; tạo/nộp chỉ qua backend
+- `curriculum_versions`, `subject_grade_catalog`, `subjects`, `subject_tracks`, `topics`, và `lessons`/`terms`/`resources` có `status = 'published'`: public read theo đúng trường cần thiết; write = backend service role sau authorization
+- `coding_exercises`: không public read trực tiếp; học sinh nhận DTO không chứa `hidden_tests`/lời giải qua backend
 - `questions`: không public read trực tiếp. Học sinh chỉ nhận DTO đã lọc qua backend hoặc safe view không chứa đáp án
 - `surveys`: anon insert allowed (for demand survey); read = service_role only
 - `consent_records`: user thấy bản ghi của mình; tạo/thu hồi qua luồng có audit, không public read
@@ -719,22 +761,30 @@ GET  /health                       → { status: 'ok' }
 GET  /api/exam/:blueprintId/questions
   → student-safe DTO; strips answer, answer_key, correct, rubric
 
-POST /api/ai/chat                  → SSE stream AI tutor response
-  Body: { lesson_id, messages, language_mode: 'en'|'vi'|'parallel'|'scaffolded' }
-  Backend derives subject, grade and objectives from lesson_id; does not trust client role/context fields
+POST /api/exam/:blueprintId/attempts → { attempt_id, expires_at }  (server-owned timer)
 
-POST /api/tts                      → { url } (§9.6 voice)
+POST /api/ai/chat                  → SSE stream AI tutor response
+  Body: { lesson_id?, subject_id?, grade?, messages, language_mode: 'en'|'vi'|'parallel'|'scaffolded' }
+  With lesson_id, backend derives subject, grade and objectives and ignores client context fields;
+  subject_id/grade are validated against the catalog; rejected while an exam attempt is in progress
+
+POST /api/tts                      → { url } (E6 voice)
   Body: { text, language: 'en'|'vi' }
 
 POST /api/score/lesson             → server-authoritative XP grant
-  Body: { lesson_id, answers: Answer[] }
+  Body: { lesson_id, answers: Answer[], idempotency_key, client_completed_at? }
   → { xp_earned, new_streak, badges_unlocked[] }
+  Same idempotency_key → trả lại kết quả cũ, không cấp XP lần hai (dùng cho retry và đồng bộ offline)
 
 POST /api/score/exam               → server-authoritative exam scoring
-  Body: { blueprint_id, answers: Answer[] }
+  Body: { attempt_id, answers: Answer[] }
   → { score, breakdown_by_topic[] }
 
-POST /api/survey                   → write survey response (§9.7)
+POST /api/exercises/:id/submit     → chạy code trong Judge sandbox với hidden tests
+  Body: { language: 'python'|'cpp', source, idempotency_key }
+  → { passed, total, results[] }   (không trả input/expected của hidden tests)
+
+POST /api/survey                   → write survey response (E7)
   Body: { type: 'post_lesson'|'demand'|'feature_request', payload }
 
 PATCH /api/authoring/lessons/:id   → update lesson (authorized teacher/admin; service_role backend-only)
@@ -758,7 +808,7 @@ Trong dòng mô tả API, `service_role` luôn có nghĩa là credential nội b
 | Mobile (Expo) | Content fetched at lesson-list open time, stored in MMKV |
 | Interactive blocks | Run in-browser (no network). PhET embeds = online-only (`offline: false`) |
 | AI Tutor | Disabled UI when offline; shows "Cần kết nối mạng" tooltip |
-| Progress event sync | Queued locally với idempotency key, backend xác minh khi reconnect |
+| Progress event sync | Queued locally với `idempotency_key`, phát lại tuần tự qua `POST /api/score/lesson` khi reconnect; backend xác minh và khử trùng |
 
 Offline không tự cấp XP, badge hoặc streak. Client có thể hiển thị tiến độ cục bộ đang chờ đồng bộ, nhưng thành tích chính thức chỉ đổi sau phản hồi thành công từ backend.
 
@@ -782,10 +832,12 @@ Offline không tự cấp XP, badge hoặc streak. Client có thể hiển thị
 ## 13. Thứ tự xây dựng khuyến nghị
 
 **Phase 0 — Public entry:**
-S0 → S1 → S2 theo landing spec; seed catalog GDPT 2018 theo từng lớp trước khi render card, môn chưa có học liệu hiện `compiling`
+S0 → S1 → S2 theo landing spec; seed catalog GDPT 2018 đầy đủ theo từng lớp **kèm nhận diện (tên EN/VI, icon, accent) cho mọi môn** trước khi render card, môn chưa có học liệu hiện `compiling`
 
 **Phase 1 — Core web THPT (Tin học reference):**
 S3 → S4 → S6 → S7; chỉ bật S5 sau khi API AI được kiểm thử end-to-end
+
+Nội dung demo: Tin học 11, Chủ đề F *Giải quyết vấn đề với sự trợ giúp của máy tính* (Bài 17–31, kĩ thuật lập trình Python/C++) làm trước các chủ đề khác. **Bài 19 — Bài toán tìm kiếm** là bài mẫu vàng: đủ `theory`, `code` (Python + C++), `interactive` (`algorithm-sim` tìm kiếm tuần tự/nhị phân), `exercise`, quiz đủ ba dạng MC/TrueFalse/Short và `digital_competency`. Duyệt xong khuôn Bài 19 mới nhân ra các bài còn lại, ưu tiên cụm mảng (17–18) và sắp xếp (21–22).
 
 **Phase 2 — Auth & Gamification:**
 S8 → S7 (hoàn chỉnh) → S9
@@ -794,69 +846,71 @@ S8 → S7 (hoàn chỉnh) → S9
 S10 → S11
 
 **Phase 4 — Survey & Expansion:**
-S12 → thêm môn Toán, Vật lí, Hoá học, Sinh học THPT bằng dữ liệu đã duyệt
+S12 → thêm học liệu các môn THPT còn lại (ưu tiên Toán, Vật lí, Hoá học, Sinh học; thứ tự sau đó theo dữ liệu khảo sát E7) bằng dữ liệu đã duyệt
 
 **Phase 5 — Tiểu học và THCS:**
 Catalog lớp–môn đã hiện ở trạng thái `compiling` → bài mẫu vàng theo cấp → QA sư phạm/song ngữ → mới bật route và chuyển đúng cặp sang `available`
 
 ---
 
-## 14. Mở rộng (§9.x)
+## 14. Mở rộng (E1–E12)
 
-### §9.1 — Nội dung theo chuẩn chương trình
+### E1 — Nội dung theo chuẩn chương trình
 - Mỗi question có `objective_id` → chuẩn CTGDPT 2018
 - Exam blueprint ánh xạ theo phân phối chuẩn (số câu theo chủ đề)
 
-### §9.2 — Spaced Repetition
+### E2 — Spaced Repetition
 - Thuật toán SM-2 (hoặc FSRS) chạy trên backend
 - `POST /api/review` → trả về flashcard queue ngày hôm nay
 
-### §9.3 — Gamification nâng cao
+### E3 — Gamification nâng cao
 - XP levels (1–50), leaderboard tuần (class + global)
 - Seasonal badges (chuỗi 7 ngày / 30 ngày)
 
-### §9.4 — Offline-first nâng cao
+### E4 — Offline-first nâng cao
 - Background sync queue (IndexedDB cho web, MMKV cho mobile)
 - Conflict resolution: server wins cho XP/streak
 
-### §9.5 — Đa ngôn ngữ mở rộng
+### E5 — Đa ngôn ngữ mở rộng
 - Thêm ngôn ngữ thứ 3 (ví dụ: Khmer, Lao) — cùng pattern `{ en, vi, km? }`
 
-### §9.6 — Hỏi/Đáp bằng giọng nói
+### E6 — Hỏi/Đáp bằng giọng nói
 - Mic button ở S5 AI Tutor → Web Speech API (web) / expo-av (mobile)
 - STT → text → gửi POST /api/ai/chat
 - TTS: `POST /api/tts` → trả URL → play
 - Glossary: audio button → phát TTS pre-generated cho term_en
 
-### §9.7 — Khảo sát nhu cầu & Phản hồi người dùng (S12)
+### E7 — Khảo sát nhu cầu & Phản hồi người dùng (S12)
 - Post-lesson micro-survey: rating + độ khó + optional feedback
 - Subject demand survey: môn nào / lớp mấy / mục tiêu
 - Feature request voting (trong Profile)
 - Anonymous option cho demand survey
 - Data dùng để ưu tiên lộ trình phát triển môn học tiếp theo
 
-### §9.8 — Sư phạm song ngữ và thích nghi theo độ tuổi
+### E8 — Sư phạm song ngữ và thích nghi theo độ tuổi
 - Đánh giá riêng khả năng hiểu kiến thức và khả năng dùng thuật ngữ tiếng Anh; không lấy trình độ tiếng Anh làm đại diện duy nhất cho năng lực khoa học
 - Cho phép chuyển `en | vi | parallel | scaffolded` mà không mất vị trí đọc hoặc câu trả lời đang làm
+- Mỗi bài có thể gắn nhãn năng lực số (`digital_competency` `{ en, vi }`, ví dụ đặt prompt, gỡ lỗi với AI) lấy từ kế hoạch dạy học; hiển thị ở đầu S4 cùng yêu cầu cần đạt
 - Mỗi bài có chỉ báo mức ngôn ngữ, thuật ngữ trọng tâm và gợi ý phát âm; Tiểu học ưu tiên câu ngắn, âm thanh/hình ảnh có mục đích, THCS tăng dần giải thích, THPT dùng văn phong học thuật
 - Bài mẫu vàng của mỗi cấp phải qua review sư phạm, song ngữ, khả năng tiếp cận và thiết bị yếu trước khi nhân rộng
 
-### §9.9 — Chạy code và luyện tập trực tuyến
+### E9 — Chạy code và luyện tập trực tuyến
 - Code mẫu Python/C++ có thể chạy trong sandbox phù hợp; trình soạn thảo trên client không phải môi trường chấm an toàn
 - Bài chấm tự động đi qua backend/Judge service, giới hạn CPU, RAM, thời gian, network và kích thước output; test ẩn không gửi xuống client
+- `coding_exercises.hidden_tests` và lời giải mẫu không public read (như `questions`); DTO học sinh chỉ gồm `prompt`, `starter_code`, `sample_tests`, `limits`, `languages`. Đề song ngữ `{ en, vi }`, mỗi ngôn ngữ trong `languages` phải có starter code và lời giải đã chạy qua toàn bộ test trước khi `published`
 - Liên kết Codeforces/VNOI/LQDOJ hoặc dịch vụ ngoài được lưu ở `resources`, mở như tài nguyên bên ngoài và tuân thủ điều khoản/bản quyền; không sao chép đề hoặc lời giải về SciPal
 
-### §9.10 — Quyền riêng tư và quản trị dữ liệu học sinh
+### E10 — Quyền riêng tư và quản trị dữ liệu học sinh
 - Công bố dữ liệu nào được thu thập, mục đích, thời hạn lưu và bên có quyền xem
 - Có luồng xuất/xoá dữ liệu và thu hồi đồng ý phù hợp với cách triển khai ở trường; không thu thập trường/lớp/phụ huynh nếu tính năng không cần
 - Báo cáo, leaderboard và khảo sát dùng định danh tối thiểu; không công khai thành tích cá nhân mặc định
 
-### §9.11 — Nguồn học liệu và bản quyền
+### E11 — Nguồn học liệu và bản quyền
 - Nội dung bám yêu cầu cần đạt của CTGDPT 2018 nhưng được biên soạn lại; không chép nguyên văn SGK, từ điển, đề hoặc hình có bản quyền khi chưa có quyền sử dụng
 - Mọi lesson, term, question, resource có `source_refs` và trạng thái review
 - Cấu trúc đề, tổ hợp và danh mục chương trình là dữ liệu có phiên bản; rà soát lại trước mỗi năm học/mùa thi
 
-### §9.12 — Khả năng tiếp cận và thiết bị yếu
+### E12 — Khả năng tiếp cận và thiết bị yếu
 - Luồng chính dùng được bằng bàn phím và trình đọc màn hình; focus rõ, thứ tự đọc hợp lý, semantic HTML và nhãn EN/VI đúng ngôn ngữ
 - Vùng chạm tối thiểu 44×44px, nội dung chịu được phóng chữ 200%, tương phản đạt WCAG 2.2 AA và không dùng màu làm tín hiệu duy nhất
 - Tôn trọng `prefers-reduced-motion`; bài học không phụ thuộc animation, WebGL hoặc âm thanh để hiểu kiến thức cốt lõi
@@ -879,10 +933,11 @@ Catalog lớp–môn đã hiện ở trạng thái `compiling` → bài mẫu v�
 | `LanguageModeToggle` | `mode, setMode` | EN / VI / parallel / scaffolded |
 | `EducationLevelGate` | `value, onSelect` | S0; null requires an explicit choice |
 | `GradeTabs` | `educationLevel, value, onChange` | S2/S3; tab lọc nội dung, không phải gate hoặc profile preference |
-| `SubjectCatalogCard` | `subject, grade, curriculumRole, availability` | Chỉ render cặp áp dụng; `compiling` không có link; `error` có retry |
+| `SubjectCatalogCard` | `subject, grade, curriculumRole, availability` | Chỉ render cặp áp dụng; `compiling` không có link; `error` có retry; hiện `icon_url` nếu có, không thì `icon` chữ |
 | `BlockRenderer` | `blocks: Block[]` | Routes to sub-renderer by type |
 | `TheoryRenderer` | `block: TheoryBlock` | Markdown + KaTeX |
-| `CodeRenderer` | `block: CodeBlock` | Multi-tab Monaco/Prism |
+| `CodeRenderer` | `block: CodeBlock` | Multi-tab Monaco/Prism; tab mặc định theo ngôn ngữ lập trình ưa thích |
+| `ExerciseRenderer` | `exercise: StudentExerciseDTO` | Đề + test mẫu; nộp bài qua backend, không nhận hidden tests |
 | `FormulaRenderer` | `block: FormulaBlock` | KaTeX display |
 | `QuizBlock` | `question: Question` | MC / TrueFalse / Short |
 | `ExamQuestionView` | `question: StudentQuestionDTO` | Never accepts server answer fields |
@@ -890,7 +945,7 @@ Catalog lớp–môn đã hiện ở trạng thái `compiling` → bài mẫu v�
 | `TermRefCard` | `term: Term` | Inline card + link |
 | `ResourceRefCard` | `resource: Resource` | Thumbnail + CTA |
 | `OnlinePill` | `online: boolean` | Green/red dot + label |
-| `SurveyModal` | `type, onSubmit` | §9.7 survey UI |
+| `SurveyModal` | `type, onSubmit` | E7 survey UI |
 
 ---
 
