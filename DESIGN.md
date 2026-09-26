@@ -32,6 +32,14 @@ Menu, popover hay dialog render qua portal phải gắn vào trong `[data-app-sh
 - Giữ bố cục Katha (mascot, slide minh hoạ, hiệu ứng); bộ biến `--lg-*` trong `frontend/app/login/login.css` trỏ về token chung (`--lg-gold`/`--lg-primary` → `action`, focus → `focus`). Nút sáng/tối dùng `ThemeToggle` chung; không trang nào được gắn `data-theme`, `data-level`, `.dark` hay biến màu lên `<html>` (test `frontend/lib/theme/rootTheme.test.ts`).
 - Minh hoạ slide dùng `--art-1…4` và `--art-deep`, dẫn xuất từ `nav`/`nav-ink` của cấp (khai báo trên `.katha-login-slide`); nền slide là gradient `nav` → `--art-deep`.
 
+### Trang bài học
+
+- Nội dung bài nằm trên một tờ vở `surface` có dải lề màu môn (`--accent`) ở mép trái: class `sheet` trong `frontend/components/blocks/notebook.module.css`; tờ vở che hoạ tiết nền (`data-pattern="off"`).
+- Khối lý thuyết tự kẻ dòng cách nhau `1.75rem` (class `rules`); bài Tiểu học kẻ ô li. Mọi khoảng cách dọc trong khối là bội của `1.75rem` (`leading-7`, `mb-7`, `h2` `leading-[3.5rem]`) để chữ ngồi trên dòng. Khi in thì bỏ dòng kẻ.
+- Markdown được gán kiểu bằng `components` của `react-markdown` trong `TheoryRenderer` (không dùng plugin typography); bảng và `pre` cuộn ngang trong khối, link ngoài mở tab mới với `rel="noopener noreferrer"`.
+- Trang bài bọc `LevelScope` theo lớp của bài (`levelOfGrade(lesson.grade)`), đặt **ngoài** `SubjectProvider`: bài lớp 5 mở bởi học sinh THPT có vùng bài tông Tiểu học, navbar vẫn tông THPT. Trang môn bọc từng nhóm lớp trong `LevelScope` riêng.
+- Accent môn chỉ là nhãn vở (nhãn môn, ô icon, dải lề, gạch chân tab code, viền thẻ thuật ngữ): chữ dùng `text-accent-ink`, nền nhạt `color-mix(accent 12%, surface)`; nút chính luôn `bg-action`.
+
 ### Palette
 
 | Role | Token | Value | Usage |
