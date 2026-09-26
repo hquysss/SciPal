@@ -5,18 +5,18 @@ export interface ProgressSummary {
   completedLessons: Array<{
     id: string;
     score: number | null;
-    lessons: { title_vi: string; subjects?: { name_vi: string } | null } | null;
+    lessons: { title_vi: string; title_en?: string; subjects?: { name_vi: string; name_en?: string } | null } | null;
   }>;
   streaks: Array<{
     subject_id: string;
     current_streak: number;
     last_active: string | null;
-    subjects: { name_vi: string; accent_color: string } | null;
+    subjects: { name_vi: string; name_en?: string; accent_color: string } | null;
   }>;
   totalXP: number;
   badges: Array<{
     earned_at: string;
-    badges: { name_vi: string; icon: string } | null;
+    badges: { name_vi: string; name_en?: string; icon: string } | null;
   }>;
   /** True when any query failed; the lists are then empty, not real values. */
   loadFailed: boolean;
@@ -33,12 +33,12 @@ export async function getUserProgress(userId: string): Promise<ProgressSummary> 
     const [progressRes, streaksRes, xpRes, badgesRes] = await Promise.all([
       supabase
         .from('progress')
-        .select('*, lessons(title_vi, subjects(name_vi))')
+        .select('*, lessons(title_vi, title_en, subjects(name_vi, name_en))')
         .eq('user_id', userId)
         .order('completed_at', { ascending: false }),
       supabase
         .from('streaks')
-        .select('*, subjects(name_vi, accent_color)')
+        .select('*, subjects(name_vi, name_en, accent_color)')
         .eq('user_id', userId),
       supabase
         .from('xp_log')
@@ -46,7 +46,7 @@ export async function getUserProgress(userId: string): Promise<ProgressSummary> 
         .eq('user_id', userId),
       supabase
         .from('user_badges')
-        .select('earned_at, badges(name_vi, icon)')
+        .select('earned_at, badges(name_vi, name_en, icon)')
         .eq('user_id', userId),
     ]);
 

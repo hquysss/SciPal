@@ -16,7 +16,7 @@ export default async function ProfileLevelShowcase({
 
   return (
     <main className="mx-auto w-full max-w-3xl space-y-6 px-4 py-10 sm:px-6">
-      <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Profile learning preference showcase</h1>
+      <h1 className="text-2xl font-bold text-ink">Profile learning preference showcase</h1>
       <AccountSettings
         currentRole="student"
         educationPreference={preference}

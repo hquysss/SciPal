@@ -1,7 +1,10 @@
 'use client';
 
 import Link from 'next/link';
+import { ClipboardCheck, Flame, NotebookPen, School } from 'lucide-react';
 import { useLanguage } from '@scipal/hooks';
+import { Badge } from '../../components/ui/badge';
+import { buttonVariants } from '../../components/ui/button';
 
 interface ProfileCardProps {
   displayName: string;
@@ -11,7 +14,7 @@ interface ProfileCardProps {
 }
 
 export function ProfileCard({ displayName, role, avatarUrl, stats }: ProfileCardProps) {
-  const { lang, t } = useLanguage();
+  const { t } = useLanguage();
 
   const initials =
     displayName
@@ -22,131 +25,90 @@ export function ProfileCard({ displayName, role, avatarUrl, stats }: ProfileCard
       .join('')
       .toUpperCase() || 'SP';
 
+  const roleBadge =
+    role === 'admin'
+      ? { variant: 'default' as const, label: t({ en: 'Admin', vi: 'Quản trị viên' }) }
+      : role === 'teacher'
+        ? { variant: 'outline' as const, label: t({ en: 'Teacher', vi: 'Giáo viên' }) }
+        : { variant: 'secondary' as const, label: t({ en: 'Student', vi: 'Học sinh' }) };
+
+  const stat = 'rounded-lg bg-surface-sunken p-3';
+  const statValue = 'text-2xl font-bold tabular-nums text-ink';
+  const statLabel = 'mt-1 text-sm text-ink-muted';
+
   return (
-    <div className="relative overflow-hidden rounded-3xl border border-emerald-950/10 bg-white/90 p-6 sm:p-8 shadow-xs backdrop-blur-md transition hover:shadow-md dark:border-white/10 dark:bg-card/90">
-      {/* Subtle field notebook background badge */}
-      <div className="pointer-events-none absolute -right-6 -top-6 select-none font-mono text-8xl font-black text-emerald-900/5 dark:text-emerald-100/5">
-        SP
-      </div>
+    <section className="rounded-xl border border-line bg-surface p-6 sm:p-8">
+      <div className="flex items-start gap-4">
+        <div className="flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-surface-sunken text-2xl font-bold text-ink">
+          {avatarUrl ? (
+            <img src={avatarUrl} alt={displayName} className="h-full w-full object-cover" />
+          ) : (
+            <span aria-hidden="true">{initials}</span>
+          )}
+        </div>
 
-      <div className="relative z-10 flex flex-col sm:flex-row sm:items-start justify-between gap-6">
-        <div className="flex items-start gap-4">
-          <div className="relative flex h-20 w-20 shrink-0 items-center justify-center rounded-2xl border-2 border-emerald-600/30 bg-gradient-to-br from-emerald-100 to-teal-100 text-2xl font-black text-emerald-800 shadow-inner dark:from-emerald-950 dark:to-teal-900 dark:text-emerald-200">
-            {avatarUrl ? (
-              <img
-                src={avatarUrl}
-                alt={displayName}
-                className="h-full w-full rounded-2xl object-cover"
-              />
-            ) : (
-              <span>{initials}</span>
-            )}
-          </div>
-
-          <div className="space-y-1.5">
-            <div className="flex flex-wrap items-center gap-2">
-              <h2 className="text-xl sm:text-2xl font-black tracking-tight text-gray-900 dark:text-white">
-                {displayName}
-              </h2>
-              <span
-                className={`rounded-full px-2.5 py-0.5 text-[11px] font-bold uppercase tracking-wider ${
-                  role === 'teacher' || role === 'admin'
-                    ? 'border border-purple-300 bg-purple-100 text-purple-800 dark:border-purple-800 dark:bg-purple-950/50 dark:text-purple-300'
-                    : 'border border-emerald-300 bg-emerald-100 text-emerald-800 dark:border-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-300'
-                }`}
-              >
-                {role === 'teacher'
-                  ? t({ en: 'Teacher', vi: 'Giáo viên' })
-                  : role === 'admin'
-                    ? t({ en: 'Admin', vi: 'Quản trị viên' })
-                    : t({ en: 'Student', vi: 'Học sinh' })}
-              </span>
-            </div>
-
-          </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <h2 className="text-2xl font-bold text-ink">{displayName}</h2>
+          <Badge variant={roleBadge.variant}>{roleBadge.label}</Badge>
         </div>
       </div>
 
       {/* Stats summary row */}
-      <div className="relative z-10 mt-6 grid grid-cols-3 gap-3 border-t border-dashed border-gray-200 pt-6 text-center dark:border-gray-800">
-        <div className="rounded-xl bg-gray-50/80 p-3 dark:bg-card/50">
-          <div className="font-mono text-2xl font-black text-emerald-600 dark:text-emerald-400">
-            {stats.totalXP.toLocaleString()}
-          </div>
-          <div className="text-[11px] font-semibold text-gray-500 dark:text-gray-400">
-            {t({ en: 'Total XP', vi: 'Tổng điểm XP' })}
-          </div>
+      <dl className="mt-6 grid grid-cols-3 gap-3 border-t border-line pt-6 text-center">
+        <div className={stat}>
+          <dt className="sr-only">{t({ en: 'Total XP', vi: 'Tổng điểm XP' })}</dt>
+          <dd className={statValue}>{stats.totalXP.toLocaleString()}</dd>
+          <dd aria-hidden="true" className={statLabel}>{t({ en: 'Total XP', vi: 'Tổng điểm XP' })}</dd>
         </div>
-
-        <div className="rounded-xl bg-gray-50/80 p-3 dark:bg-card/50">
-          <div className="font-mono text-2xl font-black text-gray-900 dark:text-white">
-            {stats.completedLessons}
-          </div>
-          <div className="text-[11px] font-semibold text-gray-500 dark:text-gray-400">
-            {t({ en: 'Lessons Done', vi: 'Bài đã học' })}
-          </div>
+        <div className={stat}>
+          <dt className="sr-only">{t({ en: 'Lessons done', vi: 'Bài đã học' })}</dt>
+          <dd className={statValue}>{stats.completedLessons}</dd>
+          <dd aria-hidden="true" className={statLabel}>{t({ en: 'Lessons done', vi: 'Bài đã học' })}</dd>
         </div>
-
-        <div className="rounded-xl bg-gray-50/80 p-3 dark:bg-card/50">
-          <div className="font-mono text-2xl font-black text-amber-500">
-            🔥 {stats.longestStreak}
-          </div>
-          <div className="text-[11px] font-semibold text-gray-500 dark:text-gray-400">
-            {t({ en: 'Best Streak', vi: 'Chuỗi ngày kỉ lục' })}
-          </div>
+        <div className={stat}>
+          <dt className="sr-only">{t({ en: 'Best streak', vi: 'Chuỗi ngày kỉ lục' })}</dt>
+          <dd className={`${statValue} inline-flex items-center justify-center gap-1`}>
+            <Flame aria-hidden="true" className="h-5 w-5 text-warning" />
+            {stats.longestStreak}
+          </dd>
+          <dd aria-hidden="true" className={statLabel}>{t({ en: 'Best streak', vi: 'Chuỗi ngày kỉ lục' })}</dd>
         </div>
-      </div>
+      </dl>
 
       {/* Teacher workspace action panel */}
       {role === 'teacher' && (
-        <div className="relative z-10 mt-6 rounded-2xl border border-purple-200 bg-purple-50/80 p-4 shadow-inner dark:border-purple-900/50 dark:bg-purple-950/30">
-          <div className="flex items-center justify-between mb-3">
-            <span className="text-xs font-bold uppercase tracking-wider text-purple-900 dark:text-purple-300">
-              🛠️ {t({ en: 'Teacher Teaching Studio', vi: 'Không gian sư phạm giáo viên' })}
-            </span>
-          </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-            <Link
-              href="/teacher/classes"
-              className="inline-flex items-center justify-center gap-2 rounded-xl bg-purple-700 py-2.5 px-4 text-xs font-bold text-white shadow-xs hover:bg-purple-800 active:scale-[0.98] transition"
-            >
-              <span>🏫 {t({ en: 'Classroom Management', vi: 'Quản lý lớp học' })}</span>
-              <span className="font-mono text-[10px]">→</span>
+        <div className="mt-6 rounded-lg border border-line bg-surface-sunken p-4">
+          <h3 className="mb-3 text-sm font-semibold text-ink">
+            {t({ en: 'Teaching studio', vi: 'Không gian sư phạm giáo viên' })}
+          </h3>
+          <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
+            <Link href="/teacher/classes" className={buttonVariants()}>
+              <School aria-hidden="true" />
+              {t({ en: 'Classroom management', vi: 'Quản lý lớp học' })}
             </Link>
-            <Link
-              href="/teacher/lessons"
-              className="inline-flex items-center justify-center gap-2 rounded-xl border border-purple-300 bg-white py-2.5 px-4 text-xs font-bold text-purple-800 hover:bg-purple-100/80 active:scale-[0.98] transition dark:border-purple-800 dark:bg-card dark:text-purple-300"
-            >
-              <span>📝 {t({ en: 'Lesson Authoring Studio', vi: 'Soạn thảo bài học' })}</span>
-              <span className="font-mono text-[10px]">→</span>
+            <Link href="/teacher/lessons" className={buttonVariants({ variant: 'outline' })}>
+              <NotebookPen aria-hidden="true" />
+              {t({ en: 'Lesson authoring studio', vi: 'Soạn thảo bài học' })}
             </Link>
           </div>
         </div>
       )}
 
       {role === 'admin' && (
-        <div className="relative z-10 mt-6 rounded-2xl border border-purple-200 bg-purple-50/80 p-4 shadow-inner dark:border-purple-900/50 dark:bg-purple-950/30">
-          <div className="mb-3 flex items-center justify-between">
-            <span className="text-xs font-bold uppercase tracking-wider text-purple-900 dark:text-purple-300">
-              🛡️ {t({ en: 'Content review', vi: 'Kiểm duyệt nội dung' })}
-            </span>
-          </div>
+        <div className="mt-6 rounded-lg border border-line bg-surface-sunken p-4">
+          <h3 className="mb-3 text-sm font-semibold text-ink">{t({ en: 'Content review', vi: 'Kiểm duyệt nội dung' })}</h3>
           <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
-            <Link
-              href="/admin/lessons/review"
-              className="inline-flex items-center justify-center gap-2 rounded-xl bg-purple-700 px-4 py-2.5 text-xs font-bold text-white shadow-xs transition hover:bg-purple-800"
-            >
-              {t({ en: 'Review submitted lessons', vi: 'Duyệt bài giáo viên gửi' })} →
+            <Link href="/admin/lessons/review" className={buttonVariants()}>
+              <ClipboardCheck aria-hidden="true" />
+              {t({ en: 'Review submitted lessons', vi: 'Duyệt bài giáo viên gửi' })}
             </Link>
-            <Link
-              href="/teacher/lessons"
-              className="inline-flex items-center justify-center gap-2 rounded-xl border border-purple-300 bg-white px-4 py-2.5 text-xs font-bold text-purple-800 transition hover:bg-purple-100/80 dark:border-purple-800 dark:bg-card dark:text-purple-300"
-            >
-              {t({ en: 'Open lesson studio', vi: 'Mở Studio bài học' })} →
+            <Link href="/teacher/lessons" className={buttonVariants({ variant: 'outline' })}>
+              <NotebookPen aria-hidden="true" />
+              {t({ en: 'Open lesson studio', vi: 'Mở Studio bài học' })}
             </Link>
           </div>
         </div>
       )}
-    </div>
+    </section>
   );
 }
