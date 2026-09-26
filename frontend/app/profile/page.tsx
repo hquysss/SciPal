@@ -1,4 +1,3 @@
-import Link from 'next/link';
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { createServerClient } from '@scipal/supabase';
@@ -6,6 +5,7 @@ import { getUserProfile } from '@/features/profile/profileQueries';
 import { LoadErrorNotice } from '@/components/feedback/LoadErrorNotice';
 import { parseEducationLevel, resolveEducationLevel, type EducationLevel } from '@/features/landing/educationLevel';
 import { ProfileCard } from '@/features/profile/ProfileCard';
+import { ProfileBreadcrumb } from '@/features/profile/ProfileBreadcrumb';
 import { AccountSettings } from '@/features/profile/AccountSettings';
 import { FeatureRequestBoard } from '@/features/survey/FeatureRequestBoard';
 
@@ -50,46 +50,35 @@ export default async function ProfilePage() {
       : ((profile?.role as 'student' | 'teacher') ?? 'student');
 
   return (
-    <div className="relative min-h-[calc(100vh-3.5rem)] bg-science-grid pb-20">
-      <main className="relative mx-auto max-w-2xl px-4 py-8 sm:px-6 sm:py-12 space-y-6">
-        {/* Breadcrumb navigation */}
-        <nav className="flex items-center gap-2 text-xs font-mono text-gray-500">
-          <Link href="/" className="hover:text-gray-900 transition dark:hover:text-white">
-            Trang chủ
-          </Link>
-          <span>/</span>
-          <span className="font-semibold text-emerald-700 dark:text-emerald-400">
-            Hồ sơ cá nhân
-          </span>
-        </nav>
+    <main className="mx-auto flex w-full max-w-2xl flex-col gap-6 px-4 pb-20 pt-8 sm:px-6 sm:pt-12">
+      <ProfileBreadcrumb />
 
-        {loadFailed && (
-          <LoadErrorNotice
-            message={{
-              en: 'We could not load your learning stats. The numbers below may be incomplete — please reload.',
-              vi: 'Chưa tải được số liệu học tập. Số liệu bên dưới có thể chưa đầy đủ — vui lòng tải lại trang.',
-            }}
-          />
-        )}
-
-        {/* Profile Stats Card */}
-        <ProfileCard
-          displayName={displayName}
-          role={role}
-          avatarUrl={profile?.avatar_url}
-          stats={stats}
+      {loadFailed && (
+        <LoadErrorNotice
+          message={{
+            en: 'We could not load your learning stats. The numbers below may be incomplete — please reload.',
+            vi: 'Chưa tải được số liệu học tập. Số liệu bên dưới có thể chưa đầy đủ — vui lòng tải lại trang.',
+          }}
         />
+      )}
 
-        {/* Account & Learning Settings */}
-        <AccountSettings
-          currentRole={role}
-          educationPreference={educationPreference}
-          isAuthenticated
-        />
+      {/* Profile Stats Card */}
+      <ProfileCard
+        displayName={displayName}
+        role={role}
+        avatarUrl={profile?.avatar_url}
+        stats={stats}
+      />
 
-        {/* Feature Request & Innovation Board (§9.7) */}
-        <FeatureRequestBoard />
-      </main>
-    </div>
+      {/* Account & Learning Settings */}
+      <AccountSettings
+        currentRole={role}
+        educationPreference={educationPreference}
+        isAuthenticated
+      />
+
+      {/* Feature Request & Innovation Board (§9.7) */}
+      <FeatureRequestBoard />
+    </main>
   );
 }
