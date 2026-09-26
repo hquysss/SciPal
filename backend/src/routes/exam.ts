@@ -1,4 +1,5 @@
 import type { FastifyPluginAsync } from 'fastify';
+import { BLUEPRINT_COLUMNS, toBlueprintSummary, type BlueprintRow } from '../exam/blueprintSummary.js';
 
 interface ExamAnswer {
   question_id: string;
@@ -21,133 +22,41 @@ export function dedupeAnswers(answers: unknown[]): ExamAnswer[] {
 }
 
 export const examRoutes: FastifyPluginAsync = async (app) => {
+  app.get('/api/exam/blueprints', async (request, reply) => {
+    if (!app.supabase) return reply.code(503).send({ error: 'Dịch vụ đề thi chưa sẵn sàng.' });
+    const { data, error } = await app.supabase
+      .from('exam_blueprints')
+      .select(BLUEPRINT_COLUMNS)
+      .order('name');
+    if (error) {
+      request.log.error({ err: error }, 'Failed to list exam blueprints');
+      return reply.code(500).send({ error: 'Không tải được danh sách đề thi.' });
+    }
+    return reply.send({ blueprints: ((data ?? []) as BlueprintRow[]).map(toBlueprintSummary) });
+  });
+
   // Fetch blueprint questions without exposing answers
   app.get('/api/exam/:blueprintId/questions', async (request, reply) => {
     const { blueprintId } = request.params as { blueprintId: string };
+    if (!app.supabase) return reply.code(503).send({ error: 'Dịch vụ đề thi chưa sẵn sàng.' });
 
-    let blueprint: any = null;
-    let rawQuestions: any[] = [];
-
-    if (app.supabase) {
-      const { data: bp } = await app.supabase
-        .from('exam_blueprints')
-        .select('*')
-        .eq('id', blueprintId)
-        .single();
-      blueprint = bp;
-
-      const { data: questions } = await app.supabase
-        .from('questions')
-        .select('id, subject_id, type, difficulty, data')
-        .limit(20);
-      rawQuestions = questions ?? [];
+    const { data: bp, error: bpError } = await app.supabase
+      .from('exam_blueprints')
+      .select(BLUEPRINT_COLUMNS)
+      .eq('id', blueprintId)
+      .maybeSingle();
+    if (bpError) {
+      request.log.error({ err: bpError, blueprintId }, 'Failed to load exam blueprint');
+      return reply.code(500).send({ error: 'Không tải được đề thi.' });
     }
+    if (!bp) return reply.code(404).send({ error: 'Không tìm thấy đề thi.' });
+    const blueprint = toBlueprintSummary(bp as BlueprintRow);
 
-    // If no questions found in Supabase (e.g. local test/demo), supply standard Informatics exam questions
-    if (!blueprint) {
-      blueprint = {
-        id: blueprintId,
-        title_en: 'Mid-term Informatics Examination',
-        title_vi: 'Đề thi khảo sát chất lượng môn Tin học',
-        duration_minutes: 45,
-        total_questions: 5,
-      };
-    }
-
-    if (rawQuestions.length === 0) {
-      rawQuestions = [
-        {
-          id: 'q-demo-1',
-          type: 'mc',
-          difficulty: 'medium',
-          data: {
-            stem: {
-              en: 'What is the worst-case time complexity of Binary Search on a sorted array of size N?',
-              vi: 'Độ phức tạp thời gian trong trường hợp xấu nhất của thuật toán Tìm kiếm nhị phân trên mảng đã sắp xếp kích thước N là gì?',
-            },
-            options: [
-              { id: 'opt-a', text: { en: 'O(1)', vi: 'O(1)' } },
-              { id: 'opt-b', text: { en: 'O(log N)', vi: 'O(log N)' } },
-              { id: 'opt-c', text: { en: 'O(N)', vi: 'O(N)' } },
-              { id: 'opt-d', text: { en: 'O(N log N)', vi: 'O(N log N)' } },
-            ],
-            answer: 'opt-b', // will be stripped
-          },
-        },
-        {
-          id: 'q-demo-2',
-          type: 'mc',
-          difficulty: 'easy',
-          data: {
-            stem: {
-              en: 'Which Python keyword is used to define an anonymous or inline function?',
-              vi: 'Từ khóa nào trong Python được sử dụng để định nghĩa hàm ẩn danh (inline function)?',
-            },
-            options: [
-              { id: 'opt-a', text: { en: 'def', vi: 'def' } },
-              { id: 'opt-b', text: { en: 'func', vi: 'func' } },
-              { id: 'opt-c', text: { en: 'lambda', vi: 'lambda' } },
-              { id: 'opt-d', text: { en: 'inline', vi: 'inline' } },
-            ],
-            answer: 'opt-c',
-          },
-        },
-        {
-          id: 'q-demo-3',
-          type: 'mc',
-          difficulty: 'hard',
-          data: {
-            stem: {
-              en: 'Which data structure operates on a Last-In, First-Out (LIFO) principle?',
-              vi: 'Cấu trúc dữ liệu nào hoạt động theo nguyên lý Vào sau, Ra trước (LIFO)?',
-            },
-            options: [
-              { id: 'opt-a', text: { en: 'Queue (Hàng đợi)', vi: 'Queue (Hàng đợi)' } },
-              { id: 'opt-b', text: { en: 'Stack (Ngăn xếp)', vi: 'Stack (Ngăn xếp)' } },
-              { id: 'opt-c', text: { en: 'Linked List (Danh sách liên kết)', vi: 'Linked List (Danh sách liên kết)' } },
-              { id: 'opt-d', text: { en: 'Binary Tree (Cây nhị phân)', vi: 'Binary Tree (Cây nhị phân)' } },
-            ],
-            answer: 'opt-b',
-          },
-        },
-        {
-          id: 'q-demo-4',
-          type: 'mc',
-          difficulty: 'medium',
-          data: {
-            stem: {
-              en: 'In Python, which of the following collections is immutable?',
-              vi: 'Trong Python, kiểu tập hợp dữ liệu nào sau đây là bất biến (immutable)?',
-            },
-            options: [
-              { id: 'opt-a', text: { en: 'List', vi: 'List' } },
-              { id: 'opt-b', text: { en: 'Dictionary', vi: 'Dictionary' } },
-              { id: 'opt-c', text: { en: 'Set', vi: 'Set' } },
-              { id: 'opt-d', text: { en: 'Tuple', vi: 'Tuple' } },
-            ],
-            answer: 'opt-d',
-          },
-        },
-        {
-          id: 'q-demo-5',
-          type: 'mc',
-          difficulty: 'medium',
-          data: {
-            stem: {
-              en: 'What does SQL stand for in database management?',
-              vi: 'Từ viết tắt SQL trong quản trị cơ sở dữ liệu có nghĩa là gì?',
-            },
-            options: [
-              { id: 'opt-a', text: { en: 'Structured Query Language', vi: 'Structured Query Language' } },
-              { id: 'opt-b', text: { en: 'Simple Question Language', vi: 'Simple Question Language' } },
-              { id: 'opt-c', text: { en: 'System Query Logic', vi: 'System Query Logic' } },
-              { id: 'opt-d', text: { en: 'Standard Quick Language', vi: 'Standard Quick Language' } },
-            ],
-            answer: 'opt-a',
-          },
-        },
-      ];
-    }
+    const { data: questions } = await app.supabase
+      .from('questions')
+      .select('id, subject_id, type, difficulty, data')
+      .limit(20);
+    const rawQuestions: any[] = questions ?? [];
 
     // Strip answer keys and correct fields strictly before sending to client
     const sanitized = rawQuestions.map((q) => {
@@ -207,15 +116,6 @@ export const examRoutes: FastifyPluginAsync = async (app) => {
       }
     }
 
-    // Fallback answer map for demo questions (never earns XP — see below)
-    const fallbackAnswers: Record<string, { type: string; answer: string }> = {
-      'q-demo-1': { type: 'mc', answer: 'opt-b' },
-      'q-demo-2': { type: 'mc', answer: 'opt-c' },
-      'q-demo-3': { type: 'mc', answer: 'opt-b' },
-      'q-demo-4': { type: 'mc', answer: 'opt-d' },
-      'q-demo-5': { type: 'mc', answer: 'opt-a' },
-    };
-
     let correctCount = 0;
     const total = uniqueAnswers.length;
 
@@ -231,11 +131,6 @@ export const examRoutes: FastifyPluginAsync = async (app) => {
             return userIt && userIt.selected === it.correct;
           });
           if (allCorrect) correctCount++;
-        }
-      } else {
-        const fallback = fallbackAnswers[ans.question_id];
-        if (fallback && fallback.type === 'mc' && ans.selected_option === fallback.answer) {
-          correctCount++;
         }
       }
     }

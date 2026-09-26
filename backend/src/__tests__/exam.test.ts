@@ -39,16 +39,9 @@ describe('Exam Route Sanitization & Server Scoring', () => {
       url: '/api/exam/demo-bp/questions',
     });
 
-    expect(res.statusCode).toBe(200);
-    const body = res.json();
-    expect(body).toHaveProperty('blueprint');
-    expect(body).toHaveProperty('questions');
-    expect(Array.isArray(body.questions)).toBe(true);
-
-    for (const q of body.questions) {
-      expect(q.data).not.toHaveProperty('answer');
-      expect(q.data).not.toHaveProperty('answer_key');
-    }
+    // Public route (not 401); without a database it reports 503 instead of serving demo questions.
+    expect(res.statusCode).toBe(503);
+    expect(res.body).not.toContain('q-demo');
   });
 
   it('POST /api/score/exam returns 401 without auth token', async () => {
