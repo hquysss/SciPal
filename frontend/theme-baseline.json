@@ -6,8 +6,6 @@
   "app/teacher/lessons/[id]/page.tsx": 16,
   "app/teacher/lessons/new-lesson/page.tsx": 19,
   "app/teacher/lessons/page.tsx": 81,
-  "features/admin/AdminAccountsPage.tsx": 238,
-  "features/admin/RequireAdmin.tsx": 22,
   "features/authoring/BlockPalette.tsx": 72,
   "features/authoring/LessonCreateForm.tsx": 49,
   "features/authoring/LessonEditor.tsx": 200,
