@@ -31,8 +31,6 @@
   "components/nav/NavBar.tsx": 122,
   "components/nav/OnlinePill.tsx": 8,
   "components/nav/SubjectSwitcher.tsx": 21,
-  "components/ui/badge.tsx": 4,
-  "components/ui/button.tsx": 9,
   "features/admin/AdminAccountsPage.tsx": 238,
   "features/admin/RequireAdmin.tsx": 22,
   "features/ai-tutor/AiTutorButton.tsx": 2,
