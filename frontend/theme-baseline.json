@@ -35,8 +35,6 @@
   "features/ai-tutor/AiTutorButton.tsx": 2,
   "features/ai-tutor/AiTutorPanel.tsx": 19,
   "features/auth/AccountHelpModal.tsx": 45,
-  "features/auth/AuthCard.tsx": 95,
-  "features/auth/ScienceShowcase.tsx": 30,
   "features/authoring/BlockPalette.tsx": 72,
   "features/authoring/LessonCreateForm.tsx": 49,
   "features/authoring/LessonEditor.tsx": 200,

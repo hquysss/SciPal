@@ -7,7 +7,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { useLanguage } from '@scipal/hooks';
 import { createBrowserClient } from '@/lib/supabase';
 import { LoginLanguageSwitch } from './LoginLanguageSwitch';
-import { LoginThemeToggle } from './LoginThemeToggle';
+import { ThemeToggle } from '@/components/nav/ThemeToggle';
 import { SciPalMascot } from './SciPalMascot';
 import { ScienceDnaHelix, ScienceAlgorithmTree } from './ScienceHelixes';
 import {
@@ -245,7 +245,7 @@ function LoginContent() {
       <div className="katha-login-shell">
         {/* Theme control — upper corner */}
         <div className="katha-login-theme-control">
-          <LoginThemeToggle />
+          <ThemeToggle tone="surface" />
         </div>
 
         {/* Fine emerald seam divider */}
