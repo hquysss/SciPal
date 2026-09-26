@@ -167,17 +167,7 @@ export function NavBar({ currentSubject }: NavBarProps) {
   };
 
   return (
-    <header className="sticky top-0 z-40 w-full border-b border-emerald-600/30 bg-emerald-700/95 text-white shadow-xs backdrop-blur-md">
-      <div
-        aria-hidden="true"
-        className="pointer-events-none absolute inset-0 z-0"
-        style={{
-          backgroundImage: "url('/clover.svg')",
-          backgroundRepeat: 'repeat',
-          backgroundSize: '130px 130px',
-          filter: 'brightness(0) invert(1)',
-        }}
-      />
+    <header className="sticky top-0 z-40 w-full border-b border-[color-mix(in_srgb,var(--nav-ink)_20%,transparent)] bg-nav text-nav-ink">
       <div className="relative z-10 mx-auto flex h-16 max-w-7xl items-center justify-between gap-3 px-4 sm:px-6">
         <Link href="/" prefetch={pathname !== '/'} className="group flex shrink-0 items-center gap-3 font-bold text-white">
           <Image
@@ -325,7 +315,7 @@ export function NavBar({ currentSubject }: NavBarProps) {
             aria-expanded={mobileOpen}
             aria-controls="mobile-navigation"
             onClick={() => setMobileOpen((value) => !value)}
-            className="flex h-10 w-10 items-center justify-center rounded-xl border border-emerald-400/40 bg-emerald-900/60 text-xl transition hover:bg-emerald-900 focus-visible:outline focus-visible:outline-2 focus-visible:outline-white"
+            className="flex h-11 w-11 items-center justify-center rounded-xl border border-emerald-400/40 bg-emerald-900/60 text-xl transition hover:bg-emerald-900 focus-visible:outline focus-visible:outline-2 focus-visible:outline-white"
           >
             <span aria-hidden="true">{mobileOpen ? '×' : '☰'}</span>
           </button>

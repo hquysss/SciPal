@@ -16,7 +16,7 @@ export default async function ExamDetailPage({
   if (result.kind === 'not_found') notFound();
   if (result.kind === 'error') {
     return (
-      <div className="relative min-h-[calc(100vh-3.5rem)] bg-science-grid pb-20">
+      <div data-pattern="off" className="relative min-h-[calc(100vh-3.5rem)] bg-science-grid pb-20">
         <main className="relative mx-auto max-w-3xl px-4 py-6 sm:px-6 sm:py-8">
           <LoadErrorNotice
             message={{ en: 'Could not load this exam.', vi: 'Chưa tải được đề thi.' }}
@@ -29,7 +29,7 @@ export default async function ExamDetailPage({
   const { blueprint, questions } = result;
 
   return (
-    <div className="relative min-h-[calc(100vh-3.5rem)] bg-science-grid pb-20">
+    <div data-pattern="off" className="relative min-h-[calc(100vh-3.5rem)] bg-science-grid pb-20">
       <main className="relative mx-auto max-w-3xl px-4 py-6 sm:px-6 sm:py-8 space-y-6">
         {/* Breadcrumb navigation */}
         <nav className="flex items-center gap-2 text-sm text-gray-600">

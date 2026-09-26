@@ -3,6 +3,8 @@ import Script from "next/script";
 import { Be_Vietnam_Pro, JetBrains_Mono } from 'next/font/google';
 import './globals.css';
 import { NavBar } from '@/components/nav/NavBar';
+import { renderThemeCss } from '@scipal/ui';
+import { buildBootScript, DARK_MODE_ENABLED } from '@/lib/theme/shellTheme';
 
 const jetbrainsMono = JetBrains_Mono({ subsets: ['latin'], variable: '--font-jetbrains-mono' });
 const beVietnamPro = Be_Vietnam_Pro({
@@ -25,6 +27,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="vi">
       <head>
+        <style id="scipal-theme" dangerouslySetInnerHTML={{ __html: renderThemeCss({ systemDark: DARK_MODE_ENABLED }) }} />
         <noscript>
           <style>
             {`body:has([data-scipal-level-gate], [data-level]) div[hidden][id^="S:"] {
@@ -51,9 +54,12 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           </>
         )}
       </head>
-      <body className={`${jetbrainsMono.variable} ${beVietnamPro.variable} font-sans antialiased min-h-screen flex flex-col bg-white text-gray-900`}>
-        <NavBar />
-        <div className="flex-1 flex flex-col">{children}</div>
+      <body className={`${jetbrainsMono.variable} ${beVietnamPro.variable} font-sans antialiased`}>
+        <div data-app-shell="" data-level="neutral" suppressHydrationWarning className="flex min-h-screen flex-col">
+          <script dangerouslySetInnerHTML={{ __html: buildBootScript({ darkMode: DARK_MODE_ENABLED }) }} />
+          <NavBar />
+          <div className="flex flex-1 flex-col">{children}</div>
+        </div>
       </body>
     </html>
   );
