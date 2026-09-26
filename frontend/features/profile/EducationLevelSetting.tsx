@@ -9,6 +9,7 @@ import {
   writeSessionEducationLevel,
   type EducationLevel,
 } from '@/features/landing/educationLevel';
+import { adoptAccountLevel, applyShellLevel, getShell, safeSessionStorage } from '@/lib/theme/shellTheme';
 
 interface EducationLevelSettingProps {
   preference: ReturnType<typeof resolveEducationLevel>;
@@ -58,6 +59,7 @@ export function EducationLevelSetting({ preference, isAuthenticated }: Education
         setSelectedLevel(level);
         setSource('session');
         setSaveState('saved');
+        applyShellLevel(getShell(), level);
       } catch {
         setSaveState('error');
       }
@@ -75,6 +77,7 @@ export function EducationLevelSetting({ preference, isAuthenticated }: Education
       setSelectedLevel(level);
       setSource('account');
       setSaveState('saved');
+      adoptAccountLevel(level, safeSessionStorage(), getShell());
       router.refresh();
     } catch {
       setSaveState('error');

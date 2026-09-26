@@ -9,7 +9,7 @@
   --landing-deep: #123d2b;
   --landing-focus: #8a3e1f;
   --landing-font-display: var(--font-be-vietnam), sans-serif;
-  --landing-font-body: var(--font-inter), Inter, sans-serif;
+  --landing-font-body: var(--font-be-vietnam), 'Be Vietnam Pro', sans-serif;
   --landing-font-measure: var(--font-jetbrains-mono), monospace;
   --landing-space-1: 0.25rem;
   --landing-space-2: 0.5rem;
@@ -57,40 +57,17 @@
   font-family: var(--landing-font-body);
 }
 
-.page[data-level='primary'] {
-  --landing-paper: #fff8ef;
-  --landing-surface: #fffefa;
-  --landing-ink: #35271e;
-  --landing-muted: #5e493b;
-  --landing-line: #e6d2bd;
-  --landing-action: #8a3e1f;
-  --landing-action-hover: #713116;
-  --landing-deep: #57290d;
-  --landing-focus: #8a3e1f;
-}
-
-.page[data-level='lower_secondary'] {
-  --landing-paper: #f3f7fd;
-  --landing-surface: #fff;
-  --landing-ink: #1d2c45;
-  --landing-muted: #415571;
-  --landing-line: #d4e0f0;
-  --landing-action: #245398;
-  --landing-action-hover: #193f78;
-  --landing-deep: #193758;
-  --landing-focus: #245398;
-}
-
-.page[data-level='upper_secondary'] {
-  --landing-paper: #f7f8f3;
-  --landing-surface: #fff;
-  --landing-ink: #17251d;
-  --landing-muted: #4b6052;
-  --landing-line: #d8e5dc;
-  --landing-action: #0c633b;
-  --landing-action-hover: #084d2e;
-  --landing-deep: #123d2b;
-  --landing-focus: #8a3e1f;
+.page[data-level] {
+  /* Aliases onto the app-wide level tokens (packages/ui/src/theme/palettes.ts). */
+  --landing-paper: var(--paper);
+  --landing-surface: var(--surface);
+  --landing-ink: var(--ink);
+  --landing-muted: var(--ink-muted);
+  --landing-line: var(--line);
+  --landing-action: var(--action);
+  --landing-action-hover: var(--action-hover);
+  --landing-deep: color-mix(in srgb, var(--action) 55%, var(--ink));
+  --landing-focus: var(--focus);
 }
 
 .ambient {

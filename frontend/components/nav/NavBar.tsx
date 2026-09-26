@@ -6,10 +6,12 @@ import Image from 'next/image';
 import { usePathname, useRouter } from 'next/navigation';
 import { useLanguage } from '@scipal/hooks';
 import { LanguageToggle } from './LanguageToggle';
+import { ThemeToggle } from './ThemeToggle';
 import { OnlinePill } from './OnlinePill';
 import { SubjectSwitcher } from './SubjectSwitcher';
 import type { SubjectSlug } from '@/lib/subject-config';
 import { createBrowserClient } from '@/lib/supabase';
+import { adoptAccountLevel, forgetAccountLevel, getShell, safeSessionStorage } from '@/lib/theme/shellTheme';
 
 interface NavBarProps {
   currentSubject?: SubjectSlug;
@@ -18,6 +20,7 @@ interface NavBarProps {
 type AppRole = 'student' | 'teacher' | 'admin';
 
 type AuthUser = {
+  id?: string;
   app_metadata?: Record<string, unknown>;
   user_metadata?: Record<string, unknown>;
   email?: string | null;
@@ -89,6 +92,17 @@ export function NavBar({ currentSubject }: NavBarProps) {
           const user = error ? null : data.user;
           setAppRole(getAppRole(user));
           setDisplayName(getDisplayName(user));
+          if (user?.id) {
+            void supabase
+              .from('profiles')
+              .select('preferred_education_level')
+              .eq('id', user.id)
+              .maybeSingle()
+              .then(({ data: profile, error: profileError }) => {
+                if (!mounted || profileError) return;
+                adoptAccountLevel(profile?.preferred_education_level, safeSessionStorage(), getShell());
+              });
+          }
         }
       }).catch(() => {
         if (mounted) {
@@ -128,6 +142,7 @@ export function NavBar({ currentSubject }: NavBarProps) {
         localStorage.removeItem('scipal_demo_user');
         localStorage.removeItem('scipal_demo_role');
       }
+      forgetAccountLevel(safeSessionStorage(), getShell());
       setAppRole(null);
       setDisplayName(null);
       setSigningOut(false);
@@ -167,19 +182,9 @@ export function NavBar({ currentSubject }: NavBarProps) {
   };
 
   return (
-    <header className="sticky top-0 z-40 w-full border-b border-emerald-600/30 bg-emerald-700/95 text-white shadow-xs backdrop-blur-md">
-      <div
-        aria-hidden="true"
-        className="pointer-events-none absolute inset-0 z-0"
-        style={{
-          backgroundImage: "url('/clover.svg')",
-          backgroundRepeat: 'repeat',
-          backgroundSize: '130px 130px',
-          filter: 'brightness(0) invert(1)',
-        }}
-      />
+    <header className="sticky top-0 z-40 w-full border-b border-[color-mix(in_srgb,var(--nav-ink)_20%,transparent)] bg-nav text-nav-ink">
       <div className="relative z-10 mx-auto flex h-16 max-w-7xl items-center justify-between gap-3 px-4 sm:px-6">
-        <Link href="/" prefetch={pathname !== '/'} className="group flex shrink-0 items-center gap-3 font-bold text-white">
+        <Link href="/" prefetch={pathname !== '/'} className="group flex shrink-0 items-center gap-3 font-bold text-nav-ink">
           <Image
             src="/logo.svg"
             alt="SciPal Logo"
@@ -190,7 +195,7 @@ export function NavBar({ currentSubject }: NavBarProps) {
           />
           <span className="flex flex-col">
             <span className="text-xl font-black leading-tight tracking-tight">SciPal</span>
-            <span className="hidden font-mono text-xs font-semibold uppercase tracking-wider text-emerald-200/90 sm:block">
+            <span className="hidden font-mono text-xs font-semibold uppercase tracking-wider text-nav-ink opacity-80 sm:block">
               {lang === 'en' ? 'EdTech' : 'EdTech'}
             </span>
           </span>
@@ -201,7 +206,7 @@ export function NavBar({ currentSubject }: NavBarProps) {
             href="/"
             prefetch={pathname !== '/'}
             aria-current={pathname === '/' ? 'page' : undefined}
-            className="rounded-lg px-3 py-1.5 text-sm font-semibold text-white/90 transition hover:bg-white/10 hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-white"
+            className="rounded-lg px-3 py-1.5 text-sm font-semibold text-nav-ink transition hover:bg-[color-mix(in_srgb,var(--nav-ink)_12%,transparent)] hover:text-nav-ink focus-visible:outline focus-visible:outline-2 focus-visible:outline-nav-ink"
           >
             {homeLinkLabel}
           </Link>
@@ -212,7 +217,7 @@ export function NavBar({ currentSubject }: NavBarProps) {
               href={link.href}
               prefetch={pathname !== '/'}
               aria-current={pathname === link.href ? 'page' : undefined}
-              className="rounded-lg px-3 py-1.5 text-sm font-semibold text-white/90 transition hover:bg-white/10 hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-white"
+              className="rounded-lg px-3 py-1.5 text-sm font-semibold text-nav-ink transition hover:bg-[color-mix(in_srgb,var(--nav-ink)_12%,transparent)] hover:text-nav-ink focus-visible:outline focus-visible:outline-2 focus-visible:outline-nav-ink"
             >
               {link.label}
             </Link>
@@ -224,7 +229,7 @@ export function NavBar({ currentSubject }: NavBarProps) {
                 aria-expanded={teacherMenuOpen}
                 aria-controls="desktop-teacher-navigation"
                 onClick={() => toggleNavGroup('teacher')}
-                className={`inline-flex items-center gap-1 rounded-lg px-3 py-1.5 text-sm font-semibold transition hover:bg-white/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-white ${teacherRouteActive ? 'bg-white/10 text-white' : 'text-white/90'}`}
+                className={`inline-flex items-center gap-1 rounded-lg px-3 py-1.5 text-sm font-semibold transition hover:bg-[color-mix(in_srgb,var(--nav-ink)_12%,transparent)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-nav-ink ${teacherRouteActive ? 'bg-[color-mix(in_srgb,var(--nav-ink)_15%,transparent)] text-nav-ink' : 'text-nav-ink'}`}
               >
                 {lang === 'en' ? 'Teacher' : 'Giáo viên'}
                 <svg aria-hidden="true" viewBox="0 0 20 20" fill="currentColor" className={`h-4 w-4 transition-transform motion-reduce:transition-none ${teacherMenuOpen ? 'rotate-180' : ''}`}>
@@ -234,7 +239,7 @@ export function NavBar({ currentSubject }: NavBarProps) {
               <div
                 id="desktop-teacher-navigation"
                 aria-hidden={!teacherMenuOpen}
-                className={`absolute left-0 top-full z-50 mt-2 w-56 origin-top rounded-xl border border-gray-200 bg-white p-1.5 text-gray-900 shadow-xl transition-[opacity,transform,visibility] duration-200 ease-out motion-reduce:transition-none dark:border-white/10 dark:bg-card dark:text-white ${teacherMenuOpen ? 'visible scale-y-100 opacity-100' : 'invisible pointer-events-none scale-y-0 opacity-0'}`}
+                className={`absolute left-0 top-full z-50 mt-2 w-56 origin-top rounded-xl border border-line bg-surface p-1.5 text-ink shadow-xl transition-[opacity,transform,visibility] duration-200 ease-out motion-reduce:transition-none ${teacherMenuOpen ? 'visible scale-y-100 opacity-100' : 'invisible pointer-events-none scale-y-0 opacity-0'}`}
               >
                 {teacherLinks.map((link) => (
                   <Link
@@ -243,7 +248,7 @@ export function NavBar({ currentSubject }: NavBarProps) {
                     prefetch={pathname !== '/'}
                     onClick={() => setOpenNavGroup(null)}
                     aria-current={pathname === link.href ? 'page' : undefined}
-                    className={`block rounded-lg px-3 py-2.5 text-sm font-semibold transition hover:bg-emerald-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-600 dark:hover:bg-white/10 ${pathname === link.href ? 'bg-emerald-50 text-emerald-900 dark:bg-white/10 dark:text-white' : 'text-gray-700 dark:text-gray-200'}`}
+                    className={`block rounded-lg px-3 py-2.5 text-sm font-semibold transition hover:bg-surface-sunken focus-visible:outline focus-visible:outline-2 focus-visible:outline-focus ${pathname === link.href ? 'bg-surface-sunken text-action' : 'text-ink'}`}
                   >
                     {link.label}
                   </Link>
@@ -258,7 +263,7 @@ export function NavBar({ currentSubject }: NavBarProps) {
                 aria-expanded={adminMenuOpen}
                 aria-controls="desktop-admin-navigation"
                 onClick={() => toggleNavGroup('admin')}
-                className={`inline-flex items-center gap-1 rounded-lg px-3 py-1.5 text-sm font-semibold transition hover:bg-white/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-white ${adminRouteActive ? 'bg-white/10 text-white' : 'text-white/90'}`}
+                className={`inline-flex items-center gap-1 rounded-lg px-3 py-1.5 text-sm font-semibold transition hover:bg-[color-mix(in_srgb,var(--nav-ink)_12%,transparent)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-nav-ink ${adminRouteActive ? 'bg-[color-mix(in_srgb,var(--nav-ink)_15%,transparent)] text-nav-ink' : 'text-nav-ink'}`}
               >
                 Admin
                 <svg aria-hidden="true" viewBox="0 0 20 20" fill="currentColor" className={`h-4 w-4 transition-transform motion-reduce:transition-none ${adminMenuOpen ? 'rotate-180' : ''}`}>
@@ -268,7 +273,7 @@ export function NavBar({ currentSubject }: NavBarProps) {
               <div
                 id="desktop-admin-navigation"
                 aria-hidden={!adminMenuOpen}
-                className={`absolute left-0 top-full z-50 mt-2 w-56 origin-top rounded-xl border border-gray-200 bg-white p-1.5 text-gray-900 shadow-xl transition-[opacity,transform,visibility] duration-200 ease-out motion-reduce:transition-none dark:border-white/10 dark:bg-card dark:text-white ${adminMenuOpen ? 'visible scale-y-100 opacity-100' : 'invisible pointer-events-none scale-y-0 opacity-0'}`}
+                className={`absolute left-0 top-full z-50 mt-2 w-56 origin-top rounded-xl border border-line bg-surface p-1.5 text-ink shadow-xl transition-[opacity,transform,visibility] duration-200 ease-out motion-reduce:transition-none ${adminMenuOpen ? 'visible scale-y-100 opacity-100' : 'invisible pointer-events-none scale-y-0 opacity-0'}`}
               >
                 {adminLinks.map((link) => (
                   <Link
@@ -277,7 +282,7 @@ export function NavBar({ currentSubject }: NavBarProps) {
                     prefetch={pathname !== '/'}
                     onClick={() => setOpenNavGroup(null)}
                     aria-current={pathname === link.href ? 'page' : undefined}
-                    className={`block rounded-lg px-3 py-2.5 text-sm font-semibold transition hover:bg-emerald-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-600 dark:hover:bg-white/10 ${pathname === link.href ? 'bg-emerald-50 text-emerald-900 dark:bg-white/10 dark:text-white' : 'text-gray-700 dark:text-gray-200'}`}
+                    className={`block rounded-lg px-3 py-2.5 text-sm font-semibold transition hover:bg-surface-sunken focus-visible:outline focus-visible:outline-2 focus-visible:outline-focus ${pathname === link.href ? 'bg-surface-sunken text-action' : 'text-ink'}`}
                   >
                     {link.label}
                   </Link>
@@ -290,16 +295,17 @@ export function NavBar({ currentSubject }: NavBarProps) {
         <div className="hidden min-w-0 flex-1 items-center gap-2 lg:flex xl:gap-3">
           <div className="hidden xl:block"><OnlinePill /></div>
           <LanguageToggle />
+          <ThemeToggle />
           {appRole ? (
             <div className="ml-auto flex shrink-0 items-center gap-2">
-              <span className="max-w-24 truncate text-sm font-semibold text-white xl:max-w-36" title={displayName ?? undefined}>
+              <span className="max-w-24 truncate text-sm font-semibold text-nav-ink xl:max-w-36" title={displayName ?? undefined}>
                 {displayName ?? (lang === 'en' ? 'Account' : 'Tài khoản')}
               </span>
               <button
                 type="button"
                 onClick={handleSignOut}
                 disabled={signingOut}
-                className="inline-flex shrink-0 items-center rounded-full border border-white/25 bg-emerald-900/70 px-3 py-2 text-sm font-bold text-white transition hover:bg-emerald-950 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white disabled:cursor-wait disabled:opacity-60"
+                className="inline-flex shrink-0 items-center rounded-full border border-[color-mix(in_srgb,var(--nav-ink)_30%,transparent)] bg-nav-ink px-3 py-2 text-sm font-bold text-nav transition hover:opacity-90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-nav-ink disabled:cursor-wait disabled:opacity-60"
               >
                 {signingOut
                   ? (lang === 'en' ? 'Signing out…' : 'Đang đăng xuất…')
@@ -310,7 +316,7 @@ export function NavBar({ currentSubject }: NavBarProps) {
             <Link
               href="/login"
               prefetch={pathname !== '/'}
-              className="ml-auto inline-flex shrink-0 items-center gap-2 rounded-full bg-emerald-900 px-4 py-2 text-sm font-bold text-white shadow-md transition duration-150 hover:bg-emerald-950 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
+              className="ml-auto inline-flex shrink-0 items-center gap-2 rounded-full bg-nav-ink px-4 py-2 text-sm font-bold text-nav shadow-md transition duration-150 hover:opacity-90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-nav-ink"
             >
               {lang === 'en' ? 'Sign In' : 'Đăng nhập'} <span aria-hidden="true">→</span>
             </Link>
@@ -319,13 +325,14 @@ export function NavBar({ currentSubject }: NavBarProps) {
 
         <div className="flex shrink-0 items-center gap-2 lg:hidden">
           <LanguageToggle />
+          <ThemeToggle />
           <button
             type="button"
             aria-label={mobileOpen ? (lang === 'en' ? 'Close menu' : 'Đóng menu') : (lang === 'en' ? 'Open menu' : 'Mở menu')}
             aria-expanded={mobileOpen}
             aria-controls="mobile-navigation"
             onClick={() => setMobileOpen((value) => !value)}
-            className="flex h-10 w-10 items-center justify-center rounded-xl border border-emerald-400/40 bg-emerald-900/60 text-xl transition hover:bg-emerald-900 focus-visible:outline focus-visible:outline-2 focus-visible:outline-white"
+            className="flex h-11 w-11 items-center justify-center rounded-xl border border-[color-mix(in_srgb,var(--nav-ink)_30%,transparent)] bg-transparent text-nav-ink text-xl transition hover:bg-[color-mix(in_srgb,var(--nav-ink)_12%,transparent)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-nav-ink"
           >
             <span aria-hidden="true">{mobileOpen ? '×' : '☰'}</span>
           </button>
@@ -336,7 +343,7 @@ export function NavBar({ currentSubject }: NavBarProps) {
         id="mobile-navigation"
         aria-label={lang === 'en' ? 'Mobile navigation' : 'Điều hướng di động'}
         aria-hidden={!mobileOpen}
-        className={`absolute inset-x-0 top-full z-40 max-h-[calc(100dvh-4rem)] origin-top overflow-y-auto border-b border-emerald-200 bg-white p-4 text-gray-900 shadow-xl transition-[opacity,transform,visibility] duration-200 ease-out motion-reduce:transition-none lg:hidden ${mobileOpen ? 'visible scale-y-100 opacity-100' : 'invisible pointer-events-none scale-y-0 opacity-0'}`}
+        className={`absolute inset-x-0 top-full z-40 max-h-[calc(100dvh-4rem)] origin-top overflow-y-auto border-b border-line bg-surface p-4 text-ink shadow-xl transition-[opacity,transform,visibility] duration-200 ease-out motion-reduce:transition-none lg:hidden ${mobileOpen ? 'visible scale-y-100 opacity-100' : 'invisible pointer-events-none scale-y-0 opacity-0'}`}
       >
           <div className="mx-auto max-w-xl space-y-2">
             <Link
@@ -344,7 +351,7 @@ export function NavBar({ currentSubject }: NavBarProps) {
               prefetch={pathname !== '/'}
               onClick={() => setMobileOpen(false)}
               aria-current={pathname === '/' ? 'page' : undefined}
-              className={`block rounded-xl px-4 py-3 text-sm font-semibold transition hover:bg-emerald-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-600 ${pathname === '/' ? 'bg-emerald-50 text-emerald-900' : 'text-gray-800'}`}
+              className={`block rounded-xl px-4 py-3 text-sm font-semibold transition hover:bg-surface-sunken focus-visible:outline focus-visible:outline-2 focus-visible:outline-focus ${pathname === '/' ? 'bg-surface-sunken text-action' : 'text-ink'}`}
             >
               {homeLinkLabel}
             </Link>
@@ -356,7 +363,7 @@ export function NavBar({ currentSubject }: NavBarProps) {
                 prefetch={pathname !== '/'}
                 onClick={() => setMobileOpen(false)}
                 aria-current={pathname === link.href ? 'page' : undefined}
-                className={`block rounded-xl px-4 py-3 text-sm font-semibold transition hover:bg-emerald-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-600 ${pathname === link.href ? 'bg-emerald-50 text-emerald-900' : 'text-gray-800'}`}
+                className={`block rounded-xl px-4 py-3 text-sm font-semibold transition hover:bg-surface-sunken focus-visible:outline focus-visible:outline-2 focus-visible:outline-focus ${pathname === link.href ? 'bg-surface-sunken text-action' : 'text-ink'}`}
               >
                 {link.label}
               </Link>
@@ -368,7 +375,7 @@ export function NavBar({ currentSubject }: NavBarProps) {
                   aria-expanded={teacherMenuOpen}
                   aria-controls="mobile-teacher-navigation"
                   onClick={() => toggleNavGroup('teacher')}
-                  className={`flex w-full items-center justify-between rounded-xl px-4 py-3 text-left text-sm font-bold transition hover:bg-emerald-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-600 ${teacherRouteActive ? 'bg-emerald-50 text-emerald-900' : 'text-gray-800'}`}
+                  className={`flex w-full items-center justify-between rounded-xl px-4 py-3 text-left text-sm font-bold transition hover:bg-surface-sunken focus-visible:outline focus-visible:outline-2 focus-visible:outline-focus ${teacherRouteActive ? 'bg-surface-sunken text-action' : 'text-ink'}`}
                 >
                   {lang === 'en' ? 'Teacher' : 'Giáo viên'}
                   <svg aria-hidden="true" viewBox="0 0 20 20" fill="currentColor" className={`h-4 w-4 transition-transform motion-reduce:transition-none ${teacherMenuOpen ? 'rotate-180' : ''}`}>
@@ -378,7 +385,7 @@ export function NavBar({ currentSubject }: NavBarProps) {
                 <div
                   id="mobile-teacher-navigation"
                   aria-hidden={!teacherMenuOpen}
-                  className={`ml-3 mt-1 overflow-hidden border-l border-emerald-200 transition-[max-height,opacity,visibility] duration-200 ease-out motion-reduce:transition-none ${teacherMenuOpen ? 'visible max-h-80 opacity-100' : 'invisible max-h-0 opacity-0'}`}
+                  className={`ml-3 mt-1 overflow-hidden border-l border-line transition-[max-height,opacity,visibility] duration-200 ease-out motion-reduce:transition-none ${teacherMenuOpen ? 'visible max-h-80 opacity-100' : 'invisible max-h-0 opacity-0'}`}
                 >
                   <div className="space-y-1 pl-3">
                     {teacherLinks.map((link) => (
@@ -388,7 +395,7 @@ export function NavBar({ currentSubject }: NavBarProps) {
                         prefetch={pathname !== '/'}
                         onClick={() => { setOpenNavGroup(null); setMobileOpen(false); }}
                         aria-current={pathname === link.href ? 'page' : undefined}
-                        className={`block rounded-xl px-4 py-3 text-sm font-semibold transition hover:bg-emerald-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-600 ${pathname === link.href ? 'bg-emerald-50 text-emerald-900' : 'text-gray-700'}`}
+                        className={`block rounded-xl px-4 py-3 text-sm font-semibold transition hover:bg-surface-sunken focus-visible:outline focus-visible:outline-2 focus-visible:outline-focus ${pathname === link.href ? 'bg-surface-sunken text-action' : 'text-ink'}`}
                       >
                         {link.label}
                       </Link>
@@ -404,7 +411,7 @@ export function NavBar({ currentSubject }: NavBarProps) {
                   aria-expanded={adminMenuOpen}
                   aria-controls="mobile-admin-navigation"
                   onClick={() => toggleNavGroup('admin')}
-                  className={`flex w-full items-center justify-between rounded-xl px-4 py-3 text-left text-sm font-bold transition hover:bg-emerald-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-600 ${adminRouteActive ? 'bg-emerald-50 text-emerald-900' : 'text-gray-800'}`}
+                  className={`flex w-full items-center justify-between rounded-xl px-4 py-3 text-left text-sm font-bold transition hover:bg-surface-sunken focus-visible:outline focus-visible:outline-2 focus-visible:outline-focus ${adminRouteActive ? 'bg-surface-sunken text-action' : 'text-ink'}`}
                 >
                   Admin
                   <svg aria-hidden="true" viewBox="0 0 20 20" fill="currentColor" className={`h-4 w-4 transition-transform motion-reduce:transition-none ${adminMenuOpen ? 'rotate-180' : ''}`}>
@@ -414,7 +421,7 @@ export function NavBar({ currentSubject }: NavBarProps) {
                 <div
                   id="mobile-admin-navigation"
                   aria-hidden={!adminMenuOpen}
-                  className={`ml-3 mt-1 overflow-hidden border-l border-emerald-200 transition-[max-height,opacity,visibility] duration-200 ease-out motion-reduce:transition-none ${adminMenuOpen ? 'visible max-h-80 opacity-100' : 'invisible max-h-0 opacity-0'}`}
+                  className={`ml-3 mt-1 overflow-hidden border-l border-line transition-[max-height,opacity,visibility] duration-200 ease-out motion-reduce:transition-none ${adminMenuOpen ? 'visible max-h-80 opacity-100' : 'invisible max-h-0 opacity-0'}`}
                 >
                   <div className="space-y-1 pl-3">
                     {adminLinks.map((link) => (
@@ -424,7 +431,7 @@ export function NavBar({ currentSubject }: NavBarProps) {
                         prefetch={pathname !== '/'}
                         onClick={() => { setOpenNavGroup(null); setMobileOpen(false); }}
                         aria-current={pathname === link.href ? 'page' : undefined}
-                        className={`block rounded-xl px-4 py-3 text-sm font-semibold transition hover:bg-emerald-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-600 ${pathname === link.href ? 'bg-emerald-50 text-emerald-900' : 'text-gray-700'}`}
+                        className={`block rounded-xl px-4 py-3 text-sm font-semibold transition hover:bg-surface-sunken focus-visible:outline focus-visible:outline-2 focus-visible:outline-focus ${pathname === link.href ? 'bg-surface-sunken text-action' : 'text-ink'}`}
                       >
                         {link.label}
                       </Link>
@@ -434,8 +441,8 @@ export function NavBar({ currentSubject }: NavBarProps) {
               </div>
             )}
             {appRole && (
-              <div className="mt-3 flex items-center justify-between gap-3 border-t border-gray-200 px-2 pt-4">
-                <span className="min-w-0 truncate text-sm font-bold text-gray-900" title={displayName ?? undefined}>
+              <div className="mt-3 flex items-center justify-between gap-3 border-t border-line px-2 pt-4">
+                <span className="min-w-0 truncate text-sm font-bold text-ink" title={displayName ?? undefined}>
                   {displayName ?? (lang === 'en' ? 'Account' : 'Tài khoản')}
                 </span>
                 <button
@@ -455,7 +462,7 @@ export function NavBar({ currentSubject }: NavBarProps) {
                 href="/login"
                 prefetch={pathname !== '/'}
                 onClick={() => setMobileOpen(false)}
-                className="block rounded-xl bg-emerald-700 px-4 py-3 text-center text-sm font-bold text-white transition hover:bg-emerald-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-600"
+                className="block rounded-xl bg-action px-4 py-3 text-center text-sm font-bold text-action-ink transition hover:bg-action-hover focus-visible:outline focus-visible:outline-2 focus-visible:outline-focus"
               >
                 {lang === 'en' ? 'Sign In' : 'Đăng nhập'} →
               </Link>

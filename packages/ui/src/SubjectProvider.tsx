@@ -34,7 +34,7 @@ export function SubjectProvider({ slug, accentColor: catalogAccent, children }: 
 
   return (
     <SubjectContext.Provider value={{ slug, token, accentColor }}>
-      <div style={{ '--accent': accentColor } as React.CSSProperties}>
+      <div data-subject-scope="" style={{ '--accent': accentColor } as React.CSSProperties}>
         {children}
       </div>
     </SubjectContext.Provider>

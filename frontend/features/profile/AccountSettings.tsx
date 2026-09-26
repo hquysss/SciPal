@@ -7,6 +7,8 @@ import { createBrowserClient } from '@/lib/supabase';
 import { AccountHelpModal } from '@/features/auth/AccountHelpModal';
 import { EducationLevelSetting } from './EducationLevelSetting';
 import type { resolveEducationLevel } from '@/features/landing/educationLevel';
+import { ThemeToggle } from '@/components/nav/ThemeToggle';
+import { forgetAccountLevel, getShell, safeSessionStorage } from '@/lib/theme/shellTheme';
 
 interface AccountSettingsProps {
   currentRole?: string;
@@ -37,6 +39,7 @@ export function AccountSettings({ currentRole = 'student', educationPreference, 
         localStorage.removeItem('scipal_demo_user');
         localStorage.removeItem('scipal_demo_role');
       }
+      forgetAccountLevel(safeSessionStorage(), getShell());
       router.push('/login');
       router.refresh();
     }
@@ -67,6 +70,7 @@ export function AccountSettings({ currentRole = 'student', educationPreference, 
         </div>
 
         <div className="space-y-5">
+          <ThemeToggle tone="surface" />
           <div className="rounded-2xl border border-gray-200 bg-gray-50/70 p-4 dark:border-gray-700 dark:bg-gray-900/40">
             <div className="text-xs font-bold uppercase tracking-wider text-gray-600 dark:text-gray-300">
               {t({ en: 'SciPal role', vi: 'Vai trò trong SciPal' })}

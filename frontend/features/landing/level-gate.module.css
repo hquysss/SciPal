@@ -41,7 +41,7 @@
   --gate-leading-copy: 1.65;
   --gate-leading-compact: 1.5;
   --gate-font-display: var(--font-be-vietnam), sans-serif;
-  --gate-font-body: var(--font-inter), Inter, sans-serif;
+  --gate-font-body: var(--font-be-vietnam), 'Be Vietnam Pro', sans-serif;
   --gate-font-measure: var(--font-jetbrains-mono), monospace;
   --gate-frame-width: 70rem;
   --gate-sheet-width: 62.5rem;

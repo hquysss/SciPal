@@ -60,11 +60,11 @@ export function SubjectSwitcher({ current, mobile = false, onNavigate }: Subject
           {lang === 'en' ? subject.nameEn : subject.nameVi}
         </span>
         {subject.status === 'upcoming' && (
-          <span className="rounded-md bg-gray-100 px-2 py-0.5 font-mono text-[11px] text-gray-500">
+          <span className="rounded-md bg-surface-sunken px-2 py-0.5 font-mono text-[11px] text-ink-muted">
             {lang === 'en' ? 'Soon' : 'Sắp ra'}
           </span>
         )}
-        {active && <span className="h-2 w-2 rounded-full bg-emerald-600" aria-hidden="true" />}
+        {active && <span className="h-2 w-2 rounded-full bg-action" aria-hidden="true" />}
       </>
     );
 
@@ -78,12 +78,12 @@ export function SubjectSwitcher({ current, mobile = false, onNavigate }: Subject
           onNavigate?.();
         }}
         aria-current={active ? 'page' : undefined}
-        className={`flex w-full items-center gap-3 rounded-xl px-3 py-2 text-left text-sm transition hover:bg-gray-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-600 ${active ? 'bg-emerald-50 text-emerald-950' : 'text-gray-800'}`}
+        className={`flex w-full items-center gap-3 rounded-xl px-3 py-2 text-left text-sm transition hover:bg-surface-sunken focus-visible:outline focus-visible:outline-2 focus-visible:outline-focus ${active ? 'bg-surface-sunken text-action' : 'text-ink'}`}
       >
         {content}
       </Link>
     ) : (
-      <div key={subject.slug} className="flex w-full items-center gap-3 rounded-xl px-3 py-2 text-sm text-gray-500 opacity-65">
+      <div key={subject.slug} className="flex w-full items-center gap-3 rounded-xl px-3 py-2 text-sm text-ink-muted opacity-65">
         {content}
       </div>
     );
@@ -91,8 +91,8 @@ export function SubjectSwitcher({ current, mobile = false, onNavigate }: Subject
 
   if (mobile) {
     return (
-      <div className="rounded-2xl border border-emerald-100 bg-emerald-50/70 p-2">
-        <p className="px-3 py-1.5 font-mono text-xs font-bold uppercase tracking-wider text-emerald-900">
+      <div className="rounded-2xl border border-line bg-surface-sunken p-2">
+        <p className="px-3 py-1.5 font-mono text-xs font-bold uppercase tracking-wider text-action">
           {lang === 'en' ? 'Subjects' : 'Môn học'}
         </p>
         {subjects}
@@ -107,16 +107,16 @@ export function SubjectSwitcher({ current, mobile = false, onNavigate }: Subject
         aria-expanded={open}
         aria-controls="subject-switcher-list"
         onClick={() => setOpen((value) => !value)}
-        className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-semibold text-white/95 transition hover:bg-white/10 hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
+        className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-semibold text-nav-ink transition hover:bg-[color-mix(in_srgb,var(--nav-ink)_12%,transparent)] hover:text-nav-ink focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-nav-ink"
       >
         <span>{lang === 'en' ? 'Subjects' : 'Môn học'}</span>
-        <span className={`text-xs text-white/70 transition-transform duration-200 motion-reduce:transition-none ${open ? 'rotate-180' : ''}`} aria-hidden="true">▼</span>
+        <span className={`text-xs text-nav-ink transition-transform duration-200 motion-reduce:transition-none ${open ? 'rotate-180' : ''}`} aria-hidden="true">▼</span>
       </button>
 
       <div
         id="subject-switcher-list"
         aria-hidden={!open}
-        className={`absolute left-0 top-full z-50 mt-2 w-64 origin-top rounded-2xl border border-gray-100 bg-white p-2 text-gray-900 shadow-xl transition-[opacity,transform,visibility] duration-200 ease-out motion-reduce:transition-none ${open ? 'visible scale-y-100 opacity-100' : 'invisible pointer-events-none scale-y-0 opacity-0'}`}
+        className={`absolute left-0 top-full z-50 mt-2 w-64 origin-top rounded-2xl border border-line bg-surface p-2 text-ink shadow-xl transition-[opacity,transform,visibility] duration-200 ease-out motion-reduce:transition-none ${open ? 'visible scale-y-100 opacity-100' : 'invisible pointer-events-none scale-y-0 opacity-0'}`}
       >
         {subjects}
       </div>

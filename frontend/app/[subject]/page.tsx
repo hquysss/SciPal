@@ -62,7 +62,7 @@ export default async function SubjectPage({
 
           {/* Subject Header Banner */}
           <header className="mb-10 rounded-2xl border bg-white/90 p-6 sm:p-8 shadow-sm backdrop-blur-xs"
-            style={{ borderColor: 'var(--accent-10, #e5e7eb)' }}
+            style={{ borderColor: 'color-mix(in srgb, var(--accent) 10%, var(--surface))' }}
           >
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <div className="flex items-center gap-4">

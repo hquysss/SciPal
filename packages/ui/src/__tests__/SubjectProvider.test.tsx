@@ -51,4 +51,11 @@ describe('SubjectProvider data accent', () => {
     expect(output.props.value.accentColor).toBe('#16a34a');
     expect(wrapper.props.style['--accent']).toBe('#16a34a');
   });
+  it.each([undefined, '#245398', 'red'])('marks the wrapper as a subject scope (accent %s)', (accentColor) => {
+    const output = SubjectProvider({ slug: 'informatics', accentColor, children: 'subject content' });
+    if (!isValidElement<{ children: ReactNode }>(output)) throw new Error('SubjectProvider did not return an element');
+    const wrapper = output.props.children;
+    if (!isValidElement<{ 'data-subject-scope'?: string }>(wrapper)) throw new Error('SubjectProvider wrapper is missing');
+    expect(wrapper.props['data-subject-scope']).toBe('');
+  });
 });

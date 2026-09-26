@@ -16,6 +16,7 @@ import type { EducationLevel } from './educationLevel';
 import type { InformaticsAvailability, LandingCatalog } from './getLandingData';
 import { TutorDemoCard } from './TutorDemoCard';
 import styles from './landing.module.css';
+import { applyShellLevel, getShell } from '@/lib/theme/shellTheme';
 
 const CONTACT_FACEBOOK_URL = 'https://www.facebook.com/nguoivietchimtayto/';
 const CONTACT_EMAIL = 'tuilangus@gmail.com';
@@ -93,6 +94,10 @@ export function LandingPage({
   const { t, lang } = useLanguage();
   const pageRef = useRef<HTMLDivElement>(null);
   const isUpperSecondary = level === 'upper_secondary';
+  useEffect(() => {
+    applyShellLevel(getShell(), level);
+  }, [level]);
+
   useEffect(() => {
     const page = pageRef.current;
     const title = document.getElementById('landing-title');
