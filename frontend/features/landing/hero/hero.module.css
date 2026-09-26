@@ -4,6 +4,7 @@
   aspect-ratio: 4 / 3;
   overflow: hidden;
   border-radius: 1.5rem;
+  background: linear-gradient(to bottom, var(--surface), var(--line) 38%);
 }
 
 .fallback,

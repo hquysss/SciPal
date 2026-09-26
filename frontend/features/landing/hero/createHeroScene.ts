@@ -1,23 +1,18 @@
 import {
-  BoxGeometry,
-  BufferGeometry,
   Color,
-  ConeGeometry,
-  CylinderGeometry,
   DirectionalLight,
-  Group,
   HemisphereLight,
-  Mesh,
   MeshStandardMaterial,
   PerspectiveCamera,
   Scene,
-  SphereGeometry,
-  TorusGeometry,
   WebGLRenderer,
+  type BufferGeometry,
+  type Group,
 } from 'three';
 import type { EducationLevel } from '../educationLevel';
+import { buildSceneObject } from './buildSceneObject';
 import type { SceneColors } from './readSceneColors';
-import { SCENE_BASE, SCENE_OBJECTS, type SceneColorRole, type ScenePart } from './sceneObjects';
+import { SCENE_BASE, SCENE_OBJECTS, type SceneColorRole } from './sceneObjects';
 
 export interface HeroSceneHandle {
   setActive(active: boolean): void;
@@ -33,27 +28,11 @@ interface HeroSceneOptions {
 }
 
 const FRAME_MS = 1000 / 30;
-const CAMERA_HOME = { x: 0, y: 7.2, z: 8.2 };
+const CAMERA_HOME = { x: 0, y: 6.2, z: 6.4 };
+const LOOK_AT = { x: 0, y: 0, z: 0.2 };
 const CAMERA_SWAY = 0.9;
 
 const NOOP_HANDLE: HeroSceneHandle = { setActive() {}, setPointer() {}, dispose() {} };
-
-function geometryFor(part: ScenePart): BufferGeometry {
-  const [a, b, c] = part.size;
-  const segments = part.segments ?? 8;
-  switch (part.shape) {
-    case 'box':
-      return new BoxGeometry(a, b, c);
-    case 'cylinder':
-      return new CylinderGeometry(a, c, b, segments);
-    case 'cone':
-      return new ConeGeometry(a, b, segments);
-    case 'sphere':
-      return new SphereGeometry(a, segments, Math.max(4, Math.round(segments * 0.75)));
-    case 'torus':
-      return new TorusGeometry(a, b, 6, segments);
-  }
-}
 
 /** Low-poly desk scene for the landing hero. Everything it allocates is released by dispose(). */
 export function createHeroScene(canvas: HTMLCanvasElement, options: HeroSceneOptions): HeroSceneHandle {
@@ -69,7 +48,7 @@ export function createHeroScene(canvas: HTMLCanvasElement, options: HeroSceneOpt
   const scene = new Scene();
   const camera = new PerspectiveCamera(38, 4 / 3, 0.1, 100);
   camera.position.set(CAMERA_HOME.x, CAMERA_HOME.y, CAMERA_HOME.z);
-  camera.lookAt(0, 0, 0.3);
+  camera.lookAt(LOOK_AT.x, LOOK_AT.y, LOOK_AT.z);
 
   const { colors } = options;
   scene.add(new HemisphereLight(new Color(colors.surface), new Color(colors.line), 1.7));
@@ -90,17 +69,7 @@ export function createHeroScene(canvas: HTMLCanvasElement, options: HeroSceneOpt
 
   const floaters: { group: Group; baseY: number; amplitude: number; phase: number }[] = [];
   [...SCENE_BASE, ...SCENE_OBJECTS[options.level]].forEach((object, index) => {
-    const group = new Group();
-    for (const part of object.parts) {
-      const geometry = geometryFor(part);
-      geometries.push(geometry);
-      const mesh = new Mesh(geometry, materialFor(part.color));
-      mesh.position.set(...part.offset);
-      if (part.rotation) mesh.rotation.set(...part.rotation);
-      group.add(mesh);
-    }
-    group.position.set(...object.position);
-    group.rotation.y = object.rotationY;
+    const group = buildSceneObject(object, materialFor, geometries);
     scene.add(group);
     if (object.float > 0) {
       floaters.push({ group, baseY: object.position[1], amplitude: object.float, phase: index * 1.3 });
@@ -132,7 +101,7 @@ export function createHeroScene(canvas: HTMLCanvasElement, options: HeroSceneOpt
     }
     camera.position.x += (CAMERA_HOME.x + pointer.x * CAMERA_SWAY - camera.position.x) * 0.06;
     camera.position.y += (CAMERA_HOME.y - pointer.y * CAMERA_SWAY * 0.5 - camera.position.y) * 0.06;
-    camera.lookAt(0, 0, 0.3);
+    camera.lookAt(LOOK_AT.x, LOOK_AT.y, LOOK_AT.z);
     renderer.render(scene, camera);
     if (!firstFrameSent) {
       firstFrameSent = true;
