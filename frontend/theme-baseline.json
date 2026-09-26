@@ -14,9 +14,5 @@
   "features/classes/ClassList.tsx": 55,
   "features/classes/CreateClassModal.tsx": 59,
   "features/classes/JoinClassModal.tsx": 40,
-  "features/classes/StudentRoster.tsx": 68,
-  "features/survey/DemandPollBanner.tsx": 29,
-  "features/survey/FeatureRequestBoard.tsx": 78,
-  "features/survey/PostLessonSurvey.tsx": 64,
-  "features/survey/SubjectDemandModal.tsx": 102
+  "features/classes/StudentRoster.tsx": 68
 }

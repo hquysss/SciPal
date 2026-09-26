@@ -1,38 +1,44 @@
 'use client';
 
 import { useState } from 'react';
-import { postSurvey } from '@/lib/api';
+import { ChevronUp } from 'lucide-react';
 import { useLanguage } from '@scipal/hooks';
+import { postSurvey } from '../../lib/api';
+import { Alert } from '../../components/ui/alert';
+import { Button } from '../../components/ui/button';
+import { EmptyState } from '../../components/ui/empty-state';
+import { Field } from '../../components/ui/field';
+import { Input } from '../../components/ui/input';
 
 interface FeatureItem {
   id: string;
   title_vi: string;
   title_en: string;
   votes: number;
-  category: string;
+  category: { en: string; vi: string };
 }
 
 const INITIAL_FEATURES: FeatureItem[] = [
   {
     id: 'f1',
     title_vi: 'Mô phỏng 3D tương tác cấu trúc phân tử Hóa học',
-    title_en: 'Interactive 3D Molecular Simulation for Chemistry',
+    title_en: 'Interactive 3D molecular simulation for Chemistry',
     votes: 42,
-    category: 'Mô phỏng 3D',
+    category: { en: '3D simulation', vi: 'Mô phỏng 3D' },
   },
   {
     id: 'f2',
     title_vi: 'Trình giả lập mạch điện & dao động Vật lí',
-    title_en: 'Physics Electric Circuit & Oscillation Simulator',
+    title_en: 'Physics electric circuit & oscillation simulator',
     votes: 38,
-    category: 'Thí nghiệm ảo',
+    category: { en: 'Virtual lab', vi: 'Thí nghiệm ảo' },
   },
   {
     id: 'f3',
     title_vi: 'Đấu trường thi đấu giải thuật Tin học 1v1 trực tiếp',
-    title_en: 'Real-time 1v1 Algorithm Duel Arena',
+    title_en: 'Real-time 1v1 algorithm duel arena',
     votes: 56,
-    category: 'Gamification',
+    category: { en: 'Gamification', vi: 'Trò chơi hoá' },
   },
 ];
 
@@ -69,7 +75,7 @@ export function FeatureRequestBoard() {
       title_vi: newTitle.trim(),
       title_en: newTitle.trim(),
       votes: 1,
-      category: 'Đề xuất mới',
+      category: { en: 'New idea', vi: 'Đề xuất mới' },
     };
 
     try {
@@ -88,88 +94,92 @@ export function FeatureRequestBoard() {
   };
 
   return (
-    <div className="rounded-3xl border border-gray-200/80 bg-white/90 p-6 sm:p-8 shadow-xs backdrop-blur-md dark:border-white/10 dark:bg-card/90 space-y-6">
-      <div className="flex items-center justify-between border-b border-gray-100 pb-4 dark:border-gray-800">
-        <div>
-          <span className="font-mono text-xs font-bold uppercase text-purple-700 dark:text-purple-300">
-            Cộng đồng SciPal (§9.7)
-          </span>
-          <h3 className="text-base sm:text-lg font-black text-gray-900 dark:text-white">
-            {t({ en: 'Feature Requests & Innovation Board', vi: 'Bảng đề xuất & Bình chọn tính năng mới' })}
-          </h3>
-        </div>
-        <span className="font-mono text-xs text-purple-700 bg-purple-50 dark:bg-purple-950/60 dark:text-purple-300 px-2.5 py-1 rounded-full font-bold">
-          S12
-        </span>
+    <section className="flex flex-col gap-6 rounded-xl border border-line bg-surface p-6 sm:p-8">
+      <div className="border-b border-line pb-4">
+        <p className="text-sm font-semibold text-ink-muted">{t({ en: 'SciPal community', vi: 'Cộng đồng SciPal' })}</p>
+        <h2 className="text-lg font-bold text-ink">
+          {t({ en: 'Feature requests', vi: 'Bảng đề xuất & bình chọn tính năng mới' })}
+        </h2>
       </div>
 
-      {/* Feature List */}
-      <div className="space-y-3">
-        {features.map((item) => {
-          const hasVoted = votedIds.includes(item.id);
-          return (
-            <div
-              key={item.id}
-              className="flex items-center justify-between gap-4 rounded-2xl border border-gray-200/80 bg-gray-50/50 p-4 transition hover:border-purple-200 hover:bg-white dark:border-gray-800 dark:bg-card/60"
-            >
-              <div className="space-y-1">
-                <span className="rounded-full bg-purple-100 px-2 py-0.5 font-mono text-[10px] font-bold text-purple-800 dark:bg-purple-950/60 dark:text-purple-300">
-                  {item.category}
-                </span>
-                <h4 className="text-sm font-bold text-gray-900 dark:text-white">
-                  {lang === 'en' ? item.title_en : item.title_vi}
-                </h4>
-              </div>
+      {features.length === 0 ? (
+        <EmptyState
+          title={t({ en: 'No ideas yet', vi: 'Chưa có đề xuất' })}
+          description={t({ en: 'Be the first to suggest a tool or lesson.', vi: 'Hãy là người đầu tiên đề xuất công cụ hoặc bài học.' })}
+        />
+      ) : (
+        <ul className="flex flex-col gap-3">
+          {features.map((item) => {
+            const hasVoted = votedIds.includes(item.id);
+            const title = lang === 'en' ? item.title_en : item.title_vi;
+            return (
+              <li key={item.id} className="flex items-center justify-between gap-4 rounded-lg border border-line bg-surface-sunken p-4">
+                <div className="flex flex-col gap-1">
+                  <span className="w-fit rounded-md bg-surface px-2 py-0.5 text-sm text-ink-muted">{t(item.category)}</span>
+                  <h3 className="text-sm font-bold text-ink">{title}</h3>
+                </div>
 
-              <button
-                type="button"
-                onClick={() => handleVote(item.id)}
-                disabled={hasVoted}
-                className={`flex flex-col items-center justify-center rounded-2xl border px-3.5 py-2 font-mono transition duration-150 active:scale-95 ${
-                  hasVoted
-                    ? 'border-purple-300 bg-purple-50 text-purple-800 font-black dark:border-purple-800 dark:bg-purple-950/40 dark:text-purple-300'
-                    : 'border-gray-200 bg-white text-gray-700 hover:border-purple-400 hover:text-purple-700 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300'
-                }`}
-              >
-                <span className="text-xs">▲</span>
-                <span className="text-xs font-bold">{item.votes}</span>
-              </button>
-            </div>
-          );
-        })}
-      </div>
+                <button
+                  type="button"
+                  onClick={() => handleVote(item.id)}
+                  aria-pressed={hasVoted}
+                  aria-label={t({
+                    en: `${hasVoted ? 'Voted' : 'Vote'} for "${title}", ${item.votes} votes`,
+                    vi: `${hasVoted ? 'Đã bình chọn' : 'Bình chọn'} "${title}", ${item.votes} phiếu`,
+                  })}
+                  className={`flex min-h-11 min-w-16 shrink-0 flex-col items-center justify-center rounded-lg border px-3 py-1.5 text-sm font-bold tabular-nums transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus ${
+                    hasVoted ? 'border-action bg-action text-action-ink' : 'border-edge bg-surface text-ink hover:bg-surface-sunken'
+                  }`}
+                >
+                  <ChevronUp aria-hidden="true" className="h-4 w-4" />
+                  <span aria-hidden="true">{item.votes}</span>
+                  <span aria-hidden="true" className="text-xs font-semibold">
+                    {hasVoted ? t({ en: 'Voted', vi: 'Đã chọn' }) : t({ en: 'votes', vi: 'phiếu' })}
+                  </span>
+                </button>
+              </li>
+            );
+          })}
+        </ul>
+      )}
 
       {/* Suggest New Feature Form */}
-      <form onSubmit={handleSuggest} className="pt-2 border-t border-gray-100 dark:border-gray-800 space-y-3">
-        <label className="text-xs font-bold text-gray-700 dark:text-gray-300">
-          {t({
-            en: 'Have an idea? Suggest a tool or simulation to SciPal engineers:',
-            vi: 'Bạn có ý tưởng mới? Đề xuất công cụ hoặc bài học cho đội ngũ SciPal:',
+      <form onSubmit={handleSuggest} className="flex flex-col gap-3 border-t border-line pt-4">
+        <Field
+          id="feature-idea"
+          label={t({
+            en: 'Have an idea? Suggest a tool or lesson to the SciPal team',
+            vi: 'Bạn có ý tưởng mới? Đề xuất công cụ hoặc bài học cho đội ngũ SciPal',
           })}
-        </label>
-        <div className="flex gap-2">
-          <input
-            type="text"
-            required
-            value={newTitle}
-            onChange={(e) => setNewTitle(e.target.value)}
-            placeholder="Ví dụ: Giả lập thuật toán Dijkstra với bản đồ giao thông..."
-            className="flex-1 rounded-xl border border-gray-200 bg-gray-50/60 px-3.5 py-2 text-xs outline-none focus:border-purple-600 focus:bg-white transition dark:border-gray-700 dark:bg-gray-800 dark:text-white"
-          />
-          <button
-            type="submit"
-            disabled={submitting || !newTitle.trim()}
-            className="rounded-xl bg-purple-700 px-4 py-2 text-xs font-bold text-white shadow-xs hover:bg-purple-800 active:scale-95 transition disabled:opacity-50"
-          >
-            {submitting ? 'Đang gửi...' : 'Gửi đề xuất'}
-          </button>
-        </div>
+        >
+          {(control) => (
+            <div className="flex flex-col gap-2 sm:flex-row">
+              <Input
+                {...control}
+                required
+                value={newTitle}
+                onChange={(e) => setNewTitle(e.target.value)}
+                placeholder={t({
+                  en: 'e.g. Dijkstra simulator on a traffic map…',
+                  vi: 'Ví dụ: giả lập thuật toán Dijkstra với bản đồ giao thông…',
+                })}
+                className="flex-1"
+              />
+              <Button type="submit" disabled={submitting || !newTitle.trim()}>
+                {submitting ? t({ en: 'Sending…', vi: 'Đang gửi…' }) : t({ en: 'Send idea', vi: 'Gửi đề xuất' })}
+              </Button>
+            </div>
+          )}
+        </Field>
         {submittedMessage && (
-          <p className="text-xs font-semibold text-emerald-700 dark:text-emerald-400">
-            ✓ Cảm ơn ý tưởng của bạn! Đề xuất đã được đưa lên bảng bình chọn cộng đồng.
-          </p>
+          <Alert tone="success">
+            {t({
+              en: 'Thanks for your idea! It is now on the community board.',
+              vi: 'Cảm ơn ý tưởng của bạn! Đề xuất đã được đưa lên bảng bình chọn cộng đồng.',
+            })}
+          </Alert>
         )}
       </form>
-    </div>
+    </section>
   );
 }

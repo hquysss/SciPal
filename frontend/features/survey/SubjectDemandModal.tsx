@@ -1,8 +1,12 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
-import { postSurvey } from '@/lib/api';
+import { useEffect, useRef, useState, type CSSProperties } from 'react';
+import { Check, X } from 'lucide-react';
 import { useLanguage } from '@scipal/hooks';
+import { postSurvey } from '../../lib/api';
+import { SUBJECT_CONFIG, type SubjectSlug } from '../../lib/subject-config';
+import { Alert } from '../../components/ui/alert';
+import { Button } from '../../components/ui/button';
 
 interface SubjectDemandModalProps {
   open: boolean;
@@ -11,15 +15,11 @@ interface SubjectDemandModalProps {
 
 type SubmissionState = 'idle' | 'submitting' | 'success' | 'error';
 
-const subjectOptions = [
-  { id: 'math', vi: 'Toán học', en: 'Mathematics', icon: '📐' },
-  { id: 'physics', vi: 'Vật lí', en: 'Physics', icon: '⚡' },
-  { id: 'chemistry', vi: 'Hóa học', en: 'Chemistry', icon: '🧪' },
-  { id: 'biology', vi: 'Sinh học', en: 'Biology', icon: '🧬' },
-  { id: 'informatics', vi: 'Tin học', en: 'Informatics', icon: '</>' },
-];
+const subjectOptions: SubjectSlug[] = ['math', 'physics', 'chemistry', 'biology', 'informatics'];
 
 const focusableSelector = 'button:not(:disabled), [href], input:not(:disabled), select:not(:disabled), textarea:not(:disabled), [tabindex]:not([tabindex="-1"])';
+
+const focusRing = 'focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus';
 
 export function SubjectDemandModal({ open, onClose }: SubjectDemandModalProps) {
   const { lang, t } = useLanguage();
@@ -120,21 +120,21 @@ export function SubjectDemandModal({ open, onClose }: SubjectDemandModalProps) {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-xs">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-[color-mix(in_srgb,var(--ink)_60%,transparent)] p-4">
       <div
         ref={dialogRef}
-        className="relative max-h-[min(90dvh,48rem)] w-full max-w-xl overflow-y-auto rounded-3xl border border-gray-100 bg-white p-5 shadow-2xl sm:p-8 dark:border-gray-800 dark:bg-card"
+        className="relative max-h-[min(90dvh,48rem)] w-full max-w-xl overflow-y-auto rounded-xl border border-line bg-surface p-5 sm:p-8"
         role="dialog"
         aria-modal="true"
         aria-labelledby="subject-demand-title"
         lang={lang}
       >
-        <div className="flex items-start justify-between gap-4 border-b border-gray-100 pb-4 dark:border-gray-800">
+        <div className="flex items-start justify-between gap-4 border-b border-line pb-4">
           <div>
-            <p className="font-mono text-[11px] font-bold uppercase tracking-wide text-emerald-700 dark:text-emerald-400">
+            <p className="text-sm font-semibold text-ink-muted">
               {t({ en: 'Learner poll · Grades 10–12', vi: 'Khảo sát người học · Lớp 10–12' })}
             </p>
-            <h2 id="subject-demand-title" className="mt-1 text-lg font-black text-gray-900 dark:text-white">
+            <h2 id="subject-demand-title" className="mt-1 text-lg font-bold text-ink">
               {t({ en: 'Which subjects interest you?', vi: 'Bạn quan tâm đến môn học nào?' })}
             </h2>
           </div>
@@ -142,30 +142,26 @@ export function SubjectDemandModal({ open, onClose }: SubjectDemandModalProps) {
             ref={closeButtonRef}
             type="button"
             onClick={close}
-            className="inline-flex min-h-11 min-w-11 shrink-0 items-center justify-center rounded-full text-sm font-bold text-gray-500 hover:bg-gray-100 hover:text-gray-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-700 dark:hover:bg-gray-800 dark:hover:text-white"
+            className={`inline-flex min-h-11 min-w-11 shrink-0 items-center justify-center rounded-full text-ink-muted hover:bg-surface-sunken hover:text-ink ${focusRing}`}
             aria-label={t({ en: 'Close survey', vi: 'Đóng khảo sát' })}
           >
-            ✕
+            <X aria-hidden="true" className="h-5 w-5" />
           </button>
         </div>
 
         {status === 'success' ? (
-          <div className="space-y-4 py-8 text-center motion-reduce:animate-none" role="status" aria-live="polite">
-            <span className="text-4xl" aria-hidden="true">✓</span>
-            <h3 className="text-lg font-black text-gray-900 dark:text-white">
+          <div className="flex flex-col items-center gap-4 py-8 text-center" role="status" aria-live="polite">
+            <Check aria-hidden="true" className="h-10 w-10 text-success" />
+            <h3 className="text-lg font-bold text-ink">
               {t({ en: 'Thanks, SciPal received your input.', vi: 'Cảm ơn, SciPal đã nhận ý kiến.' })}
             </h3>
-            <button
-              type="button"
-              onClick={close}
-              className="min-h-11 rounded-xl bg-emerald-700 px-5 text-sm font-bold text-white hover:bg-emerald-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-700"
-            >
+            <Button type="button" onClick={close}>
               {t({ en: 'Done', vi: 'Hoàn tất' })}
-            </button>
+            </Button>
           </div>
         ) : (
-          <div className="space-y-5 pt-5">
-            <p className="text-sm leading-relaxed text-gray-600 dark:text-gray-300">
+          <div className="flex flex-col gap-5 pt-5">
+            <p className="text-sm text-ink-muted">
               {t({
                 en: 'Choose the natural science subjects you would like to explore on SciPal.',
                 vi: 'Chọn các môn khoa học tự nhiên bạn muốn khám phá trên SciPal.',
@@ -173,44 +169,51 @@ export function SubjectDemandModal({ open, onClose }: SubjectDemandModalProps) {
             </p>
 
             {status === 'error' && (
-              <p className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800 dark:border-red-900/60 dark:bg-red-950/30 dark:text-red-200" role="alert">
+              <Alert tone="danger">
                 {t({
                   en: 'We could not send your response. Your choices are still here; please try again.',
                   vi: 'Chưa gửi được ý kiến. Các lựa chọn vẫn còn, bạn hãy thử lại.',
                 })}
-              </p>
+              </Alert>
             )}
 
             <fieldset disabled={status === 'submitting'}>
-              <legend className="mb-2 text-sm font-semibold text-gray-800 dark:text-gray-200">
+              <legend className="mb-2 text-sm font-semibold text-ink">
                 {t({ en: 'Select one or more subjects', vi: 'Chọn một hoặc nhiều môn' })}
               </legend>
               <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-                {subjectOptions.map((subject) => {
-                  const selected = selectedSubjects.includes(subject.id);
+                {subjectOptions.map((slug) => {
+                  const subject = SUBJECT_CONFIG[slug];
+                  const selected = selectedSubjects.includes(slug);
                   return (
                     <button
-                      key={subject.id}
+                      key={slug}
                       type="button"
                       aria-pressed={selected}
-                      onClick={() => toggleSubject(subject.id)}
-                      className={`flex min-h-14 items-center gap-3 rounded-xl border px-4 text-left text-sm font-semibold transition focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-700 ${selected
-                        ? 'border-emerald-700 bg-emerald-50 text-emerald-950 dark:border-emerald-500 dark:bg-emerald-950/40 dark:text-emerald-100'
-                        : 'border-gray-200 bg-gray-50 text-gray-700 hover:bg-gray-100 dark:border-gray-700 dark:bg-gray-800/60 dark:text-gray-200'} `}
+                      onClick={() => toggleSubject(slug)}
+                      className={`flex min-h-14 items-center gap-3 rounded-lg border px-4 text-left text-sm font-semibold text-ink transition-colors ${focusRing} ${
+                        selected ? 'border-2 border-action bg-surface' : 'border-edge bg-surface hover:bg-surface-sunken'
+                      }`}
                     >
-                      <span className="inline-flex h-7 w-7 shrink-0 items-center justify-center text-lg" aria-hidden="true">
+                      <span
+                        data-subject-scope=""
+                        style={{ '--accent': subject.accentColor } as CSSProperties}
+                        className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[color-mix(in_srgb,var(--accent)_12%,var(--surface))] text-sm font-bold text-accent-ink"
+                        aria-hidden="true"
+                      >
                         {subject.icon}
                       </span>
-                      <span>{lang === 'en' ? subject.en : subject.vi}</span>
+                      <span className="flex-1">{lang === 'en' ? subject.nameEn : subject.nameVi}</span>
+                      {selected && <Check aria-hidden="true" className="h-5 w-5 shrink-0 text-action" />}
                     </button>
                   );
                 })}
               </div>
             </fieldset>
 
-            <div className="flex flex-col gap-3 border-t border-gray-100 pt-4 dark:border-gray-800 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex flex-col gap-3 border-t border-line pt-4 sm:flex-row sm:items-center sm:justify-between">
               <fieldset disabled={status === 'submitting'}>
-                <legend className="mb-2 text-sm font-semibold text-gray-700 dark:text-gray-300">
+                <legend className="mb-2 text-sm font-semibold text-ink">
                   {t({ en: 'Your grade', vi: 'Khối lớp của bạn' })}
                 </legend>
                 <div className="flex gap-2">
@@ -221,9 +224,9 @@ export function SubjectDemandModal({ open, onClose }: SubjectDemandModalProps) {
                       aria-pressed={grade === value}
                       aria-label={t({ en: `Grade ${value}`, vi: `Lớp ${value}` })}
                       onClick={() => setGrade(value)}
-                      className={`min-h-11 min-w-11 rounded-xl border font-mono text-sm font-bold focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-700 ${grade === value
-                        ? 'border-gray-900 bg-gray-900 text-white dark:border-white dark:bg-white dark:text-gray-900'
-                        : 'border-gray-200 bg-gray-50 text-gray-700 hover:bg-gray-100 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200'} `}
+                      className={`min-h-11 min-w-11 rounded-lg border text-sm font-bold ${focusRing} ${
+                        grade === value ? 'border-action bg-action text-action-ink' : 'border-edge bg-surface text-ink hover:bg-surface-sunken'
+                      }`}
                     >
                       {value}
                     </button>
@@ -232,23 +235,18 @@ export function SubjectDemandModal({ open, onClose }: SubjectDemandModalProps) {
               </fieldset>
 
               <div className="flex justify-end gap-2 pt-2 sm:pt-0">
-                <button
-                  type="button"
-                  onClick={close}
-                  className="min-h-11 rounded-xl px-4 text-sm font-semibold text-gray-600 hover:bg-gray-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-700 dark:text-gray-300 dark:hover:bg-gray-800"
-                >
+                <Button type="button" variant="ghost" onClick={close}>
                   {t({ en: 'Later', vi: 'Để sau' })}
-                </button>
-                <button
+                </Button>
+                <Button
                   type="button"
                   onClick={handleSubmit}
                   disabled={status === 'submitting' || selectedSubjects.length === 0}
-                  className="min-h-11 rounded-xl bg-emerald-700 px-5 text-sm font-bold text-white hover:bg-emerald-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-700 disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   {status === 'submitting'
                     ? t({ en: 'Sending…', vi: 'Đang gửi…' })
                     : t({ en: 'Send response', vi: 'Gửi ý kiến' })}
-                </button>
+                </Button>
               </div>
             </div>
           </div>

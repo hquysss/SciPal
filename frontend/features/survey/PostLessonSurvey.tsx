@@ -1,24 +1,32 @@
 'use client';
 
-import { useState } from 'react';
-import { postSurvey } from '@/lib/api';
+import { useState, type KeyboardEvent } from 'react';
+import { Star } from 'lucide-react';
 import { useLanguage } from '@scipal/hooks';
+import { postSurvey } from '../../lib/api';
+import { Alert } from '../../components/ui/alert';
+import { Button } from '../../components/ui/button';
 
 interface PostLessonSurveyProps {
   lessonId: string;
   onDone?: () => void;
 }
 
+const DIFFICULTY_LABEL = {
+  easy: { en: 'Easy', vi: 'Dễ hiểu' },
+  medium: { en: 'Moderate', vi: 'Vừa sức' },
+  hard: { en: 'Challenging', vi: 'Khá khó' },
+} as const;
+
 export function PostLessonSurvey({ lessonId, onDone }: PostLessonSurveyProps) {
   const { t } = useLanguage();
   const [rating, setRating] = useState<number>(5);
   const [difficulty, setDifficulty] = useState<'easy' | 'medium' | 'hard'>('medium');
   const [feedback, setFeedback] = useState('');
-  const [submitted, setSubmitted] = useState(false);
-  const [submitting, setSubmitting] = useState(false);
+  const [status, setStatus] = useState<'idle' | 'submitting' | 'sent' | 'error'>('idle');
 
   const handleSubmit = async () => {
-    setSubmitting(true);
+    setStatus('submitting');
     try {
       await postSurvey({
         type: 'post_lesson',
@@ -29,117 +37,122 @@ export function PostLessonSurvey({ lessonId, onDone }: PostLessonSurveyProps) {
           feedback: feedback.trim(),
         },
       });
+      setStatus('sent');
+      if (onDone) setTimeout(onDone, 1800);
     } catch (err) {
       console.warn('Post-lesson survey submission warning:', err);
-    } finally {
-      setSubmitted(true);
-      setSubmitting(false);
-      if (onDone) setTimeout(onDone, 1800);
+      setStatus('error');
     }
   };
 
-  if (submitted) {
+  // Arrow keys move the rating like a native radio group.
+  const onStarKey = (event: KeyboardEvent<HTMLButtonElement>) => {
+    if (event.key === 'ArrowRight' || event.key === 'ArrowUp') {
+      event.preventDefault();
+      setRating((r) => Math.min(5, r + 1));
+    } else if (event.key === 'ArrowLeft' || event.key === 'ArrowDown') {
+      event.preventDefault();
+      setRating((r) => Math.max(1, r - 1));
+    }
+  };
+
+  if (status === 'sent') {
     return (
-      <div className="rounded-2xl border border-emerald-300 bg-emerald-50/90 p-5 text-center text-xs font-bold text-emerald-800 shadow-xs dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300 animate-in fade-in zoom-in-95 duration-150">
-        🎉 {t({
-          en: 'Thank you for your valuable feedback! SciPal uses this to improve lesson quality.',
-          vi: 'Cảm ơn phản hồi quý giá của bạn! SciPal ghi nhận để không ngừng nâng cao chất lượng bài giảng.',
+      <Alert tone="success">
+        {t({
+          en: 'Thank you for your feedback! SciPal uses it to improve lessons.',
+          vi: 'Cảm ơn phản hồi của bạn! SciPal ghi nhận để nâng cao chất lượng bài giảng.',
         })}
-      </div>
+      </Alert>
     );
   }
 
+  const chip = (active: boolean) =>
+    `min-h-11 rounded-full px-4 text-sm font-semibold transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus ${
+      active ? 'bg-action text-action-ink' : 'border border-edge bg-surface text-ink hover:bg-surface-sunken'
+    }`;
+
   return (
-    <div className="rounded-3xl border border-emerald-950/10 bg-white/90 p-5 sm:p-6 shadow-xs backdrop-blur-md dark:border-white/10 dark:bg-card/90 space-y-4">
-      <div className="flex items-center justify-between border-b border-gray-100 pb-2.5 dark:border-gray-800">
-        <h4 className="text-xs font-mono font-bold uppercase tracking-wider text-emerald-800 dark:text-emerald-300">
-          📊 {t({ en: 'Micro-Survey · Lesson Feedback (§9.7)', vi: 'Khảo sát nhanh chất lượng bài học (§9.7)' })}
-        </h4>
-        <span className="font-mono text-[10px] text-gray-400">10 giây</span>
-      </div>
+    <section className="flex flex-col gap-4 rounded-xl border border-line bg-surface p-5 sm:p-6">
+      <h3 className="border-b border-line pb-2.5 text-sm font-bold text-ink">
+        {t({ en: 'Quick lesson feedback', vi: 'Khảo sát nhanh chất lượng bài học' })}
+      </h3>
 
       {/* Star rating */}
-      <div className="text-center space-y-1">
-        <span className="text-xs font-semibold text-gray-700 dark:text-gray-300">
+      <div className="flex flex-col items-center gap-1 text-center">
+        <span id="survey-rating-label" className="text-sm font-semibold text-ink">
           {t({ en: 'How would you rate this lesson?', vi: 'Bạn đánh giá bài học này thế nào?' })}
         </span>
-        <div className="flex gap-2 justify-center text-3xl">
+        <div role="radiogroup" aria-labelledby="survey-rating-label" className="flex justify-center gap-1">
           {[1, 2, 3, 4, 5].map((s) => (
             <button
               key={s}
               type="button"
+              role="radio"
+              aria-checked={s === rating}
+              aria-label={t({ en: `${s} out of 5 stars`, vi: `${s} trên 5 sao` })}
+              tabIndex={s === rating ? 0 : -1}
               onClick={() => setRating(s)}
-              className={`transition hover:scale-110 active:scale-95 ${
-                s <= rating ? 'text-amber-400' : 'text-gray-200 dark:text-gray-700'
+              onKeyDown={onStarKey}
+              className={`flex h-11 w-11 items-center justify-center rounded-lg focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus ${
+                s <= rating ? 'text-action' : 'text-edge'
               }`}
             >
-              ★
+              <Star aria-hidden="true" className="h-7 w-7" fill={s <= rating ? 'currentColor' : 'none'} />
             </button>
           ))}
         </div>
       </div>
 
       {/* Difficulty chips */}
-      <div className="space-y-1 text-center">
-        <span className="text-xs font-semibold text-gray-700 dark:text-gray-300">
-          {t({ en: 'Perceived difficulty level', vi: 'Độ khó so với bạn' })}:
+      <div className="flex flex-col items-center gap-1 text-center">
+        <span className="text-sm font-semibold text-ink">
+          {t({ en: 'How hard was it for you?', vi: 'Độ khó so với bạn' })}
         </span>
-        <div className="flex justify-center gap-2 pt-1">
+        <div className="flex flex-wrap justify-center gap-2 pt-1">
           {(['easy', 'medium', 'hard'] as const).map((d) => (
-            <button
-              key={d}
-              type="button"
-              onClick={() => setDifficulty(d)}
-              className={`rounded-full px-4 py-1 text-xs font-bold transition duration-150 active:scale-95 ${
-                difficulty === d
-                  ? 'bg-gray-900 text-white shadow-xs dark:bg-white dark:text-gray-900'
-                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-300'
-              }`}
-            >
-              {d === 'easy'
-                ? t({ en: 'Easy', vi: 'Dễ hiểu' })
-                : d === 'medium'
-                ? t({ en: 'Moderate', vi: 'Vừa sức' })
-                : t({ en: 'Challenging', vi: 'Khá khó' })}
+            <button key={d} type="button" aria-pressed={difficulty === d} onClick={() => setDifficulty(d)} className={chip(difficulty === d)}>
+              {t(DIFFICULTY_LABEL[d])}
             </button>
           ))}
         </div>
       </div>
 
       {/* Feedback textarea */}
-      <textarea
-        value={feedback}
-        onChange={(e) => setFeedback(e.target.value)}
-        placeholder={t({
-          en: 'Optional suggestion or clarification needed (max 200 chars)...',
-          vi: 'Góp ý thêm về hình vẽ, mã nguồn hay nội dung cần làm rõ (tối đa 200 ký tự)...',
-        })}
-        maxLength={200}
-        rows={2}
-        className="w-full rounded-xl border border-gray-200 bg-gray-50/60 p-2.5 text-xs outline-none focus:border-emerald-600 focus:bg-white transition dark:border-gray-700 dark:bg-gray-800 dark:text-white"
-      />
+      <label className="flex flex-col gap-1.5">
+        <span className="text-sm font-semibold text-ink">{t({ en: 'Suggestion (optional)', vi: 'Góp ý (không bắt buộc)' })}</span>
+        <textarea
+          value={feedback}
+          onChange={(e) => setFeedback(e.target.value)}
+          placeholder={t({
+            en: 'Figures, code or content that needs clarifying (max 200 characters)…',
+            vi: 'Hình vẽ, mã nguồn hay nội dung cần làm rõ (tối đa 200 ký tự)…',
+          })}
+          maxLength={200}
+          rows={2}
+          className="w-full rounded-lg border border-edge bg-surface p-2.5 text-base text-ink placeholder:text-ink-muted focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
+        />
+      </label>
 
-      <div className="flex items-center justify-end gap-2 pt-2 border-t border-gray-100 dark:border-gray-800">
+      {status === 'error' && (
+        <Alert tone="danger">
+          {t({
+            en: 'Could not send your feedback. Check your connection and try again.',
+            vi: 'Chưa gửi được phản hồi. Vui lòng kiểm tra kết nối và thử lại.',
+          })}
+        </Alert>
+      )}
+
+      <div className="flex items-center justify-end gap-2 border-t border-line pt-3">
         {onDone && (
-          <button
-            type="button"
-            onClick={onDone}
-            className="rounded-xl px-3 py-1.5 text-xs font-semibold text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
-          >
+          <Button type="button" variant="ghost" onClick={onDone}>
             {t({ en: 'Skip', vi: 'Bỏ qua' })}
-          </button>
+          </Button>
         )}
-        <button
-          type="button"
-          onClick={handleSubmit}
-          disabled={submitting}
-          className="rounded-xl bg-emerald-600 px-4 py-1.5 text-xs font-bold text-white shadow-xs hover:bg-emerald-700 active:scale-95 transition disabled:opacity-50"
-        >
-          {submitting
-            ? t({ en: 'Submitting...', vi: 'Đang gửi...' })
-            : t({ en: 'Submit Feedback', vi: 'Gửi đánh giá' })}
-        </button>
+        <Button type="button" onClick={handleSubmit} disabled={status === 'submitting'}>
+          {status === 'submitting' ? t({ en: 'Sending…', vi: 'Đang gửi…' }) : t({ en: 'Send feedback', vi: 'Gửi đánh giá' })}
+        </Button>
       </div>
-    </div>
+    </section>
   );
 }
