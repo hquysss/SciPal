@@ -40,6 +40,14 @@ Menu, popover hay dialog render qua portal phải gắn vào trong `[data-app-sh
 - Trang bài bọc `LevelScope` theo lớp của bài (`levelOfGrade(lesson.grade)`), đặt **ngoài** `SubjectProvider`: bài lớp 5 mở bởi học sinh THPT có vùng bài tông Tiểu học, navbar vẫn tông THPT. Trang môn bọc từng nhóm lớp trong `LevelScope` riêng.
 - Accent môn chỉ là nhãn vở (nhãn môn, ô icon, dải lề, gạch chân tab code, viền thẻ thuật ngữ): chữ dùng `text-accent-ink`, nền nhạt `color-mix(accent 12%, surface)`; nút chính luôn `bg-action`.
 
+### Khu vực cá nhân (hồ sơ, tiến trình, thi thử, khảo sát)
+
+- **Heatmap chuỗi ngày** (`StreakCalendar`): 4 mức theo `action` — `streakCellClass()`: 0 → `bg-surface-sunken`, 1 → `action` 30% trên `surface`, 2–3 → 60%, ≥ 4 → `bg-action` (chữ `text-action-ink`). Số trong ô là số môn có chuỗi phủ ngày đó (`activeSubjectsOn()`, tính từ `last_active` lùi `current_streak` ngày). Mỗi ô có `title`/`aria-label` song ngữ nêu ngày + số môn; chú giải "Ít → Nhiều" bằng chữ. Hôm nay có viền `outline-focus`.
+- **Đồng hồ thi** (`ExamRunner`): 3 mức theo `timerTone()` — > 300 giây `normal` (`bg-surface text-ink border-line`), 61–300 `warning` (`bg-warning-surface text-warning`), ≤ 60 `danger` (`bg-danger-surface text-danger`). Mức cảnh báo luôn kèm chữ "Còn dưới 5 phút / Còn dưới 1 phút" trong vùng `aria-live="polite"`, không chỉ đổi màu.
+- **Bảng câu hỏi** (`AnswerPalette`): 3 trạng thái — đã trả lời `bg-action text-action-ink`, chưa trả lời `border-edge bg-surface text-ink`, đang xem thêm `outline-focus`; ô `min-h-11 min-w-11`; `aria-label` "Câu 3, đã trả lời"; chú giải ba trạng thái bằng chữ bên dưới.
+- Lựa chọn trong đề là radio thật trong `fieldset`/`legend`; kết quả chỉ dùng số liệu server trả về (điểm, số câu đúng), câu đúng/sai kèm `CircleCheck`/`CircleX`.
+- Khảo sát: đánh giá sao là `radiogroup` (phím mũi tên), sao chọn `text-action`; modal khảo sát dùng nền mờ `color-mix(ink 60%)`, Escape đóng và trả focus; ô icon môn theo quy tắc nhãn accent.
+
 ### Palette
 
 | Role | Token | Value | Usage |
