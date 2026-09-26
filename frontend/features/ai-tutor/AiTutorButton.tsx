@@ -1,5 +1,6 @@
 'use client';
 import { useState, useEffect } from 'react';
+import { useLanguage } from '@scipal/hooks';
 import { AiTutorPanel } from './AiTutorPanel';
 
 interface Props {
@@ -9,6 +10,7 @@ interface Props {
 }
 
 export function AiTutorButton({ lessonId, subjectSlug, token = null }: Props) {
+  const { t } = useLanguage();
   const [open, setOpen] = useState(false);
   const [online, setOnline] = useState(true);
 
@@ -26,12 +28,12 @@ export function AiTutorButton({ lessonId, subjectSlug, token = null }: Props) {
   return (
     <>
       <button
+        type="button"
         disabled={!online}
         onClick={() => setOpen(true)}
-        title={online ? 'Gia sư AI' : 'Cần kết nối mạng'}
-        className="fixed bottom-6 right-6 z-40 flex h-14 w-14 items-center justify-center rounded-full text-2xl text-white shadow-xl hover:scale-105 active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed transition duration-200"
-        style={{ backgroundColor: 'var(--accent, #16a34a)' }}
-        aria-label="Mở Gia sư AI"
+        title={online ? t({ en: 'AI tutor', vi: 'Gia sư AI' }) : t({ en: 'Needs an internet connection', vi: 'Cần kết nối mạng' })}
+        aria-label={t({ en: 'Open AI tutor', vi: 'Mở Gia sư AI' })}
+        className="fixed bottom-6 right-6 z-40 flex h-14 w-14 items-center justify-center rounded-full bg-action text-2xl text-action-ink shadow-lg transition-colors hover:bg-action-hover focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus disabled:cursor-not-allowed disabled:opacity-40"
       >
         🤖
       </button>
