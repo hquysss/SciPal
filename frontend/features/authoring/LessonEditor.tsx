@@ -7,16 +7,17 @@ import type { Block } from '@scipal/types';
 import { BlockPalette } from './BlockPalette';
 import { BlockRenderer } from '@/components/blocks/BlockRenderer';
 import { useLanguage } from '@scipal/hooks';
-import type { LessonReviewStatus } from './authoringQueries';
+import type { LessonStatus } from './authoringQueries';
+import { lessonStatusLabel, lessonStatusTone, TONE_CLASS } from './lessonStatus';
 
 interface LessonEditorProps {
   lessonId: string;
   initialTitleVi: string;
   initialTitleEn?: string;
   initialBlocks: Block[];
-  initialPublished: boolean;
   initialUpdatedAt: string;
-  reviewStatus: LessonReviewStatus;
+  initialStatus: LessonStatus;
+  initialReviewNote: string | null;
   canReview: boolean;
 }
 
@@ -25,9 +26,9 @@ export function LessonEditor({
   initialTitleVi,
   initialTitleEn = '',
   initialBlocks,
-  initialPublished,
   initialUpdatedAt,
-  reviewStatus: initialReviewStatus,
+  initialStatus,
+  initialReviewNote,
   canReview,
 }: LessonEditorProps) {
   const { lang, t } = useLanguage();
@@ -35,20 +36,29 @@ export function LessonEditor({
   const [titleVi, setTitleVi] = useState(initialTitleVi);
   const [titleEn, setTitleEn] = useState(initialTitleEn);
   const [blocks, setBlocks] = useState<Block[]>(initialBlocks);
-  const [published, setPublished] = useState(initialPublished);
   const [updatedAt, setUpdatedAt] = useState(initialUpdatedAt);
-  const [reviewStatus, setReviewStatus] = useState(initialReviewStatus);
+  const [status, setStatus] = useState<LessonStatus>(initialStatus);
+  const [reviewNote, setReviewNote] = useState<string | null>(initialReviewNote);
+  const [publishChecked, setPublishChecked] = useState(initialStatus === 'published');
+  const [rejectNote, setRejectNote] = useState('');
   const [saving, setSaving] = useState(false);
   const [submittingForReview, setSubmittingForReview] = useState(false);
   const [reviewing, setReviewing] = useState(false);
   const [message, setMessage] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
   const canEditContent = canReview
-    ? reviewStatus === 'approved'
-    : reviewStatus === 'draft' || reviewStatus === 'rejected';
+    ? status === 'draft' || status === 'published'
+    : status === 'draft' || status === 'rejected';
   const canSubmitForReview = !canReview &&
-    (reviewStatus === 'draft' || reviewStatus === 'rejected') &&
+    (status === 'draft' || status === 'rejected') &&
     Boolean(titleVi.trim() && titleEn.trim()) &&
     blocks.length > 0;
+
+  const applyLesson = (lesson: { status: LessonStatus; review_note: string | null; updated_at: string }) => {
+    setStatus(lesson.status);
+    setReviewNote(lesson.review_note);
+    setPublishChecked(lesson.status === 'published');
+    setUpdatedAt(lesson.updated_at);
+  };
 
   const handleAddBlock = (newBlock: Block) => {
     setBlocks((prev) => [...prev, newBlock]);
@@ -91,24 +101,20 @@ export function LessonEditor({
           title_en: titleEn,
           blocks,
           expected_updated_at: updatedAt,
-          ...(canReview && reviewStatus === 'approved' ? { published } : {}),
+          ...(canReview ? { status: publishChecked ? 'published' : 'draft' } : {}),
         }),
       });
 
       if (res.ok) {
         const data = await res.json();
-        const nextReviewStatus = data.lesson.review_status as LessonReviewStatus;
-        setReviewStatus(nextReviewStatus);
-        setPublished(data.lesson.published);
-        setUpdatedAt(data.lesson.updated_at);
+        const next = data.lesson.status as LessonStatus;
+        applyLesson(data.lesson);
         setMessage({
-          text: nextReviewStatus === 'pending'
-            ? 'Đã lưu. Bài học vẫn đang chờ admin duyệt.'
-            : nextReviewStatus === 'rejected'
-              ? 'Đã lưu chỉnh sửa. Bài vẫn chờ bạn gửi lại admin duyệt.'
-              : nextReviewStatus === 'draft'
-                ? 'Đã lưu bản nháp.'
-                : 'Đã lưu thay đổi bài học thành công! 🎉',
+          text: next === 'rejected'
+            ? 'Đã lưu chỉnh sửa. Bài vẫn chờ bạn gửi lại admin duyệt.'
+            : next === 'draft'
+              ? 'Đã lưu bản nháp.'
+              : 'Đã lưu thay đổi bài học thành công!',
           type: 'success',
         });
       } else {
@@ -160,9 +166,7 @@ export function LessonEditor({
         return;
       }
 
-      setReviewStatus(data.lesson.review_status as LessonReviewStatus);
-      setPublished(data.lesson.published);
-      setUpdatedAt(data.lesson.updated_at);
+      applyLesson(data.lesson);
       setMessage({ text: 'Đã gửi bài vào hàng chờ admin duyệt.', type: 'success' });
     } catch {
       setMessage({ text: 'Không kết nối được máy chủ. Bài chưa được gửi duyệt.', type: 'error' });
@@ -189,7 +193,11 @@ export function LessonEditor({
           'Content-Type': 'application/json',
           Authorization: `Bearer ${session.access_token}`,
         },
-        body: JSON.stringify({ decision, expected_updated_at: updatedAt }),
+        body: JSON.stringify({
+          decision,
+          expected_updated_at: updatedAt,
+          ...(decision === 'reject' && rejectNote.trim() ? { note: rejectNote.trim() } : {}),
+        }),
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
@@ -197,9 +205,7 @@ export function LessonEditor({
         return;
       }
 
-      setReviewStatus(data.lesson.review_status);
-      setPublished(data.lesson.published);
-      setUpdatedAt(data.lesson.updated_at);
+      applyLesson(data.lesson);
       router.push('/admin/lessons/review');
       router.refresh();
     } catch {
@@ -218,24 +224,8 @@ export function LessonEditor({
             <span className="rounded-full bg-purple-100 px-2.5 py-0.5 font-mono text-[11px] font-bold text-purple-800 dark:bg-purple-950/60 dark:text-purple-300">
               S10 Authoring Studio
             </span>
-            <span
-              className={`rounded-full px-2.5 py-0.5 text-xs font-bold ${
-                published
-                  ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300'
-                  : reviewStatus === 'rejected'
-                    ? 'bg-red-100 text-red-800 dark:bg-red-950/60 dark:text-red-300'
-                    : 'bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300'
-              }`}
-            >
-              {published
-                ? '● Đã duyệt & xuất bản'
-                : reviewStatus === 'pending'
-                  ? '◷ Chờ admin duyệt'
-                  : reviewStatus === 'rejected'
-                    ? '○ Cần chỉnh sửa'
-                    : reviewStatus === 'draft'
-                      ? '○ Bản nháp'
-                      : '● Đã duyệt · Bản nháp'}
+            <span className={`rounded-full px-2.5 py-0.5 text-xs font-bold ${TONE_CLASS[lessonStatusTone(status)]}`}>
+              {lessonStatusLabel(status)[lang === 'en' ? 'en' : 'vi']}
             </span>
           </div>
           <h2 className="text-xl font-bold text-gray-900 dark:text-white">
@@ -244,12 +234,12 @@ export function LessonEditor({
         </div>
 
         <div className="flex flex-wrap items-center gap-3">
-          {canReview && reviewStatus === 'approved' && (
+          {canReview && (status === 'draft' || status === 'published') && (
             <label className="flex cursor-pointer items-center gap-2 text-xs font-bold text-gray-700 dark:text-gray-300">
               <input
                 type="checkbox"
-                checked={published}
-                onChange={(e) => setPublished(e.target.checked)}
+                checked={publishChecked}
+                onChange={(e) => setPublishChecked(e.target.checked)}
                 className="h-4 w-4 rounded-sm border-gray-300 text-purple-600 focus:ring-purple-500"
               />
               <span>Xuất bản cho học sinh</span>
@@ -265,7 +255,7 @@ export function LessonEditor({
             >
               {saving
                 ? 'Đang lưu...'
-                : reviewStatus === 'draft' && !canReview
+                : status === 'draft' && !canReview
                   ? 'Lưu bản nháp'
                   : 'Lưu bài giảng'}
             </button>
@@ -279,7 +269,7 @@ export function LessonEditor({
             >
               {submittingForReview
                 ? 'Đang gửi...'
-                : reviewStatus === 'rejected'
+                : status === 'rejected'
                   ? 'Gửi duyệt lại'
                   : 'Gửi admin duyệt'}
             </button>
@@ -287,35 +277,44 @@ export function LessonEditor({
         </div>
       </div>
 
-      {reviewStatus === 'approved' && !canReview && (
+      {status === 'published' && !canReview && (
         <p className="rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-800 dark:border-emerald-900 dark:bg-emerald-950/30 dark:text-emerald-300">
           Bài đã được admin duyệt. Giáo viên không thể sửa nội dung đã xuất bản.
         </p>
       )}
 
-      {!canReview && reviewStatus === 'pending' && (
+      {!canReview && status === 'pending_review' && (
         <p className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-200">
           Bài đã gửi admin duyệt. Nội dung được khóa cho đến khi admin duyệt hoặc từ chối.
         </p>
       )}
 
-      {!canReview && reviewStatus === 'draft' && (
+      {!canReview && status === 'draft' && (
         <p className="rounded-xl border border-gray-200 bg-gray-50 p-3 text-sm text-gray-600 dark:border-gray-800 dark:bg-gray-900 dark:text-gray-300">
           Bài đang là bản nháp. Hoàn thiện tiêu đề và thêm ít nhất một khối, sau đó gửi admin duyệt.
         </p>
       )}
-      {!canReview && reviewStatus === 'rejected' && (
+      {!canReview && status === 'rejected' && (
         <p className="rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-800 dark:border-red-900 dark:bg-red-950/30 dark:text-red-300">
           Bài cần chỉnh sửa trước khi gửi admin duyệt lại.
+          {reviewNote && <span className="mt-1 block font-semibold">Ghi chú của admin: {reviewNote}</span>}
         </p>
       )}
 
-      {canReview && reviewStatus === 'pending' && (
+      {canReview && status === 'pending_review' && (
         <section className="flex flex-col gap-3 rounded-2xl border border-amber-200 bg-amber-50 p-4 dark:border-amber-900/50 dark:bg-amber-950/20 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <h3 className="text-sm font-bold text-amber-950 dark:text-amber-200">Bài đang chờ admin duyệt</h3>
             <p className="mt-1 text-xs text-amber-800 dark:text-amber-300">Kiểm tra nội dung xem trước rồi chọn duyệt hoặc yêu cầu chỉnh sửa.</p>
           </div>
+          <textarea
+            value={rejectNote}
+            onChange={(e) => setRejectNote(e.target.value)}
+            maxLength={1000}
+            rows={2}
+            placeholder="Ghi chú khi từ chối (không bắt buộc)"
+            className="w-full rounded-xl border border-amber-200 bg-white p-2 text-xs sm:max-w-xs dark:border-amber-900 dark:bg-card"
+          />
           <div className="flex gap-2">
             <button
               type="button"

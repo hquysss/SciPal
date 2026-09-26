@@ -35,7 +35,7 @@ export async function getLessonDetail(
       `)
       .eq('subjects.slug', subjectSlug)
       .eq('slug', lessonSlug)
-      .eq('published', true)
+      .eq('status', 'published')
       .single();
 
     if (error || !data) return null;

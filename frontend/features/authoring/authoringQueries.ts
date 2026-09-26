@@ -1,6 +1,8 @@
 import type { Block } from '@scipal/types';
 
-export type LessonReviewStatus = 'draft' | 'pending' | 'approved' | 'rejected';
+import type { LessonStatus } from '@scipal/supabase';
+
+export type { LessonStatus };
 
 export interface AuthoringLessonData {
   id: string;
@@ -15,8 +17,9 @@ export interface AuthoringLessonData {
   title_vi: string;
   title_en: string;
   grade: number;
-  published: boolean;
-  review_status: LessonReviewStatus;
+  status: LessonStatus;
+  review_note: string | null;
+  published_at: string | null;
   created_by: string | null;
   reviewed_by: string | null;
   reviewed_at: string | null;

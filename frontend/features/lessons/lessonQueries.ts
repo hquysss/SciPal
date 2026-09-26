@@ -13,9 +13,9 @@ export async function getSubjectWithTopicsAndLessons(subjectSlug: string) {
 
     const { data: topics, error: topicsError } = await supabase
       .from('topics')
-      .select('*, lessons(id, slug, title_en, title_vi, sort_order, published)')
+      .select('*, lessons(id, slug, title_en, title_vi, sort_order, status)')
       .eq('subject_id', subject.id)
-      .eq('lessons.published', true)
+      .eq('lessons.status', 'published')
       .order('sort_order');
 
     if (topicsError) return null;
