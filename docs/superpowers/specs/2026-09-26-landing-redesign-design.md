@@ -64,6 +64,14 @@ Chữ (VI/EN) cụ thể của tiêu đề hero theo cấp:
 
 Câu phụ chung: "Bài học song ngữ, theo đúng chương trình của em." — "Bilingual lessons that follow your curriculum."
 
+## 3b. Công tắc ngôn ngữ bằng cờ
+
+Thay chữ "EN"/"VI" bằng hai lá cờ ở **cả hai** công tắc: `components/nav/LanguageToggle.tsx` (navbar, toàn app) và công tắc trên thẻ "Song ngữ" (mục 3). Tiếng Việt: cờ Việt Nam; tiếng Anh: cờ Anh (Union Jack).
+
+- Cờ là SVG tĩnh `frontend/public/flags/vn.svg`, `frontend/public/flags/gb.svg` (< 2 KB mỗi file, không script/href), render bằng `<img alt="">` cỡ ~20×14 px, bo góc nhẹ. Không dùng emoji cờ (Windows hiện "VN"/"GB").
+- Mỗi nút giữ tên truy cập bằng chữ: `aria-label="Tiếng Việt"` / `"English"`, `aria-pressed` cho lựa chọn đang bật; `title` cùng nội dung để hiện tooltip. Vùng chạm ≥ 44 px, trạng thái chọn thể hiện bằng viền/nền token (`bg-nav-ink` như hiện tại), không chỉ bằng độ mờ của cờ.
+- Màu quốc kỳ nằm trong file SVG ở `public/`; ratchet màu thô chỉ quét `.tsx` trong `app/`, `components/`, `features/` nên không cần ngoại lệ.
+
 ## 4. Cảnh 3D hero
 
 Nội dung: một mặt bàn nhìn chéo từ trên, cuốn vở mở ở giữa, đồ vật quanh vở theo cấp (khớp bộ hoạ tiết):
@@ -88,6 +96,7 @@ Kỹ thuật:
 Trong `frontend/features/landing/`:
 - Viết lại: `LevelGate.tsx`, `level-gate.module.css`, `LandingPage.tsx`, `landing.module.css`.
 - Mới: `hero/HeroScene.tsx`, `hero/HeroFallback.tsx`, `hero/sceneObjects.ts`, `hero/canRunHeroScene.ts`, `hero/readSceneColors.ts`, `HowItWorks.tsx`, `TutorSection.tsx`.
+- Sửa ngoài landing: `frontend/components/nav/LanguageToggle.tsx` (cờ); mới `frontend/public/flags/vn.svg`, `gb.svg`.
 - Sửa: `TutorDemoCard.tsx` (hiện lần lượt khi vào viewport), `GuestLandingFlow.tsx`, `frontend/app/page.tsx` (bỏ `informatics` khỏi `LevelGate`).
 - Xoá: `LandingHeroNotes.tsx`, `landing-hero-notes.module.css`, `DevelopmentPreview`, CSS không dùng.
 - Cập nhật trang QA: `frontend/app/dev/landing-showcase`, `frontend/app/dev/landing-level-gate`.
@@ -101,6 +110,7 @@ Unit (vitest):
 - `readSceneColors`: parse token; dùng dự phòng khi thiếu.
 - `LevelGate`: form POST, ba nút `name="level"` đúng giá trị, không còn chữ "Sắp ra mắt"/"Chưa có bài học", `saveError` hiện alert, "Đang chọn" đúng cấp.
 - `TutorSection`: nút chỉ hiện khi có `href`.
+- `LanguageToggle`: hai nút có `aria-label` "Tiếng Việt"/"English", đúng `aria-pressed`, dùng ảnh cờ, không còn chữ "EN"/"VI" hiển thị.
 - `HowItWorks`: công tắc song ngữ đổi câu và `aria-pressed`; thẻ lật đổi `aria-expanded`.
 
 Test sẵn có phải qua: ratchet màu thô (`theme-baseline.json` không tăng), `rootTheme.test.ts`, `patterns.test.ts`, typecheck toàn repo, `next build`.
