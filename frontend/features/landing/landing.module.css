@@ -1,13 +1,13 @@
 .page {
-  --landing-paper: #f7f8f3;
-  --landing-surface: #fff;
-  --landing-ink: #17251d;
-  --landing-muted: #4b6052;
-  --landing-line: #d8e5dc;
-  --landing-action: #0c633b;
-  --landing-action-hover: #084d2e;
-  --landing-deep: #123d2b;
-  --landing-focus: #8a3e1f;
+  --landing-paper: var(--paper);
+  --landing-surface: var(--surface);
+  --landing-ink: var(--ink);
+  --landing-muted: var(--ink-muted);
+  --landing-line: var(--line);
+  --landing-action: var(--action);
+  --landing-action-hover: var(--action-hover);
+  --landing-deep: var(--nav);
+  --landing-focus: var(--focus);
   --landing-font-display: var(--font-be-vietnam), sans-serif;
   --landing-font-body: var(--font-be-vietnam), 'Be Vietnam Pro', sans-serif;
   --landing-font-measure: var(--font-jetbrains-mono), monospace;
@@ -44,7 +44,7 @@
   --landing-border: 1px;
   --landing-focus-width: 3px;
   --landing-focus-offset: 3px;
-  --landing-shadow-soft: 0 14px 40px rgb(24 49 34 / 6%);
+  --landing-shadow-soft: 0 14px 40px color-mix(in srgb, var(--ink) 6%, transparent);
   --landing-motion-fast: 160ms;
   --landing-page-gutter: clamp(1rem, 3.4vw, 2.75rem);
 
@@ -66,7 +66,7 @@
   --landing-line: var(--line);
   --landing-action: var(--action);
   --landing-action-hover: var(--action-hover);
-  --landing-deep: color-mix(in srgb, var(--action) 55%, var(--ink));
+  --landing-deep: var(--nav);
   --landing-focus: var(--focus);
 }
 
@@ -213,7 +213,7 @@
 .primaryAction,
 .startAction {
   background: var(--landing-action);
-  color: #fff;
+  color: var(--action-ink);
   box-shadow: 0 8px 22px color-mix(in srgb, var(--landing-action) 18%, transparent);
 }
 
@@ -624,7 +624,7 @@
   border-radius: var(--landing-radius-panel);
   background: var(--landing-deep);
   padding: clamp(1.5rem, 4.5vw, 3rem);
-  color: #fff;
+  color: var(--nav-ink);
 }
 
 .startCopy {
@@ -632,12 +632,12 @@
 }
 
 .startEyebrow {
-  color: color-mix(in srgb, #fff 82%, var(--landing-deep));
+  color: color-mix(in srgb, var(--nav-ink) 82%, var(--landing-deep));
 }
 
 .startCopy h2 {
   margin: var(--landing-space-2) 0 0;
-  color: #fff;
+  color: var(--nav-ink);
   font-family: var(--landing-font-display);
   font-size: clamp(1.6rem, 3vw, 2.4rem);
   font-weight: var(--landing-weight-heavy);
@@ -647,7 +647,7 @@
 
 .startCopy > p:last-child {
   margin: var(--landing-space-3) 0 0;
-  color: color-mix(in srgb, #fff 84%, var(--landing-deep));
+  color: color-mix(in srgb, var(--nav-ink) 84%, var(--landing-deep));
   font-size: var(--landing-type-body);
   line-height: var(--landing-leading-copy);
 }
@@ -662,14 +662,14 @@
 
 .startAction {
   min-width: min(100%, 14rem);
-  border-color: #fff;
-  background: #fff;
+  border-color: var(--nav-ink);
+  background: var(--nav-ink);
   color: var(--landing-deep);
   box-shadow: none;
 }
 
 .startAction:hover {
-  background: color-mix(in srgb, #fff 88%, var(--landing-deep));
+  background: color-mix(in srgb, var(--nav-ink) 88%, var(--landing-deep));
   color: var(--landing-deep);
 }
 
@@ -931,9 +931,9 @@
   font-weight: var(--landing-weight-bold);
 }
 .inquiryObservation {
-  border-color: color-mix(in srgb, #ad7812 55%, var(--landing-line));
-  background: #fff6dc;
-  color: #75520d;
+  border-color: color-mix(in srgb, var(--warning) 55%, var(--landing-line));
+  background: var(--warning-surface);
+  color: var(--warning);
 }
 
 .inquiryCaption {
@@ -945,7 +945,7 @@
   height: 0.5rem;
   flex: 0 0 auto;
   border-radius: 50%;
-  background: #ad7812;
+  background: var(--warning);
 }
 
 .inquiryConclusion {

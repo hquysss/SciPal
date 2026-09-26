@@ -17,7 +17,7 @@
 }
 
 .grade {
-  color: var(--landing-muted, #4b6052);
+  color: var(--landing-muted, var(--ink-muted));
   font-family: var(--landing-font-measure, monospace);
   font-size: var(--landing-type-label, 0.75rem);
   font-weight: 650;
@@ -29,30 +29,30 @@
   display: inline-flex;
   min-height: 2rem;
   align-items: center;
-  border: var(--landing-border, 1px) solid var(--landing-line, #d8ded8);
+  border: var(--landing-border, 1px) solid var(--landing-line, var(--line));
   border-radius: 999px;
-  background: var(--landing-surface, #fff);
+  background: var(--landing-surface, var(--surface));
   padding: 0.35rem 0.75rem;
-  color: var(--landing-muted, #4b6052);
+  color: var(--landing-muted, var(--ink-muted));
   font-size: var(--landing-type-label, 0.75rem);
   font-weight: 650;
   line-height: var(--landing-leading-compact, 1.45);
 }
 
 .statusActive {
-  border-color: color-mix(in srgb, var(--accent, #16a34a) 34%, var(--landing-line, #d8ded8));
-  background: color-mix(in srgb, var(--accent, #16a34a) 8%, var(--landing-surface, #fff));
-  color: var(--accent, #16a34a);
+  border-color: color-mix(in srgb, var(--accent, var(--action)) 34%, var(--landing-line, var(--line)));
+  background: color-mix(in srgb, var(--accent, var(--action)) 8%, var(--landing-surface, var(--surface)));
+  color: var(--accent, var(--action));
 }
 
 .subjectIcon {
   display: grid;
   flex: 0 0 auto;
   place-items: center;
-  border: var(--landing-border, 1px) solid color-mix(in srgb, var(--accent, #16a34a) 28%, var(--landing-line, #d8ded8));
+  border: var(--landing-border, 1px) solid color-mix(in srgb, var(--accent, var(--action)) 28%, var(--landing-line, var(--line)));
   border-radius: var(--landing-radius-card, 1rem);
-  background: color-mix(in srgb, var(--accent, #16a34a) 9%, var(--landing-surface, #fff));
-  color: var(--accent, #16a34a);
+  background: color-mix(in srgb, var(--accent, var(--action)) 9%, var(--landing-surface, var(--surface)));
+  color: var(--accent, var(--action));
   font-family: var(--landing-font-measure, monospace);
   font-weight: 750;
 }
@@ -114,9 +114,9 @@
   min-height: 13.5rem;
   flex: 0 0 min(18rem, 80vw);
   flex-direction: column;
-  border: var(--landing-border, 1px) solid color-mix(in srgb, var(--accent, #16a34a) 20%, var(--landing-line, #d8ded8));
+  border: var(--landing-border, 1px) solid color-mix(in srgb, var(--accent, var(--action)) 20%, var(--landing-line, var(--line)));
   border-radius: var(--landing-radius-card, 1rem);
-  background: var(--landing-surface, #fff);
+  background: var(--landing-surface, var(--surface));
   padding: var(--landing-space-4, 1rem);
   transition: border-color var(--landing-motion-fast, 150ms) ease-out, box-shadow var(--landing-motion-fast, 150ms) ease-out, transform var(--landing-motion-fast, 150ms) ease-out;
 }
@@ -136,13 +136,13 @@
 }
 
 .activeCard {
-  background: color-mix(in srgb, var(--accent, #16a34a) 4%, var(--landing-surface, #fff));
-  box-shadow: 0 8px 26px color-mix(in srgb, var(--accent, #16a34a) 9%, transparent);
+  background: color-mix(in srgb, var(--accent, var(--action)) 4%, var(--landing-surface, var(--surface)));
+  box-shadow: 0 8px 26px color-mix(in srgb, var(--accent, var(--action)) 9%, transparent);
 }
 
 .activeCard:hover {
   transform: translateY(-2px);
-  border-color: color-mix(in srgb, var(--accent, #16a34a) 45%, var(--landing-line, #d8ded8));
+  border-color: color-mix(in srgb, var(--accent, var(--action)) 45%, var(--landing-line, var(--line)));
 }
 
 .cardTopline {
@@ -186,7 +186,7 @@
 
 .subjectInfo h3 {
   margin: var(--landing-space-3, 0.75rem) 0 0;
-  color: var(--landing-ink, #17251d);
+  color: var(--landing-ink, var(--ink));
   font-size: var(--landing-type-card-title, 1.125rem);
   font-weight: 750;
   line-height: var(--landing-leading-title, 1.25);
@@ -194,13 +194,13 @@
 
 .subjectInfo p {
   margin: var(--landing-space-1, 0.25rem) 0 0;
-  color: var(--landing-muted, #4b6052);
+  color: var(--landing-muted, var(--ink-muted));
   font-size: var(--landing-type-small, 0.875rem);
   line-height: var(--landing-leading-copy, 1.55);
 }
 
 .cardAction {
-  border-top: var(--landing-border, 1px) solid var(--landing-line, #d8ded8);
+  border-top: var(--landing-border, 1px) solid var(--landing-line, var(--line));
   padding-top: var(--landing-space-3, 0.75rem);
 }
 
@@ -223,8 +223,8 @@
 }
 
 .activeAction {
-  background: var(--accent, #16a34a);
-  color: #fff;
+  background: var(--landing-action, var(--action));
+  color: var(--action-ink);
   transition: filter var(--landing-motion-fast, 150ms) ease-out, transform var(--landing-motion-fast, 150ms) ease-out;
 }
 
@@ -234,18 +234,18 @@
 }
 
 .disabledAction {
-  background: color-mix(in srgb, var(--landing-line, #d8ded8) 35%, var(--landing-surface, #fff));
-  color: var(--landing-muted, #4b6052);
+  background: color-mix(in srgb, var(--landing-line, var(--line)) 35%, var(--landing-surface, var(--surface)));
+  color: var(--landing-muted, var(--ink-muted));
 }
 
 .catalogMessage {
   max-width: 64ch;
   margin: 0;
-  border: var(--landing-border, 1px) solid var(--landing-line, #d8ded8);
+  border: var(--landing-border, 1px) solid var(--landing-line, var(--line));
   border-radius: var(--landing-radius-card, 1rem);
-  background: var(--landing-surface, #fff);
+  background: var(--landing-surface, var(--surface));
   padding: var(--landing-space-5, 1.25rem);
-  color: var(--landing-muted, #4b6052);
+  color: var(--landing-muted, var(--ink-muted));
   font-size: var(--landing-type-body, 1rem);
   line-height: var(--landing-leading-copy, 1.65);
 }
@@ -259,9 +259,9 @@
   margin-top: var(--landing-space-3, 0.75rem);
   border: 0;
   border-radius: var(--landing-radius-control, 0.75rem);
-  background: var(--landing-action, #0c633b);
+  background: var(--landing-action, var(--action));
   padding: 0.65rem 1rem;
-  color: #fff;
+  color: var(--action-ink);
   font: inherit;
   font-size: var(--landing-type-label, 0.875rem);
   font-weight: 700;
@@ -270,7 +270,7 @@
 
 .activeAction:focus-visible,
 .retryAction:focus-visible {
-  outline: var(--landing-focus-width, 3px) solid var(--landing-focus, #8a3e1f);
+  outline: var(--landing-focus-width, 3px) solid var(--landing-focus, var(--focus));
   outline-offset: var(--landing-focus-offset, 3px);
 }
 

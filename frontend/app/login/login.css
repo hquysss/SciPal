@@ -370,7 +370,8 @@
 .katha-login-slide-word {
   font-family: var(--font-mono), var(--font-sans), sans-serif;
   font-weight: 600;
-  color: var(--lg-gold-soft);
+  /* The badge is a fixed dark overlay on the slide art in every level and mode. */
+  color: rgba(245, 239, 223, 0.98);
 }
 
 .katha-login-slide-phonetic {
@@ -923,13 +924,13 @@
 .katha-login-checkbox-box.checked {
   border-color: var(--lg-primary);
   background: var(--lg-primary);
-  color: #ffffff;
+  color: var(--action-ink);
 }
 
 [data-app-shell][data-theme='dark'] .katha-login-checkbox-box.checked {
   border-color: var(--lg-gold);
   background: var(--lg-gold);
-  color: #17161e;
+  color: var(--action-ink);
 }
 
 .katha-login-checkbox-box svg {
@@ -1011,7 +1012,7 @@
   border: 1px solid color-mix(in srgb, var(--lg-primary) 40%, transparent);
   border-radius: 0.95rem;
   background: linear-gradient(135deg, var(--lg-primary), var(--color-katha-primary-light, oklch(0.39 0.08 226)));
-  color: var(--color-katha-on-solid, #ffffff);
+  color: var(--action-ink);
   font: inherit;
   font-size: 0.98rem;
   font-weight: 600;
@@ -1055,7 +1056,7 @@
 [data-app-shell][data-theme='dark'] .katha-login-submit {
   border-color: color-mix(in srgb, var(--lg-gold) 45%, transparent);
   background: linear-gradient(135deg, var(--lg-gold), color-mix(in srgb, var(--lg-gold) 75%, var(--color-katha-heritage, oklch(0.62 0.14 38))));
-  color: #17161e;
+  color: var(--action-ink);
   box-shadow:
     0 14px 28px -12px color-mix(in srgb, var(--lg-gold) 40%, transparent),
     inset 0 1px 0 rgba(255, 255, 255, 0.25);
@@ -1163,7 +1164,7 @@
   height: 1.5rem;
   border-radius: 999px;
   background: var(--lg-primary);
-  color: #ffffff;
+  color: var(--action-ink);
   box-shadow: 0 3px 8px -2px rgba(0, 0, 0, 0.35);
   transform: translateY(-50%);
   transition: left 200ms cubic-bezier(0.22, 1, 0.36, 1), background 200ms ease;
@@ -1172,7 +1173,7 @@
 .login-theme-toggle-knob.is-dark {
   left: calc(100% - 1.72rem);
   background: linear-gradient(180deg, var(--lg-gold-soft), var(--lg-gold));
-  color: #17161e;
+  color: var(--action-ink);
 }
 
 .login-theme-toggle-knob svg {
@@ -1255,12 +1256,12 @@
 
 .login-language-option.is-active {
   background: var(--lg-primary);
-  color: #ffffff;
+  color: var(--action-ink);
 }
 
 [data-app-shell][data-theme='dark'] .login-language-option.is-active {
   background: var(--lg-gold);
-  color: #17161e;
+  color: var(--action-ink);
 }
 
 /* ============================================================
@@ -1363,7 +1364,7 @@
   border: 0;
   border-radius: 0.7rem;
   background: var(--lg-primary);
-  color: #ffffff;
+  color: var(--action-ink);
   font: inherit;
   font-size: 0.84rem;
   font-weight: 600;
@@ -1378,7 +1379,7 @@
 
 [data-app-shell][data-theme='dark'] .katha-login-modal-btn {
   background: var(--lg-gold);
-  color: #17161e;
+  color: var(--action-ink);
 }
 
 [data-app-shell][data-theme='dark'] .katha-login-modal-btn:hover {

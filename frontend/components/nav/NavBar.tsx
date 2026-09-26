@@ -325,7 +325,6 @@ export function NavBar({ currentSubject }: NavBarProps) {
 
         <div className="flex shrink-0 items-center gap-2 lg:hidden">
           <LanguageToggle />
-          <ThemeToggle />
           <button
             type="button"
             aria-label={mobileOpen ? (lang === 'en' ? 'Close menu' : 'Đóng menu') : (lang === 'en' ? 'Open menu' : 'Mở menu')}
@@ -346,6 +345,9 @@ export function NavBar({ currentSubject }: NavBarProps) {
         className={`absolute inset-x-0 top-full z-40 max-h-[calc(100dvh-4rem)] origin-top overflow-y-auto border-b border-line bg-surface p-4 text-ink shadow-xl transition-[opacity,transform,visibility] duration-200 ease-out motion-reduce:transition-none lg:hidden ${mobileOpen ? 'visible scale-y-100 opacity-100' : 'invisible pointer-events-none scale-y-0 opacity-0'}`}
       >
           <div className="mx-auto max-w-xl space-y-2">
+            <div className="flex justify-end pb-2">
+              <ThemeToggle tone="surface" />
+            </div>
             <Link
               href="/"
               prefetch={pathname !== '/'}
