@@ -1,8 +1,6 @@
 {
   "app/admin/lessons/review/page.tsx": 56,
   "app/dev/landing-showcase/page.tsx": 3,
-  "app/exam/[blueprintId]/page.tsx": 34,
-  "app/exam/page.tsx": 49,
   "app/teacher/classes/[id]/page.tsx": 13,
   "app/teacher/classes/page.tsx": 18,
   "app/teacher/lessons/[id]/page.tsx": 16,
@@ -17,9 +15,6 @@
   "features/classes/CreateClassModal.tsx": 59,
   "features/classes/JoinClassModal.tsx": 40,
   "features/classes/StudentRoster.tsx": 68,
-  "features/exam/AnswerPalette.tsx": 44,
-  "features/exam/ExamListNotices.tsx": 8,
-  "features/exam/ExamRunner.tsx": 140,
   "features/survey/DemandPollBanner.tsx": 29,
   "features/survey/FeatureRequestBoard.tsx": 78,
   "features/survey/PostLessonSurvey.tsx": 64,

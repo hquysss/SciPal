@@ -9,17 +9,20 @@ interface AnswerPaletteProps {
   onSelect: (index: number) => void;
 }
 
+const CELL = 'relative flex min-h-11 min-w-11 items-center justify-center rounded-lg text-sm font-bold transition-colors';
+const ANSWERED = 'bg-action text-action-ink hover:bg-action-hover';
+const UNANSWERED = 'border border-edge bg-surface text-ink hover:bg-surface-sunken';
+const CURRENT = 'outline outline-2 outline-offset-2 outline-focus';
+
 export function AnswerPalette({ total, currentIndex, answers, onSelect }: AnswerPaletteProps) {
   const { t } = useLanguage();
   const answeredCount = Object.keys(answers).length;
 
   return (
-    <div className="rounded-2xl border border-emerald-900/10 bg-white/90 p-4 sm:p-5 shadow-xs backdrop-blur-md dark:border-white/10 dark:bg-card/90">
-      <div className="flex items-center justify-between mb-3 border-b border-gray-100 pb-2.5 dark:border-gray-800">
-        <h4 className="text-sm font-bold uppercase tracking-wider text-gray-700 dark:text-gray-300">
-          📋 {t({ en: 'Question Grid', vi: 'Bảng theo dõi câu hỏi' })}
-        </h4>
-        <span className="font-mono text-sm font-bold text-emerald-800 bg-emerald-50 dark:bg-emerald-950/60 dark:text-emerald-300 px-3 py-1 rounded-full">
+    <section className="rounded-xl border border-line bg-surface p-4 sm:p-5">
+      <div className="mb-3 flex flex-wrap items-center justify-between gap-2 border-b border-line pb-2.5">
+        <h2 className="text-sm font-bold text-ink">{t({ en: 'Question grid', vi: 'Bảng theo dõi câu hỏi' })}</h2>
+        <span className="rounded-md bg-surface-sunken px-3 py-1 text-sm font-semibold tabular-nums text-ink">
           {answeredCount} / {total} {t({ en: 'answered', vi: 'đã làm' })}
         </span>
       </div>
@@ -28,27 +31,38 @@ export function AnswerPalette({ total, currentIndex, answers, onSelect }: Answer
         {Array.from({ length: total }, (_, i) => {
           const isAnswered = answers[i] !== undefined;
           const isCurrent = i === currentIndex;
+          const state = isAnswered
+            ? t({ en: 'answered', vi: 'đã trả lời' })
+            : t({ en: 'not answered', vi: 'chưa trả lời' });
           return (
             <button
               key={i}
+              type="button"
               onClick={() => onSelect(i)}
-              aria-label={`Câu ${i + 1}`}
-              className={`relative flex h-11 w-full items-center justify-center rounded-xl font-mono text-sm font-black transition duration-150 active:scale-95 ${
-                isCurrent
-                  ? 'border-2 border-emerald-600 bg-emerald-50 text-emerald-800 shadow-xs ring-2 ring-emerald-500/20 dark:border-emerald-400 dark:bg-emerald-950/60 dark:text-emerald-200'
-                  : isAnswered
-                  ? 'bg-emerald-600 text-white shadow-xs hover:bg-emerald-700'
-                  : 'border border-gray-200 bg-gray-50 text-gray-600 hover:border-gray-300 hover:bg-gray-100 dark:border-gray-800 dark:bg-gray-800/60 dark:text-gray-300 dark:hover:bg-gray-700'
-              }`}
+              aria-label={t({ en: `Question ${i + 1}, ${state}`, vi: `Câu ${i + 1}, ${state}` })}
+              aria-current={isCurrent ? 'step' : undefined}
+              className={`${CELL} ${isAnswered ? ANSWERED : UNANSWERED} ${isCurrent ? CURRENT : ''} focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus`}
             >
-              <span>{i + 1}</span>
-              {isAnswered && !isCurrent && (
-                <span className="absolute top-1 right-1 h-1.5 w-1.5 rounded-full bg-white opacity-80" />
-              )}
+              {i + 1}
             </button>
           );
         })}
       </div>
-    </div>
+
+      <ul className="mt-3 flex flex-wrap gap-x-4 gap-y-2 text-sm text-ink-muted">
+        <li className="inline-flex items-center gap-2">
+          <span aria-hidden="true" className="h-4 w-4 rounded bg-action" />
+          {t({ en: 'Answered', vi: 'Đã trả lời' })}
+        </li>
+        <li className="inline-flex items-center gap-2">
+          <span aria-hidden="true" className="h-4 w-4 rounded border border-edge bg-surface" />
+          {t({ en: 'Not answered', vi: 'Chưa trả lời' })}
+        </li>
+        <li className="inline-flex items-center gap-2">
+          <span aria-hidden="true" className="h-4 w-4 rounded border border-edge bg-surface outline outline-2 outline-offset-1 outline-focus" />
+          {t({ en: 'Current question', vi: 'Câu đang xem' })}
+        </li>
+      </ul>
+    </section>
   );
 }
