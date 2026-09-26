@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="320" height="320" viewBox="0 0 320 320" fill="none" stroke="#000" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <g transform="translate(30 40) rotate(-12)">
+    <rect x="0" y="0" width="70" height="26" rx="4"/>
+    <path d="M0 16 H70"/>
+    <rect x="84" y="6" width="36" height="10" rx="4"/>
+  </g>
+  <g transform="translate(206 26) rotate(6)">
+    <path d="M22 0 H44 M26 0 V30 L2 78 H64 L40 30 V0"/>
+    <path d="M12 58 H54"/>
+  </g>
+  <g transform="translate(46 134) rotate(-8)">
+    <rect x="0" y="0" width="44" height="58" rx="6"/>
+    <rect x="7" y="7" width="30" height="12" rx="2"/>
+    <path d="M9 30 h4 M20 30 h4 M31 30 h4 M9 40 h4 M20 40 h4 M31 40 h4 M9 50 h4 M20 50 h4 M31 50 h4"/>
+  </g>
+  <g transform="translate(170 128) rotate(-20)">
+    <circle cx="26" cy="26" r="24"/>
+    <path d="M44 44 L70 70"/>
+    <path d="M14 20 A14 14 0 0 1 26 10"/>
+  </g>
+  <g transform="translate(34 244) rotate(4)">
+    <rect x="0" y="0" width="128" height="44" rx="5"/>
+    <path d="M10 12 h8 M24 12 h8 M38 12 h8 M52 12 h8 M66 12 h8 M80 12 h8 M94 12 h8 M108 12 h8 M14 22 h8 M28 22 h8 M42 22 h8 M56 22 h8 M70 22 h8 M84 22 h8 M98 22 h8 M30 32 H96"/>
+  </g>
+  <g transform="translate(232 232) rotate(-14)">
+    <path d="M18 0 C34 0 36 14 36 26 V40 C36 52 28 58 18 58 C8 58 0 52 0 40 V26 C0 14 2 0 18 0 Z"/>
+    <path d="M18 0 V20 M0 20 H36"/>
+  </g>
+</svg>

@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="320" height="320" viewBox="0 0 320 320" fill="none" stroke="#000" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <g transform="translate(40 28) rotate(-10)">
+    <circle cx="24" cy="6" r="6"/>
+    <path d="M20 12 L0 88 M28 12 L46 88 M46 88 L42 96 M10 50 H36"/>
+  </g>
+  <g transform="translate(176 36) rotate(12)">
+    <path d="M0 84 L0 0 L84 84 Z"/>
+    <path d="M12 72 L12 30 L54 72 Z"/>
+    <path d="M0 16 H6 M0 32 H8 M0 48 H6 M0 64 H8"/>
+  </g>
+  <g transform="translate(40 170) rotate(-4)">
+    <path d="M0 60 A60 60 0 0 1 120 60 Z"/>
+    <path d="M30 60 A30 30 0 0 1 90 60"/>
+    <path d="M60 0 V10 M18 18 L25 25 M102 18 L95 25 M0 60 H10 M110 60 H120"/>
+  </g>
+  <g transform="translate(206 176) rotate(-38)">
+    <rect x="0" y="0" width="96" height="12" rx="5"/>
+    <path d="M96 3 L108 6 L96 9 M14 0 V-8 H40"/>
+  </g>
+  <g transform="translate(236 244) rotate(8)">
+    <rect x="0" y="0" width="44" height="58" rx="6"/>
+    <rect x="7" y="7" width="30" height="12" rx="2"/>
+    <path d="M9 30 h4 M20 30 h4 M31 30 h4 M9 40 h4 M20 40 h4 M31 40 h4 M9 50 h4 M20 50 h4 M31 50 h4"/>
+  </g>
+</svg>

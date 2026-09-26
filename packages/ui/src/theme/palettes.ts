@@ -127,10 +127,10 @@ export const THEME_PALETTES: Record<ThemeLevel, Record<ThemeMode, ThemePalette>>
 /** Share of the subject accent in --accent-ink; the rest is --ink. */
 export const ACCENT_INK_RATIO: Record<ThemeMode, number> = { light: 0.6, dark: 0.4 };
 
-/** One sample motif until phase 2 draws a set per level. */
+/** School-supply motif per level, drawn as a single-colour mask tile. */
 export const PATTERN_URLS: Record<ThemeLevel, string> = {
-  primary: '/patterns/neutral.svg',
-  lower_secondary: '/patterns/neutral.svg',
-  upper_secondary: '/patterns/neutral.svg',
+  primary: '/patterns/primary.svg',
+  lower_secondary: '/patterns/lower_secondary.svg',
+  upper_secondary: '/patterns/upper_secondary.svg',
   neutral: '/patterns/neutral.svg',
 };
