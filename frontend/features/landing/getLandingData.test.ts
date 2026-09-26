@@ -3,7 +3,9 @@ import { createServerClient } from '@scipal/supabase';
 import { SUBJECT_CONFIG } from '../../lib/subject-config';
 import {
   classifyInformatics,
+  expandSubjectsByLevel,
   getLandingData,
+  levelOfGrade,
   type LandingLesson,
   type LandingSubject,
 } from './getLandingData';
@@ -18,6 +20,7 @@ type QueryChain = {
   select: ReturnType<typeof vi.fn>;
   order: ReturnType<typeof vi.fn>;
   eq: ReturnType<typeof vi.fn>;
+  gte: ReturnType<typeof vi.fn>;
   limit: ReturnType<typeof vi.fn>;
   maybeSingle: ReturnType<typeof vi.fn>;
 };
@@ -27,31 +30,37 @@ type QueryResult = {
   error: { message: string } | null;
 };
 
-function createQueryChain(result: QueryResult, terminal: 'order' | 'maybeSingle'): QueryChain {
+function createQueryChain(result: QueryResult, terminal: 'order' | 'eq' | 'maybeSingle'): QueryChain {
   const chain = {} as QueryChain;
-  let orderCount = 0;
   chain.select = vi.fn(() => chain);
-  chain.eq = vi.fn(() => chain);
+  chain.eq = vi.fn(() => (terminal === 'eq' ? Promise.resolve(result) : chain));
+  chain.gte = vi.fn(() => chain);
   chain.limit = vi.fn(() => chain);
-  chain.order = vi.fn(() => {
-    orderCount += 1;
-    if (terminal === 'order' && orderCount === 2) return Promise.resolve(result);
-    return chain;
-  });
+  chain.order = vi.fn(() => (terminal === 'order' ? Promise.resolve(result) : chain));
   chain.maybeSingle = vi.fn(() => Promise.resolve(result));
   return chain;
 }
 
-function setupSupabase(subjectResult: QueryResult, lessonResult: QueryResult) {
+function setupSupabase(
+  subjectResult: QueryResult,
+  lessonResult: QueryResult,
+  publishedResult: QueryResult = { data: [{ subject_id: informaticsSubject.id, grade: 11 }], error: null },
+) {
   const subjects = createQueryChain(subjectResult, 'order');
+  const published = createQueryChain(publishedResult, 'eq');
   const lessons = createQueryChain(lessonResult, 'maybeSingle');
+  let lessonCalls = 0;
   const client = {
-    from: vi.fn((table: string) => table === 'subjects' ? subjects : lessons),
+    from: vi.fn((table: string) => {
+      if (table === 'subjects') return subjects;
+      lessonCalls += 1;
+      return lessonCalls === 1 ? published : lessons;
+    }),
   };
   supabaseMocks.createServerClient.mockReturnValue(
     client as unknown as ReturnType<typeof createServerClient>,
   );
-  return { client, subjects, lessons };
+  return { client, subjects, published, lessons };
 }
 
 const informaticsSubject: LandingSubject = {
@@ -60,11 +69,15 @@ const informaticsSubject: LandingSubject = {
   name_en: 'Informatics',
   name_vi: 'Tin học',
   icon: '</>',
+  icon_url: null,
   accent_color: '#16845B',
   status: 'active',
   sort_order: 1,
   education_level: 'upper_secondary',
 };
+
+const { status: _status, education_level: _level, ...informaticsFields } = informaticsSubject;
+const informaticsRow = { ...informaticsFields, subject_grade_catalog: [{ grade: 11 }] };
 
 const publishedLesson: LandingLesson = {
   slug: 'algorithms',
@@ -110,8 +123,8 @@ describe('getLandingData', () => {
   });
 
   it('queries only the public catalog and lesson preview fields in a stable order', async () => {
-    const { client, subjects, lessons } = setupSupabase(
-      { data: [informaticsSubject], error: null },
+    const { client, subjects, published, lessons } = setupSupabase(
+      { data: [informaticsRow], error: null },
       { data: publishedLesson, error: null },
     );
 
@@ -123,13 +136,17 @@ describe('getLandingData', () => {
     });
     expect(client.from).toHaveBeenNthCalledWith(1, 'subjects');
     expect(subjects.select).toHaveBeenCalledWith(
-      'id,slug,name_en,name_vi,icon,accent_color,status,sort_order,education_level',
+      'id,slug,name_en,name_vi,icon,icon_url,accent_color,sort_order,subject_grade_catalog!inner(grade)',
     );
-    expect(subjects.order).toHaveBeenNthCalledWith(1, 'education_level', { ascending: true });
-    expect(subjects.order).toHaveBeenNthCalledWith(2, 'sort_order', { ascending: true });
+    expect(subjects.eq).toHaveBeenCalledWith('subject_grade_catalog.active', true);
+    expect(subjects.order).toHaveBeenCalledOnce();
+    expect(subjects.order).toHaveBeenCalledWith('sort_order', { ascending: true });
+    expect(published.select).toHaveBeenCalledWith('subject_id,grade');
+    expect(published.eq).toHaveBeenCalledWith('status', 'published');
     expect(lessons.select).toHaveBeenCalledWith('slug,title_en,title_vi');
     expect(lessons.eq).toHaveBeenNthCalledWith(1, 'subject_id', informaticsSubject.id);
-    expect(lessons.eq).toHaveBeenNthCalledWith(2, 'published', true);
+    expect(lessons.eq).toHaveBeenNthCalledWith(2, 'status', 'published');
+    expect(lessons.gte).toHaveBeenCalledWith('grade', 10);
     expect(lessons.order).toHaveBeenCalledWith('sort_order', { ascending: true });
     expect(lessons.limit).toHaveBeenCalledWith(1);
     expect(lessons.maybeSingle).toHaveBeenCalledOnce();
@@ -153,7 +170,7 @@ describe('getLandingData', () => {
 
   it('reports a lesson-read error without discarding the successful catalog', async () => {
     setupSupabase(
-      { data: [informaticsSubject], error: null },
+      { data: [informaticsRow], error: null },
       { data: null, error: { message: 'lesson query failed' } },
     );
 
@@ -161,5 +178,50 @@ describe('getLandingData', () => {
       catalog: { kind: 'ready', subjects: [informaticsSubject] },
       informatics: { kind: 'error' },
     });
+  });
+});
+
+describe('getLandingData published-lesson read', () => {
+  it('treats a failed published-lesson read as a catalog error', async () => {
+    setupSupabase(
+      { data: [informaticsRow], error: null },
+      { data: publishedLesson, error: null },
+      { data: null, error: { message: 'published lessons failed' } },
+    );
+    await expect(getLandingData({ get: () => undefined })).resolves.toEqual({
+      catalog: { kind: 'error' },
+      informatics: { kind: 'error' },
+    });
+  });
+});
+
+describe('expandSubjectsByLevel', () => {
+  const base = { name_en: 'Mathematics', name_vi: 'Toán', icon: '∑', icon_url: null, accent_color: '#2563eb' };
+  const math = { ...base, id: 'm', slug: 'math', sort_order: 2, subject_grade_catalog: [1, 2, 6, 10, 11].map((grade) => ({ grade })) };
+  const informatics = {
+    ...base, id: 'i', slug: 'informatics', name_en: 'Informatics', name_vi: 'Tin học', sort_order: 18,
+    subject_grade_catalog: [6, 7, 11].map((grade) => ({ grade })),
+  };
+
+  it('maps grades to levels', () => {
+    expect([1, 5, 6, 9, 10, 12].map(levelOfGrade)).toEqual([
+      'primary', 'primary', 'lower_secondary', 'lower_secondary', 'upper_secondary', 'upper_secondary',
+    ]);
+  });
+
+  it('emits one card per subject per level it belongs to', () => {
+    const cards = expandSubjectsByLevel([math], []);
+    expect(cards.map((c) => c.education_level)).toEqual(['primary', 'lower_secondary', 'upper_secondary']);
+    expect(new Set(cards.map((c) => c.id)).size).toBe(1);
+  });
+
+  it('marks a subject active only at levels with a published lesson in their grades', () => {
+    const cards = expandSubjectsByLevel([informatics], [{ subject_id: 'i', grade: 11 }]);
+    expect(cards.find((c) => c.education_level === 'lower_secondary')?.status).toBe('upcoming');
+    expect(cards.find((c) => c.education_level === 'upper_secondary')?.status).toBe('active');
+  });
+
+  it('ignores subjects without catalog rows', () => {
+    expect(expandSubjectsByLevel([{ ...math, subject_grade_catalog: [] }], [])).toEqual([]);
   });
 });

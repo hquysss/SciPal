@@ -1,18 +1,59 @@
 import { createServerClient, type CookieStore, type Database } from '@scipal/supabase';
 import { SUBJECT_CONFIG } from '../../lib/subject-config';
+import type { EducationLevel } from './educationLevel';
 
-export type LandingSubject = Pick<
-  Database['public']['Tables']['subjects']['Row'],
-  | 'id'
-  | 'slug'
-  | 'name_en'
-  | 'name_vi'
-  | 'icon'
-  | 'accent_color'
-  | 'status'
-  | 'sort_order'
-  | 'education_level'
->;
+export interface LandingSubject {
+  id: string;
+  slug: string;
+  name_en: string;
+  name_vi: string;
+  icon: string;
+  icon_url: string | null;
+  accent_color: string;
+  sort_order: number;
+  education_level: EducationLevel;
+  status: 'active' | 'upcoming';
+}
+
+export interface CatalogSubjectRow {
+  id: string;
+  slug: string;
+  name_en: string;
+  name_vi: string;
+  icon: string;
+  icon_url: string | null;
+  accent_color: string;
+  sort_order: number;
+  subject_grade_catalog: Array<{ grade: number }>;
+}
+
+const LEVEL_ORDER: EducationLevel[] = ['primary', 'lower_secondary', 'upper_secondary'];
+
+export function levelOfGrade(grade: number): EducationLevel {
+  if (grade <= 5) return 'primary';
+  if (grade <= 9) return 'lower_secondary';
+  return 'upper_secondary';
+}
+
+export function expandSubjectsByLevel(
+  rows: CatalogSubjectRow[],
+  published: Array<{ subject_id: string; grade: number }>,
+): LandingSubject[] {
+  const liveLevels = new Set(published.map((l) => `${l.subject_id}:${levelOfGrade(l.grade)}`));
+  const cards: LandingSubject[] = [];
+  for (const level of LEVEL_ORDER) {
+    for (const row of rows) {
+      if (!row.subject_grade_catalog.some((c) => levelOfGrade(c.grade) === level)) continue;
+      const { subject_grade_catalog: _catalog, ...subject } = row;
+      cards.push({
+        ...subject,
+        education_level: level,
+        status: liveLevels.has(`${row.id}:${level}`) ? 'active' : 'upcoming',
+      });
+    }
+  }
+  return cards;
+}
 
 export type LandingLesson = Pick<
   Database['public']['Tables']['lessons']['Row'],
@@ -63,22 +104,28 @@ export async function getLandingData(
   }
 
   let catalogResult;
+  let publishedResult;
   try {
-    catalogResult = await supabase
-      .from('subjects')
-      .select('id,slug,name_en,name_vi,icon,accent_color,status,sort_order,education_level')
-      .order('education_level', { ascending: true })
-      .order('sort_order', { ascending: true });
+    [catalogResult, publishedResult] = await Promise.all([
+      supabase
+        .from('subjects')
+        .select('id,slug,name_en,name_vi,icon,icon_url,accent_color,sort_order,subject_grade_catalog!inner(grade)')
+        .eq('subject_grade_catalog.active', true)
+        .order('sort_order', { ascending: true }),
+      supabase.from('lessons').select('subject_id,grade').eq('status', 'published'),
+    ]);
   } catch {
     return { catalog: { kind: 'error' }, informatics: { kind: 'error' } };
   }
-
-  if (catalogResult.error) {
+  if (catalogResult.error || publishedResult.error) {
     return { catalog: { kind: 'error' }, informatics: { kind: 'error' } };
   }
 
-  const subjects = catalogResult.data ?? [];
-  const subject = subjects.find((item) => item.slug === 'informatics') ?? null;
+  const subjects = expandSubjectsByLevel(
+    (catalogResult.data ?? []) as CatalogSubjectRow[],
+    publishedResult.data ?? [],
+  );
+  const subject = subjects.find((item) => item.slug === 'informatics' && item.education_level === 'upper_secondary') ?? null;
   if (!subject || subject.status !== 'active' || SUBJECT_CONFIG.informatics.status !== 'active') {
     return {
       catalog: { kind: 'ready', subjects },
@@ -91,7 +138,8 @@ export async function getLandingData(
       .from('lessons')
       .select('slug,title_en,title_vi')
       .eq('subject_id', subject.id)
-      .eq('published', true)
+      .eq('status', 'published')
+      .gte('grade', 10)
       .order('sort_order', { ascending: true })
       .limit(1)
       .maybeSingle();
