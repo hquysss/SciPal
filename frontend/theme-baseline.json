@@ -1,9 +1,3 @@
 {
-  "app/dev/landing-showcase/page.tsx": 3,
-  "app/teacher/classes/[id]/page.tsx": 13,
-  "app/teacher/classes/page.tsx": 18,
-  "features/classes/ClassList.tsx": 55,
-  "features/classes/CreateClassModal.tsx": 59,
-  "features/classes/JoinClassModal.tsx": 40,
-  "features/classes/StudentRoster.tsx": 68
+  "app/dev/landing-showcase/page.tsx": 3
 }

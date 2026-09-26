@@ -35,7 +35,7 @@ export default async function TeacherLessonsPage() {
   }
 
   return (
-    <main className="mx-auto flex max-w-5xl flex-col gap-8 px-4 py-8 pb-20 sm:px-6 sm:py-12">
+    <main className="mx-auto w-full flex max-w-5xl flex-col gap-8 px-4 py-8 pb-20 sm:px-6 sm:py-12">
       <PageBreadcrumb
         items={[
           { href: '/', label: { en: 'Home', vi: 'Trang chủ' } },

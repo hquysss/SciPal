@@ -24,7 +24,7 @@ export default async function NewTeacherLessonPage() {
   }
 
   return (
-    <main className="mx-auto flex max-w-4xl flex-col gap-6 px-4 py-6 pb-20 sm:px-6 sm:py-8">
+    <main className="mx-auto w-full flex max-w-4xl flex-col gap-6 px-4 py-6 pb-20 sm:px-6 sm:py-8">
       <PageBreadcrumb
         items={[
           { href: '/teacher/lessons', label: { en: 'Lesson studio', vi: 'Soạn bài' } },

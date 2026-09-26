@@ -2,6 +2,11 @@
 
 import { useState } from 'react';
 import { useLanguage } from '@scipal/hooks';
+import { Alert } from '@/components/ui/alert';
+import { Button } from '@/components/ui/button';
+import { Dialog } from '@/components/ui/dialog';
+import { Field } from '@/components/ui/field';
+import { Input } from '@/components/ui/input';
 
 interface JoinClassModalProps {
   open: boolean;
@@ -15,8 +20,6 @@ export function JoinClassModal({ open, onClose, onJoined, token }: JoinClassModa
   const [code, setCode] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
-  if (!open) return null;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -45,76 +48,53 @@ export function JoinClassModal({ open, onClose, onJoined, token }: JoinClassModa
         return;
       }
       const errData = await res.json().catch(() => ({}));
-      setError(errData.error ?? 'Mã lớp không hợp lệ hoặc đã hết hạn.');
+      setError(errData.error ?? t({ en: 'This class code is invalid or has expired.', vi: 'Mã lớp không hợp lệ hoặc đã hết hạn.' }));
     } catch (err) {
-      console.warn('Join class error fallback:', err);
-      onJoined(`class-demo-${code.trim()}`);
-      setCode('');
-      onClose();
+      console.warn('Join class error:', err);
+      setError(t({
+        en: 'Could not reach the server. You have not joined the class yet.',
+        vi: 'Không kết nối được máy chủ. Bạn chưa vào lớp.',
+      }));
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-xs">
-      <div className="relative w-full max-w-sm rounded-3xl border border-gray-100 bg-white p-6 sm:p-8 shadow-2xl dark:border-gray-800 dark:bg-card">
-        <div className="flex items-center justify-between border-b border-gray-100 pb-3 dark:border-gray-800">
-          <h3 className="text-base font-black text-gray-900 dark:text-white">
-            {t({ en: 'Join a Classroom', vi: 'Tham gia lớp học' })}
-          </h3>
-          <button
-            type="button"
-            onClick={onClose}
-            className="h-8 w-8 rounded-full text-sm font-bold text-gray-400 hover:bg-gray-100 hover:text-gray-700"
-          >
-            ✕
-          </button>
-        </div>
+    <Dialog open={open} onClose={onClose} title={t({ en: 'Join a class', vi: 'Tham gia lớp học' })} closeLabel={t({ en: 'Close', vi: 'Đóng' })} className="max-w-sm">
+      <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+        {error && <Alert tone="danger">{error}</Alert>}
 
-        {error && (
-          <div className="mt-3 rounded-xl border border-red-200 bg-red-50 p-2.5 text-xs font-semibold text-red-700">
-            {error}
-          </div>
-        )}
-
-        <form onSubmit={handleSubmit} className="mt-5 space-y-4">
-          <div>
-            <label className="text-xs font-bold text-gray-700 dark:text-gray-300">
-              {t({ en: '6-Character Class Code', vi: 'Mã lớp học (6 ký tự)' })}
-            </label>
-            <input
-              type="text"
-              maxLength={8}
+        <Field
+          id="join-class-code"
+          label={t({ en: 'Class code (6 characters)', vi: 'Mã lớp học (6 ký tự)' })}
+          description={t({ en: 'Ask your teacher for the code.', vi: 'Nhận mã tham gia từ thầy cô phụ trách lớp.' })}
+        >
+          {(control) => (
+            <Input
+              {...control}
               required
+              maxLength={6}
+              inputMode="text"
+              autoCapitalize="characters"
+              autoComplete="off"
               value={code}
               onChange={(e) => setCode(e.target.value.toUpperCase())}
-              placeholder="VD: A1B2C3"
-              className="mt-1 w-full text-center font-mono text-xl font-black tracking-widest uppercase rounded-xl border border-gray-200 bg-gray-50 p-3 outline-none focus:border-emerald-600 focus:bg-white transition dark:border-gray-700 dark:bg-gray-800 dark:text-white"
+              placeholder="A1B2C3"
+              className="text-center font-mono text-xl tracking-widest"
             />
-            <p className="mt-1 text-[11px] text-gray-400">
-              Nhận mã tham gia từ thầy cô giáo phụ trách lớp của bạn.
-            </p>
-          </div>
+          )}
+        </Field>
 
-          <div className="flex items-center justify-end gap-2 pt-3 border-t border-gray-100 dark:border-gray-800">
-            <button
-              type="button"
-              onClick={onClose}
-              className="rounded-xl px-3.5 py-2 text-xs font-bold text-gray-500 hover:bg-gray-100 transition"
-            >
-              {t({ en: 'Cancel', vi: 'Hủy' })}
-            </button>
-            <button
-              type="submit"
-              disabled={loading || code.trim().length < 4}
-              className="rounded-xl bg-emerald-600 px-5 py-2 text-xs font-bold text-white shadow-xs hover:bg-emerald-700 active:scale-95 transition disabled:opacity-50"
-            >
-              {loading ? t({ en: 'Joining...', vi: 'Đang vào...' }) : t({ en: 'Enter Class', vi: 'Vào lớp ngay' })}
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
+        <div className="flex items-center justify-end gap-2 border-t border-line pt-4">
+          <Button type="button" variant="ghost" onClick={onClose}>
+            {t({ en: 'Cancel', vi: 'Hủy' })}
+          </Button>
+          <Button type="submit" disabled={loading || code.trim().length < 4}>
+            {loading ? t({ en: 'Joining…', vi: 'Đang vào…' }) : t({ en: 'Join class', vi: 'Vào lớp' })}
+          </Button>
+        </div>
+      </form>
+    </Dialog>
   );
 }

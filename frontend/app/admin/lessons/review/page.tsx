@@ -27,7 +27,7 @@ export default async function LessonReviewQueuePage() {
   }
 
   return (
-    <main className="mx-auto flex max-w-5xl flex-col gap-7 px-4 py-8 pb-20 sm:px-6 sm:py-12">
+    <main className="mx-auto w-full flex max-w-5xl flex-col gap-7 px-4 py-8 pb-20 sm:px-6 sm:py-12">
       <PageBreadcrumb
         items={[
           { href: '/teacher/lessons', label: { en: 'Lesson studio', vi: 'Soạn bài' } },

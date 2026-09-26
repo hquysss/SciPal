@@ -2,6 +2,8 @@ import { notFound } from 'next/navigation';
 import type { Block } from '@scipal/types';
 import { LessonEditor } from '@/features/authoring/LessonEditor';
 import { LessonCreateForm } from '@/features/authoring/LessonCreateForm';
+import { ClassList } from '@/features/classes/ClassList';
+import { StudentRoster } from '@/features/classes/StudentRoster';
 
 type SearchParams = Record<string, string | string[] | undefined>;
 
@@ -19,8 +21,22 @@ export default async function TeacherShowcase({ searchParams }: { searchParams: 
   const view = params.view ?? 'editor';
 
   return (
-    <main className="mx-auto flex max-w-6xl flex-col gap-6 px-4 py-8">
-      {view === 'create' ? (
+    <main className="mx-auto w-full flex max-w-6xl flex-col gap-6 px-4 py-8">
+      {view === 'classes' ? (
+        <>
+          <ClassList
+            initialClasses={[{ id: 'c1', name: '10A1 Tin học', subject_id: 's1', invite_code: '4KQ9TZ', student_count: 2, created_at: '2026-09-20T00:00:00Z', subject_name_en: 'Informatics', subject_name_vi: 'Tin học' }]}
+          />
+          <StudentRoster
+            classNameTitle="10A1 Tin học"
+            inviteCode="4KQ9TZ"
+            members={[
+              { student_id: 'a', display_name: 'Nguyễn Minh An', joined_at: '2026-09-21T00:00:00Z', total_xp: 1240, completed_lessons: 12 },
+              { student_id: 'b', display_name: 'Trần Bảo Châu', joined_at: '2026-09-22T00:00:00Z', total_xp: 380 },
+            ]}
+          />
+        </>
+      ) : view === 'create' ? (
         <LessonCreateForm
           subjects={[{ id: 's1', slug: 'informatics', name_en: 'Informatics', name_vi: 'Tin học', sort_order: 1, grades: [3, 7, 10, 11] }]}
           topics={[]}

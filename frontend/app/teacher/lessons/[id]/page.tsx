@@ -26,7 +26,7 @@ export default async function LessonAuthoringStudioPage({
     else console.error('Could not connect to the authoring API.');
 
     return (
-      <main className="mx-auto max-w-3xl px-4 py-12">
+      <main className="mx-auto w-full max-w-3xl px-4 py-12">
         <Alert tone="danger" title={<Bi en="Could not load this lesson" vi="Không tải được bài giảng" />}>
           <p><Bi en="The server did not return the lesson. No sample content is shown instead." vi="Dữ liệu không có sẵn từ máy chủ. Không hiển thị nội dung mẫu thay thế." /></p>
           <Link href={`/teacher/lessons/${encodeURIComponent(id)}`} className="mt-2 inline-flex font-semibold underline underline-offset-4">
@@ -38,7 +38,7 @@ export default async function LessonAuthoringStudioPage({
   }
 
   return (
-    <main className="mx-auto flex max-w-6xl flex-col gap-6 px-4 py-6 pb-20 sm:px-6 sm:py-8">
+    <main className="mx-auto w-full flex max-w-6xl flex-col gap-6 px-4 py-6 pb-20 sm:px-6 sm:py-8">
       <PageBreadcrumb
         items={[
           { href: '/', label: { en: 'Home', vi: 'Trang chủ' } },
