@@ -43,7 +43,7 @@ Mỗi cấp mượn chất liệu từ đồ dùng học sinh cấp đó cầm h
 | upper_secondary / light | `#F4F7F3` | `#FFFFFF` | `#13241B` | `#46594D` | `#D3E0D6` | `#1D5C45` |
 | upper_secondary / dark | `#1C3329` | `#234034` | `#EEF2EC` | `#BCCBC1` | `#3B5A4B` | `#F2E3A0` |
 | neutral / light | `#F7F7F3` | `#FFFFFF` | `#202922` | `#49574E` | `#D8DED8` | `#275B42` |
-| neutral / dark | chốt trong giai đoạn 0, phải qua test tương phản | | | | | |
+| neutral / dark | `#151A17` | `#1D2420` | `#E9EEEA` | `#AAB6AE` | `#323B35` | `#8FD3AE` |
 
 Màu trạng thái dùng chung:
 
@@ -51,11 +51,11 @@ Màu trạng thái dùng chung:
 |---|---|---|---|
 | danger ("bút đỏ chấm bài") | `#B3261E` | `#FF9C8F` | Chỉ cho lỗi và phần sửa đáp án quiz |
 | success | `#2F6E3A` | `#8FD19E` | Luôn kèm dấu ✓ (trùng họ với xanh THPT) |
-| warning | chốt trong giai đoạn 0 | | Kèm biểu tượng |
+| warning | `#8A5A00` | `#F2C66D` | Kèm biểu tượng |
 
 Đo tương phản sơ bộ (26/09): ink/paper 11.9–15.7:1; muted và action trên paper/surface 6.7–10.5:1; danger/success trên surface ≥ 5.6:1. `line` (1.3–1.8:1) chỉ là dòng kẻ trang trí; viền điều khiển dùng `edge`.
 
-Các giá trị còn thiếu (`surface-sunken`, `edge`, `action-hover`, `action-ink`, `focus`, `nav`, `*-surface`, `pattern-ink`, neutral/dark, warning) được chốt trong giai đoạn 0 và chỉ được chấp nhận khi test tương phản §6 đạt.
+Toàn bộ giá trị (kể cả `surface-sunken`, `edge`, `action-hover`, `action-ink`, `focus`, `nav`, `*-surface`, `pattern-ink`) nằm trong plan giai đoạn 0–1 (`docs/superpowers/plans/2026-09-26-level-theming-foundation.md`) và đã qua kiểm tra §6 bằng script ngày 26/09. `nav` của bảng trung tính là `#15803D` (chữ trắng 5.0:1) thay vì `#16A34A` (3.3:1, không đạt).
 
 ### 2.2 Chữ
 
@@ -110,14 +110,14 @@ Khung app yên tĩnh: navbar, danh sách, bảng biểu phẳng, căn trái. Đi
 | Hoạ tiết | `pattern-ink`, `pattern-opacity` |
 | Môn học | `accent` (do `SubjectProvider` đặt), `accent-ink` (dẫn xuất) |
 
-CSS biến có dạng `--paper`, `--ink`… Tailwind (`packages/ui/tailwind.config` và `frontend/tailwind.config.ts`) ánh xạ thành `bg-paper`, `text-ink`, `border-edge`, `bg-action`…
+CSS biến có dạng `--paper`, `--ink`…; riêng vai `muted` dùng tên `--ink-muted` (Tailwind `text-ink-muted`) vì `--muted` của shadcn là màu nền. Tailwind (`packages/ui/tailwind.config` và `frontend/tailwind.config.ts`) ánh xạ thành `bg-paper`, `text-ink`, `border-edge`, `bg-action`…
 
 Bí danh shadcn giữ lại để `components/ui` không vỡ: `background→paper`, `foreground→ink`, `card→surface`, `popover→surface`, `primary→action`, `primary-foreground→action-ink`, `secondary/muted→surface-sunken`, `muted-foreground→muted`, `border/input→edge`, `ring→focus`, `destructive→danger`.
 
 ### 3.3 Accent môn
 
 - `SubjectProvider` giữ nguyên hợp đồng: đặt `--accent` trên thẻ bao của mình (accent lấy từ `subjects.accent_color`, dự phòng `getAccentColor`).
-- `accent-ink` = `color-mix(in oklab, var(--accent) X%, var(--ink))`, tỷ lệ theo sáng/tối để chữ màu môn đọc được trên `surface`. Tỷ lệ được test với cả 29 accent trong catalog.
+- `accent-ink` = `color-mix(in srgb, var(--accent) var(--accent-ink-ratio), var(--ink))` khai báo trên thẻ bao của `SubjectProvider` (`data-subject-scope`) — biến CSS được tính tại phần tử khai báo nên không thể đặt ở cấp shell. Tỷ lệ: 60% (sáng), 40% (tối); dùng `srgb` để test tính đúng giá trị trình duyệt vẽ. Đã kiểm với cả 29 accent trong catalog.
 - Xoá `--accent`, `--accent-10`, `--accent-20` khỏi `:root` trong `globals.css`; phần nào cần nền nhạt dùng `color-mix` cục bộ trong phạm vi `SubjectProvider`.
 
 ## 4. Xác định cấp học và chế độ
@@ -143,6 +143,7 @@ Thứ tự: `profiles.preferred_education_level` (tài khoản) → `sessionStor
 - "Theo hệ thống" = không có `data-theme`; CSS dùng `@media (prefers-color-scheme: dark)` với `[data-app-shell]:not([data-theme="light"])`.
 - Nút đổi trong navbar cạnh công tắc EN/VI và trong Profile; nhãn song ngữ qua `useLanguage`.
 - Tailwind `darkMode` đổi sang selector `[data-theme="dark"]`; mục tiêu là không còn class `dark:`.
+- **Cờ `DARK_MODE_ENABLED`** (mặc định `false` từ giai đoạn 0 đến hết giai đoạn 5): khi tắt, CSS không sinh khối `prefers-color-scheme`, script bỏ qua `scipal-theme`, nút đổi không hiện. Lý do: các màn hình chưa chuyển token vẫn viết cứng nền sáng, bật sớm sẽ ra giao diện nửa tối nửa sáng. Trang `/dev/theme` luôn xem được cả hai chế độ để kiểm tra trong lúc phát triển. Bật cờ là bước cuối của giai đoạn 5.
 
 ### 4.5 Script trước khi hiển thị
 
