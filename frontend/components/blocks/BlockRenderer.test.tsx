@@ -40,6 +40,11 @@ describe('BlockRenderer', () => {
     expect(html).not.toContain('uppercase');
   });
 
+  it('scrolls a wide formula inside its own box', () => {
+    const html = renderToStaticMarkup(<BlockRenderer block={blocks[1]} />);
+    expect(html).toMatch(/<div class="overflow-x-auto"><span class="katex-display"/);
+  });
+
   it('gives code tabs a 44px target and marks the active tab', () => {
     const html = renderToStaticMarkup(
       <BlockRenderer block={{ type: 'code', tabs: [{ lang: 'python', code: 'x' }, { lang: 'cpp', code: 'y' }] }} />,

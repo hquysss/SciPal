@@ -43,6 +43,19 @@ describe('TheoryRenderer', () => {
     expect(html).toMatch(/<pre class="[^"]*overflow-x-auto/);
   });
 
+  it('wraps long unbroken words instead of widening the page', () => {
+    expect(html).toMatch(/^<div class="[^"]*\[overflow-wrap:anywhere\]/);
+  });
+
+  it('seats headings on a ruled line instead of centring them across one', () => {
+    expect(html).toMatch(/<h2 class="[^"]*pt-7[^"]*leading-7/);
+    expect(html).not.toContain('leading-[3.5rem]');
+  });
+
+  it('does not style a fenced block without a language as inline code', () => {
+    expect(html).toMatch(/<pre [^>]*><code>for i in range/);
+  });
+
   it('opens external links safely', () => {
     expect(html).toContain('rel="noopener noreferrer"');
     expect(html).toContain('target="_blank"');

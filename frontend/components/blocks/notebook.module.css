@@ -40,8 +40,8 @@
   background-position: 0 0;
 }
 
-/* Primary: squared "ô li" paper. */
-:global([data-level='primary']) .rules {
+/* Primary lessons: squared "ô li" paper, chosen by the lesson's own grade (LessonSheet), not by the reader's level. */
+.sheet[data-paper='squared'] .rules {
   background-image:
     repeating-linear-gradient(to bottom, transparent 0, transparent calc(1.75rem - 1px), var(--line) calc(1.75rem - 1px), var(--line) 1.75rem),
     repeating-linear-gradient(to right, transparent 0, transparent calc(1.75rem - 1px), var(--line) calc(1.75rem - 1px), var(--line) 1.75rem);

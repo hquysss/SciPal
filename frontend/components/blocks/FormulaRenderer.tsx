@@ -12,7 +12,7 @@ export function FormulaRenderer({ block, lang }: { block: FormulaBlock; lang: 'e
 
   return (
     <div className="rounded-lg border border-line bg-surface-sunken p-4 text-center text-ink">
-      <div dangerouslySetInnerHTML={{ __html: html }} />
+      <div className="overflow-x-auto" dangerouslySetInnerHTML={{ __html: html }} />
       {block.caption && (
         <p className="mt-2 text-sm text-ink-muted">
           {lang === 'en' ? block.caption.en : block.caption.vi}

@@ -34,8 +34,8 @@ Menu, popover hay dialog render qua portal phải gắn vào trong `[data-app-sh
 
 ### Trang bài học
 
-- Nội dung bài nằm trên một tờ vở `surface` có dải lề màu môn (`--accent`) ở mép trái: class `sheet` trong `frontend/components/blocks/notebook.module.css`; tờ vở che hoạ tiết nền (`data-pattern="off"`).
-- Khối lý thuyết tự kẻ dòng cách nhau `1.75rem` (class `rules`); bài Tiểu học kẻ ô li. Mọi khoảng cách dọc trong khối là bội của `1.75rem` (`leading-7`, `mb-7`, `h2` `leading-[3.5rem]`) để chữ ngồi trên dòng. Khi in thì bỏ dòng kẻ.
+- Nội dung bài nằm trên một tờ vở `surface` có dải lề màu môn (`--accent`) ở mép trái: component `LessonSheet` (class `sheet` trong `frontend/components/blocks/notebook.module.css`); nền đặc của tờ vở che hoạ tiết. Không gắn `data-pattern="off"` lên tờ vở — theme tô thuộc tính đó bằng `--paper`, đè mất `--surface`.
+- Khối lý thuyết tự kẻ dòng cách nhau `1.75rem` (class `rules`); bài Tiểu học kẻ ô li — chọn theo lớp của bài (`data-paper="squared"` trên `LessonSheet`), không theo cấp của người đọc. Mọi khoảng cách dọc trong khối là bội của `1.75rem` (`leading-7`, `mb-7`, tiêu đề `pt-7 leading-7`) để chữ ngồi trên dòng; từ dài không ngắt, công thức rộng, bảng và code cuộn trong khối chứ không kéo ngang trang. Khi in thì bỏ dòng kẻ.
 - Markdown được gán kiểu bằng `components` của `react-markdown` trong `TheoryRenderer` (không dùng plugin typography); bảng và `pre` cuộn ngang trong khối, link ngoài mở tab mới với `rel="noopener noreferrer"`.
 - Trang bài bọc `LevelScope` theo lớp của bài (`levelOfGrade(lesson.grade)`), đặt **ngoài** `SubjectProvider`: bài lớp 5 mở bởi học sinh THPT có vùng bài tông Tiểu học, navbar vẫn tông THPT. Trang môn bọc từng nhóm lớp trong `LevelScope` riêng.
 - Accent môn chỉ là nhãn vở (nhãn môn, ô icon, dải lề, gạch chân tab code, viền thẻ thuật ngữ): chữ dùng `text-accent-ink`, nền nhạt `color-mix(accent 12%, surface)`; nút chính luôn `bg-action`.

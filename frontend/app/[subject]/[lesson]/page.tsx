@@ -7,7 +7,7 @@ import { AiTutorButton } from '@/features/ai-tutor/AiTutorButton';
 import { LessonCompletionBar } from '@/features/lessons/LessonCompletionBar';
 import { LessonHeader } from '@/features/lessons/LessonHeader';
 import { levelOfGrade } from '@/features/landing/educationLevel';
-import styles from '@/components/blocks/notebook.module.css';
+import { LessonSheet } from '@/components/blocks/LessonSheet';
 
 export const dynamic = 'force-dynamic';
 
@@ -32,20 +32,21 @@ export default async function LessonPage({
 
   const { lesson } = result;
   const subject = lesson.subjects;
+  const level = levelOfGrade(lesson.grade);
 
   return (
-    <LevelScope level={levelOfGrade(lesson.grade)} className="flex-1">
+    <LevelScope level={level} className="flex-1">
       <SubjectProvider slug={subject.slug} accentColor={subject.accent_color}>
         <main className="mx-auto w-full max-w-3xl px-4 pb-28 pt-8 sm:px-6 sm:pt-12">
           <LessonHeader lesson={lesson} />
 
-          <article className={styles.sheet} data-pattern="off">
+          <LessonSheet squared={level === 'primary'}>
             <div className="flex flex-col gap-7">
               {lesson.blocks.map((block, i) => (
                 <BlockRenderer key={i} block={block} />
               ))}
             </div>
-          </article>
+          </LessonSheet>
 
           <LessonCompletionBar lessonId={lesson.id} subjectSlug={subjectSlug} />
           <AiTutorButton lessonId={lesson.id} subjectSlug={subjectSlug} token={null} />
