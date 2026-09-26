@@ -121,42 +121,46 @@
 }
 
 .flagButton:focus-visible,
-.term:focus-visible,
+.termFace:focus-visible,
 .cardLink:focus-visible,
 .primaryAction:focus-visible {
   outline: 3px solid var(--focus);
   outline-offset: 3px;
 }
 
-/* term card: a flash card that flips */
+/* term card: the term stays a button; its definition flips down beneath it */
 .term {
-  position: relative;
   display: grid;
-  min-height: 5.5rem;
-  border: 0;
-  padding: 0;
-  background: none;
-  color: inherit;
-  font: inherit;
-  text-align: left;
-  cursor: pointer;
+  gap: 0.6rem;
   perspective: 800px;
-  transform-style: preserve-3d;
 }
 
 .termFace {
   display: flex;
-  grid-area: 1 / 1;
+  min-height: 3.5rem;
   align-items: center;
   justify-content: space-between;
   gap: 0.75rem;
   border: 1px dashed var(--edge);
   border-radius: 0.9rem;
-  padding: 1rem;
+  padding: 0.85rem 1rem;
   background: var(--surface);
   color: var(--ink);
-  backface-visibility: hidden;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.term[data-flipped] .termFace {
+  border-style: solid;
+}
+
+.termFace svg {
   transition: transform 450ms cubic-bezier(0.2, 0.7, 0.2, 1);
+}
+
+.term[data-flipped] .termFace svg {
+  transform: rotate(180deg);
 }
 
 .termWord {
@@ -166,20 +170,28 @@
 }
 
 .termBack {
-  border-style: solid;
-  border-color: var(--action);
+  margin: 0;
+  border: 1px solid var(--action);
+  border-radius: 0.9rem;
+  padding: 0.85rem 1rem;
   background: color-mix(in srgb, var(--action) 8%, var(--surface));
+  color: var(--ink);
   font-weight: 600;
   line-height: 1.45;
-  transform: rotateY(180deg);
+  transform-origin: top center;
+  animation: term-flip 450ms cubic-bezier(0.2, 0.7, 0.2, 1);
 }
 
-.term[data-flipped] .termFace:not(.termBack) {
-  transform: rotateY(-180deg);
-}
+@keyframes term-flip {
+  from {
+    opacity: 0;
+    transform: rotateX(-80deg);
+  }
 
-.term[data-flipped] .termBack {
-  transform: rotateY(0deg);
+  to {
+    opacity: 1;
+    transform: none;
+  }
 }
 
 .cardLink {
@@ -385,24 +397,10 @@
     transition: none;
   }
 
-  .termFace,
-  .term[data-flipped] .termFace:not(.termBack),
-  .term[data-flipped] .termBack {
-    transform: none;
+  .termBack,
+  .termFace svg {
+    animation: none;
     transition: none;
-  }
-
-  .termBack {
-    transform: none;
-    visibility: hidden;
-  }
-
-  .term[data-flipped] .termBack {
-    visibility: visible;
-  }
-
-  .term[data-flipped] .termFace:not(.termBack) {
-    visibility: hidden;
   }
 
   .studentMessage,

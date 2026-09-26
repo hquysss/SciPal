@@ -1,6 +1,6 @@
 'use client';
 
-import { useRef, useState, type MouseEvent, type PointerEvent } from 'react';
+import { useEffect, useRef, useState, type MouseEvent, type PointerEvent } from 'react';
 import { useLanguage } from '@scipal/hooks';
 import { LevelScope } from '@scipal/ui';
 import type { EducationLevel } from './educationLevel';
@@ -25,6 +25,8 @@ const levels: {
 ];
 
 const MAX_TILT_DEG = 8;
+/** If an account POST leaves this page alive (Stop, slow network), the gate becomes choosable again. */
+const ACCOUNT_REARM_MS = 3000;
 
 function prefersReducedMotion() {
   return typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -33,29 +35,46 @@ function prefersReducedMotion() {
 export function LevelGate({ currentLevel, isAuthenticated, saveError, onGuestSelect }: LevelGateProps) {
   const { t } = useLanguage();
   const shelfRef = useRef<HTMLDivElement>(null);
-  const openingRef = useRef(false);
   const [opening, setOpening] = useState<EducationLevel | null>(null);
+  const onGuestSelectRef = useRef(onGuestSelect);
+  onGuestSelectRef.current = onGuestSelect;
+  const selectionRef = useRef<ReturnType<typeof createGateSelection> | null>(null);
+
+  const getSelection = () => {
+    selectionRef.current ??= createGateSelection({
+      reducedMotion: prefersReducedMotion(),
+      schedule: (fn, ms) => {
+        const id = window.setTimeout(fn, ms);
+        return () => window.clearTimeout(id);
+      },
+      // Accounts submit the form natively; the flip is cosmetic and never delays the POST.
+      onSelect: (level) => {
+        if (!isAuthenticated) onGuestSelectRef.current?.(level);
+      },
+      onReset: () => setOpening(null),
+      rearmMs: isAuthenticated ? ACCOUNT_REARM_MS : 0,
+    });
+    return selectionRef.current;
+  };
+
+  useEffect(() => {
+    // Back/forward cache can restore the page mid-flip; start from a closed shelf.
+    const onPageShow = (event: PageTransitionEvent) => {
+      if (event.persisted) selectionRef.current?.reset();
+    };
+    window.addEventListener('pageshow', onPageShow);
+    return () => {
+      window.removeEventListener('pageshow', onPageShow);
+      selectionRef.current?.dispose();
+    };
+  }, []);
 
   const handleChoice = (event: MouseEvent<HTMLButtonElement>, level: EducationLevel) => {
-    if (openingRef.current) {
+    if (!getSelection().select(level)) {
       event.preventDefault();
       return;
     }
-    openingRef.current = true;
     setOpening(level);
-    // Accounts submit the form natively; the flip is cosmetic and never delays the POST.
-    if (isAuthenticated) return;
-
-    createGateSelection({
-      reducedMotion: prefersReducedMotion(),
-      schedule: (fn, ms) => window.setTimeout(fn, ms),
-      onSelect: (chosen) => {
-        // If the gate stays mounted (storage error), let the learner try again.
-        openingRef.current = false;
-        setOpening(null);
-        onGuestSelect?.(chosen);
-      },
-    }).select(level);
   };
 
   const handlePointerMove = (event: PointerEvent<HTMLDivElement>) => {

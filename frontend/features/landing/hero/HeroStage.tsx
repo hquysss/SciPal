@@ -5,6 +5,7 @@ import { useEffect, useReducer, useRef } from 'react';
 import type { EducationLevel } from '../educationLevel';
 import { canRunHeroScene, readSceneEnv } from './canRunHeroScene';
 import { HeroFallback } from './HeroFallback';
+import { HeroSceneBoundary } from './HeroSceneBoundary';
 import { heroStageReducer } from './heroStageState';
 import styles from './hero.module.css';
 
@@ -57,12 +58,14 @@ export function HeroStage({ level }: { level: EducationLevel }) {
     <div ref={stageRef} className={styles.stage} data-hero-state={state}>
       <HeroFallback level={level} />
       {running && (
-        <HeroScene
-          key={level}
-          level={level}
-          onFirstFrame={() => dispatch('first-frame')}
-          onFailure={() => dispatch('fail')}
-        />
+        <HeroSceneBoundary onError={() => dispatch('fail')}>
+          <HeroScene
+            key={level}
+            level={level}
+            onFirstFrame={() => dispatch('first-frame')}
+            onFailure={() => dispatch('fail')}
+          />
+        </HeroSceneBoundary>
       )}
     </div>
   );

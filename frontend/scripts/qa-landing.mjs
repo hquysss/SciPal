@@ -83,6 +83,38 @@ for (const viewport of VIEWPORTS) {
   }
 }
 
+// The gate fits one screen on common laptop viewports (spec §2).
+for (const [width, height] of [[1366, 657], [1280, 720], [1280, 800], [1440, 900]]) {
+  const context = await browser.newContext({ viewport: { width, height } });
+  const page = await context.newPage();
+  await page.goto(BASE + '/', { waitUntil: 'networkidle' });
+  await page.waitForSelector('#level-gate-title');
+  const fits = await page.evaluate(() => document.documentElement.scrollHeight <= window.innerHeight);
+  check(fits, `gate fits one screen at ${width}x${height}`);
+  await context.close();
+}
+
+// A failed scene chunk keeps the landing usable with the SVG.
+{
+  const context = await browser.newContext({ viewport: { width: 1280, height: 800 } });
+  const page = await context.newPage();
+  const problems = [];
+  page.on('pageerror', (error) => problems.push(String(error)));
+  await page.goto(BASE + '/', { waitUntil: 'networkidle' });
+  await page.route(/\/_next\/static\/chunks\//, async (route) => {
+    const body = await (await route.fetch()).text();
+    if (body.includes('WebGLRenderer')) return route.abort();
+    return route.continue();
+  });
+  await page.locator('button[name="level"][value="upper_secondary"]').click();
+  await page.waitForSelector('#landing-title');
+  await page.waitForTimeout(4000);
+  check((await page.locator('#landing-title').count()) === 1, 'blocked scene chunk: landing still rendered');
+  const state = await page.locator('[data-hero-state]').getAttribute('data-hero-state');
+  check(state === 'failed', `blocked scene chunk: hero falls back (state ${state})`);
+  await context.close();
+}
+
 // Reduced motion: no canvas, no flip delay.
 {
   const context = await browser.newContext({ viewport: { width: 1280, height: 800 }, reducedMotion: 'reduce' });

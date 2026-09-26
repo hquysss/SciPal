@@ -35,16 +35,21 @@ describe('HowItWorks', () => {
     expect(html).toMatch(pressed('English'));
   });
 
-  it('term card shows the term, then the definition when flipped', () => {
+  it('term card keeps the term as the button name and reveals the definition beside it', () => {
     lang = 'vi';
     const front = renderToStaticMarkup(<TermCard />);
-    expect(front).toContain('aria-expanded="false"');
-    expect(front).toContain('Quang hợp');
+    expect(front).toMatch(/<button[^>]*aria-expanded="false"[^>]*>[\s\S]*?Quang hợp[\s\S]*?<\/button>/);
+    expect(front).toMatch(/aria-controls="term-definition"/);
+    expect(front).toMatch(/<p[^>]*id="term-definition"[^>]*hidden/);
     expect(front).toContain('href="/glossary"');
     expect(front).toContain('Mở từ điển');
+
     const back = renderToStaticMarkup(<TermCard initialFlipped />);
-    expect(back).toContain('aria-expanded="true"');
-    expect(back).toContain('Cây dùng ánh sáng để tạo chất dinh dưỡng.');
+    expect(back).toMatch(/<button[^>]*aria-expanded="true"[^>]*>[\s\S]*?Quang hợp[\s\S]*?<\/button>/);
+    const definition = back.match(/<p[^>]*id="term-definition"[^>]*>([\s\S]*?)<\/p>/);
+    expect(definition?.[0]).not.toMatch(/hidden/);
+    expect(definition?.[1]).toContain('Cây dùng ánh sáng để tạo chất dinh dưỡng.');
+    expect(back.match(/<button[\s\S]*?<\/button>/g)?.join('')).not.toContain('Cây dùng ánh sáng');
   });
 
   it('switches labels to English', () => {

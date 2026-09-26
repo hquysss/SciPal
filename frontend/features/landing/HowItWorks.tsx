@@ -54,22 +54,21 @@ export function TermCard({ initialFlipped = false }: { initialFlipped?: boolean 
     <article className={styles.card} data-landing-reveal>
       <span className={styles.cardIcon} aria-hidden="true"><BookOpen size={20} /></span>
       <h3 className={styles.cardLabel}>{t({ en: 'Look up terms', vi: 'Tra thuật ngữ' })}</h3>
-      <button
-        type="button"
-        className={styles.term}
-        data-flipped={flipped ? 'true' : undefined}
-        aria-expanded={flipped}
-        aria-controls="term-definition"
-        onClick={() => setFlipped((value) => !value)}
-      >
-        <span className={styles.termFace} aria-hidden={flipped}>
+      <div className={styles.term} data-flipped={flipped ? 'true' : undefined}>
+        <button
+          type="button"
+          className={styles.termFace}
+          aria-expanded={flipped}
+          aria-controls="term-definition"
+          onClick={() => setFlipped((value) => !value)}
+        >
           <span className={styles.termWord}>{t({ en: 'Photosynthesis', vi: 'Quang hợp' })}</span>
           <RotateCw size={16} aria-hidden="true" />
-        </span>
-        <span className={`${styles.termFace} ${styles.termBack}`} id="term-definition" aria-hidden={!flipped}>
-          {flipped && t({ en: 'Plants use light to make food.', vi: 'Cây dùng ánh sáng để tạo chất dinh dưỡng.' })}
-        </span>
-      </button>
+        </button>
+        <p className={styles.termBack} id="term-definition" hidden={!flipped}>
+          {t({ en: 'Plants use light to make food.', vi: 'Cây dùng ánh sáng để tạo chất dinh dưỡng.' })}
+        </p>
+      </div>
       <Link href="/glossary" className={styles.cardLink}>
         {t({ en: 'Open glossary', vi: 'Mở từ điển' })}
         <ArrowUpRight size={16} aria-hidden="true" />

@@ -14,12 +14,21 @@
   --gate-shadow: color-mix(in srgb, var(--ink) 22%, transparent);
   --gate-flip: 400ms;
   --gate-ease: cubic-bezier(0.2, 0.7, 0.2, 1);
+  --gate-pad: clamp(1rem, 4svh, 3.5rem);
+  --gate-gap: clamp(1rem, 3.5svh, 3rem);
+  --gate-title: clamp(2.25rem, min(6.4vw, 9svh), 4.75rem);
+  --gate-nav: 4.5rem;
+  /* Tallest notebook that still leaves room for the title and footnote on one screen. */
+  --gate-book-max-h: max(
+    11rem,
+    calc(100svh - var(--gate-nav) - 2 * var(--gate-pad) - 1.1 * var(--gate-title) - 2 * var(--gate-gap) - 4rem)
+  );
 
   display: grid;
-  min-height: calc(100svh - 4.5rem);
+  min-height: calc(100svh - var(--gate-nav));
   place-items: center;
   overflow: hidden;
-  padding: clamp(1.5rem, 5vw, 4rem) clamp(1rem, 4vw, 3rem);
+  padding: var(--gate-pad) clamp(1rem, 4vw, 3rem);
   color: var(--gate-ink);
   font-family: var(--font-be-vietnam), sans-serif;
 }
@@ -28,12 +37,12 @@
   display: grid;
   width: min(100%, 60rem);
   justify-items: center;
-  gap: clamp(1.75rem, 5vw, 3.5rem);
+  gap: var(--gate-gap);
 }
 
 .title {
   margin: 0;
-  font-size: clamp(2.25rem, 6.4vw, 4.75rem);
+  font-size: var(--gate-title);
   font-weight: 800;
   line-height: 1.05;
   letter-spacing: -0.045em;
@@ -74,11 +83,14 @@
 .shelf {
   --tilt-x: 0deg;
   --tilt-y: 0deg;
+  --shelf-gap: clamp(1rem, 3.5vw, 2.75rem);
 
   position: relative;
   display: grid;
+  width: min(100%, calc(var(--gate-book-max-h) * 0.75 * 3 + 2 * var(--shelf-gap)));
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: clamp(1rem, 3.5vw, 2.75rem);
+  gap: var(--shelf-gap);
+  margin-inline: auto;
   padding-bottom: 1.25rem;
   perspective: 1400px;
 }
@@ -287,6 +299,7 @@
 
 @media (max-width: 640px) {
   .shelf {
+    width: 100%;
     grid-template-columns: 1fr;
     gap: 0.9rem;
     padding-bottom: 0;
