@@ -17,7 +17,7 @@ SciPal should feel like a warm, modern field notebook for curious Vietnamese lea
 - Hoạ tiết đồ dùng học tập chỉ hiện trên `paper`; tắt bằng `data-pattern="off"` (phòng thi), khi `prefers-contrast: more` và khi in.
 - Bốn bộ hoạ tiết ở `frontend/public/patterns/<level>.svg` (`PATTERN_URLS` trong `palettes.ts`): Tiểu học — bút chì, gọt bút chì, thước kẻ, hộp bút, bảng con, phấn màu; THCS — compa, ê-ke, thước đo độ, bút bi, máy tính cầm tay; THPT — phấn và giẻ lau bảng, bình tam giác, máy tính cầm tay, kính lúp, bàn phím và chuột; trung tính — bút chì, thước, ê-ke, compa, máy tính. Quy tắc (test `frontend/lib/theme/patterns.test.ts`): một màu `#000` (dùng làm `mask-image`), < 4 KB, `viewBox="0 0 320 320"`, không `<script>`, ảnh, `foreignObject`, `href` hay thuộc tính `on*`.
 - Chế độ tối có sẵn nhưng tắt bằng `DARK_MODE_ENABLED` tới hết giai đoạn 5.
-- Bảng `--landing-*` theo cấp đã là bí danh trỏ về token chung; `--gate-*` (cổng chọn cấp, trung tính) vẫn viết cứng — việc còn lại của giai đoạn 2.
+- Landing và cổng chọn cấp chỉ dùng token chung (`--paper`, `--ink`, `--nav`…); `--gate-*` là bí danh trỏ về token chung, không còn màu viết cứng.
 
 ### Navbar
 
@@ -88,36 +88,23 @@ Menu, popover hay dialog render qua portal phải gắn vào trong `[data-app-sh
 
 ### Level choice gate
 
-The first-visit level choice uses a neutral paper palette before the student enters a level-specific landing. Keep these variables scoped to the gate root:
+Spec: `docs/superpowers/specs/2026-09-26-landing-redesign-design.md`.
 
-| Token | Value | Usage |
-|---|---:|---|
-| `--gate-paper` | `#F7F7F3` | Page canvas |
-| `--gate-surface` | `#FFFFFF` | Choice sheet and options |
-| `--gate-ink` | `#202922` | Main text |
-| `--gate-muted` | `#49574E` | Supporting text |
-| `--gate-line` | `#D8DED8` | Rules and card boundaries |
-| `--gate-action` | `#275B42` | Selection, focus context, and active status |
-| `--gate-action-hover` | `#1B4934` | Hover and pressed feedback |
-| `--gate-focus` | `#8A3E1F` | Keyboard focus outline |
-| `--gate-action-soft` | `#EDF4EE` | Current-level marker |
-| `--gate-hover-surface` | `#FBFCF9` | Choice hover surface |
-| `--gate-pressed-surface` | `#F1F5F1` | Choice pressed surface |
-| `--gate-error-ink` | `#96352D` | Save and catalog errors |
-| `--gate-error-surface` | `#FFF1EE` | Error message surface |
-| `--gate-error-line` | `#E8B8AF` | Error message border |
+- Một tiêu đề một dòng ("Bạn học lớp mấy?") và ba cuốn vở CSS 3D trên kệ. Bìa vở chỉ có tên cấp và khoảng lớp; không nhãn trạng thái học liệu (cả ba cấp đã ra mắt, "Đang biên soạn" chỉ hiện ở môn/bài).
+- Mỗi cuốn vở nằm trong `LevelScope` của cấp đó: bìa `--nav`, chữ `--nav-ink`, hoạ tiết `--pattern-url` làm `mask-image`; nhãn tên dán trên bìa là `--surface` có dòng kẻ `--line`.
+- Máy có chuột: vở nghiêng theo chuột (tối đa 8°), hover/focus thì nhô ra và bìa hé ~22°. Màn ≤ 640px: ba vở nằm ngang xếp dọc, chạm thì lún. Chọn: bìa lật mở 400 ms (`GATE_FLIP_MS`), trang giấy phóng to; `prefers-reduced-motion` bỏ hết chuyển động và áp dụng ngay.
+- Vẫn là `<form method="post">` với ba `<button name="level">`; tài khoản gửi form ngay (hiệu ứng không làm chậm POST), khách chọn qua `createGateSelection` — lần bấm đầu thắng, bấm lặp bị bỏ qua. Ghi chú lưu trữ và legend chỉ dành cho trình đọc màn hình.
 
-Do not infer a level from this neutral palette. The selection remains a native form action with visible current, upcoming, available, error, account-sync, and device-only states. Use the shared `scipal-lang` preference and a visible VI/EN switch on both the gate and landing hero notes; render one selected language at a time instead of duplicating each paragraph in both languages. On the public landing, hide the duplicate switch in the global navbar so the page presents one prominent control.
+### Landing
 
-The gate stylesheet consumes the shared 4px `--space-*` scale and type scale through component-scoped aliases. Keep radii, focus size, control targets, panel width, shadow, and typography details as named gate tokens alongside the palette. English-specific typography uses the gate's inherited `lang="en"` state rather than selectors on translated child spans.
+- Thứ tự: hero (nhãn cấp, tiêu đề hai dòng, một câu phụ, "Xem môn học" + "Đổi cấp", cảnh bàn học 3D) → "Môn học của bạn" (`SubjectGrid`) → "Học thế nào" (ba thẻ: câu hỏi, câu song ngữ đổi bằng cờ, thẻ thuật ngữ lật) → "Hỏi bất cứ lúc nào" (`TutorDemoCard`; nút "Thử ngay" chỉ khi truyền `href` cho `TutorSection`) → "Sẵn sàng chưa?" trên nền `--nav` → khảo sát một dòng → footer.
+- Mỗi section một tiêu đề, tối đa một câu phụ; không đoạn văn.
+- Cảnh 3D (`features/landing/hero/`): `three` trong chunk riêng, chỉ tải khi hero trong màn hình và trình duyệt rảnh; SVG tĩnh cùng bố cục luôn hiện trước và là dự phòng. Không chạy WebGL khi `prefers-reduced-motion`, Save-Data, `deviceMemory ≤ 2` hoặc `hardwareConcurrency ≤ 2`, hay không tạo được context; mất context thì quay về SVG. Màu cảnh đọc từ token qua `readSceneColors`; đồ vật theo cấp là dữ liệu trong `sceneObjects.ts` (test giữ đồ vật ngoài vùng cuốn vở và trong khung hình). 30 fps, DPR ≤ 1.5, dừng khi khuất hoặc tab ẩn.
+- Hiệu ứng hiện khi cuộn dùng thuộc tính `translate`/`rotate` riêng để không đè `transform` của thẻ.
 
-| Alias | Source or use |
-|---|---|
-| `--gate-page-gutter`, `--gate-sheet-padding`, `--gate-section-gap`, `--gate-form-gap` | Responsive combinations of the shared spacing scale |
-| `--gate-type-display`, `--gate-type-h3`, `--gate-type-lead`, `--gate-type-body`, `--gate-type-small` | Display, H3, lead, body, and small text scale |
-| `--gate-font-display`, `--gate-font-body`, `--gate-font-measure` | Be Vietnam Pro, Inter, and JetBrains Mono font roles |
-| `--gate-control-target` | 44px minimum interactive target |
-| `--gate-radius-*`, `--gate-outline-width`, `--gate-shadow-sheet` | Component geometry and focus/surface treatments |
+### Language switch
+
+Công tắc ngôn ngữ ở navbar và trên thẻ song ngữ dùng cờ SVG `public/flags/vn.svg` và `gb.svg` (`FlagIcon`), không dùng emoji; mỗi nút có `aria-label` "Tiếng Việt"/"English" và `aria-pressed`. Test `lib/theme/flags.test.ts` giữ file cờ < 2 KB và không có script/href.
 
 ## 3. Typography
 
@@ -125,7 +112,7 @@ The gate stylesheet consumes the shared 4px `--space-*` scale and type scale thr
 
 | Level | Size | Weight | Line height | Usage |
 |---|---|---:|---:|---|
-| Display | `clamp(2.45rem, 5.6vw, 5.5rem)` | 700–800 | 1.04–1.1 | Landing and gate heading |
+| Display | `clamp(2.25rem, 6.4vw, 4.75rem)` (gate), `clamp(2.6rem, 5.4vw, 4.6rem)` (landing hero) | 800 | 1.02–1.05 | Landing and gate heading |
 | H1 | `2.25rem` | 700 | 1.15 | Profile section heading |
 | H2 | `1.75rem` | 600–700 | 1.25 | Section heading |
 | H3 | `1.25rem` | 600 | 1.35 | Choice and notebook title |
