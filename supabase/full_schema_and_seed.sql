@@ -2,6 +2,7 @@
 -- Schema and RLS are defined by supabase/migrations/* (applied in timestamp order).
 -- This file predates 20260926090000_security_hardening_rls.sql and has weaker
 -- policies on user tables. Do not use it to bootstrap a new database.
+-- Contains demo content (topic-f-algorithms, binary-search, term "algorithm"); never run it to create a new environment.
 
 -- =====================================================================
 -- SciPal — Consolidated Full Schema & Seed Script (Migrations 0001 - 0005)
