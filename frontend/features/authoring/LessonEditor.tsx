@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useRef, useState, type ChangeEvent } from 'react';
 import { useRouter } from 'next/navigation';
 import { createBrowserClient } from '@scipal/supabase';
 import type { Block } from '@scipal/types';
@@ -9,6 +9,7 @@ import { BlockRenderer } from '@/components/blocks/BlockRenderer';
 import { useLanguage } from '@scipal/hooks';
 import type { LessonStatus } from './authoringQueries';
 import { lessonStatusLabel, lessonStatusTone, TONE_CLASS } from './lessonStatus';
+import { parseLessonImport } from './lessonImport';
 
 interface LessonEditorProps {
   lessonId: string;
@@ -58,6 +59,32 @@ export function LessonEditor({
     setReviewNote(lesson.review_note);
     setPublishChecked(lesson.status === 'published');
     setUpdatedAt(lesson.updated_at);
+  };
+
+  const importInputRef = useRef<HTMLInputElement>(null);
+
+  const handleImportFile = async (event: ChangeEvent<HTMLInputElement>) => {
+    const input = event.currentTarget;
+    const file = input.files?.[0];
+    input.value = '';
+    if (!file) return;
+
+    const result = parseLessonImport(await file.text(), file.size);
+    if (!result.ok) {
+      setMessage({ text: t(result.error), type: 'error' });
+      return;
+    }
+
+    const confirmed = window.confirm(t({
+      en: `Replace all ${blocks.length} current blocks with ${result.blocks.length} imported blocks?`,
+      vi: `Thay toàn bộ ${blocks.length} khối hiện có bằng ${result.blocks.length} khối từ tệp?`,
+    }));
+    if (!confirmed) return;
+
+    setBlocks(result.blocks);
+    if (result.title_en !== undefined) setTitleEn(result.title_en);
+    if (result.title_vi !== undefined) setTitleVi(result.title_vi);
+    setMessage({ text: t({ en: 'Imported. Remember to save.', vi: 'Đã nạp nội dung. Nhớ bấm lưu.' }), type: 'success' });
   };
 
   const handleAddBlock = (newBlock: Block) => {
@@ -388,7 +415,27 @@ export function LessonEditor({
           </div>
 
           {/* Block Palette */}
-          {canEditContent && <BlockPalette onAddBlock={handleAddBlock} />}
+          {canEditContent && (
+            <div className="space-y-3">
+              <div className="flex justify-end">
+                <button
+                  type="button"
+                  onClick={() => importInputRef.current?.click()}
+                  className="rounded-xl border border-purple-200 bg-white px-3.5 py-2 text-xs font-bold text-purple-800 transition hover:bg-purple-50 dark:border-purple-900 dark:bg-card dark:text-purple-300"
+                >
+                  {t({ en: 'Import JSON', vi: 'Nhập từ JSON' })}
+                </button>
+                <input
+                  ref={importInputRef}
+                  type="file"
+                  accept=".json,application/json"
+                  hidden
+                  onChange={handleImportFile}
+                />
+              </div>
+              <BlockPalette onAddBlock={handleAddBlock} />
+            </div>
+          )}
 
           {/* Block Outline & Management */}
           <div className="space-y-3">
