@@ -1,36 +1,38 @@
 'use client';
 import { useState } from 'react';
 import dynamic from 'next/dynamic';
+import { useLanguage } from '@scipal/hooks';
 import type { CodeBlock } from '@scipal/types';
 
 const MonacoEditor = dynamic(() => import('@monaco-editor/react'), {
   ssr: false,
   loading: () => (
-    <div className="h-[280px] flex items-center justify-center bg-gray-50 text-xs text-gray-400 font-mono">
-      Đang tải trình xem mã nguồn...
+    <div className="flex h-[280px] items-center justify-center bg-surface-sunken text-sm text-ink-muted">
+      Đang tải mã nguồn… / Loading code…
     </div>
   ),
 });
 
 export function CodeRenderer({ block }: { block: CodeBlock }) {
+  const { t } = useLanguage();
   const [activeTab, setActiveTab] = useState(0);
   const tab = block.tabs[activeTab];
 
   return (
-    <div className="my-4 rounded-xl border border-gray-200 overflow-hidden shadow-sm">
-      <div className="flex gap-0 border-b border-gray-200 bg-gray-50">
-        {block.tabs.map((t, i) => (
+    <div className="overflow-hidden rounded-lg border border-line bg-surface">
+      <div role="tablist" aria-label={t({ en: 'Code language', vi: 'Ngôn ngữ mã' })} className="flex border-b border-line bg-surface-sunken">
+        {block.tabs.map((codeTab, i) => (
           <button
-            key={t.lang}
+            key={codeTab.lang}
+            type="button"
+            role="tab"
+            aria-selected={i === activeTab}
             onClick={() => setActiveTab(i)}
-            className={`px-4 py-2 text-xs font-mono font-semibold transition ${
-              i === activeTab
-                ? 'bg-white text-gray-900 border-b-2'
-                : 'text-gray-500 hover:text-gray-700'
+            className={`min-h-11 px-4 font-mono text-sm font-semibold transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-focus ${
+              i === activeTab ? 'border-b-2 border-accent bg-surface text-ink' : 'text-ink-muted hover:text-ink'
             }`}
-            style={{ borderBottomColor: i === activeTab ? 'var(--accent, #16a34a)' : undefined }}
           >
-            {t.lang}
+            {codeTab.lang}
           </button>
         ))}
       </div>

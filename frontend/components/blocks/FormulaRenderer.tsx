@@ -11,10 +11,10 @@ export function FormulaRenderer({ block, lang }: { block: FormulaBlock; lang: 'e
   }
 
   return (
-    <div className="my-6 rounded-xl bg-gray-50 border border-gray-100 p-4 text-center">
-      <div dangerouslySetInnerHTML={{ __html: html }} />
+    <div className="rounded-lg border border-line bg-surface-sunken p-4 text-center text-ink">
+      <div className="overflow-x-auto" dangerouslySetInnerHTML={{ __html: html }} />
       {block.caption && (
-        <p className="mt-2 text-sm text-gray-500 font-medium">
+        <p className="mt-2 text-sm text-ink-muted">
           {lang === 'en' ? block.caption.en : block.caption.vi}
         </p>
       )}

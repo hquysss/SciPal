@@ -1,58 +1,64 @@
 'use client';
 import { useState } from 'react';
+import { Search, X } from 'lucide-react';
 import { useLanguage } from '@scipal/hooks';
-import { SUBJECT_CONFIG } from '@/lib/subject-config';
+import { EmptyState } from '../../components/ui/empty-state';
+import { SUBJECT_CONFIG } from '../../lib/subject-config';
 import type { TermItem } from './termQueries';
 
 const FILTER_SUBJECTS = [
-  { id: 'all', label: 'Tất cả môn', color: undefined },
+  { id: 'all', label: { en: 'All subjects', vi: 'Tất cả môn' } },
   ...Object.values(SUBJECT_CONFIG).map((s) => ({
     id: s.slug,
-    label: s.nameVi,
-    color: s.accentColor,
+    label: { en: s.nameEn, vi: s.nameVi },
   })),
 ];
 
 export function GlossarySearch({ terms }: { terms: TermItem[] }) {
-  const { lang } = useLanguage();
+  const { lang, t } = useLanguage();
   const [query, setQuery] = useState('');
   const [activeFilter, setActiveFilter] = useState('all');
 
-  const filtered = terms.filter((t) => {
+  const filtered = terms.filter((term) => {
     const q = query.toLowerCase();
     const matchesQuery =
       !q ||
-      t.term_en.toLowerCase().includes(q) ||
-      t.term_vi.toLowerCase().includes(q) ||
-      t.definition_vi.toLowerCase().includes(q) ||
-      t.definition_en.toLowerCase().includes(q);
+      term.term_en.toLowerCase().includes(q) ||
+      term.term_vi.toLowerCase().includes(q) ||
+      term.definition_vi.toLowerCase().includes(q) ||
+      term.definition_en.toLowerCase().includes(q);
     return matchesQuery;
   });
 
   return (
-    <div className="space-y-6">
+    <div className="flex flex-col gap-6">
       {/* Search Input Bar */}
       <div className="relative">
-        <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-4 text-gray-400">
-          🔍
+        <label htmlFor="glossary-search" className="sr-only">
+          {t({ en: 'Search terms', vi: 'Tìm thuật ngữ' })}
+        </label>
+        <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-4 text-ink-muted">
+          <Search aria-hidden="true" className="h-5 w-5" />
         </div>
         <input
+          id="glossary-search"
+          type="search"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          placeholder={
-            lang === 'en'
-              ? 'Search scientific terms in English or Vietnamese...'
-              : 'Tra cứu thuật ngữ tiếng Anh hoặc tiếng Việt (vd: algorithm, thuật toán)...'
-          }
-          className="w-full rounded-2xl border border-gray-300/80 bg-white py-3.5 pl-11 pr-10 text-sm outline-none shadow-xs focus:border-emerald-600 focus:ring-2 focus:ring-emerald-500/20 transition"
+          placeholder={t({
+            en: 'Search terms in English or Vietnamese…',
+            vi: 'Tra thuật ngữ tiếng Anh hoặc tiếng Việt (vd: algorithm, thuật toán)…',
+          })}
+          className="min-h-11 w-full rounded-xl border border-edge bg-surface py-3 pl-11 pr-12 text-base text-ink placeholder:text-ink-muted focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
         />
         {query && (
           <button
+            type="button"
             onClick={() => setQuery('')}
-            className="absolute inset-y-0 right-0 flex items-center pr-4 text-xs text-gray-400 hover:text-gray-600"
-            aria-label="Xóa tìm kiếm"
+            className="absolute inset-y-0 right-0 flex min-h-11 min-w-11 items-center justify-center rounded-xl text-ink-muted hover:text-ink focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-focus"
+            aria-label={t({ en: 'Clear search', vi: 'Xoá tìm kiếm' })}
           >
-            ✕
+            <X aria-hidden="true" className="h-4 w-4" />
           </button>
         )}
       </div>
@@ -62,63 +68,51 @@ export function GlossarySearch({ terms }: { terms: TermItem[] }) {
         {FILTER_SUBJECTS.map((sub) => (
           <button
             key={sub.id}
+            type="button"
+            aria-pressed={activeFilter === sub.id}
             onClick={() => setActiveFilter(sub.id)}
-            className={`rounded-full px-3.5 py-1 text-xs font-semibold transition duration-150 ${
+            className={`min-h-11 rounded-full px-4 text-sm font-semibold transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus ${
               activeFilter === sub.id
-                ? 'bg-emerald-700 text-white shadow-xs'
-                : 'bg-white border border-gray-200 text-gray-600 hover:bg-gray-50'
+                ? 'bg-action text-action-ink'
+                : 'border border-edge bg-surface text-ink hover:bg-surface-sunken'
             }`}
           >
-            {sub.label}
+            {t(sub.label)}
           </button>
         ))}
       </div>
 
       {/* Results stats */}
-      <div className="flex items-center justify-between text-xs font-mono text-gray-400 pt-2">
-        <span>Tìm thấy {filtered.length} thuật ngữ</span>
-        <span>Từ điển song ngữ chuẩn GDPT</span>
+      <div className="flex flex-wrap items-center justify-between gap-2 text-sm text-ink-muted">
+        <span>{t({ en: `${filtered.length} ${filtered.length === 1 ? 'term' : 'terms'} found`, vi: `Tìm thấy ${filtered.length} thuật ngữ` })}</span>
+        <span>{t({ en: 'Bilingual glossary for the national curriculum', vi: 'Từ điển song ngữ chuẩn GDPT' })}</span>
       </div>
 
       {/* Terms Cards */}
-      <div className="space-y-4">
+      <div className="flex flex-col gap-4">
         {filtered.map((term) => (
-          <article
-            key={term.id}
-            id={term.id}
-            className="rounded-2xl border border-gray-200/80 bg-white p-6 shadow-xs transition hover:shadow-md hover:border-emerald-500/30"
-          >
-            <div className="flex items-start justify-between gap-4 mb-3">
-              <div>
-                <div className="flex items-baseline gap-2 flex-wrap">
-                  <h3 className="text-xl font-bold text-gray-950">
-                    {lang === 'en' ? term.term_en : term.term_vi}
-                  </h3>
-                  <span className="text-sm font-medium text-emerald-700 font-mono">
-                    / {lang === 'en' ? term.term_vi : term.term_en}
-                  </span>
-                </div>
+          <article key={term.id} id={term.id} className="rounded-xl border border-line bg-surface p-6">
+            <div className="mb-3 flex items-start justify-between gap-4">
+              <div className="flex flex-wrap items-baseline gap-2">
+                <h2 className="text-xl font-bold text-ink">{lang === 'en' ? term.term_en : term.term_vi}</h2>
+                <span className="text-sm font-medium text-ink-muted">{lang === 'en' ? term.term_vi : term.term_en}</span>
               </div>
 
               {term.part_of_speech && (
-                <span className="shrink-0 rounded-md bg-emerald-50 border border-emerald-200/60 px-2 py-0.5 text-[11px] font-mono font-bold uppercase tracking-wider text-emerald-800">
+                <span className="shrink-0 rounded-md bg-surface-sunken px-2 py-0.5 text-sm text-ink-muted">
                   {term.part_of_speech}
                 </span>
               )}
             </div>
 
             {/* Definition */}
-            <p className="text-sm text-gray-800 leading-relaxed">
-              {lang === 'en' ? term.definition_en : term.definition_vi}
-            </p>
-            <p className="text-xs text-gray-500 mt-1 italic">
-              {lang === 'en' ? term.definition_vi : term.definition_en}
-            </p>
+            <p className="text-base text-ink">{lang === 'en' ? term.definition_en : term.definition_vi}</p>
+            <p className="mt-1 text-sm text-ink-muted">{lang === 'en' ? term.definition_vi : term.definition_en}</p>
 
             {/* Example sentence callout */}
             {(term.example_en || term.example_vi) && (
-              <div className="mt-4 rounded-xl bg-gray-50/80 border border-gray-100 p-3 text-xs text-gray-600 leading-relaxed">
-                <span className="font-semibold text-gray-700">Ví dụ: </span>
+              <div className="mt-4 rounded-lg bg-surface-sunken p-3 text-sm text-ink-muted">
+                <span className="font-semibold text-ink">{t({ en: 'Example: ', vi: 'Ví dụ: ' })}</span>
                 <span>{lang === 'en' ? term.example_en : term.example_vi}</span>
               </div>
             )}
@@ -126,13 +120,13 @@ export function GlossarySearch({ terms }: { terms: TermItem[] }) {
         ))}
 
         {filtered.length === 0 && (
-          <div className="rounded-2xl border border-dashed border-gray-300 p-12 text-center text-gray-400 text-sm">
-            <span className="text-4xl block mb-2">🔍</span>
-            <p className="font-medium text-gray-600">Không tìm thấy thuật ngữ phù hợp</p>
-            <p className="text-xs text-gray-400 mt-1">
-              Hãy thử từ khóa khác hoặc tìm kiếm bằng tiếng Anh
-            </p>
-          </div>
+          <EmptyState
+            title={t({ en: 'No matching terms', vi: 'Không có thuật ngữ phù hợp' })}
+            description={t({
+              en: 'Try another keyword or clear the subject filter.',
+              vi: 'Hãy thử từ khoá khác hoặc bỏ bộ lọc môn học.',
+            })}
+          />
         )}
       </div>
     </div>

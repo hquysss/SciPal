@@ -2,9 +2,13 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { postScoreLesson } from '@/lib/api';
-import { createBrowserClient } from '@/lib/supabase';
-import { PostLessonSurvey } from '@/features/survey/PostLessonSurvey';
+import { CircleCheck } from 'lucide-react';
+import { useLanguage } from '@scipal/hooks';
+import { postScoreLesson } from '../../lib/api';
+import { createBrowserClient } from '../../lib/supabase';
+import { PostLessonSurvey } from '../survey/PostLessonSurvey';
+import { Alert } from '../../components/ui/alert';
+import { buttonVariants } from '../../components/ui/button';
 
 export function LessonCompletionBar({
   lessonId,
@@ -13,15 +17,16 @@ export function LessonCompletionBar({
   lessonId: string;
   subjectSlug: string;
 }) {
+  const { t } = useLanguage();
   const pathname = usePathname();
   const router = useRouter();
   const [completed, setCompleted] = useState(false);
   const [loading, setLoading] = useState(false);
   const [xp, setXp] = useState(0);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState(false);
 
   const handleComplete = async () => {
-    setError(null);
+    setError(false);
     setLoading(true);
     try {
       const { data: { session } } = await createBrowserClient().auth.getSession();
@@ -37,61 +42,58 @@ export function LessonCompletionBar({
       setXp(res.xp_earned);
       setCompleted(true);
     } catch {
-      setError('Chưa thể lưu tiến trình. Vui lòng thử lại khi kết nối ổn định.');
+      setError(true);
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="mt-12 rounded-2xl border border-gray-200/80 bg-white p-6 shadow-sm text-center">
+    <div className="mt-10 rounded-xl border border-line bg-surface p-6 text-center">
       {!completed ? (
-        <div className="space-y-3">
-          <h3 className="text-base font-bold text-gray-900">
-            Bạn đã nắm vững nội dung bài học này chưa?
-          </h3>
-          <p className="text-xs text-gray-500">
-            Ghi nhận tiến trình để tích lũy XP và duy trì chuỗi học liên tục
+        <div className="flex flex-col items-center gap-3">
+          <h2 className="text-lg font-bold text-ink">
+            {t({ en: 'Have you got the hang of this lesson?', vi: 'Bạn đã nắm vững nội dung bài học này chưa?' })}
+          </h2>
+          <p className="text-sm text-ink-muted">
+            {t({
+              en: 'Save your progress to earn XP and keep your streak',
+              vi: 'Ghi nhận tiến trình để tích lũy XP và duy trì chuỗi học liên tục',
+            })}
           </p>
-          <button
-            onClick={handleComplete}
-            disabled={loading}
-            className="inline-flex items-center gap-2 rounded-full px-6 py-2.5 text-sm font-bold text-white shadow-sm hover:scale-105 active:scale-95 transition disabled:opacity-50"
-            style={{ backgroundColor: 'var(--accent, #16a34a)' }}
-          >
-            <span>{loading ? 'Đang ghi nhận...' : 'Đánh dấu hoàn thành'}</span>
-            <span aria-hidden="true">✓</span>
+          <button type="button" onClick={handleComplete} disabled={loading} className={buttonVariants({ size: 'lg' })}>
+            {loading ? t({ en: 'Saving…', vi: 'Đang lưu…' }) : t({ en: 'Mark as complete', vi: 'Đánh dấu hoàn thành' })}
           </button>
-          {error && <p role="alert" className="text-sm font-medium text-red-700">{error}</p>}
+          {error && (
+            <Alert tone="danger" className="mt-3 text-left">
+              {t({
+                en: 'Could not save your progress. Check your connection and try again.',
+                vi: 'Chưa thể lưu tiến trình. Vui lòng thử lại khi kết nối ổn định.',
+              })}
+            </Alert>
+          )}
         </div>
       ) : (
-        <div className="space-y-3 animate-in fade-in zoom-in-95 duration-200">
-          <div className="inline-flex h-12 w-12 items-center justify-center rounded-full bg-emerald-100 text-2xl">
-            🎉
-          </div>
-          <h3 className="text-lg font-extrabold text-emerald-700">
-            {xp > 0 ? `Xuất sắc! Bạn đã nhận được +${xp} XP` : 'Bài học đã được ghi nhận hoàn thành'}
-          </h3>
-          <p className="text-xs text-gray-500">
-            Tiến trình đã được lưu lại trong hồ sơ cá nhân.
+        <div className="flex flex-col items-center gap-3">
+          <CircleCheck aria-hidden="true" className="mx-auto h-10 w-10 text-success" />
+          <h2 className="text-lg font-bold text-ink">
+            {xp > 0
+              ? t({ en: `Lesson saved. You earned ${xp} XP.`, vi: `Đã lưu bài. Bạn nhận +${xp} XP.` })
+              : t({ en: 'This lesson was already saved as complete', vi: 'Bài học đã được ghi nhận hoàn thành' })}
+          </h2>
+          <p className="text-sm text-ink-muted">
+            {t({ en: 'Your progress is saved in your profile.', vi: 'Tiến trình đã được lưu lại trong hồ sơ cá nhân.' })}
           </p>
-          <div className="flex items-center justify-center gap-3 pt-2">
-            <Link
-              href="/progress"
-              className="rounded-full bg-gray-100 hover:bg-gray-200 px-4 py-2 text-xs font-semibold text-gray-700 transition"
-            >
-              Xem bảng tiến trình
+          <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
+            <Link href="/progress" className={buttonVariants({ variant: 'outline' })}>
+              {t({ en: 'View progress', vi: 'Xem tiến trình' })}
             </Link>
-            <Link
-              href={`/${subjectSlug}`}
-              className="rounded-full px-4 py-2 text-xs font-semibold text-white shadow-xs transition"
-              style={{ backgroundColor: 'var(--accent, #16a34a)' }}
-            >
-              Bài tiếp theo →
+            <Link href={`/${subjectSlug}`} className={buttonVariants()}>
+              {t({ en: 'Back to lessons', vi: 'Về danh sách bài' })}
             </Link>
           </div>
 
-          <div className="mt-6 pt-6 border-t border-dashed border-gray-200 text-left">
+          <div className="mt-6 w-full border-t border-dashed border-line pt-6 text-left">
             <PostLessonSurvey lessonId={lessonId} />
           </div>
         </div>
