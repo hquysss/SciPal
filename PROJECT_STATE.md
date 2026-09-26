@@ -94,6 +94,7 @@ Các mục Plan 0–2 dưới đây là **ghi nhận triển khai ban đầu**, 
 - Đề thi, hồ sơ, lớp học và một số khu vực chưa chuyển dữ liệu thật vẫn còn dữ liệu/fallback demo; không được xem là dữ liệu cá nhân thật.
 - Chấm điểm bài học hiện dùng mốc 100 XP phía server nhưng chưa xác minh quiz theo đặc tả; thao tác ghi `progress`/`xp_log` chưa ở một transaction DB.
 - Một số nội dung giao diện chưa đổi theo ngôn ngữ EN; `frontend/app/globals.css` còn đặt `--accent` trên `:root` trái quy tắc dự án.
+- Thi thử: XP bài thi đã chặn đề không tồn tại và chỉ cộng một lần mỗi đề, nhưng chưa kiểm tra câu hỏi có thuộc đề hay không, và `/api/score/exam` vẫn cho biết đúng/sai từng câu (có thể dò đáp án). Trước khi seed đề thật: kiểm tra câu hỏi theo `exam_blueprints.sections`, giới hạn XP theo số câu của đề, và áp migration `20260926090100_exam_xp_once.sql` không muộn hơn lúc deploy backend.
 
 ## Important Files
 - `docs/superpowers/specs/2026-09-22-scipal-foundation-design.md` — Đặc tả khung chung v1.5 chính thức.
