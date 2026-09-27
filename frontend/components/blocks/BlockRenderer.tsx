@@ -7,9 +7,13 @@ import { FormulaRenderer } from './FormulaRenderer';
 import { InteractiveRenderer } from './InteractiveRenderer';
 import { TermRefCard } from './TermRefCard';
 import { ResourceRefCard } from './ResourceRefCard';
+import { ImageRenderer } from './ImageRenderer';
 
-export function BlockRenderer({ block }: { block: Block }) {
-  const { lang, t } = useLanguage();
+/** `lang` overrides the reader's language (the editor previews either language). */
+export function BlockRenderer({ block, lang: langOverride }: { block: Block; lang?: 'en' | 'vi' }) {
+  const { lang: readerLang, t: readerT } = useLanguage();
+  const lang = langOverride ?? readerLang;
+  const t = langOverride ? (text: { en: string; vi: string }) => text[langOverride] : readerT;
 
   switch (block.type) {
     case 'theory':
@@ -35,14 +39,9 @@ export function BlockRenderer({ block }: { block: Block }) {
     case 'term-ref':
       return <TermRefCard termId={block.term_id} lang={lang} />;
     case 'resource-ref':
-      return (
-        <ResourceRefCard
-          url="https://visualgo.net/en/sorting"
-          titleVi="Mô phỏng thuật toán trực quan"
-          titleEn="Interactive Algorithm Visualization"
-          lang={lang}
-        />
-      );
+      return <ResourceRefCard resourceId={block.resource_id} lang={lang} />;
+    case 'image':
+      return <ImageRenderer block={block} lang={lang} />;
     default:
       console.warn('BlockRenderer: unknown block type', (block as Block).type);
       return null;

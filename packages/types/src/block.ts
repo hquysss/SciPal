@@ -46,6 +46,13 @@ export const ResourceRefBlockSchema = z.object({
   resource_id: z.string().uuid(),
 });
 
+export const ImageBlockSchema = z.object({
+  type: z.literal('image'),
+  url: z.string().url().max(1000),
+  alt: BilingualText,
+  caption: BilingualText.optional(),
+});
+
 export const BlockSchema = z.discriminatedUnion('type', [
   TheoryBlockSchema,
   CodeBlockSchema,
@@ -54,6 +61,7 @@ export const BlockSchema = z.discriminatedUnion('type', [
   InteractiveBlockSchema,
   TermRefBlockSchema,
   ResourceRefBlockSchema,
+  ImageBlockSchema,
 ]);
 
 export type Block = z.infer<typeof BlockSchema>;
@@ -64,3 +72,4 @@ export type QuizBlock         = z.infer<typeof QuizBlockSchema>;
 export type InteractiveBlock  = z.infer<typeof InteractiveBlockSchema>;
 export type TermRefBlock      = z.infer<typeof TermRefBlockSchema>;
 export type ResourceRefBlock  = z.infer<typeof ResourceRefBlockSchema>;
+export type ImageBlock        = z.infer<typeof ImageBlockSchema>;

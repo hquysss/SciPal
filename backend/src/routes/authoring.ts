@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import type { FastifyPluginAsync, FastifyReply, FastifyRequest } from 'fastify';
-import { BlockSchema } from '../schemas/blocks.js';
+import { BlockSchema, imageProblems } from '../schemas/blocks.js';
 import { makeSlug, planNewTopic, toSubjectOptions, type ExistingTopic, type SubjectCatalogRow } from '../authoring/topicPlanning.js';
 
 interface AuthoringUser {
@@ -463,6 +463,8 @@ export const authoringRoutes: FastifyPluginAsync = async (app) => {
       if (!parsedBlocks.success) {
         return reply.code(400).send({ error: 'Bài gửi duyệt cần có ít nhất một khối nội dung hợp lệ.' });
       }
+      const submitImageProblem = imageProblems(parsedBlocks.data, { requireAlt: true });
+      if (submitImageProblem) return reply.code(400).send({ error: submitImageProblem });
 
       const { data: current, error: readError } = await supabase
         .from('lessons')
@@ -650,6 +652,9 @@ export const authoringRoutes: FastifyPluginAsync = async (app) => {
         if (!parsedBlocks.success) {
           return reply.code(400).send({ error: 'Nội dung có khối không đúng định dạng.' });
         }
+        // An image may wait for its description in a draft; publishing needs it.
+        const problem = imageProblems(parsedBlocks.data, { requireAlt: isAdmin && body.status === 'published' });
+        if (problem) return reply.code(400).send({ error: problem });
         updateData.blocks = parsedBlocks.data;
       }
       if (isAdmin && body.status !== undefined) {

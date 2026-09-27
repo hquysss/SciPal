@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import type { FastifyPluginAsync, FastifyReply, FastifyRequest } from 'fastify';
 import { z } from 'zod';
-import { BlockSchema } from '../schemas/blocks.js';
+import { BlockSchema, imageProblems } from '../schemas/blocks.js';
 import { makeSlug, planNewTopic, type ExistingTopic } from '../authoring/topicPlanning.js';
 
 // The package the import page sends after Word/PDF lessons and an Excel workbook are parsed and
@@ -64,6 +64,7 @@ function blockEnglish(block: z.infer<typeof LessonBlockSchema>): string[] {
   if (block.type === 'theory') return [block.content.en];
   if (block.type === 'formula') return block.caption ? [block.caption.en] : [];
   if (block.type === 'interactive') return [block.heading.en, ...(block.caption ? [block.caption.en] : [])];
+  if (block.type === 'image') return [block.alt.en, ...(block.caption ? [block.caption.en] : [])];
   return [];
 }
 
@@ -81,6 +82,8 @@ export const ExamImportSchema = z
     }
     const questionKeys = new Set(pkg.questions.map((q) => `${q.subject_slug}:${q.key}`));
     pkg.lessons.forEach((lesson, i) => {
+      const imageProblem = imageProblems(lesson.blocks, { requireAlt: true });
+      if (imageProblem) ctx.addIssue({ code: 'custom', path: ['lessons', i, 'blocks'], message: `Bài "${lesson.title.vi}": ${imageProblem}` });
       lesson.blocks.forEach((block, j) => {
         if (blockEnglish(block).some((en) => !en.trim())) {
           ctx.addIssue({ code: 'custom', path: ['lessons', i, 'blocks', j], message: `Bài "${lesson.title.vi}": khối ${j + 1} cần điền tiếng Anh trước khi lưu.` });

@@ -29,3 +29,11 @@ export function lessonStatusLabel(status: LessonStatus) {
 export function lessonStatusTone(status: LessonStatus) {
   return TONES[status];
 }
+
+/**
+ * The admin's "Publish to students" tick after a save. A save that keeps the status (an autosave
+ * of a draft) must not clear what the admin ticked; a status change sets the box to match.
+ */
+export function publishBoxAfterSave(previous: LessonStatus, next: LessonStatus, checked: boolean): boolean {
+  return previous === next ? checked : next === 'published';
+}

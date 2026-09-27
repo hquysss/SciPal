@@ -1,17 +1,11 @@
-import Link from 'next/link';
+'use client';
 
-export function TermRefCard({
-  termId,
-  termEn,
-  termVi,
-  lang,
-}: {
-  termId: string;
-  termEn?: string;
-  termVi?: string;
-  lang: 'en' | 'vi';
-}) {
-  const label = lang === 'en' ? (termEn || 'View term') : (termVi || 'Xem thuật ngữ');
+import Link from 'next/link';
+import { useRefRow } from './useRefRow';
+
+export function TermRefCard({ termId, lang }: { termId: string; lang: 'en' | 'vi' }) {
+  const row = useRefRow<{ term_en: string; term_vi: string }>('terms', 'term_en, term_vi', termId);
+  const label = lang === 'en' ? (row?.term_en || 'View term') : (row?.term_vi || 'Xem thuật ngữ');
   return (
     <Link
       href={`/glossary#${termId}`}

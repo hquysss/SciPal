@@ -13,3 +13,17 @@ describe('lesson status presentation', () => {
     expect(lessonStatusTone(status)).toBe(tone);
   });
 });
+
+describe('publishBoxAfterSave', () => {
+  it('keeps the admin tick when a save leaves the status unchanged', async () => {
+    const { publishBoxAfterSave } = await import('./lessonStatus');
+    expect(publishBoxAfterSave('draft', 'draft', true)).toBe(true);
+    expect(publishBoxAfterSave('published', 'published', false)).toBe(false);
+  });
+
+  it('follows the status when it changes', async () => {
+    const { publishBoxAfterSave } = await import('./lessonStatus');
+    expect(publishBoxAfterSave('draft', 'published', false)).toBe(true);
+    expect(publishBoxAfterSave('published', 'draft', true)).toBe(false);
+  });
+});

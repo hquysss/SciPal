@@ -8,6 +8,11 @@ vi.mock('@scipal/hooks', () => ({
   useLanguage: () => ({ lang: 'vi', t: (o: { en: string; vi: string }) => o.vi }),
 }));
 vi.mock('next/dynamic', () => ({ default: () => () => null }));
+vi.mock('@scipal/supabase', () => ({
+  createBrowserClient: () => ({
+    from: () => ({ select: () => ({ eq: () => ({ maybeSingle: async () => ({ data: null, error: null }) }) }) }),
+  }),
+}));
 
 const QUESTION_ID = '5f0c2f7e-2a39-4a8e-9b1b-3a7f0d6c1e11';
 
@@ -52,5 +57,34 @@ describe('BlockRenderer', () => {
     expect(html).toContain('role="tablist"');
     expect(html).toMatch(/aria-selected="true"[^>]*>python|>python<\/button>/);
     expect(html).toContain('min-h-11');
+  });
+
+  it('renders an image with its alt text and caption, lazily', () => {
+    const html = renderToStaticMarkup(
+      <BlockRenderer
+        block={{
+          type: 'image',
+          url: 'https://p.supabase.co/storage/v1/object/public/lesson-media/a.png',
+          alt: { vi: 'Sơ đồ tế bào', en: 'Cell diagram' },
+          caption: { vi: 'Hình 1', en: 'Figure 1' },
+        }}
+      />,
+    );
+    expect(html).toContain('alt="Sơ đồ tế bào"');
+    expect(html).toContain('loading="lazy"');
+    expect(html).toContain('Hình 1');
+    expect(countRawColors(html).total).toBe(0);
+  });
+
+  it('no longer links every resource to the same site', () => {
+    const html = renderToStaticMarkup(<BlockRenderer block={{ type: 'resource-ref', resource_id: '1c7a0d2b-8e3f-4a4b-9d6c-2f3e4d5c6b7a' }} />);
+    expect(html).not.toContain('visualgo');
+    expect(html).toContain('Tài nguyên học tập');
+  });
+
+  it('previews the other language when the editor asks for it', () => {
+    const html = renderToStaticMarkup(<BlockRenderer block={{ type: 'theory', content: { vi: 'Xin chào', en: 'Hello' } }} lang="en" />);
+    expect(html).toContain('Hello');
+    expect(html).not.toContain('Xin chào');
   });
 });

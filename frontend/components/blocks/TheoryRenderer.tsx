@@ -1,6 +1,9 @@
 import { isValidElement, type ReactNode } from 'react';
 import ReactMarkdown, { type Components } from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import remarkMath from 'remark-math';
+import rehypeKatex from 'rehype-katex';
+import 'katex/dist/katex.min.css';
 import type { TheoryBlock } from '@scipal/types';
 import styles from './notebook.module.css';
 
@@ -49,11 +52,16 @@ const components: Components = {
   hr: () => <hr className="my-7 border-line" />,
 };
 
+// `$…$` inline and `$$…$$` display formulas, typeset like formula blocks. A broken formula shows
+// in red instead of failing the lesson; KaTeX's `trust` stays off, so no HTML or links get in.
+const REMARK = [remarkGfm, remarkMath];
+const REHYPE: NonNullable<Parameters<typeof ReactMarkdown>[0]['rehypePlugins']> = [[rehypeKatex, { throwOnError: false, strict: 'ignore' }]];
+
 export function TheoryRenderer({ block, lang }: { block: TheoryBlock; lang: 'en' | 'vi' }) {
   const text = lang === 'en' ? block.content.en : block.content.vi;
   return (
     <div className={`${styles.rules} text-base text-ink [overflow-wrap:anywhere]`}>
-      <ReactMarkdown remarkPlugins={[remarkGfm]} components={components}>
+      <ReactMarkdown remarkPlugins={REMARK} rehypePlugins={REHYPE} components={components}>
         {text}
       </ReactMarkdown>
     </div>
