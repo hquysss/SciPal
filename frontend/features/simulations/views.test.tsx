@@ -74,6 +74,8 @@ describe('physics views', () => {
     expect(html).toContain('type="range"');
     expect(html).toContain('m/s');
     expect(html).toContain('aria-label="Chạy"');
+    // Readings change every frame while playing: never a live region.
+    expect(html).not.toMatch(/<dl[^>]*aria-live/);
   });
 
   it('pendulum shows the period formula and value', () => {
@@ -125,6 +127,8 @@ describe('biology views', () => {
     const quiz = renderToStaticMarkup(<Renderer config={{ ...defaultSimulationConfig('labeled-diagram'), image_url: image, labels, mode: 'quiz' }} lang="vi" />);
     expect(quiz).toContain('Chỉ vào');
     expect(quiz).not.toContain('>Màng<');
+    // Keyboard and screen-reader users answer with numbered points instead of a click.
+    expect(quiz.match(/aria-label="Điểm \d"/g)).toHaveLength(2);
   });
 
   it('diagram editor offers the upload and lists the labels', () => {

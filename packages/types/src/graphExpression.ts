@@ -183,6 +183,20 @@ export function parseGraphExpression(source: string, parameters: readonly string
   }
 }
 
+/** Single-letter names in the text that still need declaring as parameters, in order of use. */
+export function undeclaredNames(source: string, parameters: readonly string[]): string[] {
+  const found: string[] = [];
+  for (const match of source.toLowerCase().matchAll(/[a-z]+/g)) {
+    let rest = match[0];
+    while (rest) {
+      const word = GRAPH_FUNCTIONS.find((f) => rest.startsWith(f)) ?? (rest.startsWith('pi') ? 'pi' : rest[0]!);
+      if (word.length === 1 && word !== 'x' && word !== 'e' && !parameters.includes(word) && !found.includes(word)) found.push(word);
+      rest = rest.slice(word.length);
+    }
+  }
+  return found;
+}
+
 /** Parameter names an expression uses, in first-use order (x excluded). */
 export function graphNames(ast: GraphNode): string[] {
   const names: string[] = [];

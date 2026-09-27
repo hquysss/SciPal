@@ -44,4 +44,17 @@ describe('SimulationEditor', () => {
     const html = render({ type: 'interactive', kind: 'bio-diagram', heading: { vi: 'Sơ đồ', en: '' }, offline: true, config: {} });
     expect(html).toContain('mẫu cũ');
   });
+
+  it('keeps settings that do not validate yet and says what to fix, instead of showing defaults', () => {
+    const html = render({ type: 'interactive', kind: 'function-graph', heading: { vi: 'Đồ thị', en: 'Graph' }, offline: true, config: { expression: 'm*x + k', parameters: [] } });
+    expect(html).toContain('value="m*x + k"');
+    expect(html).toContain('Thêm tham số m');
+    expect(html).toContain('Thêm tham số k');
+    expect(html).toContain('role="alert"');
+  });
+
+  it('does not let a teacher remove a parameter the expression still uses', () => {
+    const html = render(newSimulationBlock('function-graph'));
+    expect(html).toMatch(/<button[^>]*disabled=""[^>]*>(?:(?!<\/button>).)*Bỏ tham số a/s);
+  });
 });

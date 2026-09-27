@@ -71,11 +71,22 @@ function DiagramView({ config, lang }: SimulationViewProps<'labeled-diagram'>) {
             setAnswer({ ok: hit?.id === asked.id, label: hit });
           }}
         >
-          {answer && (
-            <span className={MARKER} style={labelStyle(asked)} aria-hidden="true">
-              <span className={`${DOT} ${answer.ok ? 'bg-success' : 'bg-danger'}`} />
-            </span>
-          )}
+          {/* Numbered points answer too, so keyboard and screen-reader users can take part. */}
+          {config.labels.map((label, i) => (
+            <button
+              key={label.id}
+              type="button"
+              className={MARKER}
+              style={labelStyle(label)}
+              aria-label={t({ en: `Point ${i + 1}`, vi: `Điểm ${i + 1}` })}
+              onClick={(e) => {
+                e.stopPropagation();
+                setAnswer({ ok: label.id === asked.id, label });
+              }}
+            >
+              <span className={`${DOT} ${answer && label.id === asked.id ? (answer.ok ? 'bg-success' : 'bg-danger') : 'opacity-60'}`} />
+            </button>
+          ))}
         </DiagramImage>
         <div className="flex flex-wrap items-center gap-3" aria-live="polite">
           {answer && (

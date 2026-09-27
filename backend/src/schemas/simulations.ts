@@ -12,11 +12,19 @@ const finite = (min: number, max: number) => z.number().finite().min(min).max(ma
 
 export const ALGORITHMS = ['bubble-sort', 'selection-sort', 'insertion-sort', 'linear-search', 'binary-search'] as const;
 
-const AlgorithmConfig = z.object({
-  algorithm: z.enum(ALGORITHMS).default('bubble-sort'),
-  values: z.array(z.number().int().min(-999).max(999)).min(2).max(32).default([5, 2, 9, 1, 7, 3]),
-  target: z.number().int().min(-999).max(999).default(7),
-});
+// The seed lesson stored its list as `data`; read it as `values`.
+const AlgorithmConfig = z.preprocess(
+  (raw) => {
+    if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return raw;
+    const { data, ...rest } = raw as Record<string, unknown>;
+    return rest.values === undefined && Array.isArray(data) ? { ...rest, values: data } : rest;
+  },
+  z.object({
+    algorithm: z.enum(ALGORITHMS).default('bubble-sort'),
+    values: z.array(z.number().int().min(-999).max(999)).min(2).max(32).default([5, 2, 9, 1, 7, 3]),
+    target: z.number().int().min(-999).max(999).default(7),
+  }),
+);
 
 const GraphParameter = z.object({
   name: z.string().regex(GRAPH_PARAMETER_NAME),
@@ -168,6 +176,19 @@ export function defaultSimulationConfig<K extends BuiltInSimulationKind>(kind: K
   return SIMULATION_CONFIGS[kind].parse({}) as SimulationConfigByKind[K];
 }
 
+/**
+ * What the editor shows: the stored settings over the defaults, even when they do not validate yet
+ * (a range being retyped, a parameter not declared yet), so an edit never snaps back to defaults.
+ */
+export function simulationDraft<K extends BuiltInSimulationKind>(kind: K, config: unknown): SimulationConfigByKind[K] {
+  const defaults = defaultSimulationConfig(kind) as Record<string, unknown>;
+  const valid = simulationConfig(kind, config);
+  if (valid) return valid;
+  const stored = config && typeof config === 'object' && !Array.isArray(config) ? (config as Record<string, unknown>) : {};
+  const known = Object.fromEntries(Object.entries(stored).filter(([key]) => key in defaults || (kind === 'labeled-diagram' && key === 'image_url')));
+  return { ...defaults, ...known } as SimulationConfigByKind[K];
+}
+
 /** A stored config with defaults filled in, or null when it cannot be used. */
 export function simulationConfig<K extends BuiltInSimulationKind>(kind: K, config: unknown): SimulationConfigByKind[K] | null {
   const parsed = SIMULATION_CONFIGS[kind].safeParse(config ?? {});
@@ -249,7 +270,8 @@ export function validateSimulationBlock<B extends InteractiveLike>(block: B, opt
     return { ok: true, block };
   }
   if (!isBuiltInSimulation(block.kind)) return { ok: false, message: { en: 'Unknown simulation.', vi: 'Mô phỏng không được hỗ trợ.' } };
-  if (!block.offline) return { ok: false, message: { en: 'Built-in simulations work offline.', vi: 'Mô phỏng dựng sẵn phải chạy được khi không có mạng.' } };
+  // Built-in templates always run offline; an older import may have stored `offline: false`,
+  // which is harmless, so it is not a reason to refuse the lesson.
   if (block.embed_url) return { ok: false, message: { en: 'Built-in simulations have no link.', vi: 'Mô phỏng dựng sẵn không có link nhúng.' } };
   const parsed = SIMULATION_CONFIGS[block.kind].safeParse(block.config);
   if (!parsed.success) {

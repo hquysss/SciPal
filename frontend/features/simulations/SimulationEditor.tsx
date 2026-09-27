@@ -5,7 +5,8 @@ import {
   defaultSimulationConfig,
   embedUrl,
   isBuiltInSimulation,
-  simulationConfig,
+  simulationDraft,
+  validateSimulationBlock,
   type BuiltInSimulationKind,
   type InteractiveBlock,
 } from '@scipal/types';
@@ -71,11 +72,23 @@ export function SimulationEditor({ block, onChange, lang, onLangChange }: Simula
   } else if (isBuiltInSimulation(block.kind)) {
     const kind = block.kind;
     const Editor = simulationModules[kind].Editor as ComponentType<SimulationEditorProps<typeof kind>>;
-    const config = simulationConfig(kind, block.config) ?? defaultSimulationConfig(kind);
+    // The teacher's settings as stored, even mid-edit; problems are shown, never replaced by defaults.
+    const config = simulationDraft(kind, block.config);
+    const check = validateSimulationBlock(block, { mediaBase: process.env.NEXT_PUBLIC_SUPABASE_URL });
     settings = (
       <fieldset className="flex flex-col gap-3 rounded-lg border border-line p-3">
         <legend className="px-1 text-sm font-semibold text-ink">{t(simulationModules[kind].label)}</legend>
-        <Editor config={config as never} onChange={(next: unknown) => onChange({ ...block, config: next as Record<string, unknown> })} lang={lang} />
+        <Editor
+          config={config as never}
+          // Built-in templates always run offline, whatever an older import stored.
+          onChange={(next: unknown) => onChange({ ...block, offline: true, config: next as Record<string, unknown> })}
+          lang={lang}
+        />
+        {!check.ok && (
+          <p role="alert" className="text-sm font-medium text-danger">
+            {t(check.message)}
+          </p>
+        )}
       </fieldset>
     );
   } else {

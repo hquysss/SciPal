@@ -1,13 +1,14 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { BlockSchema } from '../block';
-import { evaluateGraph, graphNames, parseGraphExpression } from '../graphExpression';
+import { evaluateGraph, graphNames, parseGraphExpression, undeclaredNames } from '../graphExpression';
 import {
   BUILT_IN_SIMULATION_KINDS,
   defaultSimulationConfig,
   embedUrl,
   isLessonMediaUrl,
   simulationConfig,
+  simulationDraft,
   validateSimulationBlock,
 } from '../simulations';
 
@@ -45,6 +46,16 @@ describe('defaults', () => {
     expect(config).toMatchObject({ algorithm: 'binary-search', values: expect.any(Array) });
     expect(config).not.toHaveProperty('speed');
     expect(simulationConfig('algorithm-sim', { algorithm: 'quick-sort' })).toBeNull();
+  });
+
+  it("reads the seed lesson's older `data` key as the values", () => {
+    expect(simulationConfig('algorithm-sim', { data: [4, 8, 15, 16, 23, 42], target: 23 })).toMatchObject({ values: [4, 8, 15, 16, 23, 42], target: 23 });
+  });
+
+  it('keeps what a teacher typed when the stored config does not validate yet', () => {
+    const draft = simulationDraft('function-graph', { expression: 'k*x', xMin: 1, parameters: [] });
+    expect(draft).toMatchObject({ expression: 'k*x', xMin: 1, parameters: [] });
+    expect(draft.samples).toBe(300);
   });
 });
 
@@ -122,5 +133,13 @@ describe('evaluateGraph', () => {
   it('returns null where the function is undefined, so the plot shows a gap', () => {
     expect(at('ln(x)', -1)).toBeNull();
     expect(at('1/x', 0)).toBeNull();
+  });
+});
+
+describe('undeclaredNames', () => {
+  it('lists the single-letter names an expression needs declared', () => {
+    expect(undeclaredNames('m*x + k', [])).toEqual(['m', 'k']);
+    expect(undeclaredNames('a sin(b x) + pi + e', ['a'])).toEqual(['b']);
+    expect(undeclaredNames('exp(x)', [])).toEqual([]);
   });
 });

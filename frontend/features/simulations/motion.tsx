@@ -56,7 +56,10 @@ function MotionView({ config, lang }: SimulationViewProps<'motion'>) {
           <Slider label={t({ en: 'Time', vi: 'Thời gian' })} value={clock.time} min={0} max={duration} step={0.01} unit="s" onChange={clock.seek} />
         </div>
       </div>
-      <dl aria-live="polite" className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm sm:grid-cols-4">
+      <p aria-live="polite" className="sr-only">
+        {clock.playing ? '' : `t = ${clock.time.toFixed(2)} s, x = ${state.x.toFixed(2)} m, y = ${state.y.toFixed(2)} m, ${speed.toFixed(2)} m/s`}
+      </p>
+      <dl className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm sm:grid-cols-4">
         {[
           ['x', `${state.x.toFixed(2)} m`],
           ['y', `${state.y.toFixed(2)} m`],

@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from 'react';
 import { Plus, X } from 'lucide-react';
-import { GRAPH_PARAMETER_NAME, parseGraphExpression, type SimulationConfigByKind } from '@scipal/types';
+import { GRAPH_PARAMETER_NAME, parseGraphExpression, undeclaredNames, type SimulationConfigByKind } from '@scipal/types';
 import { sampleGraph } from './engines/functionGraph';
 import { BUTTON, Field, FIELD, NumberField, PANEL, Slider } from './controls';
 import { pick, type SimulationEditorProps, type SimulationModule, type SimulationViewProps } from './types';
@@ -89,9 +89,30 @@ function GraphEditor({ config, onChange, lang }: SimulationEditorProps<'function
   const [expression, setExpression] = useState(config.expression);
   const names = config.parameters.map((p) => p.name);
   const parsed = parseGraphExpression(expression, names);
-  const nextName = 'abcdfghkmnpqrstuvwz'.split('').find((n) => !names.includes(n) && GRAPH_PARAMETER_NAME.test(n));
+  // Letters the typed expression uses: declared ones cannot be removed, missing ones can be added.
+  const mentioned = undeclaredNames(expression, []);
+  const missing = undeclaredNames(expression, names).filter((n) => GRAPH_PARAMETER_NAME.test(n));
+  const spare = 'abcdfghkmnpqrstuvwz'.split('').find((n) => !names.includes(n) && !missing.includes(n));
+  const addable = (missing.length > 0 ? missing : spare ? [spare] : []).slice(0, Math.max(0, 4 - config.parameters.length));
+
+  /** New parameters, carrying the typed expression along once it parses with them. */
+  const withParameters = (parameters: GraphConfig['parameters']) => {
+    const next = { ...config, parameters };
+    return parseGraphExpression(expression, parameters.map((p) => p.name)).ok ? { ...next, expression } : next;
+  };
   const setParameter = (i: number, patch: Partial<GraphConfig['parameters'][number]>) =>
-    onChange({ ...config, parameters: config.parameters.map((p, j) => (j === i ? { ...p, ...patch } : p)) });
+    onChange(
+      withParameters(
+        config.parameters.map((p, j) => {
+          if (j !== i) return p;
+          const merged = { ...p, ...patch };
+          // Keep the starting value inside a changed range.
+          const low = Math.min(merged.min, merged.max);
+          const high = Math.max(merged.min, merged.max);
+          return { ...merged, value: Math.min(Math.max(merged.value, low), high) };
+        }),
+      ),
+    );
 
   return (
     <div className="flex flex-col gap-4">
@@ -128,23 +149,28 @@ function GraphEditor({ config, onChange, lang }: SimulationEditorProps<'function
             <button
               type="button"
               className={`${BUTTON} col-span-2 sm:col-span-5 sm:justify-self-end`}
-              onClick={() => onChange({ ...config, parameters: config.parameters.filter((_, j) => j !== i) })}
+              disabled={mentioned.includes(p.name)}
+              title={mentioned.includes(p.name) ? t({ en: 'The function still uses it', vi: 'Hàm số vẫn đang dùng tham số này' }) : undefined}
+              onClick={() => onChange(withParameters(config.parameters.filter((_, j) => j !== i)))}
             >
               <X aria-hidden="true" className="h-4 w-4" />
               {t({ en: `Remove ${p.name}`, vi: `Bỏ tham số ${p.name}` })}
             </button>
           </div>
         ))}
-        {config.parameters.length < 4 && nextName && (
-          <button
-            type="button"
-            className={`${BUTTON} self-start`}
-            onClick={() => onChange({ ...config, parameters: [...config.parameters, { name: nextName, min: -5, max: 5, step: 0.5, value: 1 }] })}
-          >
-            <Plus aria-hidden="true" className="h-4 w-4" />
-            {t({ en: `Add parameter ${nextName}`, vi: `Thêm tham số ${nextName}` })}
-          </button>
-        )}
+        <div className="flex flex-wrap gap-2">
+          {addable.map((name) => (
+            <button
+              key={name}
+              type="button"
+              className={BUTTON}
+              onClick={() => onChange(withParameters([...config.parameters, { name, min: -5, max: 5, step: 0.5, value: 1 }]))}
+            >
+              <Plus aria-hidden="true" className="h-4 w-4" />
+              {t({ en: `Add parameter ${name}`, vi: `Thêm tham số ${name}` })}
+            </button>
+          ))}
+        </div>
       </fieldset>
 
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
