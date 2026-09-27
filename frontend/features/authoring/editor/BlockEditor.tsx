@@ -7,6 +7,7 @@ import { FormulaEditor } from './editors/FormulaEditor';
 import { ImageEditor } from './editors/ImageEditor';
 import { RefPicker } from './editors/RefPicker';
 import { TheoryEditor } from './editors/TheoryEditor';
+import { SimulationEditor } from '@/features/simulations/SimulationEditor';
 
 export interface BlockEditorProps {
   block: Block;
@@ -39,6 +40,8 @@ export function BlockEditor({ block, onChange, subjectId, lang, onLangChange, on
       return (
         <RefPicker kind="resource" subjectId={subjectId} selectedId={block.resource_id} onPick={(id) => onChange({ type: 'resource-ref', resource_id: id })} />
       );
+    case 'interactive':
+      return <SimulationEditor block={block} onChange={onChange} {...langProps} />;
     default:
       return (
         <p className="rounded-lg border border-dashed border-edge bg-surface-sunken p-3 text-sm text-ink-muted">

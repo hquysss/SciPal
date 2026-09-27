@@ -44,8 +44,14 @@ describe('BlockList', () => {
     expect(html).not.toContain('Xóa khối');
   });
 
+  it('lets teachers insert simulations in the simulation tab', () => {
+    const html = renderToStaticMarkup(<BlockList part="simulation" blocks={[]} onChange={() => {}} subjectId="s" readOnly={false} />);
+    expect(html.match(/aria-label="Chèn khối tại đây"/g)).toHaveLength(1);
+    expect(html).toContain('Chưa có mô phỏng');
+    expect(html).not.toContain('bước tiếp theo');
+  });
+
   it('explains empty parts', () => {
-    expect(renderToStaticMarkup(<BlockList part="simulation" blocks={[]} onChange={() => {}} subjectId="s" readOnly={false} />)).toContain('Chưa có mô phỏng');
     expect(renderToStaticMarkup(<BlockList part="lesson" blocks={[]} onChange={() => {}} subjectId="s" readOnly={false} />)).toContain('Bài chưa có nội dung');
   });
 });

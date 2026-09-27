@@ -303,6 +303,23 @@ describe('importing lessons from Word/PDF', () => {
     await app.close();
   });
 
+  it('rejects a simulation with settings out of range or an unapproved embed', async () => {
+    const app = await buildApp(teacher, lessonTables().tables);
+    for (const block of [
+      { type: 'interactive', kind: 'motion', heading: bi('Ném'), offline: true, config: { v0: 5000 } },
+      { type: 'interactive', kind: 'embed', heading: bi('Nhúng'), offline: false, embed_url: 'https://evil.example/x', config: {} },
+    ]) {
+      const res = await app.inject({
+        method: 'POST',
+        url: '/api/authoring/content-import',
+        payload: { lessons: [lesson({ blocks: [block] })], questions: [], blueprints: [] },
+      });
+      expect(res.statusCode, block.kind).toBe(400);
+      expect(res.json().error).toContain('Khối 1');
+    }
+    await app.close();
+  });
+
   it('removes the new topic and questions when the lessons cannot be saved', async () => {
     const topicUndo = mockQuery({ data: null, error: null });
     const questionUndo = mockQuery({ data: null, error: null });

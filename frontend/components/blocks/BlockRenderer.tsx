@@ -35,7 +35,7 @@ export function BlockRenderer({ block, lang: langOverride }: { block: Block; lan
         </div>
       );
     case 'interactive':
-      return <InteractiveRenderer block={block} />;
+      return <InteractiveRenderer block={block} lang={lang} />;
     case 'term-ref':
       return <TermRefCard termId={block.term_id} lang={lang} />;
     case 'resource-ref':

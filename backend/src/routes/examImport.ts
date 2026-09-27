@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import type { FastifyPluginAsync, FastifyReply, FastifyRequest } from 'fastify';
 import { z } from 'zod';
-import { BlockSchema, imageProblems } from '../schemas/blocks.js';
+import { BlockSchema, imageProblems, simulationProblem } from '../schemas/blocks.js';
 import { makeSlug, planNewTopic, type ExistingTopic } from '../authoring/topicPlanning.js';
 
 // The package the import page sends after Word/PDF lessons and an Excel workbook are parsed and
@@ -84,6 +84,8 @@ export const ExamImportSchema = z
     pkg.lessons.forEach((lesson, i) => {
       const imageProblem = imageProblems(lesson.blocks, { requireAlt: true });
       if (imageProblem) ctx.addIssue({ code: 'custom', path: ['lessons', i, 'blocks'], message: `Bài "${lesson.title.vi}": ${imageProblem}` });
+      const simulation = simulationProblem(lesson.blocks);
+      if (simulation) ctx.addIssue({ code: 'custom', path: ['lessons', i, 'blocks'], message: `Bài "${lesson.title.vi}": ${simulation.error}` });
       lesson.blocks.forEach((block, j) => {
         if (blockEnglish(block).some((en) => !en.trim())) {
           ctx.addIssue({ code: 'custom', path: ['lessons', i, 'blocks', j], message: `Bài "${lesson.title.vi}": khối ${j + 1} cần điền tiếng Anh trước khi lưu.` });

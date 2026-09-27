@@ -27,3 +27,12 @@ describe('NavBar', () => {
     expect(html).toMatch(/<a[^>]*href="\/subjects"[^>]*>Môn học<\/a>/);
   });
 });
+
+describe('simulation request link', () => {
+  it('shows how many requests wait for an admin', async () => {
+    const { requestsLinkLabel } = await import('./NavBar');
+    expect(requestsLinkLabel('vi', 0)).toBe('Đề xuất mô phỏng');
+    expect(requestsLinkLabel('vi', 3)).toBe('Đề xuất mô phỏng (3)');
+    expect(requestsLinkLabel('en', 12)).toBe('Simulation requests (12)');
+  });
+});

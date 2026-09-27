@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { SIMULATION_KINDS } from './simulations.js';
 
 const BilingualText = z.object({ en: z.string(), vi: z.string() });
 
@@ -28,7 +29,8 @@ export const QuizBlockSchema = z.object({
 
 export const InteractiveBlockSchema = z.object({
   type: z.literal('interactive'),
-  kind: z.enum(['algorithm-sim', 'function-graph', 'geometry-3d', 'experiment', 'bio-diagram']),
+  /** Settings are checked per kind by validateSimulationBlock (simulations.ts). */
+  kind: z.enum(SIMULATION_KINDS),
   heading: BilingualText,
   caption: BilingualText.optional(),
   offline: z.boolean(),

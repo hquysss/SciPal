@@ -161,6 +161,26 @@ describe('the Word template offered on the import page', () => {
   });
 });
 
+describe('simulations in the Word template', () => {
+  it('accepts the new templates, offline by default, and checks their settings', () => {
+    const ok = parseLessonTemplate('SCIPAL-LESSON-V1\n[INTERACTIVE:motion]\nheading_vi: Ném xiên\nconfig_json: {"v0": 30}');
+    expect(ok.ok).toBe(true);
+    if (ok.ok) expect(ok.blocks[0]).toMatchObject({ kind: 'motion', offline: true, config: { v0: 30 } });
+
+    const embed = parseLessonTemplate('SCIPAL-LESSON-V1\n[INTERACTIVE:embed]\nheading_vi: PhET\nembed_url: https://www.desmos.com/calculator/abc');
+    expect(embed.ok && embed.blocks[0]).toMatchObject({ kind: 'embed', offline: false });
+
+    for (const bad of [
+      'SCIPAL-LESSON-V1\n[INTERACTIVE:motion]\nheading_vi: A\nconfig_json: {"v0": 99999}',
+      'SCIPAL-LESSON-V1\n[INTERACTIVE:embed]\nheading_vi: A\nembed_url: https://evil.example/x',
+    ]) {
+      const result = parseLessonTemplate(bad);
+      expect(result.ok, bad).toBe(false);
+      if (!result.ok) expect(result.error.vi).toMatch(/Khối 1/);
+    }
+  });
+});
+
 describe('images in Word documents', () => {
   it('splits markdown at embedded images', async () => {
     const { splitMarkdownImages } = await import('./lessonDocument');
