@@ -110,7 +110,6 @@ export function SubjectSwitcher({ current, mobile = false, onNavigate }: Subject
         aria-expanded={open}
         aria-controls="subject-switcher-list"
         onClick={() => setOpen((value) => !value)}
-        aria-label={lang === 'en' ? 'Choose a subject' : 'Chọn môn học'}
         className={`flex min-h-10 items-center gap-1.5 rounded-lg px-3 py-2 text-sm font-semibold text-nav-ink transition-colors hover:bg-[color-mix(in_srgb,var(--nav-ink)_12%,transparent)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-nav-ink ${activeSlug ? 'bg-[color-mix(in_srgb,var(--nav-ink)_17%,transparent)]' : ''}`}
       >
         <span>{lang === 'en' ? 'Subjects' : 'Môn học'}</span>

@@ -1,9 +1,9 @@
 import type { ReactNode } from 'react';
 import type { EducationLevel } from '../educationLevel';
-import { LEVEL_OBJECT_IDS } from './sceneObjects';
+import { LEVEL_OBJECT_IDS } from './levelObjects';
 import styles from './hero.module.css';
 
-/** Flat drawing of the same desk composition as the WebGL scene, colored by theme tokens. */
+/** Flat desk drawing with level-specific objects, colored by theme tokens. */
 const LEVEL_ART: Record<EducationLevel, ReactNode> = {
   primary: (
     <>
@@ -78,7 +78,6 @@ export function HeroFallback({ level }: { level: EducationLevel }) {
       viewBox="0 0 400 300"
       aria-hidden="true"
       focusable="false"
-      role="presentation"
       data-level-objects={LEVEL_OBJECT_IDS[level].join(' ')}
     >
       <polygon points="36,56 364,56 400,292 0,292" className={styles.line} />
