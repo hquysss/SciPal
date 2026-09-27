@@ -12,6 +12,7 @@ import { simulationRequestRoutes } from './routes/simulationRequests.js';
 import { classRoutes } from './routes/classes.js';
 import { accountsRoutes } from './routes/accounts.js';
 import { examImportRoutes } from './routes/examImport.js';
+import { examRoutesAuthoring } from './routes/exams.js';
 import { questionRoutes } from './routes/questions.js';
 import { practiceRoutes } from './routes/practice.js';
 
@@ -31,6 +32,8 @@ await app.register(classRoutes);
 await app.register(accountsRoutes);
 await app.register(examImportRoutes);
 await app.register(questionRoutes);
+await app.register(examRoutesAuthoring);
+await app.register(examRoutesAuthoring);
 await app.register(practiceRoutes);
 
 app.get('/health', async () => ({ status: 'ok' }));
