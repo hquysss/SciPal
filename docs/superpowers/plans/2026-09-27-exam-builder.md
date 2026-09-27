@@ -309,3 +309,10 @@
 - An admin's complete exam question is published on creation, so an admin can stock the bank for everyone. A teacher's stays a draft until an exam containing it is approved.
 - Approve accepts `draft` as well as `pending_review`. This is the admin's "Xuất bản" / "Xuất bản ngay"; the spec lists only approve.
 - An older exam without `question_ids` (it draws from the subject pool) opens in the builder with an empty list and a note of its section count. Saving questions turns it into an exact-list exam.
+
+## Execution progress (paused 27/09)
+
+- Done and committed: Tasks 1–6 (migration + check script, exam schema/eligibility, exam CRUD, draw + review routes, shared question editor + API clients, exam question bank page).
+- Task 7 in progress: `examDraft.ts` (+ tests, passing), `BankBrowser.tsx`, `DrawPanel.tsx` written; `ExamBuilder.test.tsx` written and **failing on purpose** (RED) — `ExamBuilder.tsx` and the three pages under `frontend/app/teacher/exams/` are not written yet.
+- Remaining: rest of Task 7, Task 8 (tabs, nav, admin review tab), Task 9 (release check), final review.
+- Rulings so far: `updated_at` uses `clock_timestamp()`; `GET /api/authoring/exams?status=` added in Task 3 instead of Task 8.
