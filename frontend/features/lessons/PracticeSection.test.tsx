@@ -27,6 +27,17 @@ describe('PracticeSection', () => {
     expect(countRawColors(html).total).toBe(0);
   });
 
+  it('names each true/false group by its statement once, without repeating the text', () => {
+    const html = render();
+    const groups = [...html.matchAll(/<span role="radiogroup"([^>]*)>/g)].map((m) => m[1]!);
+    expect(groups).toHaveLength(2);
+    for (const attrs of groups) {
+      expect(attrs).not.toContain('aria-label=');
+      const target = /aria-labelledby="([^"]+)"/.exec(attrs)![1]!;
+      expect(html).toMatch(new RegExp(`id="${target}"[^>]*>(<[^>]+>[^<]*</span>)?Ý (một|hai)`));
+    }
+  });
+
   it('reads in the language chosen for the preview', () => {
     const html = render({ lang: 'en' });
     expect(html).toContain('2 + 2 is?');

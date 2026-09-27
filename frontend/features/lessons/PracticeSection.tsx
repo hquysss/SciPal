@@ -184,11 +184,11 @@ function QuestionCard({ number, question, answer, result, onAnswer, onResult, t 
               answerWith({ items: [...(answer?.items ?? []).filter((it) => it.id !== item.id), { id: item.id, selected }] });
             return (
               <li key={item.id} className="flex flex-col gap-2 rounded-lg border border-line px-3 py-2 sm:flex-row sm:items-center">
-                <span className="flex-1 text-ink">
+                <span id={`${id}-tf-${item.id}-text`} className="flex-1 text-ink">
                   <span aria-hidden="true" className="mr-2 font-bold text-ink-muted">{String.fromCharCode(97 + i)}</span>
                   {t(item.text)}
                 </span>
-                <span role="radiogroup" aria-label={t(item.text)} className="flex items-center gap-3">
+                <span role="radiogroup" aria-labelledby={`${id}-tf-${item.id}-text`} className="flex items-center gap-3">
                   {[true, false].map((value) => (
                     <label key={String(value)} className="flex min-h-11 cursor-pointer items-center gap-1.5 text-sm text-ink">
                       <input

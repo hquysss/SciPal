@@ -303,6 +303,35 @@ describe('importing lessons from Word/PDF', () => {
     await app.close();
   });
 
+  it('holds a question a lesson uses to the practice limits, and leaves exam-only questions alone', async () => {
+    const app = await buildApp(teacher, lessonTables().tables);
+    const long = { ...mc('q1'), stem: bi('x'.repeat(2500)) };
+    const tooLong = await app.inject({
+      method: 'POST',
+      url: '/api/authoring/content-import',
+      payload: { lessons: [lesson()], questions: [long], blueprints: [] },
+    });
+    expect(tooLong.statusCode).toBe(400);
+    expect(tooLong.json().error).toContain('q1');
+
+    const badId = { ...mc('q1'), options: [{ id: 'A 1', text: bi('Một') }, { id: 'B', text: bi('Hai') }], answer: 'A 1' };
+    const badChoice = await app.inject({
+      method: 'POST',
+      url: '/api/authoring/content-import',
+      payload: { lessons: [lesson()], questions: [badId], blueprints: [] },
+    });
+    expect(badChoice.statusCode).toBe(400);
+    expect(badChoice.json().error).toContain('q1');
+
+    const examOnly = await app.inject({
+      method: 'POST',
+      url: '/api/authoring/content-import',
+      payload: { questions: [{ ...mc('q9'), stem: bi('x'.repeat(2500)) }], blueprints: [] },
+    });
+    expect(examOnly.statusCode).not.toBe(400);
+    await app.close();
+  });
+
   it('rejects a simulation with settings out of range or an unapproved embed', async () => {
     const app = await buildApp(teacher, lessonTables().tables);
     for (const block of [
