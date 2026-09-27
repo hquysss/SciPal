@@ -25,7 +25,6 @@ const check = (ok, message) => {
 
 const browser = await chromium.launch({
   executablePath: process.env.CHROMIUM_PATH,
-  args: ['--use-angle=swiftshader', '--enable-unsafe-swiftshader'],
 });
 
 async function noHorizontalScroll(page) {
@@ -63,9 +62,8 @@ for (const viewport of VIEWPORTS) {
       await page.locator(`button[name="level"][value="${level}"]`).dblclick();
       await page.waitForSelector('#landing-title', { timeout: 5000 });
       check((await page.locator('#landing-title').count()) === 1, `${tag}: landing shown once after double click`);
-      await page.waitForTimeout(3500);
-      const state = await page.locator('[data-hero-state]').getAttribute('data-hero-state');
-      console.log(`     ${tag}: hero state ${state}`);
+      await page.waitForTimeout(500);
+      check((await page.locator('[data-hero-art] svg').count()) === 1, `${tag}: static hero illustration rendered`);
       check(await noHorizontalScroll(page), `${tag}: landing has no horizontal scroll`);
       await page.screenshot({ path: join(OUT, `${tag}-hero.png`) });
       // Scroll through so scroll-reveal sections appear before the full-page capture.
@@ -94,24 +92,17 @@ for (const [width, height] of [[1366, 657], [1280, 720], [1280, 800], [1440, 900
   await context.close();
 }
 
-// A failed scene chunk keeps the landing usable with the SVG.
+// The hero is a static SVG and does not request a WebGL scene chunk.
 {
   const context = await browser.newContext({ viewport: { width: 1280, height: 800 } });
   const page = await context.newPage();
-  const problems = [];
-  page.on('pageerror', (error) => problems.push(String(error)));
+  const chunks = [];
+  page.on('request', (request) => { if (request.url().includes('/_next/static/chunks/')) chunks.push(request.url()); });
   await page.goto(BASE + '/', { waitUntil: 'networkidle' });
-  await page.route(/\/_next\/static\/chunks\//, async (route) => {
-    const body = await (await route.fetch()).text();
-    if (body.includes('WebGLRenderer')) return route.abort();
-    return route.continue();
-  });
-  await page.locator('button[name="level"][value="upper_secondary"]').click();
+  await page.locator('button[name=\"level\"][value=\"upper_secondary\"]').click();
   await page.waitForSelector('#landing-title');
-  await page.waitForTimeout(4000);
-  check((await page.locator('#landing-title').count()) === 1, 'blocked scene chunk: landing still rendered');
-  const state = await page.locator('[data-hero-state]').getAttribute('data-hero-state');
-  check(state === 'failed', `blocked scene chunk: hero falls back (state ${state})`);
+  check((await page.locator('[data-hero-art] canvas').count()) === 0, 'hero uses no canvas');
+  check(!chunks.some((url) => url.toLowerCase().includes('three')), 'hero requests no Three.js chunk');
   await context.close();
 }
 
@@ -125,7 +116,7 @@ for (const [width, height] of [[1366, 657], [1280, 720], [1280, 800], [1440, 900
   await page.waitForSelector('#landing-title');
   check(Date.now() - started < 1500, 'reduced motion: gate choice applies without the flip delay');
   await page.waitForTimeout(3000);
-  check((await page.locator('canvas').count()) === 0, 'reduced motion: no WebGL canvas');
+  check((await page.locator('[data-hero-art] svg').count()) === 1, 'reduced motion: SVG hero renders immediately');
   await context.close();
 }
 

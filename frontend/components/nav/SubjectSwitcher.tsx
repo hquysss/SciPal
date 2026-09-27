@@ -3,6 +3,7 @@
 import type React from 'react';
 import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
+import { ChevronDown } from 'lucide-react';
 import { useParams, usePathname } from 'next/navigation';
 import { useLanguage } from '@scipal/hooks';
 import { SUBJECT_CONFIG, type SubjectSlug } from '@/lib/subject-config';
@@ -109,16 +110,17 @@ export function SubjectSwitcher({ current, mobile = false, onNavigate }: Subject
         aria-expanded={open}
         aria-controls="subject-switcher-list"
         onClick={() => setOpen((value) => !value)}
-        className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-semibold text-nav-ink transition hover:bg-[color-mix(in_srgb,var(--nav-ink)_12%,transparent)] hover:text-nav-ink focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-nav-ink"
+        aria-label={lang === 'en' ? 'Choose a subject' : 'Chọn môn học'}
+        className={`flex min-h-10 items-center gap-1.5 rounded-lg px-3 py-2 text-sm font-semibold text-nav-ink transition-colors hover:bg-[color-mix(in_srgb,var(--nav-ink)_12%,transparent)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-nav-ink ${activeSlug ? 'bg-[color-mix(in_srgb,var(--nav-ink)_17%,transparent)]' : ''}`}
       >
         <span>{lang === 'en' ? 'Subjects' : 'Môn học'}</span>
-        <span className={`text-xs text-nav-ink transition-transform duration-200 motion-reduce:transition-none ${open ? 'rotate-180' : ''}`} aria-hidden="true">▼</span>
+        <ChevronDown size={16} aria-hidden="true" className={`transition-transform duration-150 motion-reduce:transition-none ${open ? 'rotate-180' : ''}`} />
       </button>
 
       <div
         id="subject-switcher-list"
         aria-hidden={!open}
-        className={`absolute left-0 top-full z-50 mt-2 w-64 origin-top rounded-2xl border border-line bg-surface p-2 text-ink shadow-xl transition-[opacity,transform,visibility] duration-200 ease-out motion-reduce:transition-none ${open ? 'visible scale-y-100 opacity-100' : 'invisible pointer-events-none scale-y-0 opacity-0'}`}
+        className={`absolute left-0 top-full z-50 mt-2 w-64 rounded-2xl border border-line bg-surface p-2 text-ink shadow-xl transition-[opacity,transform,visibility] duration-200 ease-out motion-reduce:transition-none ${open ? 'visible translate-y-0 opacity-100' : 'invisible pointer-events-none -translate-y-1.5 opacity-0'}`}
       >
         {subjects}
       </div>

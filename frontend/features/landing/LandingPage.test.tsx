@@ -28,14 +28,14 @@ describe('LandingPage', () => {
   it.each<[EducationLevel, string, string]>([
     ['primary', 'Bắt đầu từ', 'điều em tò mò.'],
     ['lower_secondary', 'Từng câu hỏi', 'mở rộng hiểu biết.'],
-    ['upper_secondary', 'Hiểu khoa học', 'từ câu hỏi đầu tiên.'],
+    ['upper_secondary', 'Hiểu từng bài,', 'tiến từng bước.'],
   ])('hero copy for %s', (level, first, second) => {
     lang = 'vi';
     const html = render(level);
     const h1 = html.match(/<h1[\s\S]*?<\/h1>/)?.[0] ?? '';
     expect(h1).toContain(first);
     expect(h1).toContain(second);
-    expect(html).toContain('Bài học song ngữ, theo đúng chương trình của em.');
+    expect(html).toContain('Học song ngữ Anh–Việt theo Chương trình GDPT 2018.');
     expect(html).toMatch(/<a[^>]*href="#mon-hoc"[^>]*>[\s\S]*?Xem môn học/);
     expect(html).toMatch(/<a[^>]*href="\/\?chooseLevel=1"[^>]*>[\s\S]*?Đổi cấp/);
     expect(html).toContain(`data-hero-stage="${level}"`);
@@ -68,9 +68,9 @@ describe('LandingPage', () => {
   it('English hero', () => {
     lang = 'en';
     const html = render('upper_secondary');
-    expect(html).toContain('Make sense of science,');
-    expect(html).toContain('one question at a time.');
-    expect(html).toContain('Bilingual lessons that follow your curriculum.');
+    expect(html).toContain('Understand each lesson.');
+    expect(html).toContain('Move forward step by step.');
+    expect(html).toContain('Learn in Vietnamese and English with Vietnam’s 2018 national curriculum.');
     lang = 'vi';
   });
 

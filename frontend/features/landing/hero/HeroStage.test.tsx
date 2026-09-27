@@ -1,17 +1,15 @@
 import { renderToStaticMarkup } from 'react-dom/server';
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { countRawColors } from '../../../lib/theme/rawColors';
 import { HeroStage } from './HeroStage';
 
-vi.mock('next/dynamic', () => ({ default: () => () => null }));
-
 describe('HeroStage', () => {
-  it('server-renders the SVG fallback in a fixed box, hidden from assistive tech', () => {
+  it('server-renders the decorative SVG directly without a WebGL state or canvas', () => {
     const html = renderToStaticMarkup(<HeroStage level="upper_secondary" />);
     expect(html).toContain('<svg');
     expect(html).toContain('aria-hidden="true"');
     expect(html).not.toContain('<canvas');
-    expect(html).toContain('data-hero-state="fallback"');
+    expect(html).not.toContain('data-hero-state');
     expect(countRawColors(html).total).toBe(0);
     expect(html).not.toMatch(/#[0-9a-f]{3,8}\b/i);
   });
