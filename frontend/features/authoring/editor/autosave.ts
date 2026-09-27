@@ -33,7 +33,7 @@ export function createAutosaver(opts: {
   let dirty = false;
   let enabled = true;
   let stopped = false;
-  let inFlight: Promise<void> | null = null;
+  let inFlight: Promise<SaveOutcome> | null = null;
 
   const clearTimer = () => {
     if (timer) clearTimeout(timer);
@@ -49,11 +49,8 @@ export function createAutosaver(opts: {
     if (inFlight || !dirty || stopped || !enabled) return;
     dirty = false;
     opts.onState('saving');
-    let outcome: SaveOutcome = 'failed';
-    inFlight = (async () => {
-      outcome = await opts.save().catch((): SaveOutcome => 'failed');
-    })();
-    await inFlight;
+    inFlight = opts.save().catch((): SaveOutcome => 'failed');
+    const outcome = await inFlight;
     inFlight = null;
     if (outcome === 'saved') {
       if (dirty) {
