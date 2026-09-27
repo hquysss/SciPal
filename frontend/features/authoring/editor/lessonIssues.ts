@@ -1,5 +1,5 @@
 import katex from 'katex';
-import type { Block } from '@scipal/types';
+import { validateSimulationBlock, type Block } from '@scipal/types';
 import { LESSON_PARTS, splitLessonParts, type LessonPart } from '@/features/lessons/lessonParts';
 
 export interface LessonIssue {
@@ -39,8 +39,12 @@ function issuesOf(block: Block): BlockIssue[] {
     case 'image':
       if (!block.alt.vi.trim()) return [{ blocking: true, message: { en: 'Describe the image in Vietnamese.', vi: 'Ảnh cần mô tả tiếng Việt.' } }];
       return block.alt.en.trim() ? [] : [MISSING_EN];
-    case 'interactive':
+    case 'interactive': {
+      if (!block.heading.vi.trim()) return [{ blocking: true, message: { en: 'The simulation needs a Vietnamese heading.', vi: 'Mô phỏng cần tiêu đề tiếng Việt.' } }];
+      const check = validateSimulationBlock(block, { mediaBase: process.env.NEXT_PUBLIC_SUPABASE_URL });
+      if (!check.ok) return [{ blocking: true, message: check.message }];
       return block.heading.en.trim() ? [] : [MISSING_EN];
+    }
     default:
       return [];
   }

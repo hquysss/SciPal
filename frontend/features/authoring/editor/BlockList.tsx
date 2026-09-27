@@ -3,13 +3,15 @@
 import { Fragment, useEffect, useRef, useState } from 'react';
 import { ArrowDown, ArrowUp, Copy, GripVertical, Plus, Trash2 } from 'lucide-react';
 import { useLanguage } from '@scipal/hooks';
-import type { Block } from '@scipal/types';
+import { BUILT_IN_SIMULATION_KINDS, type Block } from '@scipal/types';
 import type { BlocksUpdate, LessonPart } from '@/features/lessons/lessonParts';
 import { BlockEditor } from './BlockEditor';
 import { duplicateAt, emptyBlock, insertAt, moveBlock, removeAt, type LessonBlockType } from './blockOps';
 import { ImageDropZone } from './editors/ImageEditor';
 import { RefPicker } from './editors/RefPicker';
 import { SMALL_BUTTON } from './editors/styles';
+import { simulationModules } from '@/features/simulations/registry';
+import { EMBED_LABEL, newSimulationBlock, type NewSimulationKind } from '@/features/simulations/SimulationEditor';
 
 type Bilingual = { en: string; vi: string };
 
@@ -25,6 +27,10 @@ const TYPE_LABEL: Record<Block['type'], Bilingual> = {
 };
 
 const LESSON_TYPES: LessonBlockType[] = ['theory', 'code', 'formula', 'image', 'term-ref', 'resource-ref'];
+const SIMULATION_CHOICES: Array<{ kind: NewSimulationKind; label: Bilingual; note?: Bilingual }> = [
+  ...BUILT_IN_SIMULATION_KINDS.map((kind) => ({ kind, label: simulationModules[kind].label, note: simulationModules[kind].subject })),
+  { kind: 'embed' as const, label: EMBED_LABEL },
+];
 
 const EMPTY_TEXT: Record<LessonPart, Bilingual> = {
   lesson: {
@@ -32,8 +38,8 @@ const EMPTY_TEXT: Record<LessonPart, Bilingual> = {
     vi: 'Bài chưa có nội dung. Bấm ＋ để thêm khối đầu tiên, hoặc nhập từ Word/PDF.',
   },
   simulation: {
-    en: 'No simulations yet. The simulation editor arrives in the next step.',
-    vi: 'Chưa có mô phỏng. Trình soạn mô phỏng sẽ có ở bước tiếp theo.',
+    en: 'No simulations yet. Press ＋ to add one of the templates or embed a link.',
+    vi: 'Chưa có mô phỏng. Bấm ＋ để chọn một mẫu mô phỏng hoặc nhúng link.',
   },
   practice: {
     en: 'No practice questions yet. The question editor arrives in the next step.',
@@ -81,7 +87,8 @@ export function BlockList({ part, blocks, onChange, subjectId, readOnly, focusIn
   const [undo, setUndo] = useState<{ block: Block; index: number } | null>(null);
   const [editLang, setEditLang] = useState<'vi' | 'en'>('vi');
   const cards = useRef<Array<HTMLLIElement | null>>([]);
-  const canInsert = !readOnly && part === 'lesson';
+  // Practice questions get their editor in the next part of the workspace.
+  const canInsert = !readOnly && part !== 'practice';
 
   useEffect(() => {
     if (focusIndex === undefined) return;
@@ -143,7 +150,23 @@ export function BlockList({ part, blocks, onChange, subjectId, readOnly, focusIn
           </button>
           <span aria-hidden="true" className="h-px flex-1 bg-line" />
         </div>
-        {open && (
+        {open && part === 'simulation' && (
+          <div role="menu" className="grid gap-1.5 sm:grid-cols-2">
+            {SIMULATION_CHOICES.map((choice) => (
+              <button
+                key={choice.kind}
+                type="button"
+                role="menuitem"
+                onClick={() => insert(index, newSimulationBlock(choice.kind))}
+                className={`${SMALL_BUTTON} min-h-11 justify-start text-left`}
+              >
+                <span className="font-semibold">{t(choice.label)}</span>
+                {choice.note && <span className="text-ink-muted">· {t(choice.note)}</span>}
+              </button>
+            ))}
+          </div>
+        )}
+        {open && part === 'lesson' && (
           <div role="menu" className="flex flex-wrap justify-center gap-1.5">
             {LESSON_TYPES.map((type) => (
               <button key={type} type="button" role="menuitem" onClick={() => choose(index, type)} className={SMALL_BUTTON}>

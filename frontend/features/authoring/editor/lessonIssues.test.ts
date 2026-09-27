@@ -31,4 +31,15 @@ describe('lessonIssues', () => {
   it('finds nothing wrong in a complete lesson', () => {
     expect(lessonIssues([{ type: 'theory', content: { vi: 'A', en: 'A' } }])).toEqual([]);
   });
+
+  it('blocks simulations with bad settings or no Vietnamese heading', () => {
+    const issues = lessonIssues([
+      { type: 'interactive', kind: 'motion', heading: { vi: 'Ném', en: 'Throw' }, offline: true, config: { v0: 5000 } },
+      { type: 'interactive', kind: 'embed', heading: { vi: 'Nhúng', en: 'Embed' }, offline: false, config: {} },
+      { type: 'interactive', kind: 'probability', heading: { vi: '', en: '' }, offline: true, config: {} },
+      { type: 'interactive', kind: 'geometry-3d', heading: { vi: 'Cũ', en: '' }, offline: false, config: {} },
+    ]);
+    expect(issues.map((i) => [i.index, i.blocking])).toEqual([[0, true], [1, true], [2, true], [3, false]]);
+    expect(issues[0]!.message.vi).toMatch(/Vận tốc/);
+  });
 });

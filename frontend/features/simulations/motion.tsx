@@ -45,7 +45,7 @@ function MotionView({ config, lang }: SimulationViewProps<'motion'>) {
       <p className="text-sm font-semibold text-ink">{t(MODES[config.mode])}</p>
       <svg viewBox={`0 0 ${W} ${H}`} role="img" aria-label={t({ en: 'Path of the object', vi: 'Quỹ đạo của vật' })} className="h-auto w-full rounded-md border border-line bg-surface-sunken">
         <line x1={0} x2={W} y1={H - PAD} y2={H - PAD} stroke="var(--ink-muted)" strokeWidth={1} />
-        <path d={path} fill="none" stroke="var(--line)" strokeWidth={2} strokeDasharray="4 4" />
+        <path d={path} fill="none" stroke="var(--ink-muted)" strokeWidth={1.5} strokeDasharray="4 4" />
         <circle cx={cx} cy={cy} r={6} fill="var(--accent, var(--action))" />
       </svg>
       <div className="flex items-end gap-3">
