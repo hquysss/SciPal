@@ -33,7 +33,6 @@ await app.register(accountsRoutes);
 await app.register(examImportRoutes);
 await app.register(questionRoutes);
 await app.register(examRoutesAuthoring);
-await app.register(examRoutesAuthoring);
 await app.register(practiceRoutes);
 
 app.get('/health', async () => ({ status: 'ok' }));
