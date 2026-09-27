@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import type { FastifyPluginAsync, FastifyReply, FastifyRequest } from 'fastify';
-import { BlockSchema } from '../schemas/blocks.js';
+import { BlockSchema, imageProblems, simulationProblem } from '../schemas/blocks.js';
+import { validateQuizReferences } from '../authoring/quizReferences.js';
 import { makeSlug, planNewTopic, toSubjectOptions, type ExistingTopic, type SubjectCatalogRow } from '../authoring/topicPlanning.js';
 
 interface AuthoringUser {
@@ -8,10 +9,28 @@ interface AuthoringUser {
   app_metadata?: { app_role?: string };
 }
 
-const LESSON_LIST_COLUMNS =
-  'id, topic_id, subject_id, slug, title_en, title_vi, grade, blocks, sort_order, status, review_note, published_at, created_by, reviewed_by, reviewed_at, created_at, updated_at, subjects(slug, name_en, name_vi), topics(name_en, name_vi)';
+// `*` includes the delete-request columns once their migration has run, and still works before.
+const LESSON_LIST_COLUMNS = '*, subjects(slug, name_en, name_vi), topics(name_en, name_vi)';
+
+const DELETE_REQUEST_NOTE_MAX = 1000;
+const lessonNotFound = { error: 'Không tìm thấy bài giảng.' };
+
+interface LessonDeleteState {
+  id: string;
+  created_by: string | null;
+  status: string;
+  published_at: string | null;
+  delete_requested_at?: string | null;
+}
+
+/** A teacher may delete their own lesson only while students have never seen it. */
+export function teacherCanDeleteDirectly(lesson: Pick<LessonDeleteState, 'status' | 'published_at'>): boolean {
+  return (lesson.status === 'draft' || lesson.status === 'rejected') && !lesson.published_at;
+}
 
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+// lessons.id is a uuid: any other path id is "not found", not a database error.
+const LESSON_ID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 function getUser(request: FastifyRequest): AuthoringUser | undefined {
   return (request as FastifyRequest & { user?: AuthoringUser }).user;
@@ -50,9 +69,10 @@ export const authoringRoutes: FastifyPluginAsync = async (app) => {
     }
   };
 
+  // Admins publish their own lessons directly, so only teachers submit for review.
   const verifyTeacherOnly = async (request: FastifyRequest, reply: FastifyReply) => {
     if (getUser(request)?.app_metadata?.app_role !== 'teacher') {
-      return reply.code(403).send({ error: 'Chỉ giáo viên mới có thể tạo và gửi bài học.' });
+      return reply.code(403).send({ error: 'Chỉ giáo viên mới gửi bài vào hàng chờ duyệt.' });
     }
   };
 
@@ -257,6 +277,7 @@ export const authoringRoutes: FastifyPluginAsync = async (app) => {
       if (!user?.id) return reply.code(401).send({ error: 'Phiên đăng nhập không hợp lệ.' });
 
       const { id } = request.params as { id: string };
+      if (!LESSON_ID_PATTERN.test(id)) return reply.code(404).send({ error: 'Không tìm thấy bài giảng.' });
       const { data, error } = await supabase
         .from('lessons')
         .select('*, subjects(slug, name_en, name_vi), topics(name_en, name_vi)')
@@ -277,7 +298,7 @@ export const authoringRoutes: FastifyPluginAsync = async (app) => {
   });
 
   app.post('/api/authoring/lessons', {
-    preHandler: [verifyTeacherOnly],
+    preHandler: [verifyTeacher],
     handler: async (request, reply) => {
       const supabase = app.supabase;
       const user = getUser(request);
@@ -429,6 +450,7 @@ export const authoringRoutes: FastifyPluginAsync = async (app) => {
       if (!user?.id) return reply.code(401).send({ error: 'Phiên đăng nhập không hợp lệ.' });
 
       const { id } = request.params as { id: string };
+      if (!LESSON_ID_PATTERN.test(id)) return reply.code(404).send({ error: 'Không tìm thấy bài giảng.' });
       const body = (request.body ?? {}) as Record<string, unknown>;
       const titleEn = asText(body.title_en, 200);
       const titleVi = asText(body.title_vi, 200);
@@ -442,10 +464,14 @@ export const authoringRoutes: FastifyPluginAsync = async (app) => {
       if (!parsedBlocks.success) {
         return reply.code(400).send({ error: 'Bài gửi duyệt cần có ít nhất một khối nội dung hợp lệ.' });
       }
+      const submitImageProblem = imageProblems(parsedBlocks.data, { requireAlt: true });
+      if (submitImageProblem) return reply.code(400).send({ error: submitImageProblem });
+      const submitSimulationProblem = simulationProblem(parsedBlocks.data);
+      if (submitSimulationProblem) return reply.code(400).send(submitSimulationProblem);
 
       const { data: current, error: readError } = await supabase
         .from('lessons')
-        .select('id, created_by, status, updated_at')
+        .select('id, subject_id, created_by, status, updated_at')
         .eq('id', id)
         .maybeSingle();
 
@@ -467,6 +493,8 @@ export const authoringRoutes: FastifyPluginAsync = async (app) => {
       if (current.updated_at !== expectedUpdatedAt) {
         return reply.code(409).send({ error: 'Bài học đã thay đổi. Tải lại trước khi gửi duyệt.' });
       }
+      const quizProblem = await validateQuizReferences(supabase, parsedBlocks.data, current, 'review');
+      if (quizProblem) return reply.code(quizProblem.status).send(quizProblem.body);
 
       const { data: lesson, error: submitError } = await supabase
         .from('lessons')
@@ -506,6 +534,7 @@ export const authoringRoutes: FastifyPluginAsync = async (app) => {
       if (!user?.id) return reply.code(401).send({ error: 'Phiên đăng nhập không hợp lệ.' });
 
       const { id } = request.params as { id: string };
+      if (!LESSON_ID_PATTERN.test(id)) return reply.code(404).send({ error: 'Không tìm thấy bài giảng.' });
       const body = (request.body ?? {}) as Record<string, unknown>;
       if (body.decision !== 'approve' && body.decision !== 'reject') {
         return reply.code(400).send({ error: 'Lựa chọn duyệt bài không hợp lệ.' });
@@ -521,7 +550,7 @@ export const authoringRoutes: FastifyPluginAsync = async (app) => {
 
       const { data: current, error: readError } = await supabase
         .from('lessons')
-        .select('id, status, updated_at')
+        .select('id, subject_id, status, updated_at, blocks')
         .eq('id', id)
         .maybeSingle();
       if (readError) {
@@ -537,6 +566,11 @@ export const authoringRoutes: FastifyPluginAsync = async (app) => {
       }
 
       const approved = body.decision === 'approve';
+      // Approving publishes the lesson's attached draft questions: they must still be usable.
+      if (approved) {
+        const quizProblem = await validateQuizReferences(supabase, current.blocks, current, 'review');
+        if (quizProblem) return reply.code(quizProblem.status).send(quizProblem.body);
+      }
       const now = new Date().toISOString();
       const { data: lesson, error: updateError } = await supabase
         .from('lessons')
@@ -575,6 +609,7 @@ export const authoringRoutes: FastifyPluginAsync = async (app) => {
       if (!user?.id) return reply.code(401).send({ error: 'Phiên đăng nhập không hợp lệ.' });
 
       const { id } = request.params as { id: string };
+      if (!LESSON_ID_PATTERN.test(id)) return reply.code(404).send({ error: 'Không tìm thấy bài giảng.' });
       const body = (request.body ?? {}) as Record<string, unknown>;
       const isAdmin = user.app_metadata?.app_role === 'admin';
       const expectedUpdatedAt = asText(body.expected_updated_at, 64);
@@ -583,7 +618,7 @@ export const authoringRoutes: FastifyPluginAsync = async (app) => {
       }
       const { data: current, error: readError } = await supabase
         .from('lessons')
-        .select('id, created_by, status, updated_at')
+        .select('id, subject_id, created_by, status, updated_at, blocks')
         .eq('id', id)
         .maybeSingle();
 
@@ -627,6 +662,11 @@ export const authoringRoutes: FastifyPluginAsync = async (app) => {
         if (!parsedBlocks.success) {
           return reply.code(400).send({ error: 'Nội dung có khối không đúng định dạng.' });
         }
+        // An image may wait for its description in a draft; publishing needs it.
+        const problem = imageProblems(parsedBlocks.data, { requireAlt: isAdmin && body.status === 'published' });
+        if (problem) return reply.code(400).send({ error: problem });
+        const simulation = simulationProblem(parsedBlocks.data);
+        if (simulation) return reply.code(400).send(simulation);
         updateData.blocks = parsedBlocks.data;
       }
       if (isAdmin && body.status !== undefined) {
@@ -649,6 +689,14 @@ export const authoringRoutes: FastifyPluginAsync = async (app) => {
       if (Object.keys(updateData).length === 1) {
         return reply.code(400).send({ error: 'Không có thay đổi để lưu.' });
       }
+      // Practice questions: a published lesson (staying or becoming published) needs complete
+      // ones, and one that stays published only published ones.
+      const nextStatus = (updateData.status as string | undefined) ?? current.status;
+      if (updateData.blocks !== undefined || (nextStatus === 'published' && current.status !== 'published')) {
+        const mode = nextStatus !== 'published' ? 'draft' : current.status === 'published' ? 'live' : 'review';
+        const quizProblem = await validateQuizReferences(supabase, updateData.blocks ?? current.blocks, current, mode);
+        if (quizProblem) return reply.code(quizProblem.status).send(quizProblem.body);
+      }
       const { data: lesson, error } = await supabase
         .from('lessons')
         .update(updateData)
@@ -664,6 +712,181 @@ export const authoringRoutes: FastifyPluginAsync = async (app) => {
       if (!lesson) return reply.code(409).send({ error: 'Bài học vừa được cập nhật. Tải lại trước khi lưu tiếp.' });
 
       return reply.send({ lesson });
+    },
+  });
+
+  /**
+   * Delete a lesson. Admins delete any lesson; a teacher deletes their own lesson only while it
+   * was never published (draft or rejected) and asks an admin for the rest. Questions keep
+   * living in the pool (their lesson link is cleared); student progress on the lesson goes with it.
+   */
+  app.delete('/api/authoring/lessons/:id', {
+    preHandler: [verifyTeacher],
+    handler: async (request, reply) => {
+      const supabase = app.supabase;
+      const user = getUser(request);
+      if (!supabase) {
+        return reply.code(503).send({ error: 'Dịch vụ lưu trữ bài học chưa sẵn sàng.' });
+      }
+      if (!user?.id) return reply.code(401).send({ error: 'Phiên đăng nhập không hợp lệ.' });
+
+      const { id } = request.params as { id: string };
+      if (!LESSON_ID_PATTERN.test(id)) return reply.code(404).send(lessonNotFound);
+      const isAdmin = user.app_metadata?.app_role === 'admin';
+
+      const { data: current, error: readError } = await supabase
+        .from('lessons')
+        .select('id, created_by, status, published_at')
+        .eq('id', id)
+        .maybeSingle();
+      if (readError) {
+        request.log.error({ err: readError, lessonId: id }, 'Failed to read lesson before delete');
+        return reply.code(500).send({ error: 'Không xác minh được bài giảng cần xóa.' });
+      }
+      const lesson = current as LessonDeleteState | null;
+      if (!lesson || (!isAdmin && lesson.created_by !== user.id)) return reply.code(404).send(lessonNotFound);
+      if (!isAdmin && !teacherCanDeleteDirectly(lesson)) {
+        return reply.code(403).send({
+          error: 'Bài đã xuất bản hoặc đang chờ duyệt nên không tự xóa được. Hãy gửi yêu cầu xóa cho admin.',
+        });
+      }
+
+      const { error: detachError } = await supabase.from('questions').update({ lesson_id: null }).eq('lesson_id', id);
+      if (detachError) {
+        request.log.error({ err: detachError, lessonId: id }, 'Failed to detach lesson questions');
+        return reply.code(500).send({ error: 'Không xóa được bài giảng.' });
+      }
+
+      const { error: deleteError } = await supabase.from('lessons').delete().eq('id', id);
+      if (deleteError) {
+        if (deleteError.code === '23503') {
+          return reply.code(409).send({ error: 'Bài đang được giao cho lớp học. Gỡ bài tập khỏi lớp trước khi xóa.' });
+        }
+        request.log.error({ err: deleteError, lessonId: id }, 'Failed to delete lesson');
+        return reply.code(500).send({ error: 'Không xóa được bài giảng.' });
+      }
+
+      return reply.code(204).send();
+    },
+  });
+
+  // A teacher asks an admin to delete one of their lessons that they cannot delete themselves.
+  app.post('/api/authoring/lessons/:id/delete-request', {
+    preHandler: [verifyTeacherOnly],
+    handler: async (request, reply) => {
+      const supabase = app.supabase;
+      const user = getUser(request);
+      if (!supabase) {
+        return reply.code(503).send({ error: 'Dịch vụ lưu trữ bài học chưa sẵn sàng.' });
+      }
+      if (!user?.id) return reply.code(401).send({ error: 'Phiên đăng nhập không hợp lệ.' });
+
+      const { id } = request.params as { id: string };
+      if (!LESSON_ID_PATTERN.test(id)) return reply.code(404).send(lessonNotFound);
+      const body = (request.body ?? {}) as Record<string, unknown>;
+      if (body.note !== undefined && body.note !== null && typeof body.note !== 'string') {
+        return reply.code(400).send({ error: 'Lý do xóa không hợp lệ.' });
+      }
+      const note = typeof body.note === 'string' ? body.note.trim() : '';
+      if (note.length > DELETE_REQUEST_NOTE_MAX) {
+        return reply.code(400).send({ error: `Lý do xóa tối đa ${DELETE_REQUEST_NOTE_MAX} ký tự.` });
+      }
+
+      const { data: current, error: readError } = await supabase
+        .from('lessons')
+        .select('id, created_by, status, published_at, delete_requested_at')
+        .eq('id', id)
+        .maybeSingle();
+      if (readError) {
+        request.log.error({ err: readError, lessonId: id }, 'Failed to read lesson for delete request');
+        return reply.code(500).send({ error: 'Không gửi được yêu cầu xóa.' });
+      }
+      const lesson = current as LessonDeleteState | null;
+      if (!lesson || lesson.created_by !== user.id) return reply.code(404).send(lessonNotFound);
+      if (teacherCanDeleteDirectly(lesson)) {
+        return reply.code(400).send({ error: 'Bài chưa từng xuất bản: bạn có thể tự xóa, không cần gửi yêu cầu.' });
+      }
+      if (lesson.delete_requested_at) return reply.code(409).send({ error: 'Bạn đã gửi yêu cầu xóa bài này.' });
+
+      const requestedAt = new Date().toISOString();
+      const { data: updated, error: updateError } = await supabase
+        .from('lessons')
+        .update({ delete_requested_at: requestedAt, delete_requested_by: user.id, delete_request_note: note || null })
+        .eq('id', id)
+        .is('delete_requested_at', null)
+        .select('id, delete_requested_at, delete_request_note')
+        .maybeSingle();
+      if (updateError) {
+        request.log.error({ err: updateError, lessonId: id }, 'Failed to save delete request');
+        return reply.code(500).send({ error: 'Không gửi được yêu cầu xóa.' });
+      }
+      if (!updated) return reply.code(409).send({ error: 'Bạn đã gửi yêu cầu xóa bài này.' });
+
+      return reply.code(201).send({ lesson: updated });
+    },
+  });
+
+  // Clear a delete request: the teacher withdraws it, or an admin declines it.
+  app.delete('/api/authoring/lessons/:id/delete-request', {
+    preHandler: [verifyTeacher],
+    handler: async (request, reply) => {
+      const supabase = app.supabase;
+      const user = getUser(request);
+      if (!supabase) {
+        return reply.code(503).send({ error: 'Dịch vụ lưu trữ bài học chưa sẵn sàng.' });
+      }
+      if (!user?.id) return reply.code(401).send({ error: 'Phiên đăng nhập không hợp lệ.' });
+
+      const { id } = request.params as { id: string };
+      if (!LESSON_ID_PATTERN.test(id)) return reply.code(404).send(lessonNotFound);
+      const isAdmin = user.app_metadata?.app_role === 'admin';
+
+      const { data: current, error: readError } = await supabase
+        .from('lessons')
+        .select('id, created_by, status, published_at, delete_requested_at')
+        .eq('id', id)
+        .maybeSingle();
+      if (readError) {
+        request.log.error({ err: readError, lessonId: id }, 'Failed to read lesson delete request');
+        return reply.code(500).send({ error: 'Không cập nhật được yêu cầu xóa.' });
+      }
+      const lesson = current as LessonDeleteState | null;
+      if (!lesson || (!isAdmin && lesson.created_by !== user.id)) return reply.code(404).send(lessonNotFound);
+      if (!lesson.delete_requested_at) return reply.code(404).send({ error: 'Bài này không có yêu cầu xóa.' });
+
+      const { error: updateError } = await supabase
+        .from('lessons')
+        .update({ delete_requested_at: null, delete_requested_by: null, delete_request_note: null })
+        .eq('id', id);
+      if (updateError) {
+        request.log.error({ err: updateError, lessonId: id }, 'Failed to clear delete request');
+        return reply.code(500).send({ error: 'Không cập nhật được yêu cầu xóa.' });
+      }
+
+      return reply.code(204).send();
+    },
+  });
+
+  // Admin queue of lessons teachers asked to delete, oldest request first.
+  app.get('/api/authoring/delete-requests', {
+    preHandler: [verifyAdmin],
+    handler: async (request, reply) => {
+      const supabase = app.supabase;
+      if (!supabase) {
+        return reply.code(503).send({ error: 'Dịch vụ lưu trữ bài học chưa sẵn sàng.' });
+      }
+
+      const { data, error } = await supabase
+        .from('lessons')
+        .select(LESSON_LIST_COLUMNS)
+        .not('delete_requested_at', 'is', null)
+        .order('delete_requested_at', { ascending: true });
+      if (error) {
+        request.log.error({ err: error }, 'Failed to list lesson delete requests');
+        return reply.code(500).send({ error: 'Không tải được danh sách yêu cầu xóa.' });
+      }
+
+      return reply.send({ lessons: (data ?? []).map((row) => withRelations(row as Record<string, any>)) });
     },
   });
 };

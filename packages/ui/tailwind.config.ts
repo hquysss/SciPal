@@ -18,6 +18,10 @@ const config: Config = {
         danger: { DEFAULT: 'var(--danger)', surface: 'var(--danger-surface)' },
         success: { DEFAULT: 'var(--success)', surface: 'var(--success-surface)' },
         warning: { DEFAULT: 'var(--warning)', surface: 'var(--warning-surface)' },
+        // Supporting colors per level: decoration and fills only, never text.
+        sun: 'var(--sun)',
+        coral: 'var(--coral)',
+        sky: 'var(--sky)',
         // Subject accent: only inside SubjectProvider; falls back to the level action color.
         accent: { DEFAULT: 'var(--accent, var(--action))', ink: 'var(--accent-ink, var(--action))' },
       },

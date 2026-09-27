@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { SIMULATION_KINDS } from './simulations.js';
 
 const BilingualText = z.object({ en: z.string(), vi: z.string() });
 
@@ -28,7 +29,8 @@ export const QuizBlockSchema = z.object({
 
 export const InteractiveBlockSchema = z.object({
   type: z.literal('interactive'),
-  kind: z.enum(['algorithm-sim', 'function-graph', 'geometry-3d', 'experiment', 'bio-diagram']),
+  /** Settings are checked per kind by validateSimulationBlock (simulations.ts). */
+  kind: z.enum(SIMULATION_KINDS),
   heading: BilingualText,
   caption: BilingualText.optional(),
   offline: z.boolean(),
@@ -46,6 +48,13 @@ export const ResourceRefBlockSchema = z.object({
   resource_id: z.string().uuid(),
 });
 
+export const ImageBlockSchema = z.object({
+  type: z.literal('image'),
+  url: z.string().url().max(1000),
+  alt: BilingualText,
+  caption: BilingualText.optional(),
+});
+
 export const BlockSchema = z.discriminatedUnion('type', [
   TheoryBlockSchema,
   CodeBlockSchema,
@@ -54,6 +63,7 @@ export const BlockSchema = z.discriminatedUnion('type', [
   InteractiveBlockSchema,
   TermRefBlockSchema,
   ResourceRefBlockSchema,
+  ImageBlockSchema,
 ]);
 
 export type Block = z.infer<typeof BlockSchema>;
@@ -64,3 +74,4 @@ export type QuizBlock         = z.infer<typeof QuizBlockSchema>;
 export type InteractiveBlock  = z.infer<typeof InteractiveBlockSchema>;
 export type TermRefBlock      = z.infer<typeof TermRefBlockSchema>;
 export type ResourceRefBlock  = z.infer<typeof ResourceRefBlockSchema>;
+export type ImageBlock        = z.infer<typeof ImageBlockSchema>;

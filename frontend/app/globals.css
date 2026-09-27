@@ -23,6 +23,52 @@
   }
 }
 
+/* Soft glows of the level's supporting colors, fixed behind every page. */
+[data-app-shell]::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background:
+    radial-gradient(40vmax 32vmax at 100% 0%, color-mix(in srgb, var(--sun) 22%, transparent), transparent 70%),
+    radial-gradient(36vmax 30vmax at 0% 45%, color-mix(in srgb, var(--sky) 18%, transparent), transparent 70%),
+    radial-gradient(34vmax 26vmax at 80% 100%, color-mix(in srgb, var(--coral) 16%, transparent), transparent 70%);
+}
+
+/* Content pages: a three-colour mark under the page title, and a short staggered arrival. */
+main[class*='mx-auto'] h1::after {
+  content: '';
+  display: block;
+  width: 4.5rem;
+  height: 0.3rem;
+  margin-top: 0.65rem;
+  border-radius: 999px;
+  background: linear-gradient(90deg, var(--sun) 0 33%, var(--coral) 33% 66%, var(--sky) 66%);
+}
+
+main[class*='mx-auto'] > * {
+  animation: page-rise 420ms cubic-bezier(0.22, 1, 0.36, 1) backwards;
+}
+
+main[class*='mx-auto'] > :nth-child(2) { animation-delay: 60ms; }
+main[class*='mx-auto'] > :nth-child(3) { animation-delay: 120ms; }
+main[class*='mx-auto'] > :nth-child(4) { animation-delay: 180ms; }
+main[class*='mx-auto'] > :nth-child(n + 5) { animation-delay: 240ms; }
+
+@keyframes page-rise {
+  from { opacity: 0; translate: 0 10px; }
+  to { opacity: 1; translate: 0 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  main[class*='mx-auto'] > * { animation: none; }
+}
+
+@media (prefers-contrast: more), print {
+  [data-app-shell]::after { display: none; }
+}
+
 /* High-craft science lab textures & atmospheric lighting */
 .bg-science-grid {
   background-size: 32px 32px;

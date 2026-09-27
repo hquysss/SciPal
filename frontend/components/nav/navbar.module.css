@@ -1,0 +1,291 @@
+.header {
+  border-bottom: 1px solid color-mix(in srgb, var(--nav-ink) 22%, transparent);
+  box-shadow: 0 8px 24px -20px color-mix(in srgb, var(--ink) 42%, transparent);
+}
+
+.navLink {
+  position: relative;
+  display: inline-flex;
+  height: 2.5rem;
+  align-items: center;
+  gap: 0.375rem;
+  border-radius: 999px;
+  padding-inline: 0.875rem;
+  color: var(--nav-ink);
+  font-size: 0.875rem;
+  font-weight: 600;
+  white-space: nowrap;
+  transition: background-color 160ms ease-out, box-shadow 160ms ease-out;
+}
+
+.navLink:hover,
+.navLink[aria-expanded='true'] {
+  background: color-mix(in srgb, var(--nav-ink) 12%, transparent);
+}
+
+.navLink:focus-visible {
+  outline: 2px solid var(--nav-ink);
+  outline-offset: 2px;
+}
+
+.navLink[aria-current='page'],
+.navLink[data-active] {
+  font-weight: 700;
+}
+
+/* The current section is marked by a tab edge on the bar's bottom line, not a boxed button. */
+.navLink[aria-current='page']::after,
+.navLink[data-active]::after {
+  content: '';
+  position: absolute;
+  inset-inline: 0.875rem;
+  bottom: -0.75rem;
+  height: 3px;
+  border-radius: 3px 3px 0 0;
+  background: var(--nav-ink);
+  animation: tab-mark 420ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+@keyframes tab-mark {
+  from { opacity: 0; scale: 0 1; }
+  to { opacity: 1; scale: 1 1; }
+}
+
+.divider {
+  width: 1px;
+  height: 1.5rem;
+  flex-shrink: 0;
+  background: color-mix(in srgb, var(--nav-ink) 28%, transparent);
+}
+
+.account {
+  display: inline-flex;
+  min-width: 0;
+  align-items: center;
+  gap: 0.5rem;
+  color: var(--nav-ink);
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+.avatar {
+  display: inline-grid;
+  width: 2rem;
+  height: 2rem;
+  flex-shrink: 0;
+  place-items: center;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--nav-ink) 18%, transparent);
+  font-size: 0.8125rem;
+  font-weight: 800;
+}
+
+.ghostButton {
+  display: inline-flex;
+  height: 2.5rem;
+  flex-shrink: 0;
+  align-items: center;
+  border: 1px solid color-mix(in srgb, var(--nav-ink) 42%, transparent);
+  border-radius: 999px;
+  padding-inline: 1rem;
+  color: var(--nav-ink);
+  font-size: 0.875rem;
+  font-weight: 700;
+  transition: background-color 160ms ease-out, border-color 160ms ease-out;
+}
+
+.ghostButton:hover {
+  border-color: color-mix(in srgb, var(--nav-ink) 70%, transparent);
+  background: color-mix(in srgb, var(--nav-ink) 12%, transparent);
+}
+.ghostButton:focus-visible { outline: 2px solid var(--nav-ink); outline-offset: 2px; }
+.ghostButton:disabled { cursor: wait; opacity: 0.6; }
+
+.dropdown {
+  position: absolute;
+  left: 0;
+  top: 100%;
+  z-index: 50;
+  width: 14rem;
+  margin-top: 0.5rem;
+  border: 1px solid var(--line);
+  padding: 0.375rem;
+  background: var(--surface);
+  color: var(--ink);
+  visibility: hidden;
+  pointer-events: none;
+  opacity: 0;
+  transform: translateY(-6px);
+  border-radius: 0.875rem;
+  box-shadow: 0 16px 32px -20px color-mix(in srgb, var(--ink) 50%, transparent);
+  transition: opacity 180ms ease, transform 180ms ease, visibility 180ms;
+}
+
+.dropdownOpen {
+  visibility: visible;
+  pointer-events: auto;
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.mobilePanel {
+  position: absolute;
+  inset-inline: 0;
+  top: 100%;
+  z-index: 40;
+  max-height: calc(100dvh - 4rem);
+  overflow-y: auto;
+  border-bottom: 1px solid var(--line);
+  padding: 1rem;
+  background: var(--surface);
+  color: var(--ink);
+  box-shadow: 0 18px 32px -22px color-mix(in srgb, var(--ink) 50%, transparent);
+  visibility: hidden;
+  pointer-events: none;
+  opacity: 0;
+  transform: translateY(-6px);
+  transition: opacity 180ms ease, transform 180ms ease, visibility 180ms;
+}
+
+.mobilePanelOpen {
+  visibility: visible;
+  pointer-events: auto;
+  opacity: 1;
+  transform: translateY(0);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .navLink, .ghostButton, .dropdown, .mobilePanel { transition: none; }
+  .navLink::after { animation: none; }
+}
+
+/* ---------- Katha motion: a short staggered rise on arrival, gloss on the primary pill ---------- */
+
+.rise,
+.navList > * {
+  animation: nav-rise 320ms cubic-bezier(0.22, 1, 0.36, 1) backwards;
+  animation-delay: calc(var(--i, 0) * 45ms);
+}
+
+.navList > :nth-child(1) { --i: 1; }
+.navList > :nth-child(2) { --i: 2; }
+.navList > :nth-child(3) { --i: 3; }
+.navList > :nth-child(4) { --i: 4; }
+.navList > :nth-child(5) { --i: 5; }
+.navList > :nth-child(6) { --i: 6; }
+.navList > :nth-child(7) { --i: 7; }
+
+@keyframes nav-rise {
+  from { opacity: 0; translate: 0 8px; }
+  to { opacity: 1; translate: 0 0; }
+}
+
+.navLink:hover {
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--nav-ink) 20%, transparent);
+}
+
+.navLink:active,
+.ghostButton:active {
+  translate: 0 1px;
+}
+
+.primaryPill {
+  position: relative;
+  display: inline-flex;
+  height: 2.5rem;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 0.5rem;
+  overflow: hidden;
+  border-radius: 999px;
+  padding-inline: 1.1rem;
+  background: linear-gradient(135deg, var(--sun), color-mix(in srgb, var(--sun) 55%, var(--coral)));
+  color: var(--ink);
+  font-size: 0.875rem;
+  font-weight: 800;
+  box-shadow:
+    0 10px 24px -10px color-mix(in srgb, var(--sun) 85%, transparent),
+    inset 0 1px 0 color-mix(in srgb, var(--surface) 55%, transparent);
+  transition: transform 180ms ease, box-shadow 180ms ease;
+}
+
+/* A band of light sweeps across once per hover, as on the Katha sign-in button. */
+.primaryPill::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(112deg, transparent 28%, color-mix(in srgb, var(--surface) 60%, transparent) 48%, transparent 66%);
+  opacity: 0;
+  pointer-events: none;
+  transform: translateX(-125%);
+}
+
+.primaryPill > * {
+  position: relative;
+}
+
+.primaryPill svg {
+  transition: transform 180ms ease;
+}
+
+.primaryPill:hover {
+  box-shadow:
+    0 16px 30px -10px color-mix(in srgb, var(--coral) 80%, transparent),
+    inset 0 1px 0 color-mix(in srgb, var(--surface) 55%, transparent);
+  transform: translateY(-1px);
+}
+
+.primaryPill:hover::before,
+.primaryPill:focus-visible::before {
+  opacity: 1;
+  animation: pill-gloss 1.1s ease-out both;
+}
+
+.primaryPill:hover svg {
+  transform: translateX(3px);
+}
+
+.primaryPill:active {
+  transform: translateY(0);
+}
+
+.primaryPill:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--nav-ink) 38%, transparent);
+}
+
+@keyframes pill-gloss {
+  from { transform: translateX(-125%); }
+  to { transform: translateX(125%); }
+}
+
+/* Menus open with their items rising in turn. */
+.dropdownOpen > *,
+.mobilePanelOpen > div > * {
+  animation: nav-rise 260ms cubic-bezier(0.22, 1, 0.36, 1) backwards;
+}
+
+.dropdownOpen > :nth-child(2),
+.mobilePanelOpen > div > :nth-child(2) { animation-delay: 35ms; }
+.dropdownOpen > :nth-child(3),
+.mobilePanelOpen > div > :nth-child(3) { animation-delay: 70ms; }
+.dropdownOpen > :nth-child(4),
+.mobilePanelOpen > div > :nth-child(4) { animation-delay: 105ms; }
+.mobilePanelOpen > div > :nth-child(5) { animation-delay: 140ms; }
+.mobilePanelOpen > div > :nth-child(6) { animation-delay: 175ms; }
+.mobilePanelOpen > div > :nth-child(n + 7) { animation-delay: 210ms; }
+
+@media (prefers-reduced-motion: reduce) {
+  .rise,
+  .navList > *,
+  .dropdownOpen > *,
+  .mobilePanelOpen > div > *,
+  .primaryPill::before {
+    animation: none;
+  }
+
+  .primaryPill,
+  .primaryPill svg {
+    transition: none;
+  }
+}

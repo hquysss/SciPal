@@ -302,8 +302,7 @@
   position: absolute;
   inset: 0;
   background:
-    linear-gradient(to top, rgba(16, 15, 22, 0.72) 0%, rgba(16, 15, 22, 0.22) 34%, transparent 58%),
-    linear-gradient(to bottom, rgba(16, 15, 22, 0.25), transparent 22%);
+    linear-gradient(to top, color-mix(in srgb, var(--nav) 55%, #000) 0%, color-mix(in srgb, var(--nav) 30%, transparent) 26%, transparent 42%);
   pointer-events: none;
 }
 
@@ -2135,8 +2134,9 @@
 :root .katha-login-page .katha-login-submit {
   border: 1px solid transparent;
   border-radius: 1rem;
-  background: linear-gradient(135deg, var(--lg-primary) 0%, var(--color-katha-primary-light) 100%);
-  color: var(--primary-foreground, #ffffff);
+  background: linear-gradient(135deg, var(--sun) 0%, var(--coral) 100%);
+  color: var(--ink);
+  font-weight: 800;
   box-shadow: 0 0 1px color-mix(in srgb, var(--action) 50%, transparent), 0 0 1px color-mix(in srgb, var(--action-hover) 50%, transparent);
   transition: background 200ms ease-in-out, box-shadow 200ms ease-in-out;
 }
@@ -2151,8 +2151,8 @@
 
 :root .katha-login-page .katha-login-submit:hover:not(:disabled),
 :root .katha-login-page .katha-login-submit:focus-visible {
-  background: linear-gradient(135deg, var(--lg-primary) 0%, var(--color-katha-primary-light) 100%);
-  box-shadow: 0 0 100px color-mix(in srgb, var(--action-hover) 50%, transparent), 0 0 100px color-mix(in srgb, var(--action) 50%, transparent);
+  background: linear-gradient(135deg, var(--sun) 0%, var(--coral) 100%);
+  box-shadow: 0 0 60px color-mix(in srgb, var(--sun) 55%, transparent), 0 0 90px color-mix(in srgb, var(--coral) 45%, transparent);
   filter: none;
   transform: none;
 }
@@ -2160,7 +2160,8 @@
 /* Cross-fade the gradient; CSS gradient stops do not interpolate smoothly.
    This also replaces the previous one-shot gloss animation. */
 .katha-login-page .katha-login-submit::before {
-  background: linear-gradient(135deg, var(--lg-primary) 50%, var(--color-katha-primary-light) 100%);
+  /* Hover lifts the sun-to-coral fill a shade lighter; the text stays --ink. */
+  background: linear-gradient(135deg, color-mix(in srgb, var(--sun) 75%, var(--surface)) 0%, var(--sun) 45%, color-mix(in srgb, var(--coral) 85%, var(--sun)) 100%);
   opacity: 0;
   transform: none;
   animation: none;
@@ -2213,10 +2214,15 @@
   --art-2: color-mix(in srgb, var(--nav-ink) 78%, var(--nav));
   --art-3: color-mix(in srgb, var(--nav-ink) 55%, var(--nav));
   --art-4: color-mix(in srgb, var(--nav-ink) 30%, var(--nav));
-  --art-deep: color-mix(in srgb, var(--nav) 62%, #000);
+  --art-deep: color-mix(in srgb, var(--nav) 70%, #000);
+  --art-bg-end: color-mix(in srgb, var(--nav) 82%, var(--sky));
 }
 
+/* Lighter slide: the level colour lifted toward its sky tone, with a warm sun glow. */
 .katha-login-slide-bg {
-  background: linear-gradient(135deg, var(--nav), var(--art-deep));
-  opacity: 0.97;
+  background:
+    radial-gradient(circle closest-side at 82% 18%, color-mix(in srgb, var(--sun) 40%, transparent), transparent),
+    radial-gradient(circle closest-side at 10% 90%, color-mix(in srgb, var(--sky) 35%, transparent), transparent),
+    linear-gradient(135deg, color-mix(in srgb, var(--nav) 92%, var(--sun)), var(--art-bg-end));
+  opacity: 1;
 }

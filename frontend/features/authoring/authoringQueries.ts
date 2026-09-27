@@ -23,6 +23,9 @@ export interface AuthoringLessonData {
   created_by: string | null;
   reviewed_by: string | null;
   reviewed_at: string | null;
+  /** Set while a teacher waits for an admin to delete this lesson (absent before the migration). */
+  delete_requested_at?: string | null;
+  delete_request_note?: string | null;
   created_at: string;
   updated_at: string;
   block_count: number;
@@ -104,6 +107,33 @@ export async function getTeacherLessons(token: string): Promise<AuthoringLessonD
 
 export async function getPendingReviewLessons(token: string): Promise<AuthoringLessonData[]> {
   const data = await requestJson<{ lessons: AuthoringLessonData[] }>('/api/authoring/reviews', token);
+  return data.lessons;
+}
+
+export interface PendingExamImport {
+  import_id: string;
+  created_by: string | null;
+  teacher_name: string | null;
+  created_at: string | null;
+  question_count: number;
+  question_types: Record<string, number>;
+  blueprints: Array<{
+    id: string;
+    name: string;
+    grade: number | null;
+    subject_name_vi: string | null;
+    question_count: number;
+    duration_minutes: number | null;
+  }>;
+}
+
+export async function getPendingExamImports(token: string): Promise<PendingExamImport[]> {
+  const data = await requestJson<{ imports: PendingExamImport[] }>('/api/authoring/exam-imports', token);
+  return data.imports;
+}
+
+export async function getDeleteRequests(token: string): Promise<AuthoringLessonData[]> {
+  const data = await requestJson<{ lessons: AuthoringLessonData[] }>('/api/authoring/delete-requests', token);
   return data.lessons;
 }
 

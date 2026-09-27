@@ -17,12 +17,12 @@ const DAY_LABELS = [
   { en: 'Sat', vi: 'T7' },
 ];
 
-/** Heatmap cell colour: four levels of the level's action colour. */
+/** Heatmap cell colour: four warm steps from pale sun to coral; the count on top stays --ink. */
 export function streakCellClass(count: number): string {
   if (!Number.isFinite(count) || count <= 0) return 'bg-surface-sunken';
-  if (count === 1) return 'bg-[color-mix(in_srgb,var(--action)_30%,var(--surface))]';
-  if (count <= 3) return 'bg-[color-mix(in_srgb,var(--action)_60%,var(--surface))]';
-  return 'bg-action';
+  if (count === 1) return 'bg-[color-mix(in_srgb,var(--sun)_45%,var(--surface))]';
+  if (count <= 3) return 'bg-sun';
+  return 'bg-coral';
 }
 
 const DAY_MS = 86_400_000;
@@ -54,13 +54,13 @@ export function StreakCalendar({ streaks }: { streaks: StreakRow[] }) {
   });
 
   return (
-    <section className="rounded-xl border border-line bg-surface p-6">
+    <section className="rounded-xl border border-line border-t-4 border-t-sky bg-surface p-6">
       <div className="mb-4 flex items-center justify-between">
         <div>
           <h2 className="text-lg font-bold text-ink">{t({ en: 'Learning streak', vi: 'Chuỗi ngày học liên tục' })}</h2>
           <p className="text-sm text-ink-muted">{t({ en: 'Last 7 days', vi: '7 ngày gần nhất' })}</p>
         </div>
-        <Flame aria-hidden="true" className="h-6 w-6 text-warning" />
+        <span aria-hidden="true" className="grid h-10 w-10 place-items-center rounded-full bg-gradient-to-br from-sun to-coral text-ink shadow-[0_8px_18px_-10px_var(--coral)]"><Flame className="h-5 w-5" /></span>
       </div>
 
       {/* 7-day heat track */}
@@ -77,9 +77,7 @@ export function StreakCalendar({ streaks }: { streaks: StreakRow[] }) {
                 role="img"
                 title={label}
                 aria-label={label}
-                className={`flex h-12 w-full items-center justify-center rounded-lg text-sm font-semibold ${streakCellClass(d.count)} ${
-                  d.count >= 4 ? 'text-action-ink' : 'text-ink'
-                } ${d.isToday ? 'outline outline-2 outline-offset-2 outline-focus' : ''}`}
+                className={`flex h-12 w-full items-center justify-center rounded-lg text-sm font-bold text-ink transition-transform duration-300 ease-out hover:-translate-y-0.5 motion-reduce:transition-none ${streakCellClass(d.count)} ${d.isToday ? 'outline outline-2 outline-offset-2 outline-focus' : ''}`}
               >
                 {d.count > 0 ? d.count : ''}
               </div>

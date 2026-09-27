@@ -2,7 +2,12 @@
 
 import { Lock } from 'lucide-react';
 import { useLanguage } from '@scipal/hooks';
+import type { CSSProperties } from 'react';
 import type { ProgressSummary } from './progressQueries';
+
+// Each badge takes one of the level's supporting colors, in turn.
+const BADGE_TONES = ['var(--sun)', 'var(--sky)', 'var(--coral)'];
+const tone = (index: number) => ({ '--tone': BADGE_TONES[index % BADGE_TONES.length] }) as CSSProperties;
 
 type BadgeRow = ProgressSummary['badges'][number];
 
@@ -27,7 +32,7 @@ const SAMPLE_LOCKED_BADGES = [
 export function BadgeWall({ badges }: { badges: BadgeRow[] }) {
   const { lang, t } = useLanguage();
   return (
-    <section className="rounded-xl border border-line bg-surface p-6">
+    <section className="rounded-xl border border-line border-t-4 border-t-sun bg-surface p-6">
       <div className="mb-4">
         <h2 className="text-lg font-bold text-ink">{t({ en: 'Badges', vi: 'Bảo tàng huy hiệu danh dự' })}</h2>
         <p className="text-sm text-ink-muted">
@@ -37,8 +42,12 @@ export function BadgeWall({ badges }: { badges: BadgeRow[] }) {
 
       <ul className="grid grid-cols-2 gap-3.5 sm:grid-cols-4">
         {badges.map((ub, i) => (
-          <li key={i} className="flex flex-col items-center gap-2 rounded-lg border border-line bg-surface p-4 text-center text-ink">
-            <span aria-hidden="true" className="flex h-12 w-12 items-center justify-center rounded-lg bg-surface-sunken text-2xl">
+          <li
+            key={i}
+            style={tone(i)}
+            className="flex flex-col items-center gap-2 rounded-xl border border-[color-mix(in_srgb,var(--tone)_60%,var(--line))] bg-[color-mix(in_srgb,var(--tone)_16%,var(--surface))] p-4 text-center text-ink transition duration-300 ease-out hover:-translate-y-1 hover:shadow-[0_14px_26px_-18px_var(--tone)] motion-reduce:transition-none motion-reduce:hover:translate-y-0"
+          >
+            <span aria-hidden="true" className="flex h-12 w-12 items-center justify-center rounded-full bg-[var(--tone)] text-2xl shadow-[0_6px_14px_-8px_var(--tone)]">
               {ub.badges?.icon ?? '🏅'}
             </span>
             <span className="text-sm font-bold">
@@ -53,9 +62,10 @@ export function BadgeWall({ badges }: { badges: BadgeRow[] }) {
         {SAMPLE_LOCKED_BADGES.map((lb, i) => (
           <li
             key={i}
-            className="flex flex-col items-center gap-2 rounded-lg border border-dashed border-edge bg-surface-sunken p-4 text-center text-ink-muted"
+            style={tone(badges.length + i)}
+            className="flex flex-col items-center gap-2 rounded-xl border border-dashed border-[color-mix(in_srgb,var(--tone)_70%,var(--edge))] bg-[color-mix(in_srgb,var(--tone)_10%,var(--surface))] p-4 text-center text-ink-muted transition duration-300 ease-out hover:-translate-y-1 hover:bg-[color-mix(in_srgb,var(--tone)_18%,var(--surface))] motion-reduce:transition-none motion-reduce:hover:translate-y-0"
           >
-            <span aria-hidden="true" className="flex h-12 w-12 items-center justify-center rounded-lg bg-surface text-2xl grayscale">
+            <span aria-hidden="true" className="flex h-12 w-12 items-center justify-center rounded-full bg-[color-mix(in_srgb,var(--tone)_40%,var(--surface))] text-2xl opacity-80">
               {lb.icon}
             </span>
             <span className="text-sm font-semibold">{t(lb.name)}</span>

@@ -12,16 +12,23 @@ SciPal should feel like a warm, modern field notebook for curious Vietnamese lea
 
 - Tám bảng màu: Tiểu học (nâu nhạt, bìa vở và bút chì gỗ), THCS (xanh dương, bút bi), THPT (xanh lá, bảng lớp) và trung tính (chưa rõ cấp), mỗi bảng có sáng và tối. Giá trị nằm ở `packages/ui/src/theme/palettes.ts`, CSS sinh bằng `renderThemeCss()` và in trong root layout.
 - Vai token (spec §3.2): `paper`, `surface`, `surface-sunken`, `ink`, `ink-muted`, `line` (chỉ trang trí), `edge` (viền điều khiển ≥ 3:1), `action`, `action-hover`, `action-ink`, `focus`, `nav`, `nav-ink`, `danger`/`success`/`warning` và `*-surface`, `pattern-ink`, `pattern-opacity`. Tailwind: `bg-paper`, `text-ink`, `border-edge`…
+- Màu phụ theo cấp (`sun`, `coral`, `sky` → `--sun`, `--coral`, `--sky`): vàng nắng, cam san hô và một màu lạnh (Tiểu học xanh ngọc nhạt, THCS tím, THPT xanh trời), hài hoà với màu chính của cấp. Chỉ dùng cho tô điểm: đồ vật trong tranh, quầng sáng, nét highlight, nền nhạt của vùng demo, chip gợi ý. Không bao giờ làm màu chữ; chữ đặt trên chúng là `--ink` (sáng) hoặc `--paper` (tối), test `palettes.test.ts` giữ ≥ 4.5:1. Nút, link và trạng thái điều khiển vẫn dùng `action`; riêng nút đăng nhập (navbar, menu mobile, trang login) là dải `sun` → `coral` chữ `--ink` cho thật nổi. Toàn web: quầng sáng `sun`/`sky`/`coral` cố định sau mọi trang (`[data-app-shell]::after`, tắt khi `prefers-contrast: more`), vạch ba màu dưới tiêu đề trang nội dung, nội dung trang trồi lên lần lượt khi vào (tắt khi giảm chuyển động); thẻ từ điển xoay vòng ba màu ở mép trên, nhãn loại từ và ô ví dụ. Tranh hero: trang phải của sách theo cấp (Tiểu học đếm hình, THCS biểu đồ cột, THPT parabol).
 - Accent môn (`--accent`, `--accent-ink`) chỉ là "nhãn vở": nhãn, icon, dải lề, thanh tiến độ; không tô nền trang, thẻ hay nút chính.
 - Đỏ (`danger`) chỉ cho lỗi và phần sửa đáp án quiz.
 - Hoạ tiết đồ dùng học tập chỉ hiện trên `paper`; tắt bằng `data-pattern="off"` (phòng thi), khi `prefers-contrast: more` và khi in.
 - Bốn bộ hoạ tiết ở `frontend/public/patterns/<level>.svg` (`PATTERN_URLS` trong `palettes.ts`): Tiểu học — bút chì, gọt bút chì, thước kẻ, hộp bút, bảng con, phấn màu; THCS — compa, ê-ke, thước đo độ, bút bi, máy tính cầm tay; THPT — phấn và giẻ lau bảng, bình tam giác, máy tính cầm tay, kính lúp, bàn phím và chuột; trung tính — bút chì, thước, ê-ke, compa, máy tính. Quy tắc (test `frontend/lib/theme/patterns.test.ts`): một màu `#000` (dùng làm `mask-image`), < 4 KB, `viewBox="0 0 320 320"`, không `<script>`, ảnh, `foreignObject`, `href` hay thuộc tính `on*`.
 - Chế độ tối có sẵn nhưng tắt bằng `DARK_MODE_ENABLED` tới hết giai đoạn 5.
-- Bảng `--landing-*` theo cấp đã là bí danh trỏ về token chung; `--gate-*` (cổng chọn cấp, trung tính) vẫn viết cứng — việc còn lại của giai đoạn 2.
+- Landing và cổng chọn cấp chỉ dùng token chung (`--paper`, `--ink`, `--nav`…); `--gate-*` là bí danh trỏ về token chung, không còn màu viết cứng.
 
 ### Navbar
 
-Navbar tô màu chính của cấp: Tiểu học nâu nhạt `#96693F` (chữ trắng), THCS xanh dương `#2563EB`, THPT xanh lá `#15803D`, chưa chọn cấp `#15803D`. Nút đăng nhập và công tắc đang chọn đảo màu (`bg-nav-ink text-nav`).
+Navbar tô màu chính của cấp: Tiểu học nâu nhạt `#96693F` (chữ trắng), THCS xanh dương `#2563EB`, THPT xanh lá `#15803D`, chưa chọn cấp `#15803D`. Nút đăng nhập và công tắc đang chọn đảo màu (`bg-nav-ink text-nav`). Mục đang ở được đánh dấu bằng vạch 3px ở mép dưới thanh (`navLink` trong `navbar.module.css`), hover là nền mờ bo tròn. Công tắc ngôn ngữ là nhóm viên thuốc cao 32px, vùng bấm mở rộng tới 44px. Nhãn "Ngoại tuyến" chỉ hiện khi mất mạng. Tài khoản: ô chữ cái đầu + tên (tên ẩn dưới 1536px để thanh admin vẫn vừa 1280px) và nút "Đăng xuất" dạng viền.
+
+### Trang Môn học
+
+- `/subjects` là tab "Môn học" của navbar (link; không còn menu thả trên desktop và không còn danh sách môn trong menu mobile). Mục navbar được đánh dấu cả khi đang ở trong một môn hay bài học.
+- Chọn **lớp**, đồng bộ theo cấp đang chọn (cấp tài khoản, rồi cấp đã chọn trong phiên): chỉ hiện các lớp của cấp đó (THPT → 10–12), mặc định lớp đầu. Chưa chọn cấp thì hiện đủ 1–12 theo nhóm Tiểu học / THCS / THPT, mặc định lớp 10. Đổi lớp không đổi cấp đã lưu.
+- Thẻ môn của lớp đó: chỉ có link "Vào học" khi lớp có bài đã xuất bản (`liveGrades`), dẫn thẳng tới `/<môn>#lop-<lớp>` (tiêu đề nhóm lớp trên trang môn có `id="lop-N"`); còn lại hiện "Đang biên soạn".
 
 ### Portal
 
@@ -42,7 +49,7 @@ Menu, popover hay dialog render qua portal phải gắn vào trong `[data-app-sh
 
 ### Khu vực cá nhân (hồ sơ, tiến trình, thi thử, khảo sát)
 
-- **Heatmap chuỗi ngày** (`StreakCalendar`): 4 mức theo `action` — `streakCellClass()`: 0 → `bg-surface-sunken`, 1 → `action` 30% trên `surface`, 2–3 → 60%, ≥ 4 → `bg-action` (chữ `text-action-ink`). Số trong ô là số môn có chuỗi phủ ngày đó (`activeSubjectsOn()`, tính từ `last_active` lùi `current_streak` ngày). Mỗi ô có `title`/`aria-label` song ngữ nêu ngày + số môn; chú giải "Ít → Nhiều" bằng chữ. Hôm nay có viền `outline-focus`.
+- **Heatmap chuỗi ngày** (`StreakCalendar`): 4 mức ấm — `streakCellClass()`: 0 → `bg-surface-sunken`, 1 → `sun` 45% trên `surface`, 2–3 → `bg-sun`, ≥ 4 → `bg-coral`; số trong ô luôn `text-ink`. Trang Tiến trình: thẻ XP nền `sun`→`coral` nhạt, thanh cấp độ gradient `sun`→`coral`; mỗi khối có mép trên một màu phụ; huy hiệu xoay vòng ba màu phụ. Số trong ô là số môn có chuỗi phủ ngày đó (`activeSubjectsOn()`, tính từ `last_active` lùi `current_streak` ngày). Mỗi ô có `title`/`aria-label` song ngữ nêu ngày + số môn; chú giải "Ít → Nhiều" bằng chữ. Hôm nay có viền `outline-focus`.
 - **Đồng hồ thi** (`ExamRunner`): 3 mức theo `timerTone()` — > 300 giây `normal` (`bg-surface text-ink border-line`), 61–300 `warning` (`bg-warning-surface text-warning`), ≤ 60 `danger` (`bg-danger-surface text-danger`). Mức cảnh báo luôn kèm chữ "Còn dưới 5 phút / Còn dưới 1 phút" trong vùng `aria-live="polite"`, không chỉ đổi màu.
 - **Bảng câu hỏi** (`AnswerPalette`): 3 trạng thái — đã trả lời `bg-action text-action-ink`, chưa trả lời `border-edge bg-surface text-ink`, đang xem thêm `outline-focus`; ô `min-h-11 min-w-11`; `aria-label` "Câu 3, đã trả lời"; chú giải ba trạng thái bằng chữ bên dưới.
 - Lựa chọn trong đề là radio thật trong `fieldset`/`legend`; kết quả chỉ dùng số liệu server trả về (điểm, số câu đúng), câu đúng/sai kèm `CircleCheck`/`CircleX`.
@@ -102,36 +109,23 @@ Bảng (`Table`) cho danh sách tài khoản và học sinh, cuộn ngang trong 
 
 ### Level choice gate
 
-The first-visit level choice uses a neutral paper palette before the student enters a level-specific landing. Keep these variables scoped to the gate root:
+Spec: `docs/superpowers/specs/2026-09-26-landing-redesign-design.md`.
 
-| Token | Value | Usage |
-|---|---:|---|
-| `--gate-paper` | `#F7F7F3` | Page canvas |
-| `--gate-surface` | `#FFFFFF` | Choice sheet and options |
-| `--gate-ink` | `#202922` | Main text |
-| `--gate-muted` | `#49574E` | Supporting text |
-| `--gate-line` | `#D8DED8` | Rules and card boundaries |
-| `--gate-action` | `#275B42` | Selection, focus context, and active status |
-| `--gate-action-hover` | `#1B4934` | Hover and pressed feedback |
-| `--gate-focus` | `#8A3E1F` | Keyboard focus outline |
-| `--gate-action-soft` | `#EDF4EE` | Current-level marker |
-| `--gate-hover-surface` | `#FBFCF9` | Choice hover surface |
-| `--gate-pressed-surface` | `#F1F5F1` | Choice pressed surface |
-| `--gate-error-ink` | `#96352D` | Save and catalog errors |
-| `--gate-error-surface` | `#FFF1EE` | Error message surface |
-| `--gate-error-line` | `#E8B8AF` | Error message border |
+- Một tiêu đề một dòng ("Bạn học lớp mấy?") và ba cuốn vở CSS 3D trên kệ. Bìa vở chỉ có tên cấp và khoảng lớp; không nhãn trạng thái học liệu (cả ba cấp đã ra mắt, "Đang biên soạn" chỉ hiện ở môn/bài).
+- Mỗi cuốn vở nằm trong `LevelScope` của cấp đó: bìa `--nav`, chữ `--nav-ink`, hoạ tiết `--pattern-url` làm `mask-image`; nhãn tên dán trên bìa là `--surface` có dòng kẻ `--line`.
+- Máy có chuột: vở nghiêng theo chuột (tối đa 8°), hover/focus thì nhô ra và bìa hé ~22°. Màn ≤ 640px: ba vở nằm ngang xếp dọc, chạm thì lún. Chọn: bìa lật mở 400 ms (`GATE_FLIP_MS`), trang giấy phóng to; `prefers-reduced-motion` bỏ hết chuyển động và áp dụng ngay.
+- Vẫn là `<form method="post">` với ba `<button name="level">`; tài khoản gửi form ngay (hiệu ứng không làm chậm POST), khách chọn qua `createGateSelection` — lần bấm đầu thắng, bấm lặp bị bỏ qua. Ghi chú lưu trữ và legend chỉ dành cho trình đọc màn hình.
 
-Do not infer a level from this neutral palette. The selection remains a native form action with visible current, upcoming, available, error, account-sync, and device-only states. Use the shared `scipal-lang` preference and a visible VI/EN switch on both the gate and landing hero notes; render one selected language at a time instead of duplicating each paragraph in both languages. On the public landing, hide the duplicate switch in the global navbar so the page presents one prominent control.
+### Landing
 
-The gate stylesheet consumes the shared 4px `--space-*` scale and type scale through component-scoped aliases. Keep radii, focus size, control targets, panel width, shadow, and typography details as named gate tokens alongside the palette. English-specific typography uses the gate's inherited `lang="en"` state rather than selectors on translated child spans.
+- Thứ tự: hero (nhãn cấp, tiêu đề hai dòng, một câu phụ, "Xem môn học" + "Đổi cấp", tranh bàn học SVG) → "Môn học của bạn" (`SubjectGrid`) → "Học thế nào" (ba thẻ demo Tin học theo cấp, mỗi thẻ là một vùng giấy kẻ chấm có demo chạy được + tiêu đề + một câu: tìm kiếm nhị phân chạy từng bước khi thẻ vào màn hình, có nút "Xem lại" (Tiểu học là trò đoán số 1–8); câu song ngữ đổi bằng cờ, tự đổi sang tiếng Anh rồi quay lại một lần, thuật ngữ chính được tô dấu; thuật ngữ trong từ điển mở ra định nghĩa và ví dụ. Hover: thẻ nhô 6px, viền và nền demo ngả màu `action`) → "Hỏi bất cứ lúc nào" (`TutorDemoCard`; nút "Thử ngay" chỉ khi truyền `href` cho `TutorSection`) → "Sẵn sàng chưa?" trên nền `--nav` → khảo sát một dòng → footer.
+- Mỗi section một tiêu đề, tối đa một câu phụ; không đoạn văn.
+- Tranh hero (`features/landing/hero/`): SVG tĩnh (`HeroIllustration`) render phía server, màu chỉ lấy từ token. Chiều sâu được vẽ bằng mặt bên tối hơn (`color-mix` với `--ink`), chồng giấy và bóng đổ mờ, không xoay cả khung bằng CSS và không đóng khung thẻ. Một vùng `--paper` mờ dần phía sau làm dịu hoạ tiết nền. Tranh tự dựng một lần khi vào trang (~1,8 s, chỉ CSS): sách trồi lên, hai trang mở từ gáy, dòng kẻ và đồ thị tự vẽ (`pathLength=1` + `stroke-dashoffset`), điểm đánh dấu nảy, dải đánh dấu buông xuống, rồi đồ vật rơi xuống có độ nảy và bóng đổ lớn dần. Đổi cấp thì dựng lại (`key={level}`). Máy có chuột: `HeroStage` ghi vị trí con trỏ trên hero vào `--px`/`--py` (một khung hình mỗi lần di chuột, không vòng lặp); tranh nghiêng tối đa 5–7° và ba lớp (sách, đồ vật sau, đồ vật trước) dịch lệch nhau. Tiêu đề hiện từng dòng từ mờ sang rõ, rồi câu phụ và nút. Tất cả tắt khi `prefers-reduced-motion`. Đồ vật theo cấp là dữ liệu trong `levelObjects.ts`. Không dùng `three`/WebGL hay canvas.
+- Hiệu ứng hiện khi cuộn (700 ms: trượt lên 1,75rem, thu nhỏ 0,97 và bỏ mờ 6px, lệch 80 ms theo cột) dùng thuộc tính `translate`/`scale` riêng để không đè `transform` của thẻ; bật giảm chuyển động giữa chừng thì mọi khối hiện ngay.
 
-| Alias | Source or use |
-|---|---|
-| `--gate-page-gutter`, `--gate-sheet-padding`, `--gate-section-gap`, `--gate-form-gap` | Responsive combinations of the shared spacing scale |
-| `--gate-type-display`, `--gate-type-h3`, `--gate-type-lead`, `--gate-type-body`, `--gate-type-small` | Display, H3, lead, body, and small text scale |
-| `--gate-font-display`, `--gate-font-body`, `--gate-font-measure` | Be Vietnam Pro, Inter, and JetBrains Mono font roles |
-| `--gate-control-target` | 44px minimum interactive target |
-| `--gate-radius-*`, `--gate-outline-width`, `--gate-shadow-sheet` | Component geometry and focus/surface treatments |
+### Language switch
+
+Công tắc ngôn ngữ ở navbar và trên thẻ song ngữ dùng cờ SVG `public/flags/vn.svg` và `gb.svg` (`FlagIcon`), không dùng emoji; mỗi nút có `aria-label` "Tiếng Việt"/"English" và `aria-pressed`. Test `lib/theme/flags.test.ts` giữ file cờ < 2 KB và không có script/href.
 
 ## 3. Typography
 
@@ -139,7 +133,7 @@ The gate stylesheet consumes the shared 4px `--space-*` scale and type scale thr
 
 | Level | Size | Weight | Line height | Usage |
 |---|---|---:|---:|---|
-| Display | `clamp(2.45rem, 5.6vw, 5.5rem)` | 700–800 | 1.04–1.1 | Landing and gate heading |
+| Display | `clamp(2.25rem, 6.4vw, 4.75rem)` (gate), `clamp(2.6rem, 5.4vw, 4.6rem)` (landing hero) | 800 | 1.02–1.05 | Landing and gate heading |
 | H1 | `2.25rem` | 700 | 1.15 | Profile section heading |
 | H2 | `1.75rem` | 600–700 | 1.25 | Section heading |
 | H3 | `1.25rem` | 600 | 1.35 | Choice and notebook title |

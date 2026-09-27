@@ -13,6 +13,10 @@ export interface LandingSubject {
   sort_order: number;
   education_level: EducationLevel;
   status: 'active' | 'upcoming';
+  /** Catalog grades of this subject within the level, ascending. */
+  grades?: number[];
+  /** Grades within the level that have at least one published lesson. */
+  liveGrades?: number[];
 }
 
 export interface CatalogSubjectRow {
@@ -36,15 +40,21 @@ export function expandSubjectsByLevel(
   published: Array<{ subject_id: string; grade: number }>,
 ): LandingSubject[] {
   const liveLevels = new Set(published.map((l) => `${l.subject_id}:${levelOfGrade(l.grade)}`));
+  const liveGrades = new Set(published.map((l) => `${l.subject_id}:${l.grade}`));
   const cards: LandingSubject[] = [];
   for (const level of LEVEL_ORDER) {
     for (const row of rows) {
-      if (!row.subject_grade_catalog.some((c) => levelOfGrade(c.grade) === level)) continue;
+      const grades = [...new Set(row.subject_grade_catalog.map((c) => c.grade))]
+        .filter((grade) => levelOfGrade(grade) === level)
+        .sort((a, b) => a - b);
+      if (grades.length === 0) continue;
       const { subject_grade_catalog: _catalog, ...subject } = row;
       cards.push({
         ...subject,
         education_level: level,
         status: liveLevels.has(`${row.id}:${level}`) ? 'active' : 'upcoming',
+        grades,
+        liveGrades: grades.filter((grade) => liveGrades.has(`${row.id}:${grade}`)),
       });
     }
   }

@@ -18,13 +18,13 @@ describe('activeSubjectsOn', () => {
 });
 
 describe('streakCellClass', () => {
-  it('uses four levels of the action colour', () => {
+  it('uses four warm steps from sun to coral', () => {
     expect(streakCellClass(0)).toBe('bg-surface-sunken');
-    expect(streakCellClass(1)).toBe('bg-[color-mix(in_srgb,var(--action)_30%,var(--surface))]');
-    expect(streakCellClass(2)).toBe('bg-[color-mix(in_srgb,var(--action)_60%,var(--surface))]');
-    expect(streakCellClass(3)).toBe('bg-[color-mix(in_srgb,var(--action)_60%,var(--surface))]');
-    expect(streakCellClass(4)).toBe('bg-action');
-    expect(streakCellClass(12)).toBe('bg-action');
+    expect(streakCellClass(1)).toBe('bg-[color-mix(in_srgb,var(--sun)_45%,var(--surface))]');
+    expect(streakCellClass(2)).toBe('bg-sun');
+    expect(streakCellClass(3)).toBe('bg-sun');
+    expect(streakCellClass(4)).toBe('bg-coral');
+    expect(streakCellClass(12)).toBe('bg-coral');
   });
 
   it('treats negative and non-numeric counts as no activity', () => {

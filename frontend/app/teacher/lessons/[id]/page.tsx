@@ -50,6 +50,7 @@ export default async function LessonAuthoringStudioPage({
 
       <LessonEditor
         lessonId={lesson.id}
+        subjectId={lesson.subject_id}
         initialTitleVi={lesson.title_vi}
         initialTitleEn={lesson.title_en}
         initialBlocks={lesson.blocks}
@@ -57,8 +58,6 @@ export default async function LessonAuthoringStudioPage({
         initialStatus={lesson.status}
         initialReviewNote={lesson.review_note}
         canReview={role === 'admin'}
-        grade={lesson.grade}
-        subjectSlug={lesson.subject_slug}
       />
     </main>
   );

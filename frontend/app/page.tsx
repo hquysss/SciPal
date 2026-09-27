@@ -75,7 +75,6 @@ export default async function HomePage({ searchParams }: HomePageProps) {
       <LevelGate
         currentLevel={accountLevel}
         isAuthenticated
-        informatics={landingData.informatics}
         saveError={saveError}
       />
     );

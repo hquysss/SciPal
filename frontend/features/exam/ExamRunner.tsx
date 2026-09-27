@@ -10,14 +10,60 @@ import { createBrowserClient } from '../../lib/supabase';
 import { Alert } from '../../components/ui/alert';
 import { buttonVariants } from '../../components/ui/button';
 
+type Bilingual = { en: string; vi: string };
+
 export interface ExamQuestionItem {
   id: string;
+  /** mc: pick one option; truefalse: judge each statement; short: type the answer. */
   type: string;
-  difficulty?: 'easy' | 'medium' | 'hard';
+  /** 1 (easy) to 3 (hard) from the API; older data used words. */
+  difficulty?: number | 'easy' | 'medium' | 'hard';
   data: {
-    stem: { en: string; vi: string };
-    options?: Array<{ id: string; text: { en: string; vi: string } }>;
+    stem: Bilingual;
+    options?: Array<{ id: string; text: Bilingual }>;
+    items?: Array<{ id: string; text: Bilingual }>;
   };
+}
+
+/** What the student has entered for one question so far. */
+export interface DraftAnswer {
+  option?: string;
+  items?: Record<string, boolean>;
+  text?: string;
+}
+
+export function isAnswered(answer: DraftAnswer | undefined): boolean {
+  if (!answer) return false;
+  return Boolean(answer.option) || Object.keys(answer.items ?? {}).length > 0 || Boolean(answer.text?.trim());
+}
+
+export interface SubmittedAnswer {
+  question_id: string;
+  selected_option?: string;
+  items?: Array<{ id: string; selected: boolean }>;
+  short_answer?: string;
+}
+
+/** The body POST /api/score/exam expects, one entry per answered question. */
+export function toSubmission(questions: ExamQuestionItem[], answers: Record<number, DraftAnswer>): SubmittedAnswer[] {
+  return questions.flatMap((question, index): SubmittedAnswer[] => {
+    const answer = answers[index];
+    if (!isAnswered(answer)) return [];
+    if (question.type === 'truefalse') {
+      return [{
+        question_id: question.id,
+        items: Object.entries(answer!.items ?? {}).map(([id, selected]) => ({ id, selected })),
+      }];
+    }
+    if (question.type === 'short') return [{ question_id: question.id, short_answer: answer!.text!.trim() }];
+    return [{ question_id: question.id, selected_option: answer!.option }];
+  });
+}
+
+export function difficultyKey(value: ExamQuestionItem['difficulty']): 'easy' | 'medium' | 'hard' {
+  if (value === 1 || value === 'easy') return 'easy';
+  if (value === 3 || value === 'hard') return 'hard';
+  return 'medium';
 }
 
 export type TimerTone = 'normal' | 'warning' | 'danger';
@@ -61,7 +107,11 @@ export function ExamRunner({
   const router = useRouter();
   const autoSubmitAttempted = useRef(false);
   const [currentIndex, setCurrentIndex] = useState(0);
-  const [answers, setAnswers] = useState<Record<number, string>>({});
+  const [answers, setAnswers] = useState<Record<number, DraftAnswer>>({});
+  const answeredIndexes = Object.fromEntries(
+    Object.entries(answers).filter(([, answer]) => isAnswered(answer)).map(([index]) => [index, true]),
+  );
+  const updateAnswer = (index: number, next: DraftAnswer) => setAnswers((prev) => ({ ...prev, [index]: next }));
   const [timeLeft, setTimeLeft] = useState(durationMinutes * 60);
   const [submitting, setSubmitting] = useState(false);
   const [submissionError, setSubmissionError] = useState<string | null>(null);
@@ -77,10 +127,7 @@ export function ExamRunner({
     setSubmissionError(null);
     setSubmitting(true);
 
-    const formatted = Object.entries(answers).map(([idx, ans]) => ({
-      question_id: questions[Number(idx)].id,
-      selected_option: ans,
-    }));
+    const formatted = toSubmission(questions, answers);
 
       const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL ?? 'https://sci-pal-backend.vercel.app';
     try {
@@ -240,7 +287,7 @@ export function ExamRunner({
                   {t({ en: 'Question', vi: 'Câu' })} {currentIndex + 1} / {questions.length}
                 </span>
                 <span className="rounded-md bg-surface-sunken px-3 py-1 text-sm font-semibold text-ink-muted">
-                  {t(DIFFICULTY_LABEL[currentQ.difficulty ?? 'medium'])}
+                  {t(DIFFICULTY_LABEL[difficultyKey(currentQ.difficulty)])}
                 </span>
               </span>
               <span className="text-lg font-bold leading-relaxed text-ink sm:text-xl">
@@ -248,11 +295,71 @@ export function ExamRunner({
               </span>
             </legend>
 
+            {currentQ.type === 'truefalse' && (
+              <div className="flex flex-col gap-3">
+                <p className="text-sm text-ink-muted">
+                  {t({ en: 'Mark each statement true or false.', vi: 'Chọn Đúng hoặc Sai cho từng nhận định.' })}
+                </p>
+                {currentQ.data.items?.map((item, itemIndex) => {
+                  const chosen = answers[currentIndex]?.items?.[item.id];
+                  return (
+                    <div
+                      key={item.id}
+                      role="radiogroup"
+                      aria-label={`${String.fromCharCode(97 + itemIndex)}) ${lang === 'en' ? item.text.en : item.text.vi}`}
+                      className="flex flex-col gap-3 rounded-lg border border-edge bg-surface p-4 sm:flex-row sm:items-center sm:justify-between"
+                    >
+                      <span className="text-base font-semibold leading-normal text-ink">
+                        {String.fromCharCode(97 + itemIndex)}) {lang === 'en' ? item.text.en : item.text.vi}
+                      </span>
+                      <span className="flex shrink-0 gap-2">
+                        {([true, false] as const).map((value) => (
+                          <label
+                            key={String(value)}
+                            className={`flex min-h-11 min-w-20 cursor-pointer items-center justify-center rounded-lg border px-4 text-sm font-bold transition-colors has-[:focus-visible]:outline has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-focus ${
+                              chosen === value ? 'border-action bg-action text-action-ink' : 'border-edge bg-surface text-ink hover:bg-surface-sunken'
+                            }`}
+                          >
+                            <input
+                              type="radio"
+                              name={`question-${currentQ.id}-${item.id}`}
+                              checked={chosen === value}
+                              onChange={() =>
+                                updateAnswer(currentIndex, {
+                                  items: { ...(answers[currentIndex]?.items ?? {}), [item.id]: value },
+                                })
+                              }
+                              className="sr-only"
+                            />
+                            {value ? t({ en: 'True', vi: 'Đúng' }) : t({ en: 'False', vi: 'Sai' })}
+                          </label>
+                        ))}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+
+            {currentQ.type === 'short' && (
+              <label className="flex flex-col gap-2 text-sm font-semibold text-ink">
+                {t({ en: 'Your answer', vi: 'Câu trả lời của em' })}
+                <input
+                  type="text"
+                  value={answers[currentIndex]?.text ?? ''}
+                  onChange={(e) => updateAnswer(currentIndex, { text: e.target.value })}
+                  maxLength={500}
+                  autoComplete="off"
+                  className="min-h-11 rounded-lg border border-edge bg-surface px-4 py-3 text-base font-normal text-ink outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
+                />
+              </label>
+            )}
+
             {/* Options list */}
             <div className="flex flex-col gap-3">
-              {currentQ.data.options?.map((opt, optIndex) => {
+              {(currentQ.type === 'truefalse' || currentQ.type === 'short' ? [] : currentQ.data.options ?? []).map((opt, optIndex) => {
                 const letter = String.fromCharCode(65 + optIndex);
-                const isSelected = answers[currentIndex] === opt.id;
+                const isSelected = answers[currentIndex]?.option === opt.id;
                 return (
                   <label
                     key={opt.id}
@@ -267,7 +374,7 @@ export function ExamRunner({
                       name={`question-${currentQ.id}`}
                       value={opt.id}
                       checked={isSelected}
-                      onChange={() => setAnswers({ ...answers, [currentIndex]: opt.id })}
+                      onChange={() => updateAnswer(currentIndex, { option: opt.id })}
                       className="sr-only"
                     />
                     <span
@@ -313,7 +420,7 @@ export function ExamRunner({
       <AnswerPalette
         total={questions.length}
         currentIndex={currentIndex}
-        answers={answers}
+        answers={answeredIndexes}
         onSelect={(i) => setCurrentIndex(i)}
       />
     </div>

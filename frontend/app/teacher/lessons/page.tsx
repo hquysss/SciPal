@@ -2,10 +2,12 @@ import Link from 'next/link';
 import { getTeacherLessons, AuthoringApiError } from '@/features/authoring/authoringQueries';
 import { getAuthoringSession } from '@/features/authoring/serverAuth';
 import { LessonStatusBadge } from '@/features/authoring/lessonStatusBadge';
+import { LessonDeleteActions } from '@/features/authoring/LessonDeleteActions';
 import { PageBreadcrumb } from '@/components/nav/PageBreadcrumb';
 import { Alert } from '@/components/ui/alert';
 import { Bi } from '@/components/ui/bilingual';
 import { buttonVariants } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
 import { EmptyState } from '@/components/ui/empty-state';
 
@@ -49,10 +51,17 @@ export default async function TeacherLessonsPage() {
           <Bi en="Lesson studio" vi="Soạn bài giảng" />
         </h1>
         <p className="mt-2 text-base text-ink-muted">
-          <Bi
-            en="New lessons start as drafts. When a draft is ready, send it to an admin for review before students can see it."
-            vi="Bài mới bắt đầu là bản nháp. Khi hoàn thiện, giáo viên gửi admin duyệt trước khi bài xuất bản cho học sinh."
-          />
+          {role === 'admin' ? (
+            <Bi
+              en="New lessons start as drafts. An admin may publish their own at once; a teacher's lesson needs admin review before students see it."
+              vi="Bài mới bắt đầu là bản nháp. Admin soạn xong có thể xuất bản ngay; bài của giáo viên cần admin duyệt trước khi học sinh thấy."
+            />
+          ) : (
+            <Bi
+              en="New lessons start as drafts. When a draft is ready, send it to an admin for review before students can see it."
+              vi="Bài mới bắt đầu là bản nháp. Khi hoàn thiện, giáo viên gửi admin duyệt trước khi bài xuất bản cho học sinh."
+            />
+          )}
         </p>
       </header>
 
@@ -63,12 +72,17 @@ export default async function TeacherLessonsPage() {
             {lessons ? <span className="ml-2 font-normal text-ink-muted">({lessons.length})</span> : null}
           </h2>
           <div className="flex flex-wrap gap-2">
+            {(role === 'teacher' || role === 'admin') && (
+              <Link href="/teacher/import" className={buttonVariants({ variant: 'outline' })}>
+                <Bi en="Import from Word / Excel" vi="Nhập từ Word / Excel" />
+              </Link>
+            )}
             {role === 'admin' && (
               <Link href="/admin/lessons/review" className={buttonVariants({ variant: 'outline' })}>
                 <Bi en="Review queue" vi="Hàng chờ duyệt" />
               </Link>
             )}
-            {role === 'teacher' && (
+            {(role === 'teacher' || role === 'admin') && (
               <Link href="/teacher/lessons/new-lesson" className={buttonVariants()}>
                 <Bi en="New lesson" vi="Soạn bài mới" />
               </Link>
@@ -93,6 +107,11 @@ export default async function TeacherLessonsPage() {
                       <span className="font-semibold text-ink-muted">{item.subject_name_vi} · <Bi en={`Grade ${item.grade}`} vi={`Lớp ${item.grade}`} /></span>
                       <LessonStatusBadge status={item.status} />
                       <span className="text-ink-muted"><Bi en="Updated" vi="Cập nhật" /> {formatUpdatedAt(item.updated_at)}</span>
+                      {item.delete_requested_at && (
+                        <Badge variant="warning">
+                          {role === 'admin' ? <Bi en="Teacher asked to delete" vi="Giáo viên yêu cầu xóa" /> : <Bi en="Deletion requested" vi="Đã gửi yêu cầu xóa" />}
+                        </Badge>
+                      )}
                     </div>
                     <h3 className="text-base font-semibold text-ink">{item.title_vi}</h3>
                     <p className="text-sm text-ink-muted">
@@ -100,6 +119,7 @@ export default async function TeacherLessonsPage() {
                     </p>
                   </div>
 
+                  <div className="flex flex-col items-start gap-2 sm:items-end">
                   <div className="flex flex-wrap items-center gap-2">
                     {item.status === 'published' ? (
                       <Link href={`/${item.subject_slug}/${item.slug}`} className={buttonVariants({ variant: 'outline' })}>
@@ -112,6 +132,17 @@ export default async function TeacherLessonsPage() {
                       <Bi en="Open in studio" vi="Mở trong studio" />
                     </Link>
                   </div>
+                  {(role === 'admin' || role === 'teacher') && (
+                    <LessonDeleteActions
+                      lessonId={item.id}
+                      title={item.title_vi}
+                      role={role}
+                      status={item.status}
+                      publishedAt={item.published_at}
+                      deleteRequestedAt={item.delete_requested_at ?? null}
+                    />
+                  )}
+                  </div>
                 </Card>
               </li>
             ))}
@@ -120,9 +151,9 @@ export default async function TeacherLessonsPage() {
           <EmptyState
             title={role === 'admin' ? <Bi en="No lessons yet" vi="Chưa có bài giảng nào" /> : <Bi en="You have not written a lesson yet" vi="Bạn chưa soạn bài giảng nào" />}
             description={role === 'admin'
-              ? <Bi en="Lessons teachers create will appear here." vi="Bài giáo viên tạo sẽ xuất hiện tại đây." />
+              ? <Bi en="Lessons teachers and admins create will appear here." vi="Bài giáo viên và admin tạo sẽ xuất hiện tại đây." />
               : <Bi en="Create a draft, add content blocks, then send it for review." vi="Tạo bản nháp, thêm khối nội dung, rồi gửi admin duyệt." />}
-            action={role === 'teacher' ? (
+            action={role === 'teacher' || role === 'admin' ? (
               <Link href="/teacher/lessons/new-lesson" className={buttonVariants()}>
                 <Bi en="Write your first lesson" vi="Soạn bài đầu tiên" />
               </Link>

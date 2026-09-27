@@ -1,15 +1,15 @@
 'use client';
 
+import { useEffect, useRef, useState, type MouseEvent, type PointerEvent } from 'react';
 import { useLanguage } from '@scipal/hooks';
-import Image from 'next/image';
+import { LevelScope } from '@scipal/ui';
 import type { EducationLevel } from './educationLevel';
-import type { InformaticsAvailability } from './getLandingData';
+import { createGateSelection } from './gateSelection';
 import styles from './level-gate.module.css';
 
 interface LevelGateProps {
   currentLevel: EducationLevel | null;
   isAuthenticated: boolean;
-  informatics: InformaticsAvailability;
   saveError: boolean;
   onGuestSelect?: (level: EducationLevel) => void;
 }
@@ -19,174 +19,150 @@ const levels: {
   name: { en: string; vi: string };
   grades: { en: string; vi: string };
 }[] = [
-  {
-    value: 'primary',
-    name: { vi: 'Tiểu học', en: 'Primary' },
-    grades: { vi: 'Lớp 1–5', en: 'Grades 1–5' },
-  },
-  {
-    value: 'lower_secondary',
-    name: { vi: 'THCS', en: 'Lower secondary' },
-    grades: { vi: 'Lớp 6–9', en: 'Grades 6–9' },
-  },
-  {
-    value: 'upper_secondary',
-    name: { vi: 'THPT', en: 'Upper secondary' },
-    grades: { vi: 'Lớp 10–12', en: 'Grades 10–12' },
-  },
+  { value: 'primary', name: { vi: 'Tiểu học', en: 'Primary' }, grades: { vi: 'Lớp 1–5', en: 'Grades 1–5' } },
+  { value: 'lower_secondary', name: { vi: 'THCS', en: 'Lower secondary' }, grades: { vi: 'Lớp 6–9', en: 'Grades 6–9' } },
+  { value: 'upper_secondary', name: { vi: 'THPT', en: 'Upper secondary' }, grades: { vi: 'Lớp 10–12', en: 'Grades 10–12' } },
 ];
 
-function InformaticsStatus({
-  state,
-  lang,
-}: {
-  state: InformaticsAvailability;
-  lang: 'en' | 'vi';
-}) {
-  if (state.kind === 'available') {
-    return (
-      <span className={styles.statusAvailable}>
-        {lang === 'en' ? 'Available' : 'Sẵn sàng'}
-      </span>
-    );
-  }
+const MAX_TILT_DEG = 8;
+/** If an account POST leaves this page alive (Stop, slow network), the gate becomes choosable again. */
+const ACCOUNT_REARM_MS = 3000;
 
-  if (state.kind === 'error') {
-    return (
-      <span className={styles.statusError}>
-        {lang === 'en' ? 'Could not load lesson status' : 'Không tải được trạng thái học liệu'}
-      </span>
-    );
-  }
-
-  return <span className={styles.statusUpcoming}>{lang === 'en' ? 'No published lessons yet' : 'Chưa có bài học đã xuất bản'}</span>;
+function prefersReducedMotion() {
+  return typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 }
 
-export function LevelGate({
-  currentLevel,
-  isAuthenticated,
-  informatics,
-  saveError,
-  onGuestSelect,
-}: LevelGateProps) {
-  const { lang, t } = useLanguage();
+export function LevelGate({ currentLevel, isAuthenticated, saveError, onGuestSelect }: LevelGateProps) {
+  const { t } = useLanguage();
+  const shelfRef = useRef<HTMLDivElement>(null);
+  const [opening, setOpening] = useState<EducationLevel | null>(null);
+  const onGuestSelectRef = useRef(onGuestSelect);
+  onGuestSelectRef.current = onGuestSelect;
+  const selectionRef = useRef<ReturnType<typeof createGateSelection> | null>(null);
+
+  const getSelection = () => {
+    selectionRef.current ??= createGateSelection({
+      reducedMotion: prefersReducedMotion(),
+      schedule: (fn, ms) => {
+        const id = window.setTimeout(fn, ms);
+        return () => window.clearTimeout(id);
+      },
+      // Accounts submit the form natively; the flip is cosmetic and never delays the POST.
+      onSelect: (level) => {
+        if (!isAuthenticated) onGuestSelectRef.current?.(level);
+      },
+      onReset: () => setOpening(null),
+      rearmMs: isAuthenticated ? ACCOUNT_REARM_MS : 0,
+    });
+    return selectionRef.current;
+  };
+
+  useEffect(() => {
+    // Back/forward cache can restore the page mid-flip; start from a closed shelf.
+    const onPageShow = (event: PageTransitionEvent) => {
+      if (event.persisted) selectionRef.current?.reset();
+    };
+    window.addEventListener('pageshow', onPageShow);
+    return () => {
+      window.removeEventListener('pageshow', onPageShow);
+      selectionRef.current?.dispose();
+    };
+  }, []);
+
+  const handleChoice = (event: MouseEvent<HTMLButtonElement>, level: EducationLevel) => {
+    if (!getSelection().select(level)) {
+      event.preventDefault();
+      return;
+    }
+    setOpening(level);
+  };
+
+  const handlePointerMove = (event: PointerEvent<HTMLDivElement>) => {
+    const shelf = shelfRef.current;
+    if (!shelf || event.pointerType !== 'mouse') return;
+    const box = shelf.getBoundingClientRect();
+    const x = (event.clientX - box.left) / box.width - 0.5;
+    const y = (event.clientY - box.top) / box.height - 0.5;
+    shelf.style.setProperty('--tilt-y', `${(x * 2 * MAX_TILT_DEG).toFixed(2)}deg`);
+    shelf.style.setProperty('--tilt-x', `${(-y * 2 * MAX_TILT_DEG).toFixed(2)}deg`);
+  };
+
+  const handlePointerLeave = () => {
+    shelfRef.current?.style.setProperty('--tilt-x', '0deg');
+    shelfRef.current?.style.setProperty('--tilt-y', '0deg');
+  };
 
   return (
-    <main className={styles.gate} data-scipal-level-gate lang={lang}>
-      <div className={styles.pageFrame}>
-        <header className={styles.brandRow}>
-          <Image src="/logo.svg" alt="" width={42} height={42} priority />
-          <span className={styles.brandName}>SciPal</span>
-          <span className={styles.brandDescriptor}>
-            {t({ en: 'FIELD NOTES · SCIENCE NOTEBOOK', vi: 'SỔ TAY KHOA HỌC' })}
-          </span>
-        </header>
+    <main className={styles.gate} data-scipal-level-gate data-opening={opening ?? undefined}>
+      <section className={styles.stage} aria-labelledby="level-gate-title">
+        <h1 id="level-gate-title" className={styles.title}>
+          {t({ en: 'What grade are you in?', vi: 'Bạn học lớp mấy?' })}
+        </h1>
 
-        <section className={styles.sheet} aria-labelledby="level-gate-title">
-          <div className={styles.kicker}>
-            <span>01</span>
-            <span>{t({ en: 'CHOOSE YOUR LEARNING PATH', vi: 'CHỌN LỐI VÀO HỌC TẬP' })}</span>
-          </div>
+        {saveError && (
+          <p className={styles.saveError} role="alert">
+            {t({
+              en: 'Your selection could not be saved. Please try again.',
+              vi: 'Chưa lưu được lựa chọn của bạn. Hãy thử lại.',
+            })}
+          </p>
+        )}
 
-          <div className={styles.introduction}>
-            <h1 id="level-gate-title">
-              {t({ en: 'Which school level are you in?', vi: 'Bạn đang học ở cấp nào?' })}
-            </h1>
-            <p className={styles.introDescription}>
-              {t({
-                en: 'Choose a level to see its learning materials and availability.',
-                vi: 'Chọn cấp học để xem đúng học liệu và trạng thái nội dung.',
-              })}
-            </p>
-          </div>
-
-          {saveError && (
-            <div className={styles.saveError} role="alert">
-              <strong>
-                {t({ en: 'Your selection could not be saved.', vi: 'Chưa lưu được lựa chọn của bạn.' })}
-              </strong>
-              <span>
-                {t({
-                  en: 'Your previous choice is unchanged. Please try again.',
-                  vi: 'Lựa chọn trước đó vẫn được giữ. Hãy thử lại.',
-                })}
-              </span>
-            </div>
-          )}
-
-          <form method="post" action="/api/preferences/education-level" className={styles.form}>
-            {isAuthenticated && <input type="hidden" name="scope" value="account" />}
-            <fieldset className={styles.fieldset} aria-describedby="level-gate-note">
-              <legend>
-                {t({ en: 'Choose one level', vi: 'Chọn một cấp học' })}
-              </legend>
-              <div className={styles.choices}>
-                {levels.map((level) => {
-                  const isCurrent = level.value === currentLevel;
-
-                  return (
+        <form method="post" action="/api/preferences/education-level" className={styles.form}>
+          {isAuthenticated && <input type="hidden" name="scope" value="account" />}
+          <fieldset className={styles.fieldset} aria-describedby="level-gate-note">
+            <legend className={styles.srOnly}>{t({ en: 'Choose one level', vi: 'Chọn một cấp học' })}</legend>
+            <div
+              ref={shelfRef}
+              className={styles.shelf}
+              onPointerMove={handlePointerMove}
+              onPointerLeave={handlePointerLeave}
+            >
+              {levels.map((level) => {
+                const isCurrent = level.value === currentLevel;
+                return (
+                  <LevelScope key={level.value} level={level.value} className={styles.slot}>
                     <button
-                      className={styles.choice}
+                      className={styles.book}
                       data-current={isCurrent ? 'true' : undefined}
-                      key={level.value}
+                      data-opening={opening === level.value ? 'true' : undefined}
                       type={isAuthenticated ? 'submit' : 'button'}
                       name="level"
                       value={level.value}
-                      onClick={isAuthenticated ? undefined : () => onGuestSelect?.(level.value)}
+                      onClick={(event) => handleChoice(event, level.value)}
                     >
-                      <span className={styles.choiceTopline}>
-                        <span className={styles.grade}>{t(level.grades)}</span>
+                      <span className={styles.pages} aria-hidden="true" />
+                      <span className={styles.cover}>
+                        <span className={styles.coverPattern} aria-hidden="true" />
+                        <span className={styles.label}>
+                          <span className={styles.levelName}>{t(level.name)}</span>
+                          <span className={styles.grades}>{t(level.grades)}</span>
+                        </span>
                         {isCurrent && (
-                          <span className={styles.current}>
-                            {t({ en: 'Current', vi: 'Đang chọn' })}
-                          </span>
+                          <span className={styles.current}>{t({ en: 'Current', vi: 'Đang chọn' })}</span>
                         )}
                       </span>
-                      <span className={styles.levelNames}>
-                        {t(level.name)}
-                      </span>
-                      {level.value === 'upper_secondary' ? (
-                        <InformaticsStatus state={informatics} lang={lang} />
-                      ) : (
-                        <span className={styles.statusUpcoming}>
-                          {t({ en: 'Coming soon', vi: 'Sắp ra mắt' })}
-                        </span>
-                      )}
+                      <span className={styles.spine} aria-hidden="true" />
                     </button>
-                  );
-                })}
-              </div>
-            </fieldset>
-          </form>
+                  </LevelScope>
+                );
+              })}
+            </div>
+          </fieldset>
+        </form>
 
-          {informatics.kind === 'error' && (
-            <p className={styles.retryNote}>
-              <a href="/?chooseLevel=1">
-                {t({ en: 'Reload lesson status', vi: 'Tải lại trạng thái học liệu' })}
-              </a>
-            </p>
-          )}
-
-          <p className={styles.preferenceNote} id="level-gate-note">
-            {isAuthenticated
-              ? t({
-                  en: 'Your choice will sync with your account.',
-                  vi: 'Lựa chọn sẽ đồng bộ theo tài khoản của bạn.',
-                })
-              : t({
-                  en: 'Your choice stays in this tab until you close it.',
-                  vi: 'Lựa chọn được giữ trong tab này đến khi bạn đóng tab.',
-                })}
-          </p>
-        </section>
-
-        <footer className={styles.pageFooter}>
-          {t({
-            en: 'You can change your level later in Profile.',
-            vi: 'Bạn có thể đổi cấp học sau này trong hồ sơ.',
-          })}
-        </footer>
-      </div>
+        <p className={styles.srOnly} id="level-gate-note">
+          {isAuthenticated
+            ? t({ en: 'Your choice will sync with your account.', vi: 'Lựa chọn sẽ đồng bộ theo tài khoản của bạn.' })
+            : t({
+                en: 'Your choice stays in this tab until you close it.',
+                vi: 'Lựa chọn được giữ trong tab này đến khi bạn đóng tab.',
+              })}
+        </p>
+        <p className={styles.footnote}>
+          {t({ en: 'You can change this later in Profile.', vi: 'Đổi được sau trong Hồ sơ.' })}
+        </p>
+      </section>
     </main>
   );
 }

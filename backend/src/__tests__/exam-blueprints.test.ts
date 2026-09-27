@@ -35,7 +35,7 @@ describe('GET /api/exam/blueprints', () => {
     expect(res.statusCode).toBe(200);
     expect(res.json().blueprints).toEqual([{
       id: BP, name: 'Tin học 11 — Giữa kì', grade: 11, subject_id: 's1', subject_slug: 'informatics',
-      subject_name_en: 'Informatics', subject_name_vi: 'Tin học', question_count: 15,
+      subject_name_en: 'Informatics', subject_name_vi: 'Tin học', question_count: 15, name_en: null, duration_minutes: null,
     }]);
     expect(res.body).not.toContain('sections');
     await app.close();
@@ -78,7 +78,7 @@ describe('exam routes without demo content', () => {
     const app = Fastify();
     app.decorate('supabase', mockSupabase({
       questions: mockQuery({ data: [], error: null }),
-      exam_blueprints: mockQuery({ data: null, error: null }),
+      exam_blueprints: mockQuery({ data: { id: BP }, error: null }),
     }));
     app.addHook('onRequest', async (request) => { (request as any).user = { id: 'student-1' }; });
     await app.register(examRoutes);

@@ -195,3 +195,22 @@ describe('authoring publish timestamps', () => {
     await app.close();
   });
 });
+
+describe('authoring lesson ids', () => {
+  it('answers a non-UUID lesson id with 404 without querying the database', async () => {
+    const app = await buildAuthoringApp(admin, {});
+    for (const [method, url] of [
+      ['GET', '/api/authoring/lessons/not-a-uuid'],
+      ['PATCH', '/api/authoring/lessons/not-a-uuid'],
+      ['PATCH', '/api/authoring/lessons/not-a-uuid/review'],
+    ] as const) {
+      const res = await app.inject({
+        method,
+        url,
+        payload: method === 'GET' ? undefined : { expected_updated_at: STAMP, decision: 'approve', title_en: 'T' },
+      });
+      expect(res.statusCode, `${method} ${url}`).toBe(404);
+    }
+    await app.close();
+  });
+});

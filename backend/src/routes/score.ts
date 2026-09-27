@@ -67,9 +67,9 @@ export const scoreRoutes: FastifyPluginAsync = async (app) => {
       return reply.code(503).send(unavailable);
     }
 
-    const today = new Date().toISOString().slice(0, 10);
-    const yesterday = new Date();
-    yesterday.setDate(yesterday.getDate() - 1);
+    const now = Date.now();
+    const today = new Date(now).toISOString().slice(0, 10);
+    const yesterday = new Date(now - 24 * 60 * 60 * 1000);
     const { data: streak, error: streakError } = await app.supabase
       .from('streaks')
       .select('current_streak, longest_streak, last_active')

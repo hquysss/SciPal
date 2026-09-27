@@ -28,6 +28,9 @@ export const THEME_CSS_VARS: Record<Exclude<keyof ThemePalette, 'patternOpacity'
   successSurface: '--success-surface',
   warning: '--warning',
   warningSurface: '--warning-surface',
+  sun: '--sun',
+  coral: '--coral',
+  sky: '--sky',
   patternInk: '--pattern-ink',
 };
 

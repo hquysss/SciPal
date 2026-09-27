@@ -7,20 +7,31 @@ import { scoreRoutes } from './routes/score.js';
 import { surveyRoutes } from './routes/survey.js';
 import { examRoutes } from './routes/exam.js';
 import { authoringRoutes } from './routes/authoring.js';
+import { mediaRoutes } from './routes/media.js';
+import { simulationRequestRoutes } from './routes/simulationRequests.js';
 import { classRoutes } from './routes/classes.js';
 import { accountsRoutes } from './routes/accounts.js';
+import { examImportRoutes } from './routes/examImport.js';
+import { questionRoutes } from './routes/questions.js';
+import { practiceRoutes } from './routes/practice.js';
 
 const app = Fastify({ logger: true });
 
-await app.register(cors, { origin: process.env.CORS_ORIGINS?.split(',') ?? '*' });
+const corsOrigins = process.env.CORS_ORIGINS?.split(',').map((origin) => origin.trim()).filter(Boolean);
+await app.register(cors, { origin: corsOrigins?.length ? corsOrigins : '*' });
 await app.register(supabasePlugin);
 await app.register(authPlugin);
 await app.register(scoreRoutes);
 await app.register(surveyRoutes);
 await app.register(examRoutes);
 await app.register(authoringRoutes);
+await app.register(mediaRoutes);
+await app.register(simulationRequestRoutes);
 await app.register(classRoutes);
 await app.register(accountsRoutes);
+await app.register(examImportRoutes);
+await app.register(questionRoutes);
+await app.register(practiceRoutes);
 
 app.get('/health', async () => ({ status: 'ok' }));
 

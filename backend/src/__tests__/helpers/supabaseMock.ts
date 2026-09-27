@@ -9,10 +9,23 @@ export interface MockBuilder {
   eqCalls: Array<[string, unknown]>;
   inserted: unknown[];
   updated: unknown[];
+  deleteCalls: number;
+  isCalls: Array<[string, unknown]>;
   rangeCalls: Array<[number, number]>;
+  inCalls: Array<[string, unknown[]]>;
+  orCalls: string[];
+  ilikeCalls: Array<[string, string]>;
+  containsCalls: Array<[string, unknown]>;
+  selectArgs: unknown[][];
   select(...args: unknown[]): MockBuilder;
   eq(column: string, value: unknown): MockBuilder;
   in(column: string, values: unknown[]): MockBuilder;
+  or(filter: string): MockBuilder;
+  ilike(column: string, pattern: string): MockBuilder;
+  contains(column: string, value: unknown): MockBuilder;
+  is(column: string, value: unknown): MockBuilder;
+  not(column: string, operator: string, value: unknown): MockBuilder;
+  delete(): MockBuilder;
   order(...args: unknown[]): MockBuilder;
   insert(row: unknown): MockBuilder;
   update(row: unknown): MockBuilder;
@@ -32,13 +45,47 @@ export function mockQuery(result: QueryResult): MockBuilder {
     eqCalls: [],
     inserted: [],
     updated: [],
+    deleteCalls: 0,
+    isCalls: [],
     rangeCalls: [],
-    select: () => builder,
+    inCalls: [],
+    orCalls: [],
+    ilikeCalls: [],
+    containsCalls: [],
+    selectArgs: [],
+    select: (...args) => {
+      builder.selectArgs.push(args);
+      return builder;
+    },
     eq: (column, value) => {
       builder.eqCalls.push([column, value]);
       return builder;
     },
-    in: () => builder,
+    in: (column, values) => {
+      builder.inCalls.push([column, values]);
+      return builder;
+    },
+    or: (filter) => {
+      builder.orCalls.push(filter);
+      return builder;
+    },
+    ilike: (column, pattern) => {
+      builder.ilikeCalls.push([column, pattern]);
+      return builder;
+    },
+    contains: (column, value) => {
+      builder.containsCalls.push([column, value]);
+      return builder;
+    },
+    is: (column, value) => {
+      builder.isCalls.push([column, value]);
+      return builder;
+    },
+    not: () => builder,
+    delete: () => {
+      builder.deleteCalls += 1;
+      return builder;
+    },
     order: () => builder,
     insert: (row) => {
       builder.inserted.push(row);
