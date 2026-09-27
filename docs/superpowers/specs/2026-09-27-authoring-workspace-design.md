@@ -9,30 +9,124 @@ practice questions — and compose exams from a question bank, without Excel or 
 The existing review flow (teacher submits, admin publishes), bilingual content and
 server-authoritative scoring stay as they are.
 
-Today the Studio (`/teacher/lessons/[id]`) has theory, code, formula, quiz (needs a UUID),
-interactive (placeholder only: `InteractiveRenderer` shows "sẵn sàng trong chế độ luyện tập"),
-term and resource blocks. Learners see "Câu hỏi luyện tập sắp có" for quiz blocks. Exams can only
-be created through the Excel import at `/teacher/import`.
+Today the Studio (`/teacher/lessons/[id]`) cannot edit block content: the palette appends blocks
+with fixed sample text (`BlockPalette.tsx`) and the block list only offers up/down/delete, so real
+content arrives only through Word/PDF import. The interactive block is a placeholder
+(`InteractiveRenderer` shows "sẵn sàng trong chế độ luyện tập"), quiz blocks need a pasted UUID
+and learners see "Câu hỏi luyện tập sắp có". The learner page (`app/[subject]/[lesson]`) renders
+one flat list. Exams can only be created through the Excel import at `/teacher/import`.
+
+## Lesson structure
+
+A lesson has three fixed parts. The block type decides the part:
+
+| Part | Block types |
+|---|---|
+| **Bài học** (Lesson) | `theory`, `code`, `formula`, `image`, `term-ref`, `resource-ref` |
+| **Mô phỏng** (Simulations) | `interactive` |
+| **Tự luyện** (Practice) | `quiz` |
+
+Storage stays one ordered `blocks` array; order within a part is the order of that part's blocks
+in the array. On save the editor writes blocks grouped part by part. Existing lessons with mixed
+blocks are grouped by type when shown — no data migration. A shared helper
+`splitLessonParts(blocks)` in `packages/types` (or `frontend/lib`) does the grouping for both the
+editor and the learner page. Simulations cannot sit between theory blocks; if that is needed
+later, blocks gain an optional `section` field.
 
 ## Scope and delivery
 
-Three parts, each its own PR, in order:
+Four parts, each its own PR, in order:
 
-1. **Simulations, images, simulation requests**
-2. **Questions in lessons and the question bank**
-3. **Exam builder**
+1. **Lesson editor with three tabs and the three-part learner page** (content blocks, image block)
+2. **Simulations, simulation requests**
+3. **Practice questions and the question bank**
+4. **Exam builder**
 
 A shared tab bar joins the teacher pages: **Bài giảng · Ngân hàng câu hỏi · Đề thi · Đề xuất mô
-phỏng**. "Bài giảng" is the existing lesson list and Studio, unchanged.
+phỏng**.
 
-Out of scope: automatic simulation suggestions from lesson text, drag-and-drop block reordering,
-lesson sections/table of contents, the six deferred simulation templates listed in Part 1.
+Out of scope: automatic simulation suggestions from lesson text, simulations placed inside the
+Lesson part, lesson table of contents, the six deferred simulation templates listed in Part 2.
 
 ---
 
-## Part 1 — Simulations, images, simulation requests
+## Part 1 — Lesson editor and learner page
 
-### 1.1 Simulation template registry
+### 1.1 Editor layout (`/teacher/lessons/[id]`)
+
+- **Top bar:** title (VI/EN), status (draft / pending review / published), "Đã lưu lúc …",
+  submit for review or publish (admin), existing Word/PDF import and delete actions.
+- **Tabs:** **Bài học · Mô phỏng · Tự luyện**, each with its block count and a warning dot when a
+  block in it is missing English or invalid.
+- **Left:** the active part's blocks, in order, each editable in place (click to edit).
+- **Right:** learner preview of the active part, updating as the teacher types, with a VI/EN
+  switch. On phone width, edit and preview become two sub-tabs.
+
+Until Parts 2 and 3 ship, the Mô phỏng and Tự luyện tabs list their existing blocks with the
+current behaviour (reorder, delete) and a note that editors arrive with those parts.
+
+### 1.2 Adding and arranging blocks (Bài học tab)
+
+- A **＋** control between any two blocks and at the end opens a menu of the part's block types.
+- New blocks start **empty** (no sample text).
+- Drag to reorder; up/down buttons remain for keyboard users.
+- Duplicate and delete per block; delete shows "Hoàn tác" for a few seconds.
+
+### 1.3 Block editors
+
+| Block | Editor |
+|---|---|
+| Theory | VI / EN tabs; Markdown textarea with a small toolbar (bold, italic, heading, list, inline `$…$`); pasting an image splits the block and inserts an `image` block |
+| Code | add/remove language tabs (python, cpp, javascript); monospace textarea; Tab indents |
+| Formula | KaTeX input with live render below, error message on invalid syntax; caption VI/EN |
+| Image | see 1.5 |
+| Term / Resource | search by name within the lesson's subject instead of a UUID |
+
+### 1.4 Saving and checks
+
+- **Autosave** the draft a few seconds after the last edit, through the existing lesson save API;
+  a leave-page warning while a save is pending or failed.
+- Per-block issues (missing English, invalid formula, image without `alt.vi`) show on the block
+  and as the tab's warning dot.
+- "Gửi duyệt" lists all issues; clicking one switches tab and scrolls to the block.
+- Word/PDF import offers **Replace lesson** (today) or **Append to Bài học**.
+
+### 1.5 Image block
+
+New block type:
+
+```ts
+{ type: 'image', url: string /* https, lesson-media bucket */, alt: {en, vi}, caption?: {en, vi} }
+```
+
+- Teachers drop, paste or pick a file in the Studio.
+- Upload goes to `POST /api/authoring/media` (teacher or admin only). The backend checks the real
+  file type from its bytes: png, jpeg or webp, max 5 MB. It stores the file in the Supabase Storage
+  bucket `lesson-media` under `<user_id>/<uuid>.<ext>` and returns the public URL. SVG is rejected.
+- Bucket: public read; no client write policy (only the backend's service role writes).
+- `alt.vi` is required to save; `alt.en` may be empty until submit, like other bilingual fields.
+- The backend accepts image URLs only from this project's `lesson-media` public path.
+- `labeled-diagram` (Part 2) and simulation-request sketches use the same upload endpoint.
+
+**Word import keeps images.** `importLessonDocument` currently drops embedded images. Now each
+embedded image (png/jpeg/webp) is uploaded through the same endpoint and becomes an `image` block
+at its position, with empty `alt` to be filled before saving. The import report lists
+unsupported images that were skipped.
+
+### 1.6 Learner page (`app/[subject]/[lesson]`)
+
+- Three steps **Bài học → Mô phỏng → Tự luyện** as tabs with a step indicator; empty parts are
+  hidden (a lesson with only content shows no tabs).
+- "Tiếp theo" at the end of each part moves to the next; "Hoàn thành bài" (existing lesson XP via
+  `/api/score/lesson`) sits at the end of the last part.
+- `BlockRenderer` gains the `image` renderer (`next/image` not required; plain `<img>` with
+  `alt`, lazy loading, caption below).
+
+---
+
+## Part 2 — Simulations and simulation requests
+
+### 2.1 Simulation template registry
 
 `frontend/features/simulations/` holds one module per template. Each module exports:
 
@@ -66,14 +160,14 @@ refraction, periodic table.
 parameters, `+ - * / ^`, parentheses, `sin cos tan sqrt abs log ln exp pi e`). No `eval`, no
 `Function`. Parse errors show in the editor and block saving.
 
-### 1.2 External embeds
+### 2.2 External embeds
 
 `kind: 'embed'` with `embed_url`. Allowed: `https` only, host in an allowlist
 (`phet.colorado.edu`, `www.geogebra.org`, `www.desmos.com`; the list lives in one shared
 constant). Rendered in an `<iframe sandbox="allow-scripts allow-same-origin">` with
 `referrerpolicy="no-referrer"` and `loading="lazy"`. Embeds are always `offline: false`.
 
-### 1.3 Schema change
+### 2.3 Schema change
 
 `InteractiveBlockSchema.kind` gains `motion`, `labeled-diagram`, `pendulum`, `ohm-circuit`,
 `probability`, `punnett`, `embed`. Legacy kinds `geometry-3d`, `experiment`, `bio-diagram` stay
@@ -86,29 +180,7 @@ valid and keep today's placeholder rendering, so existing lessons still parse.
 
 The template config schemas live in `packages/types` so both sides share them.
 
-### 1.4 Image block
-
-New block type:
-
-```ts
-{ type: 'image', url: string /* https, lesson-media bucket */, alt: {en, vi}, caption?: {en, vi} }
-```
-
-- Teachers drop, paste or pick a file in the Studio.
-- Upload goes to `POST /api/authoring/media` (teacher or admin only). The backend checks the real
-  file type from its bytes: png, jpeg or webp, max 5 MB. It stores the file in the Supabase Storage
-  bucket `lesson-media` under `<user_id>/<uuid>.<ext>` and returns the public URL. SVG is rejected.
-- Bucket: public read; no client write policy (only the backend's service role writes).
-- `alt.vi` is required to save; `alt.en` may be empty until submit, like other bilingual fields.
-- The backend accepts image URLs only from this project's `lesson-media` public path.
-- `labeled-diagram` and simulation-request sketches use the same upload endpoint.
-
-**Word import keeps images.** `importLessonDocument` currently drops embedded images. Now each
-embedded image (png/jpeg/webp) is uploaded through the same endpoint and becomes an `image` block
-at its position, with empty `alt` to be filled before saving. The import report lists
-unsupported images that were skipped.
-
-### 1.5 Simulation requests
+### 2.4 Simulation requests
 
 A teacher who needs a simulation the catalog lacks sends a request tied to the lesson; an admin
 handles it.
@@ -146,10 +218,11 @@ Other transitions return `409`.
 
 **UI**
 
-- Studio simulation picker: "Không có mẫu phù hợp? Gửi đề xuất mô phỏng" opens a form (description,
-  reference link, sketch).
-- Studio panel "Đề xuất của bài này": status, admin note; for `done`, a **Chèn vào bài** button
-  appends `result_block` to the lesson. Admins never edit the teacher's lesson directly.
+- **Mô phỏng tab** of the editor: add a simulation (template picker or embed link), edit its
+  heading/caption (VI/EN) and parameters, reorder, delete. The picker ends with "Không có mẫu phù
+  hợp? Gửi đề xuất mô phỏng", which opens a form (description, reference link, sketch).
+- The same tab lists "Đề xuất của bài này": status, admin note; for `done`, a **Chèn vào bài**
+  button appends `result_block` to the Mô phỏng part. Admins never edit the teacher's lesson directly.
 - Teacher tab "Đề xuất mô phỏng": all own requests across lessons.
 - Admin page `/admin/simulation-requests`: list with filters, the three actions; the "complete"
   dialog reuses the template editors or takes an embed link. The admin nav shows a count of
@@ -157,9 +230,9 @@ Other transitions return `409`.
 
 ---
 
-## Part 2 — Questions in lessons and the question bank
+## Part 3 — Practice questions and the question bank
 
-### 2.1 Data
+### 3.1 Data
 
 Migration on `questions`:
 
@@ -171,7 +244,7 @@ Migration on `questions`:
 Question data keeps the existing schemas (`MCDataSchema`, `TrueFalseDataSchema`,
 `ShortDataSchema`). Quiz blocks keep `{ type: 'quiz', question_id }`.
 
-### 2.2 Authoring API
+### 3.2 Authoring API
 
 - `GET /api/authoring/questions` — filters: subject, grade, lesson, type, difficulty, status,
   text search; paginated. Teachers see published questions and their own; answers included only
@@ -181,20 +254,22 @@ Question data keeps the existing schemas (`MCDataSchema`, `TrueFalseDataSchema`,
 - `DELETE /api/authoring/questions/:id` — same rule; refused (`409`) while a published lesson or
   exam references it.
 
-### 2.3 Lifecycle
+### 3.3 Lifecycle
 
 Questions follow their lesson: lesson submitted → its `draft` questions by the same author become
 `pending_review`; lesson approved → those questions become `published`; lesson sent back →
-back to `draft`. Standalone questions are reviewed through the exams that use them (Part 3), or
+back to `draft`. Standalone questions are reviewed through the exams that use them (Part 4), or
 an admin publishes them from the bank.
 
-### 2.4 Studio
+### 3.4 Tự luyện tab
 
-The "Câu hỏi" block opens a question editor: type switch (mc / truefalse / short), bilingual
-stem, options or items, answer, explanation, difficulty. A search box inserts an existing bank
-question instead. Preview renders the learner view.
+The editor's Tự luyện tab lists the lesson's questions in order. "Thêm câu" opens a question
+editor: type switch (mc / truefalse / short), bilingual stem, options or items, answer,
+explanation, difficulty. "Lấy từ ngân hàng" searches the subject's bank and inserts an existing
+question. Reorder, edit, remove (removing from the lesson does not delete a bank question).
+Preview renders the learner view.
 
-### 2.5 Learner quiz block and check endpoint
+### 3.5 Learner quiz block and check endpoint
 
 - Learners load questions through the existing lesson content path with answer fields removed
   (`answer`, `items[].correct`, `answer_key`).
@@ -202,30 +277,32 @@ question instead. Preview renders the learner view.
   {id, correct}[], explanation? }`. Only questions referenced by a published lesson (or any, for
   the author/admin previewing) are checkable. The correct answer itself is never returned.
 - Short answers compare after trimming, lower-casing and collapsing whitespace.
-- Unlimited retries; **no XP** for quiz blocks. Lesson completion XP is unchanged.
+- Unlimited retries; **no XP** for practice questions. Lesson completion XP is unchanged.
+- The end of the Tự luyện part shows a summary ("Đúng 7/10") from the check results of this
+  visit; it is not stored.
 
-### 2.6 Bank page
+### 3.6 Bank page
 
-`/teacher/questions`: filters as in 2.2, create/edit/delete standalone questions (with grade),
+`/teacher/questions`: filters as in 3.2, create/edit/delete standalone questions (with grade),
 see which lessons and exams use each question.
 
 ---
 
-## Part 3 — Exam builder
+## Part 4 — Exam builder
 
-### 3.1 Page
+### 4.1 Page
 
 `/teacher/exams` lists own exams (admins: all). `/teacher/exams/[id]` edits one:
 
 - bilingual name (`name`, `name_en`), subject, grade, duration 5–300 minutes;
-- **Pick**: a bank browser with the Part 2 filters and checkboxes;
+- **Pick**: a bank browser with the Part 3 filters and checkboxes;
 - **Random draw**: counts per type × difficulty; the backend draws once from eligible questions
   and returns ids; the teacher can then swap, remove or reorder;
 - ordered question list with totals by type and difficulty.
 
 Eligible questions: published, or unpublished questions owned by the exam's author, same subject.
 
-### 3.2 Data and API
+### 4.2 Data and API
 
 Exams are `exam_blueprints` rows with `question_ids` (ordered), `duration_minutes`, `name_en`,
 `status`, `created_by`. Status check gains `draft`: `draft | pending_review | published`.
@@ -242,7 +319,7 @@ Admins creating an exam get a "Xuất bản ngay" checkbox, as in the Studio. Pu
 editable by teachers. The exam room and `/api/score/exam` already serve `question_ids` exams and
 stay unchanged.
 
-### 3.3 Admin review
+### 4.3 Admin review
 
 The admin review page gains an **Đề thi** tab reusing the review cards from the Excel import
 review.
@@ -267,6 +344,12 @@ review.
 
 ## Testing
 
+- `splitLessonParts`: grouping by type, order kept within a part, mixed legacy lessons.
+- Lesson editor: each block editor edits and saves its fields; insert between blocks; reorder;
+  delete with undo; autosave debounce and failed-save warning; issue list on submit jumps to the
+  block; import append vs replace.
+- Learner page: tabs shown only for non-empty parts; completion button at the end of the last part.
+- Word import with embedded images produces `image` blocks.
 - Each simulation template: config schema tests, renderer test (renders from default config and
   one edited config), step logic unit tests where there is logic (sorting steps, motion, circuit,
   Punnett ratios, pendulum period).
