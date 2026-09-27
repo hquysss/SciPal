@@ -16,7 +16,6 @@ const BLOCKS: Block[] = [
 export default async function TeacherShowcase({ searchParams }: { searchParams: Promise<SearchParams> }) {
   if (process.env.NODE_ENV !== 'development') notFound();
   const params = await searchParams;
-  const grade = Number(params.grade ?? 10);
   const status = (params.status as 'draft' | 'pending_review' | 'published' | 'rejected') ?? 'draft';
   const view = params.view ?? 'editor';
 
@@ -45,6 +44,7 @@ export default async function TeacherShowcase({ searchParams }: { searchParams: 
       ) : (
         <LessonEditor
           lessonId="showcase"
+          subjectId="00000000-0000-4000-8000-000000000001"
           initialTitleVi="Thuật toán tìm kiếm"
           initialTitleEn="Search algorithms"
           initialBlocks={BLOCKS}
@@ -52,8 +52,6 @@ export default async function TeacherShowcase({ searchParams }: { searchParams: 
           initialStatus={status}
           initialReviewNote={status === 'rejected' ? 'Thêm ví dụ cho tìm kiếm nhị phân.' : null}
           canReview={params.role === 'admin'}
-          grade={grade}
-          subjectSlug="informatics"
         />
       )}
     </main>
