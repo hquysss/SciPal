@@ -1,6 +1,9 @@
 import type { BuiltInSimulationKind } from '@scipal/types';
 import { algorithmModule } from './algorithm';
 import { functionGraphModule } from './functionGraph';
+import { motionModule } from './motion';
+import { ohmCircuitModule } from './ohmCircuit';
+import { pendulumModule } from './pendulum';
 import { probabilityModule } from './probability';
 import type { SimulationModule } from './types';
 
@@ -9,4 +12,7 @@ export const simulationModules: { [K in BuiltInSimulationKind]?: SimulationModul
   'algorithm-sim': algorithmModule,
   'function-graph': functionGraphModule,
   probability: probabilityModule,
+  motion: motionModule,
+  pendulum: pendulumModule,
+  'ohm-circuit': ohmCircuitModule,
 };

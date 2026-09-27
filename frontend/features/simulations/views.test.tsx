@@ -6,7 +6,7 @@ import { simulationModules } from './registry';
 
 vi.mock('@scipal/hooks', () => ({ useLanguage: () => ({ lang: 'vi', t: (o: { vi: string }) => o.vi }) }));
 
-const KINDS_SO_FAR: BuiltInSimulationKind[] = ['algorithm-sim', 'function-graph', 'probability'];
+const KINDS_SO_FAR: BuiltInSimulationKind[] = ['algorithm-sim', 'function-graph', 'probability', 'motion', 'pendulum', 'ohm-circuit'];
 
 describe.each(KINDS_SO_FAR)('%s', (kind) => {
   const module = simulationModules[kind]!;
@@ -64,5 +64,32 @@ describe('probability view', () => {
     const html = renderToStaticMarkup(<Renderer config={defaultSimulationConfig('probability')} lang="vi" />);
     for (const n of ['1', '10', '100', '1000']) expect(html).toContain(`Tung ${n} lần`);
     expect(html).toContain('1/6');
+  });
+});
+
+describe('physics views', () => {
+  it('motion shows the path, a time slider and the readings with units', () => {
+    const { Renderer } = simulationModules.motion!;
+    const html = renderToStaticMarkup(<Renderer config={defaultSimulationConfig('motion')} lang="vi" />);
+    expect(html).toContain('<path');
+    expect(html).toContain('type="range"');
+    expect(html).toContain('m/s');
+    expect(html).toContain('aria-label="Chạy"');
+  });
+
+  it('pendulum shows the period formula and value', () => {
+    const { Renderer } = simulationModules.pendulum!;
+    const html = renderToStaticMarkup(<Renderer config={defaultSimulationConfig('pendulum')} lang="vi" />);
+    expect(html).toContain('T = 2π√(L/g)');
+    expect(html).toContain('2.01 s');
+  });
+
+  it('circuit lists each resistor with its voltage and current', () => {
+    const { Renderer } = simulationModules['ohm-circuit']!;
+    const html = renderToStaticMarkup(<Renderer config={defaultSimulationConfig('ohm-circuit')} lang="en" />);
+    expect(html).toContain('R1');
+    expect(html).toContain('R2');
+    expect(html).toContain('1.00 A');
+    expect(html).toContain('I = U / R');
   });
 });
