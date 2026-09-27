@@ -1,21 +1,39 @@
 'use client';
 
-import { useRef, useState, type ChangeEvent } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type ChangeEvent } from 'react';
 import { useRouter } from 'next/navigation';
 import { createBrowserClient } from '@scipal/supabase';
 import type { Block } from '@scipal/types';
-import { BlockPalette } from './BlockPalette';
-import { BlockRenderer } from '@/components/blocks/BlockRenderer';
 import { useLanguage } from '@scipal/hooks';
+import { Alert } from '@/components/ui/alert';
+import { Badge } from '@/components/ui/badge';
+import { buttonVariants } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { LessonPartsView } from '@/features/lessons/LessonPartsView';
+import { joinLessonParts, splitLessonParts, type LessonPart } from '@/features/lessons/lessonParts';
 import type { LessonStatus } from './authoringQueries';
-import { lessonStatusLabel, lessonStatusTone, TONE_CLASS } from './lessonStatus';
+import { lessonStatusLabel, lessonStatusTone } from './lessonStatus';
 import { parseLessonImport, type LessonImportResult } from './lessonImport';
 import { documentKind, importLessonDocument } from '../content-import/lessonDocument';
+import { canAutosave, createAutosaver, type Autosaver, type AutosaveState, type SaveOutcome } from './editor/autosave';
+import { BlockList } from './editor/BlockList';
+import { IssueList } from './editor/IssueList';
+import { lessonIssues, type LessonIssue } from './editor/lessonIssues';
+import { PartTabs } from './editor/PartTabs';
 
 const LESSON_TEMPLATE_URL = '/templates/scipal-lesson-template.docx';
+const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL ?? 'https://sci-pal-backend.vercel.app';
+const AUTOSAVE_DELAY_MS = 2500;
+
+const STATUS_BADGE = { success: 'success', danger: 'destructive', warning: 'warning', neutral: 'secondary' } as const;
+
+type Bilingual = { en: string; vi: string };
+type Message = { text: Bilingual | string; type: 'success' | 'error' };
 
 interface LessonEditorProps {
   lessonId: string;
+  /** Subject of the lesson, for term and resource search. */
+  subjectId: string;
   initialTitleVi: string;
   initialTitleEn?: string;
   initialBlocks: Block[];
@@ -25,8 +43,15 @@ interface LessonEditorProps {
   canReview: boolean;
 }
 
+interface LessonRow {
+  status: LessonStatus;
+  review_note: string | null;
+  updated_at: string;
+}
+
 export function LessonEditor({
   lessonId,
+  subjectId,
   initialTitleVi,
   initialTitleEn = '',
   initialBlocks,
@@ -35,195 +60,173 @@ export function LessonEditor({
   initialReviewNote,
   canReview,
 }: LessonEditorProps) {
-  const { lang, t } = useLanguage();
+  const { t } = useLanguage();
   const router = useRouter();
   const [titleVi, setTitleVi] = useState(initialTitleVi);
   const [titleEn, setTitleEn] = useState(initialTitleEn);
-  const [blocks, setBlocks] = useState<Block[]>(initialBlocks);
+  const [parts, setParts] = useState(() => splitLessonParts(initialBlocks));
+  const blocks = useMemo(() => joinLessonParts(parts), [parts]);
+  const [activePart, setActivePart] = useState<LessonPart>('lesson');
+  const [focus, setFocus] = useState<{ part: LessonPart; index: number; nonce: number } | null>(null);
   const [updatedAt, setUpdatedAt] = useState(initialUpdatedAt);
   const [status, setStatus] = useState<LessonStatus>(initialStatus);
   const [reviewNote, setReviewNote] = useState<string | null>(initialReviewNote);
   const [publishChecked, setPublishChecked] = useState(initialStatus === 'published');
   const [rejectNote, setRejectNote] = useState('');
   const [saving, setSaving] = useState(false);
+  const [saveState, setSaveState] = useState<AutosaveState>('idle');
+  const [lastSavedAt, setLastSavedAt] = useState<Date | null>(null);
   const [submittingForReview, setSubmittingForReview] = useState(false);
   const [reviewing, setReviewing] = useState(false);
   const [importing, setImporting] = useState(false);
-  const [message, setMessage] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
-  const canEditContent = canReview
-    ? status === 'draft' || status === 'published'
-    : status === 'draft' || status === 'rejected';
-  const canSubmitForReview = !canReview &&
-    (status === 'draft' || status === 'rejected') &&
-    Boolean(titleVi.trim() && titleEn.trim()) &&
-    blocks.length > 0;
+  const [pendingImport, setPendingImport] = useState<Extract<LessonImportResult, { ok: true }> | null>(null);
+  const [submitIssues, setSubmitIssues] = useState<LessonIssue[]>([]);
+  const [message, setMessage] = useState<Message | null>(null);
+  const [mobileView, setMobileView] = useState<'edit' | 'preview'>('edit');
+  const [previewLang, setPreviewLang] = useState<'vi' | 'en'>('vi');
 
-  const applyLesson = (lesson: { status: LessonStatus; review_note: string | null; updated_at: string }) => {
+  const canEditContent = canReview ? status === 'draft' || status === 'published' : status === 'draft' || status === 'rejected';
+  const issues = useMemo(() => lessonIssues(blocks), [blocks]);
+  const counts = { lesson: parts.lesson.length, simulation: parts.simulation.length, practice: parts.practice.length };
+  const busy = saving || submittingForReview || reviewing;
+
+  const applyLesson = (lesson: LessonRow) => {
     setStatus(lesson.status);
     setReviewNote(lesson.review_note);
     setPublishChecked(lesson.status === 'published');
     setUpdatedAt(lesson.updated_at);
   };
 
-  const importInputRef = useRef<HTMLInputElement>(null);
-
-  const handleImportFile = async (event: ChangeEvent<HTMLInputElement>) => {
-    const input = event.currentTarget;
-    const file = input.files?.[0];
-    input.value = '';
-    if (!file) return;
-
-    // Word and PDF are read in the browser; JSON keeps its own validated format.
-    setImporting(true);
-    setMessage(null);
-    let result: LessonImportResult;
-    try {
-      result = documentKind(file.name)
-        ? await importLessonDocument(file)
-        : parseLessonImport(await file.text(), file.size);
-    } catch {
-      result = { ok: false, error: { en: 'Could not read the file.', vi: 'Không đọc được tệp.' } };
-    } finally {
-      setImporting(false);
-    }
-    if (!result.ok) {
-      setMessage({ text: t(result.error), type: 'error' });
-      return;
-    }
-
-    if (blocks.length > 0) {
-      const confirmed = window.confirm(t({
-        en: `Replace all ${blocks.length} current blocks with ${result.blocks.length} imported blocks?`,
-        vi: `Thay toàn bộ ${blocks.length} khối hiện có bằng ${result.blocks.length} khối từ tệp?`,
-      }));
-      if (!confirmed) return;
-    }
-
-    setBlocks(result.blocks);
-    if (result.title_en !== undefined) setTitleEn(result.title_en);
-    if (result.title_vi !== undefined) setTitleVi(result.title_vi);
-    const missingEnglish = result.blocks.some((block) => block.type === 'theory' && !block.content.en.trim());
-    setMessage({
-      text: missingEnglish
-        ? t({
-            en: `Imported ${result.blocks.length} blocks. Add the English text, then save.`,
-            vi: `Đã nạp ${result.blocks.length} khối. Hãy bổ sung phần tiếng Anh rồi bấm lưu.`,
-          })
-        : t({ en: `Imported ${result.blocks.length} blocks. Remember to save.`, vi: `Đã nạp ${result.blocks.length} khối. Nhớ bấm lưu.` }),
-      type: 'success',
+  /** Call the authoring API with the signed-in teacher's token. */
+  const callApi = async (path: string, method: 'PATCH' | 'POST', body: unknown) => {
+    const {
+      data: { session },
+    } = await createBrowserClient().auth.getSession();
+    if (!session) return { ok: false as const, status: 401, data: { error: 'Phiên đăng nhập đã hết hạn. Hãy đăng nhập lại.' } };
+    const res = await fetch(`${API_BASE}${path}`, {
+      method,
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session.access_token}` },
+      body: JSON.stringify(body),
     });
+    const data = (await res.json().catch(() => ({}))) as { error?: string; lesson?: LessonRow };
+    return { ok: res.ok, status: res.status, data };
   };
 
-  const handleAddBlock = (newBlock: Block) => {
-    setBlocks((prev) => [...prev, newBlock]);
+  // ── Saving ────────────────────────────────────────────────────────────────────────────────
+  // The latest values, so the autosaver (created once) always saves what is on screen.
+  const latest = useRef({ titleVi, titleEn, blocks, updatedAt });
+  latest.current = { titleVi, titleEn, blocks, updatedAt };
+
+  const saveDraft = useCallback(async (): Promise<SaveOutcome> => {
+    const { titleVi: vi, titleEn: en, blocks: content, updatedAt: version } = latest.current;
+    const body: Record<string, unknown> = { blocks: content, expected_updated_at: version };
+    // The API refuses empty titles; keep saving the blocks while a title is being typed.
+    if (vi.trim()) body.title_vi = vi;
+    if (en.trim()) body.title_en = en;
+    try {
+      const res = await callApi(`/api/authoring/lessons/${lessonId}`, 'PATCH', body);
+      if (res.ok && res.data.lesson) {
+        applyLesson(res.data.lesson);
+        latest.current.updatedAt = res.data.lesson.updated_at;
+        setLastSavedAt(new Date());
+        return 'saved';
+      }
+      if (res.status === 409) return 'conflict';
+      setMessage({ text: res.data.error ?? { en: 'Could not save.', vi: 'Chưa lưu được.' }, type: 'error' });
+      return 'failed';
+    } catch {
+      return 'failed';
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- reads everything through `latest`
+  }, [lessonId]);
+
+  const saverRef = useRef<Autosaver | null>(null);
+  useEffect(() => {
+    const saver = createAutosaver({ delayMs: AUTOSAVE_DELAY_MS, save: saveDraft, onState: setSaveState });
+    saverRef.current = saver;
+    return () => saver.dispose();
+  }, [saveDraft]);
+
+  useEffect(() => {
+    saverRef.current?.setEnabled(canAutosave(status) && canEditContent);
+  }, [status, canEditContent]);
+
+  useEffect(() => {
+    const warn = (event: BeforeUnloadEvent) => {
+      if (saverRef.current?.hasUnsavedWork()) event.preventDefault();
+    };
+    window.addEventListener('beforeunload', warn);
+    return () => window.removeEventListener('beforeunload', warn);
+  }, []);
+
+  const changed = () => {
+    setSubmitIssues([]);
+    saverRef.current?.schedule();
+  };
+  const setPart = (part: LessonPart, next: Block[]) => {
+    setParts((p) => ({ ...p, [part]: next }));
+    changed();
   };
 
-  const handleRemoveBlock = (index: number) => {
-    setBlocks((prev) => prev.filter((_, i) => i !== index));
-  };
-
-  const handleMoveBlock = (index: number, direction: 'up' | 'down') => {
-    const targetIndex = direction === 'up' ? index - 1 : index + 1;
-    if (targetIndex < 0 || targetIndex >= blocks.length) return;
-    const updated = [...blocks];
-    const [moved] = updated.splice(index, 1);
-    updated.splice(targetIndex, 0, moved);
-    setBlocks(updated);
-  };
-
+  /** The "Lưu" button: the only way to save a published lesson, and how admins publish. */
   const handleSave = async () => {
     setSaving(true);
     setMessage(null);
-
-    const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL ?? 'https://sci-pal-backend.vercel.app';
-
     try {
-      const { data: { session } } = await createBrowserClient().auth.getSession();
-      if (!session) {
-        setMessage({ text: 'Phiên đăng nhập đã hết hạn. Hãy đăng nhập lại để lưu bài.', type: 'error' });
-        return;
-      }
-
-      const res = await fetch(`${API_BASE}/api/authoring/lessons/${lessonId}`, {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${session.access_token}`,
-        },
-        body: JSON.stringify({
-          title_vi: titleVi,
-          title_en: titleEn,
-          blocks,
-          expected_updated_at: updatedAt,
-          ...(canReview ? { status: publishChecked ? 'published' : 'draft' } : {}),
-        }),
+      const res = await callApi(`/api/authoring/lessons/${lessonId}`, 'PATCH', {
+        title_vi: titleVi,
+        title_en: titleEn,
+        blocks,
+        expected_updated_at: updatedAt,
+        ...(canReview ? { status: publishChecked ? 'published' : 'draft' } : {}),
       });
-
-      if (res.ok) {
-        const data = await res.json();
-        const next = data.lesson.status as LessonStatus;
-        applyLesson(data.lesson);
+      if (res.ok && res.data.lesson) {
+        applyLesson(res.data.lesson);
+        saverRef.current?.markSaved();
+        setLastSavedAt(new Date());
         setMessage({
-          text: next === 'rejected'
-            ? 'Đã lưu chỉnh sửa. Bài vẫn chờ bạn gửi lại admin duyệt.'
-            : next === 'draft'
-              ? 'Đã lưu bản nháp.'
-              : 'Đã lưu thay đổi bài học thành công!',
+          text: res.data.lesson.status === 'published' ? { en: 'Saved and visible to students.', vi: 'Đã lưu. Học sinh đã thấy bài.' } : { en: 'Draft saved.', vi: 'Đã lưu bản nháp.' },
           type: 'success',
         });
       } else {
-        const data = await res.json().catch(() => ({}));
-        setMessage({
-          text: data.error ?? 'Lưu thất bại. Kiểm tra kết nối máy chủ.',
-          type: 'error',
-        });
+        setMessage({ text: res.data.error ?? { en: 'Save failed.', vi: 'Lưu thất bại.' }, type: 'error' });
       }
     } catch {
-      setMessage({
-        text: 'Không kết nối được máy chủ. Thay đổi chưa được lưu.',
-        type: 'error',
-      });
+      setMessage({ text: { en: 'Could not reach the server. Changes are not saved.', vi: 'Không kết nối được máy chủ. Thay đổi chưa được lưu.' }, type: 'error' });
     } finally {
       setSaving(false);
-      setTimeout(() => setMessage(null), 4000);
     }
   };
 
   const handleSubmitForReview = async () => {
+    const found = blocks.length === 0
+      ? [{ part: 'lesson' as const, index: 0, blocking: true, message: { vi: 'Bài chưa có nội dung.', en: 'The lesson has no content.' } }]
+      : issues;
+    const titleIssue = !titleVi.trim() || !titleEn.trim();
+    if (found.length > 0 || titleIssue) {
+      setSubmitIssues(found);
+      if (titleIssue) setMessage({ text: { en: 'Enter both titles first.', vi: 'Hãy nhập tiêu đề tiếng Việt và tiếng Anh.' }, type: 'error' });
+      return;
+    }
     setSubmittingForReview(true);
     setMessage(null);
-    const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL ?? 'https://sci-pal-backend.vercel.app';
-
     try {
-      const { data: { session } } = await createBrowserClient().auth.getSession();
-      if (!session) {
-        setMessage({ text: 'Phiên đăng nhập đã hết hạn. Hãy đăng nhập lại để gửi bài.', type: 'error' });
-        return;
-      }
-
-      const res = await fetch(`${API_BASE}/api/authoring/lessons/${lessonId}/submit`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${session.access_token}`,
-        },
-        body: JSON.stringify({
-          title_vi: titleVi,
-          title_en: titleEn,
-          blocks,
-          expected_updated_at: updatedAt,
-        }),
+      await saverRef.current?.flush();
+      const res = await callApi(`/api/authoring/lessons/${lessonId}/submit`, 'POST', {
+        title_vi: titleVi,
+        title_en: titleEn,
+        blocks,
+        expected_updated_at: latest.current.updatedAt,
       });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) {
-        setMessage({ text: data.error ?? 'Không gửi được bài vào hàng chờ duyệt.', type: 'error' });
+      if (!res.ok || !res.data.lesson) {
+        setMessage({ text: res.data.error ?? { en: 'Could not send for review.', vi: 'Không gửi được bài vào hàng chờ duyệt.' }, type: 'error' });
         return;
       }
-
-      applyLesson(data.lesson);
-      setMessage({ text: 'Đã gửi bài vào hàng chờ admin duyệt.', type: 'success' });
+      applyLesson(res.data.lesson);
+      saverRef.current?.markSaved();
+      setMessage({ text: { en: 'Sent to the admin for review.', vi: 'Đã gửi bài vào hàng chờ admin duyệt.' }, type: 'success' });
     } catch {
-      setMessage({ text: 'Không kết nối được máy chủ. Bài chưa được gửi duyệt.', type: 'error' });
+      setMessage({ text: { en: 'Could not reach the server.', vi: 'Không kết nối được máy chủ. Bài chưa được gửi duyệt.' }, type: 'error' });
     } finally {
       setSubmittingForReview(false);
     }
@@ -232,359 +235,321 @@ export function LessonEditor({
   const handleReview = async (decision: 'approve' | 'reject') => {
     setReviewing(true);
     setMessage(null);
-    const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL ?? 'https://sci-pal-backend.vercel.app';
-
     try {
-      const { data: { session } } = await createBrowserClient().auth.getSession();
-      if (!session) {
-        setMessage({ text: 'Phiên đăng nhập đã hết hạn. Hãy đăng nhập lại để duyệt bài.', type: 'error' });
-        return;
-      }
-
-      const res = await fetch(`${API_BASE}/api/authoring/lessons/${lessonId}/review`, {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${session.access_token}`,
-        },
-        body: JSON.stringify({
-          decision,
-          expected_updated_at: updatedAt,
-          ...(decision === 'reject' && rejectNote.trim() ? { note: rejectNote.trim() } : {}),
-        }),
+      const res = await callApi(`/api/authoring/lessons/${lessonId}/review`, 'PATCH', {
+        decision,
+        expected_updated_at: updatedAt,
+        ...(decision === 'reject' && rejectNote.trim() ? { note: rejectNote.trim() } : {}),
       });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) {
-        setMessage({ text: data.error ?? 'Không lưu được kết quả duyệt bài.', type: 'error' });
+      if (!res.ok || !res.data.lesson) {
+        setMessage({ text: res.data.error ?? { en: 'Could not save the review.', vi: 'Không lưu được kết quả duyệt bài.' }, type: 'error' });
         return;
       }
-
-      applyLesson(data.lesson);
+      applyLesson(res.data.lesson);
       router.push('/admin/lessons/review');
       router.refresh();
     } catch {
-      setMessage({ text: 'Không kết nối được máy chủ. Kết quả duyệt chưa được lưu.', type: 'error' });
+      setMessage({ text: { en: 'Could not reach the server.', vi: 'Không kết nối được máy chủ. Kết quả duyệt chưa được lưu.' }, type: 'error' });
     } finally {
       setReviewing(false);
     }
   };
 
+  // ── Import ────────────────────────────────────────────────────────────────────────────────
+  const importInputRef = useRef<HTMLInputElement>(null);
+
+  const handleImportFile = async (event: ChangeEvent<HTMLInputElement>) => {
+    const input = event.currentTarget;
+    const file = input.files?.[0];
+    input.value = '';
+    if (!file) return;
+    setImporting(true);
+    setMessage(null);
+    let result: LessonImportResult;
+    try {
+      result = documentKind(file.name) ? await importLessonDocument(file) : parseLessonImport(await file.text(), file.size);
+    } catch {
+      result = { ok: false, error: { en: 'Could not read the file.', vi: 'Không đọc được tệp.' } };
+    } finally {
+      setImporting(false);
+    }
+    if (!result.ok) {
+      setMessage({ text: result.error, type: 'error' });
+      return;
+    }
+    if (blocks.length > 0) setPendingImport(result);
+    else applyImport(result, 'replace');
+  };
+
+  const applyImport = (result: Extract<LessonImportResult, { ok: true }>, mode: 'replace' | 'append') => {
+    const added = splitLessonParts(result.blocks);
+    if (mode === 'replace') {
+      setParts(added);
+      if (result.title_en !== undefined) setTitleEn(result.title_en);
+      if (result.title_vi !== undefined) setTitleVi(result.title_vi);
+    } else {
+      setParts((p) => ({
+        lesson: [...p.lesson, ...added.lesson],
+        simulation: [...p.simulation, ...added.simulation],
+        practice: [...p.practice, ...added.practice],
+      }));
+    }
+    setPendingImport(null);
+    setActivePart('lesson');
+    changed();
+    const missingEnglish = lessonIssues(result.blocks).length > 0;
+    setMessage({
+      text: missingEnglish
+        ? { en: `Imported ${result.blocks.length} blocks. Complete the marked blocks.`, vi: `Đã nạp ${result.blocks.length} khối. Hãy hoàn thiện các khối được đánh dấu.` }
+        : { en: `Imported ${result.blocks.length} blocks.`, vi: `Đã nạp ${result.blocks.length} khối.` },
+      type: 'success',
+    });
+  };
+
+  // ── Render ────────────────────────────────────────────────────────────────────────────────
+  const saveText = (() => {
+    switch (saveState) {
+      case 'saving':
+        return t({ en: 'Saving…', vi: 'Đang lưu…' });
+      case 'saved':
+        return lastSavedAt
+          ? t({ en: `Saved at ${lastSavedAt.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}`, vi: `Đã lưu lúc ${lastSavedAt.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}` })
+          : t({ en: 'Saved', vi: 'Đã lưu' });
+      case 'pending':
+        return t({ en: 'Unsaved changes', vi: 'Có thay đổi chưa lưu' });
+      case 'failed':
+        return t({ en: 'Not saved yet — will retry on the next edit', vi: 'Chưa lưu được — sẽ thử lại khi bạn sửa tiếp' });
+      case 'conflict':
+        return t({ en: 'This lesson changed elsewhere. Reload the page.', vi: 'Bài đã thay đổi ở nơi khác. Tải lại trang.' });
+      case 'off':
+        return t({ en: 'Save manually (published lesson)', vi: 'Lưu thủ công (bài đã xuất bản)' });
+      default:
+        return '';
+    }
+  })();
+
+  const statusLabel = lessonStatusLabel(status);
+
   return (
-    <div className="space-y-6">
-      {/* Studio Action Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 rounded-3xl border border-purple-200/80 bg-white/90 p-5 sm:p-6 shadow-xs backdrop-blur-md dark:border-purple-900/40 dark:bg-card/90">
-        <div className="space-y-1">
+    <div className="flex flex-col gap-5">
+      <header className="flex flex-col gap-4 rounded-xl border border-line bg-surface p-4 sm:p-5">
+        <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex flex-wrap items-center gap-2">
-            <span className="rounded-full bg-purple-100 px-2.5 py-0.5 font-mono text-[11px] font-bold text-purple-800 dark:bg-purple-950/60 dark:text-purple-300">
-              S10 Authoring Studio
-            </span>
-            <span className={`rounded-full px-2.5 py-0.5 text-xs font-bold ${TONE_CLASS[lessonStatusTone(status)]}`}>
-              {lessonStatusLabel(status)[lang === 'en' ? 'en' : 'vi']}
-            </span>
+            <Badge variant={STATUS_BADGE[lessonStatusTone(status)]}>{t(statusLabel)}</Badge>
+            {saveText && (
+              <span className={`text-sm ${saveState === 'conflict' || saveState === 'failed' ? 'font-semibold text-danger' : 'text-ink-muted'}`} aria-live="polite">
+                {saveText}
+              </span>
+            )}
           </div>
-          <h2 className="text-xl font-bold text-gray-900 dark:text-white">
-            Biên tập & Thiết kế bài giảng
-          </h2>
+          <div className="flex flex-wrap items-center gap-2">
+            {canReview && (status === 'draft' || status === 'published') && (
+              <label className="flex min-h-11 cursor-pointer items-center gap-2 text-sm font-semibold text-ink">
+                <input type="checkbox" checked={publishChecked} onChange={(e) => setPublishChecked(e.target.checked)} className="h-4 w-4 accent-[var(--action)]" />
+                {t({ en: 'Publish to students', vi: 'Xuất bản cho học sinh' })}
+              </label>
+            )}
+            {canEditContent && (
+              <button type="button" onClick={handleSave} disabled={busy} className={buttonVariants({ variant: canReview ? 'default' : 'outline' })}>
+                {saving ? t({ en: 'Saving…', vi: 'Đang lưu…' }) : t({ en: 'Save', vi: 'Lưu' })}
+              </button>
+            )}
+            {!canReview && (status === 'draft' || status === 'rejected') && (
+              <button type="button" onClick={handleSubmitForReview} disabled={busy} className={buttonVariants()}>
+                {submittingForReview
+                  ? t({ en: 'Sending…', vi: 'Đang gửi…' })
+                  : status === 'rejected'
+                    ? t({ en: 'Send for review again', vi: 'Gửi duyệt lại' })
+                    : t({ en: 'Send for review', vi: 'Gửi admin duyệt' })}
+              </button>
+            )}
+          </div>
         </div>
-
-        <div className="flex flex-wrap items-center gap-3">
-          {canReview && (status === 'draft' || status === 'published') && (
-            <label className="flex cursor-pointer items-center gap-2 text-xs font-bold text-gray-700 dark:text-gray-300">
-              <input
-                type="checkbox"
-                checked={publishChecked}
-                onChange={(e) => setPublishChecked(e.target.checked)}
-                className="h-4 w-4 rounded-sm border-gray-300 text-purple-600 focus:ring-purple-500"
-              />
-              <span>Xuất bản cho học sinh</span>
-            </label>
-          )}
-
-          {canEditContent && (
-            <button
-              type="button"
-              onClick={handleSave}
-              disabled={saving || submittingForReview || reviewing}
-              className="rounded-xl bg-purple-700 px-5 py-2 text-xs font-bold text-white shadow-xs transition hover:bg-purple-800 active:scale-95 disabled:opacity-50"
-            >
-              {saving
-                ? 'Đang lưu...'
-                : status === 'draft' && !canReview
-                  ? 'Lưu bản nháp'
-                  : 'Lưu bài giảng'}
-            </button>
-          )}
-          {canSubmitForReview && (
-            <button
-              type="button"
-              onClick={handleSubmitForReview}
-              disabled={saving || submittingForReview || reviewing}
-              className="rounded-xl bg-emerald-700 px-5 py-2 text-xs font-bold text-white shadow-xs transition hover:bg-emerald-800 disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              {submittingForReview
-                ? 'Đang gửi...'
-                : status === 'rejected'
-                  ? 'Gửi duyệt lại'
-                  : 'Gửi admin duyệt'}
-            </button>
-          )}
+        <div className="grid gap-3 sm:grid-cols-2">
+          <label className="flex flex-col gap-1.5 text-sm font-semibold text-ink">
+            {t({ en: 'Title (Vietnamese)', vi: 'Tiêu đề tiếng Việt' })}
+            <Input
+              value={titleVi}
+              onChange={(e) => {
+                setTitleVi(e.target.value);
+                changed();
+              }}
+              disabled={!canEditContent}
+              maxLength={200}
+              placeholder="Ví dụ: Cấu trúc dữ liệu mảng"
+            />
+          </label>
+          <label className="flex flex-col gap-1.5 text-sm font-semibold text-ink">
+            {t({ en: 'Title (English)', vi: 'Tiêu đề tiếng Anh' })}
+            <Input
+              value={titleEn}
+              onChange={(e) => {
+                setTitleEn(e.target.value);
+                changed();
+              }}
+              disabled={!canEditContent}
+              maxLength={200}
+              placeholder="e.g. Array data structures"
+            />
+          </label>
         </div>
-      </div>
+      </header>
 
       {status === 'published' && !canReview && (
-        <p className="rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-800 dark:border-emerald-900 dark:bg-emerald-950/30 dark:text-emerald-300">
-          Bài đã được admin duyệt. Giáo viên không thể sửa nội dung đã xuất bản.
-        </p>
+        <Alert tone="success">{t({ en: 'An admin approved this lesson. Teachers cannot edit published content.', vi: 'Bài đã được admin duyệt. Giáo viên không thể sửa nội dung đã xuất bản.' })}</Alert>
       )}
-
       {!canReview && status === 'pending_review' && (
-        <p className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-200">
-          Bài đã gửi admin duyệt. Nội dung được khóa cho đến khi admin duyệt hoặc từ chối.
-        </p>
-      )}
-
-      {!canReview && status === 'draft' && (
-        <p className="rounded-xl border border-gray-200 bg-gray-50 p-3 text-sm text-gray-600 dark:border-gray-800 dark:bg-gray-900 dark:text-gray-300">
-          Bài đang là bản nháp. Hoàn thiện tiêu đề và thêm ít nhất một khối, sau đó gửi admin duyệt.
-        </p>
-      )}
-      {canReview && status === 'draft' && (
-        <p className="rounded-xl border border-line bg-surface-sunken p-3 text-sm text-ink-muted">
-          Bài đang là bản nháp. Thêm nội dung, tích &quot;Xuất bản cho học sinh&quot; rồi bấm Lưu bài giảng để học sinh thấy bài.
-        </p>
+        <Alert tone="warning">{t({ en: 'Sent for review. Content is locked until an admin decides.', vi: 'Bài đã gửi admin duyệt. Nội dung được khóa cho đến khi admin duyệt hoặc từ chối.' })}</Alert>
       )}
       {!canReview && status === 'rejected' && (
-        <p className="rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-800 dark:border-red-900 dark:bg-red-950/30 dark:text-red-300">
-          Bài cần chỉnh sửa trước khi gửi admin duyệt lại.
-          {reviewNote && <span className="mt-1 block font-semibold">Ghi chú của admin: {reviewNote}</span>}
-        </p>
+        <Alert tone="danger">
+          {t({ en: 'The lesson needs changes before it can be sent again.', vi: 'Bài cần chỉnh sửa trước khi gửi admin duyệt lại.' })}
+          {reviewNote && (
+            <span className="mt-1 block font-semibold">
+              {t({ en: 'Admin note', vi: 'Ghi chú của admin' })}: {reviewNote}
+            </span>
+          )}
+        </Alert>
+      )}
+      {canReview && status === 'draft' && (
+        <Alert tone="info">
+          {t({ en: 'Draft. Tick "Publish to students" and press Save to publish.', vi: 'Bài đang là bản nháp. Tích "Xuất bản cho học sinh" rồi bấm Lưu để học sinh thấy bài.' })}
+        </Alert>
       )}
 
       {canReview && status === 'pending_review' && (
-        <section className="flex flex-col gap-3 rounded-2xl border border-amber-200 bg-amber-50 p-4 dark:border-amber-900/50 dark:bg-amber-950/20 sm:flex-row sm:items-center sm:justify-between">
+        <section className="flex flex-col gap-3 rounded-xl border border-warning bg-surface p-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <h3 className="text-sm font-bold text-amber-950 dark:text-amber-200">Bài đang chờ admin duyệt</h3>
-            <p className="mt-1 text-xs text-amber-800 dark:text-amber-300">Kiểm tra nội dung xem trước rồi chọn duyệt hoặc yêu cầu chỉnh sửa.</p>
+            <h3 className="text-sm font-bold text-ink">{t({ en: 'Waiting for your review', vi: 'Bài đang chờ admin duyệt' })}</h3>
+            <p className="mt-1 text-sm text-ink-muted">{t({ en: 'Check the preview, then approve or ask for changes.', vi: 'Kiểm tra phần xem trước rồi chọn duyệt hoặc yêu cầu chỉnh sửa.' })}</p>
           </div>
           <textarea
             value={rejectNote}
             onChange={(e) => setRejectNote(e.target.value)}
             maxLength={1000}
             rows={2}
-            placeholder="Ghi chú khi từ chối (không bắt buộc)"
-            className="w-full rounded-xl border border-amber-200 bg-white p-2 text-xs sm:max-w-xs dark:border-amber-900 dark:bg-card"
+            aria-label={t({ en: 'Note when asking for changes', vi: 'Ghi chú khi từ chối' })}
+            placeholder={t({ en: 'Note when asking for changes (optional)', vi: 'Ghi chú khi từ chối (không bắt buộc)' })}
+            className="w-full rounded-lg border border-edge bg-surface p-2 text-sm text-ink sm:max-w-xs"
           />
           <div className="flex gap-2">
-            <button
-              type="button"
-              onClick={() => handleReview('reject')}
-              disabled={reviewing || saving}
-              className="rounded-xl border border-red-200 bg-white px-4 py-2 text-xs font-bold text-red-700 hover:bg-red-50 disabled:opacity-50 dark:border-red-900 dark:bg-card dark:text-red-300"
-            >
-              {reviewing ? 'Đang xử lý...' : 'Từ chối'}
+            <button type="button" onClick={() => handleReview('reject')} disabled={busy} className={buttonVariants({ variant: 'destructive' })}>
+              {t({ en: 'Ask for changes', vi: 'Từ chối' })}
             </button>
-            <button
-              type="button"
-              onClick={() => handleReview('approve')}
-              disabled={reviewing || saving}
-              className="rounded-xl bg-emerald-700 px-4 py-2 text-xs font-bold text-white hover:bg-emerald-800 disabled:opacity-50"
-            >
-              Duyệt và xuất bản
+            <button type="button" onClick={() => handleReview('approve')} disabled={busy} className={buttonVariants()}>
+              {t({ en: 'Approve and publish', vi: 'Duyệt và xuất bản' })}
             </button>
           </div>
         </section>
       )}
 
       {message && (
-        <div
-          className={`rounded-2xl p-4 text-xs font-bold shadow-xs ${
-            message.type === 'success'
-              ? 'border border-emerald-300 bg-emerald-50 text-emerald-800 dark:border-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-300'
-              : 'border border-red-300 bg-red-50 text-red-800 dark:border-red-800 dark:bg-red-950/50 dark:text-red-300'
-          }`}
-        >
-          {message.text}
-        </div>
+        <Alert tone={message.type === 'success' ? 'success' : 'danger'}>{typeof message.text === 'string' ? message.text : t(message.text)}</Alert>
       )}
 
-      {/* Main Studio 2-Column Split */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Left: Authoring Controls */}
-        <div className="space-y-6">
-          {/* Title Metadata Card */}
-          <div className="rounded-3xl border border-gray-200/80 bg-white/90 p-5 sm:p-6 shadow-xs backdrop-blur-md dark:border-white/10 dark:bg-card/90 space-y-4">
-            <h3 className="text-sm font-mono font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">
-              Tiêu đề bài học song ngữ
-            </h3>
+      <IssueList
+        issues={submitIssues}
+        onJump={(issue) => {
+          setActivePart(issue.part);
+          setMobileView('edit');
+          setFocus({ part: issue.part, index: issue.index, nonce: Date.now() });
+        }}
+      />
 
-            <div>
-              <label className="text-xs font-semibold text-gray-700 dark:text-gray-300">
-                Tiêu đề Tiếng Việt (VI)
-              </label>
-              <input
-                type="text"
-                value={titleVi}
-                onChange={(e) => setTitleVi(e.target.value)}
-                disabled={!canEditContent}
-                placeholder="Ví dụ: Cấu trúc dữ liệu mảng"
-                className="mt-1 w-full rounded-xl border border-gray-200 bg-gray-50/50 p-2.5 text-sm font-medium outline-none focus:border-purple-600 focus:bg-white transition dark:border-gray-700 dark:bg-gray-800 dark:text-white"
-              />
-            </div>
-
-            <div>
-              <label className="text-xs font-semibold text-gray-700 dark:text-gray-300">
-                Tiêu đề Tiếng Anh (EN)
-              </label>
-              <input
-                type="text"
-                value={titleEn}
-                onChange={(e) => setTitleEn(e.target.value)}
-                disabled={!canEditContent}
-                placeholder="e.g. Array Data Structures"
-                className="mt-1 w-full rounded-xl border border-gray-200 bg-gray-50/50 p-2.5 text-sm font-medium outline-none focus:border-purple-600 focus:bg-white transition dark:border-gray-700 dark:bg-gray-800 dark:text-white"
-              />
-            </div>
+      {pendingImport && (
+        <section role="dialog" aria-label={t({ en: 'Import options', vi: 'Cách nhập tệp' })} className="flex flex-col gap-3 rounded-xl border border-action bg-surface p-4">
+          <p className="text-sm text-ink">
+            {t({
+              en: `The file has ${pendingImport.blocks.length} blocks. The lesson already has ${blocks.length}.`,
+              vi: `Tệp có ${pendingImport.blocks.length} khối. Bài đang có ${blocks.length} khối.`,
+            })}
+          </p>
+          <div className="flex flex-wrap gap-2">
+            <button type="button" onClick={() => applyImport(pendingImport, 'append')} className={buttonVariants()}>
+              {t({ en: 'Add to the end of the lesson', vi: 'Thêm vào cuối bài' })}
+            </button>
+            <button type="button" onClick={() => applyImport(pendingImport, 'replace')} className={buttonVariants({ variant: 'destructive' })}>
+              {t({ en: 'Replace the whole lesson', vi: 'Thay toàn bộ bài' })}
+            </button>
+            <button type="button" onClick={() => setPendingImport(null)} className={buttonVariants({ variant: 'ghost' })}>
+              {t({ en: 'Cancel', vi: 'Hủy' })}
+            </button>
           </div>
+        </section>
+      )}
 
-          {/* Block Palette */}
-          {canEditContent && (
-            <div className="space-y-3">
-              <div className="flex flex-wrap items-center justify-end gap-2">
-                <a
-                  href={LESSON_TEMPLATE_URL}
-                  download
-                  className="rounded-xl px-3 py-2 text-xs font-semibold text-ink-muted underline-offset-4 hover:text-ink hover:underline"
-                >
-                  {t({ en: 'Word template', vi: 'Tải mẫu Word' })}
-                </a>
-                <button
-                  type="button"
-                  onClick={() => importInputRef.current?.click()}
-                  disabled={importing}
-                  aria-describedby="lesson-import-hint"
-                  className="rounded-xl border border-purple-200 bg-white px-3.5 py-2 text-xs font-bold text-purple-800 transition hover:bg-purple-50 disabled:opacity-60 dark:border-purple-900 dark:bg-card dark:text-purple-300"
-                >
-                  {importing
-                    ? t({ en: 'Reading file…', vi: 'Đang đọc tệp…' })
-                    : t({ en: 'Import Word / PDF / JSON', vi: 'Nhập từ Word / PDF / JSON' })}
-                </button>
-                <input
-                  ref={importInputRef}
-                  type="file"
-                  accept=".docx,.pdf,.json,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/pdf,application/json"
-                  hidden
-                  onChange={handleImportFile}
-                />
-                <p id="lesson-import-hint" className="w-full text-right text-xs text-ink-muted">
-                  {t({
-                    en: 'Files are read on this device. Any Word/PDF becomes theory blocks; the SciPal template also brings code, formulas and simulations.',
-                    vi: 'Tệp được đọc ngay trên máy. Word/PDF bất kỳ thành các khối lý thuyết; dùng mẫu SciPal để có thêm mã nguồn, công thức, mô phỏng.',
-                  })}
-                </p>
-              </div>
-              <BlockPalette onAddBlock={handleAddBlock} />
+      <PartTabs active={activePart} counts={counts} issues={issues} onSelect={setActivePart} />
+
+      <div className="flex gap-1 lg:hidden" role="group" aria-label={t({ en: 'View', vi: 'Chế độ xem' })}>
+        {(['edit', 'preview'] as const).map((view) => (
+          <button
+            key={view}
+            type="button"
+            aria-pressed={mobileView === view}
+            onClick={() => setMobileView(view)}
+            className={buttonVariants({ variant: mobileView === view ? 'secondary' : 'ghost' })}
+          >
+            {view === 'edit' ? t({ en: 'Edit', vi: 'Soạn' }) : t({ en: 'Preview', vi: 'Xem trước' })}
+          </button>
+        ))}
+      </div>
+
+      <div className="grid gap-6 lg:grid-cols-2">
+        <div className={`flex flex-col gap-4 ${mobileView === 'edit' ? '' : 'hidden lg:flex'}`}>
+          {canEditContent && activePart === 'lesson' && (
+            <div className="flex flex-wrap items-center justify-end gap-2">
+              <a href={LESSON_TEMPLATE_URL} download className={buttonVariants({ variant: 'link' })}>
+                {t({ en: 'Word template', vi: 'Tải mẫu Word' })}
+              </a>
+              <button type="button" onClick={() => importInputRef.current?.click()} disabled={importing} className={buttonVariants({ variant: 'outline' })}>
+                {importing ? t({ en: 'Reading file…', vi: 'Đang đọc tệp…' }) : t({ en: 'Import Word / PDF / JSON', vi: 'Nhập từ Word / PDF / JSON' })}
+              </button>
+              <input
+                ref={importInputRef}
+                type="file"
+                accept=".docx,.pdf,.json,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/pdf,application/json"
+                hidden
+                onChange={handleImportFile}
+              />
             </div>
           )}
-
-          {/* Block Outline & Management */}
-          <div className="space-y-3">
-            <div className="flex items-center justify-between">
-              <h3 className="text-sm font-mono font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">
-                Danh sách khối nội dung ({blocks.length})
-              </h3>
-              <span className="text-xs text-gray-400">Kéo hoặc sắp xếp thứ tự</span>
-            </div>
-
-            {blocks.map((b, idx) => (
-              <div
-                key={idx}
-                className="flex items-center justify-between rounded-2xl border border-gray-200 bg-white p-3.5 shadow-2xs transition hover:border-purple-300 dark:border-gray-800 dark:bg-card"
-              >
-                <div className="flex items-center gap-3">
-                  <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-gray-100 font-mono text-xs font-bold text-gray-600 dark:bg-gray-800 dark:text-gray-300">
-                    {idx + 1}
-                  </span>
-                  <div>
-                    <span className="font-mono text-xs font-bold uppercase text-purple-700 dark:text-purple-300">
-                      {b.type}
-                    </span>
-                    <p className="text-xs text-gray-500 truncate max-w-[200px] sm:max-w-xs">
-                      {b.type === 'theory'
-                        ? b.content.vi.slice(0, 40) + '...'
-                        : b.type === 'code'
-                        ? `Tabs: ${b.tabs.map((t) => t.lang).join(', ')}`
-                        : b.type === 'formula'
-                        ? b.katex
-                        : `ID: ${b.type}`}
-                    </p>
-                  </div>
-                </div>
-
-                {canEditContent && (
-                  <div className="flex items-center gap-1">
-                    <button
-                      type="button"
-                      disabled={idx === 0}
-                      onClick={() => handleMoveBlock(idx, 'up')}
-                      className="h-7 w-7 rounded-lg text-xs font-bold text-gray-500 transition hover:bg-gray-100 disabled:opacity-20"
-                      title="Lên trên"
-                    >
-                      ↑
-                    </button>
-                    <button
-                      type="button"
-                      disabled={idx === blocks.length - 1}
-                      onClick={() => handleMoveBlock(idx, 'down')}
-                      className="h-7 w-7 rounded-lg text-xs font-bold text-gray-500 transition hover:bg-gray-100 disabled:opacity-20"
-                      title="Xuống dưới"
-                    >
-                      ↓
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => handleRemoveBlock(idx)}
-                      className="h-7 w-7 rounded-lg text-xs font-bold text-red-500 transition hover:bg-red-50"
-                      title="Xóa khối"
-                    >
-                      ✕
-                    </button>
-                  </div>
-                )}
-              </div>
-            ))}
-          </div>
+          <BlockList
+            key={activePart}
+            part={activePart}
+            blocks={parts[activePart]}
+            onChange={(next) => setPart(activePart, next)}
+            subjectId={subjectId}
+            readOnly={!canEditContent}
+            focusIndex={focus?.part === activePart ? focus.index : undefined}
+          />
         </div>
 
-        {/* Right: Live Interactive Student Preview */}
-        <div className="space-y-4">
-          <div className="flex items-center justify-between">
-            <h3 className="text-sm font-mono font-bold uppercase tracking-wider text-emerald-800 dark:text-emerald-300">
-              👁️ Xem trước tương tác (Học sinh sẽ thấy)
-            </h3>
-            <span className="rounded-full bg-emerald-100 px-2 py-0.5 font-mono text-[10px] font-bold text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300">
-              Trực quan thời gian thực
-            </span>
-          </div>
-
-          <div className="rounded-3xl border-2 border-dashed border-gray-200 bg-white/70 p-6 shadow-inner backdrop-blur-xs dark:border-gray-800 dark:bg-card/70 space-y-6 min-h-[500px]">
-            <div className="border-b border-gray-100 pb-4 dark:border-gray-800">
-              <h1 className="text-2xl font-black text-gray-900 dark:text-white">
-                {lang === 'en' ? titleEn || titleVi : titleVi}
-              </h1>
-              <p className="mt-1 text-xs font-mono text-gray-400">
-                {lang === 'en' ? titleVi : titleEn}
-              </p>
+        <aside className={`flex flex-col gap-3 ${mobileView === 'preview' ? '' : 'hidden lg:flex'}`} aria-label={t({ en: 'Student preview', vi: 'Xem trước như học sinh' })}>
+          <div className="flex items-center justify-between gap-2">
+            <h3 className="text-sm font-bold text-ink">{t({ en: 'What students see', vi: 'Học sinh sẽ thấy' })}</h3>
+            <div className="flex gap-1" role="group" aria-label={t({ en: 'Preview language', vi: 'Ngôn ngữ xem trước' })}>
+              {(['vi', 'en'] as const).map((code) => (
+                <button
+                  key={code}
+                  type="button"
+                  aria-pressed={previewLang === code}
+                  onClick={() => setPreviewLang(code)}
+                  className={`min-h-9 rounded-md px-3 text-sm font-semibold ${previewLang === code ? 'bg-surface-sunken text-ink' : 'text-ink-muted hover:text-ink'}`}
+                >
+                  {code.toUpperCase()}
+                </button>
+              ))}
             </div>
-
-            {blocks.length === 0 ? (
-              <div className="py-16 text-center text-xs font-mono text-gray-400">
-                Chưa có khối nội dung nào. Thêm khối ở bảng bên trái để bắt đầu!
-              </div>
+          </div>
+          <div className="flex min-h-96 flex-col gap-6 rounded-xl border border-line bg-surface p-5 lg:sticky lg:top-20">
+            <h1 className="text-2xl font-bold text-ink">{previewLang === 'en' ? titleEn || titleVi : titleVi}</h1>
+            {parts[activePart].length === 0 ? (
+              <p className="py-16 text-center text-sm text-ink-muted">{t({ en: 'Nothing in this part yet.', vi: 'Phần này chưa có nội dung.' })}</p>
             ) : (
-              blocks.map((block, i) => <BlockRenderer key={i} block={block} />)
+              <LessonPartsView blocks={blocks} part={activePart} lang={previewLang} />
             )}
           </div>
-        </div>
+        </aside>
       </div>
     </div>
   );

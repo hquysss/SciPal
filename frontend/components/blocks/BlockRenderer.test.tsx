@@ -81,4 +81,10 @@ describe('BlockRenderer', () => {
     expect(html).not.toContain('visualgo');
     expect(html).toContain('Tài nguyên học tập');
   });
+
+  it('previews the other language when the editor asks for it', () => {
+    const html = renderToStaticMarkup(<BlockRenderer block={{ type: 'theory', content: { vi: 'Xin chào', en: 'Hello' } }} lang="en" />);
+    expect(html).toContain('Hello');
+    expect(html).not.toContain('Xin chào');
+  });
 });

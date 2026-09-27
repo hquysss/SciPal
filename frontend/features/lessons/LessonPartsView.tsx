@@ -14,12 +14,14 @@ interface LessonPartsProps {
   completion?: ReactNode;
   /** Editor preview: show only this part, without tabs or completion. */
   part?: LessonPart;
+  /** Preview in this language instead of the reader's. */
+  lang?: 'en' | 'vi';
   /** Show the blocks on the notebook sheet (learner page); `squared` for primary grades. */
   sheet?: { squared: boolean };
 }
 
 /** A lesson read in steps: Bài học → Mô phỏng → Tự luyện; parts without blocks are skipped. */
-export function LessonPartsView({ blocks, completion, part, sheet }: LessonPartsProps) {
+export function LessonPartsView({ blocks, completion, part, sheet, lang }: LessonPartsProps) {
   const { t } = useLanguage();
   const parts = splitLessonParts(blocks);
   const present = LESSON_PARTS.filter((p) => parts[p].length > 0);
@@ -30,7 +32,7 @@ export function LessonPartsView({ blocks, completion, part, sheet }: LessonParts
   const content = (
     <div className="flex flex-col gap-7" role={tabbed ? 'tabpanel' : undefined} id={tabbed ? `part-${shown}` : undefined}>
       {parts[shown].map((block, i) => (
-        <BlockRenderer key={i} block={block} />
+        <BlockRenderer key={i} block={block} lang={lang} />
       ))}
     </div>
   );

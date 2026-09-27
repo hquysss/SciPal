@@ -50,6 +50,7 @@ export default async function LessonAuthoringStudioPage({
 
         <LessonEditor
           lessonId={lesson.id}
+          subjectId={lesson.subject_id}
           initialTitleVi={lesson.title_vi}
           initialTitleEn={lesson.title_en}
           initialBlocks={lesson.blocks}

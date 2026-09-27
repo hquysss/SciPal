@@ -9,8 +9,11 @@ import { TermRefCard } from './TermRefCard';
 import { ResourceRefCard } from './ResourceRefCard';
 import { ImageRenderer } from './ImageRenderer';
 
-export function BlockRenderer({ block }: { block: Block }) {
-  const { lang, t } = useLanguage();
+/** `lang` overrides the reader's language (the editor previews either language). */
+export function BlockRenderer({ block, lang: langOverride }: { block: Block; lang?: 'en' | 'vi' }) {
+  const { lang: readerLang, t: readerT } = useLanguage();
+  const lang = langOverride ?? readerLang;
+  const t = langOverride ? (text: { en: string; vi: string }) => text[langOverride] : readerT;
 
   switch (block.type) {
     case 'theory':
