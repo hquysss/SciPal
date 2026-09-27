@@ -1,9 +1,12 @@
 import { randomUUID } from 'node:crypto';
-import type { FastifyPluginAsync, FastifyRequest } from 'fastify';
+import type { FastifyPluginAsync, FastifyReply, FastifyRequest } from 'fastify';
 import { z } from 'zod';
+import { BlockSchema } from '../schemas/blocks.js';
+import { makeSlug, planNewTopic, type ExistingTopic } from '../authoring/topicPlanning.js';
 
-// The shape the admin exam import page sends after an Excel workbook is parsed and reviewed in
-// the browser. Keep it aligned with frontend/features/content-import/examWorkbook.ts.
+// The package the import page sends after Word/PDF lessons and an Excel workbook are parsed and
+// reviewed in the browser. Keep it aligned with frontend/features/content-import/
+// (lessonDocument.ts and examWorkbook.ts).
 
 export const MAX_EXAM_IMPORT_BYTES = 4 * 1024 * 1024;
 
@@ -44,15 +47,49 @@ const BlueprintSchema = z.object({
     .max(20),
 });
 
+/** A lesson block, or a reference by key to a question of the same import ([QUIZ:key]). */
+const LessonBlockSchema = z.union([BlockSchema, z.object({ type: z.literal('quiz_ref'), key: Key })]);
+
+const LessonSchema = z.object({
+  source: z.string().max(260).optional(),
+  subject_slug: Slug,
+  grade: z.number().int().min(1).max(12),
+  topic: z.object({ vi: text(200), en: text(200) }),
+  title: z.object({ vi: text(200), en: text(200) }),
+  blocks: z.array(LessonBlockSchema).min(1).max(200),
+});
+
+/** English texts of a lesson block that learners read. */
+function blockEnglish(block: z.infer<typeof LessonBlockSchema>): string[] {
+  if (block.type === 'theory') return [block.content.en];
+  if (block.type === 'formula') return block.caption ? [block.caption.en] : [];
+  if (block.type === 'interactive') return [block.heading.en, ...(block.caption ? [block.caption.en] : [])];
+  return [];
+}
+
 export const ExamImportSchema = z
   .object({
+    /** Admins only: publish now. Otherwise lessons are drafts and questions/exams wait for review. */
+    publish: z.boolean().optional().default(false),
+    lessons: z.array(LessonSchema).max(50).optional().default([]),
     questions: z.array(QuestionSchema).max(2000),
     blueprints: z.array(BlueprintSchema).max(50),
   })
   .superRefine((pkg, ctx) => {
-    if (pkg.questions.length === 0 && pkg.blueprints.length === 0) {
-      ctx.addIssue({ code: 'custom', message: 'Tệp chưa có câu hỏi hay đề thi nào.' });
+    if (pkg.lessons.length === 0 && pkg.questions.length === 0 && pkg.blueprints.length === 0) {
+      ctx.addIssue({ code: 'custom', message: 'Chưa có bài học, câu hỏi hay đề thi nào để lưu.' });
     }
+    const questionKeys = new Set(pkg.questions.map((q) => `${q.subject_slug}:${q.key}`));
+    pkg.lessons.forEach((lesson, i) => {
+      lesson.blocks.forEach((block, j) => {
+        if (blockEnglish(block).some((en) => !en.trim())) {
+          ctx.addIssue({ code: 'custom', path: ['lessons', i, 'blocks', j], message: `Bài "${lesson.title.vi}": khối ${j + 1} cần điền tiếng Anh trước khi lưu.` });
+        }
+        if (block.type === 'quiz_ref' && !questionKeys.has(`${lesson.subject_slug}:${block.key}`)) {
+          ctx.addIssue({ code: 'custom', path: ['lessons', i, 'blocks', j], message: `Bài "${lesson.title.vi}": không có câu ${block.key} trong tệp Excel.` });
+        }
+      });
+    });
     const keys = new Set<string>();
     pkg.questions.forEach((q, i) => {
       const key = `${q.subject_slug}:${q.key}`;
@@ -73,7 +110,7 @@ export const ExamImportSchema = z
     });
   });
 
-export type ExamImportPackage = z.infer<typeof ExamImportSchema>;
+export type ExamImportPackage = z.input<typeof ExamImportSchema>;
 type ImportQuestion = ExamImportPackage['questions'][number];
 type ImportBlueprint = ExamImportPackage['blueprints'][number];
 
@@ -189,46 +226,54 @@ export function groupPendingImports(
 }
 
 export const examImportRoutes: FastifyPluginAsync = async (app) => {
-  // Teachers and admins import; a teacher's import waits for an admin, an admin's goes live.
-  app.post('/api/authoring/exam-import', { bodyLimit: MAX_EXAM_IMPORT_BYTES }, async (request, reply) => {
+  // Teachers and admins import. An admin may publish at once; otherwise lessons are drafts
+  // (published from the Studio as usual) and questions/exams wait for an admin as one batch.
+  const importContent = async (request: FastifyRequest, reply: FastifyReply) => {
     const user = getUser(request);
     const role = user?.app_metadata?.app_role;
     if (!user?.id || (role !== 'admin' && role !== 'teacher')) {
-      return reply.code(403).send({ error: 'Chỉ giáo viên và admin mới nhập được đề thi.' });
+      return reply.code(403).send({ error: 'Chỉ giáo viên và admin mới nhập được nội dung.' });
     }
-    const status = role === 'admin' ? 'published' : 'pending_review';
-    const importId = randomUUID();
     const supabase = app.supabase;
-    if (!supabase) return reply.code(503).send({ error: 'Dịch vụ đề thi chưa sẵn sàng.' });
+    if (!supabase) return reply.code(503).send({ error: 'Dịch vụ lưu trữ nội dung chưa sẵn sàng.' });
 
     const parsed = ExamImportSchema.safeParse(request.body);
     if (!parsed.success) return reply.code(400).send({ error: firstIssue(parsed.error) });
     const pkg = parsed.data;
+    const publish = role === 'admin' && pkg.publish;
+    const status = publish ? 'published' : 'pending_review';
+    const lessonStatus = publish ? 'published' : 'draft';
+    const importId = randomUUID();
+    const now = new Date().toISOString();
 
-    const slugs = [...new Set([...pkg.questions, ...pkg.blueprints].map((item) => item.subject_slug))];
+    const slugs = [...new Set([...pkg.lessons, ...pkg.questions, ...pkg.blueprints].map((item) => item.subject_slug))];
     const { data: subjectRows, error: subjectError } = await supabase.from('subjects').select('id, slug').in('slug', slugs);
     if (subjectError) {
-      request.log.error({ err: subjectError }, 'Failed to resolve exam import subjects');
+      request.log.error({ err: subjectError }, 'Failed to resolve import subjects');
       return reply.code(500).send({ error: 'Không xác minh được môn học.' });
     }
     const subjectIds = new Map(((subjectRows ?? []) as Array<{ id: string; slug: string }>).map((s) => [s.slug, s.id]));
     const unknown = slugs.filter((slug) => !subjectIds.has(slug));
     if (unknown.length > 0) return reply.code(400).send({ error: `Môn học không tồn tại: ${unknown.join(', ')}.` });
 
-    if (pkg.blueprints.length > 0) {
+    if (pkg.blueprints.length > 0 || pkg.lessons.length > 0) {
       const { data: catalogRows, error: catalogError } = await supabase
         .from('subject_grade_catalog')
         .select('subject_id, grade')
         .in('subject_id', [...subjectIds.values()])
         .eq('active', true);
       if (catalogError) {
-        request.log.error({ err: catalogError }, 'Failed to check exam import grades');
+        request.log.error({ err: catalogError }, 'Failed to check import grades');
         return reply.code(500).send({ error: 'Không xác minh được lớp của môn học.' });
       }
       const taught = new Set(((catalogRows ?? []) as Array<{ subject_id: string; grade: number }>).map((r) => `${r.subject_id}:${r.grade}`));
       const outside = pkg.blueprints.find((b) => !taught.has(`${subjectIds.get(b.subject_slug)}:${b.grade}`));
       if (outside) {
         return reply.code(400).send({ error: `Đề ${outside.code}: lớp ${outside.grade} không thuộc chương trình môn ${outside.subject_slug}.` });
+      }
+      const outsideLesson = pkg.lessons.find((l) => !taught.has(`${subjectIds.get(l.subject_slug)}:${l.grade}`));
+      if (outsideLesson) {
+        return reply.code(400).send({ error: `Bài "${outsideLesson.title.vi}": lớp ${outsideLesson.grade} không thuộc chương trình môn ${outsideLesson.subject_slug}.` });
       }
     }
 
@@ -251,8 +296,97 @@ export const examImportRoutes: FastifyPluginAsync = async (app) => {
       });
     }
 
-    // Two bulk inserts, each atomic on its own; a failed exam insert removes the questions again,
+    // Lessons: find or create each topic, pick a free slug, and turn question keys into ids.
+    const newTopics: Record<string, unknown>[] = [];
+    const lessonRows: Record<string, unknown>[] = [];
+    if (pkg.lessons.length > 0) {
+      const lessonSubjectIds = [...new Set(pkg.lessons.map((l) => subjectIds.get(l.subject_slug)!))];
+      const [topicRes, slugRes] = await Promise.all([
+        supabase.from('topics').select('id, subject_id, slug, grade, name_en, name_vi, sort_order').in('subject_id', lessonSubjectIds),
+        supabase.from('lessons').select('subject_id, slug').in('subject_id', lessonSubjectIds),
+      ]);
+      const lookupError = topicRes.error ?? slugRes.error;
+      if (lookupError) {
+        request.log.error({ err: lookupError }, 'Failed to read topics and lesson slugs for import');
+        return reply.code(500).send({ error: 'Không đọc được chủ đề và bài học hiện có.' });
+      }
+      const topicsBySubject = new Map<string, Array<ExistingTopic & { subject_id: string }>>();
+      for (const topic of (topicRes.data ?? []) as Array<ExistingTopic & { subject_id: string }>) {
+        topicsBySubject.set(topic.subject_id, [...(topicsBySubject.get(topic.subject_id) ?? []), topic]);
+      }
+      const takenSlugs = new Set(((slugRes.data ?? []) as Array<{ subject_id: string; slug: string }>).map((r) => `${r.subject_id}:${r.slug}`));
+      const questionIds = new Map(questions.map((q) => [`${q.subject_slug}:${q.key}`, q.id]));
+
+      for (const lesson of pkg.lessons) {
+        const subjectId = subjectIds.get(lesson.subject_slug)!;
+        const existing = topicsBySubject.get(subjectId) ?? [];
+        const plan = planNewTopic(existing, { grade: lesson.grade, name_en: lesson.topic.en, name_vi: lesson.topic.vi });
+        let topicId: string;
+        if (plan.kind === 'duplicate') {
+          topicId = plan.topic.id;
+        } else {
+          topicId = randomUUID();
+          const row = { id: topicId, subject_id: subjectId, grade: lesson.grade, kind: 'core', slug: plan.slug, name_en: lesson.topic.en, name_vi: lesson.topic.vi, sort_order: plan.sort_order };
+          newTopics.push(row);
+          topicsBySubject.set(subjectId, [...existing, { ...row, grade: lesson.grade }]);
+        }
+
+        const base = makeSlug(lesson.title.en) || makeSlug(lesson.title.vi) || 'bai-hoc';
+        let slug = base;
+        for (let n = 2; takenSlugs.has(`${subjectId}:${slug}`); n += 1) slug = `${base}-${n}`;
+        takenSlugs.add(`${subjectId}:${slug}`);
+
+        const blocks = lesson.blocks.map((block) =>
+          block.type === 'quiz_ref' ? { type: 'quiz', question_id: questionIds.get(`${lesson.subject_slug}:${block.key}`)! } : block,
+        );
+        const checked = BlockSchema.array().safeParse(blocks);
+        if (!checked.success) return reply.code(400).send({ error: `Bài "${lesson.title.vi}" có khối không hợp lệ.` });
+
+        lessonRows.push({
+          id: randomUUID(),
+          topic_id: topicId,
+          subject_id: subjectId,
+          slug,
+          title_en: lesson.title.en,
+          title_vi: lesson.title.vi,
+          grade: lesson.grade,
+          blocks: checked.data,
+          status: lessonStatus,
+          created_by: user.id,
+          ...(publish ? { published_at: now, reviewed_by: user.id, reviewed_at: now } : {}),
+        });
+      }
+    }
+
+    // Each insert is atomic on its own; when a later one fails, the earlier ones are removed again
     // so a rejected import leaves nothing behind.
+    const done: Array<'topics' | 'questions' | 'blueprints'> = [];
+    const rollback = async () => {
+      const undo = async (label: string, query: PromiseLike<{ error: unknown }>) => {
+        const { error } = await query;
+        if (error) request.log.error({ err: error }, `Failed to undo imported ${label}`);
+      };
+      if (done.includes('blueprints')) await undo('exams', supabase.from('exam_blueprints').delete().eq('import_id', importId));
+      if (done.includes('questions')) await undo('questions', supabase.from('questions').delete().in('id', questions.map((q) => q.id)));
+      if (done.includes('topics')) await undo('topics', supabase.from('topics').delete().in('id', newTopics.map((t) => t.id as string)));
+    };
+    const failed = async (error: { code?: string } | null, what: string) => {
+      await rollback();
+      if (error?.code === '42703') return reply.code(503).send({ error: 'Cơ sở dữ liệu chưa chạy migration nhập nội dung.' });
+      if (error?.code === '23505') {
+        return reply.code(409).send({
+          error: what === 'exams' ? 'Đã có đề thi trùng tên. Đổi title_vi rồi nhập lại.' : 'Nội dung vừa bị trùng với dữ liệu khác. Hãy thử lại.',
+        });
+      }
+      request.log.error({ err: error }, `Failed to insert imported ${what}`);
+      return reply.code(500).send({ error: 'Không lưu được nội dung nhập. Chưa có gì được lưu.' });
+    };
+
+    if (newTopics.length > 0) {
+      const { error } = await supabase.from('topics').insert(newTopics);
+      if (error) return failed(error, 'topics');
+      done.push('topics');
+    }
     if (questions.length > 0) {
       const { error } = await supabase.from('questions').insert(
         questions.map((q) => ({
@@ -266,37 +400,30 @@ export const examImportRoutes: FastifyPluginAsync = async (app) => {
           created_by: user.id,
         })),
       );
-      if (error) {
-        if (error.code === '42703') {
-          return reply.code(503).send({ error: 'Cơ sở dữ liệu chưa chạy migration nhập đề thi.' });
-        }
-        request.log.error({ err: error }, 'Failed to insert imported questions');
-        return reply.code(500).send({ error: 'Không lưu được câu hỏi.' });
-      }
+      if (error) return failed(error, 'questions');
+      done.push('questions');
     }
-
     if (blueprintRows.length > 0) {
       const { error } = await supabase.from('exam_blueprints').insert(blueprintRows);
-      if (error) {
-        if (questions.length > 0) {
-          const { error: cleanupError } = await supabase.from('questions').delete().in('id', questions.map((q) => q.id));
-          if (cleanupError) request.log.error({ err: cleanupError }, 'Failed to remove questions of a rejected exam import');
-        }
-        if (error.code === '23505') return reply.code(409).send({ error: 'Đã có đề thi trùng tên. Đổi title_vi rồi nhập lại.' });
-        if (error.code === '42703') {
-          return reply.code(503).send({ error: 'Cơ sở dữ liệu chưa chạy migration nhập đề thi.' });
-        }
-        request.log.error({ err: error }, 'Failed to insert imported exams');
-        return reply.code(500).send({ error: 'Không lưu được đề thi.' });
-      }
+      if (error) return failed(error, 'exams');
+      done.push('blueprints');
+    }
+    if (lessonRows.length > 0) {
+      const { error } = await supabase.from('lessons').insert(lessonRows);
+      if (error) return failed(error, 'lessons');
     }
 
     return reply.code(201).send({
-      imported: { questions: questions.length, blueprints: blueprintRows.length },
+      imported: { lessons: lessonRows.length, questions: questions.length, blueprints: blueprintRows.length },
       status,
+      lesson_status: lessonStatus,
       import_id: importId,
     });
-  });
+  };
+
+  app.post('/api/authoring/content-import', { bodyLimit: MAX_EXAM_IMPORT_BYTES }, importContent);
+  // Earlier name of the same route (Excel-only imports).
+  app.post('/api/authoring/exam-import', { bodyLimit: MAX_EXAM_IMPORT_BYTES }, importContent);
 
   const requireAdmin = (request: FastifyRequest) => getUser(request)?.app_metadata?.app_role === 'admin';
 

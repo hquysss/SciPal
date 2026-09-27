@@ -9,6 +9,9 @@ import type { LessonImportResult } from '../authoring/lessonImport';
 //    [RESOURCE:uuid]);
 //  - any other document: its text becomes theory blocks (a Word file split at its headings, a PDF
 //    one block per page). English starts empty for the author to fill in; nothing is translated.
+// The import page reads whole lessons from the template instead (parseLessonPackage): subject,
+// grade and topic come from the metadata lines, and [QUIZ:key] may name a question of the Excel
+// workbook imported alongside.
 
 export const MAX_DOCUMENT_BYTES = 10 * 1024 * 1024;
 const MAX_DOCUMENT_TEXT = 2_000_000;
@@ -16,6 +19,18 @@ const MAX_PDF_PAGES = 100;
 export const TEMPLATE_HEADER = 'SCIPAL-LESSON-V1';
 
 type Bilingual = { en: string; vi: string };
+
+/** A block of an imported lesson; `quiz_ref` points at a question of the same import by key. */
+export type DraftLessonBlock = Block | { type: 'quiz_ref'; key: string };
+
+export interface DraftLesson {
+  source: string;
+  subject_slug: string;
+  grade: number;
+  topic: Bilingual;
+  title: Bilingual;
+  blocks: DraftLessonBlock[];
+}
 
 class DocumentImportError extends Error {
   constructor(readonly bilingual: Bilingual) {
@@ -38,8 +53,9 @@ export function documentKind(fileName: string): DocumentKind | null {
 
 const INTERACTIVE_KINDS = ['algorithm-sim', 'function-graph', 'geometry-3d', 'experiment', 'bio-diagram'];
 const CODE_LANGS = ['python', 'cpp', 'javascript'];
-/** Metadata lines of the older SciPal template: accepted and ignored, the Studio lesson already has them. */
-const IGNORED_METADATA = new Set(['subject', 'topic_slug', 'topic_vi', 'topic_en', 'slug', 'grade']);
+/** Metadata lines of the template. The Studio uses only the titles: its lesson already has the rest. */
+const METADATA_KEYS = new Set(['subject', 'topic_slug', 'topic_vi', 'topic_en', 'slug', 'grade', 'title_vi', 'title_en']);
+type TemplateMode = 'studio' | 'package';
 const UUID = z.string().uuid();
 
 type Section = { marker: string; lines: string[] };
@@ -79,7 +95,7 @@ function refId(marker: string, prefix: string): string {
   return id;
 }
 
-function sectionToBlock(section: Section): Block | { lang: string; code: string } {
+function sectionToBlock(section: Section, mode: TemplateMode): DraftLessonBlock | { lang: string; code: string } {
   const { marker, lines } = section;
   if (marker === 'THEORY') {
     const f = labelledFields(lines, ['vi', 'en'], 'THEORY');
@@ -134,63 +150,112 @@ function sectionToBlock(section: Section): Block | { lang: string; code: string 
       config: config as Record<string, unknown>,
     };
   }
-  if (marker.startsWith('QUIZ:')) return { type: 'quiz', question_id: refId(marker, 'QUIZ:') };
+  if (marker.startsWith('QUIZ:')) {
+    const key = marker.slice(5).trim().toLowerCase();
+    // On the import page a key names a question of the workbook imported alongside.
+    if (mode === 'package' && !UUID.safeParse(key).success) {
+      if (!/^[a-z0-9][a-z0-9_-]{0,79}$/.test(key)) fail(`[${marker}]: mã câu hỏi không hợp lệ.`, `[${marker}]: invalid question key.`);
+      return { type: 'quiz_ref', key };
+    }
+    return { type: 'quiz', question_id: refId(marker, 'QUIZ:') };
+  }
   if (marker.startsWith('TERM:')) return { type: 'term-ref', term_id: refId(marker, 'TERM:') };
   if (marker.startsWith('RESOURCE:')) return { type: 'resource-ref', resource_id: refId(marker, 'RESOURCE:') };
   return fail(`Khối "[${marker}]" không được hỗ trợ.`, `Block "[${marker}]" is not supported.`);
 }
 
-/** Parse text written in the SciPal lesson template. */
+/** Split template text into its metadata lines and its blocks. */
+function parseTemplateCore(text: string, mode: TemplateMode): { meta: Record<string, string>; blocks: DraftLessonBlock[] } {
+  const lines = text.replace(/\r\n?/g, '\n').replace(/^\uFEFF/, '').split('\n');
+  const start = lines.findIndex((line) => line.trim().length > 0);
+  if (start < 0 || lines[start]!.trim() !== TEMPLATE_HEADER) {
+    fail(`Tài liệu không bắt đầu bằng ${TEMPLATE_HEADER}.`, `The document does not start with ${TEMPLATE_HEADER}.`);
+  }
+
+  const meta: Record<string, string> = {};
+  const sections: Section[] = [];
+  for (const line of lines.slice(start + 1)) {
+    const marker = markerOf(line);
+    if (marker) {
+      sections.push({ marker, lines: [] });
+    } else if (sections.length > 0) {
+      sections.at(-1)!.lines.push(line);
+    } else if (line.trim() && !line.trimStart().startsWith('#')) {
+      const match = /^\s*([a-z][a-z0-9_]*)\s*:\s*(.*)$/i.exec(line);
+      const key = match?.[1]?.toLowerCase();
+      if (!key || !METADATA_KEYS.has(key)) fail(`Không đọc được dòng "${line.trim()}".`, `Could not read the line "${line.trim()}".`);
+      if (Object.hasOwn(meta, key!)) fail(`Dòng "${key}:" bị lặp.`, `"${key}:" appears twice.`);
+      const value = match![2]!.trim();
+      if (value.length > 200) fail(`${key}: tối đa 200 ký tự.`, `${key}: 200 characters at most.`);
+      meta[key!] = value;
+    }
+  }
+
+  // Consecutive CODE sections become the tabs of one code block.
+  const blocks: DraftLessonBlock[] = [];
+  for (const section of sections) {
+    const block = sectionToBlock(section, mode);
+    if ('lang' in block) {
+      const previous = blocks.at(-1);
+      const tab = { lang: block.lang as 'python', code: block.code };
+      if (previous?.type === 'code') previous.tabs.push(tab);
+      else blocks.push({ type: 'code', tabs: [tab] });
+    } else {
+      blocks.push(block);
+    }
+  }
+  if (blocks.length === 0) fail('Tài liệu chưa có khối nội dung nào.', 'The document has no content blocks.');
+
+  const checked = z
+    .array(z.union([BlockSchema, z.object({ type: z.literal('quiz_ref'), key: z.string() })]))
+    .safeParse(blocks);
+  if (!checked.success) {
+    const index = checked.error.issues[0]?.path[0];
+    fail(`Khối số ${Number(index) + 1} không hợp lệ.`, `Block ${Number(index) + 1} is invalid.`);
+  }
+  return { meta, blocks: checked.data as DraftLessonBlock[] };
+}
+
+/** Parse text written in the SciPal lesson template, for the Studio's lesson. */
 export function parseLessonTemplate(text: string): LessonImportResult {
   try {
-    const lines = text.replace(/\r\n?/g, '\n').replace(/^﻿/, '').split('\n');
-    const start = lines.findIndex((line) => line.trim().length > 0);
-    if (start < 0 || lines[start]!.trim() !== TEMPLATE_HEADER) {
-      fail(`Tài liệu không bắt đầu bằng ${TEMPLATE_HEADER}.`, `The document does not start with ${TEMPLATE_HEADER}.`);
-    }
+    const { meta, blocks } = parseTemplateCore(text, 'studio');
+    return {
+      ok: true,
+      ...(meta.title_vi ? { title_vi: meta.title_vi } : {}),
+      ...(meta.title_en ? { title_en: meta.title_en } : {}),
+      blocks: blocks as Block[],
+    };
+  } catch (error) {
+    if (error instanceof DocumentImportError) return { ok: false, error: error.bilingual };
+    throw error;
+  }
+}
 
-    const titles: { title_vi?: string; title_en?: string } = {};
-    const sections: Section[] = [];
-    for (const line of lines.slice(start + 1)) {
-      const marker = markerOf(line);
-      if (marker) {
-        sections.push({ marker, lines: [] });
-      } else if (sections.length > 0) {
-        sections.at(-1)!.lines.push(line);
-      } else if (line.trim() && !line.trimStart().startsWith('#')) {
-        const match = /^\s*([a-z][a-z0-9_]*)\s*:\s*(.*)$/i.exec(line);
-        const key = match?.[1]?.toLowerCase();
-        if (key === 'title_vi' || key === 'title_en') {
-          const value = match![2]!.trim();
-          if (value.length > 200) fail('Tiêu đề tối đa 200 ký tự.', 'Titles are limited to 200 characters.');
-          if (value) titles[key] = value;
-        } else if (!key || !IGNORED_METADATA.has(key)) {
-          fail(`Không đọc được dòng "${line.trim()}".`, `Could not read the line "${line.trim()}".`);
-        }
-      }
-    }
+export type LessonPackageResult = { ok: true; lesson: DraftLesson } | { ok: false; error: Bilingual };
 
-    // Consecutive CODE sections become the tabs of one code block.
-    const blocks: Block[] = [];
-    for (const section of sections) {
-      const block = sectionToBlock(section);
-      if ('lang' in block) {
-        const previous = blocks.at(-1);
-        const tab = { lang: block.lang as 'python', code: block.code };
-        if (previous?.type === 'code') previous.tabs.push(tab);
-        else blocks.push({ type: 'code', tabs: [tab] });
-      } else {
-        blocks.push(block);
-      }
+/** Parse a whole lesson for the import page: the template with subject, grade, topic and title. */
+export function parseLessonPackage(text: string, source: string): LessonPackageResult {
+  try {
+    const { meta, blocks } = parseTemplateCore(text, 'package');
+    for (const key of ['subject', 'grade', 'topic_vi', 'title_vi']) {
+      if (!meta[key]) fail(`Thiếu dòng thông tin "${key}:".`, `The "${key}:" line is missing.`);
     }
-    if (blocks.length === 0) fail('Tài liệu chưa có khối nội dung nào.', 'The document has no content blocks.');
-
-    const checked = z.array(BlockSchema).safeParse(blocks);
-    if (!checked.success) {
-      const index = checked.error.issues[0]?.path[0];
-      fail(`Khối số ${Number(index) + 1} không hợp lệ.`, `Block ${Number(index) + 1} is invalid.`);
-    }
-    return { ok: true, ...titles, blocks: checked.data! };
+    const grade = Number(meta.grade);
+    if (!Number.isInteger(grade) || grade < 1 || grade > 12) fail('grade phải là số từ 1 đến 12.', 'grade must be a number from 1 to 12.');
+    const subject = meta.subject!.toLowerCase();
+    if (!/^[a-z0-9]+(-[a-z0-9]+)*$/.test(subject)) fail('subject phải là mã môn, ví dụ informatics.', 'subject must be a subject slug, e.g. informatics.');
+    return {
+      ok: true,
+      lesson: {
+        source,
+        subject_slug: subject,
+        grade,
+        topic: { vi: meta.topic_vi!, en: meta.topic_en ?? '' },
+        title: { vi: meta.title_vi!, en: meta.title_en ?? '' },
+        blocks,
+      },
+    };
   } catch (error) {
     if (error instanceof DocumentImportError) return { ok: false, error: error.bilingual };
     throw error;
@@ -268,46 +333,67 @@ async function readPdfPages(bytes: ArrayBuffer): Promise<string[]> {
   }
 }
 
+/** The text of a .docx or text-based .pdf file, and its free-form blocks on demand. */
+async function readDocument(file: File): Promise<{ text: string; freeForm: () => Promise<Block[]> }> {
+  const kind = documentKind(file.name);
+  if (!kind) fail('Chỉ nhận tệp Word .docx hoặc PDF.', 'Only Word .docx or PDF files are accepted.');
+  if (file.size === 0) fail('Tệp đang trống.', 'The file is empty.');
+  if (file.size > MAX_DOCUMENT_BYTES) fail('Tệp lớn hơn 10 MB.', 'The file is larger than 10 MB.');
+  const bytes = await file.arrayBuffer();
+
+  let text: string;
+  let freeForm: () => Promise<Block[]>;
+  try {
+    if (kind === 'docx') {
+      const docx = await readDocx(bytes);
+      text = docx.text;
+      freeForm = async () => markdownToTheoryBlocks(await docx.markdown());
+    } else {
+      const pages = await readPdfPages(bytes);
+      text = pages.join('\n');
+      freeForm = async () => pagesToTheoryBlocks(pages);
+    }
+  } catch (error) {
+    if (error instanceof DocumentImportError) throw error;
+    return kind === 'docx'
+      ? fail('Không mở được tệp Word. Hãy lưu lại dạng .docx rồi thử lại.', 'Could not open the Word file. Save it as .docx and try again.')
+      : fail('Không mở được tệp PDF.', 'Could not open the PDF file.');
+  }
+
+  if (text.length > MAX_DOCUMENT_TEXT) fail('Văn bản trong tệp quá dài (tối đa 2 triệu ký tự).', 'The document text is too long (2 million characters at most).');
+  if (!text.trim()) {
+    return kind === 'pdf'
+      ? fail('PDF không có chữ chọn được (có thể là bản scan). Hãy dùng Word hoặc PDF có chữ.', 'The PDF has no selectable text (it may be a scan). Use Word or a text PDF.')
+      : fail('Tệp Word không có chữ.', 'The Word file has no text.');
+  }
+  return { text, freeForm };
+}
+
 /** Read a .docx or text-based .pdf lesson file into Studio blocks. */
 export async function importLessonDocument(file: File): Promise<LessonImportResult> {
   try {
-    const kind = documentKind(file.name);
-    if (!kind) fail('Chỉ nhận tệp Word .docx hoặc PDF.', 'Only Word .docx or PDF files are accepted.');
-    if (file.size === 0) fail('Tệp đang trống.', 'The file is empty.');
-    if (file.size > MAX_DOCUMENT_BYTES) fail('Tệp lớn hơn 10 MB.', 'The file is larger than 10 MB.');
-    const bytes = await file.arrayBuffer();
-
-    let text: string;
-    let freeForm: () => Promise<Block[]>;
-    try {
-      if (kind === 'docx') {
-        const docx = await readDocx(bytes);
-        text = docx.text;
-        freeForm = async () => markdownToTheoryBlocks(await docx.markdown());
-      } else {
-        const pages = await readPdfPages(bytes);
-        text = pages.join('\n');
-        freeForm = async () => pagesToTheoryBlocks(pages);
-      }
-    } catch (error) {
-      if (error instanceof DocumentImportError) throw error;
-      return kind === 'docx'
-        ? fail('Không mở được tệp Word. Hãy lưu lại dạng .docx rồi thử lại.', 'Could not open the Word file. Save it as .docx and try again.')
-        : fail('Không mở được tệp PDF.', 'Could not open the PDF file.');
-    }
-
-    if (text.length > MAX_DOCUMENT_TEXT) fail('Văn bản trong tệp quá dài (tối đa 2 triệu ký tự).', 'The document text is too long (2 million characters at most).');
-    if (!text.trim()) {
-      return kind === 'pdf'
-        ? fail('PDF không có chữ chọn được (có thể là bản scan). Hãy dùng Word hoặc PDF có chữ.', 'The PDF has no selectable text (it may be a scan). Use Word or a text PDF.')
-        : fail('Tệp Word không có chữ.', 'The Word file has no text.');
-    }
-
+    const { text, freeForm } = await readDocument(file);
     if (text.trimStart().startsWith(TEMPLATE_HEADER)) return parseLessonTemplate(text);
-
     const blocks = await freeForm();
     if (blocks.length === 0) fail('Không tách được nội dung từ tệp.', 'No content could be read from the file.');
     return { ok: true, blocks };
+  } catch (error) {
+    if (error instanceof DocumentImportError) return { ok: false, error: error.bilingual };
+    throw error;
+  }
+}
+
+/** Read one lesson file for the import page; it must follow the SciPal template. */
+export async function readLessonPackageFile(file: File): Promise<LessonPackageResult> {
+  try {
+    const { text } = await readDocument(file);
+    if (!text.trimStart().startsWith(TEMPLATE_HEADER)) {
+      fail(
+        'Tệp chưa theo mẫu SciPal (thiếu môn, lớp, chủ đề). Tải mẫu bài học, hoặc mở bài trong Studio và dùng "Nhập từ Word / PDF" cho tài liệu bất kỳ.',
+        'The file does not follow the SciPal template (no subject, grade or topic). Download the lesson template, or open a lesson in the Studio and use "Import Word / PDF" for any document.',
+      );
+    }
+    return parseLessonPackage(text, file.name);
   } catch (error) {
     if (error instanceof DocumentImportError) return { ok: false, error: error.bilingual };
     throw error;

@@ -8,7 +8,11 @@ from xml.sax.saxutils import escape
 from zipfile import ZIP_DEFLATED, ZipFile
 
 ROOT = Path(__file__).resolve().parents[1]
-OUTPUT = ROOT / "frontend" / "public" / "templates" / "scipal-lesson-template.docx"
+TEMPLATES = ROOT / "frontend" / "public" / "templates"
+# Studio template: the lesson already has its subject, grade and topic.
+OUTPUT = TEMPLATES / "scipal-lesson-template.docx"
+# Import page template: one file per lesson, with subject, grade and topic.
+IMPORT_OUTPUT = TEMPLATES / "scipal-lesson-import-template.docx"
 
 PARAGRAPHS = [
     "SCIPAL-LESSON-V1",
@@ -55,15 +59,35 @@ PARAGRAPHS = [
 ]
 
 
+BLOCK_START = PARAGRAPHS.index("")
+
+IMPORT_PARAGRAPHS = [
+    "SCIPAL-LESSON-V1",
+    "# Mẫu cho trang Nhập bài học & đề thi: mỗi tệp là một bài. Dòng bắt đầu bằng # là ghi chú.",
+    "# subject là mã môn (informatics, math, physics, ...); grade là lớp 1–12; chủ đề chưa có sẽ được tạo mới.",
+    "# [QUIZ:mã-câu] lấy câu hỏi có question_key đó trong tệp Excel nhập cùng lúc (cùng môn).",
+    "# Có thể để trống phần tiếng Anh rồi điền trong trang xem trước.",
+    "subject: informatics",
+    "grade: 11",
+    "topic_vi: Thuật toán tìm kiếm",
+    "topic_en: Search algorithms",
+    "title_vi: Tìm kiếm nhị phân",
+    "title_en: Binary search",
+    *PARAGRAPHS[BLOCK_START:],
+    "",
+    "[QUIZ:vd-nhi-phan]",
+]
+
+
 def paragraph(text: str) -> str:
     if not text:
         return "<w:p/>"
     return f'<w:p><w:r><w:t xml:space="preserve">{escape(text)}</w:t></w:r></w:p>'
 
 
-def main() -> None:
-    OUTPUT.parent.mkdir(parents=True, exist_ok=True)
-    body = "".join(paragraph(line) for line in PARAGRAPHS)
+def write(output: Path, paragraphs: list[str]) -> None:
+    output.parent.mkdir(parents=True, exist_ok=True)
+    body = "".join(paragraph(line) for line in paragraphs)
     document = (
         '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
         '<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">'
@@ -88,11 +112,16 @@ def main() -> None:
         'Target="word/document.xml"/>'
         "</Relationships>"
     )
-    with ZipFile(OUTPUT, "w", ZIP_DEFLATED) as docx:
+    with ZipFile(output, "w", ZIP_DEFLATED) as docx:
         docx.writestr("[Content_Types].xml", content_types)
         docx.writestr("_rels/.rels", relationships)
         docx.writestr("word/document.xml", document)
-    print(OUTPUT)
+    print(output)
+
+
+def main() -> None:
+    write(OUTPUT, PARAGRAPHS)
+    write(IMPORT_OUTPUT, IMPORT_PARAGRAPHS)
 
 
 if __name__ == "__main__":
