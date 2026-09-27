@@ -1,4 +1,5 @@
 import { notFound } from 'next/navigation';
+import { getAccentColor } from '@scipal/ui';
 import { LandingPage } from '../../../features/landing/LandingPage';
 import { parseEducationLevel } from '../../../features/landing/educationLevel';
 import type { InformaticsAvailability, LandingSubject } from '../../../features/landing/getLandingData';
@@ -24,7 +25,7 @@ const catalogs: Record<EducationLevel, LandingSubject[]> = {
     name_en,
     name_vi,
     icon,
-    accent_color: '#8A3E1F',
+    accent_color: getAccentColor('physics'),
     status: 'upcoming',
     sort_order,
     education_level: 'primary',
@@ -41,7 +42,7 @@ const catalogs: Record<EducationLevel, LandingSubject[]> = {
     name_en,
     name_vi,
     icon,
-    accent_color: '#245398',
+    accent_color: getAccentColor('math'),
     status: 'upcoming',
     sort_order,
     education_level: 'lower_secondary',
@@ -58,7 +59,7 @@ const catalogs: Record<EducationLevel, LandingSubject[]> = {
     name_en,
     name_vi,
     icon,
-    accent_color: '#16a34a',
+    accent_color: getAccentColor('informatics'),
     status,
     sort_order,
     education_level: 'upper_secondary',

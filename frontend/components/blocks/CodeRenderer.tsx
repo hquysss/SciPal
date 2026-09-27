@@ -3,6 +3,7 @@ import { useState } from 'react';
 import dynamic from 'next/dynamic';
 import { useLanguage } from '@scipal/hooks';
 import type { CodeBlock } from '@scipal/types';
+import { useShellDark } from '../../lib/theme/useShellDark';
 
 const MonacoEditor = dynamic(() => import('@monaco-editor/react'), {
   ssr: false,
@@ -17,6 +18,7 @@ export function CodeRenderer({ block }: { block: CodeBlock }) {
   const { t } = useLanguage();
   const [activeTab, setActiveTab] = useState(0);
   const tab = block.tabs[activeTab];
+  const dark = useShellDark();
 
   return (
     <div className="overflow-hidden rounded-lg border border-line bg-surface">
@@ -40,6 +42,7 @@ export function CodeRenderer({ block }: { block: CodeBlock }) {
         height="280px"
         language={tab?.lang ?? 'plaintext'}
         value={tab?.code ?? ''}
+        theme={dark ? 'vs-dark' : 'light'}
         options={{
           readOnly: true,
           minimap: { enabled: false },

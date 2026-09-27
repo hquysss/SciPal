@@ -10,6 +10,14 @@ import {
   updateAccountRole,
   type Account,
 } from './accountsApi';
+import { Alert } from '@/components/ui/alert';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
+import { EmptyState } from '@/components/ui/empty-state';
+import { Field } from '@/components/ui/field';
+import { Input } from '@/components/ui/input';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 type ListState = 'loading' | 'ready' | 'error';
@@ -151,62 +159,62 @@ export function AdminAccountsPage() {
   }
 
   function roleBadge(accountRole: Account['app_role']) {
-    const styles: Record<Account['app_role'], string> = {
-      admin: 'border-purple-300/60 bg-purple-100 text-purple-800 dark:border-purple-800 dark:bg-purple-950/50 dark:text-purple-300',
-      teacher: 'border-blue-300/60 bg-blue-100 text-blue-800 dark:border-blue-800 dark:bg-blue-950/50 dark:text-blue-300',
-      student: 'border-emerald-300/60 bg-emerald-100 text-emerald-800 dark:border-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-300',
-    };
+    const variants = { admin: 'default', teacher: 'outline', student: 'secondary' } as const;
     const labels: Record<Account['app_role'], { en: string; vi: string }> = {
       admin: { en: 'Admin', vi: 'Quản trị' },
       teacher: { en: 'Teacher', vi: 'Giáo viên' },
       student: { en: 'Student', vi: 'Học sinh' },
     };
 
-    return (
-      <span className={`inline-flex shrink-0 items-center rounded-full border px-2.5 py-1 text-xs font-bold ${styles[accountRole]}`}>
-        {t(labels[accountRole])}
-      </span>
-    );
+    return <Badge variant={variants[accountRole]}>{t(labels[accountRole])}</Badge>;
   }
+
+  const clearFormMessages = () => { setFormError(null); setFormSuccess(null); };
+  const textFields = [
+    { id: 'account-display-name', label: { en: 'Display name', vi: 'Tên hiển thị' }, type: 'text', autoComplete: 'name', value: displayName, set: setDisplayName },
+    { id: 'account-email', label: { en: 'Email', vi: 'Email' }, type: 'email', autoComplete: 'email', value: email, set: setEmail },
+    { id: 'account-password', label: { en: 'Password', vi: 'Mật khẩu' }, type: 'password', autoComplete: 'new-password', value: password, set: setPassword },
+    { id: 'account-password-confirm', label: { en: 'Confirm password', vi: 'Xác nhận mật khẩu' }, type: 'password', autoComplete: 'new-password', value: passwordConfirm, set: setPasswordConfirm },
+  ];
 
   return (
     <main className="mx-auto w-full max-w-7xl px-4 py-8 sm:px-8 sm:py-12">
       <header className="mb-8 max-w-3xl">
-        <p className="text-xs font-bold uppercase tracking-[0.22em] text-emerald-600 dark:text-emerald-400">
+        <p className="text-sm font-semibold text-ink-muted">
           {t({ en: 'Administration', vi: 'Quản trị hệ thống' })}
         </p>
-        <h1 className="mt-2 text-3xl font-black tracking-tight text-gray-900 dark:text-white sm:text-4xl">
-          {t({ en: 'Account Management', vi: 'Quản lý tài khoản' })}
+        <h1 className="mt-1 text-3xl font-extrabold tracking-tight text-ink sm:text-4xl">
+          {t({ en: 'Account management', vi: 'Quản lý tài khoản' })}
         </h1>
-        <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">
+        <p className="mt-2 text-sm text-ink-muted">
           {t({ en: 'Create accounts, manage roles, and remove learner or teacher accounts.', vi: 'Tạo tài khoản, phân quyền và xóa tài khoản học sinh hoặc giáo viên.' })}
         </p>
       </header>
 
       <div className="grid gap-6 lg:grid-cols-[minmax(19rem,0.8fr)_minmax(0,1.4fr)]">
-        <section className="overflow-hidden rounded-3xl border border-gray-200/80 bg-white/90 shadow-sm backdrop-blur-md dark:border-white/10 dark:bg-card/90" aria-labelledby="create-account-heading">
-          <div className="border-b border-gray-100 bg-gray-50/80 px-5 py-4 dark:border-white/10 dark:bg-white/5 sm:px-7">
-            <h2 id="create-account-heading" className="text-xs font-bold uppercase tracking-[0.18em] text-gray-500 dark:text-gray-400">
-              {t({ en: 'New Account', vi: 'Tạo tài khoản mới' })}
+        <Card className="gap-0 py-0" aria-labelledby="create-account-heading">
+          <div className="border-b border-line bg-surface-sunken px-5 py-4 sm:px-7">
+            <h2 id="create-account-heading" className="text-base font-semibold text-ink">
+              {t({ en: 'New account', vi: 'Tạo tài khoản mới' })}
             </h2>
             <div className="mt-2 flex items-center gap-2">
               {roleBadge(role)}
-              <span className="min-w-0 truncate text-xs text-gray-500">
+              <span className="min-w-0 truncate text-sm text-ink-muted">
                 {displayName.trim() || t({ en: 'Unnamed account', vi: 'Chưa đặt tên' })}
               </span>
             </div>
           </div>
 
-          <form className="space-y-4 p-5 sm:p-7" onSubmit={handleCreate} noValidate>
+          <form className="flex flex-col gap-4 p-5 sm:p-7" onSubmit={handleCreate} noValidate>
             <fieldset>
-              <legend className="mb-2 text-sm font-semibold text-gray-700 dark:text-gray-300">
+              <legend className="mb-2 text-sm font-semibold text-ink">
                 {t({ en: 'Role', vi: 'Vai trò' })}
               </legend>
               <div className="grid grid-cols-2 gap-2">
                 {(['student', 'teacher'] as const).map((option) => (
                   <label
                     key={option}
-                    className={`cursor-pointer rounded-xl border px-3 py-3 text-center text-sm font-bold transition ${role === option ? 'border-emerald-400 bg-emerald-50 text-emerald-800 ring-2 ring-emerald-100 dark:bg-emerald-950/40 dark:text-emerald-300' : 'border-gray-200 bg-gray-50 text-gray-500 hover:border-gray-300 dark:border-white/10 dark:bg-white/5'}`}
+                    className={`flex min-h-11 cursor-pointer items-center justify-center rounded-lg border px-3 text-sm font-semibold transition-colors has-[:focus-visible]:outline has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-focus ${role === option ? 'border-action bg-action text-action-ink' : 'border-edge bg-surface text-ink hover:bg-surface-sunken'}`}
                   >
                     <input
                       className="sr-only"
@@ -224,195 +232,149 @@ export function AdminAccountsPage() {
               </div>
             </fieldset>
 
-            <div>
-              <label htmlFor="account-display-name" className="mb-1.5 block text-sm font-semibold text-gray-700 dark:text-gray-300">
-                {t({ en: 'Display name', vi: 'Tên hiển thị' })}
-              </label>
-              <input
-                id="account-display-name"
-                required
-                autoComplete="name"
-                value={displayName}
-                onChange={(event) => { setDisplayName(event.target.value); setFormError(null); setFormSuccess(null); }}
-                disabled={submitting}
-                className="w-full rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-sm text-gray-900 placeholder-gray-400 shadow-xs transition focus:border-emerald-400 focus:outline-none focus:ring-2 focus:ring-emerald-200 disabled:opacity-50 dark:border-white/10 dark:bg-white/5 dark:text-white"
-              />
-            </div>
+            {textFields.map((field) => (
+              <Field key={field.id} id={field.id} label={t(field.label)}>
+                {(control) => (
+                  <Input
+                    {...control}
+                    type={field.type}
+                    required
+                    autoComplete={field.autoComplete}
+                    value={field.value}
+                    onChange={(event) => { field.set(event.target.value); clearFormMessages(); }}
+                    disabled={submitting}
+                  />
+                )}
+              </Field>
+            ))}
 
-            <div>
-              <label htmlFor="account-email" className="mb-1.5 block text-sm font-semibold text-gray-700 dark:text-gray-300">
-                {t({ en: 'Email', vi: 'Email' })}
-              </label>
-              <input
-                id="account-email"
-                type="email"
-                required
-                autoComplete="email"
-                value={email}
-                onChange={(event) => { setEmail(event.target.value); setFormError(null); setFormSuccess(null); }}
-                disabled={submitting}
-                className="w-full rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-sm text-gray-900 placeholder-gray-400 shadow-xs transition focus:border-emerald-400 focus:outline-none focus:ring-2 focus:ring-emerald-200 disabled:opacity-50 dark:border-white/10 dark:bg-white/5 dark:text-white"
-              />
-            </div>
+            {formError && <Alert tone="danger">{formError}</Alert>}
+            {formSuccess && <Alert tone="success">{formSuccess}</Alert>}
 
-            <div>
-              <label htmlFor="account-password" className="mb-1.5 block text-sm font-semibold text-gray-700 dark:text-gray-300">
-                {t({ en: 'Password', vi: 'Mật khẩu' })}
-              </label>
-              <input
-                id="account-password"
-                type="password"
-                required
-                autoComplete="new-password"
-                value={password}
-                onChange={(event) => { setPassword(event.target.value); setFormError(null); setFormSuccess(null); }}
-                disabled={submitting}
-                className="w-full rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-sm text-gray-900 placeholder-gray-400 shadow-xs transition focus:border-emerald-400 focus:outline-none focus:ring-2 focus:ring-emerald-200 disabled:opacity-50 dark:border-white/10 dark:bg-white/5 dark:text-white"
-              />
-            </div>
-
-            <div>
-              <label htmlFor="account-password-confirm" className="mb-1.5 block text-sm font-semibold text-gray-700 dark:text-gray-300">
-                {t({ en: 'Confirm password', vi: 'Xác nhận mật khẩu' })}
-              </label>
-              <input
-                id="account-password-confirm"
-                type="password"
-                required
-                autoComplete="new-password"
-                value={passwordConfirm}
-                onChange={(event) => { setPasswordConfirm(event.target.value); setFormError(null); setFormSuccess(null); }}
-                disabled={submitting}
-                className="w-full rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-sm text-gray-900 placeholder-gray-400 shadow-xs transition focus:border-emerald-400 focus:outline-none focus:ring-2 focus:ring-emerald-200 disabled:opacity-50 dark:border-white/10 dark:bg-white/5 dark:text-white"
-              />
-            </div>
-
-            {formError && <p role="alert" className="rounded-xl bg-red-50 px-4 py-2 text-sm text-red-700 dark:bg-red-950/40 dark:text-red-300">{formError}</p>}
-            {formSuccess && <p role="status" className="rounded-xl bg-emerald-50 px-4 py-2 text-sm text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300">{formSuccess}</p>}
-
-            <button
-              type="submit"
-              disabled={submitting}
-              className="w-full rounded-2xl bg-emerald-600 py-3 text-sm font-bold text-white transition hover:bg-emerald-700 active:scale-[0.99] disabled:cursor-wait disabled:opacity-50"
-            >
+            <Button type="submit" size="lg" disabled={submitting} className="w-full">
               {submitting ? t({ en: 'Creating…', vi: 'Đang tạo…' }) : t({ en: 'Create account', vi: 'Tạo tài khoản' })}
-            </button>
+            </Button>
           </form>
-        </section>
+        </Card>
 
-        <section className="overflow-hidden rounded-3xl border border-gray-200/80 bg-white/90 shadow-sm backdrop-blur-md dark:border-white/10 dark:bg-card/90" aria-labelledby="account-list-heading">
-          <div className="flex items-center justify-between gap-3 border-b border-gray-100 px-5 py-4 dark:border-white/10 sm:px-7">
-            <h2 id="account-list-heading" className="text-xs font-bold uppercase tracking-[0.18em] text-gray-500 dark:text-gray-400">
+        <Card className="gap-0 py-0" aria-labelledby="account-list-heading">
+          <div className="flex items-center justify-between gap-3 border-b border-line px-5 py-3 sm:px-7">
+            <h2 id="account-list-heading" className="text-base font-semibold text-ink">
               {t({ en: 'All accounts', vi: 'Danh sách tài khoản' })}
-              {listState === 'ready' && <span className="ml-2 text-emerald-600">({accounts.length})</span>}
+              {listState === 'ready' && <span className="ml-2 font-normal text-ink-muted">({accounts.length})</span>}
             </h2>
-            <button
+            <Button
               type="button"
+              variant="ghost"
               onClick={() => { setFeedback(null); void loadAccounts(); }}
               disabled={listState === 'loading'}
-              className="min-h-10 rounded-lg px-3 py-1 text-xs font-bold text-gray-600 transition hover:bg-gray-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-600 disabled:opacity-50 dark:text-gray-300 dark:hover:bg-white/10"
             >
               {listState === 'loading' ? t({ en: 'Loading…', vi: 'Đang tải…' }) : t({ en: 'Refresh', vi: 'Tải lại' })}
-            </button>
+            </Button>
           </div>
 
-          <div className="p-4 sm:p-6">
-            {feedback && <p role="status" className="mb-4 rounded-xl bg-emerald-50 px-4 py-2 text-sm text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300">{feedback}</p>}
-            {listError && <p role="alert" className="mb-4 rounded-xl bg-red-50 px-4 py-3 text-sm text-red-700 dark:bg-red-950/40 dark:text-red-300">{listError}</p>}
+          <div className="flex flex-col gap-4 p-4 sm:p-6">
+            {feedback && <Alert tone="success">{feedback}</Alert>}
+            {listError && <Alert tone="danger">{listError}</Alert>}
 
             {listState === 'loading' && (
-              <p className="animate-pulse py-12 text-center text-sm text-gray-500 dark:text-gray-400">
+              <p role="status" className="py-12 text-center text-sm text-ink-muted">
                 {t({ en: 'Loading accounts…', vi: 'Đang tải danh sách tài khoản…' })}
               </p>
             )}
 
             {listState === 'error' && (
-              <div className="py-8 text-center">
-                <p className="text-sm text-gray-500 dark:text-gray-400">
-                  {t({ en: 'The account list is unavailable.', vi: 'Danh sách tài khoản hiện chưa khả dụng.' })}
-                </p>
-                <button type="button" onClick={() => void loadAccounts()} className="mt-3 rounded-lg px-3 py-2 text-sm font-bold text-emerald-700 hover:bg-emerald-50 dark:text-emerald-300 dark:hover:bg-emerald-950/40">
-                  {t({ en: 'Try again', vi: 'Thử lại' })}
-                </button>
-              </div>
+              <EmptyState
+                title={t({ en: 'The account list is unavailable.', vi: 'Danh sách tài khoản hiện chưa khả dụng.' })}
+                action={
+                  <Button type="button" variant="outline" onClick={() => void loadAccounts()}>
+                    {t({ en: 'Try again', vi: 'Thử lại' })}
+                  </Button>
+                }
+              />
             )}
 
             {listState === 'ready' && accounts.length === 0 && (
-              <p className="py-12 text-center text-sm text-gray-500 dark:text-gray-400">
-                {t({ en: 'No accounts yet.', vi: 'Chưa có tài khoản nào.' })}
-              </p>
+              <EmptyState
+                title={t({ en: 'No accounts yet', vi: 'Chưa có tài khoản nào' })}
+                description={t({ en: 'Create the first account with the form.', vi: 'Tạo tài khoản đầu tiên bằng biểu mẫu bên cạnh.' })}
+              />
             )}
 
             {listState === 'ready' && accounts.length > 0 && (
-              <ul className="divide-y divide-gray-100 dark:divide-white/10">
-                {accounts.map((account) => {
-                  const avatarText = account.display_name?.trim() || account.email?.trim() || '?';
-                  return (
-                    <li key={account.id} className="flex flex-wrap items-center gap-3 py-4">
-                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-emerald-100 text-sm font-bold text-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-300" aria-hidden="true">
-                        {avatarText.charAt(0).toUpperCase()}
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <p className="truncate text-sm font-semibold text-gray-900 dark:text-white">
+              <Table label={t({ en: 'Accounts', vi: 'Danh sách tài khoản' })}>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>{t({ en: 'Account', vi: 'Tài khoản' })}</TableHead>
+                    <TableHead>{t({ en: 'Role', vi: 'Vai trò' })}</TableHead>
+                    <TableHead>{t({ en: 'Created', vi: 'Tạo ngày' })}</TableHead>
+                    <TableHead>{t({ en: 'Last active', vi: 'Hoạt động gần nhất' })}</TableHead>
+                    <TableHead><span className="sr-only">{t({ en: 'Actions', vi: 'Thao tác' })}</span></TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {accounts.map((account) => (
+                    <TableRow key={account.id}>
+                      <TableCell>
+                        <p className="max-w-[16rem] truncate font-semibold text-ink">
                           {account.display_name ?? t({ en: 'Unnamed account', vi: 'Chưa đặt tên' })}
                         </p>
-                        <p className="truncate text-xs text-gray-500">{account.email ?? '—'}</p>
-                        <p className="mt-1 text-[11px] text-gray-400">
-                          {t({ en: 'Created', vi: 'Tạo ngày' })}: {formatDate(account.created_at, lang)}
-                          <span className="px-1.5" aria-hidden="true">·</span>
-                          {t({ en: 'Last active', vi: 'Hoạt động gần nhất' })}: {formatDate(account.last_sign_in_at, lang)}
-                        </p>
-                      </div>
-                      {roleBadge(account.app_role)}
-                      {account.app_role !== 'admin' && (
-                        <div className="flex shrink-0 items-center gap-1">
-                          <button
-                            type="button"
-                            onClick={() => void handleRoleToggle(account)}
-                            disabled={Boolean(updatingId || deletingId)}
-                            className="min-h-10 rounded-lg px-2.5 py-1 text-xs font-bold text-blue-700 transition hover:bg-blue-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-600 disabled:opacity-40 dark:text-blue-300 dark:hover:bg-blue-950/40"
-                          >
-                            {updatingId === account.id
-                              ? '…'
-                              : account.app_role === 'student'
-                                ? t({ en: '→ Teacher', vi: '→ Giáo viên' })
-                                : t({ en: '→ Student', vi: '→ Học sinh' })}
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => setConfirmDelete(account)}
-                            disabled={Boolean(updatingId || deletingId)}
-                            className="min-h-10 rounded-lg px-2.5 py-1 text-xs font-bold text-red-600 transition hover:bg-red-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-red-600 disabled:opacity-40 dark:text-red-400 dark:hover:bg-red-950/40"
-                          >
-                            {deletingId === account.id ? '…' : t({ en: 'Delete', vi: 'Xóa' })}
-                          </button>
-                        </div>
-                      )}
-                    </li>
-                  );
-                })}
-              </ul>
+                        <p className="max-w-[16rem] truncate text-ink-muted">{account.email ?? '—'}</p>
+                      </TableCell>
+                      <TableCell>{roleBadge(account.app_role)}</TableCell>
+                      <TableCell className="whitespace-nowrap text-ink-muted">{formatDate(account.created_at, lang)}</TableCell>
+                      <TableCell className="whitespace-nowrap text-ink-muted">{formatDate(account.last_sign_in_at, lang)}</TableCell>
+                      <TableCell>
+                        {account.app_role !== 'admin' && (
+                          <div className="flex items-center justify-end gap-2">
+                            <Button
+                              type="button"
+                              variant="outline"
+                              onClick={() => void handleRoleToggle(account)}
+                              disabled={Boolean(updatingId || deletingId)}
+                            >
+                              {updatingId === account.id
+                                ? t({ en: 'Saving…', vi: 'Đang lưu…' })
+                                : account.app_role === 'student'
+                                  ? t({ en: 'Make teacher', vi: 'Đổi thành giáo viên' })
+                                  : t({ en: 'Make student', vi: 'Đổi thành học sinh' })}
+                            </Button>
+                            <Button
+                              type="button"
+                              variant="destructive"
+                              onClick={() => setConfirmDelete(account)}
+                              disabled={Boolean(updatingId || deletingId)}
+                            >
+                              {deletingId === account.id ? t({ en: 'Deleting…', vi: 'Đang xóa…' }) : t({ en: 'Delete', vi: 'Xóa' })}
+                            </Button>
+                          </div>
+                        )}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
             )}
           </div>
-        </section>
+        </Card>
       </div>
 
       {confirmDelete && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm">
-          <section role="dialog" aria-modal="true" aria-labelledby="delete-account-title" aria-describedby="delete-account-description" className="w-full max-w-sm rounded-3xl bg-white p-6 shadow-2xl dark:bg-card">
-            <h2 id="delete-account-title" className="text-lg font-bold text-gray-900 dark:text-white">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[color-mix(in_srgb,var(--ink)_60%,transparent)] p-4">
+          <section role="dialog" aria-modal="true" aria-labelledby="delete-account-title" aria-describedby="delete-account-description" className="w-full max-w-sm rounded-xl border border-line bg-surface p-6">
+            <h2 id="delete-account-title" className="text-lg font-semibold text-ink">
               {t({ en: 'Delete account?', vi: 'Xóa tài khoản?' })}
             </h2>
-            <p id="delete-account-description" className="mt-2 text-sm text-gray-600 dark:text-gray-400">
+            <p id="delete-account-description" className="mt-2 text-sm text-ink-muted">
               {t({ en: `This will permanently remove ${confirmDelete.email ?? confirmDelete.display_name ?? 'this account'}.`, vi: `Thao tác này sẽ xóa vĩnh viễn ${confirmDelete.email ?? confirmDelete.display_name ?? 'tài khoản này'}.` })}
             </p>
             <div className="mt-5 flex gap-3">
-              <button type="button" onClick={() => setConfirmDelete(null)} className="min-h-11 flex-1 rounded-xl border border-gray-200 py-2.5 text-sm font-bold text-gray-700 hover:bg-gray-50 dark:border-white/10 dark:text-gray-300">
+              <Button type="button" variant="outline" className="flex-1" onClick={() => setConfirmDelete(null)}>
                 {t({ en: 'Cancel', vi: 'Hủy' })}
-              </button>
-              <button type="button" onClick={() => void handleDelete()} className="min-h-11 flex-1 rounded-xl bg-red-600 py-2.5 text-sm font-bold text-white hover:bg-red-700">
-                {t({ en: 'Delete', vi: 'Xóa' })}
-              </button>
+              </Button>
+              <Button type="button" variant="destructive" className="flex-1" onClick={() => void handleDelete()}>
+                {t({ en: 'Delete account', vi: 'Xóa tài khoản' })}
+              </Button>
             </div>
           </section>
         </div>

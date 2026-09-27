@@ -5,8 +5,8 @@ import {
   type EducationLevel,
 } from '../../features/landing/educationLevel';
 
-/** Off until every screen uses tokens (spec §4.4, phase 5). */
-export const DARK_MODE_ENABLED = false;
+/** Dark mode is on (phase 5): the toggle shows and the boot script restores the choice. */
+export const DARK_MODE_ENABLED = true;
 
 export const THEME_STORAGE_KEY = 'scipal-theme';
 
@@ -115,4 +115,12 @@ export function forgetAccountLevel(storage: Pick<Storage, 'removeItem'> | null, 
     }
   }
   applyShellLevel(shell, null);
+}
+
+/** Whether the shell currently paints dark: an explicit choice wins, otherwise the system setting. */
+export function isShellDark(theme: string | undefined, systemDark: boolean, enabled = DARK_MODE_ENABLED): boolean {
+  if (!enabled) return false;
+  if (theme === 'dark') return true;
+  if (theme === 'light') return false;
+  return systemDark;
 }

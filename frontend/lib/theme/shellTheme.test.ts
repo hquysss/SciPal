@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   adoptAccountLevel,
+  isShellDark,
   forgetAccountLevel,
   applyShellLevel,
   applyShellTheme,
@@ -145,5 +146,17 @@ describe('forgetAccountLevel', () => {
     expect(() => forgetAccountLevel({ removeItem: () => { throw new Error('SecurityError'); } }, shell)).not.toThrow();
     expect(shell.attrs.get('data-level')).toBe('neutral');
     expect(() => forgetAccountLevel(null, null)).not.toThrow();
+  });
+});
+
+describe('isShellDark', () => {
+  it.each([
+    ['dark', false, true, true],
+    ['light', true, true, false],
+    [undefined, true, true, true],
+    [undefined, false, true, false],
+    ['dark', true, false, false],
+  ] as const)('theme=%s systemDark=%s enabled=%s -> %s', (theme, systemDark, enabled, expected) => {
+    expect(isShellDark(theme, systemDark, enabled)).toBe(expected);
   });
 });

@@ -1,8 +1,11 @@
 'use client';
 
 import { useEffect, type ReactNode } from 'react';
+import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useLanguage } from '@scipal/hooks';
+import { Alert } from '../../components/ui/alert';
+import { Button, buttonVariants } from '../../components/ui/button';
 
 interface RequireAdminProps {
   children: ReactNode;
@@ -24,8 +27,8 @@ export function RequireAdmin({ children, authStatus, appRole, onSignOut }: Requi
 
   if (authStatus === 'loading' || authStatus === 'unauthenticated') {
     return (
-      <main className="grid min-h-[calc(100vh-4rem)] place-items-center bg-gradient-to-br from-emerald-950 to-emerald-900">
-        <p className="animate-pulse text-sm text-emerald-300">
+      <main className="grid min-h-[calc(100vh-4rem)] place-items-center px-5">
+        <p role="status" className="text-sm text-ink-muted">
           {t({ en: 'Verifying session…', vi: 'Đang xác thực phiên…' })}
         </p>
       </main>
@@ -34,26 +37,21 @@ export function RequireAdmin({ children, authStatus, appRole, onSignOut }: Requi
 
   if (appRole !== 'admin') {
     return (
-      <main className="grid min-h-[calc(100vh-4rem)] place-items-center bg-science-grid px-5">
-        <section className="w-full max-w-md rounded-3xl border border-red-200/30 bg-white/90 p-8 text-center shadow-2xl dark:bg-card/90">
-          <div className="mx-auto mb-5 grid h-14 w-14 place-items-center rounded-2xl bg-red-100 text-2xl dark:bg-red-950/40" aria-hidden="true">
-            🔒
-          </div>
-          <h1 className="text-xl font-bold text-gray-900 dark:text-white">
-            {t({ en: 'Access Denied', vi: 'Không có quyền truy cập' })}
-          </h1>
-          <p className="mt-3 text-sm leading-6 text-gray-500 dark:text-gray-400">
+      <main className="grid min-h-[calc(100vh-4rem)] place-items-center px-5">
+        <section className="flex w-full max-w-md flex-col gap-4">
+          <Alert tone="danger" title={t({ en: 'Access denied', vi: 'Không có quyền truy cập' })}>
             {t({ en: 'This page is restricted to administrators only.', vi: 'Trang này chỉ dành cho quản trị viên.' })}
-          </p>
-          {onSignOut && (
-            <button
-              type="button"
-              onClick={onSignOut}
-              className="mt-6 rounded-xl bg-gray-900 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-gray-700 dark:bg-white dark:text-gray-900"
-            >
-              {t({ en: 'Sign Out', vi: 'Đăng xuất' })}
-            </button>
-          )}
+          </Alert>
+          <div className="flex flex-wrap gap-3">
+            <Link href="/" className={buttonVariants({ variant: 'outline' })}>
+              {t({ en: 'Back to home', vi: 'Về trang chủ' })}
+            </Link>
+            {onSignOut && (
+              <Button type="button" variant="ghost" onClick={onSignOut}>
+                {t({ en: 'Sign out', vi: 'Đăng xuất' })}
+              </Button>
+            )}
+          </div>
         </section>
       </main>
     );

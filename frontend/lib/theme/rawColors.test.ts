@@ -60,4 +60,9 @@ describe('raw color ratchet', () => {
     expect(increased, 'Use theme tokens (bg-paper, text-ink, border-edge...) instead of raw colors').toEqual([]);
     expect(reduced, 'Raw colors went down: rerun with UPDATE_THEME_BASELINE=1 to lock the gain').toEqual([]);
   });
+
+  it('keeps the baseline empty after phase 5', () => {
+    const baseline = JSON.parse(readFileSync(BASELINE_PATH, 'utf8')) as Record<string, number>;
+    expect(Object.keys(baseline), 'Baseline must stay empty after phase 5').toEqual([]);
+  });
 });

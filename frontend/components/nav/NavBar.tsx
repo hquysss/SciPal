@@ -370,7 +370,6 @@ export function NavBar({ currentSubject }: NavBarProps) {
 
         <div className={`${navStyles.rise} flex shrink-0 items-center gap-2 xl:hidden`} style={{ '--i': 1 } as React.CSSProperties}>
           <LanguageToggle />
-          <ThemeToggle />
           <button
             type="button"
             aria-label={mobileOpen ? (lang === 'en' ? 'Close menu' : 'Đóng menu') : (lang === 'en' ? 'Open menu' : 'Mở menu')}
@@ -392,6 +391,9 @@ export function NavBar({ currentSubject }: NavBarProps) {
         className={`${navStyles.mobilePanel} xl:hidden ${mobileOpen ? navStyles.mobilePanelOpen : ''}`}
       >
           <div className="mx-auto max-w-xl space-y-2">
+            <div className="flex justify-end pb-2">
+              <ThemeToggle tone="surface" />
+            </div>
             <Link
               href="/"
               prefetch={pathname !== '/'}
