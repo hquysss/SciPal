@@ -84,8 +84,9 @@ current behaviour (reorder, delete) and a note that editors arrive with those pa
 
 ### 1.4 Saving and checks
 
-- **Autosave** the draft a few seconds after the last edit, through the existing lesson save API;
-  a leave-page warning while a save is pending or failed.
+- **Autosave** the draft a few seconds after the last edit, through the existing lesson save API,
+  only for `draft` and `rejected` lessons (published lessons save manually so edits never go live
+  unreviewed); a leave-page warning while a save is pending or failed.
 - Per-block issues (missing English, invalid formula, image without `alt.vi`) show on the block
   and as the tab's warning dot.
 - "Gửi duyệt" lists all issues; clicking one switches tab and scrolls to the block.
@@ -101,10 +102,10 @@ New block type:
 
 - Teachers drop, paste or pick a file in the Studio.
 - Upload goes to `POST /api/authoring/media` (teacher or admin only). The backend checks the real
-  file type from its bytes: png, jpeg or webp, max 5 MB. It stores the file in the Supabase Storage
+  file type from its bytes: png, jpeg or webp, max 4 MB (Vercel caps request bodies at 4.5 MB). It stores the file in the Supabase Storage
   bucket `lesson-media` under `<user_id>/<uuid>.<ext>` and returns the public URL. SVG is rejected.
 - Bucket: public read; no client write policy (only the backend's service role writes).
-- `alt.vi` is required to save; `alt.en` may be empty until submit, like other bilingual fields.
+- `alt.vi` may be empty in a draft save (so autosave works right after a drop) and is required to submit for review or publish; `alt.en` is required at submit like other bilingual fields.
 - The backend accepts image URLs only from this project's `lesson-media` public path.
 - `labeled-diagram` (Part 2) and simulation-request sketches use the same upload endpoint.
 
