@@ -81,6 +81,22 @@ export const ExamImportSchema = z
       ctx.addIssue({ code: 'custom', message: 'Chưa có bài học, câu hỏi hay đề thi nào để lưu.' });
     }
     const questionKeys = new Set(pkg.questions.map((q) => `${q.subject_slug}:${q.key}`));
+    // A question a lesson uses becomes that lesson's practice question: one lesson, once.
+    const usedBy = new Map<string, string>();
+    pkg.lessons.forEach((lesson, i) => {
+      const inLesson = new Set<string>();
+      lesson.blocks.forEach((block, j) => {
+        if (block.type !== 'quiz_ref') return;
+        const key = `${lesson.subject_slug}:${block.key}`;
+        if (inLesson.has(key)) {
+          ctx.addIssue({ code: 'custom', path: ['lessons', i, 'blocks', j], message: `Bài "${lesson.title.vi}": câu ${block.key} xuất hiện hai lần.` });
+        } else if (usedBy.has(key)) {
+          ctx.addIssue({ code: 'custom', path: ['lessons', i, 'blocks', j], message: `Câu ${block.key} được dùng ở hai bài ("${usedBy.get(key)}" và "${lesson.title.vi}"); mỗi câu tự luyện thuộc một bài.` });
+        }
+        inLesson.add(key);
+        usedBy.set(key, usedBy.get(key) ?? lesson.title.vi);
+      });
+    });
     pkg.lessons.forEach((lesson, i) => {
       const imageProblem = imageProblems(lesson.blocks, { requireAlt: true });
       if (imageProblem) ctx.addIssue({ code: 'custom', path: ['lessons', i, 'blocks'], message: `Bài "${lesson.title.vi}": ${imageProblem}` });
@@ -283,9 +299,16 @@ export const examImportRoutes: FastifyPluginAsync = async (app) => {
     }
 
     const questions = pkg.questions.map((q) => ({ ...q, id: randomUUID() }));
+    // Questions a lesson uses are that lesson's practice questions; the rest are exam questions,
+    // and only those can be drawn into an exam.
+    const practiceKeys = new Set(
+      pkg.lessons.flatMap((lesson) => lesson.blocks.flatMap((block) => (block.type === 'quiz_ref' ? [`${lesson.subject_slug}:${block.key}`] : []))),
+    );
+    const isPractice = (q: { subject_slug: string; key: string }) => practiceKeys.has(`${q.subject_slug}:${q.key}`);
+    const examQuestions = questions.filter((q) => !isPractice(q));
     const blueprintRows: Record<string, unknown>[] = [];
     for (const blueprint of pkg.blueprints) {
-      const pick = pickExamQuestions(blueprint, questions);
+      const pick = pickExamQuestions(blueprint, examQuestions);
       if (!pick.ok) return reply.code(400).send({ error: pick.error });
       blueprintRows.push({
         name: blueprint.title.vi,
@@ -304,6 +327,8 @@ export const examImportRoutes: FastifyPluginAsync = async (app) => {
     // Lessons: find or create each topic, pick a free slug, and turn question keys into ids.
     const newTopics: Record<string, unknown>[] = [];
     const lessonRows: Record<string, unknown>[] = [];
+    /** Question key → the imported lesson that uses it. */
+    const lessonOfKey = new Map<string, string>();
     if (pkg.lessons.length > 0) {
       const lessonSubjectIds = [...new Set(pkg.lessons.map((l) => subjectIds.get(l.subject_slug)!))];
       const [topicRes, slugRes] = await Promise.all([
@@ -341,14 +366,18 @@ export const examImportRoutes: FastifyPluginAsync = async (app) => {
         for (let n = 2; takenSlugs.has(`${subjectId}:${slug}`); n += 1) slug = `${base}-${n}`;
         takenSlugs.add(`${subjectId}:${slug}`);
 
-        const blocks = lesson.blocks.map((block) =>
-          block.type === 'quiz_ref' ? { type: 'quiz', question_id: questionIds.get(`${lesson.subject_slug}:${block.key}`)! } : block,
-        );
+        const lessonId = randomUUID();
+        const blocks = lesson.blocks.map((block) => {
+          if (block.type !== 'quiz_ref') return block;
+          const key = `${lesson.subject_slug}:${block.key}`;
+          lessonOfKey.set(key, lessonId);
+          return { type: 'quiz', question_id: questionIds.get(key)! };
+        });
         const checked = BlockSchema.array().safeParse(blocks);
         if (!checked.success) return reply.code(400).send({ error: `Bài "${lesson.title.vi}" có khối không hợp lệ.` });
 
         lessonRows.push({
-          id: randomUUID(),
+          id: lessonId,
           topic_id: topicId,
           subject_id: subjectId,
           slug,
@@ -364,8 +393,9 @@ export const examImportRoutes: FastifyPluginAsync = async (app) => {
     }
 
     // Each insert is atomic on its own; when a later one fails, the earlier ones are removed again
-    // so a rejected import leaves nothing behind.
-    const done: Array<'topics' | 'questions' | 'blueprints'> = [];
+    // so a rejected import leaves nothing behind. Lessons go in before questions (a practice
+    // question points at its lesson) and questions before the exams that list them.
+    const done: Array<'topics' | 'lessons' | 'questions' | 'blueprints'> = [];
     const rollback = async () => {
       const undo = async (label: string, query: PromiseLike<{ error: unknown }>) => {
         const { error } = await query;
@@ -373,6 +403,7 @@ export const examImportRoutes: FastifyPluginAsync = async (app) => {
       };
       if (done.includes('blueprints')) await undo('exams', supabase.from('exam_blueprints').delete().eq('import_id', importId));
       if (done.includes('questions')) await undo('questions', supabase.from('questions').delete().in('id', questions.map((q) => q.id)));
+      if (done.includes('lessons')) await undo('lessons', supabase.from('lessons').delete().in('id', lessonRows.map((l) => l.id as string)));
       if (done.includes('topics')) await undo('topics', supabase.from('topics').delete().in('id', newTopics.map((t) => t.id as string)));
     };
     const failed = async (error: { code?: string } | null, what: string) => {
@@ -392,15 +423,25 @@ export const examImportRoutes: FastifyPluginAsync = async (app) => {
       if (error) return failed(error, 'topics');
       done.push('topics');
     }
+    if (lessonRows.length > 0) {
+      const { error } = await supabase.from('lessons').insert(lessonRows);
+      if (error) return failed(error, 'lessons');
+      done.push('lessons');
+    }
     if (questions.length > 0) {
+      // A practice question starts in its lesson's state (draft, or published by an admin) and
+      // then follows the lesson through review; exam questions wait for the import review.
+      const practiceStatus = lessonStatus === 'published' ? 'published' : 'draft';
       const { error } = await supabase.from('questions').insert(
         questions.map((q) => ({
           id: q.id,
           subject_id: subjectIds.get(q.subject_slug),
+          usage: isPractice(q) ? 'practice' : 'exam',
+          lesson_id: isPractice(q) ? lessonOfKey.get(`${q.subject_slug}:${q.key}`) ?? null : null,
           type: q.type,
           difficulty: q.difficulty,
           data: questionData(q),
-          status,
+          status: isPractice(q) ? practiceStatus : status,
           import_id: importId,
           created_by: user.id,
         })),
@@ -412,10 +453,6 @@ export const examImportRoutes: FastifyPluginAsync = async (app) => {
       const { error } = await supabase.from('exam_blueprints').insert(blueprintRows);
       if (error) return failed(error, 'exams');
       done.push('blueprints');
-    }
-    if (lessonRows.length > 0) {
-      const { error } = await supabase.from('lessons').insert(lessonRows);
-      if (error) return failed(error, 'lessons');
     }
 
     return reply.code(201).send({
@@ -443,7 +480,7 @@ export const examImportRoutes: FastifyPluginAsync = async (app) => {
         .from('exam_blueprints')
         .select('id, name, grade, import_id, created_by, question_ids, duration_minutes, subjects(name_vi)')
         .eq('status', 'pending_review'),
-      supabase.from('questions').select('id, import_id, created_by, type, created_at').eq('status', 'pending_review'),
+      supabase.from('questions').select('id, import_id, created_by, type, created_at').eq('status', 'pending_review').eq('usage', 'exam'),
     ]);
     const loadError = blueprintRes.error ?? questionRes.error;
     if (loadError) {
@@ -477,6 +514,7 @@ export const examImportRoutes: FastifyPluginAsync = async (app) => {
       .update({ status: 'published' })
       .eq('import_id', importId)
       .eq('status', 'pending_review')
+      .eq('usage', 'exam')
       .select('id');
     if (questionError) {
       request.log.error({ err: questionError, importId }, 'Failed to publish imported questions');
@@ -520,7 +558,8 @@ export const examImportRoutes: FastifyPluginAsync = async (app) => {
       .from('questions')
       .delete()
       .eq('import_id', importId)
-      .eq('status', 'pending_review');
+      .eq('status', 'pending_review')
+      .eq('usage', 'exam');
     if (questionError) {
       request.log.error({ err: questionError, importId }, 'Failed to remove rejected questions');
       return reply.code(500).send({ error: 'Không xóa được câu hỏi bị từ chối.' });

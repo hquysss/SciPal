@@ -320,12 +320,12 @@ describe('importing lessons from Word/PDF', () => {
     await app.close();
   });
 
-  it('removes the new topic and questions when the lessons cannot be saved', async () => {
+  it('removes the new topic, and writes no questions, when the lessons cannot be saved', async () => {
     const topicUndo = mockQuery({ data: null, error: null });
-    const questionUndo = mockQuery({ data: null, error: null });
+    const questionInsert = mockQuery({ data: null, error: null });
     const app = await buildApp(teacher, lessonTables({
       topics: [mockQuery({ data: [], error: null }), mockQuery({ data: null, error: null }), topicUndo],
-      questions: [mockQuery({ data: null, error: null }), questionUndo],
+      questions: [questionInsert],
       lessons: [mockQuery({ data: [], error: null }), mockQuery({ data: null, error: { code: 'XX000', message: 'boom' } })],
     }).tables);
     const res = await app.inject({
@@ -334,7 +334,8 @@ describe('importing lessons from Word/PDF', () => {
       payload: { lessons: [lesson()], questions: [mc('q1')], blueprints: [] },
     });
     expect(res.statusCode).toBe(500);
-    expect(questionUndo.deleteCalls).toBe(1);
+    // Lessons are written before their practice questions, so none were stored.
+    expect(questionInsert.inserted).toHaveLength(0);
     expect(topicUndo.deleteCalls).toBe(1);
     await app.close();
   });

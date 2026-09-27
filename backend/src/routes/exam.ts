@@ -59,35 +59,42 @@ async function loadBlueprint(supabase: SupabaseClient, blueprintId: string): Pro
 /**
  * The questions of one exam. An imported exam lists its questions; otherwise the blueprint
  * subject's questions in a stable order, as many as its sections ask for. Serving and scoring
- * both use this, so a score only counts this set.
+ * both use this, so a score only counts this set. Only published exam questions count: a
+ * practice question (lessons) is never served or scored here, even if a blueprint lists it.
  */
 async function loadExamQuestions(
   supabase: SupabaseClient,
   { summary: blueprint, questionIds }: LoadedBlueprint,
 ): Promise<Loaded<ExamQuestionRow[]>> {
+  const columns = 'id, subject_id, type, difficulty, data';
+  // 42703: a column the filters need does not exist yet (migration not run). Before the
+  // exam-import migration every question was published; before the practice migration every
+  // question was an exam question.
+  const withFallback = async (run: (filtered: boolean) => PromiseLike<{ data: unknown; error: { code?: string } | null }>) => {
+    let result = await run(true);
+    if (result.error?.code === '42703') result = await run(false);
+    return result;
+  };
+
   if (questionIds.length > 0) {
     const ids = questionIds.slice(0, MAX_EXAM_ANSWERS);
-    const { data, error } = await supabase
-      .from('questions')
-      .select('id, subject_id, type, difficulty, data')
-      .in('id', ids);
+    const { data, error } = await withFallback((filtered) => {
+      let query = supabase.from('questions').select(columns).in('id', ids);
+      if (filtered) query = query.eq('usage', 'exam').eq('status', 'published');
+      return query;
+    });
     if (error) return { kind: 'error', err: error };
     const byId = new Map(((data ?? []) as ExamQuestionRow[]).map((q) => [q.id, q]));
     return { kind: 'ok', value: ids.flatMap((id) => byId.get(id) ?? []) };
   }
 
   const count = Math.min(blueprint.question_count || DEFAULT_EXAM_QUESTIONS, MAX_EXAM_ANSWERS);
-  const pool = (publishedOnly: boolean) => {
-    let query = supabase.from('questions').select('id, subject_id, type, difficulty, data');
+  const { data, error } = await withFallback((filtered) => {
+    let query = supabase.from('questions').select(columns);
     if (blueprint.subject_id) query = query.eq('subject_id', blueprint.subject_id);
-    // Questions of a teacher import that no admin has approved yet stay out of the pool.
-    if (publishedOnly) query = query.eq('status', 'published');
+    if (filtered) query = query.eq('usage', 'exam').eq('status', 'published');
     return query.order('id').limit(count);
-  };
-  let { data, error } = await pool(true);
-  // 42703: the status column does not exist yet (exam-import migration not run), so every
-  // question is published.
-  if (error?.code === '42703') ({ data, error } = await pool(false));
+  });
   if (error) return { kind: 'error', err: error };
   return { kind: 'ok', value: (data ?? []) as ExamQuestionRow[] };
 }

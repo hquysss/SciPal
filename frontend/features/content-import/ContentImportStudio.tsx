@@ -11,6 +11,7 @@ import {
   sectionShortfalls,
   setEnglish,
   unresolvedQuizRefs,
+  quizRefConflicts,
   WorkbookError,
   type ContentImportDraft,
   type DraftBlueprint,
@@ -477,8 +478,9 @@ export function ContentImportStudio({ isAdmin }: { isAdmin: boolean }) {
   const missing = useMemo(() => missingEnglish(draft), [draft]);
   const unresolved = useMemo(() => unresolvedQuizRefs(draft), [draft]);
   const shortfalls = useMemo(() => sectionShortfalls(draft), [draft]);
+  const conflicts = useMemo(() => quizRefConflicts(draft), [draft]);
   const hasContent = draft.lessons.length + draft.questions.length + draft.blueprints.length > 0;
-  const canSave = hasContent && missing.length === 0 && unresolved.length === 0 && shortfalls.size === 0;
+  const canSave = hasContent && missing.length === 0 && unresolved.length === 0 && conflicts.length === 0 && shortfalls.size === 0;
   const success = result?.status === 'success';
 
   const updateDraft = (update: (previous: ContentImportDraft) => ContentImportDraft) => {
@@ -761,6 +763,16 @@ export function ContentImportStudio({ isAdmin }: { isAdmin: boolean }) {
                 <ul className="mt-1 list-inside list-disc">
                   {unresolved.map((ref) => (
                     <li key={`${ref.lesson}:${ref.key}`}>{ref.lesson} → <code>{ref.key}</code></li>
+                  ))}
+                </ul>
+              </div>
+            )}
+            {conflicts.length > 0 && (
+              <div className="mt-3 rounded-xl bg-danger-surface px-3 py-2 text-sm text-danger" role="alert">
+                <p className="font-bold">{t({ en: 'A practice question belongs to one lesson, once', vi: 'Mỗi câu tự luyện chỉ thuộc một bài, dùng một lần' })}</p>
+                <ul className="mt-1 list-inside list-disc">
+                  {conflicts.map((ref, i) => (
+                    <li key={`${ref.lesson}:${ref.key}:${i}`}>{ref.lesson} → <code>{ref.key}</code></li>
                   ))}
                 </ul>
               </div>
