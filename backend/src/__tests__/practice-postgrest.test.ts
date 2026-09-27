@@ -39,7 +39,7 @@ function realClient(rows: Record<string, unknown>) {
   return { client, urls };
 }
 
-async function build(routes: typeof practiceRoutes, client: ReturnType<typeof createClient>, user?: object) {
+async function build(routes: typeof practiceRoutes, client: ReturnType<typeof realClient>['client'], user?: object) {
   const app = Fastify();
   app.decorate('supabase', client);
   if (user) app.addHook('onRequest', async (req) => { (req as any).user = user; });
