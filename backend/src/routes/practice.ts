@@ -157,7 +157,8 @@ export const practiceRoutes: FastifyPluginAsync = async (app) => {
         .from('lessons')
         .select('id')
         .eq('status', 'published')
-        .contains('blocks', [{ type: 'quiz', question_id: row.id }])
+        // jsonb containment: postgrest-js sends a JS array as a Postgres array literal, so pass JSON.
+        .contains('blocks', JSON.stringify([{ type: 'quiz', question_id: row.id }]))
         .limit(1);
       if (lessonError) {
         request.log.error({ err: lessonError, questionId: row.id }, 'Failed to find the lesson of a practice question');

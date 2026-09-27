@@ -154,8 +154,10 @@ export const questionRoutes: FastifyPluginAsync = async (app) => {
       if (grade !== undefined) query = query.eq('grade', grade);
       if (ids !== undefined) query = query.in('id', ids);
       if (search) query = query.ilike('data->stem->>vi', `%${escapeLike(search)}%`);
-      const from = (page - 1) * QUESTION_PAGE_SIZE;
-      const { data, error, count } = (await query.order('created_at', { ascending: false }).range(from, from + QUESTION_PAGE_SIZE - 1)) as {
+      // A lookup by ids (the lesson editor) gets all of them at once; a search is paged.
+      const size = ids !== undefined ? ids.length : QUESTION_PAGE_SIZE;
+      const from = ids !== undefined ? 0 : (page - 1) * QUESTION_PAGE_SIZE;
+      const { data, error, count } = (await query.order('created_at', { ascending: false }).range(from, from + size - 1)) as {
         data: QuestionRow[] | null;
         error: unknown;
         count?: number | null;
@@ -165,7 +167,7 @@ export const questionRoutes: FastifyPluginAsync = async (app) => {
         return reply.code(500).send(msg('Không tải được danh sách câu hỏi.', 'Could not load the questions.'));
       }
       const rows = data ?? [];
-      return reply.send({ questions: rows.map((row) => present(row, user)), page, page_size: QUESTION_PAGE_SIZE, total: count ?? rows.length });
+      return reply.send({ questions: rows.map((row) => present(row, user)), page, page_size: size, total: count ?? rows.length });
     },
   });
 
@@ -283,7 +285,8 @@ export const questionRoutes: FastifyPluginAsync = async (app) => {
 
       // A lesson or exam that still lists the question would break: remove it there first.
       const [lessons, exams] = await Promise.all([
-        supabase.from('lessons').select('id').contains('blocks', [{ type: 'quiz', question_id: row.id }]).limit(1),
+        // blocks is jsonb: the filter must be JSON (a JS array becomes a Postgres array literal).
+        supabase.from('lessons').select('id').contains('blocks', JSON.stringify([{ type: 'quiz', question_id: row.id }])).limit(1),
         supabase.from('exam_blueprints').select('id').contains('question_ids', [row.id]).limit(1),
       ]);
       const usedError = lessons.error ?? exams.error;

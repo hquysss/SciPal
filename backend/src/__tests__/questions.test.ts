@@ -157,6 +157,16 @@ describe('listing questions', () => {
     await app.close();
   });
 
+  it('returns every requested id, not just the first page (a lesson may hold 100 questions)', async () => {
+    const ids = Array.from({ length: 25 }, (_, i) => `${String(i).padStart(8, '0')}-0000-4000-8000-000000000000`);
+    const list = mockQuery({ data: [], error: null });
+    const app = await build(teacher, { questions: list });
+    const res = await app.inject({ method: 'GET', url: `/api/authoring/questions?usage=practice&ids=${ids.join(',')}` });
+    expect(res.statusCode).toBe(200);
+    expect(list.rangeCalls).toEqual([[0, 24]]);
+    await app.close();
+  });
+
   it('refuses a missing usage and malformed filters', async () => {
     const app = await build(teacher, { questions: mockQuery({ data: [], error: null }) });
     for (const query of ['', 'usage=homework', 'usage=practice&subject_id=x', 'usage=practice&type=essay', `usage=practice&q=${'x'.repeat(101)}`, 'usage=practice&ids=nope', 'usage=practice&difficulty=5', 'usage=practice&status=gone']) {

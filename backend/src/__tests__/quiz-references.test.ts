@@ -153,6 +153,11 @@ describe('quiz references on submit and approval', () => {
     expect((await submit([question()])).res.statusCode).toBe(200);
   });
 
+  it('accepts a short question imported from Excel, whose key is stored as `answer`', async () => {
+    const imported = question({ type: 'short', data: { stem: { vi: 'Câu?', en: 'Question?' }, answer: '42' } });
+    expect((await submit([imported])).res.statusCode).toBe(200);
+  });
+
   it('points to the question that still needs English', async () => {
     const { res, written } = await submit([question({ data: { ...mcData, options: [mcData.options[0], { id: 'b', text: { vi: 'B', en: '' } }] } })]);
     expect(res.statusCode).toBe(400);

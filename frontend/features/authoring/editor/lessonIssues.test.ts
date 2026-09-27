@@ -61,6 +61,11 @@ describe('lessonIssues', () => {
       expect(issues[2]!.message.vi).toMatch(/không tìm thấy/i);
     });
 
+    it('accepts an imported short question whose key is stored as `answer`', () => {
+      const imported = { id: '', type: 'short', difficulty: 1, status: 'draft', mine: true, editable: true, data: { stem: { vi: 'Câu?', en: 'Q?' }, answer: '42' } };
+      expect(lessonIssues([quiz[0]!], { [Q[0]!]: imported } as never)).toEqual([]);
+    });
+
     it('does not judge questions it has not loaded, or published ones it may not read', () => {
       expect(lessonIssues(quiz)).toEqual([]);
       const shared = { ...mc({ stem: { vi: 'Câu?', en: 'Q?' }, options: [] }), mine: false, editable: false, status: 'published' };

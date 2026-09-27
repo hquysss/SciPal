@@ -138,6 +138,17 @@ export function validateQuestionInput(value: unknown): { ok: true; value: Author
   return { ok: true, value: question };
 }
 
+/**
+ * Stored data as the authoring schema reads it. Excel imports store a short answer's key as
+ * `answer` (exam scoring reads either); authoring uses `answer_key`.
+ */
+export function storedQuestionData(type: string, data: unknown): unknown {
+  if (type !== 'short' || !data || typeof data !== 'object') return data;
+  const { answer, ...rest } = data as Record<string, unknown>;
+  if (typeof rest.answer_key === 'string') return rest;
+  return typeof answer === 'string' ? { ...rest, answer_key: answer } : rest;
+}
+
 /** What still blocks review or publishing (English text), or null when the question is complete. */
 export function questionIncomplete(question: Pick<AuthorQuestionInput, 'type' | 'data'>): Message | null {
   const missing = (text: { en: string; vi: string } | undefined) => text !== undefined && text.en.trim() === '';

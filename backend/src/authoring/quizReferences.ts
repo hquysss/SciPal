@@ -1,5 +1,5 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { questionIncomplete, validateQuestionInput } from '../schemas/questions.js';
+import { questionIncomplete, storedQuestionData, validateQuestionInput } from '../schemas/questions.js';
 
 /**
  * What a lesson's quiz blocks may point to (Tự luyện). A quiz block names a practice question of
@@ -89,7 +89,7 @@ export async function validateQuizReferences(
       if (mode === 'live') return problem(n, 'bài đã xuất bản chỉ dùng câu hỏi đã duyệt.', 'a published lesson may only use published questions.');
     }
     if (mode !== 'draft') {
-      const checked = validateQuestionInput({ usage: 'practice', subject_id: row.subject_id, type: row.type, difficulty: row.difficulty, data: row.data });
+      const checked = validateQuestionInput({ usage: 'practice', subject_id: row.subject_id, type: row.type, difficulty: row.difficulty, data: storedQuestionData(row.type, row.data) });
       if (!checked.ok) return problem(n, checked.message.vi, checked.message.en);
       const missing = questionIncomplete(checked.value);
       if (missing) return problem(n, missing.vi, missing.en);

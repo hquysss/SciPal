@@ -4,6 +4,7 @@ import {
   MAX_QUESTION_TEXT,
   PracticeResponseSchema,
   questionIncomplete,
+  storedQuestionData,
   toPublicPracticeQuestion,
   validateQuestionInput,
 } from '../question';
@@ -77,5 +78,20 @@ describe('PracticeResponseSchema', () => {
     expect(PracticeResponseSchema.safeParse({ short_answer: 'Hà Nội' }).success).toBe(true);
     expect(PracticeResponseSchema.safeParse({ short_answer: 'x'.repeat(501) }).success).toBe(false);
     expect(PracticeResponseSchema.safeParse({ items: Array.from({ length: 11 }, (_, i) => ({ id: String(i), selected: true })) }).success).toBe(false);
+  });
+});
+
+describe('storedQuestionData', () => {
+  it('reads the short answer an Excel import stored as `answer`', () => {
+    const stored = storedQuestionData('short', { stem: { vi: 'Câu?', en: 'Q?' }, answer: '42', rubric: { vi: 'R', en: 'R' } });
+    expect(stored).toEqual({ stem: { vi: 'Câu?', en: 'Q?' }, answer_key: '42', rubric: { vi: 'R', en: 'R' } });
+    const result = validateQuestionInput({ usage: 'practice', subject_id: '11111111-1111-4111-8111-111111111111', type: 'short', difficulty: 1, data: stored });
+    expect(result.ok).toBe(true);
+  });
+
+  it('leaves other types and an existing key alone', () => {
+    const mc = { stem: { vi: 'C', en: 'Q' }, options: [], answer: 'a' };
+    expect(storedQuestionData('mc', mc)).toBe(mc);
+    expect(storedQuestionData('short', { stem: { vi: 'C', en: 'Q' }, answer_key: 'k', answer: 'old' })).toEqual({ stem: { vi: 'C', en: 'Q' }, answer_key: 'k' });
   });
 });

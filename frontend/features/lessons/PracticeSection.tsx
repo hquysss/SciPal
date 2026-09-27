@@ -15,6 +15,15 @@ export interface PracticeState {
   results: Record<string, PracticeCheckResult>;
 }
 
+/**
+ * Record a verdict only if the answer is still the one that was checked: a reply arriving after
+ * the learner changed the answer belongs to the old answer and is dropped.
+ */
+export function withResult(state: PracticeState, id: string, result: PracticeCheckResult, checked: PracticeResponse | undefined): PracticeState {
+  if (state.answers[id] !== checked) return state;
+  return { ...state, results: { ...state.results, [id]: result } };
+}
+
 export function usePracticeState() {
   const [state, setState] = useState<PracticeState>({ answers: {}, results: {} });
   // A changed answer is a new attempt: its old verdict no longer applies.
@@ -24,8 +33,8 @@ export function usePracticeState() {
       return { answers: { ...old.answers, [id]: answer }, results };
     });
   }, []);
-  const onResult = useCallback((id: string, result: PracticeCheckResult) => {
-    setState((old) => ({ ...old, results: { ...old.results, [id]: result } }));
+  const onResult = useCallback((id: string, result: PracticeCheckResult, checked: PracticeResponse | undefined) => {
+    setState((old) => withResult(old, id, result, checked));
   }, []);
   return { state, onAnswer, onResult };
 }
@@ -47,7 +56,8 @@ interface PracticeSectionProps {
   load: PracticeLoad;
   state: PracticeState;
   onAnswer: (id: string, answer: PracticeResponse) => void;
-  onResult: (id: string, result: PracticeCheckResult) => void;
+  /** `checked` is the answer object the verdict is for. */
+  onResult: (id: string, result: PracticeCheckResult, checked: PracticeResponse | undefined) => void;
   onRetry?: () => void;
   /** Read in this language instead of the reader's (the editor preview). */
   lang?: 'en' | 'vi';
@@ -91,7 +101,7 @@ export function PracticeSection({ load, state, onAnswer, onResult, onRetry, lang
           answer={state.answers[question.id]}
           result={state.results[question.id]}
           onAnswer={(answer) => onAnswer(question.id, answer)}
-          onResult={(result) => onResult(question.id, result)}
+          onResult={(result, checked) => onResult(question.id, result, checked)}
           t={t}
         />
       ))}
@@ -108,7 +118,7 @@ interface QuestionCardProps {
   answer: PracticeResponse | undefined;
   result: PracticeCheckResult | undefined;
   onAnswer: (answer: PracticeResponse) => void;
-  onResult: (result: PracticeCheckResult) => void;
+  onResult: (result: PracticeCheckResult, checked: PracticeResponse | undefined) => void;
   t: (text: Bilingual) => string;
 }
 
@@ -124,9 +134,10 @@ function QuestionCard({ number, question, answer, result, onAnswer, onResult, t 
     if (!response || checking) return;
     setChecking(true);
     setError(null);
+    const checked = answer;
     const res = await checkPractice(question.id, response);
     setChecking(false);
-    if (res.ok) onResult(res.result);
+    if (res.ok) onResult(res.result, checked);
     else setError(res.error);
   };
   const answerWith = (next: PracticeResponse) => {

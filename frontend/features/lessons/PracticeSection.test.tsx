@@ -2,7 +2,7 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it, vi } from 'vitest';
 import type { PracticeCheckResult, PublicPracticeQuestion } from '@scipal/types';
 import { countRawColors } from '../../lib/theme/rawColors';
-import { PracticeSection, practiceSummary, responseOf, type PracticeState } from './PracticeSection';
+import { PracticeSection, practiceSummary, responseOf, withResult, type PracticeState } from './PracticeSection';
 
 vi.mock('@scipal/hooks', () => ({ useLanguage: () => ({ lang: 'vi', t: (o: { vi: string }) => o.vi }) }));
 vi.mock('../../lib/supabase', () => ({ createBrowserClient: () => ({}) }));
@@ -67,5 +67,15 @@ describe('practice helpers', () => {
     expect(responseOf(questions[1]!, { items: [] })).toBeNull();
     expect(responseOf(questions[2]!, { short_answer: '   ' })).toBeNull();
     expect(responseOf(questions[2]!, { short_answer: ' Hà Nội ' })).toEqual({ short_answer: ' Hà Nội ' });
+  });
+});
+
+describe('a verdict that arrives late', () => {
+  it('is kept only if the answer is still the one that was checked', () => {
+    const checked = { selected_option: 'a' };
+    const before = state({ answers: { q1: checked } });
+    expect(withResult(before, 'q1', { correct: true }, checked).results.q1).toEqual({ correct: true });
+    const changed = state({ answers: { q1: { selected_option: 'b' } } });
+    expect(withResult(changed, 'q1', { correct: true }, checked)).toBe(changed);
   });
 });

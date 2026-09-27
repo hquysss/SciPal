@@ -1,5 +1,5 @@
 import katex from 'katex';
-import { questionIncomplete, validateQuestionInput, validateSimulationBlock, type Block } from '@scipal/types';
+import { questionIncomplete, storedQuestionData, validateQuestionInput, validateSimulationBlock, type Block } from '@scipal/types';
 import { LESSON_PARTS, splitLessonParts, type LessonPart } from '@/features/lessons/lessonParts';
 
 export interface LessonIssue {
@@ -38,7 +38,7 @@ function questionIssues(row: QuestionForIssues | undefined): BlockIssue[] {
   if (!row) return [{ blocking: true, message: { en: 'The question was not found. Remove this block.', vi: 'Không tìm thấy câu hỏi. Hãy xóa khối này.' } }];
   // A shared published question from another teacher is complete by review; its answer is not ours to read.
   if (!row.mine && !row.editable) return [];
-  const checked = validateQuestionInput({ usage: 'practice', subject_id: '00000000-0000-4000-8000-000000000000', type: row.type, difficulty: row.difficulty, data: row.data });
+  const checked = validateQuestionInput({ usage: 'practice', subject_id: '00000000-0000-4000-8000-000000000000', type: row.type, difficulty: row.difficulty, data: storedQuestionData(row.type, row.data) });
   if (!checked.ok) return [{ blocking: true, message: checked.message }];
   const missing = questionIncomplete(checked.value);
   return missing ? [{ blocking: false, message: missing }] : [];

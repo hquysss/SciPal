@@ -55,6 +55,12 @@ describe('question drafts', () => {
     expect(draftProblem(draft, ctx)).toEqual({ vi: expect.stringMatching(/phương án/), en: expect.stringMatching(/options/) });
   });
 
+  it('reopens an imported short question with its key in the answer field', () => {
+    const draft = draftFromQuestion({ type: 'short', difficulty: 1, data: { stem: { vi: 'A', en: 'B' }, answer: '42' } });
+    expect(draft.data.answer_key).toBe('42');
+    expect(draft.data).not.toHaveProperty('answer');
+  });
+
   it('reopens a saved question for editing', () => {
     const draft = draftFromQuestion({ type: 'short', difficulty: 2, data: { stem: { vi: 'A', en: 'B' }, answer_key: 'x' } });
     expect(draft).toEqual({ type: 'short', difficulty: 2, data: { stem: { vi: 'A', en: 'B' }, answer_key: 'x' } });

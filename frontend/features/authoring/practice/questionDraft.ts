@@ -1,4 +1,4 @@
-import { validateQuestionInput, type QuestionType } from '@scipal/types';
+import { storedQuestionData, validateQuestionInput, type QuestionType } from '@scipal/types';
 import type { QuestionPayload } from './api';
 
 type Bilingual = { en: string; vi: string };
@@ -46,7 +46,7 @@ export function switchQuestionType(draft: QuestionDraft, type: QuestionType): Qu
 /** A saved question, reopened for editing. */
 export function draftFromQuestion(row: { type: QuestionType; difficulty: number; data: Record<string, unknown> }): QuestionDraft {
   const difficulty = (row.difficulty === 2 || row.difficulty === 3 ? row.difficulty : 1) as 1 | 2 | 3;
-  return { type: row.type, difficulty, data: structuredClone(row.data) as QuestionDraft['data'] };
+  return { type: row.type, difficulty, data: structuredClone(storedQuestionData(row.type, row.data)) as QuestionDraft['data'] };
 }
 
 /** A new id for an added option or statement, unused in the list. */
