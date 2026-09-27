@@ -44,13 +44,21 @@ export function ProgressView({ completedLessons, streaks, totalXP, badges, loadF
         />
       )}
 
-      <header className="rounded-xl border border-line bg-surface p-6 sm:p-8">
+      {/* XP card: a warm sun-to-coral wash with two soft discs, and a gradient level bar. */}
+      <header className="relative isolate overflow-hidden rounded-2xl border border-line bg-[linear-gradient(135deg,color-mix(in_srgb,var(--sun)_30%,var(--surface)),color-mix(in_srgb,var(--coral)_22%,var(--surface)))] p-6 shadow-[0_18px_40px_-28px_color-mix(in_srgb,var(--coral)_80%,transparent)] sm:p-8">
+        <span aria-hidden="true" className="absolute -right-10 -top-12 -z-10 h-44 w-44 rounded-full bg-[radial-gradient(circle,color-mix(in_srgb,var(--sun)_70%,transparent),transparent_70%)]" />
+        <span aria-hidden="true" className="absolute -bottom-16 right-24 -z-10 h-40 w-40 rounded-full bg-[radial-gradient(circle,color-mix(in_srgb,var(--sky)_45%,transparent),transparent_70%)]" />
         <h1 className="text-2xl font-bold text-ink">{t({ en: 'Learning progress', vi: 'Tiến trình học tập' })}</h1>
         <div className="mt-4 flex flex-wrap items-baseline gap-x-3 gap-y-1">
-          <span className="text-5xl font-bold tabular-nums text-ink">{totalXP.toLocaleString()}</span>
-          <span className="text-lg font-semibold text-ink-muted">{t({ en: 'XP earned', vi: 'XP tích lũy' })}</span>
+          <span className="text-5xl font-extrabold tabular-nums text-ink">{totalXP.toLocaleString()}</span>
+          <span className="rounded-full bg-[color-mix(in_srgb,var(--sun)_55%,var(--surface))] px-3 py-0.5 text-base font-bold text-ink">
+            {t({ en: 'XP earned', vi: 'XP tích lũy' })}
+          </span>
         </div>
-        <Progress value={levelPercent} className="mt-6">
+        <Progress
+          value={levelPercent}
+          className="mt-6 [&_[data-slot=progress-indicator]]:bg-gradient-to-r [&_[data-slot=progress-indicator]]:from-sun [&_[data-slot=progress-indicator]]:to-coral [&_[data-slot=progress-track]]:h-3 [&_[data-slot=progress-track]]:bg-surface"
+        >
           <ProgressLabel>{t({ en: 'Next level', vi: 'Cấp độ tiếp theo' })}</ProgressLabel>
           <ProgressValue>{() => `${totalXP % LEVEL_XP} / ${LEVEL_XP} XP`}</ProgressValue>
         </Progress>
@@ -60,7 +68,7 @@ export function ProgressView({ completedLessons, streaks, totalXP, badges, loadF
 
       <BadgeWall badges={badges} />
 
-      <section className="rounded-xl border border-line bg-surface p-6">
+      <section className="rounded-xl border border-line border-t-4 border-t-coral bg-surface p-6">
         <h2 className="mb-4 text-lg font-bold text-ink">
           {t({
             en: `Completed lessons (${completedLessons.length})`,
@@ -97,7 +105,7 @@ export function ProgressView({ completedLessons, streaks, totalXP, badges, loadF
                 </div>
 
                 {p.score != null && (
-                  <span className="shrink-0 rounded-md bg-surface-sunken px-3 py-1 text-sm font-bold tabular-nums text-ink">
+                  <span className="shrink-0 rounded-full bg-[color-mix(in_srgb,var(--sun)_45%,var(--surface))] px-3 py-1 text-sm font-bold tabular-nums text-ink">
                     +{p.score} XP
                   </span>
                 )}

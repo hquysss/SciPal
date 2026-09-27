@@ -115,6 +115,23 @@
   to { scale: 1 1; }
 }
 
+.barGrow {
+  transform-box: fill-box;
+  transform-origin: bottom;
+  animation: bar-grow 600ms var(--hero-spring) var(--d, 0ms) both;
+}
+
+@keyframes bar-grow {
+  from { scale: 1 0; }
+  to { scale: 1 1; }
+}
+
+.roundJoinSoft {
+  stroke: currentColor;
+  stroke-width: 0;
+  stroke-linejoin: round;
+}
+
 /* Objects fall onto the desk and settle past zero; the shadow tightens as they land. */
 .drop {
   animation: object-drop 760ms var(--hero-spring) var(--d, 0ms) both;
@@ -262,6 +279,7 @@
   .fade,
   .pop,
   .ribbon,
+  .barGrow,
   .drop,
   .shadowGrow {
     animation: none;

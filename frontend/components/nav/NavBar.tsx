@@ -467,7 +467,7 @@ export function NavBar({ currentSubject }: NavBarProps) {
                 href="/login"
                 prefetch={pathname !== '/'}
                 onClick={() => setMobileOpen(false)}
-                className="flex items-center justify-center gap-2 rounded-xl bg-action px-4 py-3 text-sm font-bold text-action-ink transition hover:bg-action-hover focus-visible:outline focus-visible:outline-2 focus-visible:outline-focus"
+                className="flex items-center justify-center gap-2 rounded-xl bg-gradient-to-br from-sun to-coral px-4 py-3 text-sm font-extrabold text-ink shadow-[0_10px_24px_-12px_var(--coral)] transition hover:brightness-105 focus-visible:outline focus-visible:outline-2 focus-visible:outline-focus"
               >
                 {lang === 'en' ? 'Sign In' : 'Đăng nhập'} <ArrowRight aria-hidden="true" size={16} />
               </Link>
