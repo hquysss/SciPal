@@ -321,6 +321,11 @@ export function LessonEditor({
           Bài đang là bản nháp. Hoàn thiện tiêu đề và thêm ít nhất một khối, sau đó gửi admin duyệt.
         </p>
       )}
+      {canReview && status === 'draft' && (
+        <p className="rounded-xl border border-line bg-surface-sunken p-3 text-sm text-ink-muted">
+          Bài đang là bản nháp. Thêm nội dung, tích &quot;Xuất bản cho học sinh&quot; rồi bấm Lưu bài giảng để học sinh thấy bài.
+        </p>
+      )}
       {!canReview && status === 'rejected' && (
         <p className="rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-800 dark:border-red-900 dark:bg-red-950/30 dark:text-red-300">
           Bài cần chỉnh sửa trước khi gửi admin duyệt lại.

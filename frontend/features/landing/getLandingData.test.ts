@@ -74,9 +74,11 @@ const informaticsSubject: LandingSubject = {
   status: 'active',
   sort_order: 1,
   education_level: 'upper_secondary',
+  grades: [11],
+  liveGrades: [11],
 };
 
-const { status: _status, education_level: _level, ...informaticsFields } = informaticsSubject;
+const { status: _status, education_level: _level, grades: _grades, liveGrades: _liveGrades, ...informaticsFields } = informaticsSubject;
 const informaticsRow = { ...informaticsFields, subject_grade_catalog: [{ grade: 11 }] };
 
 const publishedLesson: LandingLesson = {
@@ -219,6 +221,12 @@ describe('expandSubjectsByLevel', () => {
     const cards = expandSubjectsByLevel([informatics], [{ subject_id: 'i', grade: 11 }]);
     expect(cards.find((c) => c.education_level === 'lower_secondary')?.status).toBe('upcoming');
     expect(cards.find((c) => c.education_level === 'upper_secondary')?.status).toBe('active');
+  });
+
+  it('keeps the catalog grades per level and which of them have published lessons', () => {
+    const cards = expandSubjectsByLevel([informatics], [{ subject_id: 'i', grade: 11 }]);
+    expect(cards.find((c) => c.education_level === 'lower_secondary')).toMatchObject({ grades: [6, 7], liveGrades: [] });
+    expect(cards.find((c) => c.education_level === 'upper_secondary')).toMatchObject({ grades: [11], liveGrades: [11] });
   });
 
   it('ignores subjects without catalog rows', () => {

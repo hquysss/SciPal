@@ -47,7 +47,9 @@ export default async function TeacherLessonsPage() {
             </span>
             <h1 className="text-2xl font-black tracking-tight sm:text-3xl">Quản lý & Soạn thảo bài giảng</h1>
             <p className="text-sm leading-relaxed text-purple-200/90">
-              Bài mới bắt đầu là bản nháp. Sau khi hoàn thiện, giáo viên gửi admin duyệt trước khi bài xuất bản cho học sinh.
+              {role === 'admin'
+                ? 'Bài mới bắt đầu là bản nháp. Admin soạn xong có thể xuất bản ngay; bài của giáo viên cần admin duyệt trước khi học sinh thấy.'
+                : 'Bài mới bắt đầu là bản nháp. Sau khi hoàn thiện, giáo viên gửi admin duyệt trước khi bài xuất bản cho học sinh.'}
             </p>
           </div>
         </header>
@@ -66,7 +68,7 @@ export default async function TeacherLessonsPage() {
                   Hàng chờ duyệt
                 </Link>
               )}
-              {role === 'teacher' && (
+              {(role === 'teacher' || role === 'admin') && (
                 <Link
                   href="/teacher/lessons/new-lesson"
                   className="inline-flex items-center gap-2 rounded-xl bg-purple-700 px-4 py-2 text-xs font-bold text-white shadow-xs transition hover:bg-purple-800 active:scale-95"
@@ -133,8 +135,8 @@ export default async function TeacherLessonsPage() {
           ) : (
             <div className="rounded-2xl border border-dashed border-gray-300 bg-white/70 p-8 text-center dark:border-gray-700 dark:bg-card/70">
               <h3 className="font-bold text-gray-900 dark:text-white">{role === 'admin' ? 'Chưa có bài giảng nào' : 'Bạn chưa gửi bài giảng nào'}</h3>
-              <p className="mt-1 text-sm text-gray-500">{role === 'admin' ? 'Bài giáo viên tạo sẽ xuất hiện tại đây.' : 'Tạo bản nháp, thêm khối nội dung, rồi gửi admin duyệt.'}</p>
-              {role === 'teacher' && (
+              <p className="mt-1 text-sm text-gray-500">{role === 'admin' ? 'Bài giáo viên và admin tạo sẽ xuất hiện tại đây.' : 'Tạo bản nháp, thêm khối nội dung, rồi gửi admin duyệt.'}</p>
+              {(role === 'teacher' || role === 'admin') && (
                 <Link href="/teacher/lessons/new-lesson" className="mt-4 inline-flex rounded-xl bg-purple-700 px-4 py-2 text-xs font-bold text-white hover:bg-purple-800">
                   Soạn bài đầu tiên
                 </Link>

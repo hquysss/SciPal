@@ -13,6 +13,8 @@ interface LessonCreateFormProps {
   subjects: AuthoringSubjectOption[];
   topics: AuthoringTopicOption[];
   tracks: AuthoringTrackOption[];
+  /** Admins publish from the Studio themselves instead of submitting for review. */
+  isAdmin?: boolean;
 }
 
 const NEW_TOPIC = '__new__';
@@ -26,7 +28,7 @@ async function getAccessToken(): Promise<string | null> {
   return session?.access_token ?? null;
 }
 
-export function LessonCreateForm({ subjects, topics, tracks }: LessonCreateFormProps) {
+export function LessonCreateForm({ subjects, topics, tracks, isAdmin = false }: LessonCreateFormProps) {
   const { lang, t } = useLanguage();
   const router = useRouter();
   const choiceGroups = useMemo(() => buildSubjectChoices(subjects), [subjects]);
@@ -160,10 +162,15 @@ export function LessonCreateForm({ subjects, topics, tracks }: LessonCreateFormP
           {t({ en: 'Lesson details', vi: 'Thông tin bài học' })}
         </h2>
         <p className="mt-1 text-sm text-gray-500">
-          {t({
-            en: 'New lessons start as drafts. After adding content, submit them for admin review; students see them only after approval.',
-            vi: 'Bài mới được tạo thành bản nháp. Sau khi hoàn thiện nội dung, bạn gửi admin duyệt; học sinh chỉ thấy bài đã được thông qua.',
-          })}
+          {isAdmin
+            ? t({
+                en: 'New lessons start as drafts. After adding content, tick "Publish to students" in the Studio and save.',
+                vi: 'Bài mới được tạo thành bản nháp. Thêm nội dung xong, tích "Xuất bản cho học sinh" trong Studio rồi lưu.',
+              })
+            : t({
+                en: 'New lessons start as drafts. After adding content, submit them for admin review; students see them only after approval.',
+                vi: 'Bài mới được tạo thành bản nháp. Sau khi hoàn thiện nội dung, bạn gửi admin duyệt; học sinh chỉ thấy bài đã được thông qua.',
+              })}
         </p>
       </div>
 

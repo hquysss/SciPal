@@ -12,6 +12,8 @@ const LESSON_LIST_COLUMNS =
   'id, topic_id, subject_id, slug, title_en, title_vi, grade, blocks, sort_order, status, review_note, published_at, created_by, reviewed_by, reviewed_at, created_at, updated_at, subjects(slug, name_en, name_vi), topics(name_en, name_vi)';
 
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+// lessons.id is a uuid: any other path id is "not found", not a database error.
+const LESSON_ID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 function getUser(request: FastifyRequest): AuthoringUser | undefined {
   return (request as FastifyRequest & { user?: AuthoringUser }).user;
@@ -50,9 +52,10 @@ export const authoringRoutes: FastifyPluginAsync = async (app) => {
     }
   };
 
+  // Admins publish their own lessons directly, so only teachers submit for review.
   const verifyTeacherOnly = async (request: FastifyRequest, reply: FastifyReply) => {
     if (getUser(request)?.app_metadata?.app_role !== 'teacher') {
-      return reply.code(403).send({ error: 'Chỉ giáo viên mới có thể tạo và gửi bài học.' });
+      return reply.code(403).send({ error: 'Chỉ giáo viên mới gửi bài vào hàng chờ duyệt.' });
     }
   };
 
@@ -257,6 +260,7 @@ export const authoringRoutes: FastifyPluginAsync = async (app) => {
       if (!user?.id) return reply.code(401).send({ error: 'Phiên đăng nhập không hợp lệ.' });
 
       const { id } = request.params as { id: string };
+      if (!LESSON_ID_PATTERN.test(id)) return reply.code(404).send({ error: 'Không tìm thấy bài giảng.' });
       const { data, error } = await supabase
         .from('lessons')
         .select('*, subjects(slug, name_en, name_vi), topics(name_en, name_vi)')
@@ -277,7 +281,7 @@ export const authoringRoutes: FastifyPluginAsync = async (app) => {
   });
 
   app.post('/api/authoring/lessons', {
-    preHandler: [verifyTeacherOnly],
+    preHandler: [verifyTeacher],
     handler: async (request, reply) => {
       const supabase = app.supabase;
       const user = getUser(request);
@@ -429,6 +433,7 @@ export const authoringRoutes: FastifyPluginAsync = async (app) => {
       if (!user?.id) return reply.code(401).send({ error: 'Phiên đăng nhập không hợp lệ.' });
 
       const { id } = request.params as { id: string };
+      if (!LESSON_ID_PATTERN.test(id)) return reply.code(404).send({ error: 'Không tìm thấy bài giảng.' });
       const body = (request.body ?? {}) as Record<string, unknown>;
       const titleEn = asText(body.title_en, 200);
       const titleVi = asText(body.title_vi, 200);
@@ -506,6 +511,7 @@ export const authoringRoutes: FastifyPluginAsync = async (app) => {
       if (!user?.id) return reply.code(401).send({ error: 'Phiên đăng nhập không hợp lệ.' });
 
       const { id } = request.params as { id: string };
+      if (!LESSON_ID_PATTERN.test(id)) return reply.code(404).send({ error: 'Không tìm thấy bài giảng.' });
       const body = (request.body ?? {}) as Record<string, unknown>;
       if (body.decision !== 'approve' && body.decision !== 'reject') {
         return reply.code(400).send({ error: 'Lựa chọn duyệt bài không hợp lệ.' });
@@ -575,6 +581,7 @@ export const authoringRoutes: FastifyPluginAsync = async (app) => {
       if (!user?.id) return reply.code(401).send({ error: 'Phiên đăng nhập không hợp lệ.' });
 
       const { id } = request.params as { id: string };
+      if (!LESSON_ID_PATTERN.test(id)) return reply.code(404).send({ error: 'Không tìm thấy bài giảng.' });
       const body = (request.body ?? {}) as Record<string, unknown>;
       const isAdmin = user.app_metadata?.app_role === 'admin';
       const expectedUpdatedAt = asText(body.expected_updated_at, 64);

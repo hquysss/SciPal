@@ -78,7 +78,7 @@ describe('exam routes without demo content', () => {
     const app = Fastify();
     app.decorate('supabase', mockSupabase({
       questions: mockQuery({ data: [], error: null }),
-      exam_blueprints: mockQuery({ data: null, error: null }),
+      exam_blueprints: mockQuery({ data: { id: BP }, error: null }),
     }));
     app.addHook('onRequest', async (request) => { (request as any).user = { id: 'student-1' }; });
     await app.register(examRoutes);

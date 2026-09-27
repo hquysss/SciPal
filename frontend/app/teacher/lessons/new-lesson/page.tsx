@@ -1,5 +1,4 @@
 import Link from 'next/link';
-import { redirect } from 'next/navigation';
 import { AuthoringApiError, getAuthoringOptions } from '@/features/authoring/authoringQueries';
 import { LessonCreateForm } from '@/features/authoring/LessonCreateForm';
 import { getAuthoringSession } from '@/features/authoring/serverAuth';
@@ -8,7 +7,6 @@ export const dynamic = 'force-dynamic';
 
 export default async function NewTeacherLessonPage() {
   const { token, role } = await getAuthoringSession('/teacher/lessons/new-lesson');
-  if (role !== 'teacher') redirect('/admin/lessons/review');
   let options: Awaited<ReturnType<typeof getAuthoringOptions>> | null = null;
   let loadFailed = false;
 
@@ -33,7 +31,9 @@ export default async function NewTeacherLessonPage() {
           <span className="font-mono text-xs font-bold uppercase tracking-wider text-purple-700 dark:text-purple-300">S10 · New lesson</span>
           <h1 className="text-2xl font-black text-gray-900 dark:text-white sm:text-3xl">Soạn bài giảng mới</h1>
           <p className="text-sm text-gray-600 dark:text-gray-400">
-            Tạo thông tin bài học trước; sau đó thêm nội dung trong Studio và gửi admin duyệt.
+            {role === 'admin'
+              ? 'Tạo thông tin bài học trước; sau đó thêm nội dung trong Studio và xuất bản.'
+              : 'Tạo thông tin bài học trước; sau đó thêm nội dung trong Studio và gửi admin duyệt.'}
           </p>
         </header>
 
@@ -44,7 +44,7 @@ export default async function NewTeacherLessonPage() {
             <Link href="/teacher/lessons/new-lesson" className="mt-3 inline-flex font-semibold underline">Thử lại</Link>
           </div>
         ) : (
-          <LessonCreateForm subjects={options.subjects} topics={options.topics} tracks={options.tracks ?? []} />
+          <LessonCreateForm subjects={options.subjects} topics={options.topics} tracks={options.tracks ?? []} isAdmin={role === 'admin'} />
         )}
       </main>
     </div>
