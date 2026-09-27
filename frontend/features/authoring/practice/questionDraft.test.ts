@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { draftFromQuestion, draftProblem, emptyQuestion, questionInput, switchQuestionType, type QuestionDraft } from './questionDraft';
 
-const ctx = { subjectId: '11111111-1111-4111-8111-111111111111', lessonId: '22222222-2222-4222-8222-222222222222' };
+const ctx = { usage: 'practice' as const, subjectId: '11111111-1111-4111-8111-111111111111', lessonId: '22222222-2222-4222-8222-222222222222' };
+const examCtx = { usage: 'exam' as const, subjectId: '11111111-1111-4111-8111-111111111111', grade: 11 };
 
 function filled(type: QuestionDraft['type']): QuestionDraft {
   const draft = emptyQuestion(type);
@@ -64,5 +65,13 @@ describe('question drafts', () => {
   it('reopens a saved question for editing', () => {
     const draft = draftFromQuestion({ type: 'short', difficulty: 2, data: { stem: { vi: 'A', en: 'B' }, answer_key: 'x' } });
     expect(draft).toEqual({ type: 'short', difficulty: 2, data: { stem: { vi: 'A', en: 'B' }, answer_key: 'x' } });
+  });
+});
+
+describe('exam question drafts', () => {
+  it('build an exam question with a grade and no lesson', () => {
+    const input = questionInput(emptyQuestion('short'), examCtx);
+    expect(input).toMatchObject({ usage: 'exam', grade: 11 });
+    expect(input).not.toHaveProperty('lesson_id');
   });
 });

@@ -8,7 +8,7 @@ import type { AuthorQuestion } from './api';
 vi.mock('@scipal/hooks', () => ({ useLanguage: () => ({ lang: 'vi', t: (o: { vi: string }) => o.vi }) }));
 vi.mock('@scipal/supabase', () => ({ createBrowserClient: () => ({}) }));
 
-const ctx = { subjectId: '11111111-1111-4111-8111-111111111111', lessonId: '22222222-2222-4222-8222-222222222222' };
+const ctx = { context: { usage: 'practice' as const, subjectId: '11111111-1111-4111-8111-111111111111', lessonId: '22222222-2222-4222-8222-222222222222' } };
 const row = (patch: Partial<AuthorQuestion> = {}): AuthorQuestion => ({
   id: '33333333-3333-4333-8333-333333333333',
   usage: 'practice',
@@ -63,5 +63,14 @@ describe('QuestionView', () => {
     expect(html).not.toContain('<input');
     expect(html).not.toContain('<textarea');
     expect(html).toMatch(/đã duyệt/);
+  });
+});
+
+describe('QuestionEditor for exams', () => {
+  it('asks for a grade only for an exam question', () => {
+    const exam = renderToStaticMarkup(<QuestionEditor context={{ usage: 'exam', subjectId: '11111111-1111-4111-8111-111111111111', grade: 10 }} initial={emptyQuestion('mc')} onSaved={() => {}} />);
+    expect(exam).toMatch(/<label[^>]*>Lớp<\/label>/);
+    expect(exam).toContain('<select');
+    expect(renderToStaticMarkup(<QuestionEditor {...ctx} initial={emptyQuestion('mc')} onSaved={() => {}} />)).not.toContain('<select');
   });
 });

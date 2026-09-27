@@ -57,8 +57,11 @@ export function nextChoiceId(ids: string[], numeric: boolean): string {
 
 const written = (text: Bilingual | undefined) => !!text && (text.vi.trim() !== '' || text.en.trim() !== '');
 
+/** Where a question lives: a lesson's practice part, or the exam bank (with an optional grade). */
+export type QuestionContext = { subjectId: string } & ({ usage: 'practice'; lessonId: string } | { usage: 'exam'; grade: number | null });
+
 /** What the API receives: only this type's fields; an unwritten explanation or note is left out. */
-export function questionInput(draft: QuestionDraft, ctx: { subjectId: string; lessonId: string }): QuestionPayload {
+export function questionInput(draft: QuestionDraft, ctx: QuestionContext): QuestionPayload {
   const { stem, options, answer, items, answer_key, rubric, explanation } = draft.data;
   const extra = { ...(written(explanation) ? { explanation } : {}) };
   const data =
@@ -67,11 +70,12 @@ export function questionInput(draft: QuestionDraft, ctx: { subjectId: string; le
       : draft.type === 'truefalse'
         ? { stem, items, ...extra }
         : { stem, answer_key, ...(written(rubric) ? { rubric } : {}), ...extra };
-  return { usage: 'practice', subject_id: ctx.subjectId, lesson_id: ctx.lessonId, type: draft.type, difficulty: draft.difficulty, data };
+  const place = ctx.usage === 'practice' ? { usage: 'practice' as const, lesson_id: ctx.lessonId } : { usage: 'exam' as const, grade: ctx.grade };
+  return { ...place, subject_id: ctx.subjectId, type: draft.type, difficulty: draft.difficulty, data };
 }
 
-/** Why the question cannot be saved yet, or null. English may wait until the lesson is sent for review. */
-export function draftProblem(draft: QuestionDraft, ctx: { subjectId: string; lessonId: string }): Bilingual | null {
+/** Why the question cannot be saved yet, or null. English may wait until the lesson or exam is sent for review. */
+export function draftProblem(draft: QuestionDraft, ctx: QuestionContext): Bilingual | null {
   const checked = validateQuestionInput(questionInput(draft, ctx));
   return checked.ok ? null : checked.message;
 }
