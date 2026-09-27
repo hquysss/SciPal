@@ -8,6 +8,7 @@ import { ImageEditor } from './editors/ImageEditor';
 import { RefPicker } from './editors/RefPicker';
 import { TheoryEditor } from './editors/TheoryEditor';
 import { SimulationEditor } from '@/features/simulations/SimulationEditor';
+import { QuizBlockEditor } from '../practice/QuizBlockEditor';
 
 export interface BlockEditorProps {
   block: Block;
@@ -42,6 +43,8 @@ export function BlockEditor({ block, onChange, subjectId, lang, onLangChange, on
       );
     case 'interactive':
       return <SimulationEditor block={block} onChange={onChange} {...langProps} />;
+    case 'quiz':
+      return <QuizBlockEditor questionId={block.question_id} />;
     default:
       return (
         <p className="rounded-lg border border-dashed border-edge bg-surface-sunken p-3 text-sm text-ink-muted">

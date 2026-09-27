@@ -45,3 +45,19 @@ describe('LessonPartsView on the learner page', () => {
     expect(html).toContain('data-paper="ruled"');
   });
 });
+
+describe('LessonPartsView practice', () => {
+  const practice = { ok: true as const, questions: [{ id: quiz.type === 'quiz' ? quiz.question_id : '', type: 'short' as const, difficulty: 1, data: { stem: { vi: 'Thủ đô Việt Nam?', en: 'Capital?' } } }] };
+
+  it('asks the practice questions in the Tự luyện part, then offers completion', () => {
+    const html = renderToStaticMarkup(<LessonPartsView blocks={[quiz]} practice={practice} completion={<button>Hoàn thành</button>} />);
+    expect(html).toContain('Thủ đô Việt Nam?');
+    expect(html).not.toContain('sắp có');
+    expect(html.indexOf('Thủ đô Việt Nam?')).toBeLessThan(html.indexOf('Hoàn thành'));
+  });
+
+  it('previews practice questions in the editor', () => {
+    const html = renderToStaticMarkup(<LessonPartsView blocks={[quiz, theory]} part="practice" practice={practice} lang="en" />);
+    expect(html).toContain('Capital?');
+  });
+});

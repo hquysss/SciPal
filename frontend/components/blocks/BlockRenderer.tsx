@@ -23,16 +23,11 @@ export function BlockRenderer({ block, lang: langOverride }: { block: Block; lan
     case 'formula':
       return <FormulaRenderer block={block} lang={lang} />;
     case 'quiz':
+      // Practice questions are asked by the Tự luyện part (PracticeSection); alone, a quiz block only points there.
       return (
-        <div role="note" className="rounded-lg border border-dashed border-edge bg-surface p-4 text-sm text-ink-muted">
-          <p className="font-semibold text-ink">{t({ en: 'Practice question coming soon', vi: 'Câu hỏi luyện tập sắp có' })}</p>
-          <p className="mt-1">
-            {t({
-              en: 'This question will appear here once practice checking is ready.',
-              vi: 'Câu hỏi sẽ hiện ở đây khi phần chấm luyện tập sẵn sàng.',
-            })}
-          </p>
-        </div>
+        <p role="note" className="rounded-lg border border-dashed border-edge bg-surface p-4 text-sm text-ink-muted">
+          {t({ en: 'This question is in the Practice part of the lesson.', vi: 'Câu hỏi này nằm trong phần Tự luyện của bài.' })}
+        </p>
       );
     case 'interactive':
       return <InteractiveRenderer block={block} lang={lang} />;

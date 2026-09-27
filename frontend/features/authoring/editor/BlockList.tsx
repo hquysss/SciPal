@@ -3,7 +3,7 @@
 import { Fragment, useEffect, useRef, useState } from 'react';
 import { ArrowDown, ArrowUp, Copy, GripVertical, Plus, Trash2 } from 'lucide-react';
 import { useLanguage } from '@scipal/hooks';
-import { BUILT_IN_SIMULATION_KINDS, type Block } from '@scipal/types';
+import { BUILT_IN_SIMULATION_KINDS, QUESTION_TYPES, type Block, type QuestionType } from '@scipal/types';
 import type { BlocksUpdate, LessonPart } from '@/features/lessons/lessonParts';
 import { BlockEditor } from './BlockEditor';
 import { duplicateAt, emptyBlock, insertAt, moveBlock, removeAt, type LessonBlockType } from './blockOps';
@@ -12,6 +12,11 @@ import { RefPicker } from './editors/RefPicker';
 import { SMALL_BUTTON } from './editors/styles';
 import { simulationModules } from '@/features/simulations/registry';
 import { EMBED_LABEL, newSimulationBlock, type NewSimulationKind } from '@/features/simulations/SimulationEditor';
+import { QuestionEditor } from '../practice/QuestionEditor';
+import { QuestionPicker } from '../practice/QuestionPicker';
+import { usePracticeQuestions } from '../practice/PracticeQuestionsContext';
+import { QUESTION_TYPE_LABEL, emptyQuestion } from '../practice/questionDraft';
+import type { AuthorQuestion } from '../practice/api';
 
 type Bilingual = { en: string; vi: string };
 
@@ -42,13 +47,17 @@ const EMPTY_TEXT: Record<LessonPart, Bilingual> = {
     vi: 'Chưa có mô phỏng. Bấm ＋ để chọn một mẫu mô phỏng hoặc nhúng link.',
   },
   practice: {
-    en: 'No practice questions yet. The question editor arrives in the next step.',
-    vi: 'Chưa có câu tự luyện. Trình soạn câu hỏi sẽ có ở bước tiếp theo.',
+    en: 'No practice questions yet. Press ＋ to write one or reuse a published question from another lesson.',
+    vi: 'Chưa có câu tự luyện. Bấm ＋ để viết câu mới hoặc lấy câu đã duyệt từ bài khác.',
   },
 };
 
-function summary(block: Block, lang: 'en' | 'vi'): string {
+function summary(block: Block, lang: 'en' | 'vi', rows?: Readonly<Record<string, AuthorQuestion>>): string {
   switch (block.type) {
+    case 'quiz': {
+      const stem = (rows?.[block.question_id]?.data as { stem?: Bilingual } | undefined)?.stem;
+      return stem ? stem[lang] || stem.vi : '';
+    }
     case 'theory':
       return (block.content[lang] || block.content.vi).split('\n').find((line) => line.trim()) ?? '';
     case 'code':
@@ -76,7 +85,10 @@ interface BlockListProps {
   focusIndex?: number;
 }
 
-type Pending = { index: number; kind: 'image' | 'term-ref' | 'resource-ref' };
+type Pending =
+  | { index: number; kind: 'image' | 'term-ref' | 'resource-ref' }
+  | { index: number; kind: 'question'; type: QuestionType }
+  | { index: number; kind: 'pick' };
 
 export function BlockList({ part, blocks, onChange, subjectId, readOnly, focusIndex }: BlockListProps) {
   const { t, lang: uiLang } = useLanguage();
@@ -87,8 +99,14 @@ export function BlockList({ part, blocks, onChange, subjectId, readOnly, focusIn
   const [undo, setUndo] = useState<{ block: Block; index: number } | null>(null);
   const [editLang, setEditLang] = useState<'vi' | 'en'>('vi');
   const cards = useRef<Array<HTMLLIElement | null>>([]);
-  // Practice questions get their editor in the next part of the workspace.
-  const canInsert = !readOnly && part !== 'practice';
+  const practice = usePracticeQuestions();
+  const canInsert = !readOnly;
+  const quizIds = blocks.flatMap((b) => (b.type === 'quiz' ? [b.question_id] : []));
+  /** A question saved or picked: known to the editor, then referenced by the lesson. */
+  const insertQuestion = (index: number, row: AuthorQuestion) => {
+    practice?.upsert(row);
+    insert(index, { type: 'quiz', question_id: row.id });
+  };
 
   useEffect(() => {
     if (focusIndex === undefined) return;
@@ -113,7 +131,7 @@ export function BlockList({ part, blocks, onChange, subjectId, readOnly, focusIn
     const block = emptyBlock(type);
     if (block) insert(index, block);
     else {
-      setPending({ index, kind: type as Pending['kind'] });
+      setPending({ index, kind: type as 'image' | 'term-ref' | 'resource-ref' });
       setMenuAt(null);
     }
   };
@@ -166,6 +184,35 @@ export function BlockList({ part, blocks, onChange, subjectId, readOnly, focusIn
             ))}
           </div>
         )}
+        {open && part === 'practice' && (
+          <div role="menu" className="flex flex-wrap justify-center gap-1.5">
+            {QUESTION_TYPES.map((type) => (
+              <button
+                key={type}
+                type="button"
+                role="menuitem"
+                onClick={() => {
+                  setPending({ index, kind: 'question', type });
+                  setMenuAt(null);
+                }}
+                className={SMALL_BUTTON}
+              >
+                {t(QUESTION_TYPE_LABEL[type])}
+              </button>
+            ))}
+            <button
+              type="button"
+              role="menuitem"
+              onClick={() => {
+                setPending({ index, kind: 'pick' });
+                setMenuAt(null);
+              }}
+              className={SMALL_BUTTON}
+            >
+              {t({ en: 'Reuse from another lesson', vi: 'Lấy từ bài khác' })}
+            </button>
+          </div>
+        )}
         {open && part === 'lesson' && (
           <div role="menu" className="flex flex-wrap justify-center gap-1.5">
             {LESSON_TYPES.map((type) => (
@@ -175,7 +222,24 @@ export function BlockList({ part, blocks, onChange, subjectId, readOnly, focusIn
             ))}
           </div>
         )}
-        {pending?.index === index && (
+        {pending?.index === index && (pending.kind === 'question' || pending.kind === 'pick') && (
+          <div className="rounded-lg border border-action bg-surface p-3">
+            {!practice ? (
+              <p className="text-sm text-ink-muted">{t({ en: 'The question editor is not available here.', vi: 'Không mở được trình soạn câu hỏi ở đây.' })}</p>
+            ) : pending.kind === 'question' ? (
+              <QuestionEditor
+                subjectId={practice.subjectId}
+                lessonId={practice.lessonId}
+                initial={emptyQuestion(pending.type)}
+                onSaved={(row) => insertQuestion(index, row)}
+                onCancel={() => setPending(null)}
+              />
+            ) : (
+              <QuestionPicker subjectId={practice.subjectId} excludeIds={quizIds} onPick={(row) => insertQuestion(index, row)} onCancel={() => setPending(null)} />
+            )}
+          </div>
+        )}
+        {pending?.index === index && pending.kind !== 'question' && pending.kind !== 'pick' && (
           <div className="rounded-lg border border-line bg-surface p-3">
             {pending.kind === 'image' ? (
               <ImageDropZone onImage={(image) => insert(index, image)} />
@@ -247,21 +311,28 @@ export function BlockList({ part, blocks, onChange, subjectId, readOnly, focusIn
                   className="flex min-h-9 min-w-0 flex-1 items-center gap-2 text-left"
                 >
                   <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded bg-surface-sunken text-xs font-bold tabular-nums text-ink-muted">{i + 1}</span>
-                  <span className="shrink-0 text-sm font-semibold text-ink">{t(TYPE_LABEL[block.type])}</span>
-                  <span className="truncate text-sm text-ink-muted">{summary(block, uiLang)}</span>
+                  <span className="shrink-0 text-sm font-semibold text-ink">
+                    {block.type === 'quiz' && practice?.rows[block.question_id]
+                      ? t(QUESTION_TYPE_LABEL[practice.rows[block.question_id]!.type])
+                      : t(TYPE_LABEL[block.type])}
+                  </span>
+                  <span className="truncate text-sm text-ink-muted">{summary(block, uiLang, practice?.rows)}</span>
                 </button>
                 {!readOnly && (
                   <div className="flex shrink-0 items-center gap-0.5">
                     <IconButton label={t({ en: 'Move up', vi: 'Lên trên' })} disabled={i === 0} onClick={() => move(i, i - 1)} Icon={ArrowUp} />
                     <IconButton label={t({ en: 'Move down', vi: 'Xuống dưới' })} disabled={i === blocks.length - 1} onClick={() => move(i, i + 1)} Icon={ArrowDown} />
-                    <IconButton
-                      label={t({ en: 'Duplicate', vi: 'Nhân đôi' })}
-                      onClick={() => {
-                        onChange((list) => duplicateAt(list, i));
-                        setExpanded(i + 1);
-                      }}
-                      Icon={Copy}
-                    />
+                    {/* A question appears once per lesson, so quiz blocks are not duplicated. */}
+                    {block.type !== 'quiz' && (
+                      <IconButton
+                        label={t({ en: 'Duplicate', vi: 'Nhân đôi' })}
+                        onClick={() => {
+                          onChange((list) => duplicateAt(list, i));
+                          setExpanded(i + 1);
+                        }}
+                        Icon={Copy}
+                      />
+                    )}
                     <IconButton label={t({ en: 'Delete block', vi: 'Xóa khối' })} onClick={() => remove(i)} Icon={Trash2} danger />
                   </div>
                 )}

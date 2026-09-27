@@ -113,3 +113,41 @@ describe('sectionShortfalls', () => {
     expect(sectionShortfalls(withoutShort).get('vd-de-on-tap')).toEqual([{ index: 2, need: 1, have: 0 }]);
   });
 });
+
+describe('lesson questions and exams in one import', () => {
+  const bi = (vi: string) => ({ vi, en: vi });
+  const question = (key: string) => ({
+    key,
+    subject_slug: 'informatics',
+    type: 'mc' as const,
+    difficulty: 1,
+    stem: bi(key),
+    options: [{ id: 'A', text: bi('A') }, { id: 'B', text: bi('B') }],
+    answer: 'A',
+  });
+  const lesson = (title: string, keys: string[]) => ({
+    subject_slug: 'informatics',
+    grade: 11,
+    topic: bi('Chủ đề'),
+    title: bi(title),
+    blocks: keys.map((key) => ({ type: 'quiz_ref' as const, key })),
+  });
+  const draft = (lessons: ReturnType<typeof lesson>[], count: number) => ({
+    lessons,
+    questions: [question('q1'), question('q2')],
+    blueprints: [{ code: 'de', subject_slug: 'informatics', grade: 11, title: bi('Đề'), duration_minutes: 45, sections: [{ type: 'mc' as const, difficulty: 1, count }] }],
+  });
+
+  it('never counts a question a lesson uses towards an exam, as the server does', async () => {
+    const { sectionShortfalls } = await import('./examWorkbook');
+    expect(sectionShortfalls(draft([], 2)).size).toBe(0);
+    expect(sectionShortfalls(draft([lesson('Bài 1', ['q1'])], 2)).get('de')).toEqual([{ index: 0, need: 2, have: 1 }]);
+  });
+
+  it('flags a question used twice in a lesson or by two lessons', async () => {
+    const { quizRefConflicts } = await import('./examWorkbook');
+    expect(quizRefConflicts(draft([lesson('Bài 1', ['q1']), lesson('Bài 2', ['q2'])], 0) as never)).toEqual([]);
+    expect(quizRefConflicts(draft([lesson('Bài 1', ['q1', 'q1'])], 0) as never)).toEqual([{ lesson: 'Bài 1', key: 'q1' }]);
+    expect(quizRefConflicts(draft([lesson('Bài 1', ['q1']), lesson('Bài 2', ['q1'])], 0) as never)).toEqual([{ lesson: 'Bài 2', key: 'q1' }]);
+  });
+});

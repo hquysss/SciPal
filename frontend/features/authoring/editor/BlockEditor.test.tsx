@@ -49,7 +49,9 @@ describe('BlockEditor', () => {
     expect(html).not.toContain('0b6f9c1a');
   });
 
-  it('shows simulations and questions read-only for now', () => {
-    expect(render({ type: 'quiz', question_id: '11111111-1111-4111-8111-111111111111' })).toContain('bước tiếp theo');
+  it('opens the practice question behind a quiz block (none outside the lesson editor)', () => {
+    const html = render({ type: 'quiz', question_id: '11111111-1111-4111-8111-111111111111' });
+    expect(html).not.toContain('bước tiếp theo');
+    expect(html).toContain('Không mở được trình soạn câu hỏi');
   });
 });

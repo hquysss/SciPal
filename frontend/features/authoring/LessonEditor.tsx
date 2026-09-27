@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ChangeEvent } from 'react';
 import { useRouter } from 'next/navigation';
 import { createBrowserClient } from '@scipal/supabase';
-import type { Block } from '@scipal/types';
+import { toPublicPracticeQuestion, type Block } from '@scipal/types';
 import { useLanguage } from '@scipal/hooks';
 import { Alert } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
@@ -21,6 +21,7 @@ import { IssueList } from './editor/IssueList';
 import { lessonIssues, type LessonIssue } from './editor/lessonIssues';
 import { PartTabs } from './editor/PartTabs';
 import { LessonRequestsPanel } from './simulationRequests/LessonRequestsPanel';
+import { PracticeQuestionsContext, usePracticeQuestionRows } from './practice/PracticeQuestionsContext';
 import { leavingHref } from './editor/leaveGuard';
 import { uploadLessonImage } from './editor/mediaApi';
 
@@ -89,7 +90,15 @@ export function LessonEditor({
   const [previewLang, setPreviewLang] = useState<'vi' | 'en'>('vi');
 
   const canEditContent = canReview ? status === 'draft' || status === 'published' : status === 'draft' || status === 'rejected';
-  const issues = useMemo(() => lessonIssues(blocks), [blocks]);
+  const quizIds = useMemo(() => parts.practice.flatMap((b) => (b.type === 'quiz' ? [b.question_id] : [])), [parts.practice]);
+  const practice = usePracticeQuestionRows(lessonId, subjectId, quizIds);
+  // The preview shows questions as learners get them: built field by field, no answers.
+  const practicePreview = useMemo(
+    () => ({ ok: true as const, questions: quizIds.flatMap((id) => (practice.rows[id] ? [toPublicPracticeQuestion(practice.rows[id]!)] : [])) }),
+    [quizIds, practice.rows],
+  );
+  // Questions are judged once loaded; until then the server still checks them on submit.
+  const issues = useMemo(() => lessonIssues(blocks, practice.loaded ? practice.rows : undefined), [blocks, practice.loaded, practice.rows]);
   const counts = { lesson: parts.lesson.length, simulation: parts.simulation.length, practice: parts.practice.length };
   const busy = saving || submittingForReview || reviewing;
 
@@ -563,15 +572,17 @@ export function LessonEditor({
               />
             </div>
           )}
-          <BlockList
-            key={activePart}
-            part={activePart}
-            blocks={parts[activePart]}
-            onChange={(next) => setPart(activePart, next)}
-            subjectId={subjectId}
-            readOnly={!canEditContent}
-            focusIndex={focus?.part === activePart ? focus.index : undefined}
-          />
+          <PracticeQuestionsContext.Provider value={practice}>
+            <BlockList
+              key={activePart}
+              part={activePart}
+              blocks={parts[activePart]}
+              onChange={(next) => setPart(activePart, next)}
+              subjectId={subjectId}
+              readOnly={!canEditContent}
+              focusIndex={focus?.part === activePart ? focus.index : undefined}
+            />
+          </PracticeQuestionsContext.Provider>
           {activePart === 'simulation' && (
             <LessonRequestsPanel
               lessonId={lessonId}
@@ -603,7 +614,7 @@ export function LessonEditor({
             {parts[activePart].length === 0 ? (
               <p className="py-16 text-center text-sm text-ink-muted">{t({ en: 'Nothing in this part yet.', vi: 'Phần này chưa có nội dung.' })}</p>
             ) : (
-              <LessonPartsView blocks={blocks} part={activePart} lang={previewLang} />
+              <LessonPartsView blocks={blocks} part={activePart} lang={previewLang} practice={practicePreview} />
             )}
           </div>
         </aside>

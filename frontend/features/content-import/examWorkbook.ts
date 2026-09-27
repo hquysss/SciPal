@@ -299,16 +299,28 @@ export function missingEnglish(draft: ExamImportDraft & { lessons?: DraftLesson[
   return englishFields(draft).filter((f) => !f.text.en.trim()).map((f) => f.label);
 }
 
+/** Question keys a lesson of the draft uses: they become that lesson's practice questions. */
+function practiceKeys(draft: ExamImportDraft & { lessons?: DraftLesson[] }): Set<string> {
+  return new Set(
+    (draft.lessons ?? []).flatMap((lesson) =>
+      lesson.blocks.flatMap((block) => (block.type === 'quiz_ref' ? [`${lesson.subject_slug}:${block.key}`] : [])),
+    ),
+  );
+}
+
 /**
  * Sections an exam cannot fill from the draft's questions, picked the way the server does: each
- * section takes the first unused questions of its subject, type and difficulty.
+ * section takes the first unused questions of its subject, type and difficulty. A question a
+ * lesson uses is a practice question and never goes into an exam.
  */
-export function sectionShortfalls(draft: ExamImportDraft): Map<string, Array<{ index: number; need: number; have: number }>> {
+export function sectionShortfalls(draft: ExamImportDraft & { lessons?: DraftLesson[] }): Map<string, Array<{ index: number; need: number; have: number }>> {
   const result = new Map<string, Array<{ index: number; need: number; have: number }>>();
+  const practice = practiceKeys(draft);
+  const pool = draft.questions.filter((q) => !practice.has(`${q.subject_slug}:${q.key}`));
   for (const blueprint of draft.blueprints) {
     const used = new Set<DraftQuestion>();
     blueprint.sections.forEach((section, index) => {
-      const matches = draft.questions.filter(
+      const matches = pool.filter(
         (q) => q.subject_slug === blueprint.subject_slug && q.type === section.type && q.difficulty === section.difficulty && !used.has(q),
       );
       matches.slice(0, section.count).forEach((q) => used.add(q));
@@ -328,6 +340,23 @@ export function unresolvedQuizRefs(draft: ContentImportDraft): Array<{ lesson: s
       block.type === 'quiz_ref' && !keys.has(`${lesson.subject_slug}:${block.key}`) ? [{ lesson: lesson.title.vi, key: block.key }] : [],
     ),
   );
+}
+
+/** Question keys used twice in one lesson, or by a second lesson: each practice question belongs to one lesson. */
+export function quizRefConflicts(draft: ContentImportDraft): Array<{ lesson: string; key: string }> {
+  const usedBy = new Set<string>();
+  const conflicts: Array<{ lesson: string; key: string }> = [];
+  for (const lesson of draft.lessons) {
+    const inLesson = new Set<string>();
+    for (const block of lesson.blocks) {
+      if (block.type !== 'quiz_ref') continue;
+      const key = `${lesson.subject_slug}:${block.key}`;
+      if (inLesson.has(key) || usedBy.has(key)) conflicts.push({ lesson: lesson.title.vi, key: block.key });
+      inLesson.add(key);
+    }
+    inLesson.forEach((key) => usedBy.add(key));
+  }
+  return conflicts;
 }
 
 /** A copy of the draft with the English of one text replaced. */

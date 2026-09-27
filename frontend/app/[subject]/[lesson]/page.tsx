@@ -6,6 +6,7 @@ import { LessonPartsView } from '@/features/lessons/LessonPartsView';
 import { AiTutorButton } from '@/features/ai-tutor/AiTutorButton';
 import { LessonCompletionBar } from '@/features/lessons/LessonCompletionBar';
 import { LessonHeader } from '@/features/lessons/LessonHeader';
+import { fetchLessonPractice } from '@/features/lessons/practiceApi';
 import { levelOfGrade } from '@/features/landing/educationLevel';
 
 export const dynamic = 'force-dynamic';
@@ -32,6 +33,8 @@ export default async function LessonPage({
   const { lesson } = result;
   const subject = lesson.subjects;
   const level = levelOfGrade(lesson.grade);
+  // One request for the Tự luyện questions (answers stay on the server); a failure offers a retry.
+  const practice = lesson.blocks.some((block) => block.type === 'quiz') ? await fetchLessonPractice(lesson.id) : undefined;
 
   return (
     <LevelScope level={level} className="flex-1">
@@ -42,6 +45,8 @@ export default async function LessonPage({
           <LessonPartsView
             blocks={lesson.blocks}
             sheet={{ squared: level === 'primary' }}
+            practice={practice}
+            lessonId={lesson.id}
             completion={<LessonCompletionBar lessonId={lesson.id} subjectSlug={subjectSlug} />}
           />
           <AiTutorButton lessonId={lesson.id} subjectSlug={subjectSlug} token={null} />

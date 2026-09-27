@@ -5,6 +5,8 @@ import { createClient, type SupabaseClient, type User } from '@supabase/supabase
 const isPublicPath = (path: string): boolean => {
   if (path === '/health' || path === '/api/survey') return true;
   if (path.startsWith('/api/exam/')) return true;
+  // Lesson practice works for visitors too; checking gives no XP.
+  if (path.startsWith('/api/practice/')) return true;
   return false;
 };
 
