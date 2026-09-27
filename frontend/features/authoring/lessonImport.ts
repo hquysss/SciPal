@@ -6,7 +6,7 @@ export const MAX_LESSON_IMPORT_BYTES = 1_048_576;
 type Bilingual = { en: string; vi: string };
 
 export type LessonImportResult =
-  | { ok: true; title_en?: string; title_vi?: string; blocks: Block[] }
+  | { ok: true; title_en?: string; title_vi?: string; blocks: Block[]; skippedImages?: number }
   | { ok: false; error: Bilingual };
 
 const title = z.string().trim().min(1).max(200);

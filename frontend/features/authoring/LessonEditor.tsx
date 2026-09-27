@@ -20,6 +20,7 @@ import { BlockList } from './editor/BlockList';
 import { IssueList } from './editor/IssueList';
 import { lessonIssues, type LessonIssue } from './editor/lessonIssues';
 import { PartTabs } from './editor/PartTabs';
+import { uploadLessonImage } from './editor/mediaApi';
 
 const LESSON_TEMPLATE_URL = '/templates/scipal-lesson-template.docx';
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL ?? 'https://sci-pal-backend.vercel.app';
@@ -267,7 +268,7 @@ export function LessonEditor({
     setMessage(null);
     let result: LessonImportResult;
     try {
-      result = documentKind(file.name) ? await importLessonDocument(file) : parseLessonImport(await file.text(), file.size);
+      result = documentKind(file.name) ? await importLessonDocument(file, { uploadImage: uploadLessonImage }) : parseLessonImport(await file.text(), file.size);
     } catch {
       result = { ok: false, error: { en: 'Could not read the file.', vi: 'Không đọc được tệp.' } };
     } finally {
@@ -297,13 +298,16 @@ export function LessonEditor({
     setPendingImport(null);
     setActivePart('lesson');
     changed();
-    const missingEnglish = lessonIssues(result.blocks).length > 0;
-    setMessage({
-      text: missingEnglish
-        ? { en: `Imported ${result.blocks.length} blocks. Complete the marked blocks.`, vi: `Đã nạp ${result.blocks.length} khối. Hãy hoàn thiện các khối được đánh dấu.` }
-        : { en: `Imported ${result.blocks.length} blocks.`, vi: `Đã nạp ${result.blocks.length} khối.` },
-      type: 'success',
-    });
+    const needsWork = lessonIssues(result.blocks).length > 0;
+    const skipped = result.skippedImages ?? 0;
+    const text = needsWork
+      ? { en: `Imported ${result.blocks.length} blocks. Complete the marked blocks.`, vi: `Đã nạp ${result.blocks.length} khối. Hãy hoàn thiện các khối được đánh dấu.` }
+      : { en: `Imported ${result.blocks.length} blocks.`, vi: `Đã nạp ${result.blocks.length} khối.` };
+    if (skipped > 0) {
+      text.en += ` Skipped ${skipped} images that could not be uploaded (PNG, JPG, WEBP under 4 MB only).`;
+      text.vi += ` Bỏ qua ${skipped} ảnh không tải được (chỉ nhận PNG, JPG, WEBP dưới 4 MB).`;
+    }
+    setMessage({ text, type: 'success' });
   };
 
   // ── Render ────────────────────────────────────────────────────────────────────────────────

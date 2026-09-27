@@ -298,6 +298,53 @@ export function pagesToTheoryBlocks(pages: string[]): Block[] {
   return pages.map((page) => page.replace(/[ \t]+\n/g, '\n').replace(/\n{3,}/g, '\n\n').trim()).filter(Boolean).map(theory);
 }
 
+// ── Images in Word documents ─────────────────────────────────────────────────────────────────
+
+const DATA_IMAGE = /!\[[^\]]*\]\(data:([^;)]+);base64,([^)]*)\)/g;
+const UPLOADABLE = new Set(['image/png', 'image/jpeg', 'image/webp']);
+
+export type MarkdownPart = { kind: 'text'; markdown: string } | { kind: 'image'; mime: string; base64: string };
+
+/** Word markdown cut at its embedded (data URI) images, in document order. */
+export function splitMarkdownImages(markdown: string): MarkdownPart[] {
+  const parts: MarkdownPart[] = [];
+  let last = 0;
+  for (const match of markdown.matchAll(DATA_IMAGE)) {
+    if (match.index! > last) parts.push({ kind: 'text', markdown: markdown.slice(last, match.index) });
+    parts.push({ kind: 'image', mime: match[1]!, base64: match[2]! });
+    last = match.index! + match[0].length;
+  }
+  if (last < markdown.length) parts.push({ kind: 'text', markdown: markdown.slice(last) });
+  return parts;
+}
+
+function base64ToBlob(base64: string, mime: string): Blob {
+  const bytes = Uint8Array.from(atob(base64), (c) => c.charCodeAt(0));
+  return new Blob([bytes], { type: mime });
+}
+
+export type ImageUploader = (image: Blob) => Promise<{ ok: true; url: string } | { ok: false; error: Bilingual }>;
+
+/** Word markdown as theory blocks with its images uploaded in place, one upload at a time. */
+export async function blocksFromMarkdown(markdown: string, upload: ImageUploader): Promise<{ blocks: Block[]; skippedImages: number }> {
+  const blocks: Block[] = [];
+  let skippedImages = 0;
+  for (const part of splitMarkdownImages(markdown)) {
+    if (part.kind === 'text') {
+      blocks.push(...markdownToTheoryBlocks(part.markdown));
+      continue;
+    }
+    if (!UPLOADABLE.has(part.mime)) {
+      skippedImages += 1;
+      continue;
+    }
+    const result = await upload(base64ToBlob(part.base64, part.mime));
+    if (result.ok) blocks.push({ type: 'image', url: result.url, alt: { vi: '', en: '' } });
+    else skippedImages += 1;
+  }
+  return { blocks, skippedImages };
+}
+
 // ── Reading files ────────────────────────────────────────────────────────────────────────────
 
 export function normalizeDocxText(raw: string): string {
@@ -334,7 +381,9 @@ async function readPdfPages(bytes: ArrayBuffer): Promise<string[]> {
 }
 
 /** The text of a .docx or text-based .pdf file, and its free-form blocks on demand. */
-async function readDocument(file: File): Promise<{ text: string; freeForm: () => Promise<Block[]> }> {
+type FreeForm = (upload?: ImageUploader) => Promise<{ blocks: Block[]; skippedImages: number }>;
+
+async function readDocument(file: File): Promise<{ text: string; freeForm: FreeForm }> {
   const kind = documentKind(file.name);
   if (!kind) fail('Chỉ nhận tệp Word .docx hoặc PDF.', 'Only Word .docx or PDF files are accepted.');
   if (file.size === 0) fail('Tệp đang trống.', 'The file is empty.');
@@ -342,16 +391,19 @@ async function readDocument(file: File): Promise<{ text: string; freeForm: () =>
   const bytes = await file.arrayBuffer();
 
   let text: string;
-  let freeForm: () => Promise<Block[]>;
+  let freeForm: FreeForm;
   try {
     if (kind === 'docx') {
       const docx = await readDocx(bytes);
       text = docx.text;
-      freeForm = async () => markdownToTheoryBlocks(await docx.markdown());
+      freeForm = async (upload) => {
+        const markdown = await docx.markdown();
+        return upload ? blocksFromMarkdown(markdown, upload) : { blocks: markdownToTheoryBlocks(markdown), skippedImages: 0 };
+      };
     } else {
       const pages = await readPdfPages(bytes);
       text = pages.join('\n');
-      freeForm = async () => pagesToTheoryBlocks(pages);
+      freeForm = async () => ({ blocks: pagesToTheoryBlocks(pages), skippedImages: 0 });
     }
   } catch (error) {
     if (error instanceof DocumentImportError) throw error;
@@ -370,13 +422,13 @@ async function readDocument(file: File): Promise<{ text: string; freeForm: () =>
 }
 
 /** Read a .docx or text-based .pdf lesson file into Studio blocks. */
-export async function importLessonDocument(file: File): Promise<LessonImportResult> {
+export async function importLessonDocument(file: File, opts: { uploadImage?: ImageUploader } = {}): Promise<LessonImportResult> {
   try {
     const { text, freeForm } = await readDocument(file);
     if (text.trimStart().startsWith(TEMPLATE_HEADER)) return parseLessonTemplate(text);
-    const blocks = await freeForm();
+    const { blocks, skippedImages } = await freeForm(opts.uploadImage);
     if (blocks.length === 0) fail('Không tách được nội dung từ tệp.', 'No content could be read from the file.');
-    return { ok: true, blocks };
+    return { ok: true, blocks, skippedImages };
   } catch (error) {
     if (error instanceof DocumentImportError) return { ok: false, error: error.bilingual };
     throw error;

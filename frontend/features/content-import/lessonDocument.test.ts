@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { documentKind, markdownToTheoryBlocks, normalizeDocxText, pagesToTheoryBlocks, parseLessonTemplate } from './lessonDocument';
 
 const QUIZ_ID = '33333333-3333-4333-8333-333333333333';
@@ -160,3 +160,34 @@ describe('the Word template offered on the import page', () => {
     }
   });
 });
+
+describe('images in Word documents', () => {
+  it('splits markdown at embedded images', async () => {
+    const { splitMarkdownImages } = await import('./lessonDocument');
+    expect(splitMarkdownImages('# A\n\nx\n\n![](data:image/png;base64,AAAA)\n\ny')).toEqual([
+      { kind: 'text', markdown: '# A\n\nx\n\n' },
+      { kind: 'image', mime: 'image/png', base64: 'AAAA' },
+      { kind: 'text', markdown: '\n\ny' },
+    ]);
+  });
+
+  it('turns uploaded images into image blocks in place and counts the ones that failed', async () => {
+    const { blocksFromMarkdown } = await import('./lessonDocument');
+    const upload = vi
+      .fn()
+      .mockResolvedValueOnce({ ok: true, url: 'https://u/1.png' })
+      .mockResolvedValueOnce({ ok: false, error: { vi: 'x', en: 'x' } });
+    const result = await blocksFromMarkdown(
+      'Mở đầu\n\n![](data:image/png;base64,AAAA)\n\nGiữa\n\n![](data:image/gif;base64,BBBB)\n\n![](data:image/jpeg;base64,CCCC)',
+      upload,
+    );
+    expect(result.blocks.map((b) => b.type)).toEqual(['theory', 'image', 'theory']);
+    expect(result.blocks[1]).toEqual({ type: 'image', url: 'https://u/1.png', alt: { vi: '', en: '' } });
+    expect(result.skippedImages).toBe(2); // gif is not supported; the jpeg upload failed
+    expect(upload).toHaveBeenCalledTimes(2);
+    const sent = upload.mock.calls[0]![0] as Blob;
+    expect(sent.type).toBe('image/png');
+    expect(sent.size).toBe(3); // AAAA decodes to three bytes
+  });
+});
+
