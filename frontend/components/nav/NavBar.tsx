@@ -197,7 +197,7 @@ export function NavBar({ currentSubject }: NavBarProps) {
         <Link href="/" prefetch={pathname !== '/'} className="group flex shrink-0 items-center gap-3 font-bold text-nav-ink">
           <Image
             src="/logo.svg"
-            alt={lang === 'en' ? 'SciPal home' : 'Trang chủ SciPal'}
+            alt=""
             width={36}
             height={36}
             className="h-9 w-9 rounded-xl shadow-inner transition duration-150 group-hover:scale-105"
@@ -294,7 +294,7 @@ export function NavBar({ currentSubject }: NavBarProps) {
         </nav>
 
         <div className="hidden min-w-0 flex-1 items-center gap-2 xl:flex xl:gap-3">
-          <div className="hidden xl:block"><OnlinePill /></div>
+          <OnlinePill />
           <LanguageToggle />
           <ThemeToggle />
           {appRole ? (

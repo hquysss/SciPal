@@ -96,13 +96,21 @@ for (const [width, height] of [[1366, 657], [1280, 720], [1280, 800], [1440, 900
 {
   const context = await browser.newContext({ viewport: { width: 1280, height: 800 } });
   const page = await context.newPage();
-  const chunks = [];
-  page.on('request', (request) => { if (request.url().includes('/_next/static/chunks/')) chunks.push(request.url()); });
+  // Chunk names are hashed, so look for three.js in the script bodies instead of the URLs.
+  const sceneChunks = [];
+  const bodyChecks = [];
+  page.on('response', (response) => {
+    const url = response.url();
+    if (!url.includes('/_next/static/chunks/') || !url.endsWith('.js')) return;
+    bodyChecks.push(response.text().then((body) => { if (body.includes('WebGLRenderer')) sceneChunks.push(url); }, () => {}));
+  });
   await page.goto(BASE + '/', { waitUntil: 'networkidle' });
-  await page.locator('button[name=\"level\"][value=\"upper_secondary\"]').click();
+  await page.locator('button[name="level"][value="upper_secondary"]').click();
   await page.waitForSelector('#landing-title');
+  await page.waitForLoadState('networkidle');
+  await Promise.all(bodyChecks);
   check((await page.locator('[data-hero-art] canvas').count()) === 0, 'hero uses no canvas');
-  check(!chunks.some((url) => url.toLowerCase().includes('three')), 'hero requests no Three.js chunk');
+  check(sceneChunks.length === 0, `hero loads no Three.js chunk ${sceneChunks.join(' | ')}`);
   await context.close();
 }
 

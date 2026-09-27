@@ -84,7 +84,10 @@ function useRevealOnScroll(pageRef: React.RefObject<HTMLDivElement | null>) {
     const revealPending = () => {
       if (!motionPreference.matches) return;
       observer.disconnect();
-      targets.forEach((target) => target.classList.add(styles.revealed));
+      targets.forEach((target) => {
+        target.classList.remove(styles.revealPending);
+        target.classList.add(styles.revealed);
+      });
     };
     motionPreference.addEventListener('change', revealPending);
 

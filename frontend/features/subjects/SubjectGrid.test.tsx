@@ -25,7 +25,7 @@ describe('SubjectGrid', () => {
     const html = renderToStaticMarkup(<SubjectGrid level="upper_secondary" catalog={{ kind: 'ready', subjects }} informatics={{ kind: 'available', lesson: { slug: 'binary-search', title_en: 'Binary search', title_vi: 'Tìm kiếm nhị phân' } }} />);
     expect(html.match(/<article/g)).toHaveLength(3);
     expect(html.match(/href="\/informatics"/g)).toHaveLength(1);
-    expect(html).not.toContain('data-landing-reveal="" data-landing-reveal');
+    expect(html.match(/data-landing-reveal=""/g)).toHaveLength(3);
     expect(html).not.toContain('duplicate');
   });
 });

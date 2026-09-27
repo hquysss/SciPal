@@ -97,10 +97,10 @@ Spec: `docs/superpowers/specs/2026-09-26-landing-redesign-design.md`.
 
 ### Landing
 
-- Thứ tự: hero (nhãn cấp, tiêu đề hai dòng, một câu phụ, "Xem môn học" + "Đổi cấp", cảnh bàn học 3D) → "Môn học của bạn" (`SubjectGrid`) → "Học thế nào" (ba thẻ: câu hỏi, câu song ngữ đổi bằng cờ, thẻ thuật ngữ lật) → "Hỏi bất cứ lúc nào" (`TutorDemoCard`; nút "Thử ngay" chỉ khi truyền `href` cho `TutorSection`) → "Sẵn sàng chưa?" trên nền `--nav` → khảo sát một dòng → footer.
+- Thứ tự: hero (nhãn cấp, tiêu đề hai dòng, một câu phụ, "Xem môn học" + "Đổi cấp", tranh bàn học SVG) → "Môn học của bạn" (`SubjectGrid`) → "Học thế nào" (ba thẻ: câu hỏi, câu song ngữ đổi bằng cờ, thẻ thuật ngữ lật) → "Hỏi bất cứ lúc nào" (`TutorDemoCard`; nút "Thử ngay" chỉ khi truyền `href` cho `TutorSection`) → "Sẵn sàng chưa?" trên nền `--nav` → khảo sát một dòng → footer.
 - Mỗi section một tiêu đề, tối đa một câu phụ; không đoạn văn.
-- Cảnh 3D (`features/landing/hero/`): `three` trong chunk riêng, chỉ tải khi hero trong màn hình và trình duyệt rảnh; SVG tĩnh cùng bố cục luôn hiện trước và là dự phòng. Không chạy WebGL khi `prefers-reduced-motion`, Save-Data, `deviceMemory ≤ 2` hoặc `hardwareConcurrency ≤ 2`, hay không tạo được context; mất context thì quay về SVG. Màu cảnh đọc từ token qua `readSceneColors`; đồ vật theo cấp là dữ liệu trong `sceneObjects.ts` (test giữ đồ vật ngoài vùng cuốn vở và trong khung hình). 30 fps, DPR ≤ 1.5, dừng khi khuất hoặc tab ẩn.
-- Hiệu ứng hiện khi cuộn dùng thuộc tính `translate`/`rotate` riêng để không đè `transform` của thẻ.
+- Tranh hero (`features/landing/hero/`): SVG tĩnh render phía server, màu chỉ lấy từ token, nghiêng nhẹ bằng CSS 3D và hiện dần 450 ms (tắt khi `prefers-reduced-motion`). Đồ vật theo cấp là dữ liệu trong `levelObjects.ts`. Không dùng `three`/WebGL hay canvas.
+- Hiệu ứng hiện khi cuộn dùng thuộc tính `translate` riêng để không đè `transform` của thẻ; bật giảm chuyển động giữa chừng thì mọi khối hiện ngay.
 
 ### Language switch
 
