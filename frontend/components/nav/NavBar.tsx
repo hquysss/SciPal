@@ -13,6 +13,13 @@ import navStyles from './navbar.module.css';
 import type { SubjectSlug } from '@/lib/subject-config';
 import { createBrowserClient } from '@/lib/supabase';
 import { adoptAccountLevel, forgetAccountLevel, getShell, safeSessionStorage } from '@/lib/theme/shellTheme';
+import { countOpenSimulationRequests } from '@/features/authoring/simulationRequests/api';
+
+/** The admin menu entry, with the number of requests still waiting. */
+export function requestsLinkLabel(lang: 'en' | 'vi', open: number): string {
+  const label = lang === 'en' ? 'Simulation requests' : 'Đề xuất mô phỏng';
+  return open > 0 ? `${label} (${open})` : label;
+}
 
 interface NavBarProps {
   currentSubject?: SubjectSlug;
@@ -55,6 +62,7 @@ export function NavBar({ currentSubject }: NavBarProps) {
   const [appRole, setAppRole] = useState<AppRole | null>(null);
   const [displayName, setDisplayName] = useState<string | null>(null);
   const [signingOut, setSigningOut] = useState(false);
+  const [openRequests, setOpenRequests] = useState(0);
   const mobileMenuButtonRef = useRef<HTMLButtonElement>(null);
   const openNavTriggerRef = useRef<HTMLButtonElement>(null);
 
@@ -63,6 +71,22 @@ export function NavBar({ currentSubject }: NavBarProps) {
     setOpenNavGroup(null);
     setSigningOut(false);
   }, [pathname]);
+
+  // Admins see how many simulation requests wait; refreshed on navigation and after the queue acts.
+  useEffect(() => {
+    if (appRole !== 'admin') return;
+    let live = true;
+    const refresh = () =>
+      void countOpenSimulationRequests().then((result) => {
+        if (live && result.ok) setOpenRequests(result.data.open);
+      });
+    refresh();
+    window.addEventListener('scipal:simulation-requests-changed', refresh);
+    return () => {
+      live = false;
+      window.removeEventListener('scipal:simulation-requests-changed', refresh);
+    };
+  }, [appRole, pathname]);
 
   useEffect(() => {
     if (!mobileOpen && !openNavGroup) return;
@@ -186,6 +210,7 @@ export function NavBar({ currentSubject }: NavBarProps) {
     { href: '/admin/accounts', label: lang === 'en' ? 'Accounts' : 'Quản lý tài khoản' },
     { href: '/teacher/lessons', label: lang === 'en' ? 'Lesson Studio' : 'Soạn bài' },
     { href: '/admin/lessons/review', label: lang === 'en' ? 'Review Queue' : 'Duyệt bài' },
+    { href: '/admin/simulation-requests', label: requestsLinkLabel(lang === 'en' ? 'en' : 'vi', openRequests) },
   ] : [];
   const teacherMenuOpen = openNavGroup === 'teacher';
   const adminMenuOpen = openNavGroup === 'admin';
