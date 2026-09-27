@@ -10,10 +10,12 @@ const TRACK_ID = '44444444-4444-4444-8444-444444444444';
 const teacher = { id: 'teacher-1', app_metadata: { app_role: 'teacher' } };
 const body = { topic_id: TOPIC_ID, grade: 11, title_en: 'Search', title_vi: 'Tìm kiếm' };
 
-async function buildApp(tables: Parameters<typeof mockSupabase>[0]) {
+const admin = { id: 'admin-1', app_metadata: { app_role: 'admin' } };
+
+async function buildApp(tables: Parameters<typeof mockSupabase>[0], user: typeof teacher = teacher) {
   const app = Fastify();
   app.decorate('supabase', mockSupabase(tables));
-  app.addHook('onRequest', async (request) => { (request as any).user = teacher; });
+  app.addHook('onRequest', async (request) => { (request as any).user = user; });
   await app.register(authoringRoutes);
   await app.ready();
   return app;
@@ -69,6 +71,35 @@ describe('POST /api/authoring/lessons grade rules', () => {
     const res = await app.inject({ method: 'POST', url: '/api/authoring/lessons', payload: { ...body, track_id: TRACK_ID } });
     expect(res.statusCode).toBe(201);
     expect(insert.inserted[0]).toMatchObject({ grade: 11, status: 'draft', track_id: TRACK_ID, subject_id: SUBJECT_ID });
+    await app.close();
+  });
+});
+
+describe('POST /api/authoring/lessons roles', () => {
+  it('lets an admin create a draft too', async () => {
+    const tables = baseTables();
+    const insert = (tables.lessons as ReturnType<typeof mockQuery>[])[1]!;
+    const app = await buildApp(tables, admin);
+    const res = await app.inject({ method: 'POST', url: '/api/authoring/lessons', payload: body });
+    expect(res.statusCode).toBe(201);
+    expect(insert.inserted[0]).toMatchObject({ status: 'draft', created_by: 'admin-1' });
+    await app.close();
+  });
+
+  it('refuses a student', async () => {
+    const app = await buildApp(baseTables(), { id: 'student-1', app_metadata: { app_role: 'student' } });
+    expect((await app.inject({ method: 'POST', url: '/api/authoring/lessons', payload: body })).statusCode).toBe(403);
+    await app.close();
+  });
+
+  it('keeps submitting for review teacher-only', async () => {
+    const app = await buildApp({}, admin);
+    const res = await app.inject({
+      method: 'POST',
+      url: '/api/authoring/lessons/22222222-2222-4222-8222-222222222222/submit',
+      payload: { title_en: 'A', title_vi: 'A', expected_updated_at: 'x', blocks: [] },
+    });
+    expect(res.statusCode).toBe(403);
     await app.close();
   });
 });

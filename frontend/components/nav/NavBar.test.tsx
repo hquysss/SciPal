@@ -24,5 +24,6 @@ describe('NavBar', () => {
     expect(html).not.toContain('☰');
     expect(html).not.toContain('EdTech');
     expect(html).not.toContain('Trực tuyến');
+    expect(html).toMatch(/<a[^>]*href="\/subjects"[^>]*>Môn học<\/a>/);
   });
 });

@@ -12,7 +12,8 @@ import { accountsRoutes } from './routes/accounts.js';
 
 const app = Fastify({ logger: true });
 
-await app.register(cors, { origin: process.env.CORS_ORIGINS?.split(',') ?? '*' });
+const corsOrigins = process.env.CORS_ORIGINS?.split(',').map((origin) => origin.trim()).filter(Boolean);
+await app.register(cors, { origin: corsOrigins?.length ? corsOrigins : '*' });
 await app.register(supabasePlugin);
 await app.register(authPlugin);
 await app.register(scoreRoutes);

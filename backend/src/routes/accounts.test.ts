@@ -161,3 +161,68 @@ describe('PATCH /api/auth/profile', () => {
     expect(res.statusCode).toBe(400);
   });
 });
+
+describe('account route input and error handling', () => {
+  const user = (id: string) => ({ id, email: `${id}@test.com`, app_metadata: {}, user_metadata: {} });
+
+  it('lists every page of users, not only the first', async () => {
+    const firstPage = Array.from({ length: 1000 }, (_, i) => user(`u${i}`));
+    const listUsers = vi.fn()
+      .mockResolvedValueOnce({ data: { users: firstPage }, error: null })
+      .mockResolvedValueOnce({ data: { users: [user('last')] }, error: null });
+    const app = buildApp({ supabase: { auth: { admin: { listUsers } } }, requestUser: adminUser });
+    const res = await app.inject({ method: 'GET', url: '/api/auth/accounts' });
+    expect(res.statusCode).toBe(200);
+    expect(res.json().accounts).toHaveLength(1001);
+    expect(listUsers).toHaveBeenNthCalledWith(2, { page: 2, perPage: 1000 });
+  });
+
+  it('reports a refused password as bad input, not as an existing account', async () => {
+    const createUser = vi.fn().mockResolvedValue({
+      data: { user: null },
+      error: { message: 'Password is too weak', status: 422, code: 'weak_password' },
+    });
+    const app = buildApp({ supabase: { auth: { admin: { createUser } } }, requestUser: adminUser });
+    const res = await app.inject({
+      method: 'POST',
+      url: '/api/auth/accounts',
+      payload: { display_name: 'Bob', email: 'bob@test.com', password: 'password', app_role: 'student' },
+    });
+    expect(res.statusCode).toBe(400);
+  });
+
+  it('still reports a registered email as a conflict', async () => {
+    const createUser = vi.fn().mockResolvedValue({
+      data: { user: null },
+      error: { message: 'A user with this email address has been registered', status: 422, code: 'email_exists' },
+    });
+    const app = buildApp({ supabase: { auth: { admin: { createUser } } }, requestUser: adminUser });
+    const res = await app.inject({
+      method: 'POST',
+      url: '/api/auth/accounts',
+      payload: { display_name: 'Bob', email: 'bob@test.com', password: 'secret123', app_role: 'student' },
+    });
+    expect(res.statusCode).toBe(409);
+  });
+
+  it('rejects a non-string display_name with 400 instead of crashing', async () => {
+    const app = buildApp({ supabase: {}, requestUser: adminUser });
+    const res = await app.inject({ method: 'PATCH', url: '/api/auth/profile', payload: { display_name: 42 } });
+    expect(res.statusCode).toBe(400);
+  });
+
+  it('accepts only an http(s) avatar_url, and null to clear it', async () => {
+    const update = vi.fn().mockReturnValue({ eq: vi.fn().mockResolvedValue({ error: null }) });
+    const app = buildApp({ supabase: { from: vi.fn().mockReturnValue({ update }) }, requestUser: adminUser });
+    for (const bad of ['javascript:alert(1)', 'not a url', 7]) {
+      const res = await app.inject({ method: 'PATCH', url: '/api/auth/profile', payload: { avatar_url: bad } });
+      expect(res.statusCode).toBe(400);
+    }
+    expect(update).not.toHaveBeenCalled();
+    const ok = await app.inject({ method: 'PATCH', url: '/api/auth/profile', payload: { avatar_url: 'https://cdn.test/a.png' } });
+    expect(ok.statusCode).toBe(200);
+    const cleared = await app.inject({ method: 'PATCH', url: '/api/auth/profile', payload: { avatar_url: null } });
+    expect(cleared.statusCode).toBe(200);
+    expect(update).toHaveBeenLastCalledWith({ avatar_url: null });
+  });
+});

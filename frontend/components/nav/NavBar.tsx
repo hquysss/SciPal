@@ -4,12 +4,11 @@ import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { ArrowRight, ChevronDown, Menu, X } from 'lucide-react';
-import { usePathname, useRouter } from 'next/navigation';
+import { useParams, usePathname, useRouter } from 'next/navigation';
 import { useLanguage } from '@scipal/hooks';
 import { LanguageToggle } from './LanguageToggle';
 import { ThemeToggle } from './ThemeToggle';
 import { OnlinePill } from './OnlinePill';
-import { SubjectSwitcher } from './SubjectSwitcher';
 import navStyles from './navbar.module.css';
 import type { SubjectSlug } from '@/lib/subject-config';
 import { createBrowserClient } from '@/lib/supabase';
@@ -49,6 +48,7 @@ function getDisplayName(user: AuthUser | null): string | null {
 export function NavBar({ currentSubject }: NavBarProps) {
   const { lang } = useLanguage();
   const pathname = usePathname();
+  const params = useParams();
   const router = useRouter();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [openNavGroup, setOpenNavGroup] = useState<'admin' | 'teacher' | null>(null);
@@ -165,6 +165,9 @@ export function NavBar({ currentSubject }: NavBarProps) {
   if (pathname === '/login') return null;
 
   const homeLinkLabel = lang === 'en' ? 'Home' : 'Trang chủ';
+  const subjectsLabel = lang === 'en' ? 'Subjects' : 'Môn học';
+  // The Subjects tab stays marked inside any subject or lesson, not only on /subjects.
+  const subjectsActive = pathname === '/subjects' || Boolean(currentSubject ?? params?.subject);
   const accountName = displayName ?? (lang === 'en' ? 'Account' : 'Tài khoản');
   const links = [
     { href: '/glossary', label: lang === 'en' ? 'Glossary' : 'Từ điển' },
@@ -216,7 +219,15 @@ export function NavBar({ currentSubject }: NavBarProps) {
           >
             {homeLinkLabel}
           </Link>
-          <SubjectSwitcher current={currentSubject} />
+          <Link
+            href="/subjects"
+            prefetch={pathname !== '/'}
+            aria-current={pathname === '/subjects' ? 'page' : undefined}
+            data-active={subjectsActive || undefined}
+            className={navStyles.navLink}
+          >
+            {subjectsLabel}
+          </Link>
           {links.map((link) => (
             <Link
               key={link.href}
@@ -364,7 +375,15 @@ export function NavBar({ currentSubject }: NavBarProps) {
             >
               {homeLinkLabel}
             </Link>
-            <SubjectSwitcher current={currentSubject} mobile onNavigate={() => setMobileOpen(false)} />
+            <Link
+              href="/subjects"
+              prefetch={pathname !== '/'}
+              onClick={() => setMobileOpen(false)}
+              aria-current={pathname === '/subjects' ? 'page' : undefined}
+              className={`block rounded-xl px-4 py-3 text-sm font-semibold transition hover:bg-surface-sunken focus-visible:outline focus-visible:outline-2 focus-visible:outline-focus ${subjectsActive ? 'bg-surface-sunken text-action' : 'text-ink'}`}
+            >
+              {subjectsLabel}
+            </Link>
             {links.map((link) => (
               <Link
                 key={link.href}

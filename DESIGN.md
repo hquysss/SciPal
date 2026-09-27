@@ -24,6 +24,12 @@ SciPal should feel like a warm, modern field notebook for curious Vietnamese lea
 
 Navbar tô màu chính của cấp: Tiểu học nâu nhạt `#96693F` (chữ trắng), THCS xanh dương `#2563EB`, THPT xanh lá `#15803D`, chưa chọn cấp `#15803D`. Nút đăng nhập và công tắc đang chọn đảo màu (`bg-nav-ink text-nav`). Mục đang ở được đánh dấu bằng vạch 3px ở mép dưới thanh (`navLink` trong `navbar.module.css`), hover là nền mờ bo tròn. Công tắc ngôn ngữ là nhóm viên thuốc cao 32px, vùng bấm mở rộng tới 44px. Nhãn "Ngoại tuyến" chỉ hiện khi mất mạng. Tài khoản: ô chữ cái đầu + tên (tên ẩn dưới 1536px để thanh admin vẫn vừa 1280px) và nút "Đăng xuất" dạng viền.
 
+### Trang Môn học
+
+- `/subjects` là tab "Môn học" của navbar (link; không còn menu thả trên desktop và không còn danh sách môn trong menu mobile). Mục navbar được đánh dấu cả khi đang ở trong một môn hay bài học.
+- Chọn **lớp**, đồng bộ theo cấp đang chọn (cấp tài khoản, rồi cấp đã chọn trong phiên): chỉ hiện các lớp của cấp đó (THPT → 10–12), mặc định lớp đầu. Chưa chọn cấp thì hiện đủ 1–12 theo nhóm Tiểu học / THCS / THPT, mặc định lớp 10. Đổi lớp không đổi cấp đã lưu.
+- Thẻ môn của lớp đó: chỉ có link "Vào học" khi lớp có bài đã xuất bản (`liveGrades`), dẫn thẳng tới `/<môn>#lop-<lớp>` (tiêu đề nhóm lớp trên trang môn có `id="lop-N"`); còn lại hiện "Đang biên soạn".
+
 ### Portal
 
 Menu, popover hay dialog render qua portal phải gắn vào trong `[data-app-shell]` để nhận token; gắn thẳng vào `body` sẽ mất màu.

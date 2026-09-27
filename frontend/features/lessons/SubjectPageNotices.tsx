@@ -16,7 +16,7 @@ export function LevelLine({ levels }: { levels: EducationLevel[] }) {
 export function GradeHeading({ grade }: { grade: number }) {
   const { t } = useLanguage();
   return (
-    <h2 className="text-lg font-semibold text-ink">
+    <h2 id={`lop-${grade}`} className="scroll-mt-24 text-lg font-semibold text-ink">
       {t({ en: `Grade ${grade}`, vi: `Lớp ${grade}` })}
     </h2>
   );
