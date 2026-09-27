@@ -1,0 +1,30 @@
+export type MarkdownFormat = 'bold' | 'italic' | 'heading' | 'list' | 'math';
+
+const WRAP: Record<'bold' | 'italic' | 'math', { mark: string; placeholder: string }> = {
+  bold: { mark: '**', placeholder: 'chữ đậm' },
+  italic: { mark: '*', placeholder: 'chữ nghiêng' },
+  math: { mark: '$', placeholder: 'x^2' },
+};
+
+/** Apply a toolbar format to a textarea's text and selection; returns the new text and selection. */
+export function applyFormat(text: string, start: number, end: number, format: MarkdownFormat) {
+  if (format === 'heading' || format === 'list') {
+    const prefix = format === 'heading' ? '## ' : '- ';
+    const lineStart = text.lastIndexOf('\n', start - 1) + 1;
+    const nextBreak = text.indexOf('\n', end);
+    const lineEnd = nextBreak === -1 ? text.length : nextBreak;
+    const lines = text
+      .slice(lineStart, lineEnd)
+      .split('\n')
+      .map((line) => (line.startsWith(prefix) ? line : prefix + line))
+      .join('\n');
+    return { text: text.slice(0, lineStart) + lines + text.slice(lineEnd), start: lineStart, end: lineStart + lines.length };
+  }
+  const { mark, placeholder } = WRAP[format];
+  const inner = start === end ? placeholder : text.slice(start, end);
+  return {
+    text: text.slice(0, start) + mark + inner + mark + text.slice(end),
+    start: start + mark.length,
+    end: start + mark.length + inner.length,
+  };
+}
