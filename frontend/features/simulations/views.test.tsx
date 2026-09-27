@@ -1,14 +1,13 @@
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it, vi } from 'vitest';
-import { defaultSimulationConfig, type BuiltInSimulationKind } from '@scipal/types';
+import { BUILT_IN_SIMULATION_KINDS, defaultSimulationConfig } from '@scipal/types';
 import { countRawColors } from '../../lib/theme/rawColors';
 import { simulationModules } from './registry';
 
 vi.mock('@scipal/hooks', () => ({ useLanguage: () => ({ lang: 'vi', t: (o: { vi: string }) => o.vi }) }));
+vi.mock('@scipal/supabase', () => ({ createBrowserClient: () => ({}) }));
 
-const KINDS_SO_FAR: BuiltInSimulationKind[] = ['algorithm-sim', 'function-graph', 'probability', 'motion', 'pendulum', 'ohm-circuit'];
-
-describe.each(KINDS_SO_FAR)('%s', (kind) => {
+describe.each(BUILT_IN_SIMULATION_KINDS)('%s', (kind) => {
   const module = simulationModules[kind]!;
   const config = defaultSimulationConfig(kind);
 
@@ -91,5 +90,49 @@ describe('physics views', () => {
     expect(html).toContain('R2');
     expect(html).toContain('1.00 A');
     expect(html).toContain('I = U / R');
+  });
+});
+
+describe('biology views', () => {
+  const image = 'https://proj.supabase.co/storage/v1/object/public/lesson-media/t/cell.png';
+  const labels = [
+    { id: 'a', x: 0.2, y: 0.3, text: { vi: 'Nhân', en: 'Nucleus' } },
+    { id: 'b', x: 0.7, y: 0.6, text: { vi: 'Màng', en: 'Membrane' } },
+  ];
+
+  it('Punnett square shows the offspring and the ratios', () => {
+    const { Renderer } = simulationModules.punnett!;
+    const html = renderToStaticMarkup(<Renderer config={defaultSimulationConfig('punnett')} lang="vi" />);
+    expect(html).toContain('<table');
+    expect(html).toContain('<th scope="col"');
+    expect(html).toContain('>AA<');
+    expect(html).toContain('3 : 1');
+    expect(html).toContain('Hạt vàng');
+  });
+
+  it('diagram without an image says so in both languages', () => {
+    const { Renderer } = simulationModules['labeled-diagram']!;
+    expect(renderToStaticMarkup(<Renderer config={defaultSimulationConfig('labeled-diagram')} lang="vi" />)).toContain('Chưa có ảnh');
+    expect(renderToStaticMarkup(<Renderer config={defaultSimulationConfig('labeled-diagram')} lang="en" />)).toContain('No image yet');
+  });
+
+  it('diagram places labels as buttons in explore mode and asks in quiz mode', () => {
+    const { Renderer } = simulationModules['labeled-diagram']!;
+    const explore = renderToStaticMarkup(<Renderer config={{ ...defaultSimulationConfig('labeled-diagram'), image_url: image, labels }} lang="vi" />);
+    expect(explore).toContain('left:20%;top:30%');
+    expect(explore).toContain('Nhân');
+    expect(explore).toContain('Hiện tất cả nhãn');
+    const quiz = renderToStaticMarkup(<Renderer config={{ ...defaultSimulationConfig('labeled-diagram'), image_url: image, labels, mode: 'quiz' }} lang="vi" />);
+    expect(quiz).toContain('Chỉ vào');
+    expect(quiz).not.toContain('>Màng<');
+  });
+
+  it('diagram editor offers the upload and lists the labels', () => {
+    const { Editor } = simulationModules['labeled-diagram']!;
+    const empty = renderToStaticMarkup(<Editor config={defaultSimulationConfig('labeled-diagram')} onChange={() => {}} lang="vi" />);
+    expect(empty).toContain('Kéo ảnh vào đây');
+    const filled = renderToStaticMarkup(<Editor config={{ ...defaultSimulationConfig('labeled-diagram'), image_url: image, labels }} onChange={() => {}} lang="vi" />);
+    expect(filled).toContain('value="Nhân"');
+    expect(filled).toContain('Bấm lên ảnh để thêm nhãn');
   });
 });
