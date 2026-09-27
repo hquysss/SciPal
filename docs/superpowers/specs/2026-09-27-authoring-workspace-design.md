@@ -5,7 +5,7 @@ Date: 2026-09-27 · Status: approved in chat, awaiting spec review
 ## Goal
 
 Teachers and admins build a whole lesson in one place — text, working simulations, images and
-practice questions — and compose exams from a question bank, without Excel or pasted UUIDs.
+practice questions — and, in a separate exam area, build exams from an exam question bank, without Excel or pasted UUIDs.
 The existing review flow (teacher submits, admin publishes), bilingual content and
 server-authoritative scoring stay as they are.
 
@@ -39,11 +39,11 @@ Four parts, each its own PR, in order:
 
 1. **Lesson editor with three tabs and the three-part learner page** (content blocks, image block)
 2. **Simulations, simulation requests**
-3. **Practice questions and the question bank**
-4. **Exam builder**
+3. **Practice questions inside lessons**
+4. **Exam area, separate from lessons** (exam question bank and exam builder)
 
-A shared tab bar joins the teacher pages: **Bài giảng · Ngân hàng câu hỏi · Đề thi · Đề xuất mô
-phỏng**.
+A shared tab bar joins the teacher pages: **Bài giảng · Đề thi · Đề xuất mô phỏng**. Lessons and
+exams do not share questions (see "Question pools").
 
 Out of scope: automatic simulation suggestions from lesson text, simulations placed inside the
 Lesson part, lesson table of contents, the six deferred simulation templates listed in Part 2.
@@ -230,77 +230,98 @@ Other transitions return `409`.
 
 ---
 
-## Part 3 — Practice questions and the question bank
+## Question pools: practice and exam are separate
+
+Exams are separate from lessons. Every question has a `usage`:
+
+- `practice` — belongs to lessons (Tự luyện). Checked one at a time by `/api/practice/check`;
+  never served by exam routes and never drawn into an exam.
+- `exam` — belongs to the exam area. Served only by the exam room; `/api/practice/check`
+  refuses them, so learners cannot probe exam answers through lessons.
+
+Migration: `questions.usage text not null default 'exam' check (usage in ('practice','exam'))`.
+Existing rows (seeded pool, Excel imports) stay `exam`, which keeps today's exam behaviour. The
+content import marks questions referenced by imported lessons (`quiz_ref`) as `practice` and the
+rest as `exam`; one question key cannot be both (import error).
+
+---
+
+## Part 3 — Practice questions (inside lessons)
 
 ### 3.1 Data
 
 Migration on `questions`:
 
 - `status` check becomes `draft | pending_review | published`.
-- New `grade int null` (1–12) for standalone questions.
+- New `usage` (see above) and `grade int null` (1–12, used by exam questions).
 - Existing columns reused: `subject_id`, `lesson_id`, `type`, `difficulty` (1–3), `data`,
   `created_by`, `import_id`.
 
 Question data keeps the existing schemas (`MCDataSchema`, `TrueFalseDataSchema`,
-`ShortDataSchema`). Quiz blocks keep `{ type: 'quiz', question_id }`.
+`ShortDataSchema`). Quiz blocks keep `{ type: 'quiz', question_id }` and may only reference
+`practice` questions (checked on lesson save).
 
-### 3.2 Authoring API
+### 3.2 Authoring API (shared by Parts 3 and 4)
 
-- `GET /api/authoring/questions` — filters: subject, grade, lesson, type, difficulty, status,
-  text search; paginated. Teachers see published questions and their own; answers included only
-  for rows they may edit.
-- `POST /api/authoring/questions` — create (`draft`), optionally with `lesson_id`.
-- `PATCH /api/authoring/questions/:id` — teacher: own, not published; admin: any.
+- `GET /api/authoring/questions?usage=` — filters: usage (required), subject, grade, lesson, type,
+  difficulty, status, text search; paginated. Teachers see published questions and their own;
+  answers included only for rows they may edit.
+- `POST /api/authoring/questions` — create (`draft`) with `usage`; practice questions carry
+  `lesson_id`.
+- `PATCH /api/authoring/questions/:id` — teacher: own, not published; admin: any. `usage` cannot
+  change.
 - `DELETE /api/authoring/questions/:id` — same rule; refused (`409`) while a published lesson or
   exam references it.
 
 ### 3.3 Lifecycle
 
-Questions follow their lesson: lesson submitted → its `draft` questions by the same author become
-`pending_review`; lesson approved → those questions become `published`; lesson sent back →
-back to `draft`. Standalone questions are reviewed through the exams that use them (Part 4), or
-an admin publishes them from the bank.
+Practice questions follow their lesson: lesson submitted → its `draft` questions by the same
+author become `pending_review`; lesson approved → `published`; lesson sent back → `draft`.
 
 ### 3.4 Tự luyện tab
 
 The editor's Tự luyện tab lists the lesson's questions in order. "Thêm câu" opens a question
 editor: type switch (mc / truefalse / short), bilingual stem, options or items, answer,
-explanation, difficulty. "Lấy từ ngân hàng" searches the subject's bank and inserts an existing
-question. Reorder, edit, remove (removing from the lesson does not delete a bank question).
-Preview renders the learner view.
+explanation, difficulty. "Lấy từ bài khác" searches published practice questions of the same
+subject and inserts one. Reorder, edit, remove (removing from the lesson does not delete a
+question used elsewhere). Preview renders the learner view.
 
-### 3.5 Learner quiz block and check endpoint
+### 3.5 Learner practice and check endpoint
 
-- Learners load questions through the existing lesson content path with answer fields removed
-  (`answer`, `items[].correct`, `answer_key`).
+- Learners load the lesson's practice questions with answer fields removed (`answer`,
+  `items[].correct`, `answer_key`).
 - `POST /api/practice/check` `{ question_id, response }` → `{ correct: boolean, items?:
-  {id, correct}[], explanation? }`. Only questions referenced by a published lesson (or any, for
-  the author/admin previewing) are checkable. The correct answer itself is never returned.
+  {id, correct}[], explanation? }`. Only `practice` questions referenced by a published lesson
+  (or any practice question, for its author/admin previewing) are checkable. The correct answer
+  itself is never returned.
 - Short answers compare after trimming, lower-casing and collapsing whitespace.
 - Unlimited retries; **no XP** for practice questions. Lesson completion XP is unchanged.
 - The end of the Tự luyện part shows a summary ("Đúng 7/10") from the check results of this
   visit; it is not stored.
 
-### 3.6 Bank page
-
-`/teacher/questions`: filters as in 3.2, create/edit/delete standalone questions (with grade),
-see which lessons and exams use each question.
-
 ---
 
-## Part 4 — Exam builder
+## Part 4 — Exam area (separate from lessons)
 
-### 4.1 Page
+### 4.1 Pages
 
-`/teacher/exams` lists own exams (admins: all). `/teacher/exams/[id]` edits one:
+The teacher's **Đề thi** area has two pages:
 
-- bilingual name (`name`, `name_en`), subject, grade, duration 5–300 minutes;
-- **Pick**: a bank browser with the Part 3 filters and checkboxes;
-- **Random draw**: counts per type × difficulty; the backend draws once from eligible questions
-  and returns ids; the teacher can then swap, remove or reorder;
-- ordered question list with totals by type and difficulty.
+- `/teacher/exams/questions` — **exam question bank**: `usage = 'exam'` questions; filters
+  subject, grade, type, difficulty, status; create/edit/delete with the same question editor as
+  Part 3 (plus grade).
+- `/teacher/exams` lists own exams (admins: all). `/teacher/exams/[id]` edits one:
+  - bilingual name (`name`, `name_en`), subject, grade, duration 5–300 minutes;
+  - **Soạn câu mới** directly in the exam (created as `exam` questions);
+  - **Chọn từ ngân hàng**: bank browser with checkboxes;
+  - **Bốc ngẫu nhiên**: counts per type × difficulty; the backend draws once from eligible
+    questions and returns ids; the teacher can then swap, remove or reorder;
+  - ordered question list with totals by type and difficulty.
 
-Eligible questions: published, or unpublished questions owned by the exam's author, same subject.
+Eligible questions: `usage = 'exam'`, same subject, published or owned by the exam's author and
+unpublished.
+
+The Excel import at `/teacher/import` keeps working and writes `exam` questions.
 
 ### 4.2 Data and API
 
@@ -314,10 +335,10 @@ Exams are `exam_blueprints` rows with `question_ids` (ordered), `duration_minute
 - `POST /api/authoring/exams/:id/submit` → `pending_review` (with its unpublished questions)
 - `POST /api/authoring/exams/:id/approve` (admin) → exam and its pending questions `published`
 - `POST /api/authoring/exams/:id/reject` (admin, note) → back to `draft`
+- Exam routes (`/api/exam/*`, `/api/score/exam`) serve and score only `exam` questions.
 
 Admins creating an exam get a "Xuất bản ngay" checkbox, as in the Studio. Published exams are not
-editable by teachers. The exam room and `/api/score/exam` already serve `question_ids` exams and
-stay unchanged.
+editable by teachers. The exam room UI stays unchanged.
 
 ### 4.3 Admin review
 
@@ -358,7 +379,8 @@ review.
 - Media endpoint: role check, magic-byte type check, size limit, SVG refused.
 - Simulation requests: permissions, each transition, invalid `result_block`.
 - Questions: CRUD permissions, answer stripping, check endpoint for all three types, lifecycle
-  with lesson submit/approve/return.
+  with lesson submit/approve/return; check refuses `exam` questions; exam routes refuse
+  `practice` questions; quiz blocks cannot reference `exam` questions.
 - Exams: draw with shortfalls, eligibility, submit/approve publishes pending questions, teacher
   cannot edit published exams.
 - Browser screenshots of the Studio, the learner lesson page, the bank and the exam builder at
