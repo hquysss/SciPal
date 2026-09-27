@@ -1,4 +1,4 @@
-import { BlockSchema, type Block } from '@scipal/types';
+import { BlockSchema, SIMULATION_KINDS, isBuiltInSimulation, validateSimulationBlock, type Block } from '@scipal/types';
 import { z } from 'zod';
 import type { LessonImportResult } from '../authoring/lessonImport';
 
@@ -51,7 +51,7 @@ export function documentKind(fileName: string): DocumentKind | null {
 
 // ── Template parsing ─────────────────────────────────────────────────────────────────────────
 
-const INTERACTIVE_KINDS = ['algorithm-sim', 'function-graph', 'geometry-3d', 'experiment', 'bio-diagram'];
+const INTERACTIVE_KINDS: readonly string[] = SIMULATION_KINDS;
 const CODE_LANGS = ['python', 'cpp', 'javascript'];
 /** Metadata lines of the template. The Studio uses only the titles: its lesson already has the rest. */
 const METADATA_KEYS = new Set(['subject', 'topic_slug', 'topic_vi', 'topic_en', 'slug', 'grade', 'title_vi', 'title_en']);
@@ -138,7 +138,8 @@ function sectionToBlock(section: Section, mode: TemplateMode): DraftLessonBlock 
         fail('config_json phải là một JSON object.', 'config_json must be a JSON object.');
       }
     }
-    const offline = (f.offline ?? 'false').toLowerCase();
+    // Built-in templates run offline unless the file says otherwise; embeds and old kinds need the network.
+    const offline = (f.offline ?? String(isBuiltInSimulation(kind))).toLowerCase();
     if (offline !== 'true' && offline !== 'false') fail('offline chỉ nhận true hoặc false.', 'offline must be true or false.');
     return {
       type: 'interactive',
@@ -213,7 +214,13 @@ function parseTemplateCore(text: string, mode: TemplateMode): { meta: Record<str
     const index = checked.error.issues[0]?.path[0];
     fail(`Khối số ${Number(index) + 1} không hợp lệ.`, `Block ${Number(index) + 1} is invalid.`);
   }
-  return { meta, blocks: checked.data as DraftLessonBlock[] };
+  const valid = checked.data as DraftLessonBlock[];
+  for (const [i, block] of valid.entries()) {
+    if (block.type !== 'interactive') continue;
+    const simulation = validateSimulationBlock(block, { mediaBase: process.env.NEXT_PUBLIC_SUPABASE_URL });
+    if (!simulation.ok) fail(`Khối ${i + 1}: ${simulation.message.vi}`, `Block ${i + 1}: ${simulation.message.en}`);
+  }
+  return { meta, blocks: valid };
 }
 
 /** Parse text written in the SciPal lesson template, for the Studio's lesson. */

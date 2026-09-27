@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import type { FastifyPluginAsync, FastifyReply, FastifyRequest } from 'fastify';
-import { BlockSchema, imageProblems } from '../schemas/blocks.js';
+import { BlockSchema, imageProblems, simulationProblem } from '../schemas/blocks.js';
 import { makeSlug, planNewTopic, toSubjectOptions, type ExistingTopic, type SubjectCatalogRow } from '../authoring/topicPlanning.js';
 
 interface AuthoringUser {
@@ -465,6 +465,8 @@ export const authoringRoutes: FastifyPluginAsync = async (app) => {
       }
       const submitImageProblem = imageProblems(parsedBlocks.data, { requireAlt: true });
       if (submitImageProblem) return reply.code(400).send({ error: submitImageProblem });
+      const submitSimulationProblem = simulationProblem(parsedBlocks.data);
+      if (submitSimulationProblem) return reply.code(400).send(submitSimulationProblem);
 
       const { data: current, error: readError } = await supabase
         .from('lessons')
@@ -655,6 +657,8 @@ export const authoringRoutes: FastifyPluginAsync = async (app) => {
         // An image may wait for its description in a draft; publishing needs it.
         const problem = imageProblems(parsedBlocks.data, { requireAlt: isAdmin && body.status === 'published' });
         if (problem) return reply.code(400).send({ error: problem });
+        const simulation = simulationProblem(parsedBlocks.data);
+        if (simulation) return reply.code(400).send(simulation);
         updateData.blocks = parsedBlocks.data;
       }
       if (isAdmin && body.status !== undefined) {
