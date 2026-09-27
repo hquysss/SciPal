@@ -1,7 +1,10 @@
+import { randomInt } from 'node:crypto';
 import type { FastifyPluginAsync, FastifyReply, FastifyRequest } from 'fastify';
+import { z } from 'zod';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { checkExamQuestions } from '../authoring/examQuestions.js';
 import { countBlueprintQuestions } from '../exam/blueprintSummary.js';
+import { MAX_EXAM_ANSWERS } from './exam.js';
 import { examSections, validateExamInput } from '../schemas/exams.js';
 
 // The exam builder (authoring Part 4). Exams are exam_blueprints rows with an ordered question
@@ -84,6 +87,32 @@ export async function loadExam(supabase: SupabaseClient, request: FastifyRequest
 }
 
 export const EXAM_COLUMNS = COLUMNS;
+
+const MAX_DRAW_ROWS = 9;
+/** Candidates read per draw row; the draw shuffles within them. */
+const DRAW_CANDIDATES = 500;
+const DrawSchema = z
+  .object({
+    subject_id: z.string().regex(ID),
+    grade: z.number().int().min(1).max(12).optional(),
+    exclude_ids: z.array(z.string().regex(ID)).max(MAX_EXAM_ANSWERS).optional().default([]),
+    counts: z
+      .array(z.object({ type: z.enum(['mc', 'truefalse', 'short']), difficulty: z.number().int().min(1).max(3), n: z.number().int().min(1).max(MAX_EXAM_ANSWERS) }))
+      .min(1)
+      .max(MAX_DRAW_ROWS),
+  })
+  .strict()
+  .refine((body) => body.counts.reduce((sum, row) => sum + row.n, 0) + body.exclude_ids.length <= MAX_EXAM_ANSWERS);
+
+/** Fisher–Yates with a cryptographic source, so a teacher cannot predict the draw. */
+function shuffle<T>(items: T[]): T[] {
+  const out = [...items];
+  for (let i = out.length - 1; i > 0; i -= 1) {
+    const j = randomInt(i + 1);
+    [out[i], out[j]] = [out[j]!, out[i]!];
+  }
+  return out;
+}
 export type { ExamRow, ExamUser };
 
 export const examRoutesAuthoring: FastifyPluginAsync = async (app) => {
@@ -237,6 +266,117 @@ export const examRoutesAuthoring: FastifyPluginAsync = async (app) => {
         return reply.code(500).send(msg('Không xóa được đề thi.', 'Could not delete the exam.'));
       }
       return reply.code(204).send();
+    },
+  });
+
+  app.post('/api/authoring/exams/draw', {
+    preHandler: [requireAuthor],
+    handler: async (request, reply) => {
+      const supabase = app.supabase;
+      const user = getUser(request)!;
+      if (!supabase) return reply.code(503).send(unavailable);
+      const parsed = DrawSchema.safeParse(request.body ?? {});
+      if (!parsed.success) {
+        return reply.code(400).send(msg(`Tối đa ${MAX_DRAW_ROWS} dòng và ${MAX_EXAM_ANSWERS} câu mỗi lần bốc.`, `At most ${MAX_DRAW_ROWS} rows and ${MAX_EXAM_ANSWERS} questions per draw.`));
+      }
+      const body = parsed.data;
+      const taken = new Set(body.exclude_ids);
+      const drawn: string[] = [];
+      const shortfalls: Array<{ type: string; difficulty: number; wanted: number; got: number }> = [];
+      for (const row of body.counts) {
+        let query = supabase
+          .from('questions')
+          .select('id')
+          .eq('usage', 'exam')
+          .eq('subject_id', body.subject_id)
+          .eq('type', row.type)
+          .eq('difficulty', row.difficulty)
+          .or(`status.eq.published,created_by.eq.${user.id}`);
+        if (body.grade !== undefined) query = query.or(`grade.is.null,grade.eq.${body.grade}`);
+        const { data, error } = await query.limit(DRAW_CANDIDATES);
+        if (error) {
+          request.log.error({ err: error }, 'Failed to draw exam questions');
+          return reply.code(500).send(msg('Không bốc được câu hỏi.', 'Could not draw questions.'));
+        }
+        const picked = shuffle(((data ?? []) as Array<{ id: string }>).map((q) => q.id).filter((id) => !taken.has(id))).slice(0, row.n);
+        for (const id of picked) taken.add(id);
+        drawn.push(...picked);
+        if (picked.length < row.n) shortfalls.push({ type: row.type, difficulty: row.difficulty, wanted: row.n, got: picked.length });
+      }
+      return reply.send({ question_ids: drawn, shortfalls });
+    },
+  });
+
+  /** Move an exam from one status to the next, only if it is still where the caller saw it. */
+  const transition = async (
+    request: FastifyRequest,
+    reply: FastifyReply,
+    check: (user: ExamUser, row: ExamRow) => Failure | null,
+    from: string[],
+    to: { status: string; review_note: string | null },
+    review: boolean,
+  ) => {
+    const supabase = app.supabase;
+    const user = getUser(request)!;
+    if (!supabase) return reply.code(503).send(unavailable);
+    const found = await loadExam(supabase, request, user);
+    if ('status' in found) return reply.code(found.status).send(found.body);
+    const { row } = found;
+    if (row.import_id) {
+      return reply.code(409).send(msg('Đề nhập từ Excel được duyệt ở mục "Lượt nhập đề".', 'Imported exams are reviewed with their import batch.'));
+    }
+    const refused = check(user, row);
+    if (refused) return reply.code(refused.status).send(refused.body);
+    if (!from.includes(row.status)) return reply.code(409).send(msg('Trạng thái đề không cho phép thao tác này.', 'The exam’s status does not allow this.'));
+    if (review) {
+      if (!row.name_en) return reply.code(400).send(needEnglish);
+      const questions = await checkExamQuestions(supabase, row.question_ids ?? [], { subject_id: row.subject_id, created_by: row.created_by }, 'review');
+      if (!questions.ok) return reply.code(questions.status).send(questions.body);
+    }
+    const { data, error } = await supabase
+      .from('exam_blueprints')
+      .update(to)
+      .eq('id', row.id)
+      .eq('status', row.status)
+      .select(COLUMNS)
+      .maybeSingle();
+    if (error) {
+      request.log.error({ err: error, examId: row.id }, 'Failed to change exam status');
+      return reply.code(500).send(msg('Không đổi được trạng thái đề.', 'Could not change the exam’s status.'));
+    }
+    if (!data) return reply.code(409).send(msg('Đề vừa được người khác thay đổi. Tải lại trang.', 'The exam was just changed by someone else. Reload the page.'));
+    return reply.send({ exam: present(data as ExamRow, user) });
+  };
+  const adminOnly = (user: ExamUser): Failure | null =>
+    isAdmin(user) ? null : { status: 403, body: msg('Chỉ admin mới duyệt đề thi.', 'Only admins review exams.') };
+
+  app.post('/api/authoring/exams/:id/submit', {
+    preHandler: [requireAuthor],
+    handler: (request, reply) =>
+      transition(
+        request,
+        reply,
+        (user, row) => (row.created_by === user.id ? null : { status: 403, body: msg('Chỉ tác giả mới gửi duyệt đề.', 'Only the author submits an exam.') }),
+        ['draft'],
+        { status: 'pending_review', review_note: null },
+        true,
+      ),
+  });
+
+  // Approve also publishes an admin's own draft ("Xuất bản").
+  app.post('/api/authoring/exams/:id/approve', {
+    preHandler: [requireAuthor],
+    handler: (request, reply) => transition(request, reply, adminOnly, ['draft', 'pending_review'], { status: 'published', review_note: null }, true),
+  });
+
+  app.post('/api/authoring/exams/:id/reject', {
+    preHandler: [requireAuthor],
+    handler: async (request, reply) => {
+      const note = (request.body as { note?: unknown } | undefined)?.note;
+      if (typeof note !== 'string' || !note.trim() || note.trim().length > 1000) {
+        return reply.code(400).send(msg('Cần ghi chú (tối đa 1000 ký tự) khi trả lại đề.', 'A note (up to 1000 characters) is needed to send an exam back.'));
+      }
+      return transition(request, reply, adminOnly, ['pending_review'], { status: 'draft', review_note: note.trim() }, false);
     },
   });
 };

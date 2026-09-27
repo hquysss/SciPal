@@ -199,6 +199,9 @@ export const questionRoutes: FastifyPluginAsync = async (app) => {
         }
       } else if (input.lesson_id) {
         return reply.code(400).send(msg('Câu hỏi đề thi không thuộc bài học nào.', 'Exam questions do not belong to a lesson.'));
+      } else if (isAdmin(user) && !questionIncomplete(input)) {
+        // An admin stocks the exam bank for everyone: a complete question is published at once.
+        status = 'published';
       }
 
       const { data, error } = await supabase

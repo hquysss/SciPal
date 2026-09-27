@@ -129,6 +129,23 @@ describe('creating a question', () => {
   });
 });
 
+describe('exam questions', () => {
+  const examInput = { ...input, usage: 'exam', lesson_id: undefined, grade: 10 };
+  it('publishes a complete exam question an admin writes, and keeps a teacher’s as a draft', async () => {
+    const adminInsert = mockQuery({ data: row({ usage: 'exam', lesson_id: null, status: 'published' }), error: null });
+    const adminApp = await build(admin, { questions: adminInsert });
+    expect((await adminApp.inject({ method: 'POST', url: '/api/authoring/questions', payload: examInput })).statusCode).toBe(201);
+    expect(adminInsert.inserted[0]).toMatchObject({ usage: 'exam', status: 'published' });
+    await adminApp.close();
+
+    const teacherInsert = mockQuery({ data: row({ usage: 'exam', lesson_id: null }), error: null });
+    const teacherApp = await build(teacher, { questions: teacherInsert });
+    expect((await teacherApp.inject({ method: 'POST', url: '/api/authoring/questions', payload: examInput })).statusCode).toBe(201);
+    expect(teacherInsert.inserted[0]).toMatchObject({ status: 'draft' });
+    await teacherApp.close();
+  });
+});
+
 describe('listing questions', () => {
   it('shows a teacher published questions and their own, with answers only on their own', async () => {
     const list = mockQuery({ data: [row(), row({ id: '44444444-4444-4444-8444-444444444444', created_by: 'teacher-2', status: 'published' })], error: null });
