@@ -42,4 +42,29 @@ describe('lessonIssues', () => {
     expect(issues.map((i) => [i.index, i.blocking])).toEqual([[0, true], [1, true], [2, true], [3, false]]);
     expect(issues[0]!.message.vi).toMatch(/Vận tốc/);
   });
+
+  describe('practice questions', () => {
+    const Q = ['33333333-3333-4333-8333-333333333333', '44444444-4444-4444-8444-444444444444', '55555555-5555-4555-8555-555555555555', '66666666-6666-4666-8666-666666666666'];
+    const quiz = Q.map((question_id) => ({ type: 'quiz' as const, question_id }));
+    const mc = (data: Record<string, unknown>) => ({ id: '', type: 'mc', difficulty: 1, status: 'draft', mine: true, editable: true, data });
+    const good = { stem: { vi: 'Câu?', en: 'Q?' }, options: [{ id: 'a', text: { vi: 'A', en: 'A' } }, { id: 'b', text: { vi: 'B', en: 'B' } }], answer: 'a' };
+
+    it('points to the exact question that is incomplete, invalid or gone', () => {
+      const rows = {
+        [Q[0]!]: mc(good),
+        [Q[1]!]: mc({ ...good, stem: { vi: 'Câu?', en: '' } }),
+        [Q[2]!]: mc({ ...good, answer: 'z' }),
+      };
+      const issues = lessonIssues(quiz, rows as never);
+      expect(issues.map((i) => [i.part, i.index, i.blocking])).toEqual([['practice', 1, false], ['practice', 2, true], ['practice', 3, true]]);
+      expect(issues[0]!.message.vi).toMatch(/tiếng Anh/);
+      expect(issues[2]!.message.vi).toMatch(/không tìm thấy/i);
+    });
+
+    it('does not judge questions it has not loaded, or published ones it may not read', () => {
+      expect(lessonIssues(quiz)).toEqual([]);
+      const shared = { ...mc({ stem: { vi: 'Câu?', en: 'Q?' }, options: [] }), mine: false, editable: false, status: 'published' };
+      expect(lessonIssues([quiz[0]!], { [Q[0]!]: shared } as never)).toEqual([]);
+    });
+  });
 });

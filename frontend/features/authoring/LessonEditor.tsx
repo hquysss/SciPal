@@ -21,6 +21,7 @@ import { IssueList } from './editor/IssueList';
 import { lessonIssues, type LessonIssue } from './editor/lessonIssues';
 import { PartTabs } from './editor/PartTabs';
 import { LessonRequestsPanel } from './simulationRequests/LessonRequestsPanel';
+import { PracticeQuestionsContext, usePracticeQuestionRows } from './practice/PracticeQuestionsContext';
 import { leavingHref } from './editor/leaveGuard';
 import { uploadLessonImage } from './editor/mediaApi';
 
@@ -89,7 +90,10 @@ export function LessonEditor({
   const [previewLang, setPreviewLang] = useState<'vi' | 'en'>('vi');
 
   const canEditContent = canReview ? status === 'draft' || status === 'published' : status === 'draft' || status === 'rejected';
-  const issues = useMemo(() => lessonIssues(blocks), [blocks]);
+  const quizIds = useMemo(() => parts.practice.flatMap((b) => (b.type === 'quiz' ? [b.question_id] : [])), [parts.practice]);
+  const practice = usePracticeQuestionRows(lessonId, subjectId, quizIds);
+  // Questions are judged once loaded; until then the server still checks them on submit.
+  const issues = useMemo(() => lessonIssues(blocks, practice.loaded ? practice.rows : undefined), [blocks, practice.loaded, practice.rows]);
   const counts = { lesson: parts.lesson.length, simulation: parts.simulation.length, practice: parts.practice.length };
   const busy = saving || submittingForReview || reviewing;
 
@@ -563,15 +567,17 @@ export function LessonEditor({
               />
             </div>
           )}
-          <BlockList
-            key={activePart}
-            part={activePart}
-            blocks={parts[activePart]}
-            onChange={(next) => setPart(activePart, next)}
-            subjectId={subjectId}
-            readOnly={!canEditContent}
-            focusIndex={focus?.part === activePart ? focus.index : undefined}
-          />
+          <PracticeQuestionsContext.Provider value={practice}>
+            <BlockList
+              key={activePart}
+              part={activePart}
+              blocks={parts[activePart]}
+              onChange={(next) => setPart(activePart, next)}
+              subjectId={subjectId}
+              readOnly={!canEditContent}
+              focusIndex={focus?.part === activePart ? focus.index : undefined}
+            />
+          </PracticeQuestionsContext.Provider>
           {activePart === 'simulation' && (
             <LessonRequestsPanel
               lessonId={lessonId}

@@ -1,5 +1,5 @@
 import katex from 'katex';
-import { validateSimulationBlock, type Block } from '@scipal/types';
+import { questionIncomplete, validateQuestionInput, validateSimulationBlock, type Block } from '@scipal/types';
 import { LESSON_PARTS, splitLessonParts, type LessonPart } from '@/features/lessons/lessonParts';
 
 export interface LessonIssue {
@@ -24,7 +24,27 @@ export function formulaIsValid(tex: string): boolean {
   }
 }
 
-function issuesOf(block: Block): BlockIssue[] {
+/** What the editor knows of a practice question (see practice/api.ts AuthorQuestion). */
+export interface QuestionForIssues {
+  type: string;
+  difficulty: number;
+  /** Answers are included only for the author or an admin. */
+  mine: boolean;
+  editable: boolean;
+  data: unknown;
+}
+
+function questionIssues(row: QuestionForIssues | undefined): BlockIssue[] {
+  if (!row) return [{ blocking: true, message: { en: 'The question was not found. Remove this block.', vi: 'Không tìm thấy câu hỏi. Hãy xóa khối này.' } }];
+  // A shared published question from another teacher is complete by review; its answer is not ours to read.
+  if (!row.mine && !row.editable) return [];
+  const checked = validateQuestionInput({ usage: 'practice', subject_id: '00000000-0000-4000-8000-000000000000', type: row.type, difficulty: row.difficulty, data: row.data });
+  if (!checked.ok) return [{ blocking: true, message: checked.message }];
+  const missing = questionIncomplete(checked.value);
+  return missing ? [{ blocking: false, message: missing }] : [];
+}
+
+function issuesOf(block: Block, questionById?: Readonly<Record<string, QuestionForIssues>>): BlockIssue[] {
   switch (block.type) {
     case 'theory':
       if (!block.content.vi.trim()) return [{ blocking: true, message: { en: 'The Vietnamese text is empty.', vi: 'Chưa có nội dung tiếng Việt.' } }];
@@ -45,14 +65,20 @@ function issuesOf(block: Block): BlockIssue[] {
       if (!check.ok) return [{ blocking: true, message: check.message }];
       return block.heading.en.trim() ? [] : [MISSING_EN];
     }
+    case 'quiz':
+      return questionById ? questionIssues(questionById[block.question_id]) : [];
     default:
       return [];
   }
 }
 
-export function lessonIssues(blocks: Block[]): LessonIssue[] {
+/**
+ * Everything that stops the lesson from being sent for review. Practice questions are judged
+ * only once `questionById` holds the loaded questions (a question missing from it is gone).
+ */
+export function lessonIssues(blocks: Block[], questionById?: Readonly<Record<string, QuestionForIssues>>): LessonIssue[] {
   const parts = splitLessonParts(blocks);
   return LESSON_PARTS.flatMap((part) =>
-    parts[part].flatMap((block, index) => issuesOf(block).map((issue) => ({ ...issue, part, index }))),
+    parts[part].flatMap((block, index) => issuesOf(block, questionById).map((issue) => ({ ...issue, part, index }))),
   );
 }

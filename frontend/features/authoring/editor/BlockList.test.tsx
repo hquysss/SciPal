@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from 'vitest';
 import type { Block } from '@scipal/types';
 import { countRawColors } from '../../../lib/theme/rawColors';
 import { BlockList } from './BlockList';
+import { PracticeQuestionsContext } from '../practice/PracticeQuestionsContext';
 
 vi.mock('@scipal/hooks', () => ({ useLanguage: () => ({ lang: 'vi', t: (o: { vi: string }) => o.vi }) }));
 vi.mock('@scipal/supabase', () => ({ createBrowserClient: () => ({}) }));
@@ -53,5 +54,33 @@ describe('BlockList', () => {
 
   it('explains empty parts', () => {
     expect(renderToStaticMarkup(<BlockList part="lesson" blocks={[]} onChange={() => {}} subjectId="s" readOnly={false} />)).toContain('Bài chưa có nội dung');
+  });
+
+  it('lets teachers add practice questions in the practice tab', () => {
+    const html = renderToStaticMarkup(<BlockList part="practice" blocks={[]} onChange={() => {}} subjectId="s" readOnly={false} />);
+    expect(html.match(/aria-label="Chèn khối tại đây"/g)).toHaveLength(1);
+    expect(html).toContain('Chưa có câu tự luyện');
+    expect(html).not.toContain('bước tiếp theo');
+    expect(renderToStaticMarkup(<BlockList part="practice" blocks={[]} onChange={() => {}} subjectId="s" readOnly />)).not.toContain('Chèn khối tại đây');
+  });
+
+  it('names each practice question by its text', () => {
+    const id = '33333333-3333-4333-8333-333333333333';
+    const value = {
+      lessonId: 'l',
+      subjectId: 's',
+      loaded: true,
+      failed: false,
+      upsert: () => {},
+      rows: { [id]: { id, usage: 'practice' as const, subject_id: 's', lesson_id: 'l', grade: null, type: 'short' as const, difficulty: 1, status: 'draft' as const, created_at: '', mine: true, editable: true, data: { stem: { vi: 'Thủ đô Việt Nam?', en: '' }, answer_key: 'Hà Nội' } } },
+    };
+    const html = renderToStaticMarkup(
+      <PracticeQuestionsContext.Provider value={value}>
+        <BlockList part="practice" blocks={[{ type: 'quiz', question_id: id }]} onChange={() => {}} subjectId="s" readOnly={false} />
+      </PracticeQuestionsContext.Provider>,
+    );
+    expect(html).toContain('Thủ đô Việt Nam?');
+    expect(html).toContain('Trả lời ngắn');
+    expect(html).not.toContain('Nhân đôi');
   });
 });
