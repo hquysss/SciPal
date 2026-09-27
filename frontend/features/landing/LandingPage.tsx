@@ -43,8 +43,8 @@ const HERO_TITLE: Record<EducationLevel, [Copy, Copy]> = {
     { vi: 'mở rộng hiểu biết.', en: 'grows understanding.' },
   ],
   upper_secondary: [
-    { vi: 'Hiểu khoa học', en: 'Make sense of science,' },
-    { vi: 'từ câu hỏi đầu tiên.', en: 'one question at a time.' },
+    { vi: 'Hiểu từng bài,', en: 'Understand each lesson.' },
+    { vi: 'tiến từng bước.', en: 'Move forward step by step.' },
   ],
 };
 
@@ -57,13 +57,10 @@ function useRevealOnScroll(pageRef: React.RefObject<HTMLDivElement | null>) {
       window.history.replaceState(null, '', window.location.pathname + window.location.search);
     }
 
-    if (
-      !page ||
-      window.matchMedia('(prefers-reduced-motion: reduce)').matches ||
-      !('IntersectionObserver' in window)
-    ) {
-      return;
-    }
+    if (!page) return;
+
+    const motionPreference = window.matchMedia('(prefers-reduced-motion: reduce)');
+    if (motionPreference.matches || !('IntersectionObserver' in window)) return;
 
     const targets = Array.from(page.querySelectorAll<HTMLElement>('[data-landing-reveal]'));
     const observer = new IntersectionObserver((entries) => {
@@ -84,7 +81,17 @@ function useRevealOnScroll(pageRef: React.RefObject<HTMLDivElement | null>) {
       observer.observe(target);
     });
 
-    return () => observer.disconnect();
+    const revealPending = () => {
+      if (!motionPreference.matches) return;
+      observer.disconnect();
+      targets.forEach((target) => target.classList.add(styles.revealed));
+    };
+    motionPreference.addEventListener('change', revealPending);
+
+    return () => {
+      observer.disconnect();
+      motionPreference.removeEventListener('change', revealPending);
+    };
   }, [pageRef]);
 }
 
@@ -110,8 +117,8 @@ export function LandingPage({ level, levelSource, catalog, informatics }: Landin
             </h1>
             <p className={styles.heroSubline}>
               {t({
-                en: 'Bilingual lessons that follow your curriculum.',
-                vi: 'Bài học song ngữ, theo đúng chương trình của em.',
+                en: 'Learn in Vietnamese and English with Vietnam’s 2018 national curriculum.',
+                vi: 'Học song ngữ Anh–Việt theo Chương trình GDPT 2018.',
               })}
             </p>
             <div className={styles.heroActions}>

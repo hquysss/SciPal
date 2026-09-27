@@ -1,14 +1,16 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
+import { ChevronDown, Menu, X } from 'lucide-react';
 import { usePathname, useRouter } from 'next/navigation';
 import { useLanguage } from '@scipal/hooks';
 import { LanguageToggle } from './LanguageToggle';
 import { ThemeToggle } from './ThemeToggle';
 import { OnlinePill } from './OnlinePill';
 import { SubjectSwitcher } from './SubjectSwitcher';
+import navStyles from './navbar.module.css';
 import type { SubjectSlug } from '@/lib/subject-config';
 import { createBrowserClient } from '@/lib/supabase';
 import { adoptAccountLevel, forgetAccountLevel, getShell, safeSessionStorage } from '@/lib/theme/shellTheme';
@@ -53,6 +55,8 @@ export function NavBar({ currentSubject }: NavBarProps) {
   const [appRole, setAppRole] = useState<AppRole | null>(null);
   const [displayName, setDisplayName] = useState<string | null>(null);
   const [signingOut, setSigningOut] = useState(false);
+  const mobileMenuButtonRef = useRef<HTMLButtonElement>(null);
+  const openNavTriggerRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
     setMobileOpen(false);
@@ -64,8 +68,13 @@ export function NavBar({ currentSubject }: NavBarProps) {
     if (!mobileOpen && !openNavGroup) return;
     const closeOnEscape = (event: KeyboardEvent) => {
       if (event.key !== 'Escape') return;
-      if (openNavGroup) setOpenNavGroup(null);
-      else setMobileOpen(false);
+      if (openNavGroup) {
+        setOpenNavGroup(null);
+        openNavTriggerRef.current?.focus();
+      } else {
+        setMobileOpen(false);
+        mobileMenuButtonRef.current?.focus();
+      }
     };
     document.addEventListener('keydown', closeOnEscape);
     return () => document.removeEventListener('keydown', closeOnEscape);
@@ -177,36 +186,32 @@ export function NavBar({ currentSubject }: NavBarProps) {
   const adminMenuOpen = openNavGroup === 'admin';
   const teacherRouteActive = teacherLinks.some((link) => pathname === link.href || pathname.startsWith(`${link.href}/`));
   const adminRouteActive = adminLinks.some((link) => pathname === link.href || pathname.startsWith(`${link.href}/`));
-  const toggleNavGroup = (group: 'admin' | 'teacher') => {
+  const toggleNavGroup = (group: 'admin' | 'teacher', trigger: HTMLButtonElement) => {
+    openNavTriggerRef.current = trigger;
     setOpenNavGroup((current) => current === group ? null : group);
   };
 
   return (
-    <header className="sticky top-0 z-40 w-full border-b border-[color-mix(in_srgb,var(--nav-ink)_20%,transparent)] bg-nav text-nav-ink">
+    <header className={`${navStyles.header} sticky top-0 z-40 w-full bg-nav text-nav-ink`}>
       <div className="relative z-10 mx-auto flex h-16 max-w-7xl items-center justify-between gap-3 px-4 sm:px-6">
         <Link href="/" prefetch={pathname !== '/'} className="group flex shrink-0 items-center gap-3 font-bold text-nav-ink">
           <Image
             src="/logo.svg"
-            alt="SciPal Logo"
+            alt={lang === 'en' ? 'SciPal home' : 'Trang chủ SciPal'}
             width={36}
             height={36}
             className="h-9 w-9 rounded-xl shadow-inner transition duration-150 group-hover:scale-105"
             priority
           />
-          <span className="flex flex-col">
-            <span className="text-xl font-black leading-tight tracking-tight">SciPal</span>
-            <span className="hidden font-mono text-xs font-semibold uppercase tracking-wider text-nav-ink opacity-80 sm:block">
-              {lang === 'en' ? 'EdTech' : 'EdTech'}
-            </span>
-          </span>
+          <span className="text-xl font-black leading-tight tracking-tight">SciPal</span>
         </Link>
 
-        <nav aria-label={lang === 'en' ? 'Main navigation' : 'Điều hướng chính'} className="hidden items-center gap-1 lg:flex">
+        <nav aria-label={lang === 'en' ? 'Main navigation' : 'Điều hướng chính'} className="hidden items-center gap-1 xl:flex">
           <Link
             href="/"
             prefetch={pathname !== '/'}
             aria-current={pathname === '/' ? 'page' : undefined}
-            className="rounded-lg px-3 py-1.5 text-sm font-semibold text-nav-ink transition hover:bg-[color-mix(in_srgb,var(--nav-ink)_12%,transparent)] hover:text-nav-ink focus-visible:outline focus-visible:outline-2 focus-visible:outline-nav-ink"
+            className={`${navStyles.navLink} rounded-lg px-3 py-2 text-sm font-semibold text-nav-ink`}
           >
             {homeLinkLabel}
           </Link>
@@ -217,7 +222,7 @@ export function NavBar({ currentSubject }: NavBarProps) {
               href={link.href}
               prefetch={pathname !== '/'}
               aria-current={pathname === link.href ? 'page' : undefined}
-              className="rounded-lg px-3 py-1.5 text-sm font-semibold text-nav-ink transition hover:bg-[color-mix(in_srgb,var(--nav-ink)_12%,transparent)] hover:text-nav-ink focus-visible:outline focus-visible:outline-2 focus-visible:outline-nav-ink"
+              className={`${navStyles.navLink} rounded-lg px-3 py-2 text-sm font-semibold text-nav-ink`}
             >
               {link.label}
             </Link>
@@ -228,18 +233,16 @@ export function NavBar({ currentSubject }: NavBarProps) {
                 type="button"
                 aria-expanded={teacherMenuOpen}
                 aria-controls="desktop-teacher-navigation"
-                onClick={() => toggleNavGroup('teacher')}
+                onClick={(event) => toggleNavGroup('teacher', event.currentTarget)}
                 className={`inline-flex items-center gap-1 rounded-lg px-3 py-1.5 text-sm font-semibold transition hover:bg-[color-mix(in_srgb,var(--nav-ink)_12%,transparent)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-nav-ink ${teacherRouteActive ? 'bg-[color-mix(in_srgb,var(--nav-ink)_15%,transparent)] text-nav-ink' : 'text-nav-ink'}`}
               >
                 {lang === 'en' ? 'Teacher' : 'Giáo viên'}
-                <svg aria-hidden="true" viewBox="0 0 20 20" fill="currentColor" className={`h-4 w-4 transition-transform motion-reduce:transition-none ${teacherMenuOpen ? 'rotate-180' : ''}`}>
-                  <path fillRule="evenodd" d="M5.22 7.47a.75.75 0 0 1 1.06 0L10 11.19l3.72-3.72a.75.75 0 1 1 1.06 1.06l-4.25 4.25a.75.75 0 0 1-1.06 0L5.22 8.53a.75.75 0 0 1 0-1.06Z" clipRule="evenodd" />
-                </svg>
+                <ChevronDown aria-hidden="true" className={`h-4 w-4 transition-transform duration-150 motion-reduce:transition-none ${teacherMenuOpen ? 'rotate-180' : ''}`} />
               </button>
               <div
                 id="desktop-teacher-navigation"
                 aria-hidden={!teacherMenuOpen}
-                className={`absolute left-0 top-full z-50 mt-2 w-56 origin-top rounded-xl border border-line bg-surface p-1.5 text-ink shadow-xl transition-[opacity,transform,visibility] duration-200 ease-out motion-reduce:transition-none ${teacherMenuOpen ? 'visible scale-y-100 opacity-100' : 'invisible pointer-events-none scale-y-0 opacity-0'}`}
+                className={`${navStyles.dropdown} ${teacherMenuOpen ? navStyles.dropdownOpen : ''}`}
               >
                 {teacherLinks.map((link) => (
                   <Link
@@ -262,18 +265,16 @@ export function NavBar({ currentSubject }: NavBarProps) {
                 type="button"
                 aria-expanded={adminMenuOpen}
                 aria-controls="desktop-admin-navigation"
-                onClick={() => toggleNavGroup('admin')}
+                onClick={(event) => toggleNavGroup('admin', event.currentTarget)}
                 className={`inline-flex items-center gap-1 rounded-lg px-3 py-1.5 text-sm font-semibold transition hover:bg-[color-mix(in_srgb,var(--nav-ink)_12%,transparent)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-nav-ink ${adminRouteActive ? 'bg-[color-mix(in_srgb,var(--nav-ink)_15%,transparent)] text-nav-ink' : 'text-nav-ink'}`}
               >
                 Admin
-                <svg aria-hidden="true" viewBox="0 0 20 20" fill="currentColor" className={`h-4 w-4 transition-transform motion-reduce:transition-none ${adminMenuOpen ? 'rotate-180' : ''}`}>
-                  <path fillRule="evenodd" d="M5.22 7.47a.75.75 0 0 1 1.06 0L10 11.19l3.72-3.72a.75.75 0 1 1 1.06 1.06l-4.25 4.25a.75.75 0 0 1-1.06 0L5.22 8.53a.75.75 0 0 1 0-1.06Z" clipRule="evenodd" />
-                </svg>
+                <ChevronDown aria-hidden="true" className={`h-4 w-4 transition-transform duration-150 motion-reduce:transition-none ${adminMenuOpen ? 'rotate-180' : ''}`} />
               </button>
               <div
                 id="desktop-admin-navigation"
                 aria-hidden={!adminMenuOpen}
-                className={`absolute left-0 top-full z-50 mt-2 w-56 origin-top rounded-xl border border-line bg-surface p-1.5 text-ink shadow-xl transition-[opacity,transform,visibility] duration-200 ease-out motion-reduce:transition-none ${adminMenuOpen ? 'visible scale-y-100 opacity-100' : 'invisible pointer-events-none scale-y-0 opacity-0'}`}
+                className={`${navStyles.dropdown} ${adminMenuOpen ? navStyles.dropdownOpen : ''}`}
               >
                 {adminLinks.map((link) => (
                   <Link
@@ -292,7 +293,7 @@ export function NavBar({ currentSubject }: NavBarProps) {
           )}
         </nav>
 
-        <div className="hidden min-w-0 flex-1 items-center gap-2 lg:flex xl:gap-3">
+        <div className="hidden min-w-0 flex-1 items-center gap-2 xl:flex xl:gap-3">
           <div className="hidden xl:block"><OnlinePill /></div>
           <LanguageToggle />
           <ThemeToggle />
@@ -316,14 +317,14 @@ export function NavBar({ currentSubject }: NavBarProps) {
             <Link
               href="/login"
               prefetch={pathname !== '/'}
-              className="ml-auto inline-flex shrink-0 items-center gap-2 rounded-full bg-nav-ink px-4 py-2 text-sm font-bold text-nav shadow-md transition duration-150 hover:opacity-90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-nav-ink"
+              className="ml-auto inline-flex shrink-0 items-center gap-2 rounded-full bg-nav-ink px-4 py-2 text-sm font-bold text-nav shadow-md transition duration-150 hover:opacity-90 active:scale-[0.98] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-nav-ink"
             >
               {lang === 'en' ? 'Sign In' : 'Đăng nhập'} <span aria-hidden="true">→</span>
             </Link>
           )}
         </div>
 
-        <div className="flex shrink-0 items-center gap-2 lg:hidden">
+        <div className="flex shrink-0 items-center gap-2 xl:hidden">
           <LanguageToggle />
           <ThemeToggle />
           <button
@@ -331,10 +332,11 @@ export function NavBar({ currentSubject }: NavBarProps) {
             aria-label={mobileOpen ? (lang === 'en' ? 'Close menu' : 'Đóng menu') : (lang === 'en' ? 'Open menu' : 'Mở menu')}
             aria-expanded={mobileOpen}
             aria-controls="mobile-navigation"
+            ref={mobileMenuButtonRef}
             onClick={() => setMobileOpen((value) => !value)}
             className="flex h-11 w-11 items-center justify-center rounded-xl border border-[color-mix(in_srgb,var(--nav-ink)_30%,transparent)] bg-transparent text-nav-ink text-xl transition hover:bg-[color-mix(in_srgb,var(--nav-ink)_12%,transparent)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-nav-ink"
           >
-            <span aria-hidden="true">{mobileOpen ? '×' : '☰'}</span>
+            {mobileOpen ? <X aria-hidden="true" size={20} /> : <Menu aria-hidden="true" size={20} />}
           </button>
         </div>
       </div>
@@ -343,7 +345,7 @@ export function NavBar({ currentSubject }: NavBarProps) {
         id="mobile-navigation"
         aria-label={lang === 'en' ? 'Mobile navigation' : 'Điều hướng di động'}
         aria-hidden={!mobileOpen}
-        className={`absolute inset-x-0 top-full z-40 max-h-[calc(100dvh-4rem)] origin-top overflow-y-auto border-b border-line bg-surface p-4 text-ink shadow-xl transition-[opacity,transform,visibility] duration-200 ease-out motion-reduce:transition-none lg:hidden ${mobileOpen ? 'visible scale-y-100 opacity-100' : 'invisible pointer-events-none scale-y-0 opacity-0'}`}
+        className={`${navStyles.mobilePanel} xl:hidden ${mobileOpen ? navStyles.mobilePanelOpen : ''}`}
       >
           <div className="mx-auto max-w-xl space-y-2">
             <Link
@@ -374,13 +376,11 @@ export function NavBar({ currentSubject }: NavBarProps) {
                   type="button"
                   aria-expanded={teacherMenuOpen}
                   aria-controls="mobile-teacher-navigation"
-                  onClick={() => toggleNavGroup('teacher')}
+                  onClick={(event) => toggleNavGroup('teacher', event.currentTarget)}
                   className={`flex w-full items-center justify-between rounded-xl px-4 py-3 text-left text-sm font-bold transition hover:bg-surface-sunken focus-visible:outline focus-visible:outline-2 focus-visible:outline-focus ${teacherRouteActive ? 'bg-surface-sunken text-action' : 'text-ink'}`}
                 >
                   {lang === 'en' ? 'Teacher' : 'Giáo viên'}
-                  <svg aria-hidden="true" viewBox="0 0 20 20" fill="currentColor" className={`h-4 w-4 transition-transform motion-reduce:transition-none ${teacherMenuOpen ? 'rotate-180' : ''}`}>
-                    <path fillRule="evenodd" d="M5.22 7.47a.75.75 0 0 1 1.06 0L10 11.19l3.72-3.72a.75.75 0 1 1 1.06 1.06l-4.25 4.25a.75.75 0 0 1-1.06 0L5.22 8.53a.75.75 0 0 1 0-1.06Z" clipRule="evenodd" />
-                  </svg>
+                  <ChevronDown aria-hidden="true" className={`h-4 w-4 transition-transform duration-150 motion-reduce:transition-none ${teacherMenuOpen ? 'rotate-180' : ''}`} />
                 </button>
                 <div
                   id="mobile-teacher-navigation"
@@ -410,13 +410,11 @@ export function NavBar({ currentSubject }: NavBarProps) {
                   type="button"
                   aria-expanded={adminMenuOpen}
                   aria-controls="mobile-admin-navigation"
-                  onClick={() => toggleNavGroup('admin')}
+                  onClick={(event) => toggleNavGroup('admin', event.currentTarget)}
                   className={`flex w-full items-center justify-between rounded-xl px-4 py-3 text-left text-sm font-bold transition hover:bg-surface-sunken focus-visible:outline focus-visible:outline-2 focus-visible:outline-focus ${adminRouteActive ? 'bg-surface-sunken text-action' : 'text-ink'}`}
                 >
                   Admin
-                  <svg aria-hidden="true" viewBox="0 0 20 20" fill="currentColor" className={`h-4 w-4 transition-transform motion-reduce:transition-none ${adminMenuOpen ? 'rotate-180' : ''}`}>
-                    <path fillRule="evenodd" d="M5.22 7.47a.75.75 0 0 1 1.06 0L10 11.19l3.72-3.72a.75.75 0 1 1 1.06 1.06l-4.25 4.25a.75.75 0 0 1-1.06 0L5.22 8.53a.75.75 0 0 1 0-1.06Z" clipRule="evenodd" />
-                  </svg>
+                  <ChevronDown aria-hidden="true" className={`h-4 w-4 transition-transform duration-150 motion-reduce:transition-none ${adminMenuOpen ? 'rotate-180' : ''}`} />
                 </button>
                 <div
                   id="mobile-admin-navigation"

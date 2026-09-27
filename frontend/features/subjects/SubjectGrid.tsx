@@ -46,18 +46,16 @@ function SubjectCard({
   subject,
   level,
   informatics,
-  duplicate = false,
 }: {
   subject: LandingSubject;
   level: EducationLevel;
   informatics: InformaticsAvailability;
-  duplicate?: boolean;
 }) {
   const { lang, t } = useLanguage();
   const href = getSubjectAction(level, subject, informatics);
   const cardClassName = [styles.card, href ? styles.activeCard : ''].filter(Boolean).join(' ');
   const card = (
-    <article className={cardClassName} data-landing-reveal={duplicate ? undefined : ''}>
+    <article className={cardClassName} data-landing-reveal="">
       <div className={styles.cardTopline}>
         <span className={styles.grade}>{levelLabel(level, lang)}</span>
         <span className={href ? styles.statusActive : styles.statusUpcoming}>
@@ -75,7 +73,7 @@ function SubjectCard({
 
       <div className={styles.cardAction}>
         {href ? (
-          <Link href={href} className={styles.activeAction} tabIndex={duplicate ? -1 : undefined}>
+          <Link href={href} className={styles.activeAction}>
             {t({ en: 'Explore subject', vi: 'Khám phá môn học' })}
             <span aria-hidden="true">→</span>
           </Link>
@@ -150,39 +148,18 @@ export function SubjectGrid({ level, catalog, informatics }: SubjectGridProps) {
     );
   }
 
-  const cards = (duplicate = false) => subjects.map((subject) => (
-    <SubjectCard
-      key={(duplicate ? 'duplicate-' : '') + subject.slug}
-      subject={subject}
-      level={level}
-      informatics={informatics}
-      duplicate={duplicate}
-    />
-  ));
-
-  if (level === 'upper_secondary') {
-    return (
-      <div className={styles.highSchoolCatalog} role="region" aria-label={t({ en: 'Subjects', vi: 'Các môn học' })}>
-        <div className={styles.grid} aria-label={t({ en: 'Upper-secondary subjects', vi: 'Các môn THPT' })}>
-          <div className={styles.track}>
-            {[false, true].map((duplicate) => (
-              <div
-                className={duplicate ? styles.duplicateGroup : styles.group}
-                aria-hidden={duplicate || undefined}
-                key={duplicate ? 'duplicate' : 'primary'}
-              >
-                {cards(duplicate)}
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div className={styles.levelCatalog} role="region" aria-label={t({ en: 'Subjects', vi: 'Các môn học' })}>
-      <div className={styles.levelGrid}>{cards()}</div>
+      <div className={styles.levelGrid}>
+        {subjects.map((subject) => (
+          <SubjectCard
+            key={subject.slug}
+            subject={subject}
+            level={level}
+            informatics={informatics}
+          />
+        ))}
+      </div>
     </div>
   );
 }

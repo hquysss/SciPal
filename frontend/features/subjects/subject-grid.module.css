@@ -1,11 +1,5 @@
-.levelCatalog,
-.highSchoolCatalog {
+.levelCatalog {
   min-width: 0;
-}
-
-.highSchoolCatalog {
-  display: grid;
-  gap: var(--landing-space-6, 1.5rem);
 }
 
 .cardTopline {
@@ -55,51 +49,6 @@
   color: var(--accent, #16a34a);
   font-family: var(--landing-font-measure, monospace);
   font-weight: 750;
-}
-
-.grid {
-  position: relative;
-  min-width: 0;
-  overflow: hidden;
-  -webkit-mask-image: linear-gradient(to right, transparent 0, #000 4%, #000 96%, transparent 100%);
-  mask-image: linear-gradient(to right, transparent 0, #000 4%, #000 96%, transparent 100%);
-}
-
-.track {
-  display: flex;
-  width: max-content;
-  animation: subject-marquee 36s linear infinite;
-}
-
-.group {
-  display: flex;
-  flex: 0 0 auto;
-  align-items: stretch;
-  gap: var(--landing-space-4, 1rem);
-  padding-right: var(--landing-space-4, 1rem);
-}
-
-.duplicateGroup {
-  composes: group;
-}
-
-.grid:focus-within .track {
-  animation-play-state: paused;
-}
-
-.grid:has(.activeAction:focus-visible) .track {
-  animation: none;
-  transform: translateX(0);
-}
-
-.grid:active .track {
-  animation-play-state: paused;
-}
-
-@media (hover: hover) {
-  .grid:hover .track {
-    animation-play-state: paused;
-  }
 }
 
 .levelGrid {
@@ -274,37 +223,10 @@
   outline-offset: var(--landing-focus-offset, 3px);
 }
 
-@keyframes subject-marquee {
-  from {
-    transform: translateX(-50%);
-  }
-
-  to {
-    transform: translateX(0);
-  }
-}
-
 @media (prefers-reduced-motion: reduce) {
-  .grid {
-    overflow-x: auto;
-    scrollbar-width: thin;
-  }
-
-  .track {
-    animation: none;
-  }
-
-  .duplicateGroup {
-    display: none;
-  }
-
   .card,
   .subjectIcon,
-  .activeAction {
-    transition: none;
-  }
+  .activeAction { transition: none; }
 
-  .activeCard:hover {
-    transform: none;
-  }
+  .activeCard:hover { transform: none; }
 }
