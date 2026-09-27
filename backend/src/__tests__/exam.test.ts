@@ -293,3 +293,76 @@ describe('isCorrectAnswer', () => {
     expect(isCorrectAnswer({ type: 'truefalse', data: { items: [] } }, { question_id: 'q', items: [] })).toBe(false);
   });
 });
+
+describe('imported exams', () => {
+  it('serves exactly the listed questions in order and hides explanations', async () => {
+    const app = Fastify();
+    app.decorate('supabase', mockSupabase({
+      exam_blueprints: mockQuery({
+        data: { id: BLUEPRINT_ID, name: 'Đề', sections: [], question_ids: ['q2', 'q1'], duration_minutes: 30, subjects: null },
+        error: null,
+      }),
+      questions: mockQuery({
+        data: [
+          { id: 'q1', subject_id: 's', type: 'mc', difficulty: 1, data: { stem: 'x', answer: 'a', explanation: 'vì a' } },
+          { id: 'q2', subject_id: 's', type: 'short', difficulty: 2, data: { stem: 'y', answer: '42', rubric: 'r' } },
+        ],
+        error: null,
+      }),
+    }));
+    await app.register(examRoutes);
+    await app.ready();
+    const res = await app.inject({ method: 'GET', url: `/api/exam/${BLUEPRINT_ID}/questions` });
+    expect(res.statusCode).toBe(200);
+    const body = res.json();
+    expect(body.questions.map((q: { id: string }) => q.id)).toEqual(['q2', 'q1']);
+    expect(body.blueprint).toMatchObject({ question_count: 2, duration_minutes: 30 });
+    expect(res.body).not.toMatch(/answer|explanation|rubric/);
+    await app.close();
+  });
+});
+
+describe('exams waiting for review', () => {
+  it('stay out of the exam room until an admin publishes them', async () => {
+    const app = Fastify();
+    app.decorate('supabase', mockSupabase({
+      exam_blueprints: [
+        mockQuery({ data: [{ id: 'a', name: 'Công khai', sections: [], subjects: null }, { id: 'b', name: 'Chờ duyệt', status: 'pending_review', sections: [], subjects: null }], error: null }),
+        mockQuery({ data: { id: BLUEPRINT_ID, name: 'Chờ duyệt', status: 'pending_review', sections: [], subjects: null }, error: null }),
+      ],
+    }));
+    await app.register(examRoutes);
+    await app.ready();
+    const list = await app.inject({ method: 'GET', url: '/api/exam/blueprints' });
+    expect(list.json().blueprints.map((b: { name: string }) => b.name)).toEqual(['Công khai']);
+    expect((await app.inject({ method: 'GET', url: `/api/exam/${BLUEPRINT_ID}/questions` })).statusCode).toBe(404);
+    await app.close();
+  });
+
+  it('draws the subject pool from published questions, and still works before the migration', async () => {
+    const blueprint = { id: BLUEPRINT_ID, name: 'Đề', sections: [{ count: 1 }], subject_id: 's1', subjects: null };
+    const filtered = mockQuery({ data: [{ id: 'q1', subject_id: 's1', type: 'mc', difficulty: 1, data: {} }], error: null });
+    const app = Fastify();
+    app.decorate('supabase', mockSupabase({ exam_blueprints: mockQuery({ data: blueprint, error: null }), questions: filtered }));
+    await app.register(examRoutes);
+    await app.ready();
+    expect((await app.inject({ method: 'GET', url: `/api/exam/${BLUEPRINT_ID}/questions` })).statusCode).toBe(200);
+    expect(filtered.eqCalls).toContainEqual(['status', 'published']);
+    await app.close();
+
+    const legacy = Fastify();
+    legacy.decorate('supabase', mockSupabase({
+      exam_blueprints: mockQuery({ data: blueprint, error: null }),
+      questions: [
+        mockQuery({ data: null, error: { code: '42703', message: 'column questions.status does not exist' } }),
+        mockQuery({ data: [{ id: 'q1', subject_id: 's1', type: 'mc', difficulty: 1, data: {} }], error: null }),
+      ],
+    }));
+    await legacy.register(examRoutes);
+    await legacy.ready();
+    const res = await legacy.inject({ method: 'GET', url: `/api/exam/${BLUEPRINT_ID}/questions` });
+    expect(res.statusCode).toBe(200);
+    expect(res.json().questions).toHaveLength(1);
+    await legacy.close();
+  });
+});

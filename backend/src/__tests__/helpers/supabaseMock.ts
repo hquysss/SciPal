@@ -9,10 +9,15 @@ export interface MockBuilder {
   eqCalls: Array<[string, unknown]>;
   inserted: unknown[];
   updated: unknown[];
+  deleteCalls: number;
+  isCalls: Array<[string, unknown]>;
   rangeCalls: Array<[number, number]>;
   select(...args: unknown[]): MockBuilder;
   eq(column: string, value: unknown): MockBuilder;
   in(column: string, values: unknown[]): MockBuilder;
+  is(column: string, value: unknown): MockBuilder;
+  not(column: string, operator: string, value: unknown): MockBuilder;
+  delete(): MockBuilder;
   order(...args: unknown[]): MockBuilder;
   insert(row: unknown): MockBuilder;
   update(row: unknown): MockBuilder;
@@ -32,6 +37,8 @@ export function mockQuery(result: QueryResult): MockBuilder {
     eqCalls: [],
     inserted: [],
     updated: [],
+    deleteCalls: 0,
+    isCalls: [],
     rangeCalls: [],
     select: () => builder,
     eq: (column, value) => {
@@ -39,6 +46,15 @@ export function mockQuery(result: QueryResult): MockBuilder {
       return builder;
     },
     in: () => builder,
+    is: (column, value) => {
+      builder.isCalls.push([column, value]);
+      return builder;
+    },
+    not: () => builder,
+    delete: () => {
+      builder.deleteCalls += 1;
+      return builder;
+    },
     order: () => builder,
     insert: (row) => {
       builder.inserted.push(row);

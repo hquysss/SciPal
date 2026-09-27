@@ -182,6 +182,9 @@ export interface Database {
           published_at: string | null;
           reviewed_by: string | null;
           reviewed_at: string | null;
+          delete_requested_at: string | null;
+          delete_requested_by: string | null;
+          delete_request_note: string | null;
           created_at: string;
           updated_at: string;
         };
@@ -203,6 +206,9 @@ export interface Database {
           published_at?: string | null;
           reviewed_by?: string | null;
           reviewed_at?: string | null;
+          delete_requested_at?: string | null;
+          delete_requested_by?: string | null;
+          delete_request_note?: string | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -224,6 +230,9 @@ export interface Database {
           published_at?: string | null;
           reviewed_by?: string | null;
           reviewed_at?: string | null;
+          delete_requested_at?: string | null;
+          delete_requested_by?: string | null;
+          delete_request_note?: string | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -303,6 +312,9 @@ export interface Database {
           difficulty: number;
           objective_id: string | null;
           data: Json;
+          status: 'published' | 'pending_review';
+          import_id: string | null;
+          created_by: string | null;
           created_at: string;
         };
         Insert: {
@@ -313,6 +325,9 @@ export interface Database {
           difficulty?: number;
           objective_id?: string | null;
           data: Json;
+          status?: 'published' | 'pending_review';
+          import_id?: string | null;
+          created_by?: string | null;
           created_at?: string;
         };
         Update: {
@@ -323,6 +338,9 @@ export interface Database {
           difficulty?: number;
           objective_id?: string | null;
           data?: Json;
+          status?: 'published' | 'pending_review';
+          import_id?: string | null;
+          created_by?: string | null;
           created_at?: string;
         };
         Relationships: [
@@ -346,23 +364,41 @@ export interface Database {
         Row: {
           id: string;
           name: string;
+          name_en: string | null;
           grade: number | null;
           subject_id: string | null;
           sections: Json;
+          question_ids: string[] | null;
+          duration_minutes: number | null;
+          status: 'published' | 'pending_review';
+          import_id: string | null;
+          created_by: string | null;
         };
         Insert: {
           id?: string;
           name: string;
+          name_en?: string | null;
           grade?: number | null;
           subject_id?: string | null;
           sections: Json;
+          question_ids?: string[] | null;
+          duration_minutes?: number | null;
+          status?: 'published' | 'pending_review';
+          import_id?: string | null;
+          created_by?: string | null;
         };
         Update: {
           id?: string;
           name?: string;
+          name_en?: string | null;
           grade?: number | null;
           subject_id?: string | null;
           sections?: Json;
+          question_ids?: string[] | null;
+          duration_minutes?: number | null;
+          status?: 'published' | 'pending_review';
+          import_id?: string | null;
+          created_by?: string | null;
         };
         Relationships: [
           {

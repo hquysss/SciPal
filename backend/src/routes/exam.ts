@@ -2,6 +2,8 @@ import type { FastifyPluginAsync } from 'fastify';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import {
   BLUEPRINT_COLUMNS,
+  blueprintQuestionIds,
+  isPublishedBlueprint,
   toBlueprintSummary,
   type BlueprintRow,
   type BlueprintSummary,
@@ -30,7 +32,16 @@ interface ExamQuestionRow {
 
 type Loaded<T> = { kind: 'ok'; value: T } | { kind: 'not_found' } | { kind: 'error'; err: unknown };
 
-async function loadBlueprint(supabase: SupabaseClient, blueprintId: string): Promise<Loaded<BlueprintSummary>> {
+interface LoadedBlueprint {
+  summary: BlueprintSummary;
+  /** Exact questions of an imported exam, in order; empty for a subject-pool exam. */
+  questionIds: string[];
+}
+
+/** Fields that would give an answer away before the exam is submitted. */
+const HIDDEN_QUESTION_FIELDS = ['answer', 'answer_key', 'explanation', 'rubric'];
+
+async function loadBlueprint(supabase: SupabaseClient, blueprintId: string): Promise<Loaded<LoadedBlueprint>> {
   // exam_blueprints.id is a uuid: anything else can only be "not found", not a database error.
   if (!UUID_PATTERN.test(blueprintId)) return { kind: 'not_found' };
   const { data, error } = await supabase
@@ -40,21 +51,43 @@ async function loadBlueprint(supabase: SupabaseClient, blueprintId: string): Pro
     .maybeSingle();
   if (error) return { kind: 'error', err: error };
   if (!data) return { kind: 'not_found' };
-  return { kind: 'ok', value: toBlueprintSummary(data as BlueprintRow) };
+  const row = data as BlueprintRow;
+  if (!isPublishedBlueprint(row)) return { kind: 'not_found' };
+  return { kind: 'ok', value: { summary: toBlueprintSummary(row), questionIds: blueprintQuestionIds(row) } };
 }
 
 /**
- * The questions of one exam: the blueprint subject's questions in a stable order, as many as
- * its sections ask for. Serving and scoring both use this, so a score only counts this set.
+ * The questions of one exam. An imported exam lists its questions; otherwise the blueprint
+ * subject's questions in a stable order, as many as its sections ask for. Serving and scoring
+ * both use this, so a score only counts this set.
  */
 async function loadExamQuestions(
   supabase: SupabaseClient,
-  blueprint: BlueprintSummary,
+  { summary: blueprint, questionIds }: LoadedBlueprint,
 ): Promise<Loaded<ExamQuestionRow[]>> {
+  if (questionIds.length > 0) {
+    const ids = questionIds.slice(0, MAX_EXAM_ANSWERS);
+    const { data, error } = await supabase
+      .from('questions')
+      .select('id, subject_id, type, difficulty, data')
+      .in('id', ids);
+    if (error) return { kind: 'error', err: error };
+    const byId = new Map(((data ?? []) as ExamQuestionRow[]).map((q) => [q.id, q]));
+    return { kind: 'ok', value: ids.flatMap((id) => byId.get(id) ?? []) };
+  }
+
   const count = Math.min(blueprint.question_count || DEFAULT_EXAM_QUESTIONS, MAX_EXAM_ANSWERS);
-  let query = supabase.from('questions').select('id, subject_id, type, difficulty, data');
-  if (blueprint.subject_id) query = query.eq('subject_id', blueprint.subject_id);
-  const { data, error } = await query.order('id').limit(count);
+  const pool = (publishedOnly: boolean) => {
+    let query = supabase.from('questions').select('id, subject_id, type, difficulty, data');
+    if (blueprint.subject_id) query = query.eq('subject_id', blueprint.subject_id);
+    // Questions of a teacher import that no admin has approved yet stay out of the pool.
+    if (publishedOnly) query = query.eq('status', 'published');
+    return query.order('id').limit(count);
+  };
+  let { data, error } = await pool(true);
+  // 42703: the status column does not exist yet (exam-import migration not run), so every
+  // question is published.
+  if (error?.code === '42703') ({ data, error } = await pool(false));
   if (error) return { kind: 'error', err: error };
   return { kind: 'ok', value: (data ?? []) as ExamQuestionRow[] };
 }
@@ -75,9 +108,10 @@ export function isCorrectAnswer(question: Pick<ExamQuestionRow, 'type' | 'data'>
     });
   }
   if (question.type === 'short') {
-    if (typeof answer.short_answer !== 'string' || typeof data.answer !== 'string') return false;
+    const key = typeof data.answer === 'string' ? data.answer : data.answer_key;
+    if (typeof answer.short_answer !== 'string' || typeof key !== 'string') return false;
     const given = normalizeShortAnswer(answer.short_answer);
-    return given !== '' && given === normalizeShortAnswer(data.answer);
+    return given !== '' && given === normalizeShortAnswer(key);
   }
   return false;
 }
@@ -104,7 +138,7 @@ export const examRoutes: FastifyPluginAsync = async (app) => {
       request.log.error({ err: error }, 'Failed to list exam blueprints');
       return reply.code(500).send({ error: 'Không tải được danh sách đề thi.' });
     }
-    return reply.send({ blueprints: ((data ?? []) as BlueprintRow[]).map(toBlueprintSummary) });
+    return reply.send({ blueprints: ((data ?? []) as BlueprintRow[]).filter(isPublishedBlueprint).map(toBlueprintSummary) });
   });
 
   // Fetch blueprint questions without exposing answers
@@ -128,8 +162,7 @@ export const examRoutes: FastifyPluginAsync = async (app) => {
     // Strip answer keys and correct fields strictly before sending to client
     const sanitized = questions.value.map((q) => {
       const d = { ...(q.data ?? {}) };
-      delete d.answer;
-      delete d.answer_key;
+      for (const field of HIDDEN_QUESTION_FIELDS) delete d[field];
       if (Array.isArray(d.items)) {
         d.items = d.items.map((item: { id: string; text: unknown }) => ({
           id: item.id,
@@ -144,7 +177,7 @@ export const examRoutes: FastifyPluginAsync = async (app) => {
       };
     });
 
-    return reply.send({ blueprint: bp.value, questions: sanitized });
+    return reply.send({ blueprint: bp.value.summary, questions: sanitized });
   });
 
   // Score exam server-side

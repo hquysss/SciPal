@@ -140,6 +140,9 @@ describe('Supabase Client Package', () => {
         published_at: '2026-09-22T00:00:00Z',
         reviewed_by: null,
         reviewed_at: null,
+        delete_requested_at: null,
+        delete_requested_by: null,
+        delete_request_note: null,
         created_at: '2026-09-22T00:00:00Z',
         updated_at: '2026-09-22T00:00:00Z',
       };

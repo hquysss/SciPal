@@ -3,12 +3,15 @@ import type { ExamQuestionItem } from './ExamRunner';
 export interface BlueprintSummary {
   id: string;
   name: string;
+  /** English exam title; null for exams made before titles were bilingual. */
+  name_en?: string | null;
   grade: number | null;
   subject_id: string | null;
   subject_slug: string | null;
   subject_name_en: string | null;
   subject_name_vi: string | null;
   question_count: number;
+  duration_minutes?: number | null;
 }
 
 export type BlueprintListResult = { kind: 'ok'; blueprints: BlueprintSummary[] } | { kind: 'error' };
