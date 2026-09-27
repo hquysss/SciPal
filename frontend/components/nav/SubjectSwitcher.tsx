@@ -7,6 +7,7 @@ import { ChevronDown } from 'lucide-react';
 import { useParams, usePathname } from 'next/navigation';
 import { useLanguage } from '@scipal/hooks';
 import { SUBJECT_CONFIG, type SubjectSlug } from '@/lib/subject-config';
+import navStyles from './navbar.module.css';
 
 interface SubjectSwitcherProps {
   current?: SubjectSlug;
@@ -110,7 +111,8 @@ export function SubjectSwitcher({ current, mobile = false, onNavigate }: Subject
         aria-expanded={open}
         aria-controls="subject-switcher-list"
         onClick={() => setOpen((value) => !value)}
-        className={`flex min-h-10 items-center gap-1.5 rounded-lg px-3 py-2 text-sm font-semibold text-nav-ink transition-colors hover:bg-[color-mix(in_srgb,var(--nav-ink)_12%,transparent)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-nav-ink ${activeSlug ? 'bg-[color-mix(in_srgb,var(--nav-ink)_17%,transparent)]' : ''}`}
+        data-active={activeSlug ? true : undefined}
+        className={navStyles.navLink}
       >
         <span>{lang === 'en' ? 'Subjects' : 'Môn học'}</span>
         <ChevronDown size={16} aria-hidden="true" className={`transition-transform duration-150 motion-reduce:transition-none ${open ? 'rotate-180' : ''}`} />

@@ -57,6 +57,11 @@ describe.each(THEME_LEVELS.flatMap((level) => THEME_MODES.map((mode) => [level, 
       expect(ratio('navInk', p.nav)).toBeGreaterThanOrEqual(4.5);
     });
 
+    it.each(['sun', 'coral', 'sky'] as const)('%s carries text in the darker of ink and paper at 4.5:1', (tone) => {
+      const darker = mode === 'light' ? p.ink : p.paper;
+      expect(ratio(tone, darker)).toBeGreaterThanOrEqual(4.5);
+    });
+
     it('uses six-digit hex colors and a small pattern opacity', () => {
       for (const [key, value] of Object.entries(p)) {
         if (key === 'patternOpacity') continue;

@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { ChevronDown, Menu, X } from 'lucide-react';
+import { ArrowRight, ChevronDown, Menu, X } from 'lucide-react';
 import { usePathname, useRouter } from 'next/navigation';
 import { useLanguage } from '@scipal/hooks';
 import { LanguageToggle } from './LanguageToggle';
@@ -165,6 +165,7 @@ export function NavBar({ currentSubject }: NavBarProps) {
   if (pathname === '/login') return null;
 
   const homeLinkLabel = lang === 'en' ? 'Home' : 'Trang chủ';
+  const accountName = displayName ?? (lang === 'en' ? 'Account' : 'Tài khoản');
   const links = [
     { href: '/glossary', label: lang === 'en' ? 'Glossary' : 'Từ điển' },
     { href: '/exam', label: lang === 'en' ? 'Exams' : 'Thi thử' },
@@ -194,7 +195,7 @@ export function NavBar({ currentSubject }: NavBarProps) {
   return (
     <header className={`${navStyles.header} sticky top-0 z-40 w-full bg-nav text-nav-ink`}>
       <div className="relative z-10 mx-auto flex h-16 max-w-7xl items-center justify-between gap-3 px-4 sm:px-6">
-        <Link href="/" prefetch={pathname !== '/'} className="group flex shrink-0 items-center gap-3 font-bold text-nav-ink">
+        <Link href="/" prefetch={pathname !== '/'} className={`${navStyles.rise} group flex shrink-0 items-center gap-3 font-bold text-nav-ink`}>
           <Image
             src="/logo.svg"
             alt=""
@@ -206,12 +207,12 @@ export function NavBar({ currentSubject }: NavBarProps) {
           <span className="text-xl font-black leading-tight tracking-tight">SciPal</span>
         </Link>
 
-        <nav aria-label={lang === 'en' ? 'Main navigation' : 'Điều hướng chính'} className="hidden items-center gap-1 xl:flex">
+        <nav aria-label={lang === 'en' ? 'Main navigation' : 'Điều hướng chính'} className={`${navStyles.navList} hidden items-center gap-1 xl:ml-4 xl:flex`}>
           <Link
             href="/"
             prefetch={pathname !== '/'}
             aria-current={pathname === '/' ? 'page' : undefined}
-            className={`${navStyles.navLink} rounded-lg px-3 py-2 text-sm font-semibold text-nav-ink`}
+            className={navStyles.navLink}
           >
             {homeLinkLabel}
           </Link>
@@ -222,7 +223,7 @@ export function NavBar({ currentSubject }: NavBarProps) {
               href={link.href}
               prefetch={pathname !== '/'}
               aria-current={pathname === link.href ? 'page' : undefined}
-              className={`${navStyles.navLink} rounded-lg px-3 py-2 text-sm font-semibold text-nav-ink`}
+              className={navStyles.navLink}
             >
               {link.label}
             </Link>
@@ -234,7 +235,8 @@ export function NavBar({ currentSubject }: NavBarProps) {
                 aria-expanded={teacherMenuOpen}
                 aria-controls="desktop-teacher-navigation"
                 onClick={(event) => toggleNavGroup('teacher', event.currentTarget)}
-                className={`inline-flex items-center gap-1 rounded-lg px-3 py-1.5 text-sm font-semibold transition hover:bg-[color-mix(in_srgb,var(--nav-ink)_12%,transparent)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-nav-ink ${teacherRouteActive ? 'bg-[color-mix(in_srgb,var(--nav-ink)_15%,transparent)] text-nav-ink' : 'text-nav-ink'}`}
+                data-active={teacherRouteActive || undefined}
+                className={navStyles.navLink}
               >
                 {lang === 'en' ? 'Teacher' : 'Giáo viên'}
                 <ChevronDown aria-hidden="true" className={`h-4 w-4 transition-transform duration-150 motion-reduce:transition-none ${teacherMenuOpen ? 'rotate-180' : ''}`} />
@@ -266,7 +268,8 @@ export function NavBar({ currentSubject }: NavBarProps) {
                 aria-expanded={adminMenuOpen}
                 aria-controls="desktop-admin-navigation"
                 onClick={(event) => toggleNavGroup('admin', event.currentTarget)}
-                className={`inline-flex items-center gap-1 rounded-lg px-3 py-1.5 text-sm font-semibold transition hover:bg-[color-mix(in_srgb,var(--nav-ink)_12%,transparent)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-nav-ink ${adminRouteActive ? 'bg-[color-mix(in_srgb,var(--nav-ink)_15%,transparent)] text-nav-ink' : 'text-nav-ink'}`}
+                data-active={adminRouteActive || undefined}
+                className={navStyles.navLink}
               >
                 Admin
                 <ChevronDown aria-hidden="true" className={`h-4 w-4 transition-transform duration-150 motion-reduce:transition-none ${adminMenuOpen ? 'rotate-180' : ''}`} />
@@ -293,20 +296,23 @@ export function NavBar({ currentSubject }: NavBarProps) {
           )}
         </nav>
 
-        <div className="hidden min-w-0 flex-1 items-center gap-2 xl:flex xl:gap-3">
+        <div className={`${navStyles.rise} hidden min-w-0 flex-1 items-center justify-end gap-3 xl:flex`} style={{ '--i': 8 } as React.CSSProperties}>
           <OnlinePill />
           <LanguageToggle />
           <ThemeToggle />
+          <span aria-hidden="true" className={navStyles.divider} />
           {appRole ? (
-            <div className="ml-auto flex shrink-0 items-center gap-2">
-              <span className="max-w-24 truncate text-sm font-semibold text-nav-ink xl:max-w-36" title={displayName ?? undefined}>
-                {displayName ?? (lang === 'en' ? 'Account' : 'Tài khoản')}
+            <div className="flex min-w-0 items-center gap-3">
+              <span className={navStyles.account} title={displayName ?? undefined}>
+                <span aria-hidden="true" className={navStyles.avatar}>{accountName.trim().charAt(0).toUpperCase()}</span>
+                {/* Below 1536px the avatar stands in for the name so a full admin bar still fits at 1280px. */}
+                <span className="max-w-36 truncate max-2xl:sr-only">{accountName}</span>
               </span>
               <button
                 type="button"
                 onClick={handleSignOut}
                 disabled={signingOut}
-                className="inline-flex shrink-0 items-center rounded-full border border-[color-mix(in_srgb,var(--nav-ink)_30%,transparent)] bg-nav-ink px-3 py-2 text-sm font-bold text-nav transition hover:opacity-90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-nav-ink disabled:cursor-wait disabled:opacity-60"
+                className={navStyles.ghostButton}
               >
                 {signingOut
                   ? (lang === 'en' ? 'Signing out…' : 'Đang đăng xuất…')
@@ -317,14 +323,15 @@ export function NavBar({ currentSubject }: NavBarProps) {
             <Link
               href="/login"
               prefetch={pathname !== '/'}
-              className="ml-auto inline-flex shrink-0 items-center gap-2 rounded-full bg-nav-ink px-4 py-2 text-sm font-bold text-nav shadow-md transition duration-150 hover:opacity-90 active:scale-[0.98] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-nav-ink"
+              className={navStyles.primaryPill}
             >
-              {lang === 'en' ? 'Sign In' : 'Đăng nhập'} <span aria-hidden="true">→</span>
+              <span>{lang === 'en' ? 'Sign In' : 'Đăng nhập'}</span>
+              <ArrowRight aria-hidden="true" size={16} />
             </Link>
           )}
         </div>
 
-        <div className="flex shrink-0 items-center gap-2 xl:hidden">
+        <div className={`${navStyles.rise} flex shrink-0 items-center gap-2 xl:hidden`} style={{ '--i': 1 } as React.CSSProperties}>
           <LanguageToggle />
           <ThemeToggle />
           <button
@@ -334,7 +341,7 @@ export function NavBar({ currentSubject }: NavBarProps) {
             aria-controls="mobile-navigation"
             ref={mobileMenuButtonRef}
             onClick={() => setMobileOpen((value) => !value)}
-            className="flex h-11 w-11 items-center justify-center rounded-xl border border-[color-mix(in_srgb,var(--nav-ink)_30%,transparent)] bg-transparent text-nav-ink text-xl transition hover:bg-[color-mix(in_srgb,var(--nav-ink)_12%,transparent)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-nav-ink"
+            className="flex h-11 w-11 items-center justify-center rounded-full border border-[color-mix(in_srgb,var(--nav-ink)_30%,transparent)] bg-transparent text-nav-ink text-xl transition hover:bg-[color-mix(in_srgb,var(--nav-ink)_12%,transparent)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-nav-ink"
           >
             {mobileOpen ? <X aria-hidden="true" size={20} /> : <Menu aria-hidden="true" size={20} />}
           </button>
@@ -460,9 +467,9 @@ export function NavBar({ currentSubject }: NavBarProps) {
                 href="/login"
                 prefetch={pathname !== '/'}
                 onClick={() => setMobileOpen(false)}
-                className="block rounded-xl bg-action px-4 py-3 text-center text-sm font-bold text-action-ink transition hover:bg-action-hover focus-visible:outline focus-visible:outline-2 focus-visible:outline-focus"
+                className="flex items-center justify-center gap-2 rounded-xl bg-action px-4 py-3 text-sm font-bold text-action-ink transition hover:bg-action-hover focus-visible:outline focus-visible:outline-2 focus-visible:outline-focus"
               >
-                {lang === 'en' ? 'Sign In' : 'Đăng nhập'} →
+                {lang === 'en' ? 'Sign In' : 'Đăng nhập'} <ArrowRight aria-hidden="true" size={16} />
               </Link>
             )}
           </div>

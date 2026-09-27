@@ -3,12 +3,44 @@
 import { useEffect, useRef, useState, type PointerEvent } from 'react';
 import { Sparkles, UserRound } from 'lucide-react';
 import { useLanguage } from '@scipal/hooks';
+import type { EducationLevel } from './educationLevel';
 import styles from './sections.module.css';
+
+type Copy = { en: string; vi: string };
+
+/** Prepared Informatics exchanges, pitched per level; the card says they are prepared examples. */
+const EXCHANGES: Record<EducationLevel, { question: Copy; answer: Copy; next: Copy }> = {
+  primary: {
+    question: { vi: 'Vì sao máy tính cần làm theo từng bước?', en: 'Why does a computer need step-by-step instructions?' },
+    answer: {
+      vi: 'Máy tính không tự đoán được ý em. Em chỉ dẫn rõ từng bước, đúng thứ tự, thì máy mới làm đúng.',
+      en: "A computer can't guess what you mean. Give clear steps in the right order and it does the job right.",
+    },
+    next: { vi: 'Thử: chỉ dẫn bạn vẽ một ngôi nhà bằng 3 bước.', en: 'Try: tell a friend how to draw a house in 3 steps.' },
+  },
+  lower_secondary: {
+    question: { vi: 'Thuật toán khác chương trình máy tính thế nào?', en: 'How is an algorithm different from a program?' },
+    answer: {
+      vi: 'Thuật toán là các bước giải bài toán. Chương trình là thuật toán được viết bằng ngôn ngữ máy tính hiểu, ví dụ Python.',
+      en: 'An algorithm is the steps that solve a problem. A program is that algorithm written in a language the computer understands, like Python.',
+    },
+    next: { vi: 'Thử: viết các bước pha một cốc nước chanh.', en: 'Try: write the steps for making lemonade.' },
+  },
+  upper_secondary: {
+    question: { vi: 'Vì sao tìm kiếm nhị phân cần dãy đã sắp xếp?', en: 'Why does binary search need a sorted list?' },
+    answer: {
+      vi: 'So với phần tử giữa, ta phải biết mục tiêu nằm bên trái hay bên phải. Dãy chưa sắp xếp thì không bỏ được nửa nào.',
+      en: 'After comparing with the middle item, you must know whether the target is left or right. In an unsorted list you cannot drop either half.',
+    },
+    next: { vi: 'Thử: đếm số lần so sánh để tìm 26 trong dãy 8 số.', en: 'Try: count the comparisons to find 26 among 8 numbers.' },
+  },
+};
 
 const MAX_TILT_DEG = 5;
 
-export function TutorDemoCard() {
+export function TutorDemoCard({ level = 'upper_secondary' }: { level?: EducationLevel }) {
   const { t } = useLanguage();
+  const exchange = EXCHANGES[level];
   const cardRef = useRef<HTMLElement>(null);
   const conversationRef = useRef<HTMLDivElement>(null);
   const [isPlaying, setIsPlaying] = useState(false);
@@ -71,22 +103,17 @@ export function TutorDemoCard() {
       <div className={styles.conversation} ref={conversationRef} data-playing={isPlaying ? 'true' : 'false'}>
         <div className={styles.studentMessage}>
           <span className={styles.avatar} aria-hidden="true"><UserRound size={15} /></span>
-          <p className={styles.studentBubble}>
-            {t({ en: 'Why does a shadow get shorter at noon?', vi: 'Vì sao buổi trưa bóng ngắn lại?' })}
-          </p>
+          <p className={styles.studentBubble}>{t(exchange.question)}</p>
         </div>
         <div className={styles.tutorMessage}>
           <span className={styles.avatar} aria-hidden="true"><Sparkles size={14} /></span>
           <p className={styles.tutorBubble}>
-            {t({
-              en: 'Light travels in straight lines. The higher the Sun, the steeper the light — so the shadow shrinks.',
-              vi: 'Ánh sáng truyền thẳng. Mặt Trời càng cao, tia sáng càng dốc — nên bóng ngắn lại.',
-            })}
+            {/* The tutor "types" first: three dots, then the answer fades in over them. */}
+            <span className={styles.typingDots} aria-hidden="true"><span /><span /><span /></span>
+            <span className={styles.tutorText}>{t(exchange.answer)}</span>
           </p>
         </div>
-        <p className={styles.followupPrompt}>
-          {t({ en: 'Try: compare shadows at 8 am and noon.', vi: 'Thử: so sánh bóng lúc 8 giờ và 12 giờ.' })}
-        </p>
+        <p className={styles.followupPrompt}>{t(exchange.next)}</p>
       </div>
 
       <p className={styles.tutorFooter}>
