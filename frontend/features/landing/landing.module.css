@@ -32,11 +32,11 @@
 
 .hero {
   display: grid;
-  min-height: min(52rem, calc(100svh - 4.5rem));
+  min-height: min(42rem, calc(100svh - 4.5rem));
   grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   align-items: center;
   gap: clamp(1.5rem, 4vw, 4rem);
-  padding-block: clamp(2rem, 5vw, 4rem);
+  padding-block: clamp(2rem, 4vw, 3.5rem);
 }
 
 .heroCopy {
@@ -47,16 +47,26 @@
 }
 
 .levelLabel {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
   margin: 0;
   border: 1px solid var(--edge);
   border-radius: 999px;
   padding: 0.35rem 0.85rem;
   background: var(--surface);
   color: var(--ink-muted);
-  font-family: var(--font-jetbrains-mono), monospace;
-  font-size: 0.8125rem;
+  font-size: 0.875rem;
   font-weight: 600;
-  letter-spacing: 0.03em;
+}
+
+.levelLabel::before {
+  content: '';
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 999px;
+  background: var(--coral);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--coral) 25%, transparent);
 }
 
 .heroTitle {
@@ -72,9 +82,47 @@
   outline: none;
 }
 
-.heroTitleAccent {
+.heroLine {
   display: block;
+}
+
+/* A sun-colored marker stroke draws under the second line once the title has landed. */
+.heroTitleAccent {
+  padding-inline: 0.04em;
+  -webkit-box-decoration-break: clone;
+  box-decoration-break: clone;
+  background: linear-gradient(
+      color-mix(in srgb, var(--sun) 55%, transparent),
+      color-mix(in srgb, var(--sun) 55%, transparent)
+    )
+    no-repeat 0 86% / 100% 0.24em;
   color: var(--action);
+}
+
+.heroTitleAccent {
+  animation: title-mark 700ms cubic-bezier(0.16, 1, 0.3, 1) 900ms both;
+}
+
+@keyframes title-mark {
+  from { background-size: 0% 0.24em; }
+  to { background-size: 100% 0.24em; }
+}
+
+/* Arrival: the title comes into focus line by line, then the supporting copy follows. */
+.heroCopy > *,
+.heroLine {
+  animation: copy-arrive 800ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.heroTitle { animation: none; }
+.heroLine { animation-delay: 80ms; }
+.heroLine + .heroLine { animation-delay: 170ms; }
+.heroSubline { animation-delay: 280ms; }
+.heroActions { animation-delay: 360ms; }
+
+@keyframes copy-arrive {
+  from { opacity: 0; translate: 0 0.5em; filter: blur(8px); }
+  to { opacity: 1; translate: 0 0; filter: blur(0); }
 }
 
 .heroSubline {
@@ -121,6 +169,23 @@
   transform: translateY(-2px);
 }
 
+.primaryAction svg,
+.finalAction svg {
+  transition: translate 160ms ease-out;
+}
+
+.primaryAction:hover svg,
+.primaryAction:focus-visible svg,
+.finalAction:hover svg,
+.finalAction:focus-visible svg {
+  translate: 3px 0;
+}
+
+.primaryAction:active,
+.finalAction:active {
+  transform: scale(0.98);
+}
+
 .secondaryAction {
   border: 1px solid var(--edge);
   background: var(--surface);
@@ -133,21 +198,6 @@
 
 .heroArt {
   min-width: 0;
-  perspective: 1600px;
-}
-
-.heroArt > * {
-  box-shadow:
-    0 0 0 1px var(--line),
-    0 2.5rem 5rem -2.5rem color-mix(in srgb, var(--ink) 45%, transparent);
-  transform: rotateY(-7deg) rotateX(4deg);
-  transition: transform 600ms var(--landing-ease);
-}
-
-@media (hover: hover) and (pointer: fine) {
-  .heroArt:hover > * {
-    transform: rotateY(-2deg) rotateX(1deg);
-  }
 }
 
 /* ---------- subjects ---------- */
@@ -155,7 +205,7 @@
 .subjects {
   display: grid;
   gap: clamp(1.25rem, 3vw, 2rem);
-  padding-block: clamp(2.5rem, 7vw, 5rem);
+  padding-block: clamp(2.5rem, 6vw, 4.5rem);
   scroll-margin-top: 5rem;
 }
 
@@ -192,6 +242,9 @@
 /* ---------- final call to action ---------- */
 
 .finalCta {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
   display: grid;
   justify-items: center;
   gap: 1.5rem;
@@ -202,6 +255,32 @@
     var(--nav);
   color: var(--nav-ink);
   text-align: center;
+}
+
+/* Two soft discs of the supporting colors sit behind the call to action. */
+.finalCta::before,
+.finalCta::after {
+  content: '';
+  position: absolute;
+  z-index: -1;
+  border-radius: 999px;
+  filter: blur(2px);
+}
+
+.finalCta::before {
+  top: -30%;
+  right: -6%;
+  width: clamp(12rem, 30vw, 22rem);
+  aspect-ratio: 1;
+  background: radial-gradient(circle, color-mix(in srgb, var(--sun) 70%, transparent), transparent 70%);
+}
+
+.finalCta::after {
+  bottom: -38%;
+  left: -4%;
+  width: clamp(10rem, 26vw, 19rem);
+  aspect-ratio: 1;
+  background: radial-gradient(circle, color-mix(in srgb, var(--coral) 60%, transparent), transparent 70%);
 }
 
 .finalTitle {
@@ -276,12 +355,9 @@
 
 .footerContactTitle {
   margin: 0;
-  color: var(--ink-muted);
-  font-family: var(--font-jetbrains-mono), monospace;
-  font-size: 0.6875rem;
-  font-weight: 600;
-  letter-spacing: 0.035em;
-  text-transform: uppercase;
+  color: var(--ink);
+  font-size: 0.875rem;
+  font-weight: 700;
 }
 
 .footerLinks {
@@ -329,15 +405,21 @@
 
 .page .revealPending {
   opacity: 0;
-  translate: 0 0.75rem;
+  translate: 0 1.75rem;
+  scale: 0.97;
+  filter: blur(6px);
   transition:
-    opacity 360ms var(--landing-ease) var(--reveal-delay, 0ms),
-    translate 360ms var(--landing-ease) var(--reveal-delay, 0ms);
+    opacity 700ms var(--landing-ease) var(--reveal-delay, 0ms),
+    translate 700ms cubic-bezier(0.16, 1, 0.3, 1) var(--reveal-delay, 0ms),
+    scale 700ms cubic-bezier(0.16, 1, 0.3, 1) var(--reveal-delay, 0ms),
+    filter 500ms ease-out var(--reveal-delay, 0ms);
 }
 
 .page .revealed {
   opacity: 1;
   translate: 0 0;
+  scale: 1;
+  filter: none;
 }
 
 /* ---------- responsive ---------- */
@@ -346,10 +428,6 @@
   .hero {
     min-height: 0;
     grid-template-columns: minmax(0, 1fr);
-  }
-
-  .heroArt > * {
-    transform: none;
   }
 }
 
@@ -366,15 +444,17 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .heroArt > *,
-  .heroArt:hover > * {
-    transform: none;
-    transition: none;
+  .heroCopy > *,
+  .heroLine,
+  .heroTitleAccent {
+    animation: none;
   }
 
   .primaryAction,
   .secondaryAction,
-  .finalAction {
+  .finalAction,
+  .primaryAction svg,
+  .finalAction svg {
     transition: none;
   }
 

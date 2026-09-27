@@ -17,24 +17,16 @@ export function OnlinePill() {
     };
   }, []);
 
-  const label = online
-    ? lang === 'en' ? 'Online' : 'Trực tuyến'
-    : lang === 'en' ? 'Offline' : 'Ngoại tuyến';
+  // Being online is the normal state; the bar only speaks up when the connection drops.
+  if (online) return null;
 
   return (
     <span
-      className={`inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold backdrop-blur-xs transition ${
-        online
-          ? 'bg-[color-mix(in_srgb,var(--nav-ink)_12%,transparent)] text-nav-ink border border-[color-mix(in_srgb,var(--nav-ink)_30%,transparent)]'
-          : 'bg-[color-mix(in_srgb,var(--nav-ink)_12%,transparent)] text-nav-ink border border-[color-mix(in_srgb,var(--nav-ink)_30%,transparent)]'
-      }`}
+      role="status"
+      className="inline-flex h-8 shrink-0 items-center gap-2 rounded-full border border-[color-mix(in_srgb,var(--nav-ink)_30%,transparent)] bg-[color-mix(in_srgb,var(--nav-ink)_12%,transparent)] px-3 text-xs font-semibold text-nav-ink"
     >
-      <span
-        className={`h-2 w-2 rounded-full shadow-xs ${
-          online ? 'bg-success animate-pulse' : 'bg-danger'
-        }`}
-      />
-      <span className="hidden sm:inline font-mono">{label}</span>
+      <span aria-hidden="true" className="h-2 w-2 rounded-full bg-danger" />
+      {lang === 'en' ? 'Offline' : 'Ngoại tuyến'}
     </span>
   );
 }

@@ -23,5 +23,6 @@ describe('NavBar', () => {
     expect(html).toContain('aria-label="Mở menu"');
     expect(html).not.toContain('☰');
     expect(html).not.toContain('EdTech');
+    expect(html).not.toContain('Trực tuyến');
   });
 });

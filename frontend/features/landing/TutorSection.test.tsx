@@ -28,6 +28,12 @@ describe('TutorSection', () => {
     expect(html).not.toContain('So sánh độ cao Mặt Trời');
   });
 
+  it('asks an Informatics question pitched to the level', () => {
+    expect(renderToStaticMarkup(<TutorSection />)).toContain('Vì sao tìm kiếm nhị phân cần dãy đã sắp xếp?');
+    expect(renderToStaticMarkup(<TutorSection level="primary" />)).toContain('Vì sao máy tính cần làm theo từng bước?');
+    expect(renderToStaticMarkup(<TutorSection />)).not.toContain('bóng ngắn');
+  });
+
   it('uses only theme tokens', () => {
     expect(countRawColors(renderToStaticMarkup(<TutorSection href="/tutor" />)).total).toBe(0);
   });

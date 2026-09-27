@@ -63,19 +63,36 @@ function useRevealOnScroll(pageRef: React.RefObject<HTMLDivElement | null>) {
     if (motionPreference.matches || !('IntersectionObserver' in window)) return;
 
     const targets = Array.from(page.querySelectorAll<HTMLElement>('[data-landing-reveal]'));
+    const clearReveal = (target: Element) => target.classList.remove(styles.revealPending, styles.revealed);
+
+    // Once the entrance has played, drop the reveal classes: while they stay, their transition
+    // list replaces the element's own, and hover lifts and shadows would jump instead of ease.
+    const settle = (target: Element) => {
+      const onEnd = (event: Event) => {
+        if (event.target !== target || (event as TransitionEvent).propertyName !== 'opacity') return;
+        done();
+      };
+      const done = () => {
+        target.removeEventListener('transitionend', onEnd);
+        window.clearTimeout(fallback);
+        clearReveal(target);
+      };
+      target.addEventListener('transitionend', onEnd);
+      const fallback = window.setTimeout(done, 1400);
+    };
+
     const observer = new IntersectionObserver((entries) => {
       entries.forEach((entry) => {
         if (!entry.isIntersecting) return;
         entry.target.classList.add(styles.revealed);
+        settle(entry.target);
         observer.unobserve(entry.target);
       });
     }, { threshold: 0.12, rootMargin: '0px 0px -5% 0px' });
 
     targets.forEach((target, index) => {
-      if (target.getBoundingClientRect().top < window.innerHeight * 0.95) {
-        target.classList.add(styles.revealed);
-        return;
-      }
+      // Already on screen: leave it as is, fully visible.
+      if (target.getBoundingClientRect().top < window.innerHeight * 0.95) return;
       target.style.setProperty('--reveal-delay', String((index % 3) * 80) + 'ms');
       target.classList.add(styles.revealPending);
       observer.observe(target);
@@ -84,10 +101,7 @@ function useRevealOnScroll(pageRef: React.RefObject<HTMLDivElement | null>) {
     const revealPending = () => {
       if (!motionPreference.matches) return;
       observer.disconnect();
-      targets.forEach((target) => {
-        target.classList.remove(styles.revealPending);
-        target.classList.add(styles.revealed);
-      });
+      targets.forEach(clearReveal);
     };
     motionPreference.addEventListener('change', revealPending);
 
@@ -115,8 +129,10 @@ export function LandingPage({ level, levelSource, catalog, informatics }: Landin
           <div className={styles.heroCopy}>
             <p className={styles.levelLabel}>{t(LEVEL_LABEL[level])}</p>
             <h1 id="landing-title" tabIndex={-1} className={styles.heroTitle}>
-              {t(titleFirst)}
-              <span className={styles.heroTitleAccent}>{t(titleSecond)}</span>
+              <span className={styles.heroLine}>{t(titleFirst)}</span>
+              <span className={styles.heroLine}>
+                <span className={styles.heroTitleAccent}>{t(titleSecond)}</span>
+              </span>
             </h1>
             <p className={styles.heroSubline}>
               {t({
@@ -158,8 +174,8 @@ export function LandingPage({ level, levelSource, catalog, informatics }: Landin
           </div>
         </section>
 
-        <HowItWorks />
-        <TutorSection />
+        <HowItWorks level={level} />
+        <TutorSection level={level} />
 
         <section className={styles.finalCta} aria-labelledby="start-title" data-landing-reveal>
           <h2 id="start-title" className={styles.finalTitle}>{t({ en: 'Ready?', vi: 'Sẵn sàng chưa?' })}</h2>

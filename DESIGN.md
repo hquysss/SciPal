@@ -12,6 +12,7 @@ SciPal should feel like a warm, modern field notebook for curious Vietnamese lea
 
 - Tám bảng màu: Tiểu học (nâu nhạt, bìa vở và bút chì gỗ), THCS (xanh dương, bút bi), THPT (xanh lá, bảng lớp) và trung tính (chưa rõ cấp), mỗi bảng có sáng và tối. Giá trị nằm ở `packages/ui/src/theme/palettes.ts`, CSS sinh bằng `renderThemeCss()` và in trong root layout.
 - Vai token (spec §3.2): `paper`, `surface`, `surface-sunken`, `ink`, `ink-muted`, `line` (chỉ trang trí), `edge` (viền điều khiển ≥ 3:1), `action`, `action-hover`, `action-ink`, `focus`, `nav`, `nav-ink`, `danger`/`success`/`warning` và `*-surface`, `pattern-ink`, `pattern-opacity`. Tailwind: `bg-paper`, `text-ink`, `border-edge`…
+- Màu phụ theo cấp (`sun`, `coral`, `sky` → `--sun`, `--coral`, `--sky`): vàng nắng, cam san hô và một màu lạnh (Tiểu học xanh ngọc nhạt, THCS tím, THPT xanh trời), hài hoà với màu chính của cấp. Chỉ dùng cho tô điểm: đồ vật trong tranh, quầng sáng, nét highlight, nền nhạt của vùng demo, chip gợi ý. Không bao giờ làm màu chữ; chữ đặt trên chúng là `--ink` (sáng) hoặc `--paper` (tối), test `palettes.test.ts` giữ ≥ 4.5:1. Nút, link và trạng thái điều khiển vẫn dùng `action`.
 - Accent môn (`--accent`, `--accent-ink`) chỉ là "nhãn vở": nhãn, icon, dải lề, thanh tiến độ; không tô nền trang, thẻ hay nút chính.
 - Đỏ (`danger`) chỉ cho lỗi và phần sửa đáp án quiz.
 - Hoạ tiết đồ dùng học tập chỉ hiện trên `paper`; tắt bằng `data-pattern="off"` (phòng thi), khi `prefers-contrast: more` và khi in.
@@ -21,7 +22,7 @@ SciPal should feel like a warm, modern field notebook for curious Vietnamese lea
 
 ### Navbar
 
-Navbar tô màu chính của cấp: Tiểu học nâu nhạt `#96693F` (chữ trắng), THCS xanh dương `#2563EB`, THPT xanh lá `#15803D`, chưa chọn cấp `#15803D`. Nút đăng nhập và công tắc đang chọn đảo màu (`bg-nav-ink text-nav`).
+Navbar tô màu chính của cấp: Tiểu học nâu nhạt `#96693F` (chữ trắng), THCS xanh dương `#2563EB`, THPT xanh lá `#15803D`, chưa chọn cấp `#15803D`. Nút đăng nhập và công tắc đang chọn đảo màu (`bg-nav-ink text-nav`). Mục đang ở được đánh dấu bằng vạch 3px ở mép dưới thanh (`navLink` trong `navbar.module.css`), hover là nền mờ bo tròn. Công tắc ngôn ngữ là nhóm viên thuốc cao 32px, vùng bấm mở rộng tới 44px. Nhãn "Ngoại tuyến" chỉ hiện khi mất mạng. Tài khoản: ô chữ cái đầu + tên (tên ẩn dưới 1536px để thanh admin vẫn vừa 1280px) và nút "Đăng xuất" dạng viền.
 
 ### Portal
 
@@ -97,10 +98,10 @@ Spec: `docs/superpowers/specs/2026-09-26-landing-redesign-design.md`.
 
 ### Landing
 
-- Thứ tự: hero (nhãn cấp, tiêu đề hai dòng, một câu phụ, "Xem môn học" + "Đổi cấp", tranh bàn học SVG) → "Môn học của bạn" (`SubjectGrid`) → "Học thế nào" (ba thẻ: câu hỏi, câu song ngữ đổi bằng cờ, thẻ thuật ngữ lật) → "Hỏi bất cứ lúc nào" (`TutorDemoCard`; nút "Thử ngay" chỉ khi truyền `href` cho `TutorSection`) → "Sẵn sàng chưa?" trên nền `--nav` → khảo sát một dòng → footer.
+- Thứ tự: hero (nhãn cấp, tiêu đề hai dòng, một câu phụ, "Xem môn học" + "Đổi cấp", tranh bàn học SVG) → "Môn học của bạn" (`SubjectGrid`) → "Học thế nào" (ba thẻ demo Tin học theo cấp, mỗi thẻ là một vùng giấy kẻ chấm có demo chạy được + tiêu đề + một câu: tìm kiếm nhị phân chạy từng bước khi thẻ vào màn hình, có nút "Xem lại" (Tiểu học là trò đoán số 1–8); câu song ngữ đổi bằng cờ, tự đổi sang tiếng Anh rồi quay lại một lần, thuật ngữ chính được tô dấu; thuật ngữ trong từ điển mở ra định nghĩa và ví dụ. Hover: thẻ nhô 6px, viền và nền demo ngả màu `action`) → "Hỏi bất cứ lúc nào" (`TutorDemoCard`; nút "Thử ngay" chỉ khi truyền `href` cho `TutorSection`) → "Sẵn sàng chưa?" trên nền `--nav` → khảo sát một dòng → footer.
 - Mỗi section một tiêu đề, tối đa một câu phụ; không đoạn văn.
-- Tranh hero (`features/landing/hero/`): SVG tĩnh render phía server, màu chỉ lấy từ token, nghiêng nhẹ bằng CSS 3D và hiện dần 450 ms (tắt khi `prefers-reduced-motion`). Đồ vật theo cấp là dữ liệu trong `levelObjects.ts`. Không dùng `three`/WebGL hay canvas.
-- Hiệu ứng hiện khi cuộn dùng thuộc tính `translate` riêng để không đè `transform` của thẻ; bật giảm chuyển động giữa chừng thì mọi khối hiện ngay.
+- Tranh hero (`features/landing/hero/`): SVG tĩnh (`HeroIllustration`) render phía server, màu chỉ lấy từ token. Chiều sâu được vẽ bằng mặt bên tối hơn (`color-mix` với `--ink`), chồng giấy và bóng đổ mờ, không xoay cả khung bằng CSS và không đóng khung thẻ. Một vùng `--paper` mờ dần phía sau làm dịu hoạ tiết nền. Tranh tự dựng một lần khi vào trang (~1,8 s, chỉ CSS): sách trồi lên, hai trang mở từ gáy, dòng kẻ và đồ thị tự vẽ (`pathLength=1` + `stroke-dashoffset`), điểm đánh dấu nảy, dải đánh dấu buông xuống, rồi đồ vật rơi xuống có độ nảy và bóng đổ lớn dần. Đổi cấp thì dựng lại (`key={level}`). Máy có chuột: `HeroStage` ghi vị trí con trỏ trên hero vào `--px`/`--py` (một khung hình mỗi lần di chuột, không vòng lặp); tranh nghiêng tối đa 5–7° và ba lớp (sách, đồ vật sau, đồ vật trước) dịch lệch nhau. Tiêu đề hiện từng dòng từ mờ sang rõ, rồi câu phụ và nút. Tất cả tắt khi `prefers-reduced-motion`. Đồ vật theo cấp là dữ liệu trong `levelObjects.ts`. Không dùng `three`/WebGL hay canvas.
+- Hiệu ứng hiện khi cuộn (700 ms: trượt lên 1,75rem, thu nhỏ 0,97 và bỏ mờ 6px, lệch 80 ms theo cột) dùng thuộc tính `translate`/`scale` riêng để không đè `transform` của thẻ; bật giảm chuyển động giữa chừng thì mọi khối hiện ngay.
 
 ### Language switch
 

@@ -24,6 +24,13 @@ export interface ThemePalette {
   successSurface: string;
   warning: string;
   warningSurface: string;
+  /**
+   * Supporting colors that harmonise with the level: fills in illustrations, highlights and
+   * soft tints. Never text; text laid on them is --ink (light) or --paper (dark).
+   */
+  sun: string;
+  coral: string;
+  sky: string;
   patternInk: string;
   patternOpacity: number;
 }
@@ -52,6 +59,7 @@ export const THEME_PALETTES: Record<ThemeLevel, Record<ThemeMode, ThemePalette>>
       action: '#8B5A2B', actionHover: '#6F4520', actionInk: '#FFFFFF', focus: '#8B5A2B',
       nav: '#96693F', navInk: '#FFFFFF',
       ...LIGHT_STATUS,
+      sun: '#F2B544', coral: '#E07A5F', sky: '#6FB3A8',
       patternInk: '#8B5A2B', patternOpacity: 0.06,
     },
     dark: {
@@ -60,6 +68,7 @@ export const THEME_PALETTES: Record<ThemeLevel, Record<ThemeMode, ThemePalette>>
       action: '#E0B98C', actionHover: '#EBCDA8', actionInk: '#1C1712', focus: '#E0B98C',
       nav: '#96693F', navInk: '#FFFFFF',
       ...DARK_STATUS,
+      sun: '#F5C66E', coral: '#EE9A82', sky: '#8CC9BF',
       patternInk: '#E0B98C', patternOpacity: 0.07,
     },
   },
@@ -71,6 +80,7 @@ export const THEME_PALETTES: Record<ThemeLevel, Record<ThemeMode, ThemePalette>>
       action: '#1D4ED8', actionHover: '#1E40AF', actionInk: '#FFFFFF', focus: '#1D4ED8',
       nav: '#2563EB', navInk: '#FFFFFF',
       ...LIGHT_STATUS,
+      sun: '#F5B82E', coral: '#F0716B', sky: '#9D84F5',
       patternInk: '#2563EB', patternOpacity: 0.07,
     },
     dark: {
@@ -79,6 +89,7 @@ export const THEME_PALETTES: Record<ThemeLevel, Record<ThemeMode, ThemePalette>>
       action: '#7FA8FF', actionHover: '#A3C0FF', actionInk: '#0E1424', focus: '#7FA8FF',
       nav: '#2563EB', navInk: '#FFFFFF',
       ...DARK_STATUS,
+      sun: '#F8CB63', coral: '#F59591', sky: '#B4A1F8',
       patternInk: '#7FA8FF', patternOpacity: 0.07,
     },
   },
@@ -90,6 +101,7 @@ export const THEME_PALETTES: Record<ThemeLevel, Record<ThemeMode, ThemePalette>>
       action: '#166534', actionHover: '#14532D', actionInk: '#FFFFFF', focus: '#166534',
       nav: '#15803D', navInk: '#FFFFFF',
       ...LIGHT_STATUS,
+      sun: '#F4C542', coral: '#F28C5B', sky: '#38A3C8',
       patternInk: '#15803D', patternOpacity: 0.06,
     },
     dark: {
@@ -100,6 +112,7 @@ export const THEME_PALETTES: Record<ThemeLevel, Record<ThemeMode, ThemePalette>>
       danger: '#FFB0A5', dangerSurface: '#3F2226',
       success: '#9EDBAB', successSurface: '#1B3A26',
       warning: '#F2C66D', warningSurface: '#3A2F12',
+      sun: '#F7D46E', coral: '#F6A881', sky: '#6BBDDB',
       patternInk: '#6EE7A0', patternOpacity: 0.06,
     },
   },
@@ -111,6 +124,7 @@ export const THEME_PALETTES: Record<ThemeLevel, Record<ThemeMode, ThemePalette>>
       action: '#275B42', actionHover: '#1B4934', actionInk: '#FFFFFF', focus: '#275B42',
       nav: '#15803D', navInk: '#FFFFFF',
       ...LIGHT_STATUS,
+      sun: '#F2B544', coral: '#E8775A', sky: '#4A9CC4',
       patternInk: '#275B42', patternOpacity: 0.05,
     },
     dark: {
@@ -119,6 +133,7 @@ export const THEME_PALETTES: Record<ThemeLevel, Record<ThemeMode, ThemePalette>>
       action: '#8FD3AE', actionHover: '#AEE0C3', actionInk: '#151A17', focus: '#8FD3AE',
       nav: '#123821', navInk: '#E9EEEA',
       ...DARK_STATUS,
+      sun: '#F5C66E', coral: '#EF9A83', sky: '#7AB6D6',
       patternInk: '#8FD3AE', patternOpacity: 0.06,
     },
   },
