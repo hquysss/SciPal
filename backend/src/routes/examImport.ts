@@ -3,6 +3,7 @@ import type { FastifyPluginAsync, FastifyReply, FastifyRequest } from 'fastify';
 import { z } from 'zod';
 import { BlockSchema, imageProblems, simulationProblem } from '../schemas/blocks.js';
 import { makeSlug, planNewTopic, type ExistingTopic } from '../authoring/topicPlanning.js';
+import { storedQuestionData, validateQuestionInput } from '../schemas/questions.js';
 
 // The package the import page sends after Word/PDF lessons and an Excel workbook are parsed and
 // reviewed in the browser. Keep it aligned with frontend/features/content-import/
@@ -68,6 +69,9 @@ function blockEnglish(block: z.infer<typeof LessonBlockSchema>): string[] {
   return [];
 }
 
+/** Subject ids are resolved after parsing; the practice check only needs a well-formed one. */
+const PLACEHOLDER_SUBJECT = '00000000-0000-4000-8000-000000000000';
+
 export const ExamImportSchema = z
   .object({
     /** Admins only: publish now. Otherwise lessons are drafts and questions/exams wait for review. */
@@ -122,6 +126,17 @@ export const ExamImportSchema = z
       }
       if (q.type === 'mc' && !q.options.some((o) => o.id === q.answer)) {
         ctx.addIssue({ code: 'custom', path: ['questions', i, 'answer'], message: `Đáp án của câu ${q.key} không có trong các lựa chọn.` });
+      }
+      // A lesson's question is a practice question: it must pass the same check as one written in the Studio.
+      if (usedBy.has(key)) {
+        const checked = validateQuestionInput({
+          usage: 'practice',
+          subject_id: PLACEHOLDER_SUBJECT,
+          type: q.type,
+          difficulty: q.difficulty,
+          data: storedQuestionData(q.type, questionData(q)),
+        });
+        if (!checked.ok) ctx.addIssue({ code: 'custom', path: ['questions', i], message: `Câu ${q.key} (dùng trong bài "${usedBy.get(key)}"): ${checked.message.vi}` });
       }
     });
     const codes = new Set<string>();

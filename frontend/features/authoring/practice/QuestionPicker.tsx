@@ -3,7 +3,7 @@
 import { useEffect, useId, useState } from 'react';
 import { useLanguage } from '@scipal/hooks';
 import { LABEL, SMALL_BUTTON, TEXTAREA } from '../editor/editors/styles';
-import { listPracticeQuestions, type AuthorQuestion } from './api';
+import { listPracticeQuestions, type AuthorQuestion, type QuestionPage } from './api';
 import { QUESTION_TYPE_LABEL } from './questionDraft';
 
 type Bilingual = { en: string; vi: string };
@@ -16,32 +16,43 @@ interface QuestionPickerProps {
   onCancel: () => void;
 }
 
+/** The loaded results after one more page arrives, and whether the server has more. */
+export function withPage(loaded: AuthorQuestion[], page: QuestionPage): { rows: AuthorQuestion[]; more: boolean } {
+  const seen = new Set(loaded.map((row) => row.id));
+  const rows = [...loaded, ...page.questions.filter((row) => !seen.has(row.id))];
+  return { rows, more: page.page * page.page_size < page.total };
+}
+
 /** "Lấy từ bài khác": find a published practice question of this subject by its Vietnamese text. */
 export function QuestionPicker({ subjectId, excludeIds, onPick, onCancel }: QuestionPickerProps) {
   const { t } = useLanguage();
   const id = useId();
-  const [query, setQuery] = useState('');
+  // One search: its text and how many pages are loaded. New text starts again from page 1.
+  const [search, setSearch] = useState({ query: '', page: 1 });
+  const { query, page } = search;
   const [results, setResults] = useState<AuthorQuestion[] | null>(null);
   const [error, setError] = useState<Bilingual | null>(null);
   const [searching, setSearching] = useState(false);
+  const [more, setMore] = useState(false);
 
   useEffect(() => {
     let live = true;
     const timer = setTimeout(async () => {
       setSearching(true);
-      const res = await listPracticeQuestions({ subject_id: subjectId, q: query.trim() || undefined });
+      const res = await listPracticeQuestions({ subject_id: subjectId, q: query.trim() || undefined, page });
       if (!live) return;
       setSearching(false);
       if (res.ok) {
-        setResults(res.data.questions);
+        setResults((old) => withPage(page === 1 ? [] : old ?? [], res.data).rows);
+        setMore(withPage([], res.data).more);
         setError(null);
       } else setError(res.error);
-    }, 300);
+    }, page === 1 ? 300 : 0);
     return () => {
       live = false;
       clearTimeout(timer);
     };
-  }, [query, subjectId]);
+  }, [query, subjectId, page]);
 
   const shown = (results ?? []).filter((row) => !excludeIds.includes(row.id));
   const stem = (row: AuthorQuestion) => {
@@ -55,7 +66,7 @@ export function QuestionPicker({ subjectId, excludeIds, onPick, onCancel }: Ques
         <label htmlFor={id} className={LABEL}>
           {t({ en: 'Find a published question of this subject', vi: 'Tìm câu hỏi đã duyệt của môn này' })}
         </label>
-        <input id={id} type="search" value={query} onChange={(e) => setQuery(e.target.value)} maxLength={100} className={TEXTAREA} />
+        <input id={id} type="search" value={query} onChange={(e) => setSearch({ query: e.target.value, page: 1 })} maxLength={100} className={TEXTAREA} />
       </div>
       <div aria-live="polite" className="flex flex-col gap-2">
         {error && <p className="text-sm text-danger">{t(error)}</p>}
@@ -77,6 +88,11 @@ export function QuestionPicker({ subjectId, excludeIds, onPick, onCancel }: Ques
               </li>
             ))}
           </ul>
+        )}
+        {more && !searching && (
+          <button type="button" onClick={() => setSearch((old) => ({ ...old, page: old.page + 1 }))} className={`${SMALL_BUTTON} self-start`}>
+            {t({ en: 'Show more', vi: 'Xem thêm' })}
+          </button>
         )}
       </div>
       <button type="button" onClick={onCancel} className={`${SMALL_BUTTON} self-start`}>

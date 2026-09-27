@@ -182,10 +182,15 @@ export const questionRoutes: FastifyPluginAsync = async (app) => {
       const input = checked.value;
 
       let status = 'draft';
+      let owner = user.id;
       if (input.usage === 'practice') {
         if (!input.lesson_id) return reply.code(400).send(msg('Câu tự luyện cần thuộc một bài học.', 'A practice question needs a lesson.'));
         const found = await editableLesson(request, user, input);
         if ('status' in found) return reply.code(found.status).send(found.body);
+        // A practice question belongs to its lesson's author, even one an admin writes: the author
+        // then sees and edits it, and it moves through review with the lesson (the trigger matches
+        // the lesson's author).
+        owner = found.lesson.created_by ?? user.id;
         // An admin adding to a published lesson publishes the question with it, complete.
         if (found.lesson.status === 'published') {
           const missing = questionIncomplete(input);
@@ -207,7 +212,7 @@ export const questionRoutes: FastifyPluginAsync = async (app) => {
           difficulty: input.difficulty,
           data: input.data,
           status,
-          created_by: user.id,
+          created_by: owner,
         })
         .select(COLUMNS)
         .single();

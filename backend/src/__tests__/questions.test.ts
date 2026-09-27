@@ -119,6 +119,14 @@ describe('creating a question', () => {
     expect((await app.inject({ method: 'POST', url: '/api/authoring/questions', payload: half })).statusCode).toBe(400);
     await app.close();
   });
+
+  it('gives a question an admin adds to a teacher lesson to that teacher, so it moves through review with the lesson', async () => {
+    const insert = mockQuery({ data: row(), error: null });
+    const app = await build(admin, { lessons: mockQuery({ data: lesson, error: null }), questions: insert });
+    expect((await app.inject({ method: 'POST', url: '/api/authoring/questions', payload: input })).statusCode).toBe(201);
+    expect(insert.inserted[0]).toMatchObject({ status: 'draft', created_by: 'teacher-1' });
+    await app.close();
+  });
 });
 
 describe('listing questions', () => {
