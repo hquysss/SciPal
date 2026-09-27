@@ -90,7 +90,60 @@ const rightPage = (dy = 0) =>
 
 const RULE_ROWS = [144, 162, 180, 198, 216, 234];
 
-function Book() {
+/** What the right-hand page shows, matched to the level: shapes to count, a bar chart, a parabola. */
+const PAGE_FIGURE: Record<EducationLevel, ReactNode> = {
+  primary: (
+    <>
+      <g className={styles.pop} style={at(760)}>
+        <circle cx={292} cy={160} r={17} className={styles.coral} />
+      </g>
+      <g className={styles.pop} style={at(900)}>
+        <rect x={322} y={143} width={34} height={34} rx={6} className={styles.sun} />
+      </g>
+      <g className={styles.pop} style={at(1040)}>
+        <path d="M290 232 L310 196 L330 232 Z" className={`${styles.sky} ${styles.roundJoinSoft}`} />
+      </g>
+      <g className={styles.pop} style={at(1180)}>
+        <path d="M355 196 l6 12 13 2 -9.5 9 2.3 13 -11.8 -6.2 -11.8 6.2 2.3 -13 -9.5 -9 13 -2 Z" className={`${styles.action} ${styles.roundJoinSoft}`} />
+      </g>
+    </>
+  ),
+  lower_secondary: (
+    <>
+      <path d="M270 138 V230 H372" pathLength={1} className={`${styles.strokeAxis} ${styles.draw}`} style={at(760)} />
+      {([
+        [280, 60, styles.sky],
+        [302, 38, styles.coral],
+        [324, 74, styles.sun],
+        [346, 52, styles.action],
+      ] as const).map(([x, height, className], index) => (
+        <rect
+          key={x}
+          x={x}
+          y={229 - height}
+          width={16}
+          height={height}
+          rx={3}
+          className={`${className} ${styles.barGrow}`}
+          style={at(900 + index * 110)}
+        />
+      ))}
+    </>
+  ),
+  upper_secondary: (
+    <>
+      <path d="M270 138 V230 H372" pathLength={1} className={`${styles.strokeAxis} ${styles.draw}`} style={at(760)} />
+      <path d="M274 150 Q322 272 370 158" pathLength={1} className={`${styles.strokeCurve} ${styles.drawSlow}`} style={at(980)} />
+      <path d="M322 212 V230" className={`${styles.strokeGuide} ${styles.fade}`} style={at(1500)} />
+      <g className={styles.pop} style={at(1560)}>
+        <circle cx={322} cy={211} r={9} className={styles.sun} />
+        <circle cx={322} cy={211} r={5.5} className={styles.action} />
+      </g>
+    </>
+  ),
+};
+
+function Book({ level }: { level: EducationLevel }) {
   return (
     <g className={styles.bookRise}>
       <Contact cx={240} cy={290} rx={186} ry={16} />
@@ -122,13 +175,7 @@ function Book() {
         <path d={rightPage(3.5)} className={styles.pageEdgeLight} />
         <path d={rightPage()} className={styles.surface} />
         <path d={rightPage()} fill="url(#hero-gutter-right)" />
-        <path d="M270 138 V230 H372" pathLength={1} className={`${styles.strokeAxis} ${styles.draw}`} style={at(760)} />
-        <path d="M274 150 Q322 272 370 158" pathLength={1} className={`${styles.strokeCurve} ${styles.drawSlow}`} style={at(980)} />
-        <path d="M322 212 V230" className={`${styles.strokeGuide} ${styles.fade}`} style={at(1500)} />
-        <g className={styles.pop} style={at(1560)}>
-          <circle cx={322} cy={211} r={9} className={styles.sun} />
-          <circle cx={322} cy={211} r={5.5} className={styles.action} />
-        </g>
+        {PAGE_FIGURE[level]}
       </g>
 
       <path d="M240 124 V262" className={styles.strokeSpine} />
@@ -317,7 +364,7 @@ export function HeroIllustration({ level }: { level: EducationLevel }) {
         </linearGradient>
       </defs>
       <g className={styles.layerBook}>
-        <Book />
+        <Book level={level} />
       </g>
       <g className={styles.layerBack}>
         <Drop object={BACK_OBJECT[level]} delay={620} />

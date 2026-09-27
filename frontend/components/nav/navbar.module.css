@@ -199,11 +199,13 @@
   overflow: hidden;
   border-radius: 999px;
   padding-inline: 1.1rem;
-  background: var(--nav-ink);
-  color: var(--nav);
+  background: linear-gradient(135deg, var(--sun), color-mix(in srgb, var(--sun) 55%, var(--coral)));
+  color: var(--ink);
   font-size: 0.875rem;
-  font-weight: 700;
-  box-shadow: 0 10px 22px -12px color-mix(in srgb, var(--ink) 65%, transparent);
+  font-weight: 800;
+  box-shadow:
+    0 10px 24px -10px color-mix(in srgb, var(--sun) 85%, transparent),
+    inset 0 1px 0 color-mix(in srgb, var(--surface) 55%, transparent);
   transition: transform 180ms ease, box-shadow 180ms ease;
 }
 
@@ -212,7 +214,7 @@
   content: '';
   position: absolute;
   inset: 0;
-  background: linear-gradient(112deg, transparent 28%, color-mix(in srgb, var(--nav) 24%, transparent) 48%, transparent 66%);
+  background: linear-gradient(112deg, transparent 28%, color-mix(in srgb, var(--surface) 60%, transparent) 48%, transparent 66%);
   opacity: 0;
   pointer-events: none;
   transform: translateX(-125%);
@@ -227,7 +229,9 @@
 }
 
 .primaryPill:hover {
-  box-shadow: 0 16px 28px -12px color-mix(in srgb, var(--ink) 70%, transparent);
+  box-shadow:
+    0 16px 30px -10px color-mix(in srgb, var(--coral) 80%, transparent),
+    inset 0 1px 0 color-mix(in srgb, var(--surface) 55%, transparent);
   transform: translateY(-1px);
 }
 

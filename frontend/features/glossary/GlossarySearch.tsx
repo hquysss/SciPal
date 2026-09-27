@@ -6,6 +6,8 @@ import { EmptyState } from '../../components/ui/empty-state';
 import { SUBJECT_CONFIG } from '../../lib/subject-config';
 import type { TermItem } from './termQueries';
 
+const TERM_TONES = ['var(--sun)', 'var(--sky)', 'var(--coral)'];
+
 const FILTER_SUBJECTS = [
   { id: 'all', label: { en: 'All subjects', vi: 'Tất cả môn' } },
   ...Object.values(SUBJECT_CONFIG).map((s) => ({
@@ -90,8 +92,14 @@ export function GlossarySearch({ terms }: { terms: TermItem[] }) {
 
       {/* Terms Cards */}
       <div className="flex flex-col gap-4">
-        {filtered.map((term) => (
-          <article key={term.id} id={term.id} className="rounded-xl border border-line bg-surface p-6">
+        {filtered.map((term, index) => (
+          <article
+            key={term.id}
+            id={term.id}
+            // Cards cycle through the level's supporting colors for the top edge, chip and example.
+            style={{ '--tone': TERM_TONES[index % TERM_TONES.length] } as React.CSSProperties}
+            className="rounded-xl border border-line border-t-4 border-t-[var(--tone)] bg-surface p-6 shadow-[0_1px_0_var(--line)] transition duration-300 ease-out hover:-translate-y-1 hover:shadow-[0_18px_32px_-22px_color-mix(in_srgb,var(--tone)_90%,transparent)] motion-reduce:transition-none motion-reduce:hover:translate-y-0"
+          >
             <div className="mb-3 flex items-start justify-between gap-4">
               <div className="flex flex-wrap items-baseline gap-2">
                 <h2 className="text-xl font-bold text-ink">{lang === 'en' ? term.term_en : term.term_vi}</h2>
@@ -99,7 +107,7 @@ export function GlossarySearch({ terms }: { terms: TermItem[] }) {
               </div>
 
               {term.part_of_speech && (
-                <span className="shrink-0 rounded-md bg-surface-sunken px-2 py-0.5 text-sm text-ink-muted">
+                <span className="shrink-0 rounded-md bg-[color-mix(in_srgb,var(--tone)_35%,var(--surface))] px-2 py-0.5 text-sm font-medium text-ink">
                   {term.part_of_speech}
                 </span>
               )}
@@ -111,7 +119,7 @@ export function GlossarySearch({ terms }: { terms: TermItem[] }) {
 
             {/* Example sentence callout */}
             {(term.example_en || term.example_vi) && (
-              <div className="mt-4 rounded-lg bg-surface-sunken p-3 text-sm text-ink-muted">
+              <div className="mt-4 rounded-lg bg-[color-mix(in_srgb,var(--tone)_18%,var(--surface))] p-3 text-sm text-ink-muted">
                 <span className="font-semibold text-ink">{t({ en: 'Example: ', vi: 'Ví dụ: ' })}</span>
                 <span>{lang === 'en' ? term.example_en : term.example_vi}</span>
               </div>
