@@ -11,3 +11,7 @@ coverage/
 backend/PassSupabase.txt
 *.pem
 *.key
+
+# Locally installed agent skills (only react-doctor is shared in the repo)
+.agents/skills/*
+!.agents/skills/react-doctor/
