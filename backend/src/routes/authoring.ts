@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import type { FastifyPluginAsync, FastifyReply, FastifyRequest } from 'fastify';
 import { BlockSchema, imageProblems, simulationProblem } from '../schemas/blocks.js';
+import { validateQuizReferences } from '../authoring/quizReferences.js';
 import { makeSlug, planNewTopic, toSubjectOptions, type ExistingTopic, type SubjectCatalogRow } from '../authoring/topicPlanning.js';
 
 interface AuthoringUser {
@@ -470,7 +471,7 @@ export const authoringRoutes: FastifyPluginAsync = async (app) => {
 
       const { data: current, error: readError } = await supabase
         .from('lessons')
-        .select('id, created_by, status, updated_at')
+        .select('id, subject_id, created_by, status, updated_at')
         .eq('id', id)
         .maybeSingle();
 
@@ -492,6 +493,8 @@ export const authoringRoutes: FastifyPluginAsync = async (app) => {
       if (current.updated_at !== expectedUpdatedAt) {
         return reply.code(409).send({ error: 'Bài học đã thay đổi. Tải lại trước khi gửi duyệt.' });
       }
+      const quizProblem = await validateQuizReferences(supabase, parsedBlocks.data, current, 'review');
+      if (quizProblem) return reply.code(quizProblem.status).send(quizProblem.body);
 
       const { data: lesson, error: submitError } = await supabase
         .from('lessons')
@@ -547,7 +550,7 @@ export const authoringRoutes: FastifyPluginAsync = async (app) => {
 
       const { data: current, error: readError } = await supabase
         .from('lessons')
-        .select('id, status, updated_at')
+        .select('id, subject_id, status, updated_at, blocks')
         .eq('id', id)
         .maybeSingle();
       if (readError) {
@@ -563,6 +566,11 @@ export const authoringRoutes: FastifyPluginAsync = async (app) => {
       }
 
       const approved = body.decision === 'approve';
+      // Approving publishes the lesson's attached draft questions: they must still be usable.
+      if (approved) {
+        const quizProblem = await validateQuizReferences(supabase, current.blocks, current, 'review');
+        if (quizProblem) return reply.code(quizProblem.status).send(quizProblem.body);
+      }
       const now = new Date().toISOString();
       const { data: lesson, error: updateError } = await supabase
         .from('lessons')
@@ -610,7 +618,7 @@ export const authoringRoutes: FastifyPluginAsync = async (app) => {
       }
       const { data: current, error: readError } = await supabase
         .from('lessons')
-        .select('id, created_by, status, updated_at')
+        .select('id, subject_id, created_by, status, updated_at, blocks')
         .eq('id', id)
         .maybeSingle();
 
@@ -680,6 +688,14 @@ export const authoringRoutes: FastifyPluginAsync = async (app) => {
       }
       if (Object.keys(updateData).length === 1) {
         return reply.code(400).send({ error: 'Không có thay đổi để lưu.' });
+      }
+      // Practice questions: a published lesson (staying or becoming published) needs complete
+      // ones, and one that stays published only published ones.
+      const nextStatus = (updateData.status as string | undefined) ?? current.status;
+      if (updateData.blocks !== undefined || (nextStatus === 'published' && current.status !== 'published')) {
+        const mode = nextStatus !== 'published' ? 'draft' : current.status === 'published' ? 'live' : 'review';
+        const quizProblem = await validateQuizReferences(supabase, updateData.blocks ?? current.blocks, current, mode);
+        if (quizProblem) return reply.code(quizProblem.status).send(quizProblem.body);
       }
       const { data: lesson, error } = await supabase
         .from('lessons')
