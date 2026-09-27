@@ -14,7 +14,12 @@ export interface Autosaver {
   /** Save pending work now (before submitting). */
   flush(): Promise<void>;
   setEnabled(on: boolean): void;
-  /** A manual save succeeded. */
+  /**
+   * A manual save (the Lưu button, submitting): waits for any autosave in flight, cancels the
+   * pending one, then runs `save` so two requests never race on the same lesson version.
+   */
+  saveNow(save: () => Promise<SaveOutcome>): Promise<SaveOutcome>;
+  /** A manual save succeeded outside `saveNow`. */
   markSaved(): void;
   hasUnsavedWork(): boolean;
   dispose(): void;
@@ -44,26 +49,32 @@ export function createAutosaver(opts: {
     timer = setTimeout(() => void run(), opts.delayMs);
   };
 
-  async function run(): Promise<void> {
-    timer = null;
-    if (inFlight || !dirty || stopped || !enabled) return;
+  /** Run one save (automatic or manual) with nothing else in flight; report its outcome. */
+  async function execute(save: () => Promise<SaveOutcome>): Promise<SaveOutcome> {
     dirty = false;
     opts.onState('saving');
-    inFlight = opts.save().catch((): SaveOutcome => 'failed');
+    inFlight = save().catch((): SaveOutcome => 'failed');
     const outcome = await inFlight;
     inFlight = null;
     if (outcome === 'saved') {
-      if (dirty) {
+      if (dirty && !stopped && enabled) {
         opts.onState('pending');
         arm();
       } else {
         opts.onState('saved');
       }
-      return;
+      return outcome;
     }
     dirty = true;
     if (outcome === 'conflict') stopped = true;
     opts.onState(outcome);
+    return outcome;
+  }
+
+  async function run(): Promise<void> {
+    timer = null;
+    if (inFlight || !dirty || stopped || !enabled) return;
+    await execute(opts.save);
   }
 
   return {
@@ -89,11 +100,16 @@ export function createAutosaver(opts: {
       opts.onState(on ? (dirty ? 'pending' : 'idle') : 'off');
       if (on && dirty) arm();
     },
+    async saveNow(save) {
+      clearTimer();
+      while (inFlight) await inFlight;
+      return execute(save);
+    },
     markSaved() {
       dirty = false;
       opts.onState('saved');
     },
-    hasUnsavedWork: () => dirty,
+    hasUnsavedWork: () => dirty || inFlight !== null,
     dispose: clearTimer,
   };
 }

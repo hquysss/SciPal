@@ -10,9 +10,9 @@ import { Badge } from '@/components/ui/badge';
 import { buttonVariants } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { LessonPartsView } from '@/features/lessons/LessonPartsView';
-import { joinLessonParts, splitLessonParts, type LessonPart } from '@/features/lessons/lessonParts';
+import { joinLessonParts, splitLessonParts, updatePart, type BlocksUpdate, type LessonPart } from '@/features/lessons/lessonParts';
 import type { LessonStatus } from './authoringQueries';
-import { lessonStatusLabel, lessonStatusTone } from './lessonStatus';
+import { lessonStatusLabel, lessonStatusTone, publishBoxAfterSave } from './lessonStatus';
 import { parseLessonImport, type LessonImportResult } from './lessonImport';
 import { documentKind, importLessonDocument } from '../content-import/lessonDocument';
 import { canAutosave, createAutosaver, type Autosaver, type AutosaveState, type SaveOutcome } from './editor/autosave';
@@ -20,6 +20,7 @@ import { BlockList } from './editor/BlockList';
 import { IssueList } from './editor/IssueList';
 import { lessonIssues, type LessonIssue } from './editor/lessonIssues';
 import { PartTabs } from './editor/PartTabs';
+import { leavingHref } from './editor/leaveGuard';
 import { uploadLessonImage } from './editor/mediaApi';
 
 const LESSON_TEMPLATE_URL = '/templates/scipal-lesson-template.docx';
@@ -91,11 +92,19 @@ export function LessonEditor({
   const counts = { lesson: parts.lesson.length, simulation: parts.simulation.length, practice: parts.practice.length };
   const busy = saving || submittingForReview || reviewing;
 
+  // The latest values, so the autosaver (created once) always saves what is on screen, and every
+  // request sends the lesson version the previous save returned.
+  const latest = useRef({ titleVi, titleEn, blocks, updatedAt, status });
+  latest.current = { ...latest.current, titleVi, titleEn, blocks };
+
   const applyLesson = (lesson: LessonRow) => {
+    const previous = latest.current.status;
+    latest.current.status = lesson.status;
+    setPublishChecked((checked) => publishBoxAfterSave(previous, lesson.status, checked));
     setStatus(lesson.status);
     setReviewNote(lesson.review_note);
-    setPublishChecked(lesson.status === 'published');
     setUpdatedAt(lesson.updated_at);
+    latest.current.updatedAt = lesson.updated_at;
   };
 
   /** Call the authoring API with the signed-in teacher's token. */
@@ -114,9 +123,6 @@ export function LessonEditor({
   };
 
   // ── Saving ────────────────────────────────────────────────────────────────────────────────
-  // The latest values, so the autosaver (created once) always saves what is on screen.
-  const latest = useRef({ titleVi, titleEn, blocks, updatedAt });
-  latest.current = { titleVi, titleEn, blocks, updatedAt };
 
   const saveDraft = useCallback(async (): Promise<SaveOutcome> => {
     const { titleVi: vi, titleEn: en, blocks: content, updatedAt: version } = latest.current;
@@ -128,7 +134,6 @@ export function LessonEditor({
       const res = await callApi(`/api/authoring/lessons/${lessonId}`, 'PATCH', body);
       if (res.ok && res.data.lesson) {
         applyLesson(res.data.lesson);
-        latest.current.updatedAt = res.data.lesson.updated_at;
         setLastSavedAt(new Date());
         return 'saved';
       }
@@ -152,51 +157,87 @@ export function LessonEditor({
     saverRef.current?.setEnabled(canAutosave(status) && canEditContent);
   }, [status, canEditContent]);
 
+  // Warn before leaving with unsaved or in-flight work: tab close and reload (beforeunload), and
+  // in-app links, which navigate without beforeunload.
+  const leaveQuestion = t({ en: 'Leave the editor? Some changes are not saved yet.', vi: 'Rời trang soạn? Vẫn còn thay đổi chưa được lưu.' });
   useEffect(() => {
     const warn = (event: BeforeUnloadEvent) => {
-      if (saverRef.current?.hasUnsavedWork()) event.preventDefault();
+      if (!saverRef.current?.hasUnsavedWork()) return;
+      event.preventDefault();
+      event.returnValue = '';
+    };
+    const guardLinks = (event: MouseEvent) => {
+      if (!saverRef.current?.hasUnsavedWork()) return;
+      const anchor = event.target instanceof Element ? event.target.closest('a[href]') : null;
+      const href = leavingHref(
+        {
+          button: event.button,
+          ctrlKey: event.ctrlKey,
+          metaKey: event.metaKey,
+          shiftKey: event.shiftKey,
+          altKey: event.altKey,
+          defaultPrevented: event.defaultPrevented,
+          anchor: anchor instanceof HTMLAnchorElement ? { href: anchor.href, target: anchor.target, download: anchor.hasAttribute('download') } : null,
+        },
+        new URL(window.location.href),
+      );
+      if (href && !window.confirm(leaveQuestion)) {
+        event.preventDefault();
+        event.stopPropagation();
+      }
     };
     window.addEventListener('beforeunload', warn);
-    return () => window.removeEventListener('beforeunload', warn);
-  }, []);
+    document.addEventListener('click', guardLinks, true);
+    return () => {
+      window.removeEventListener('beforeunload', warn);
+      document.removeEventListener('click', guardLinks, true);
+    };
+  }, [leaveQuestion]);
 
   const changed = () => {
     setSubmitIssues([]);
     saverRef.current?.schedule();
   };
-  const setPart = (part: LessonPart, next: Block[]) => {
-    setParts((p) => ({ ...p, [part]: next }));
+  const setPart = (part: LessonPart, update: BlocksUpdate) => {
+    setParts((p) => updatePart(p, part, update));
     changed();
   };
 
   /** The "Lưu" button: the only way to save a published lesson, and how admins publish. */
   const handleSave = async () => {
+    const saver = saverRef.current;
+    if (!saver) return;
     setSaving(true);
     setMessage(null);
-    try {
-      const res = await callApi(`/api/authoring/lessons/${lessonId}`, 'PATCH', {
-        title_vi: titleVi,
-        title_en: titleEn,
-        blocks,
-        expected_updated_at: updatedAt,
-        ...(canReview ? { status: publishChecked ? 'published' : 'draft' } : {}),
-      });
-      if (res.ok && res.data.lesson) {
-        applyLesson(res.data.lesson);
-        saverRef.current?.markSaved();
-        setLastSavedAt(new Date());
-        setMessage({
-          text: res.data.lesson.status === 'published' ? { en: 'Saved and visible to students.', vi: 'Đã lưu. Học sinh đã thấy bài.' } : { en: 'Draft saved.', vi: 'Đã lưu bản nháp.' },
-          type: 'success',
+    await saver.saveNow(async () => {
+      try {
+        const res = await callApi(`/api/authoring/lessons/${lessonId}`, 'PATCH', {
+          title_vi: titleVi,
+          title_en: titleEn,
+          blocks: latest.current.blocks,
+          expected_updated_at: latest.current.updatedAt,
+          ...(canReview ? { status: publishChecked ? 'published' : 'draft' } : {}),
         });
-      } else {
+        if (res.ok && res.data.lesson) {
+          applyLesson(res.data.lesson);
+          setLastSavedAt(new Date());
+          setMessage({
+            text:
+              res.data.lesson.status === 'published'
+                ? { en: 'Saved and visible to students.', vi: 'Đã lưu. Học sinh đã thấy bài.' }
+                : { en: 'Draft saved.', vi: 'Đã lưu bản nháp.' },
+            type: 'success',
+          });
+          return 'saved';
+        }
         setMessage({ text: res.data.error ?? { en: 'Save failed.', vi: 'Lưu thất bại.' }, type: 'error' });
+        return res.status === 409 ? 'conflict' : 'failed';
+      } catch {
+        setMessage({ text: { en: 'Could not reach the server. Changes are not saved.', vi: 'Không kết nối được máy chủ. Thay đổi chưa được lưu.' }, type: 'error' });
+        return 'failed';
       }
-    } catch {
-      setMessage({ text: { en: 'Could not reach the server. Changes are not saved.', vi: 'Không kết nối được máy chủ. Thay đổi chưa được lưu.' }, type: 'error' });
-    } finally {
-      setSaving(false);
-    }
+    });
+    setSaving(false);
   };
 
   const handleSubmitForReview = async () => {
@@ -209,28 +250,32 @@ export function LessonEditor({
       if (titleIssue) setMessage({ text: { en: 'Enter both titles first.', vi: 'Hãy nhập tiêu đề tiếng Việt và tiếng Anh.' }, type: 'error' });
       return;
     }
+    const saver = saverRef.current;
+    if (!saver) return;
     setSubmittingForReview(true);
     setMessage(null);
-    try {
-      await saverRef.current?.flush();
-      const res = await callApi(`/api/authoring/lessons/${lessonId}/submit`, 'POST', {
-        title_vi: titleVi,
-        title_en: titleEn,
-        blocks,
-        expected_updated_at: latest.current.updatedAt,
-      });
-      if (!res.ok || !res.data.lesson) {
-        setMessage({ text: res.data.error ?? { en: 'Could not send for review.', vi: 'Không gửi được bài vào hàng chờ duyệt.' }, type: 'error' });
-        return;
+    // Pending edits go with the submission itself, so the autosave has nothing left to send.
+    await saver.saveNow(async () => {
+      try {
+        const res = await callApi(`/api/authoring/lessons/${lessonId}/submit`, 'POST', {
+          title_vi: titleVi,
+          title_en: titleEn,
+          blocks: latest.current.blocks,
+          expected_updated_at: latest.current.updatedAt,
+        });
+        if (!res.ok || !res.data.lesson) {
+          setMessage({ text: res.data.error ?? { en: 'Could not send for review.', vi: 'Không gửi được bài vào hàng chờ duyệt.' }, type: 'error' });
+          return res.status === 409 ? 'conflict' : 'failed';
+        }
+        applyLesson(res.data.lesson);
+        setMessage({ text: { en: 'Sent to the admin for review.', vi: 'Đã gửi bài vào hàng chờ admin duyệt.' }, type: 'success' });
+        return 'saved';
+      } catch {
+        setMessage({ text: { en: 'Could not reach the server.', vi: 'Không kết nối được máy chủ. Bài chưa được gửi duyệt.' }, type: 'error' });
+        return 'failed';
       }
-      applyLesson(res.data.lesson);
-      saverRef.current?.markSaved();
-      setMessage({ text: { en: 'Sent to the admin for review.', vi: 'Đã gửi bài vào hàng chờ admin duyệt.' }, type: 'success' });
-    } catch {
-      setMessage({ text: { en: 'Could not reach the server.', vi: 'Không kết nối được máy chủ. Bài chưa được gửi duyệt.' }, type: 'error' });
-    } finally {
-      setSubmittingForReview(false);
-    }
+    });
+    setSubmittingForReview(false);
   };
 
   const handleReview = async (decision: 'approve' | 'reject') => {
@@ -354,7 +399,7 @@ export function LessonEditor({
               </label>
             )}
             {canEditContent && (
-              <button type="button" onClick={handleSave} disabled={busy} className={buttonVariants({ variant: canReview ? 'default' : 'outline' })}>
+              <button type="button" onClick={handleSave} disabled={busy || saveState === 'saving'} className={buttonVariants({ variant: canReview ? 'default' : 'outline' })}>
                 {saving ? t({ en: 'Saving…', vi: 'Đang lưu…' }) : t({ en: 'Save', vi: 'Lưu' })}
               </button>
             )}

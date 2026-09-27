@@ -20,8 +20,14 @@ describe('BlockList', () => {
     expect(html).toContain('aria-label="Xuống dưới"');
     expect(html).toContain('aria-label="Nhân đôi"');
     expect(html).toContain('aria-label="Xóa khối"');
-    expect(html).toContain('draggable="true"');
     expect(html).toContain('Lý thuyết');
+  });
+
+  it('drags blocks only by their handle, so selecting text in an editor never moves a block', () => {
+    const html = renderToStaticMarkup(<BlockList part="lesson" blocks={blocks} onChange={() => {}} subjectId="s" readOnly={false} focusIndex={0} />);
+    expect(html.match(/draggable="true"/g)).toHaveLength(2);
+    expect(html).toMatch(/<span[^>]*draggable="true"[^>]*title="Kéo để sắp xếp"/);
+    expect(html).not.toMatch(/<li[^>]*draggable="true"/);
     expect(countRawColors(html).total).toBe(0);
   });
 

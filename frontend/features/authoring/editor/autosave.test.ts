@@ -86,4 +86,45 @@ describe('autosave', () => {
     expect(save).toHaveBeenCalledTimes(1);
     expect(saver.hasUnsavedWork()).toBe(false);
   });
+
+  it('counts a save in flight as unsaved work', async () => {
+    let finish: (o: SaveOutcome) => void = () => {};
+    const saver = createAutosaver({ delayMs: 2000, save: () => new Promise<SaveOutcome>((r) => { finish = r; }), onState: () => {} });
+    saver.schedule();
+    await vi.advanceTimersByTimeAsync(2000);
+    expect(saver.hasUnsavedWork()).toBe(true);
+    finish('saved');
+    await vi.advanceTimersByTimeAsync(0);
+    expect(saver.hasUnsavedWork()).toBe(false);
+  });
+
+  it('runs a manual save after the autosave in flight, never alongside it', async () => {
+    const order: string[] = [];
+    let finish: (o: SaveOutcome) => void = () => {};
+    const save = vi.fn(() => {
+      order.push('auto');
+      return new Promise<SaveOutcome>((r) => { finish = r; });
+    });
+    const saver = createAutosaver({ delayMs: 2000, save, onState: () => {} });
+    saver.schedule();
+    await vi.advanceTimersByTimeAsync(2000);
+    const manual = saver.saveNow(async () => {
+      order.push('manual');
+      return 'saved';
+    });
+    await vi.advanceTimersByTimeAsync(0);
+    expect(order).toEqual(['auto']);
+    finish('saved');
+    expect(await manual).toBe('saved');
+    expect(order).toEqual(['auto', 'manual']);
+    expect(saver.hasUnsavedWork()).toBe(false);
+  });
+
+  it('cancels a pending autosave when saving by hand', async () => {
+    const { saver, save } = setup([]);
+    saver.schedule();
+    await saver.saveNow(async () => 'saved');
+    await vi.advanceTimersByTimeAsync(5000);
+    expect(save).not.toHaveBeenCalled();
+  });
 });

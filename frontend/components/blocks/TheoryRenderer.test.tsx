@@ -60,4 +60,17 @@ describe('TheoryRenderer', () => {
     expect(html).toContain('rel="noopener noreferrer"');
     expect(html).toContain('target="_blank"');
   });
+
+  it('renders inline and display formulas written with $ signs', () => {
+    const vi = 'Diện tích $S = a^2$.\n\n$$\n\\frac{1}{2}\n$$';
+    const out = renderToStaticMarkup(<TheoryRenderer block={{ type: 'theory', content: { vi, en: '' } }} lang="vi" />);
+    expect(out).toContain('class="katex"');
+    expect(out).toContain('katex-display');
+    expect(out).not.toContain('$S = a^2$');
+  });
+
+  it('shows a broken formula instead of failing', () => {
+    const out = renderToStaticMarkup(<TheoryRenderer block={{ type: 'theory', content: { vi: 'Sai: $\\frac{1}{$ nhé', en: '' } }} lang="vi" />);
+    expect(out).toContain('nhé');
+  });
 });

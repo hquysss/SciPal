@@ -4,7 +4,7 @@ import { Fragment, useEffect, useRef, useState } from 'react';
 import { ArrowDown, ArrowUp, Copy, GripVertical, Plus, Trash2 } from 'lucide-react';
 import { useLanguage } from '@scipal/hooks';
 import type { Block } from '@scipal/types';
-import type { LessonPart } from '@/features/lessons/lessonParts';
+import type { BlocksUpdate, LessonPart } from '@/features/lessons/lessonParts';
 import { BlockEditor } from './BlockEditor';
 import { duplicateAt, emptyBlock, insertAt, moveBlock, removeAt, type LessonBlockType } from './blockOps';
 import { ImageDropZone } from './editors/ImageEditor';
@@ -62,7 +62,8 @@ interface BlockListProps {
   part: LessonPart;
   /** The blocks of this part only. */
   blocks: Block[];
-  onChange: (blocks: Block[]) => void;
+  /** Receives a function of the current blocks, never a copy taken earlier. */
+  onChange: (update: BlocksUpdate) => void;
   subjectId: string;
   readOnly: boolean;
   /** Open and scroll to this block (from the issue list). */
@@ -95,7 +96,7 @@ export function BlockList({ part, blocks, onChange, subjectId, readOnly, focusIn
   }, [undo]);
 
   const insert = (index: number, block: Block) => {
-    onChange(insertAt(blocks, index, block));
+    onChange((list) => insertAt(list, Math.min(index, list.length), block));
     setExpanded(index);
     setMenuAt(null);
     setPending(null);
@@ -111,15 +112,15 @@ export function BlockList({ part, blocks, onChange, subjectId, readOnly, focusIn
   };
 
   const move = (from: number, to: number) => {
-    const next = moveBlock(blocks, from, to);
-    if (next === blocks) return;
-    onChange(next);
+    if (from === to || to < 0 || to >= blocks.length) return;
+    onChange((list) => moveBlock(list, from, to));
     if (expanded === from) setExpanded(to);
   };
 
   const remove = (index: number) => {
-    const { list, removed } = removeAt(blocks, index);
-    onChange(list);
+    const removed = blocks[index];
+    if (!removed) return;
+    onChange((list) => removeAt(list, index).list);
     setUndo({ block: removed, index });
     setExpanded(null);
   };
@@ -184,21 +185,37 @@ export function BlockList({ part, blocks, onChange, subjectId, readOnly, focusIn
               ref={(el) => {
                 cards.current[i] = el;
               }}
-              draggable={!readOnly}
-              onDragStart={() => setDragFrom(i)}
               onDragOver={(e) => {
                 if (dragFrom !== null) e.preventDefault();
               }}
               onDrop={(e) => {
+                // Only block drags started at a handle; text dropped into an editor is left alone.
+                if (dragFrom === null) return;
                 e.preventDefault();
-                if (dragFrom !== null) move(dragFrom, i);
+                move(dragFrom, i);
                 setDragFrom(null);
               }}
-              onDragEnd={() => setDragFrom(null)}
               className={`rounded-lg border bg-surface transition-colors ${open ? 'border-action' : 'border-line'} ${dragFrom === i ? 'opacity-50' : ''}`}
             >
               <div className="flex items-center gap-2 p-2.5">
-                {!readOnly && <GripVertical aria-hidden="true" className="h-4 w-4 shrink-0 cursor-grab text-ink-muted" />}
+                {!readOnly && (
+                  <span
+                    draggable
+                    aria-hidden="true"
+                    title={t({ en: 'Drag to reorder', vi: 'Kéo để sắp xếp' })}
+                    onDragStart={(e) => {
+                      setDragFrom(i);
+                      e.dataTransfer.effectAllowed = 'move';
+                      e.dataTransfer.setData('text/plain', String(i + 1));
+                      const card = cards.current[i];
+                      if (card) e.dataTransfer.setDragImage(card, 16, 16);
+                    }}
+                    onDragEnd={() => setDragFrom(null)}
+                    className="inline-flex h-9 w-6 shrink-0 cursor-grab items-center justify-center text-ink-muted active:cursor-grabbing"
+                  >
+                    <GripVertical aria-hidden="true" className="h-4 w-4" />
+                  </span>
+                )}
                 <button
                   type="button"
                   onClick={() => setExpanded(open ? null : i)}
@@ -217,7 +234,7 @@ export function BlockList({ part, blocks, onChange, subjectId, readOnly, focusIn
                     <IconButton
                       label={t({ en: 'Duplicate', vi: 'Nhân đôi' })}
                       onClick={() => {
-                        onChange(duplicateAt(blocks, i));
+                        onChange((list) => duplicateAt(list, i));
                         setExpanded(i + 1);
                       }}
                       Icon={Copy}
@@ -230,11 +247,11 @@ export function BlockList({ part, blocks, onChange, subjectId, readOnly, focusIn
                 <div className="border-t border-line p-3">
                   <BlockEditor
                     block={block}
-                    onChange={(next) => onChange(blocks.map((b, j) => (j === i ? next : b)))}
+                    onChange={(next) => onChange((list) => list.map((b, j) => (j === i ? next : b)))}
                     subjectId={subjectId}
                     lang={editLang}
                     onLangChange={setEditLang}
-                    onInsertImage={(image) => onChange(insertAt(blocks, i + 1, image))}
+                    onInsertImage={(image) => onChange((list) => insertAt(list, Math.min(i + 1, list.length), image))}
                   />
                 </div>
               )}
@@ -250,7 +267,7 @@ export function BlockList({ part, blocks, onChange, subjectId, readOnly, focusIn
           <button
             type="button"
             onClick={() => {
-              onChange(insertAt(blocks, Math.min(undo.index, blocks.length), undo.block));
+              onChange((list) => insertAt(list, Math.min(undo.index, list.length), undo.block));
               setUndo(null);
             }}
             className="font-semibold text-action underline-offset-4 hover:underline"

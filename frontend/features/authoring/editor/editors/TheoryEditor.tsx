@@ -82,8 +82,8 @@ export function TheoryEditor({ block, onChange, lang, onLangChange, onInsertImag
       <p className="text-xs text-ink-muted" aria-live="polite">
         {status ??
           t({
-            en: 'Markdown: **bold**, - list, $x^2$ for formulas. Paste an image to add it.',
-            vi: 'Markdown: **đậm**, - danh sách, $x^2$ cho công thức. Dán ảnh để chèn ảnh.',
+            en: 'Markdown: **bold**, - list, $x^2$ for a formula in a sentence, $$ on its own lines for a large one. Paste an image to add it.',
+            vi: 'Markdown: **đậm**, - danh sách, $x^2$ cho công thức trong câu, $$ trên dòng riêng cho công thức lớn. Dán ảnh để chèn ảnh.',
           })}
       </p>
     </div>

@@ -24,3 +24,17 @@ describe('splitLessonParts', () => {
     expect(parts.practice).toHaveLength(1);
   });
 });
+
+describe('updatePart', () => {
+  it('applies a late change (an upload finishing) on top of edits made meanwhile', async () => {
+    const { updatePart } = await import('./lessonParts');
+    const image: Block = { type: 'image', url: 'https://u/1.png', alt: { vi: '', en: '' } };
+    const start = splitLessonParts([theory('a')]);
+    // The upload started from block 0; the teacher then typed into it.
+    const insertAfterFirst = (list: Block[]) => [...list.slice(0, 1), image, ...list.slice(1)];
+    const edited = updatePart(start, 'lesson', (list) => list.map(() => theory('a và thêm chữ')));
+    const done = updatePart(edited, 'lesson', insertAfterFirst);
+    expect(done.lesson).toEqual([theory('a và thêm chữ'), image]);
+    expect(done.simulation).toBe(start.simulation);
+  });
+});

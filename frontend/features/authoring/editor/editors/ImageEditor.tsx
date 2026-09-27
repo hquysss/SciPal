@@ -91,7 +91,10 @@ export function ImageEditor({ block, onChange, lang, onLangChange }: ImageEditor
   const { t } = useLanguage();
   const id = useId();
   const fileRef = useRef<HTMLInputElement>(null);
-  const { busy, error, upload } = useImageUpload((url) => onChange({ ...block, url }));
+  // The upload finishes later; apply the new URL to the block as it is then, not as it was.
+  const current = useRef(block);
+  current.current = block;
+  const { busy, error, upload } = useImageUpload((url) => onChange({ ...current.current, url }));
   const caption = block.caption ?? { vi: '', en: '' };
   const missingEnglish = Boolean((block.alt.vi.trim() && !block.alt.en.trim()) || (caption.vi.trim() && !caption.en.trim()));
 

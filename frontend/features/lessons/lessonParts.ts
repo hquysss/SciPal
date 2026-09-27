@@ -25,3 +25,13 @@ export function splitLessonParts(blocks: Block[]): Record<LessonPart, Block[]> {
 export function joinLessonParts(parts: Record<LessonPart, Block[]>): Block[] {
   return LESSON_PARTS.flatMap((part) => parts[part]);
 }
+
+export type BlocksUpdate = (blocks: Block[]) => Block[];
+
+/**
+ * Change one part. Edits are functions of the current blocks, so a change that lands late (an
+ * image upload finishing) applies on top of whatever the teacher typed meanwhile.
+ */
+export function updatePart(parts: Record<LessonPart, Block[]>, part: LessonPart, update: BlocksUpdate): Record<LessonPart, Block[]> {
+  return { ...parts, [part]: update(parts[part]) };
+}
