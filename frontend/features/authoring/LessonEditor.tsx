@@ -498,7 +498,7 @@ export function LessonEditor({
         ))}
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-2">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
         <div className={`flex flex-col gap-4 ${mobileView === 'edit' ? '' : 'hidden lg:flex'}`}>
           {canEditContent && activePart === 'lesson' && (
             <div className="flex flex-wrap items-center justify-end gap-2">

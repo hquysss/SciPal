@@ -26,7 +26,7 @@ export function PartTabs({ active, counts, issues, onSelect }: PartTabsProps) {
   };
 
   return (
-    <div role="tablist" aria-label={t({ en: 'Lesson parts', vi: 'Các phần của bài' })} onKeyDown={onKeyDown} className="flex gap-1 overflow-x-auto border-b border-line">
+    <div role="tablist" aria-label={t({ en: 'Lesson parts', vi: 'Các phần của bài' })} onKeyDown={onKeyDown} className="grid grid-cols-3 border-b border-line">
       {LESSON_PARTS.map((part, i) => {
         const partIssues = issues.filter((issue) => issue.part === part);
         const blocking = partIssues.some((issue) => issue.blocking);
@@ -44,7 +44,7 @@ export function PartTabs({ active, counts, issues, onSelect }: PartTabsProps) {
             aria-controls={`editor-panel-${part}`}
             tabIndex={selected ? 0 : -1}
             onClick={() => onSelect(part)}
-            className={`-mb-px inline-flex min-h-11 shrink-0 items-center gap-2 border-b-2 px-4 text-sm font-semibold transition-colors ${
+            className={`-mb-px inline-flex min-h-11 min-w-0 items-center justify-center gap-1.5 border-b-2 px-1 text-sm font-semibold transition-colors sm:gap-2 sm:px-4 ${
               selected ? 'border-action text-ink' : 'border-transparent text-ink-muted hover:text-ink'
             }`}
           >
