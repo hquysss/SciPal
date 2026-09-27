@@ -9,7 +9,10 @@ import { BlockRenderer } from '@/components/blocks/BlockRenderer';
 import { useLanguage } from '@scipal/hooks';
 import type { LessonStatus } from './authoringQueries';
 import { lessonStatusLabel, lessonStatusTone, TONE_CLASS } from './lessonStatus';
-import { parseLessonImport } from './lessonImport';
+import { parseLessonImport, type LessonImportResult } from './lessonImport';
+import { documentKind, importLessonDocument } from '../content-import/lessonDocument';
+
+const LESSON_TEMPLATE_URL = '/templates/scipal-lesson-template.docx';
 
 interface LessonEditorProps {
   lessonId: string;
@@ -45,6 +48,7 @@ export function LessonEditor({
   const [saving, setSaving] = useState(false);
   const [submittingForReview, setSubmittingForReview] = useState(false);
   const [reviewing, setReviewing] = useState(false);
+  const [importing, setImporting] = useState(false);
   const [message, setMessage] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
   const canEditContent = canReview
     ? status === 'draft' || status === 'published'
@@ -69,22 +73,45 @@ export function LessonEditor({
     input.value = '';
     if (!file) return;
 
-    const result = parseLessonImport(await file.text(), file.size);
+    // Word and PDF are read in the browser; JSON keeps its own validated format.
+    setImporting(true);
+    setMessage(null);
+    let result: LessonImportResult;
+    try {
+      result = documentKind(file.name)
+        ? await importLessonDocument(file)
+        : parseLessonImport(await file.text(), file.size);
+    } catch {
+      result = { ok: false, error: { en: 'Could not read the file.', vi: 'Không đọc được tệp.' } };
+    } finally {
+      setImporting(false);
+    }
     if (!result.ok) {
       setMessage({ text: t(result.error), type: 'error' });
       return;
     }
 
-    const confirmed = window.confirm(t({
-      en: `Replace all ${blocks.length} current blocks with ${result.blocks.length} imported blocks?`,
-      vi: `Thay toàn bộ ${blocks.length} khối hiện có bằng ${result.blocks.length} khối từ tệp?`,
-    }));
-    if (!confirmed) return;
+    if (blocks.length > 0) {
+      const confirmed = window.confirm(t({
+        en: `Replace all ${blocks.length} current blocks with ${result.blocks.length} imported blocks?`,
+        vi: `Thay toàn bộ ${blocks.length} khối hiện có bằng ${result.blocks.length} khối từ tệp?`,
+      }));
+      if (!confirmed) return;
+    }
 
     setBlocks(result.blocks);
     if (result.title_en !== undefined) setTitleEn(result.title_en);
     if (result.title_vi !== undefined) setTitleVi(result.title_vi);
-    setMessage({ text: t({ en: 'Imported. Remember to save.', vi: 'Đã nạp nội dung. Nhớ bấm lưu.' }), type: 'success' });
+    const missingEnglish = result.blocks.some((block) => block.type === 'theory' && !block.content.en.trim());
+    setMessage({
+      text: missingEnglish
+        ? t({
+            en: `Imported ${result.blocks.length} blocks. Add the English text, then save.`,
+            vi: `Đã nạp ${result.blocks.length} khối. Hãy bổ sung phần tiếng Anh rồi bấm lưu.`,
+          })
+        : t({ en: `Imported ${result.blocks.length} blocks. Remember to save.`, vi: `Đã nạp ${result.blocks.length} khối. Nhớ bấm lưu.` }),
+      type: 'success',
+    });
   };
 
   const handleAddBlock = (newBlock: Block) => {
@@ -422,21 +449,38 @@ export function LessonEditor({
           {/* Block Palette */}
           {canEditContent && (
             <div className="space-y-3">
-              <div className="flex justify-end">
+              <div className="flex flex-wrap items-center justify-end gap-2">
+                <a
+                  href={LESSON_TEMPLATE_URL}
+                  download
+                  className="rounded-xl px-3 py-2 text-xs font-semibold text-ink-muted underline-offset-4 hover:text-ink hover:underline"
+                >
+                  {t({ en: 'Word template', vi: 'Tải mẫu Word' })}
+                </a>
                 <button
                   type="button"
                   onClick={() => importInputRef.current?.click()}
-                  className="rounded-xl border border-purple-200 bg-white px-3.5 py-2 text-xs font-bold text-purple-800 transition hover:bg-purple-50 dark:border-purple-900 dark:bg-card dark:text-purple-300"
+                  disabled={importing}
+                  aria-describedby="lesson-import-hint"
+                  className="rounded-xl border border-purple-200 bg-white px-3.5 py-2 text-xs font-bold text-purple-800 transition hover:bg-purple-50 disabled:opacity-60 dark:border-purple-900 dark:bg-card dark:text-purple-300"
                 >
-                  {t({ en: 'Import JSON', vi: 'Nhập từ JSON' })}
+                  {importing
+                    ? t({ en: 'Reading file…', vi: 'Đang đọc tệp…' })
+                    : t({ en: 'Import Word / PDF / JSON', vi: 'Nhập từ Word / PDF / JSON' })}
                 </button>
                 <input
                   ref={importInputRef}
                   type="file"
-                  accept=".json,application/json"
+                  accept=".docx,.pdf,.json,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/pdf,application/json"
                   hidden
                   onChange={handleImportFile}
                 />
+                <p id="lesson-import-hint" className="w-full text-right text-xs text-ink-muted">
+                  {t({
+                    en: 'Files are read on this device. Any Word/PDF becomes theory blocks; the SciPal template also brings code, formulas and simulations.',
+                    vi: 'Tệp được đọc ngay trên máy. Word/PDF bất kỳ thành các khối lý thuyết; dùng mẫu SciPal để có thêm mã nguồn, công thức, mô phỏng.',
+                  })}
+                </p>
               </div>
               <BlockPalette onAddBlock={handleAddBlock} />
             </div>

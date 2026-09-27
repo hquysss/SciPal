@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { getTeacherLessons, AuthoringApiError } from '@/features/authoring/authoringQueries';
 import { getAuthoringSession } from '@/features/authoring/serverAuth';
 import { lessonStatusLabel, lessonStatusTone, TONE_CLASS } from '@/features/authoring/lessonStatus';
+import { LessonDeleteActions } from '@/features/authoring/LessonDeleteActions';
 
 export const dynamic = 'force-dynamic';
 
@@ -60,6 +61,14 @@ export default async function TeacherLessonsPage() {
               {role === 'admin' ? 'Bài giảng trong SciPal' : 'Bài giảng của bạn'}{lessons ? ` (${lessons.length})` : ''}
             </h2>
             <div className="flex flex-wrap gap-2">
+              {(role === 'teacher' || role === 'admin') && (
+                <Link
+                  href="/teacher/exams/import"
+                  className="inline-flex items-center gap-2 rounded-xl border border-edge bg-surface px-4 py-2 text-xs font-bold text-ink transition hover:bg-surface-sunken"
+                >
+                  Nhập đề từ Excel
+                </Link>
+              )}
               {role === 'admin' && (
                 <Link
                   href="/admin/lessons/review"
@@ -101,6 +110,11 @@ export default async function TeacherLessonsPage() {
                         {lessonStatusLabel(item.status).vi}
                       </span>
                       <span className="text-xs font-mono text-gray-400">Cập nhật: {formatUpdatedAt(item.updated_at)}</span>
+                      {item.delete_requested_at && (
+                        <span className="rounded-full bg-warning-surface px-2 py-0.5 text-[11px] font-bold text-warning">
+                          {role === 'admin' ? 'Giáo viên yêu cầu xóa' : 'Đã gửi yêu cầu xóa'}
+                        </span>
+                      )}
                     </div>
                     <h3 className="text-base font-bold text-gray-900 dark:text-white">{item.title_vi}</h3>
                     <p className="text-xs font-mono text-gray-500 dark:text-gray-400">
@@ -108,6 +122,7 @@ export default async function TeacherLessonsPage() {
                     </p>
                   </div>
 
+                  <div className="flex flex-col items-end gap-2">
                   <div className="flex items-center gap-2">
                     {item.status === 'published' ? (
                       <Link
@@ -128,6 +143,17 @@ export default async function TeacherLessonsPage() {
                       <span>Mở Studio soạn bài</span>
                       <span className="text-[10px]">→</span>
                     </Link>
+                  </div>
+                  {(role === 'admin' || role === 'teacher') && (
+                    <LessonDeleteActions
+                      lessonId={item.id}
+                      title={item.title_vi}
+                      role={role}
+                      status={item.status}
+                      publishedAt={item.published_at}
+                      deleteRequestedAt={item.delete_requested_at ?? null}
+                    />
+                  )}
                   </div>
                 </article>
               ))}

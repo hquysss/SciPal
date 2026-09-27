@@ -36,8 +36,9 @@ export default async function ExamDetailPage({
         {/* Interactive Runner */}
         <ExamRunner
           blueprintId={blueprintId}
-          blueprintTitle={{ en: blueprint.name, vi: blueprint.name }}
+          blueprintTitle={{ en: blueprint.name_en || blueprint.name, vi: blueprint.name }}
           questions={questions}
+          {...(blueprint.duration_minutes ? { durationMinutes: blueprint.duration_minutes } : {})}
         />
       </main>
     </div>
