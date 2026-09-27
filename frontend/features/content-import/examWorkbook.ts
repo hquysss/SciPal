@@ -1,4 +1,5 @@
 import type { Workbook, Worksheet } from 'exceljs';
+import type { DraftLesson } from './lessonDocument';
 
 // Questions and exams from an Excel workbook, read in the browser. The result is the package
 // POST /api/authoring/exam-import accepts (backend/src/routes/examImport.ts), except that English
@@ -36,6 +37,11 @@ export interface DraftBlueprint {
 export interface ExamImportDraft {
   questions: DraftQuestion[];
   blueprints: DraftBlueprint[];
+}
+
+/** Everything the import page holds before saving: lessons from Word/PDF plus the workbook. */
+export interface ContentImportDraft extends ExamImportDraft {
+  lessons: DraftLesson[];
 }
 
 export class WorkbookError extends Error {}
@@ -257,12 +263,26 @@ export interface EnglishField {
   text: Text;
 }
 
-/** Every bilingual text in the draft, in reading order. */
-export function englishFields(draft: ExamImportDraft): EnglishField[] {
+/** Every bilingual text in the draft, in reading order: lessons, questions, then exams. */
+export function englishFields(draft: ExamImportDraft & { lessons?: DraftLesson[] }): EnglishField[] {
   const fields: EnglishField[] = [];
   const add = (text: Text | undefined, path: Array<string | number>, label: string) => {
     if (text) fields.push({ path, label, text });
   };
+  (draft.lessons ?? []).forEach((lesson, i) => {
+    const name = `Bài "${lesson.title.vi}"`;
+    add(lesson.title, ['lessons', i, 'title'], `${name} · tên bài`);
+    add(lesson.topic, ['lessons', i, 'topic'], `${name} · chủ đề`);
+    lesson.blocks.forEach((block, j) => {
+      const at = ['lessons', i, 'blocks', j];
+      if (block.type === 'theory') add(block.content, [...at, 'content'], `${name} · khối ${j + 1}`);
+      if (block.type === 'formula') add(block.caption, [...at, 'caption'], `${name} · chú thích khối ${j + 1}`);
+      if (block.type === 'interactive') {
+        add(block.heading, [...at, 'heading'], `${name} · tiêu đề mô phỏng ${j + 1}`);
+        add(block.caption, [...at, 'caption'], `${name} · chú thích khối ${j + 1}`);
+      }
+    });
+  });
   draft.questions.forEach((q, i) => {
     add(q.stem, ['questions', i, 'stem'], `Câu ${q.key}`);
     if (q.type === 'mc') q.options.forEach((o, j) => add(o.text, ['questions', i, 'options', j, 'text'], `Câu ${q.key} · lựa chọn ${o.id}`));
@@ -275,12 +295,43 @@ export function englishFields(draft: ExamImportDraft): EnglishField[] {
 }
 
 /** Every English field still empty, as a readable place name for the preview. */
-export function missingEnglish(draft: ExamImportDraft): string[] {
+export function missingEnglish(draft: ExamImportDraft & { lessons?: DraftLesson[] }): string[] {
   return englishFields(draft).filter((f) => !f.text.en.trim()).map((f) => f.label);
 }
 
+/**
+ * Sections an exam cannot fill from the draft's questions, picked the way the server does: each
+ * section takes the first unused questions of its subject, type and difficulty.
+ */
+export function sectionShortfalls(draft: ExamImportDraft): Map<string, Array<{ index: number; need: number; have: number }>> {
+  const result = new Map<string, Array<{ index: number; need: number; have: number }>>();
+  for (const blueprint of draft.blueprints) {
+    const used = new Set<DraftQuestion>();
+    blueprint.sections.forEach((section, index) => {
+      const matches = draft.questions.filter(
+        (q) => q.subject_slug === blueprint.subject_slug && q.type === section.type && q.difficulty === section.difficulty && !used.has(q),
+      );
+      matches.slice(0, section.count).forEach((q) => used.add(q));
+      if (matches.length < section.count) {
+        result.set(blueprint.code, [...(result.get(blueprint.code) ?? []), { index, need: section.count, have: matches.length }]);
+      }
+    });
+  }
+  return result;
+}
+
+/** Lesson question keys ([QUIZ:key]) with no question of that key and subject in the workbook. */
+export function unresolvedQuizRefs(draft: ContentImportDraft): Array<{ lesson: string; key: string }> {
+  const keys = new Set(draft.questions.map((q) => `${q.subject_slug}:${q.key}`));
+  return draft.lessons.flatMap((lesson) =>
+    lesson.blocks.flatMap((block) =>
+      block.type === 'quiz_ref' && !keys.has(`${lesson.subject_slug}:${block.key}`) ? [{ lesson: lesson.title.vi, key: block.key }] : [],
+    ),
+  );
+}
+
 /** A copy of the draft with the English of one text replaced. */
-export function setEnglish(draft: ExamImportDraft, path: Array<string | number>, en: string): ExamImportDraft {
+export function setEnglish<T extends ExamImportDraft>(draft: T, path: Array<string | number>, en: string): T {
   const next = structuredClone(draft);
   let target: unknown = next;
   for (const key of path) target = (target as Record<string | number, unknown>)[key];

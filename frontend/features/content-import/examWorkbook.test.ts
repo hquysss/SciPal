@@ -103,3 +103,13 @@ describe('filling in English on the preview', () => {
     expect(missingEnglish(draft)).toEqual(['Câu vd-nhi-phan · lựa chọn A']);
   });
 });
+
+describe('sectionShortfalls', () => {
+  it('flags an exam section once the questions it needs are removed', async () => {
+    const { sectionShortfalls } = await import('./examWorkbook');
+    const draft = readExamWorkbook(await loadTemplate(useExamples));
+    expect(sectionShortfalls(draft).size).toBe(0);
+    const withoutShort = { ...draft, questions: draft.questions.filter((q) => q.type !== 'short') };
+    expect(sectionShortfalls(withoutShort).get('vd-de-on-tap')).toEqual([{ index: 2, need: 1, have: 0 }]);
+  });
+});

@@ -68,9 +68,9 @@ describe('POST /api/authoring/exam-import', () => {
   it('imports questions and an exam that lists exactly its questions', async () => {
     const tables = baseTables();
     const app = await buildApp(admin, tables);
-    const res = await app.inject({ method: 'POST', url: '/api/authoring/exam-import', payload: pkg() });
+    const res = await app.inject({ method: 'POST', url: '/api/authoring/content-import', payload: { ...pkg(), publish: true } });
     expect(res.statusCode).toBe(201);
-    expect(res.json()).toMatchObject({ imported: { questions: 3, blueprints: 1 } });
+    expect(res.json()).toMatchObject({ imported: { lessons: 0, questions: 3, blueprints: 1 } });
 
     const insertedQuestions = (tables.questions as ReturnType<typeof mockQuery>).inserted[0] as Array<{ id: string; data: unknown }>;
     const [blueprint] = (tables.exam_blueprints as ReturnType<typeof mockQuery>).inserted[0] as Array<Record<string, unknown>>;
@@ -210,6 +210,115 @@ describe('reviewing teacher imports', () => {
     const app = await buildApp(teacher, {});
     expect((await app.inject({ method: 'POST', url: `/api/authoring/exam-imports/${IMPORT_ID}/approve` })).statusCode).toBe(403);
     expect((await app.inject({ method: 'DELETE', url: `/api/authoring/exam-imports/${IMPORT_ID}` })).statusCode).toBe(403);
+    await app.close();
+  });
+});
+
+const lesson = (over: Record<string, unknown> = {}) => ({
+  source: 'bai.docx',
+  subject_slug: 'informatics',
+  grade: 11,
+  topic: bi('Tìm kiếm'),
+  title: bi('Tìm kiếm nhị phân'),
+  blocks: [{ type: 'theory', content: bi('Nội dung') }, { type: 'quiz_ref', key: 'q1' }],
+  ...over,
+});
+
+/** Tables for a lesson import, plus handles on the insert builders (the mock consumes its arrays). */
+function lessonTables(over: Record<string, unknown> = {}) {
+  const topicInsert = mockQuery({ data: null, error: null });
+  const lessonInsert = mockQuery({ data: null, error: null });
+  const tables = baseTables({
+    topics: [mockQuery({ data: [], error: null }), topicInsert],
+    lessons: [mockQuery({ data: [{ subject_id: 'subject-1', slug: 'tim-kiem-nhi-phan-en' }], error: null }), lessonInsert],
+    ...over,
+  });
+  return { tables, topicInsert, lessonInsert };
+}
+
+describe('importing lessons from Word/PDF', () => {
+  it('creates the topic and a draft lesson whose quiz points at the imported question', async () => {
+    const { tables, topicInsert, lessonInsert } = lessonTables();
+    const app = await buildApp(teacher, tables);
+    const res = await app.inject({
+      method: 'POST',
+      url: '/api/authoring/content-import',
+      payload: { lessons: [lesson()], questions: [mc('q1')], blueprints: [] },
+    });
+    expect(res.statusCode).toBe(201);
+    expect(res.json()).toMatchObject({ imported: { lessons: 1, questions: 1, blueprints: 0 }, lesson_status: 'draft', status: 'pending_review' });
+
+    const [topic] = topicInsert.inserted[0] as Array<Record<string, unknown>>;
+    expect(topic).toMatchObject({ subject_id: 'subject-1', grade: 11, name_vi: 'Tìm kiếm', kind: 'core' });
+    const questionId = ((tables.questions as ReturnType<typeof mockQuery>).inserted[0] as Array<{ id: string }>)[0]!.id;
+    const [row] = lessonInsert.inserted[0] as Array<Record<string, unknown>>;
+    expect(row).toMatchObject({ topic_id: topic!.id, status: 'draft', created_by: 'teacher-1', slug: 'tim-kiem-nhi-phan-en-2' });
+    expect(row!.blocks).toEqual([{ type: 'theory', content: bi('Nội dung') }, { type: 'quiz', question_id: questionId }]);
+    await app.close();
+  });
+
+  it('publishes an admin import only when asked, lessons included', async () => {
+    const { tables, lessonInsert } = lessonTables();
+    const app = await buildApp(admin, tables);
+    const res = await app.inject({
+      method: 'POST',
+      url: '/api/authoring/content-import',
+      payload: { publish: true, lessons: [lesson({ blocks: [{ type: 'theory', content: bi('A') }] })], questions: [], blueprints: [] },
+    });
+    expect(res.json()).toMatchObject({ lesson_status: 'published' });
+    const [row] = lessonInsert.inserted[0] as Array<Record<string, unknown>>;
+    expect(row).toMatchObject({ status: 'published', reviewed_by: 'admin-1' });
+    expect(row!.published_at).toBeTruthy();
+    await app.close();
+  });
+
+  it('never publishes a teacher import, even when asked', async () => {
+    const app = await buildApp(teacher, lessonTables().tables);
+    const res = await app.inject({
+      method: 'POST',
+      url: '/api/authoring/content-import',
+      payload: { publish: true, lessons: [lesson({ blocks: [{ type: 'theory', content: bi('A') }] })], questions: [], blueprints: [] },
+    });
+    expect(res.json()).toMatchObject({ lesson_status: 'draft', status: 'pending_review' });
+    await app.close();
+  });
+
+  it('rejects a question key missing from the workbook and a lesson block without English', async () => {
+    const app = await buildApp(teacher, lessonTables().tables);
+    const missingKey = await app.inject({
+      method: 'POST',
+      url: '/api/authoring/content-import',
+      payload: { lessons: [lesson()], questions: [], blueprints: [] },
+    });
+    expect(missingKey.statusCode).toBe(400);
+    expect(missingKey.json().error).toContain('q1');
+
+    const noEnglish = await app.inject({
+      method: 'POST',
+      url: '/api/authoring/content-import',
+      payload: { lessons: [lesson({ blocks: [{ type: 'theory', content: { vi: 'A', en: '' } }] })], questions: [], blueprints: [] },
+    });
+    expect(noEnglish.statusCode).toBe(400);
+    expect(noEnglish.json().error).toContain('tiếng Anh');
+    await app.close();
+  });
+
+  it('removes the new topic and questions when the lessons cannot be saved', async () => {
+    const topicUndo = mockQuery({ data: null, error: null });
+    const questionUndo = mockQuery({ data: null, error: null });
+    const app = await buildApp(teacher, lessonTables({
+      topics: [mockQuery({ data: [], error: null }), mockQuery({ data: null, error: null }), topicUndo],
+      questions: [mockQuery({ data: null, error: null }), questionUndo],
+      lessons: [mockQuery({ data: [], error: null }), mockQuery({ data: null, error: { code: 'XX000', message: 'boom' } })],
+    }).tables);
+    const res = await app.inject({
+      method: 'POST',
+      url: '/api/authoring/content-import',
+      payload: { lessons: [lesson()], questions: [mc('q1')], blueprints: [] },
+    });
+    expect(res.statusCode).toBe(500);
+    expect(questionUndo.deleteCalls).toBe(1);
+    expect(topicUndo.deleteCalls).toBe(1);
     await app.close();
   });
 });

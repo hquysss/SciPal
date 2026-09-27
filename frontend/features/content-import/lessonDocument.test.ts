@@ -104,3 +104,59 @@ describe('the Word template offered in the Studio', () => {
     }
   });
 });
+
+describe('parseLessonPackage (import page)', () => {
+  const lessonFile = [
+    'SCIPAL-LESSON-V1',
+    'subject: Informatics',
+    'grade: 11',
+    'topic_vi: Thuật toán tìm kiếm',
+    'title_vi: Tìm kiếm nhị phân',
+    '[THEORY]',
+    'vi: Nội dung',
+    '[QUIZ:bs-1]',
+    `[QUIZ:${QUIZ_ID}]`,
+  ].join('\n');
+
+  it('reads subject, grade, topic and title, and keeps workbook question keys', async () => {
+    const { parseLessonPackage } = await import('./lessonDocument');
+    const result = parseLessonPackage(lessonFile, 'bai.docx');
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.lesson).toMatchObject({
+      source: 'bai.docx',
+      subject_slug: 'informatics',
+      grade: 11,
+      topic: { vi: 'Thuật toán tìm kiếm', en: '' },
+      title: { vi: 'Tìm kiếm nhị phân', en: '' },
+    });
+    expect(result.lesson.blocks.slice(1)).toEqual([{ type: 'quiz_ref', key: 'bs-1' }, { type: 'quiz', question_id: QUIZ_ID }]);
+  });
+
+  it('needs the lesson metadata', async () => {
+    const { parseLessonPackage } = await import('./lessonDocument');
+    const result = parseLessonPackage(lessonFile.replace('grade: 11\n', ''), 'bai.docx');
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.error.vi).toContain('grade');
+  });
+
+  it('keeps question keys out of Studio imports', () => {
+    expect(parseLessonTemplate('SCIPAL-LESSON-V1\n[QUIZ:bs-1]').ok).toBe(false);
+  });
+});
+
+describe('the Word template offered on the import page', () => {
+  it('parses into a whole lesson that quizzes a workbook question', async () => {
+    const { readFileSync } = await import('node:fs');
+    const mammoth = (await import('mammoth')).default;
+    const { parseLessonPackage } = await import('./lessonDocument');
+    const buffer = readFileSync(new URL('../../public/templates/scipal-lesson-import-template.docx', import.meta.url));
+    const { value } = await mammoth.extractRawText({ buffer });
+    const result = parseLessonPackage(normalizeDocxText(value), 'mau.docx');
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.lesson).toMatchObject({ subject_slug: 'informatics', grade: 11, topic: { vi: 'Thuật toán tìm kiếm', en: 'Search algorithms' } });
+      expect(result.lesson.blocks.map((b) => b.type)).toEqual(['theory', 'code', 'formula', 'interactive', 'quiz_ref']);
+    }
+  });
+});

@@ -63,10 +63,10 @@ export default async function TeacherLessonsPage() {
             <div className="flex flex-wrap gap-2">
               {(role === 'teacher' || role === 'admin') && (
                 <Link
-                  href="/teacher/exams/import"
+                  href="/teacher/import"
                   className="inline-flex items-center gap-2 rounded-xl border border-edge bg-surface px-4 py-2 text-xs font-bold text-ink transition hover:bg-surface-sunken"
                 >
-                  Nhập đề từ Excel
+                  Nhập từ Word / Excel
                 </Link>
               )}
               {role === 'admin' && (
