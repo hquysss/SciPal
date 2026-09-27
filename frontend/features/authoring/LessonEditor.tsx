@@ -20,6 +20,7 @@ import { BlockList } from './editor/BlockList';
 import { IssueList } from './editor/IssueList';
 import { lessonIssues, type LessonIssue } from './editor/lessonIssues';
 import { PartTabs } from './editor/PartTabs';
+import { LessonRequestsPanel } from './simulationRequests/LessonRequestsPanel';
 import { leavingHref } from './editor/leaveGuard';
 import { uploadLessonImage } from './editor/mediaApi';
 
@@ -571,6 +572,13 @@ export function LessonEditor({
             readOnly={!canEditContent}
             focusIndex={focus?.part === activePart ? focus.index : undefined}
           />
+          {activePart === 'simulation' && (
+            <LessonRequestsPanel
+              lessonId={lessonId}
+              readOnly={!canEditContent}
+              onInsert={(block) => setPart('simulation', (list) => [...list, block])}
+            />
+          )}
         </div>
 
         <aside className={`flex flex-col gap-3 ${mobileView === 'preview' ? '' : 'hidden lg:flex'}`} aria-label={t({ en: 'Student preview', vi: 'Xem trước như học sinh' })}>

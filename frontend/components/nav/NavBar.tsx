@@ -180,6 +180,7 @@ export function NavBar({ currentSubject }: NavBarProps) {
   const teacherLinks = appRole === 'teacher' ? [
     { href: '/teacher/classes', label: lang === 'en' ? 'Classes' : 'Lớp học' },
     { href: '/teacher/lessons', label: lang === 'en' ? 'Lesson Studio' : 'Soạn bài' },
+    { href: '/teacher/simulation-requests', label: lang === 'en' ? 'Simulation requests' : 'Đề xuất mô phỏng' },
   ] : [];
   const adminLinks = appRole === 'admin' ? [
     { href: '/admin/accounts', label: lang === 'en' ? 'Accounts' : 'Quản lý tài khoản' },
