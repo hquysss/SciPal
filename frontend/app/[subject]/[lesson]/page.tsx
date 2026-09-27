@@ -2,12 +2,11 @@ import { notFound } from 'next/navigation';
 import { LevelScope, SubjectProvider } from '@scipal/ui';
 import { LoadErrorNotice } from '@/components/feedback/LoadErrorNotice';
 import { getLessonDetail } from '@/features/lessons/lessonDetailQuery';
-import { BlockRenderer } from '@/components/blocks/BlockRenderer';
+import { LessonPartsView } from '@/features/lessons/LessonPartsView';
 import { AiTutorButton } from '@/features/ai-tutor/AiTutorButton';
 import { LessonCompletionBar } from '@/features/lessons/LessonCompletionBar';
 import { LessonHeader } from '@/features/lessons/LessonHeader';
 import { levelOfGrade } from '@/features/landing/educationLevel';
-import { LessonSheet } from '@/components/blocks/LessonSheet';
 
 export const dynamic = 'force-dynamic';
 
@@ -40,15 +39,11 @@ export default async function LessonPage({
         <main className="mx-auto w-full max-w-3xl px-4 pb-28 pt-8 sm:px-6 sm:pt-12">
           <LessonHeader lesson={lesson} />
 
-          <LessonSheet squared={level === 'primary'}>
-            <div className="flex flex-col gap-7">
-              {lesson.blocks.map((block, i) => (
-                <BlockRenderer key={i} block={block} />
-              ))}
-            </div>
-          </LessonSheet>
-
-          <LessonCompletionBar lessonId={lesson.id} subjectSlug={subjectSlug} />
+          <LessonPartsView
+            blocks={lesson.blocks}
+            sheet={{ squared: level === 'primary' }}
+            completion={<LessonCompletionBar lessonId={lesson.id} subjectSlug={subjectSlug} />}
+          />
           <AiTutorButton lessonId={lesson.id} subjectSlug={subjectSlug} token={null} />
         </main>
       </SubjectProvider>
