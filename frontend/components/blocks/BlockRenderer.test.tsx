@@ -32,9 +32,10 @@ const blocks: Block[] = [
 ];
 
 describe('BlockRenderer', () => {
-  it('shows the practice quiz as coming soon without leaking the question id', () => {
+  it('points a lone quiz block to the Practice part without leaking the question id', () => {
     const html = renderToStaticMarkup(<BlockRenderer block={blocks[0]} />);
-    expect(html).toContain('Câu hỏi luyện tập sắp có');
+    expect(html).toContain('phần Tự luyện');
+    expect(html).not.toContain('sắp có');
     expect(html).not.toContain(QUESTION_ID);
     expect(html).toContain('role="note"');
   });
