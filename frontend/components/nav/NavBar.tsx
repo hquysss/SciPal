@@ -52,6 +52,25 @@ function getDisplayName(user: AuthUser | null): string | null {
   return user.email?.split('@')[0]?.trim() || null;
 }
 
+/** The teacher and admin menus for a role (empty for others). */
+export function roleLinks(role: string | null, lang: 'en' | 'vi', openRequests: number) {
+  const label = (en: string, vi: string) => (lang === 'en' ? en : vi);
+  const teacherLinks = role === 'teacher' ? [
+    { href: '/teacher/classes', label: label('Classes', 'Lớp học') },
+    { href: '/teacher/lessons', label: label('Lesson Studio', 'Soạn bài') },
+    { href: '/teacher/exams', label: label('Exams', 'Đề thi') },
+    { href: '/teacher/simulation-requests', label: label('Simulation requests', 'Đề xuất mô phỏng') },
+  ] : [];
+  const adminLinks = role === 'admin' ? [
+    { href: '/admin/accounts', label: label('Accounts', 'Quản lý tài khoản') },
+    { href: '/teacher/lessons', label: label('Lesson Studio', 'Soạn bài') },
+    { href: '/teacher/exams', label: label('Exams', 'Đề thi') },
+    { href: '/admin/lessons/review', label: label('Review Queue', 'Duyệt bài') },
+    { href: '/admin/simulation-requests', label: requestsLinkLabel(lang, openRequests) },
+  ] : [];
+  return { teacherLinks, adminLinks };
+}
+
 export function NavBar({ currentSubject }: NavBarProps) {
   const { lang } = useLanguage();
   const pathname = usePathname();
@@ -201,17 +220,7 @@ export function NavBar({ currentSubject }: NavBarProps) {
       { href: '/profile', label: lang === 'en' ? 'Profile' : 'Hồ sơ' },
     ] : []),
   ];
-  const teacherLinks = appRole === 'teacher' ? [
-    { href: '/teacher/classes', label: lang === 'en' ? 'Classes' : 'Lớp học' },
-    { href: '/teacher/lessons', label: lang === 'en' ? 'Lesson Studio' : 'Soạn bài' },
-    { href: '/teacher/simulation-requests', label: lang === 'en' ? 'Simulation requests' : 'Đề xuất mô phỏng' },
-  ] : [];
-  const adminLinks = appRole === 'admin' ? [
-    { href: '/admin/accounts', label: lang === 'en' ? 'Accounts' : 'Quản lý tài khoản' },
-    { href: '/teacher/lessons', label: lang === 'en' ? 'Lesson Studio' : 'Soạn bài' },
-    { href: '/admin/lessons/review', label: lang === 'en' ? 'Review Queue' : 'Duyệt bài' },
-    { href: '/admin/simulation-requests', label: requestsLinkLabel(lang === 'en' ? 'en' : 'vi', openRequests) },
-  ] : [];
+  const { teacherLinks, adminLinks } = roleLinks(appRole, lang === 'en' ? 'en' : 'vi', openRequests);
   const teacherMenuOpen = openNavGroup === 'teacher';
   const adminMenuOpen = openNavGroup === 'admin';
   const teacherRouteActive = teacherLinks.some((link) => pathname === link.href || pathname.startsWith(`${link.href}/`));

@@ -15,6 +15,7 @@ import {
   emptyQuestion,
   nextChoiceId,
   questionInput,
+  type QuestionContext,
   switchQuestionType,
   type QuestionDraft,
 } from './questionDraft';
@@ -31,8 +32,8 @@ const INPUT = TEXTAREA.replace('py-2', 'py-1.5');
 const SEGMENT = 'inline-flex min-h-9 items-center rounded-md px-3 text-sm font-semibold transition-colors';
 
 interface QuestionEditorProps {
-  subjectId: string;
-  lessonId: string;
+  /** A lesson's practice part, or the exam bank. */
+  context: QuestionContext;
   /** A saved question to edit; otherwise `initial` starts a new one. */
   question?: AuthorQuestion;
   initial?: QuestionDraft;
@@ -44,7 +45,7 @@ interface QuestionEditorProps {
  * Write or edit one practice question. Saving goes to the question bank first; the lesson then
  * refers to it by id. A failed save keeps everything typed.
  */
-export function QuestionEditor({ subjectId, lessonId, question, initial, onSaved, onCancel }: QuestionEditorProps) {
+export function QuestionEditor({ context, question, initial, onSaved, onCancel }: QuestionEditorProps) {
   const { t } = useLanguage();
   const ids = useId();
   const [draft, setDraft] = useState<QuestionDraft>(() => (question ? draftFromQuestion(question) : initial ?? emptyQuestion('mc')));
@@ -52,7 +53,9 @@ export function QuestionEditor({ subjectId, lessonId, question, initial, onSaved
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<Bilingual | null>(null);
   const [dirty, setDirty] = useState(!question);
-  const ctx = { subjectId, lessonId: question?.lesson_id ?? lessonId };
+  const [grade, setGrade] = useState<number | null>(() => (question ? question.grade : context.usage === 'exam' ? context.grade : null));
+  const ctx: QuestionContext =
+    context.usage === 'practice' ? { ...context, lessonId: question?.lesson_id ?? context.lessonId } : { ...context, grade };
   const problem = draftProblem(draft, ctx);
   const checked = validateQuestionInput(questionInput(draft, ctx));
   const missingEnglish = checked.ok && questionIncomplete(checked.value) !== null;
@@ -245,6 +248,29 @@ export function QuestionEditor({ subjectId, lessonId, question, initial, onSaved
             </button>
           ))}
         </div>
+        {context.usage === 'exam' && (
+          <>
+            <label htmlFor={`${ids}-grade`} className={`${LABEL} ml-2`}>
+              {t({ en: 'Grade', vi: 'Lớp' })}
+            </label>
+            <select
+              id={`${ids}-grade`}
+              value={grade ?? ''}
+              onChange={(e) => {
+                setGrade(e.target.value ? Number(e.target.value) : null);
+                setDirty(true);
+              }}
+              className={`${INPUT} w-auto`}
+            >
+              <option value="">{t({ en: 'Any grade', vi: 'Không ghi lớp' })}</option>
+              {Array.from({ length: 12 }, (_, i) => i + 1).map((n) => (
+                <option key={n} value={n}>
+                  {n}
+                </option>
+              ))}
+            </select>
+          </>
+        )}
       </div>
 
       {(problem || saveError) && (

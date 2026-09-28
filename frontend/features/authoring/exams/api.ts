@@ -1,0 +1,63 @@
+import type { QuestionType } from '@scipal/types';
+import { authoringCall } from '../apiClient';
+
+export type ExamStatus = 'draft' | 'pending_review' | 'published';
+
+/** An exam as `GET /api/authoring/exams` lists it. */
+export interface ExamSummary {
+  id: string;
+  name: string;
+  name_en: string | null;
+  subject_id: string;
+  subject_name_vi: string | null;
+  grade: number | null;
+  duration_minutes: number | null;
+  status: ExamStatus;
+  question_count: number;
+  updated_at: string;
+  created_by: string | null;
+  imported: boolean;
+  mine: boolean;
+}
+
+export interface ExamDetail extends ExamSummary {
+  question_ids: string[];
+  review_note: string | null;
+  editable: boolean;
+}
+
+export interface ExamInput {
+  name: string;
+  name_en: string;
+  subject_id: string;
+  grade: number;
+  duration_minutes: number;
+  question_ids: string[];
+}
+
+export interface DrawRequest {
+  subject_id: string;
+  grade?: number;
+  exclude_ids?: string[];
+  counts: Array<{ type: QuestionType; difficulty: 1 | 2 | 3; n: number }>;
+}
+
+export interface DrawResult {
+  question_ids: string[];
+  shortfalls: Array<{ type: QuestionType; difficulty: number; wanted: number; got: number }>;
+}
+
+const path = (id: string, action = '') => `/api/authoring/exams/${encodeURIComponent(id)}${action}`;
+
+export const listExams = (status?: ExamStatus) =>
+  authoringCall<{ exams: ExamSummary[] }>(`/api/authoring/exams${status ? `?status=${status}` : ''}`, 'GET');
+export const getExam = (id: string) => authoringCall<{ exam: ExamDetail }>(path(id), 'GET');
+/** `publish` is honoured for admins only ("Xuất bản ngay"). */
+export const createExam = (input: ExamInput & { publish?: boolean }) => authoringCall<{ exam: ExamDetail }>('/api/authoring/exams', 'POST', input);
+export const updateExam = (id: string, input: Partial<ExamInput> & { expected_updated_at: string }) =>
+  authoringCall<{ exam: ExamDetail }>(path(id), 'PATCH', input);
+export const deleteExam = (id: string) => authoringCall<Record<string, never>>(path(id), 'DELETE');
+export const drawExamQuestions = (body: DrawRequest) => authoringCall<DrawResult>('/api/authoring/exams/draw', 'POST', body);
+export const submitExam = (id: string) => authoringCall<{ exam: ExamDetail }>(path(id, '/submit'), 'POST');
+export const approveExam = (id: string) => authoringCall<{ exam: ExamDetail }>(path(id, '/approve'), 'POST');
+export const rejectExam = (id: string, note: string) => authoringCall<{ exam: ExamDetail }>(path(id, '/reject'), 'POST', { note });

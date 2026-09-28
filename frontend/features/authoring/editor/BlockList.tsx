@@ -228,8 +228,7 @@ export function BlockList({ part, blocks, onChange, subjectId, readOnly, focusIn
               <p className="text-sm text-ink-muted">{t({ en: 'The question editor is not available here.', vi: 'Không mở được trình soạn câu hỏi ở đây.' })}</p>
             ) : pending.kind === 'question' ? (
               <QuestionEditor
-                subjectId={practice.subjectId}
-                lessonId={practice.lessonId}
+                context={{ usage: 'practice', subjectId: practice.subjectId, lessonId: practice.lessonId }}
                 initial={emptyQuestion(pending.type)}
                 onSaved={(row) => insertQuestion(index, row)}
                 onCancel={() => setPending(null)}

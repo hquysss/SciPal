@@ -18,5 +18,5 @@ export function QuizBlockEditor({ questionId }: { questionId: string }) {
     return <p className={NOTE}>{t({ en: 'The question was not found. Remove this block.', vi: 'Không tìm thấy câu hỏi. Hãy xóa khối này.' })}</p>;
   }
   if (!row.editable) return <QuestionView question={row} />;
-  return <QuestionEditor key={row.id} subjectId={practice.subjectId} lessonId={practice.lessonId} question={row} onSaved={practice.upsert} />;
+  return <QuestionEditor key={row.id} context={{ usage: 'practice', subjectId: practice.subjectId, lessonId: practice.lessonId }} question={row} onSaved={practice.upsert} />;
 }
