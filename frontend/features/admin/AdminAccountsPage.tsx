@@ -13,6 +13,7 @@ import {
 import { Alert } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { AccountQuotaDialog } from './AccountQuotaDialog';
 import { Card } from '@/components/ui/card';
 import { EmptyState } from '@/components/ui/empty-state';
 import { Field } from '@/components/ui/field';
@@ -51,6 +52,7 @@ export function AdminAccountsPage() {
   const [updatingId, setUpdatingId] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<Account | null>(null);
+  const [quotaFor, setQuotaFor] = useState<{ id: string; name: string } | null>(null);
 
   const loadAccounts = useCallback(async (signal?: AbortSignal) => {
     setListState('loading');
@@ -330,6 +332,14 @@ export function AdminAccountsPage() {
                             <Button
                               type="button"
                               variant="outline"
+                              onClick={() => setQuotaFor({ id: account.id, name: account.display_name ?? account.email ?? '' })}
+                              disabled={Boolean(updatingId || deletingId)}
+                            >
+                              {t({ en: 'Quotas', vi: 'Hạn mức' })}
+                            </Button>
+                            <Button
+                              type="button"
+                              variant="outline"
                               onClick={() => void handleRoleToggle(account)}
                               disabled={Boolean(updatingId || deletingId)}
                             >
@@ -358,6 +368,8 @@ export function AdminAccountsPage() {
           </div>
         </Card>
       </div>
+
+      <AccountQuotaDialog account={quotaFor} onClose={() => setQuotaFor(null)} />
 
       {confirmDelete && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-[color-mix(in_srgb,var(--ink)_60%,transparent)] p-4">

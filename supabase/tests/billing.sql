@@ -19,7 +19,8 @@ values
   ('00000000-0000-4000-8000-000000000002', '{"app_role":"student"}'),
   ('00000000-0000-4000-8000-000000000003', '{"app_role":"teacher"}'),
   ('00000000-0000-4000-8000-000000000004', '{}'),
-  ('00000000-0000-4000-8000-000000000005', '{"app_role":"admin"}');
+  ('00000000-0000-4000-8000-000000000005', '{"app_role":"admin"}'),
+  ('00000000-0000-4000-8000-000000000006', '{"app_role":"student"}');
 insert into public.class_rooms (id, teacher_id)
 values ('10000000-0000-4000-8000-000000000001', '00000000-0000-4000-8000-000000000003');
 insert into public.class_members (class_id, student_id)
@@ -290,7 +291,7 @@ declare
   v_quota record;
   v_version integer;
   v_failed text;
-  c_student constant uuid := '00000000-0000-4000-8000-000000000002';
+  c_student constant uuid := '00000000-0000-4000-8000-000000000006';
   c_admin constant uuid := '00000000-0000-4000-8000-000000000005';
   c_now constant timestamptz := '2026-09-15T00:00:00Z';
 begin
