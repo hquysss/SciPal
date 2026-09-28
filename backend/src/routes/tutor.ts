@@ -94,6 +94,7 @@ export const tutorRoutes: FastifyPluginAsync = async (app) => {
     let lessonId = askedLesson;
     let lessonFromConversation = false;
     let resend = false;
+    let questionId: string | null = null;
     if (conversationId) {
       const { data: conv } = await supabase.from('tutor_conversations').select('id, lesson_id').eq('id', conversationId).eq('user_id', uid).maybeSingle();
       if (!conv) return reply.code(404).send(notFound);
@@ -102,9 +103,10 @@ export const tutorRoutes: FastifyPluginAsync = async (app) => {
       // "Thử lại" after a failed answer: the question is already stored and counted.
       if (body.retry === true) {
         const { data: last } = await supabase
-          .from('tutor_messages').select('role, content').eq('conversation_id', conversationId).order('created_at', { ascending: false }).limit(1).maybeSingle();
-        const row = last as { role: string; content: string } | null;
+          .from('tutor_messages').select('id, role, content').eq('conversation_id', conversationId).order('created_at', { ascending: false }).limit(1).maybeSingle();
+        const row = last as { id?: string; role: string; content: string } | null;
         resend = row?.role === 'user' && row.content === message;
+        if (resend) questionId = row?.id ?? null;
       }
     }
 
@@ -154,9 +156,12 @@ export const tutorRoutes: FastifyPluginAsync = async (app) => {
       }
       id = (created as { id: string }).id;
     }
-    const { error: saveError } = resend
-      ? { error: null }
-      : await supabase.from('tutor_messages').insert({ conversation_id: id, user_id: uid, role: 'user', content: message });
+    let saveError: unknown = null;
+    if (!resend) {
+      const saved = await supabase.from('tutor_messages').insert({ conversation_id: id, user_id: uid, role: 'user', content: message }).select('id').single();
+      saveError = saved.error;
+      questionId = (saved.data as { id?: string } | null)?.id ?? null;
+    }
     if (saveError) {
       request.log.error({ err: saveError }, 'Failed to store tutor question');
       return reply.code(500).send(msg('Không lưu được câu hỏi.', 'Could not save your question.'));
@@ -195,7 +200,26 @@ export const tutorRoutes: FastifyPluginAsync = async (app) => {
     } catch (err) {
       failed = true;
       request.log.error({ err }, 'Tutor provider failed');
-      send('error', msg('Gia sư đang bận. Hãy thử lại sau ít phút.', 'The tutor is busy. Try again in a few minutes.'));
+      const overloaded = (err as { status?: number } | null)?.status === 429;
+      if (answer) {
+        send('error', msg('Câu trả lời bị ngắt giữa chừng. Em thử hỏi lại sau ít phút nhé.', 'The answer was cut off. Try asking again in a few minutes.'));
+      } else {
+        // No answer at all: the question is taken back, so it does not use up a daily question.
+        if (questionId) await supabase.from('tutor_messages').delete().eq('id', questionId);
+        const conversationRemoved = !conversationId;
+        if (conversationRemoved) await supabase.from('tutor_conversations').delete().eq('id', id).eq('user_id', uid);
+        send('error', {
+          ...(overloaded
+            ? msg('Gia sư đang quá tải. Câu hỏi này không bị tính lượt — em thử lại sau ít phút nhé.', 'The tutor is overloaded. This question was not counted — try again in a few minutes.')
+            : msg('Gia sư đang gặp sự cố. Câu hỏi này không bị tính lượt — em thử lại sau nhé.', 'The tutor ran into a problem. This question was not counted — try again later.')),
+          remaining: Math.max(0, limit - used + (resend ? 1 : 0)),
+          conversation_removed: conversationRemoved,
+        });
+      }
+    }
+    if (failed && !answer) {
+      raw.end();
+      return;
     }
     if (answer) {
       await supabase.from('tutor_messages').insert({ conversation_id: id, user_id: uid, role: 'assistant', content: answer.slice(0, 20000) });
