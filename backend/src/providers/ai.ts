@@ -62,3 +62,17 @@ export function createAIProvider(): AIProvider {
   if (provider === 'openai') return new OpenAIProvider();
   return new ClaudeProvider();
 }
+
+/**
+ * The provider, built on the first question: the SDK clients throw without an API key, and a
+ * missing key must not stop the rest of the backend from starting.
+ */
+export function lazyAIProvider(): AIProvider {
+  let provider: AIProvider | null = null;
+  return {
+    chat(messages, systemPrompt) {
+      provider ??= createAIProvider();
+      return provider.chat(messages, systemPrompt);
+    },
+  };
+}

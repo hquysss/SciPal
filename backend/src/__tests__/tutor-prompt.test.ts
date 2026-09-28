@@ -64,3 +64,18 @@ describe('TUTOR_EXAMPLES', () => {
     expect(TUTOR_EXAMPLES.vi).toMatch(/\bem\b/);
   });
 });
+
+describe('lazyAIProvider', () => {
+  it('does not build the SDK client (which needs a key) until the first question', async () => {
+    const { lazyAIProvider } = await import('../providers/ai.js');
+    const saved = { claude: process.env.CLAUDE_API_KEY, anthropic: process.env.ANTHROPIC_API_KEY };
+    delete process.env.CLAUDE_API_KEY;
+    delete process.env.ANTHROPIC_API_KEY;
+    try {
+      expect(() => lazyAIProvider()).not.toThrow();
+    } finally {
+      if (saved.claude !== undefined) process.env.CLAUDE_API_KEY = saved.claude;
+      if (saved.anthropic !== undefined) process.env.ANTHROPIC_API_KEY = saved.anthropic;
+    }
+  });
+});
