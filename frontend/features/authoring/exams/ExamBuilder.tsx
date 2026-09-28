@@ -30,6 +30,8 @@ interface ExamBuilderProps {
   exam: ExamDetail | null;
   subjects: AuthoringSubjectOption[];
   isAdmin: boolean;
+  /** Questions already known (the dev showcase); others load from the bank. */
+  initialQuestions?: AuthorQuestion[];
 }
 
 /**
@@ -37,7 +39,7 @@ interface ExamBuilderProps {
  * random, in order. Saving sends the whole list with the version it was loaded at, so a second tab
  * cannot silently overwrite it.
  */
-export function ExamBuilder({ exam, subjects, isAdmin }: ExamBuilderProps) {
+export function ExamBuilder({ exam, subjects, isAdmin, initialQuestions = [] }: ExamBuilderProps) {
   const { t } = useLanguage();
   const router = useRouter();
   const ids = useId();
@@ -52,7 +54,7 @@ export function ExamBuilder({ exam, subjects, isAdmin }: ExamBuilderProps) {
   const [publishNow, setPublishNow] = useState(false);
   const [saved, setSaved] = useState<ExamDetail | null>(exam);
   const [dirty, setDirty] = useState(false);
-  const [rows, setRows] = useState<Record<string, AuthorQuestion>>({});
+  const [rows, setRows] = useState<Record<string, AuthorQuestion>>(() => Object.fromEntries(initialQuestions.map((q) => [q.id, q])));
   const [loadingRows, setLoadingRows] = useState(false);
   const [panel, setPanel] = useState<Panel>(null);
   const [busy, setBusy] = useState(false);

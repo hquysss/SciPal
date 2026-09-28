@@ -10,7 +10,7 @@ import { approveExam, listExams, rejectExam, type ExamSummary } from './api';
 type Bilingual = { en: string; vi: string };
 
 /** One exam waiting for review, with "Duyệt" and "Trả lại" (a note is required to send it back). */
-export function ExamReviewCard({ exam, onDone }: { exam: ExamSummary; onDone: (id: string) => void }) {
+export function ExamReviewCard({ exam, onDone }: { exam: ExamSummary; onDone?: (id: string) => void }) {
   const { t } = useLanguage();
   const noteId = useId();
   const [returning, setReturning] = useState(false);
@@ -24,7 +24,7 @@ export function ExamReviewCard({ exam, onDone }: { exam: ExamSummary; onDone: (i
     const res = decision === 'approve' ? await approveExam(exam.id) : await rejectExam(exam.id, note.trim());
     setBusy(false);
     if (!res.ok) return setError(res.error);
-    onDone(exam.id);
+    onDone?.(exam.id);
   };
 
   const facts = [
