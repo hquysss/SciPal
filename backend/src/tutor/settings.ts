@@ -17,7 +17,19 @@ export interface AiSettingsRow {
   model: string | null;
   daily_limit: number | null;
   enabled: boolean | null;
+  translate_enabled?: boolean | null;
+  translate_daily_chars?: number | null;
 }
+
+/** Automatic translation for authors (routes/translate.ts): on/off and characters per author per day. */
+export interface TranslateSettings {
+  enabled: boolean;
+  dailyChars: number;
+}
+
+export const DEFAULT_TRANSLATE_DAILY_CHARS = 200_000;
+export const TRANSLATE_DAILY_CHARS_MIN = 1_000;
+export const TRANSLATE_DAILY_CHARS_MAX = 5_000_000;
 
 type Env = Record<string, string | undefined>;
 
@@ -49,25 +61,45 @@ export function resolveTutorSettings(row: AiSettingsRow | null, env: Env): Tutor
   };
 }
 
+const asChars = (value: unknown): number | null => {
+  const n = Number(value);
+  return Number.isInteger(n) && n >= TRANSLATE_DAILY_CHARS_MIN && n <= TRANSLATE_DAILY_CHARS_MAX ? n : null;
+};
+
+export function resolveTranslateSettings(row: AiSettingsRow | null, env: Env): TranslateSettings {
+  return {
+    enabled: row?.translate_enabled ?? true,
+    dailyChars: asChars(row?.translate_daily_chars) ?? asChars(env.AUTHOR_TRANSLATE_DAILY_CHARS) ?? DEFAULT_TRANSLATE_DAILY_CHARS,
+  };
+}
+
 export interface SettingsStore {
   get(): Promise<TutorSettings>;
+  /** Translation settings from the same row (optional so simple test stores need not provide it). */
+  translate?(): Promise<TranslateSettings>;
   invalidate(): void;
 }
 
 /** Settings read at most once a minute; a failed read falls back to the environment. */
-export function createSettingsStore(load: () => Promise<AiSettingsRow | null>, env: Env = process.env, now: () => number = Date.now): SettingsStore {
-  let cached: { at: number; value: TutorSettings } | null = null;
+export function createSettingsStore(load: () => Promise<AiSettingsRow | null>, env: Env = process.env, now: () => number = Date.now): Required<SettingsStore> {
+  let cached: { at: number; value: TutorSettings; translate: TranslateSettings } | null = null;
+  const fresh = async () => {
+    if (cached && now() - cached.at < CACHE_MS) return cached;
+    let row: AiSettingsRow | null = null;
+    try {
+      row = await load();
+    } catch {
+      row = null;
+    }
+    cached = { at: now(), value: resolveTutorSettings(row, env), translate: resolveTranslateSettings(row, env) };
+    return cached;
+  };
   return {
     async get() {
-      if (cached && now() - cached.at < CACHE_MS) return cached.value;
-      let row: AiSettingsRow | null = null;
-      try {
-        row = await load();
-      } catch {
-        row = null;
-      }
-      cached = { at: now(), value: resolveTutorSettings(row, env) };
-      return cached.value;
+      return (await fresh()).value;
+    },
+    async translate() {
+      return (await fresh()).translate;
     },
     invalidate() {
       cached = null;

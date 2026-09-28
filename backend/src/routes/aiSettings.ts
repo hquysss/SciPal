@@ -1,13 +1,16 @@
 import type { FastifyPluginAsync, FastifyReply, FastifyRequest } from 'fastify';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { vietnamDayStart } from '../tutor/limits.js';
-import { DAILY_LIMIT_MAX, DEFAULT_MODELS, resolveTutorSettings, type AiSettingsRow } from '../tutor/settings.js';
+import { DAILY_LIMIT_MAX, DEFAULT_MODELS, TRANSLATE_DAILY_CHARS_MAX, TRANSLATE_DAILY_CHARS_MIN, resolveTranslateSettings, resolveTutorSettings, type AiSettingsRow } from '../tutor/settings.js';
 
 // Admin settings of the AI tutor (/admin/ai): provider, model, daily limit, on/off, a connection
 // test and usage counts. API keys are never read from or written to the page: only whether each
 // one is set (invariant 5).
 
-const COLUMNS = 'provider, model, daily_limit, enabled, updated_at';
+const COLUMNS = 'provider, model, daily_limit, enabled, translate_enabled, translate_daily_chars, updated_at';
+const VIETNAM_OFFSET_MS = 7 * 60 * 60 * 1000;
+/** A Vietnam day as YYYY-MM-DD, the key of translation_usage. */
+const vietnamDate = (d: Date) => new Date(vietnamDayStart(d).getTime() + VIETNAM_OFFSET_MS).toISOString().slice(0, 10);
 const MODEL = /^[A-Za-z0-9._:/-]{1,100}$/;
 const TEST_TIMEOUT_MS = 20_000;
 const WEEK_MS = 7 * 24 * 60 * 60 * 1000;
@@ -22,7 +25,7 @@ export async function loadAiSettings(supabase: SupabaseClient | null | undefined
   return (data as AiSettingsRow | null) ?? null;
 }
 
-type Patch = { provider: 'gemini' | 'openai' | null; model: string | null; daily_limit: number | null; enabled: boolean };
+type Patch = { provider: 'gemini' | 'openai' | null; model: string | null; daily_limit: number | null; enabled: boolean; translate_enabled: boolean; translate_daily_chars: number | null };
 
 function parsePatch(body: unknown): Patch | null {
   const b = (body ?? {}) as Record<string, unknown>;
@@ -34,7 +37,18 @@ function parsePatch(body: unknown): Patch | null {
   const limit = b.daily_limit === null || b.daily_limit === undefined ? null : b.daily_limit;
   if (limit !== null && !(Number.isInteger(limit) && (limit as number) >= 1 && (limit as number) <= DAILY_LIMIT_MAX)) return null;
   if (typeof b.enabled !== 'boolean') return null;
-  return { provider, model, daily_limit: limit as number | null, enabled: b.enabled };
+  // Translation fields may be left out (older pages): on, and the environment's limit.
+  if (b.translate_enabled !== undefined && typeof b.translate_enabled !== 'boolean') return null;
+  const chars = b.translate_daily_chars === null || b.translate_daily_chars === undefined ? null : b.translate_daily_chars;
+  if (chars !== null && !(Number.isInteger(chars) && (chars as number) >= TRANSLATE_DAILY_CHARS_MIN && (chars as number) <= TRANSLATE_DAILY_CHARS_MAX)) return null;
+  return {
+    provider,
+    model,
+    daily_limit: limit as number | null,
+    enabled: b.enabled,
+    translate_enabled: (b.translate_enabled as boolean | undefined) ?? true,
+    translate_daily_chars: chars as number | null,
+  };
 }
 
 export const aiSettingsRoutes: FastifyPluginAsync = async (app) => {
@@ -51,11 +65,14 @@ export const aiSettingsRoutes: FastifyPluginAsync = async (app) => {
     const since = (from: Date) =>
       supabase.from('tutor_messages').select('id', { count: 'exact', head: true }).eq('role', 'user').gte('created_at', from.toISOString());
     const weekStart = new Date(now.getTime() - WEEK_MS);
-    const [today, week, students] = await Promise.all([
+    const [today, week, students, translated] = await Promise.all([
       since(vietnamDayStart(now)),
       since(weekStart),
       supabase.from('tutor_messages').select('user_id').eq('role', 'user').gte('created_at', weekStart.toISOString()).limit(10_000),
+      supabase.from('translation_usage').select('day, chars').gte('day', vietnamDate(weekStart)).limit(10_000),
     ]);
+    const days = (translated.data ?? []) as Array<{ day: string; chars: number }>;
+    const todayKey = vietnamDate(now);
     return {
       saved,
       effective: resolveTutorSettings(saved, process.env),
@@ -65,6 +82,13 @@ export const aiSettingsRoutes: FastifyPluginAsync = async (app) => {
         today: today.count ?? 0,
         week: week.count ?? 0,
         students_week: new Set(((students.data ?? []) as Array<{ user_id: string }>).map((r) => r.user_id)).size,
+      },
+      translate: {
+        effective: resolveTranslateSettings(saved, process.env),
+        usage: {
+          today: days.filter((d) => d.day === todayKey).reduce((n, d) => n + d.chars, 0),
+          week: days.reduce((n, d) => n + d.chars, 0),
+        },
       },
     };
   };
@@ -85,7 +109,7 @@ export const aiSettingsRoutes: FastifyPluginAsync = async (app) => {
     if (!patch) {
       return reply
         .code(400)
-        .send(msg(`Cài đặt không hợp lệ: nhà cung cấp Gemini/OpenAI, tên model chỉ gồm chữ, số và . _ : / -, giới hạn 1–${DAILY_LIMIT_MAX}.`, `Invalid settings: provider Gemini/OpenAI, model name of letters, digits and . _ : / -, limit 1–${DAILY_LIMIT_MAX}.`));
+        .send(msg(`Cài đặt không hợp lệ: nhà cung cấp Gemini/OpenAI, tên model chỉ gồm chữ, số và . _ : / -, giới hạn 1–${DAILY_LIMIT_MAX} câu, dịch ${TRANSLATE_DAILY_CHARS_MIN}–${TRANSLATE_DAILY_CHARS_MAX} ký tự.`, `Invalid settings: provider Gemini/OpenAI, model name of letters, digits and . _ : / -, limit 1–${DAILY_LIMIT_MAX} questions, translation ${TRANSLATE_DAILY_CHARS_MIN}–${TRANSLATE_DAILY_CHARS_MAX} characters.`));
     }
     const userId = (request as FastifyRequest & { user?: { id?: string } }).user?.id ?? null;
     const { error } = await app.supabase

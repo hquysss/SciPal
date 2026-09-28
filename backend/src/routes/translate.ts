@@ -1,13 +1,12 @@
 import type { FastifyPluginAsync, FastifyReply, FastifyRequest } from 'fastify';
 import { vietnamDayStart } from '../tutor/limits.js';
-import { resolveTutorSettings } from '../tutor/settings.js';
+import { resolveTranslateSettings, resolveTutorSettings } from '../tutor/settings.js';
 import { isCopyThrough, parseTranslations, translationSystemPrompt } from '../translate/translatePrompt.js';
 
 // app.aiProvider and app.tutorSettings are declared in routes/tutor.ts.
 const MAX_TEXTS = 40;
 const MAX_TEXT_CHARS = 8000;
 const MAX_REQUEST_CHARS = 20_000;
-const DEFAULT_DAILY_CHARS = 200_000;
 const VIETNAM_OFFSET_MS = 7 * 60 * 60 * 1000;
 
 type Lang = 'vi' | 'en';
@@ -17,11 +16,6 @@ const msg = (error: string, error_en: string) => ({ error, error_en });
 const BAD_BODY = msg('Yêu cầu dịch không hợp lệ.', 'The translation request is not valid.');
 const TOO_BIG = msg('Nội dung cần dịch quá dài cho một lần.', 'Too much text to translate at once.');
 const FAILED = msg('Chưa dịch được lúc này. Thử lại sau.', 'Could not translate right now. Try again later.');
-
-function dailyLimit(): number {
-  const n = Number(process.env.AUTHOR_TRANSLATE_DAILY_CHARS);
-  return Number.isInteger(n) && n > 0 ? n : DEFAULT_DAILY_CHARS;
-}
 
 /** Today's date in Vietnam as YYYY-MM-DD. */
 const vietnamDay = (now: Date) => new Date(vietnamDayStart(now).getTime() + VIETNAM_OFFSET_MS).toISOString().slice(0, 10);
@@ -49,6 +43,9 @@ export const translateRoutes: FastifyPluginAsync = async (app) => {
     if (texts.length > MAX_TEXTS || texts.some((t) => t.length > MAX_TEXT_CHARS)) return reply.code(400).send(TOO_BIG);
     if (texts.reduce((n, t) => n + t.length, 0) > MAX_REQUEST_CHARS) return reply.code(400).send(TOO_BIG);
 
+    const translate = app.tutorSettings?.translate ? await app.tutorSettings.translate() : resolveTranslateSettings(null, process.env);
+    if (!translate.enabled) return reply.code(503).send(msg('Admin đã tắt dịch tự động.', 'An admin has turned automatic translation off.'));
+
     const result = [...(texts as string[])];
     const send = result.map((text, i) => ({ text, i })).filter(({ text }) => !isCopyThrough(text));
     if (send.length === 0) return { texts: result };
@@ -62,7 +59,7 @@ export const translateRoutes: FastifyPluginAsync = async (app) => {
       return reply.code(503).send(FAILED);
     }
     const used = (usage as { chars?: number } | null)?.chars ?? 0;
-    if (used + chars > dailyLimit()) {
+    if (used + chars > translate.dailyChars) {
       return reply.code(429).send(msg('Hôm nay thầy/cô đã dùng hết lượt dịch tự động. Mai dùng tiếp được.', 'You have used today’s automatic translation. It resets tomorrow.'));
     }
 
