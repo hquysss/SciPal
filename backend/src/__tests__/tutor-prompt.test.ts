@@ -57,6 +57,15 @@ describe('buildSystemPrompt', () => {
   });
 });
 
+describe('buildSystemPrompt limits', () => {
+  it('says the student can only type text and allows one question per turn', () => {
+    const p = buildSystemPrompt({ language: 'vi', level: null });
+    expect(p).toMatch(/only type text/i);
+    expect(p).toMatch(/never ask for (a )?(photo|image)/i);
+    expect(p).toMatch(/at most one question/i);
+  });
+});
+
 describe('TUTOR_EXAMPLES', () => {
   it('has three exchanges per language, and the Vietnamese ones use thầy – em', () => {
     for (const lang of ['vi', 'en'] as const) expect(TUTOR_EXAMPLES[lang].match(/^Student:/gm)?.length).toBeGreaterThanOrEqual(3);
@@ -106,6 +115,23 @@ describe('provider settings', () => {
     });
     await withEnv({ AI_PROVIDER: 'gemini', TUTOR_MODEL: '  ' }, () => {
       expect(providerSettings().model).toBe('gemini-3.8-flash');
+    });
+  });
+
+  it('takes an explicit provider and model (the admin settings) over the environment', async () => {
+    const { providerSettings } = await import('../providers/ai.js');
+    await withEnv({ AI_PROVIDER: 'gemini', TUTOR_MODEL: 'env-model', GEMINI_API_KEY: 'g-key', OPENAI_API_KEY: 'o-key' }, () => {
+      expect(providerSettings({ provider: 'openai', model: 'admin-model' })).toEqual({ apiKey: 'o-key', baseURL: undefined, model: 'admin-model' });
+    });
+  });
+
+  it('refuses to build a client without that provider’s own key (never sends the OpenAI key to Google)', async () => {
+    const { ChatCompletionsProvider } = await import('../providers/ai.js');
+    await withEnv({ GEMINI_API_KEY: undefined, OPENAI_API_KEY: 'o-key' }, () => {
+      expect(() => new ChatCompletionsProvider({ provider: 'gemini', model: 'gemini-3.8-flash' })).toThrow(/GEMINI_API_KEY/);
+    });
+    await withEnv({ GEMINI_API_KEY: 'g-key', OPENAI_API_KEY: undefined }, () => {
+      expect(() => new ChatCompletionsProvider({ provider: 'openai', model: 'gpt-4o-mini' })).toThrow(/OPENAI_API_KEY/);
     });
   });
 

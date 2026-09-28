@@ -31,6 +31,7 @@ export interface MockBuilder {
   delete(): MockBuilder;
   order(...args: unknown[]): MockBuilder;
   insert(row: unknown): MockBuilder;
+  upsert(row: unknown, options?: unknown): MockBuilder;
   update(row: unknown): MockBuilder;
   limit(n: number): MockBuilder;
   range(from: number, to: number): MockBuilder;
@@ -96,6 +97,10 @@ export function mockQuery(result: QueryResult): MockBuilder {
     },
     order: () => builder,
     insert: (row) => {
+      builder.inserted.push(row);
+      return builder;
+    },
+    upsert: (row) => {
       builder.inserted.push(row);
       return builder;
     },

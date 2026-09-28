@@ -224,5 +224,45 @@ describe('POST /api/tutor/chat', () => {
     expect((ai.calls[0].messages as Array<{ role: string; content: string }>).map((m) => m.content)).toEqual(['Q2', 'A2', 'Q3']);
     await app.close();
   });
+
+  it('follows the admin settings: off answers 503, the limit and the model come from them', async () => {
+    const settings = (value: object) => ({ get: async () => ({ provider: 'openai' as const, model: 'admin-model', dailyLimit: 5, enabled: true, ...value }), invalidate() {} });
+
+    const offApp = Fastify();
+    offApp.decorate('supabase', mockSupabase({}));
+    offApp.decorate('aiProvider', provider([]));
+    offApp.decorate('tutorSettings', settings({ enabled: false }));
+    offApp.addHook('onRequest', async (req) => { (req as any).user = student; });
+    await offApp.register(tutorRoutes);
+    const offRes = await offApp.inject({ method: 'POST', url: '/api/tutor/chat', payload: { message: 'Hỏi', language: 'vi' } });
+    expect(offRes.statusCode).toBe(503);
+    expect(offRes.json().error).toMatch(/tạm nghỉ/);
+    await offApp.close();
+
+    const limited = Fastify();
+    limited.decorate('supabase', mockSupabase({ tutor_messages: mockQuery({ data: null, error: null, count: 5 }) }));
+    limited.decorate('aiProvider', provider([]));
+    limited.decorate('tutorSettings', settings({}));
+    limited.addHook('onRequest', async (req) => { (req as any).user = student; });
+    await limited.register(tutorRoutes);
+    expect((await limited.inject({ method: 'POST', url: '/api/tutor/chat', payload: { message: 'Hỏi', language: 'vi' } })).statusCode).toBe(429);
+    await limited.close();
+
+    const ai = { choices: [] as unknown[], chat: async function* (_m: unknown, _s: string, choice?: unknown) { ai.choices.push(choice); yield 'ok'; } };
+    const app = Fastify();
+    app.decorate('supabase', mockSupabase({
+      tutor_messages: [mockQuery({ data: null, error: null, count: 0 }), ok(), ok([{ role: 'user', content: 'Hỏi' }]), ok()],
+      profiles: ok(null),
+      tutor_conversations: [ok({ id: C1 }), ok()],
+    }));
+    app.decorate('aiProvider', ai);
+    app.decorate('tutorSettings', settings({}));
+    app.addHook('onRequest', async (req) => { (req as any).user = student; });
+    await app.register(tutorRoutes);
+    const res = await app.inject({ method: 'POST', url: '/api/tutor/chat', payload: { message: 'Hỏi', language: 'vi' } });
+    expect(events(res.body)[0].data).toEqual({ conversation_id: C1, remaining: 4 });
+    expect(ai.choices[0]).toEqual({ provider: 'openai', model: 'admin-model' });
+    await app.close();
+  });
 });
 

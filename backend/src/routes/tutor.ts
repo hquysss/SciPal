@@ -1,11 +1,14 @@
 import type { FastifyPluginAsync, FastifyRequest } from 'fastify';
 import type { AIProvider } from '../providers/ai.js';
-import { CONTEXT_MESSAGES, MESSAGE_MAX, PAGE_SIZE, TITLE_LENGTH, dailyLimit, vietnamDayStart } from '../tutor/limits.js';
+import { CONTEXT_MESSAGES, MESSAGE_MAX, PAGE_SIZE, TITLE_LENGTH, vietnamDayStart } from '../tutor/limits.js';
+import { resolveTutorSettings, type SettingsStore } from '../tutor/settings.js';
 import { buildSystemPrompt, lessonContext, type EducationLevel } from '../tutor/systemPrompt.js';
 
 declare module 'fastify' {
   interface FastifyInstance {
     aiProvider: AIProvider;
+    /** The admin's AI settings (routes/aiSettings.ts); without it the environment applies. */
+    tutorSettings?: SettingsStore;
   }
 }
 
@@ -75,6 +78,10 @@ export const tutorRoutes: FastifyPluginAsync = async (app) => {
     const supabase = app.supabase!;
     const uid = userId(request)!;
     const body = (request.body ?? {}) as { conversation_id?: unknown; lesson_id?: unknown; message?: unknown; language?: unknown; retry?: unknown };
+    const settings = app.tutorSettings ? await app.tutorSettings.get() : resolveTutorSettings(null, process.env);
+    if (!settings.enabled) {
+      return reply.code(503).send(msg('Gia sư đang tạm nghỉ. Em quay lại sau nhé.', 'The tutor is taking a break. Please come back later.'));
+    }
     const message = typeof body.message === 'string' ? body.message.trim() : '';
     const language = body.language === 'en' ? 'en' : 'vi';
     if (!message || message.length > MESSAGE_MAX) {
@@ -112,7 +119,7 @@ export const tutorRoutes: FastifyPluginAsync = async (app) => {
       request.log.error({ err: countError }, 'Failed to count tutor questions');
       return reply.code(500).send(msg('Không kiểm tra được lượt hỏi.', 'Could not check your questions today.'));
     }
-    const limit = dailyLimit();
+    const limit = settings.dailyLimit;
     const used = count ?? 0;
     if (!resend && used >= limit) {
       return reply.code(429).send({ ...msg('Em đã hết lượt hỏi hôm nay. Lượt mới có lúc 0 giờ.', 'You have used today’s questions. New ones arrive at midnight (Vietnam time).'), remaining: 0 });
@@ -180,7 +187,7 @@ export const tutorRoutes: FastifyPluginAsync = async (app) => {
     let answer = '';
     let failed = false;
     try {
-      for await (const text of app.aiProvider.chat(history, buildSystemPrompt({ language, level, lesson: lessonText }))) {
+      for await (const text of app.aiProvider.chat(history, buildSystemPrompt({ language, level, lesson: lessonText }), { provider: settings.provider, model: settings.model })) {
         if (closed || raw.destroyed) break;
         answer += text;
         send('delta', { text });
