@@ -8,6 +8,8 @@ import { createBillingRepository } from '../billing/repository.js';
 const CHECKOUT_OPEN = false;
 const PLAN_ORDER = ['student_free', 'student_plus', 'teacher_free', 'teacher_pro'] as const;
 const INTERVAL_ORDER = ['month', 'year'] as const;
+// Student metrics first, then a teacher's classes, exams, imports and AI.
+const METRIC_ORDER = ['tutor_requests', 'graded_exam_attempts', 'active_classes', 'students_per_class', 'active_authored_exams', 'import_files', 'author_ai_requests'];
 const UNAVAILABLE = { code: 'BILLING_UNAVAILABLE', error: 'Chưa tải được thông tin gói. Thử lại sau.', error_en: 'Plan information is not available. Try again later.' };
 
 type PlanRow = { code: string; audience: string; name_en: string; name_vi: string; description_en: string; description_vi: string; active: boolean; version: number };
@@ -51,7 +53,10 @@ export const billingRoutes: FastifyPluginAsync = async (app) => {
           active: row.active,
           version: row.version,
           prices: planPrices,
-          limits: limitRows.filter((l) => l.plan_code === code).map((l) => ({ metric: l.metric, kind: l.kind, limit: l.limit_value })),
+          limits: limitRows
+            .filter((l) => l.plan_code === code)
+            .sort((a, b) => METRIC_ORDER.indexOf(a.metric) - METRIC_ORDER.indexOf(b.metric))
+            .map((l) => ({ metric: l.metric, kind: l.kind, limit: l.limit_value })),
         };
       });
       reply.header('Cache-Control', 'public, max-age=300');

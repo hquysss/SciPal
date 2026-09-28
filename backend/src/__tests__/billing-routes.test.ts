@@ -22,8 +22,8 @@ const catalogTables = (extra: Record<string, MockBuilder | MockBuilder[]> = {}) 
     { id: P(4), plan_code: 'teacher_pro', interval: 'month', amount_vnd: 99000 },
   ]),
   billing_plan_limits: ok([
-    { plan_code: 'student_free', metric: 'tutor_requests', kind: 'daily', limit_value: 5 },
     { plan_code: 'student_free', metric: 'graded_exam_attempts', kind: 'monthly', limit_value: 3 },
+    { plan_code: 'student_free', metric: 'tutor_requests', kind: 'daily', limit_value: 5 },
     { plan_code: 'teacher_pro', metric: 'import_files', kind: 'monthly', limit_value: 100 },
   ]),
   ...extra,
