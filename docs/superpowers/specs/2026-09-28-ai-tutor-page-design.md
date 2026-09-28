@@ -112,6 +112,11 @@ through `AI_PROVIDER`. The provider is decorated on the Fastify app so tests inj
 - States: loading history, streaming, provider error (message with "Thử lại"), daily limit
   reached (composer disabled, with when it resets), session expired.
 - `?conversation=<id>` opens a conversation; `?lesson=<id>` starts a new one about that lesson.
+- Lesson picker ("Hỏi về bài"): on a new, empty chat the student may pick a subject and one of
+  its published lessons; the first question then carries that `lesson_id`, so the answer uses
+  the lesson's theory (same path as asking from a lesson). The lesson is fixed for the whole
+  conversation and shown as a chip above the messages. The server page loads the published
+  lessons (`id, title_vi, title_en, grade, subject`) once; no new API.
 - Visual design follows the education-level tokens (no hard-coded colours, no `--accent` on
   `:root`). A dev mock view (`/dev/tutor-showcase`) covers the states for review at 375 and
   1280 px, light and dark.
@@ -130,6 +135,15 @@ through `AI_PROVIDER`. The provider is decorated on the Fastify app so tests inj
 
 - The landing `TutorSection` gets `href="/tutor"`, so its "Thử ngay" button appears.
 - Nav: "Gia sư AI" for signed-in users.
+
+## Later (not in this round)
+
+- Retrieval over all published lessons (pgvector embeddings, re-embedded on publish) for free
+  questions without a picked lesson — once there is enough content to make it worthwhile.
+- A model router (cheap model by default, a stronger one for hard questions), decided from
+  `tutor-eval` results and real questions; the `AIProvider` interface already allows it.
+- Voice conversations (real-time audio), with its own privacy and cost review.
+- Model names and prices for other providers are checked against official docs before use.
 
 ## Invariants kept
 

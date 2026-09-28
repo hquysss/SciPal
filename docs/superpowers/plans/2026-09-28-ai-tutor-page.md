@@ -1201,9 +1201,9 @@ git commit -m "feat(web): tutor stream client and chat state"
 Before editing UI, load the `impeccable` skill (run its `context` step, mode **Operate**) and follow its craft floor. Keep the level-token system; no new colours.
 
 **Files:**
-- Create: `frontend/features/ai-tutor/TutorMessage.tsx`, `TutorChat.tsx`, `ConversationList.tsx`, `TutorPage.tsx`, `examples.ts`
+- Create: `frontend/features/ai-tutor/TutorMessage.tsx`, `TutorChat.tsx`, `ConversationList.tsx`, `LessonPicker.tsx`, `TutorPage.tsx`, `examples.ts`, `tutorLessons.ts`
 - Create: `frontend/app/tutor/page.tsx`, `frontend/app/dev/tutor-showcase/page.tsx`
-- Test: `frontend/features/ai-tutor/TutorChat.test.tsx`, `TutorMessage.test.tsx`
+- Test: `frontend/features/ai-tutor/TutorChat.test.tsx`, `TutorMessage.test.tsx`, `LessonPicker.test.tsx`
 
 **Interfaces:**
 - Consumes: `useTutorChat`, `TutorState`, `TutorMessage`, `TutorConversation`, `listConversations`, `getConversation`, `deleteConversation` (Task 5).
@@ -1211,7 +1211,10 @@ Before editing UI, load the `impeccable` skill (run its `context` step, mode **O
   - `TutorMessage({ message }: { message: TutorMessage })`
   - `TutorChatView(props: { messages; streaming; remaining; error; limitReached; level: EducationLevel; onSend(text): void; onStop(): void; onRetry(): void })` — presentational, used by `TutorChat` (wires `useTutorChat`) and by the showcase with fixed props.
   - `ConversationList({ conversations, activeId, onOpen(id), onNew(), onDelete(id) })`
-  - `TutorPage({ level, initialConversationId?, lessonId? })` (client).
+  - `type TutorLesson = { id: string; title_vi: string; title_en: string; grade: number; subject_id: string; subject_name_vi: string; subject_name_en: string }`
+  - `tutorLessons.ts`: `getTutorLessons(): Promise<TutorLesson[]>` (server-only; Supabase server client; published lessons ordered by subject then `sort_order`; returns `[]` on error and logs).
+  - `LessonPicker({ lessons, value, onChange(lessonId: string | null) })` — subject `<select>` then lesson `<select>`; "Không chọn bài" clears it.
+  - `TutorPage({ level, lessons, initialConversationId?, lessonId? })` (client).
   - `examples.ts`: `EXAMPLE_QUESTIONS: Record<EducationLevel, Array<{ vi: string; en: string }>>` (4 each).
   - `EducationLevel` type from `@/features/landing/educationLevel` (existing).
 
@@ -1282,6 +1285,36 @@ describe('TutorChatView', () => {
 });
 ```
 
+`LessonPicker.test.tsx`:
+
+```tsx
+import { renderToStaticMarkup } from 'react-dom/server';
+import { describe, expect, it, vi } from 'vitest';
+import { LessonPicker } from './LessonPicker';
+
+vi.mock('@scipal/hooks', () => ({ useLanguage: () => ({ lang: 'vi', t: (o: { vi: string }) => o.vi }) }));
+
+const lessons = [
+  { id: 'l1', title_vi: 'Vòng lặp', title_en: 'Loops', grade: 10, subject_id: 's1', subject_name_vi: 'Tin học', subject_name_en: 'Informatics' },
+  { id: 'l2', title_vi: 'Dao động', title_en: 'Oscillation', grade: 11, subject_id: 's2', subject_name_vi: 'Vật lí', subject_name_en: 'Physics' },
+];
+
+describe('LessonPicker', () => {
+  it('lists subjects, and the lessons of the chosen lesson’s subject', () => {
+    const html = renderToStaticMarkup(<LessonPicker lessons={lessons} value="l1" onChange={() => {}} />);
+    expect(html).toMatch(/<label[^>]*>Môn<\/label>/);
+    expect(html).toContain('Vật lí');
+    expect(html).toContain('Vòng lặp');
+    expect(html).not.toContain('Dao động');
+    expect(html).toContain('Không chọn bài');
+  });
+
+  it('renders nothing when there are no published lessons', () => {
+    expect(renderToStaticMarkup(<LessonPicker lessons={[]} value={null} onChange={() => {}} />)).toBe('');
+  });
+});
+```
+
 - [ ] **Step 2: Run** — Expected: FAIL (modules missing).
 
 - [ ] **Step 3: Implement `TutorMessage.tsx`**
@@ -1322,13 +1355,15 @@ export function TutorMessage({ message }: { message: Message }) {
   - composer `<form>`: `<label htmlFor>Câu hỏi của em</label>`, a `<textarea>` (`maxLength={2000}`, `rows={2}`, `disabled={limitReached}`; Enter without Shift submits, Shift+Enter inserts a line — handle in `onKeyDown`, ignoring `e.nativeEvent.isComposing` for Vietnamese IME), a counter shown when length > 1800 (`n/2000`), a send button (disabled when empty or streaming) or a "Dừng" button while streaming, and `Còn {remaining} lượt hôm nay` when `remaining !== null`.
   - `TutorChat({ conversationId?, lessonId?, initialMessages?, level })` calls `useTutorChat` and renders `TutorChatView`; it scrolls the log to the bottom when messages change and returns `conversationId` through an `onConversation?(id)` prop so the page can update the URL/list.
 
+- [ ] **Step 5b: Implement `tutorLessons.ts` and `LessonPicker.tsx`**: `getTutorLessons` selects `id, title_vi, title_en, grade, subject_id, sort_order, subjects(name_vi, name_en, sort_order)` from `lessons` where `status = 'published'`, sorts by subject `sort_order`, grade, lesson `sort_order`, and maps to `TutorLesson`. `LessonPicker` returns `null` for an empty list; otherwise a labelled subject `<select>` ("Môn") whose options are the distinct subjects, and a labelled lesson `<select>` ("Bài") for the chosen subject with a first option "Không chọn bài" (value `''`) — choosing a subject selects no lesson until one is picked. The chosen lesson is shown in `TutorChatView` as a chip ("Đang hỏi về: {title}") above the messages; `TutorChatView` gets an optional `lessonTitle?: string` and, on an empty chat only, a `picker?: ReactNode` slot rendered above the examples.
+
 - [ ] **Step 6: Implement `ConversationList.tsx`**: "Hội thoại mới" button; `<ul>` of conversations (title, relative date via `Intl.DateTimeFormat`), active one marked `aria-current="page"`; each has a delete icon button (`aria-label="Xóa hội thoại {title}"`) with `window.confirm`. Empty list text: "Chưa có hội thoại nào.".
 
-- [ ] **Step 7: Implement `TutorPage.tsx`** (client): loads `listConversations()` on mount; if `initialConversationId`, `getConversation(id)` — on 404 show `Alert` "Không tìm thấy hội thoại này." and a new chat; renders a two-column grid on `lg` (list 18rem + chat), and below `lg` a "Hội thoại" button opening the list in the existing `Dialog` component (`@/components/ui/dialog`). Opening a conversation remounts `TutorChat` with `key={id}` and `initialMessages`; "Hội thoại mới" remounts with no id; after the first answer `onConversation` updates the URL with `router.replace('/tutor?conversation=' + id)` and refreshes the list. Deleting the active conversation starts a new chat.
+- [ ] **Step 7: Implement `TutorPage.tsx`** (client): loads `listConversations()` on mount; if `initialConversationId`, `getConversation(id)` — on 404 show `Alert` "Không tìm thấy hội thoại này." and a new chat; renders a two-column grid on `lg` (list 18rem + chat), and below `lg` a "Hội thoại" button opening the list in the existing `Dialog` component (`@/components/ui/dialog`). The picker's lesson id is held in `TutorPage` state (initialised from `lessonId`) and passed to `TutorChat` as `lessonId`; once the chat has a conversation the picker is hidden and the chip shows the lesson title (looked up in `lessons` by the conversation's `lesson_id`). Opening a conversation remounts `TutorChat` with `key={id}` and `initialMessages`; "Hội thoại mới" remounts with no id; after the first answer `onConversation` updates the URL with `router.replace('/tutor?conversation=' + id)` and refreshes the list. Deleting the active conversation starts a new chat.
 
-- [ ] **Step 8: Implement `app/tutor/page.tsx`** (server): get the Supabase server user as `app/profile/page.tsx` does; `if (!user) redirect('/login?redirect=%2Ftutor')`; read `preferred_education_level` with `parseEducationLevel` and `resolveEducationLevel` (as in the profile page); read `searchParams` `conversation` and `lesson` (UUID-checked); render a heading "Gia sư AI" / "AI tutor" with one line of lead text and `<TutorPage level=… initialConversationId=… lessonId=… />`. `export const dynamic = 'force-dynamic'`.
+- [ ] **Step 8: Implement `app/tutor/page.tsx`** (server): get the Supabase server user as `app/profile/page.tsx` does; `if (!user) redirect('/login?redirect=%2Ftutor')`; read `preferred_education_level` with `parseEducationLevel` and `resolveEducationLevel` (as in the profile page); read `searchParams` `conversation` and `lesson` (UUID-checked); load `getTutorLessons()`; render a heading "Gia sư AI" / "AI tutor" with one line of lead text and `<TutorPage level=… lessons=… initialConversationId=… lessonId=… />`. `export const dynamic = 'force-dynamic'`.
 
-- [ ] **Step 9: Implement `app/dev/tutor-showcase/page.tsx`**: `notFound()` in production like `teacher-showcase`; `?view=empty|chat|streaming|error|limit|list` renders `TutorChatView`/`ConversationList` with fixed props (the chat view uses an answer with markdown, a `$$` formula and a Python block).
+- [ ] **Step 9: Implement `app/dev/tutor-showcase/page.tsx`**: `notFound()` in production like `teacher-showcase`; `?view=empty|picker|chat|streaming|error|limit|list` renders `TutorChatView`/`ConversationList` with fixed props (the chat view uses an answer with markdown, a `$$` formula and a Python block).
 
 - [ ] **Step 10: Run** the render tests, `npx tsc --noEmit -p .`, `npx next lint` — Expected: PASS.
 
