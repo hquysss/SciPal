@@ -72,9 +72,9 @@ export const translateRoutes: FastifyPluginAsync = async (app) => {
     let translated: string[] | null = null;
     for (let attempt = 0; attempt < 2 && !translated; attempt++) {
       try {
-        let reply = '';
-        for await (const chunk of app.aiProvider.chat([{ role: 'user', content: input }], system, { provider: settings.provider, model: settings.model })) reply += chunk;
-        translated = parseTranslations(reply, send.length);
+        let answer = '';
+        for await (const chunk of app.aiProvider.chat([{ role: 'user', content: input }], system, { provider: settings.provider, model: settings.model })) answer += chunk;
+        translated = parseTranslations(answer, send.length);
         if (!translated) request.log.warn({ attempt }, 'Translation reply did not match the input');
       } catch (err) {
         request.log.error({ err, attempt }, 'Translation provider failed');
