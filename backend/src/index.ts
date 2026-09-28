@@ -21,6 +21,7 @@ import { translateRoutes } from './routes/translate.js';
 import { adminTutorRoutes } from './routes/adminTutor.js';
 import { accountQuotaRoutes } from './routes/accountQuotas.js';
 import { billingRoutes } from './routes/billingPlans.js';
+import { authorAiRoutes } from './routes/authorAi.js';
 import { createSettingsStore } from './tutor/settings.js';
 import { questionRoutes } from './routes/questions.js';
 import { practiceRoutes } from './routes/practice.js';
@@ -51,6 +52,7 @@ await app.register(translateRoutes);
 await app.register(adminTutorRoutes);
 await app.register(accountQuotaRoutes);
 await app.register(billingRoutes);
+await app.register(authorAiRoutes);
 await app.register(practiceRoutes);
 
 app.get('/health', async () => ({ status: 'ok' }));

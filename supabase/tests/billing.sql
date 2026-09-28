@@ -33,6 +33,7 @@ values
 \ir ../migrations/20260929000000_tutor_daily_quota.sql
 \ir ../migrations/20260929010000_exam_attempts.sql
 \ir ../migrations/20260929020000_teacher_capacity.sql
+\ir ../migrations/20260929030000_author_ai_drafts.sql
 -- Supabase's service_role writes these tables; the stubs above need the same grant.
 grant select, insert, update, delete on public.class_rooms, public.class_members, public.exam_blueprints to service_role;
 
@@ -532,6 +533,21 @@ begin
   -- Deleting one frees a place.
   delete from public.exam_blueprints where id = '50000000-0000-4000-8000-000000000002';
   insert into public.exam_blueprints (id, created_by, status) values ('50000000-0000-4000-8000-000000000006', c_teacher, 'draft');
+end;
+$$;
+reset role;
+
+-- AI lesson drafts (migration 20260929030000): backend only.
+set role authenticated;
+do $$
+declare
+  v_denied boolean := false;
+begin
+  begin
+    perform 1 from public.author_ai_drafts;
+  exception when insufficient_privilege then v_denied := true;
+  end;
+  if not v_denied then raise exception 'A signed-in user read AI drafts directly'; end if;
 end;
 $$;
 reset role;

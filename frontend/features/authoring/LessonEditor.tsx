@@ -30,6 +30,7 @@ import { AutoTranslateContext, AutoTranslatedNote, type AutoTranslateValue } fro
 import { lessonFields, setLessonField, type LessonDoc } from './translation/bilingualFields';
 import { translateTexts } from './translation/translateApi';
 import { useAutoTranslate } from './translation/useAutoTranslate';
+import { AuthorAiDialog } from './aiDraft/AuthorAiDialog';
 
 const LESSON_TEMPLATE_URL = '/templates/scipal-lesson-template.docx';
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL ?? 'https://sci-pal-backend.vercel.app';
@@ -97,6 +98,7 @@ export function LessonEditor({
   const pathname = usePathname();
   const [mobileView, setMobileView] = useState<'edit' | 'preview'>('edit');
   const [previewLang, setPreviewLang] = useState<'vi' | 'en'>('vi');
+  const [aiOpen, setAiOpen] = useState(false);
   const [autoTranslate, setAutoTranslate] = useAutoTranslate();
   const [marks, setMarks] = useState<Mark[]>([]);
   const [translationNotice, setTranslationNotice] = useState<Bilingual | null>(null);
@@ -632,6 +634,18 @@ export function LessonEditor({
         }}
       />
 
+      <AuthorAiDialog
+        open={aiOpen}
+        onClose={() => setAiOpen(false)}
+        initialTopic={titleVi}
+        onApply={(added) => {
+          // Added at the end of the Lesson part: nothing already written is replaced.
+          setActivePart('lesson');
+          setPart('lesson', (list) => [...list, ...added]);
+          setMessage({ text: { en: `Added ${added.length} AI section(s) at the end. Read them before sending for review.`, vi: `Đã thêm ${added.length} mục AI soạn vào cuối bài. Hãy đọc lại trước khi gửi duyệt.` }, type: 'success' });
+        }}
+      />
+
       {pendingImport && (
         <section role="dialog" aria-label={t({ en: 'Import options', vi: 'Cách nhập tệp' })} className="flex flex-col gap-3 rounded-xl border border-action bg-surface p-4">
           <p className="text-sm text-ink">
@@ -677,6 +691,9 @@ export function LessonEditor({
               <a href={LESSON_TEMPLATE_URL} download className={buttonVariants({ variant: 'link' })}>
                 {t({ en: 'Word template', vi: 'Tải mẫu Word' })}
               </a>
+              <button type="button" onClick={() => setAiOpen(true)} className={buttonVariants({ variant: 'outline' })}>
+                {t({ en: 'Draft with AI', vi: 'Soạn nháp bằng AI' })}
+              </button>
               <button type="button" onClick={() => importInputRef.current?.click()} disabled={importing} className={buttonVariants({ variant: 'outline' })}>
                 {importing ? t({ en: 'Reading file…', vi: 'Đang đọc tệp…' }) : t({ en: 'Import Word / PDF / JSON', vi: 'Nhập từ Word / PDF / JSON' })}
               </button>
