@@ -81,7 +81,7 @@ through `AI_PROVIDER`. The provider is decorated on the Fastify app so tests inj
 
 ### `/tutor` page (`frontend/app/tutor/page.tsx`, components in `frontend/features/ai-tutor/`)
 
-- The server page checks the session; signed-out visitors go to login with `next=/tutor`.
+- The server page checks the session; signed-out visitors go to `/login?redirect=%2Ftutor`.
 - Layout: the conversation list on the left on desktop, a drawer on phones (a "Hội thoại"
   button). "Hội thoại mới" sits at the top of the list; each item shows its title and a delete
   action with a confirmation.
