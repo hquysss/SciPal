@@ -50,9 +50,13 @@ describe('authPlugin', () => {
     await billing.register(authPlugin);
     billing.get('/api/billing/plans', async () => ({ ok: true }));
     billing.get('/api/billing/me', async () => ({ ok: true }));
+    billing.post('/api/billing/webhooks/payos', async () => ({ ok: true }));
+    billing.post('/api/billing/checkout', async () => ({ ok: true }));
     await billing.ready();
     expect((await billing.inject({ method: 'GET', url: '/api/billing/plans' })).statusCode).toBe(200);
     expect((await billing.inject({ method: 'GET', url: '/api/billing/me' })).statusCode).toBe(401);
+    expect((await billing.inject({ method: 'POST', url: '/api/billing/webhooks/payos', payload: {} })).statusCode).toBe(200);
+    expect((await billing.inject({ method: 'POST', url: '/api/billing/checkout', payload: {} })).statusCode).toBe(401);
     await billing.close();
   });
 });

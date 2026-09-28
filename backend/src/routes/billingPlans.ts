@@ -1,11 +1,11 @@
 import type { FastifyPluginAsync, FastifyRequest } from 'fastify';
 import { createBillingRepository } from '../billing/repository.js';
+import { payosFromEnv } from '../billing/providers/payos.js';
 
 // The public plan catalog and the signed-in account's plan (billing plan Task 9, without payment).
 // Prices, limits and wording are rows of billing_plans / billing_prices / billing_plan_limits.
-// Checkout stays closed until the payment providers (Tasks 6–8) are live.
+// Checkout opens once payOS credentials are configured in the backend environment.
 
-const CHECKOUT_OPEN = false;
 const PLAN_ORDER = ['student_free', 'student_plus', 'teacher_free', 'teacher_pro'] as const;
 const INTERVAL_ORDER = ['month', 'year'] as const;
 // Student metrics first, then a teacher's classes, exams, imports and AI.
@@ -60,7 +60,7 @@ export const billingRoutes: FastifyPluginAsync = async (app) => {
         };
       });
       reply.header('Cache-Control', 'public, max-age=300');
-      return { plans: catalog, checkoutOpen: CHECKOUT_OPEN };
+      return { plans: catalog, checkoutOpen: payosFromEnv() !== null };
     } catch (error) {
       request.log.error({ err: error }, 'Billing catalog could not be read');
       return reply.code(503).send(UNAVAILABLE);

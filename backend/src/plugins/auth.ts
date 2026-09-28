@@ -6,6 +6,8 @@ const isPublicPath = (path: string): boolean => {
   if (path === '/health' || path === '/api/survey') return true;
   // The plan catalog only; the rest of /api/billing needs a session.
   if (path === '/api/billing/plans') return true;
+  // payOS calls this; the handler checks its signature.
+  if (path === '/api/billing/webhooks/payos') return true;
   if (path.startsWith('/api/exam/')) return true;
   // Lesson practice works for visitors too; checking gives no XP.
   if (path.startsWith('/api/practice/')) return true;
