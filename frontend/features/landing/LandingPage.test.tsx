@@ -77,4 +77,13 @@ describe('LandingPage', () => {
   it('uses only theme tokens', () => {
     expect(countRawColors(render('primary')).total).toBe(0);
   });
+
+  it('lets a guest change level in place with a button instead of a link', () => {
+    const html = renderToStaticMarkup(
+      <LandingPage level="primary" levelSource="session" catalog={{ kind: 'ready', subjects: [] }} informatics={{ kind: 'empty' }} onChangeLevel={() => {}} />,
+    );
+    expect(html).toMatch(/<button[^>]*type="button"[^>]*>[\s\S]*?Đổi cấp/);
+    expect(html).not.toContain('href="/?chooseLevel=1"');
+  });
 });
+

@@ -21,6 +21,8 @@ const CONTACT_EMAIL = 'tuilangus@gmail.com';
 export interface LandingPageProps {
   level: EducationLevel;
   levelSource: 'account' | 'session';
+  /** A guest changes level on this page (the gate opens in place); signed-in users follow a link. */
+  onChangeLevel?: () => void;
   catalog: LandingCatalog;
   informatics: InformaticsAvailability;
 }
@@ -112,7 +114,22 @@ function useRevealOnScroll(pageRef: React.RefObject<HTMLDivElement | null>) {
   }, [pageRef]);
 }
 
-export function LandingPage({ level, levelSource, catalog, informatics }: LandingPageProps) {
+/** "Đổi cấp": a button that opens the gate in place for guests, a link for signed-in users. */
+function ChangeLevel({ onChangeLevel, className }: { onChangeLevel?: () => void; className: string }) {
+  const { t } = useLanguage();
+  const label = t({ en: 'Change level', vi: 'Đổi cấp' });
+  return onChangeLevel ? (
+    <button type="button" onClick={onChangeLevel} className={className}>
+      {label}
+    </button>
+  ) : (
+    <Link href="/?chooseLevel=1" className={className}>
+      {label}
+    </Link>
+  );
+}
+
+export function LandingPage({ level, levelSource, catalog, informatics, onChangeLevel }: LandingPageProps) {
   const { t, lang } = useLanguage();
   const pageRef = useRef<HTMLDivElement>(null);
   const [titleFirst, titleSecond] = HERO_TITLE[level];
@@ -145,9 +162,7 @@ export function LandingPage({ level, levelSource, catalog, informatics }: Landin
                 {t({ en: 'Explore subjects', vi: 'Xem môn học' })}
                 <ArrowRight size={18} aria-hidden="true" />
               </a>
-              <Link href="/?chooseLevel=1" className={styles.secondaryAction}>
-                {t({ en: 'Change level', vi: 'Đổi cấp' })}
-              </Link>
+              <ChangeLevel onChangeLevel={onChangeLevel} className={styles.secondaryAction} />
             </div>
           </div>
           <div className={styles.heroArt}>
@@ -160,9 +175,7 @@ export function LandingPage({ level, levelSource, catalog, informatics }: Landin
             <h2 id="subjects-title" className={styles.sectionTitle}>
               {t({ en: 'Your subjects', vi: 'Môn học của bạn' })}
             </h2>
-            <Link href="/?chooseLevel=1" className={styles.inlineLink}>
-              {t({ en: 'Change level', vi: 'Đổi cấp' })}
-            </Link>
+            <ChangeLevel onChangeLevel={onChangeLevel} className={styles.inlineLink} />
             <p className={styles.srOnly}>
               {levelSource === 'account'
                 ? t({ en: 'Your level is saved to your account.', vi: 'Cấp học đã lưu vào tài khoản.' })

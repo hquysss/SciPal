@@ -24,21 +24,8 @@ function levelLabel(level: EducationLevel, lang: 'en' | 'vi') {
   return lang === 'en' ? 'Upper secondary · Grades 10–12' : 'THPT · Lớp 10–12';
 }
 
-function statusText(
-  subject: LandingSubject,
-  informatics: InformaticsAvailability,
-  lang: 'en' | 'vi',
-) {
-  if (subject.slug === 'informatics' && subject.education_level === 'upper_secondary') {
-    if (informatics.kind === 'available' && subject.status === 'active') {
-      return lang === 'en' ? 'Published lessons' : 'Có bài học đã xuất bản';
-    }
-    if (informatics.kind === 'error') {
-      return lang === 'en' ? 'Could not verify lessons' : 'Chưa kiểm tra được bài học';
-    }
-    return lang === 'en' ? 'Lessons are being prepared' : 'Học liệu đang được bổ sung';
-  }
-
+function statusText(href: string | null, lang: 'en' | 'vi') {
+  if (href) return lang === 'en' ? 'Has lessons' : 'Có bài học';
   return lang === 'en' ? 'In development' : 'Đang biên soạn';
 }
 
@@ -52,14 +39,14 @@ function SubjectCard({
   informatics: InformaticsAvailability;
 }) {
   const { lang, t } = useLanguage();
-  const href = getSubjectAction(level, subject, informatics);
+  const href = getSubjectAction(subject);
   const cardClassName = [styles.card, href ? styles.activeCard : ''].filter(Boolean).join(' ');
   const card = (
     <article className={cardClassName} data-landing-reveal="">
       <div className={styles.cardTopline}>
         <span className={styles.grade}>{levelLabel(level, lang)}</span>
         <span className={href ? styles.statusActive : styles.statusUpcoming}>
-          {statusText(subject, informatics, lang)}
+          {statusText(href, lang)}
         </span>
       </div>
 

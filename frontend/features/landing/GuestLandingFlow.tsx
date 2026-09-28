@@ -73,6 +73,10 @@ export function GuestLandingFlow({
       levelSource="session"
       catalog={catalog}
       informatics={informatics}
+      onChangeLevel={() => {
+        setForceGate(true);
+        window.scrollTo({ top: 0 });
+      }}
     />
   );
 }
