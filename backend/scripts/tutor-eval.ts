@@ -23,8 +23,13 @@ const situations: Array<{ name: string; level: EducationLevel; language: 'vi' | 
   { name: 'english', level: 'upper_secondary', language: 'en', messages: [{ role: 'user', content: 'Why does my while loop never stop?' }] },
 ];
 
+// Free API tiers limit calls per minute: EVAL_DELAY_MS spaces the calls, EVAL_FROM skips ones already read.
+const delay = Number(process.env.EVAL_DELAY_MS) || 0;
+const from = Number(process.env.EVAL_FROM) || 0;
 const ai = createAIProvider();
-for (const s of situations) {
+for (const [i, s] of situations.entries()) {
+  if (i < from) continue;
+  if (delay && i > from) await new Promise((r) => setTimeout(r, delay));
   let reply = '';
   for await (const text of ai.chat(s.messages, buildSystemPrompt({ language: s.language, level: s.level }))) reply += text;
   console.log(`\n=== ${s.name} (${s.level}, ${s.language}) ===\n${reply}`);
