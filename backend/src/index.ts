@@ -14,6 +14,8 @@ import { accountsRoutes } from './routes/accounts.js';
 import { examImportRoutes } from './routes/examImport.js';
 import { examRoutesAuthoring } from './routes/exams.js';
 import { topicAdminRoutes } from './routes/topicAdmin.js';
+import { tutorRoutes } from './routes/tutor.js';
+import { lazyAIProvider } from './providers/ai.js';
 import { questionRoutes } from './routes/questions.js';
 import { practiceRoutes } from './routes/practice.js';
 
@@ -21,6 +23,7 @@ const app = Fastify({ logger: true });
 
 const corsOrigins = process.env.CORS_ORIGINS?.split(',').map((origin) => origin.trim()).filter(Boolean);
 await app.register(cors, { origin: corsOrigins?.length ? corsOrigins : '*' });
+app.decorate('aiProvider', lazyAIProvider());
 await app.register(supabasePlugin);
 await app.register(authPlugin);
 await app.register(scoreRoutes);
@@ -35,6 +38,7 @@ await app.register(examImportRoutes);
 await app.register(questionRoutes);
 await app.register(examRoutesAuthoring);
 await app.register(topicAdminRoutes);
+await app.register(tutorRoutes);
 await app.register(practiceRoutes);
 
 app.get('/health', async () => ({ status: 'ok' }));

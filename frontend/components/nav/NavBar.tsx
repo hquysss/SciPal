@@ -52,6 +52,11 @@ function getDisplayName(user: AuthUser | null): string | null {
   return user.email?.split('@')[0]?.trim() || null;
 }
 
+/** "Gia sư AI" in the main links, for signed-in users only (the tutor needs an account). */
+export function tutorLink(signedIn: boolean, lang: 'en' | 'vi') {
+  return signedIn ? { href: '/tutor', label: lang === 'en' ? 'AI tutor' : 'Gia sư AI' } : null;
+}
+
 /** The teacher and admin menus for a role (empty for others). */
 export function roleLinks(role: string | null, lang: 'en' | 'vi', openRequests: number) {
   const label = (en: string, vi: string) => (lang === 'en' ? en : vi);
@@ -217,6 +222,7 @@ export function NavBar({ currentSubject }: NavBarProps) {
     { href: '/glossary', label: lang === 'en' ? 'Glossary' : 'Từ điển' },
     { href: '/exam', label: lang === 'en' ? 'Exams' : 'Thi thử' },
     ...(appRole ? [
+      tutorLink(true, lang === 'en' ? 'en' : 'vi')!,
       { href: '/progress', label: lang === 'en' ? 'Progress' : 'Tiến trình' },
       { href: '/profile', label: lang === 'en' ? 'Profile' : 'Hồ sơ' },
     ] : []),

@@ -3,10 +3,12 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 export interface QueryResult {
   data: unknown;
   error: { code?: string; message?: string } | null;
+  count?: number | null;
 }
 
 export interface MockBuilder {
   eqCalls: Array<[string, unknown]>;
+  gteCalls: Array<[string, unknown]>;
   inserted: unknown[];
   updated: unknown[];
   deleteCalls: number;
@@ -19,6 +21,7 @@ export interface MockBuilder {
   selectArgs: unknown[][];
   select(...args: unknown[]): MockBuilder;
   eq(column: string, value: unknown): MockBuilder;
+  gte(column: string, value: unknown): MockBuilder;
   in(column: string, values: unknown[]): MockBuilder;
   or(filter: string): MockBuilder;
   ilike(column: string, pattern: string): MockBuilder;
@@ -43,6 +46,7 @@ export interface MockBuilder {
 export function mockQuery(result: QueryResult): MockBuilder {
   const builder: MockBuilder = {
     eqCalls: [],
+    gteCalls: [],
     inserted: [],
     updated: [],
     deleteCalls: 0,
@@ -59,6 +63,10 @@ export function mockQuery(result: QueryResult): MockBuilder {
     },
     eq: (column, value) => {
       builder.eqCalls.push([column, value]);
+      return builder;
+    },
+    gte: (column, value) => {
+      builder.gteCalls.push([column, value]);
       return builder;
     },
     in: (column, values) => {
