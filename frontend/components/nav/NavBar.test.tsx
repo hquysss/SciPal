@@ -42,6 +42,7 @@ describe('role menus', () => {
     expect(roleLinks('teacher', 'vi', 0).teacherLinks.map((l) => l.href)).toContain('/teacher/exams');
     expect(roleLinks('admin', 'vi', 0).adminLinks.map((l) => l.href)).toContain('/teacher/exams');
     expect(roleLinks('admin', 'vi', 0).adminLinks.map((l) => l.href)).toContain('/admin/topics');
+    expect(roleLinks('admin', 'vi', 0).adminLinks.map((l) => l.href)).toContain('/admin/ai');
     expect(roleLinks('teacher', 'vi', 0).teacherLinks.map((l) => l.href)).not.toContain('/admin/topics');
     expect(roleLinks('student', 'vi', 0)).toEqual({ teacherLinks: [], adminLinks: [] });
   });

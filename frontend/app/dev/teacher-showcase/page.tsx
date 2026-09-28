@@ -9,6 +9,7 @@ import { ExamReviewCard } from '@/features/authoring/exams/ExamReview';
 import { QuestionBank } from '@/features/authoring/exams/QuestionBank';
 import { TeacherAreaTabs } from '@/components/nav/TeacherAreaTabs';
 import { TopicManager } from '@/features/authoring/topics/TopicManager';
+import { AiSettingsForm } from '@/features/admin-ai/AiSettingsForm';
 import type { AuthorQuestion } from '@/features/authoring/practice/api';
 
 type SearchParams = Record<string, string | string[] | undefined>;
@@ -60,6 +61,16 @@ export default async function TeacherShowcase({ searchParams }: { searchParams: 
           <TeacherAreaTabs active="exams" />
           <QuestionBank subjects={SUBJECTS} />
         </>
+      ) : view === 'ai' ? (
+        <AiSettingsForm
+          initial={{
+            saved: { provider: 'gemini', model: null, daily_limit: 20, enabled: true, updated_at: '2026-09-28T08:00:00Z' },
+            effective: { provider: 'gemini', model: 'gemini-3.8-flash', dailyLimit: 20, enabled: true },
+            keys: { gemini: true, openai: false },
+            defaults: { gemini: 'gemini-3.8-flash', openai: 'gpt-4o-mini' },
+            usage: { today: 42, week: 318, students_week: 27 },
+          }}
+        />
       ) : view === 'topics' ? (
         <TopicManager
           subjects={[{ id: 's1', slug: 'informatics', name_en: 'Informatics', name_vi: 'Tin học', sort_order: 1, grades: [10, 11, 12] }]}

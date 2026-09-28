@@ -1,0 +1,50 @@
+import { renderToStaticMarkup } from 'react-dom/server';
+import { describe, expect, it, vi } from 'vitest';
+import { countRawColors } from '../../lib/theme/rawColors';
+import { AiSettingsForm } from './AiSettingsForm';
+import type { AiSettingsSnapshot } from './api';
+
+vi.mock('@scipal/hooks', () => ({ useLanguage: () => ({ lang: 'vi', t: (o: { vi: string }) => o.vi }) }));
+vi.mock('@scipal/supabase', () => ({ createBrowserClient: () => ({}) }));
+
+const snapshot: AiSettingsSnapshot = {
+  saved: { provider: 'gemini', model: null, daily_limit: 20, enabled: true, updated_at: '2026-09-28T08:00:00Z' },
+  effective: { provider: 'gemini', model: 'gemini-3.8-flash', dailyLimit: 20, enabled: true },
+  keys: { gemini: true, openai: false },
+  defaults: { gemini: 'gemini-3.8-flash', openai: 'gpt-4o-mini' },
+  usage: { today: 4, week: 25, students_week: 2 },
+};
+
+/** The attributes of the input with this label text. */
+const control = (html: string, label: string) => {
+  const id = html.match(new RegExp(`<label[^>]*for="([^"]+)"[^>]*>${label}</label>`))?.[1];
+  if (!id) throw new Error(`No label "${label}"`);
+  return html.match(new RegExp(`<(input|select)[^>]*id="${id}"[^>]*>`))?.[0] ?? '';
+};
+
+describe('AiSettingsForm', () => {
+  it('shows the provider choice with key status, the model, the limit, the switch and usage', () => {
+    const html = renderToStaticMarkup(<AiSettingsForm initial={snapshot} />);
+    expect(html).toContain('Gemini');
+    expect(html).toContain('OpenAI');
+    expect(html).toContain('Đã đặt key');
+    expect(html).toContain('Chưa đặt key');
+    expect(control(html, 'Model')).toContain('placeholder="gemini-3.8-flash"');
+    expect(control(html, 'Số câu hỏi mỗi học sinh mỗi ngày')).toContain('value="20"');
+    expect(html).toContain('Bật gia sư cho học sinh');
+    expect(html).toContain('Thử kết nối');
+    expect(html).toMatch(/>4<[\s\S]*>25<[\s\S]*>2</);
+    expect(countRawColors(html).total).toBe(0);
+  });
+
+  it('never shows a field for an API key', () => {
+    const html = renderToStaticMarkup(<AiSettingsForm initial={snapshot} />);
+    expect(html).not.toMatch(/type="password"/);
+    expect(html).not.toMatch(/API key<\/label>/i);
+  });
+
+  it('warns when the chosen provider has no key', () => {
+    const html = renderToStaticMarkup(<AiSettingsForm initial={{ ...snapshot, saved: { ...snapshot.saved!, provider: 'openai' }, effective: { ...snapshot.effective, provider: 'openai', model: 'gpt-4o-mini' } }} />);
+    expect(html).toContain('OPENAI_API_KEY');
+  });
+});
