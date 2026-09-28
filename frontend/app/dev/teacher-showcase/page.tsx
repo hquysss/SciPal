@@ -10,6 +10,8 @@ import { QuestionBank } from '@/features/authoring/exams/QuestionBank';
 import { TeacherAreaTabs } from '@/components/nav/TeacherAreaTabs';
 import { TopicManager } from '@/features/authoring/topics/TopicManager';
 import { AiSettingsForm } from '@/features/admin-ai/AiSettingsForm';
+import { AdminChatsPreview } from '@/features/admin-ai/AdminChatsPreview';
+import { AdminAiTabs } from '@/features/admin-ai/AdminAiTabs';
 import type { AuthorQuestion } from '@/features/authoring/practice/api';
 
 type SearchParams = Record<string, string | string[] | undefined>;
@@ -34,6 +36,11 @@ const EXAM = {
   subject_name_vi: 'Tin học', grade: 10, duration_minutes: 45, question_count: 3, updated_at: '2026-09-27T00:00:00Z', created_by: 't1', imported: false, mine: true,
   question_ids: QUESTIONS.map((x) => x.id), review_note: null,
 };
+
+const CHATS = [
+  { id: 'c1', title: 'Giải thích độ phức tạp O(n log n) bằng ví dụ.', student: { id: 's1', name: 'Nguyễn Minh An' }, lesson: { id: 'l1', title_vi: 'Thuật toán sắp xếp', title_en: 'Sorting algorithms' }, messages: 6, created_at: '2026-09-28T03:00:00Z', updated_at: '2026-09-28T03:20:00Z' },
+  { id: 'c2', title: 'Vì sao vòng lặp while của em chạy mãi không dừng?', student: { id: 's2', name: null }, lesson: null, messages: 2, created_at: '2026-09-27T12:00:00Z', updated_at: '2026-09-27T12:05:00Z' },
+];
 
 /** Dev-only preview of teacher/admin screens, which are auth-gated in the app. */
 export default async function TeacherShowcase({ searchParams }: { searchParams: Promise<SearchParams> }) {
@@ -61,6 +68,17 @@ export default async function TeacherShowcase({ searchParams }: { searchParams: 
           <TeacherAreaTabs active="exams" />
           <QuestionBank subjects={SUBJECTS} />
         </>
+      ) : view === 'ai-chats' ? (
+        <div className="flex flex-col gap-6">
+          <AdminAiTabs active="chats" />
+          <AdminChatsPreview
+            conversations={CHATS}
+            messages={[
+              { role: 'user', content: 'Giải thích độ phức tạp $O(n \log n)$ bằng ví dụ.' },
+              { role: 'assistant', content: 'Em thử tưởng tượng có **16 lá bài** cần xếp. Nếu cứ chia đôi mãi, em cần chia mấy lần để mỗi phần còn 1 lá?' },
+            ]}
+          />
+        </div>
       ) : view === 'ai' ? (
         <AiSettingsForm
           initial={{
@@ -69,6 +87,7 @@ export default async function TeacherShowcase({ searchParams }: { searchParams: 
             keys: { gemini: true, openai: false },
             defaults: { gemini: 'gemini-3.8-flash', openai: 'gpt-4o-mini' },
             usage: { today: 42, week: 318, students_week: 27 },
+            translate: { effective: { enabled: true, dailyChars: 200000 }, usage: { today: 12400, week: 86300 } },
           }}
         />
       ) : view === 'topics' ? (
