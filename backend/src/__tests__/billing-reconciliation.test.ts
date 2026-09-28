@@ -136,6 +136,32 @@ describe('POST /api/admin/billing/orders/:id/reconcile', () => {
     await app.close();
   });
 
+  it('rechecks duplicate-payment events linked to an already-paid attempt', async () => {
+    const attempt = mockQuery({ data: { id: 'e0000000-0000-4000-8000-000000000001', provider_reference: '1234567890', status: 'paid' }, error: null });
+    const apply = mockQuery({ data: 'duplicate', error: null });
+    const payos = fakePayos({
+      getPaymentLink: vi.fn().mockResolvedValue({
+        status: 'PAID',
+        amountPaid: 78000,
+        paymentLinkId: 'payos-link',
+        transactions: [
+          { reference: 'FT-paid', amount: 39000, paidAt: '2026-09-29T03:15:00.000Z' },
+          { reference: 'FT-double', amount: 39000, paidAt: '2026-09-29T03:16:00.000Z' },
+        ],
+      }),
+    });
+    const app = await build(admin, { billing_payment_attempts: attempt, 'rpc:billing_apply_payment': apply }, payos);
+
+    const response = await app.inject({ method: 'POST', url: `/api/admin/billing/orders/${ORDER}/reconcile` });
+
+    expect(response.statusCode).toBe(200);
+    expect(attempt.inCalls).toContainEqual(['status', ['reconciliation', 'paid']]);
+    expect(payos.getPaymentLink).toHaveBeenCalledWith(1234567890);
+    expect(rpcCalls).toHaveLength(2);
+    expect(attempt.updated).toHaveLength(0);
+    await app.close();
+  });
+
   it('does not let non-admins query the provider or apply payment events', async () => {
     const payos = fakePayos();
     const app = await build(student, {}, payos);

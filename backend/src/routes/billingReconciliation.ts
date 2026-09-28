@@ -111,7 +111,7 @@ export const billingReconciliationRoutes: FastifyPluginAsync<{ payos?: PayosClie
       .select('id, provider_reference, status')
       .eq('order_id', orderId)
       .eq('provider', 'payos')
-      .eq('status', 'reconciliation')
+      .in('status', ['reconciliation', 'paid'])
       .order('updated_at', { ascending: false })
       .limit(1)
       .maybeSingle();
