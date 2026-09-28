@@ -10,6 +10,13 @@ export interface AIProvider {
   ): AsyncIterable<string>;
 }
 
+const DEFAULT_MODELS = { claude: 'claude-haiku-4-5', openai: 'gpt-4o-mini' } as const;
+
+/** The model to call: `TUTOR_MODEL` when set (so it changes without a deploy of code), else the provider's default. */
+export function tutorModel(provider: keyof typeof DEFAULT_MODELS): string {
+  return process.env.TUTOR_MODEL?.trim() || DEFAULT_MODELS[provider];
+}
+
 // ── Claude provider ──────────────────────────────────────────────
 import { Anthropic } from '@anthropic-ai/sdk';
 
@@ -18,7 +25,7 @@ export class ClaudeProvider implements AIProvider {
 
   async *chat(messages: ChatMessage[], systemPrompt: string): AsyncIterable<string> {
     const stream = await this.client.messages.stream({
-      model:      'claude-haiku-4-5',
+      model:      tutorModel('claude'),
       max_tokens: 1024,
       system:     systemPrompt,
       messages:   messages.map(m => ({ role: m.role, content: m.content })),
@@ -42,7 +49,7 @@ export class OpenAIProvider implements AIProvider {
 
   async *chat(messages: ChatMessage[], systemPrompt: string): AsyncIterable<string> {
     const stream = await this.client.chat.completions.create({
-      model:  'gpt-4o-mini',
+      model:  tutorModel('openai'),
       stream: true,
       messages: [
         { role: 'system', content: systemPrompt },

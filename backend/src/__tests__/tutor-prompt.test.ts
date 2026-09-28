@@ -79,3 +79,22 @@ describe('lazyAIProvider', () => {
     }
   });
 });
+
+describe('tutorModel', () => {
+  it('uses TUTOR_MODEL when set, otherwise each provider’s default', async () => {
+    const { tutorModel } = await import('../providers/ai.js');
+    const saved = process.env.TUTOR_MODEL;
+    try {
+      delete process.env.TUTOR_MODEL;
+      expect(tutorModel('claude')).toBe('claude-haiku-4-5');
+      expect(tutorModel('openai')).toBe('gpt-4o-mini');
+      process.env.TUTOR_MODEL = '  some-model  ';
+      expect(tutorModel('openai')).toBe('some-model');
+      process.env.TUTOR_MODEL = '   ';
+      expect(tutorModel('claude')).toBe('claude-haiku-4-5');
+    } finally {
+      if (saved === undefined) delete process.env.TUTOR_MODEL;
+      else process.env.TUTOR_MODEL = saved;
+    }
+  });
+});
