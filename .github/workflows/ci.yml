@@ -2,12 +2,34 @@ name: CI
 
 on:
   push:
-    branches: [main, master, develop]
+    branches: [main, master, develop, 'codex/**']
   pull_request:
 
 jobs:
   ci:
     runs-on: ubuntu-latest
+    env:
+      SCIPAL_BILLING_TEST_APPROVED: 'true'
+      SCIPAL_BILLING_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/scipal_test
+      PGHOST: 127.0.0.1
+      PGPORT: '5432'
+      PGDATABASE: scipal_test
+      PGUSER: postgres
+      PGPASSWORD: postgres
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_DB: scipal_test
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
     steps:
       - uses: actions/checkout@v4
       # pnpm version comes from package.json "packageManager".
@@ -17,6 +39,9 @@ jobs:
           node-version: 22
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - run: pnpm turbo typecheck
-      - run: pnpm turbo test
-      - run: pnpm turbo build
+      - run: npx turbo run typecheck test lint
+      - run: npx turbo run build
+      - run: sudo apt-get update
+      - run: sudo apt-get install --no-install-recommends -y postgresql-client
+      - run: psql -X -v ON_ERROR_STOP=1 --file supabase/tests/billing.sql
+      - run: pnpm --filter @scipal/api exec tsx scripts/verify-billing-concurrency.ts

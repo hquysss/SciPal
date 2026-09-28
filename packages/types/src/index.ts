@@ -3,3 +3,4 @@ export * from './question.js';
 export * from './subject.js';
 export * from './simulations.js';
 export * from './graphExpression.js';
+export * from './billing.js';
