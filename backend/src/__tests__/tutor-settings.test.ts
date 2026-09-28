@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { createSettingsStore, resolveTutorSettings } from '../tutor/settings.js';
+import { createSettingsStore, resolveTranslateSettings, resolveTutorSettings } from '../tutor/settings.js';
 
 describe('resolveTutorSettings', () => {
   it('uses the admin row first, then the environment, then the defaults', () => {
@@ -20,7 +20,26 @@ describe('resolveTutorSettings', () => {
   });
 });
 
+describe('resolveTranslateSettings', () => {
+  it('uses the admin row first, then AUTHOR_TRANSLATE_DAILY_CHARS, then 200 000', () => {
+    expect(resolveTranslateSettings(null, {})).toEqual({ enabled: true, dailyChars: 200_000 });
+    expect(resolveTranslateSettings(null, { AUTHOR_TRANSLATE_DAILY_CHARS: '50000' })).toEqual({ enabled: true, dailyChars: 50_000 });
+    expect(
+      resolveTranslateSettings({ provider: null, model: null, daily_limit: null, enabled: true, translate_enabled: false, translate_daily_chars: 9000 }, { AUTHOR_TRANSLATE_DAILY_CHARS: '50000' }),
+    ).toEqual({ enabled: false, dailyChars: 9000 });
+    expect(resolveTranslateSettings(null, { AUTHOR_TRANSLATE_DAILY_CHARS: 'lots' }).dailyChars).toBe(200_000);
+  });
+});
+
 describe('createSettingsStore', () => {
+  it('gives the translation settings from the same cached row', async () => {
+    let loads = 0;
+    const store = createSettingsStore(async () => { loads += 1; return { provider: null, model: null, daily_limit: null, enabled: true, translate_enabled: false, translate_daily_chars: 5000 }; }, {}, () => 0);
+    await store.get();
+    expect(await store.translate()).toEqual({ enabled: false, dailyChars: 5000 });
+    expect(loads).toBe(1);
+  });
+
   it('reads the row at most once per minute, and again after invalidate()', async () => {
     let loads = 0;
     let now = 0;

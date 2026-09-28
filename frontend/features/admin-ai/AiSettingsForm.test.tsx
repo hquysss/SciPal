@@ -13,6 +13,7 @@ const snapshot: AiSettingsSnapshot = {
   keys: { gemini: true, openai: false },
   defaults: { gemini: 'gemini-3.8-flash', openai: 'gpt-4o-mini' },
   usage: { today: 4, week: 25, students_week: 2 },
+  translate: { effective: { enabled: true, dailyChars: 200000 }, usage: { today: 1200, week: 45000 } },
 };
 
 /** The attributes of the input with this label text. */
@@ -35,6 +36,15 @@ describe('AiSettingsForm', () => {
     expect(html).toContain('Thử kết nối');
     expect(html).toMatch(/>4<[\s\S]*>25<[\s\S]*>2</);
     expect(countRawColors(html).total).toBe(0);
+  });
+
+  it('shows the automatic translation switch, its daily limit and usage', () => {
+    const html = renderToStaticMarkup(<AiSettingsForm initial={snapshot} />);
+    expect(html).toContain('Dịch tự động cho giáo viên');
+    expect(html).toContain('Bật dịch tự động khi soạn bài');
+    expect(control(html, 'Số ký tự mỗi giáo viên mỗi ngày')).toContain('value="200000"');
+    expect(html).toContain('1.200');
+    expect(html).toContain('45.000');
   });
 
   it('never shows a field for an API key', () => {

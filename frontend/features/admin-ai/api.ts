@@ -3,12 +3,14 @@ import { authoringCall } from '../authoring/apiClient';
 export type AiProvider = 'gemini' | 'openai';
 
 export interface AiSettingsSnapshot {
-  saved: { provider: AiProvider | null; model: string | null; daily_limit: number | null; enabled: boolean; updated_at: string } | null;
+  saved: { provider: AiProvider | null; model: string | null; daily_limit: number | null; enabled: boolean; translate_enabled?: boolean; translate_daily_chars?: number | null; updated_at: string } | null;
   effective: { provider: AiProvider; model: string; dailyLimit: number; enabled: boolean };
   /** Whether each key is set on the backend; the values never leave it. */
   keys: Record<AiProvider, boolean>;
   defaults: Record<AiProvider, string>;
   usage: { today: number; week: number; students_week: number };
+  /** Automatic translation for authors: settings in force and characters translated. */
+  translate: { effective: { enabled: boolean; dailyChars: number }; usage: { today: number; week: number } };
 }
 
 export interface AiSettingsInput {
@@ -16,6 +18,8 @@ export interface AiSettingsInput {
   model: string | null;
   daily_limit: number;
   enabled: boolean;
+  translate_enabled: boolean;
+  translate_daily_chars: number;
 }
 
 export type AiTestResult = { ok: true; reply: string; ms: number; provider: AiProvider; model: string } | { ok: false; error: string; ms: number; provider: AiProvider; model: string };
@@ -23,3 +27,20 @@ export type AiTestResult = { ok: true; reply: string; ms: number; provider: AiPr
 export const getAiSettings = () => authoringCall<AiSettingsSnapshot>('/api/admin/ai-settings', 'GET');
 export const saveAiSettings = (input: AiSettingsInput) => authoringCall<AiSettingsSnapshot>('/api/admin/ai-settings', 'PATCH', input);
 export const testAiSettings = () => authoringCall<AiTestResult>('/api/admin/ai-settings/test', 'POST');
+
+// Students' tutor conversations, read only (backend/src/routes/adminTutor.ts).
+export interface AdminConversation {
+  id: string;
+  title: string;
+  student: { id: string; name: string | null };
+  lesson: { id: string; title_vi: string; title_en: string } | null;
+  messages: number;
+  created_at: string;
+  updated_at: string;
+}
+export type AdminMessage = { id?: string; role: 'user' | 'assistant'; content: string; created_at?: string };
+
+export const listAdminConversations = (query: string) =>
+  authoringCall<{ conversations: AdminConversation[]; next: string | null }>(`/api/admin/tutor/conversations${query}`, 'GET');
+export const getAdminConversation = (id: string) =>
+  authoringCall<{ conversation: Omit<AdminConversation, 'messages'>; messages: AdminMessage[] }>(`/api/admin/tutor/conversations/${encodeURIComponent(id)}`, 'GET');

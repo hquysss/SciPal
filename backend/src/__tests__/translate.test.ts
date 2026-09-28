@@ -21,12 +21,12 @@ function provider(replies: Array<string | Error>) {
   };
 }
 
-async function build(opts: { user?: unknown; tables?: Record<string, MockBuilder | MockBuilder[]>; ai?: ReturnType<typeof provider> } = {}) {
+async function build(opts: { user?: unknown; tables?: Record<string, MockBuilder | MockBuilder[]>; ai?: ReturnType<typeof provider>; translate?: { enabled: boolean; dailyChars: number } } = {}) {
   const ai = opts.ai ?? provider(['["Loops"]']);
   const app = Fastify();
   app.decorate('supabase', mockSupabase(opts.tables ?? { translation_usage: ok(null), 'rpc:add_translation_usage': ok(10) }));
   app.decorate('aiProvider', ai);
-  app.decorate('tutorSettings', { get: async () => ({ provider: 'gemini' as const, model: 'gemini-3.8-flash', dailyLimit: 30, enabled: true }), invalidate: () => {} });
+  app.decorate('tutorSettings', { get: async () => ({ provider: 'gemini' as const, model: 'gemini-3.8-flash', dailyLimit: 30, enabled: true }), translate: async () => opts.translate ?? { enabled: true, dailyChars: 200_000 }, invalidate: () => {} });
   app.addHook('onRequest', async (req) => { (req as any).user = opts.user ?? teacher; });
   await app.register(translateRoutes);
   await app.ready();
@@ -129,6 +129,22 @@ describe('POST /api/authoring/translate', () => {
     expect(res.json()).toEqual({ error: 'Hôm nay thầy/cô đã dùng hết lượt dịch tự động. Mai dùng tiếp được.', error_en: 'You have used today’s automatic translation. It resets tomorrow.' });
     expect(ai.calls).toHaveLength(0);
     expect(usage.eqCalls).toEqual([['user_id', 'teacher-1'], ['day', expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/)]]);
+    await app.close();
+  });
+
+  it('is off when the admin switched it off', async () => {
+    const { app, ai } = await build({ translate: { enabled: false, dailyChars: 200_000 } });
+    const res = await post(app, { from: 'vi', to: 'en', texts: ['Vòng lặp'] });
+    expect(res.statusCode).toBe(503);
+    expect(res.json()).toEqual({ error: 'Admin đã tắt dịch tự động.', error_en: 'An admin has turned automatic translation off.' });
+    expect(ai.calls).toHaveLength(0);
+    await app.close();
+  });
+
+  it('uses the admin daily limit', async () => {
+    const { app, ai } = await build({ translate: { enabled: true, dailyChars: 1000 }, tables: { translation_usage: ok({ chars: 995 }) } });
+    expect((await post(app, { from: 'vi', to: 'en', texts: ['Vòng lặp'] })).statusCode).toBe(429);
+    expect(ai.calls).toHaveLength(0);
     await app.close();
   });
 

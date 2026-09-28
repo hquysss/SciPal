@@ -9,6 +9,8 @@ export interface QueryResult {
 export interface MockBuilder {
   eqCalls: Array<[string, unknown]>;
   gteCalls: Array<[string, unknown]>;
+  ltCalls: Array<[string, unknown]>;
+  lteCalls: Array<[string, unknown]>;
   inserted: unknown[];
   updated: unknown[];
   deleteCalls: number;
@@ -22,6 +24,8 @@ export interface MockBuilder {
   select(...args: unknown[]): MockBuilder;
   eq(column: string, value: unknown): MockBuilder;
   gte(column: string, value: unknown): MockBuilder;
+  lt(column: string, value: unknown): MockBuilder;
+  lte(column: string, value: unknown): MockBuilder;
   in(column: string, values: unknown[]): MockBuilder;
   or(filter: string): MockBuilder;
   ilike(column: string, pattern: string): MockBuilder;
@@ -48,6 +52,8 @@ export function mockQuery(result: QueryResult): MockBuilder {
   const builder: MockBuilder = {
     eqCalls: [],
     gteCalls: [],
+    ltCalls: [],
+    lteCalls: [],
     inserted: [],
     updated: [],
     deleteCalls: 0,
@@ -68,6 +74,14 @@ export function mockQuery(result: QueryResult): MockBuilder {
     },
     gte: (column, value) => {
       builder.gteCalls.push([column, value]);
+      return builder;
+    },
+    lt: (column, value) => {
+      builder.ltCalls.push([column, value]);
+      return builder;
+    },
+    lte: (column, value) => {
+      builder.lteCalls.push([column, value]);
       return builder;
     },
     in: (column, values) => {

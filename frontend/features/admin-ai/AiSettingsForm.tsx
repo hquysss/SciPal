@@ -15,12 +15,17 @@ const PROVIDERS: Array<{ id: AiProvider; name: string; env: string }> = [
   { id: 'openai', name: 'OpenAI', env: 'OPENAI_API_KEY' },
 ];
 
-type Form = { provider: AiProvider; model: string; limit: string; enabled: boolean };
+type Form = { provider: AiProvider; model: string; limit: string; enabled: boolean; translateEnabled: boolean; translateLimit: string };
+const CHARS_MIN = 1000;
+const CHARS_MAX = 5_000_000;
+const number = (n: number) => n.toLocaleString('vi-VN');
 const formOf = (s: AiSettingsSnapshot): Form => ({
   provider: s.effective.provider,
   model: s.saved?.model ?? '',
   limit: String(s.effective.dailyLimit),
   enabled: s.effective.enabled,
+  translateEnabled: s.translate.effective.enabled,
+  translateLimit: String(s.translate.effective.dailyChars),
 });
 
 /** The admin's AI tutor settings. API keys are never entered here: only whether each is set. */
@@ -49,16 +54,18 @@ export function AiSettingsForm({ initial }: { initial?: AiSettingsSnapshot }) {
 
   const limit = Number(form.limit);
   const limitValid = Number.isInteger(limit) && limit >= 1 && limit <= 200;
+  const chars = Number(form.translateLimit);
+  const charsValid = Number.isInteger(chars) && chars >= CHARS_MIN && chars <= CHARS_MAX;
   const modelValid = form.model.trim() === '' || /^[A-Za-z0-9._:/-]{1,100}$/.test(form.model.trim());
   const chosen = PROVIDERS.find((p) => p.id === form.provider)!;
   const saved = formOf(snapshot);
-  const dirty = form.provider !== saved.provider || form.model.trim() !== saved.model || form.limit !== saved.limit || form.enabled !== saved.enabled;
+  const dirty = form.provider !== saved.provider || form.model.trim() !== saved.model || form.limit !== saved.limit || form.enabled !== saved.enabled || form.translateEnabled !== saved.translateEnabled || form.translateLimit !== saved.translateLimit;
 
   const save = async () => {
     setBusy('save');
     setMessage(null);
     setTest(null);
-    const res = await saveAiSettings({ provider: form.provider, model: form.model.trim() || null, daily_limit: limit, enabled: form.enabled });
+    const res = await saveAiSettings({ provider: form.provider, model: form.model.trim() || null, daily_limit: limit, enabled: form.enabled, translate_enabled: form.translateEnabled, translate_daily_chars: chars });
     setBusy(null);
     if (!res.ok) return setMessage({ text: res.error, tone: 'danger' });
     setSnapshot(res.data);
@@ -95,7 +102,7 @@ export function AiSettingsForm({ initial }: { initial?: AiSettingsSnapshot }) {
         className="flex flex-col gap-6"
         onSubmit={(e) => {
           e.preventDefault();
-          if (limitValid && modelValid && dirty && !busy) void save();
+          if (limitValid && modelValid && charsValid && dirty && !busy) void save();
         }}
       >
         <fieldset className="flex flex-col gap-2">
@@ -171,10 +178,46 @@ export function AiSettingsForm({ initial }: { initial?: AiSettingsSnapshot }) {
           {!form.enabled && <span className="text-sm text-ink-muted">{t({ en: '— students see “taking a break”', vi: '— học sinh thấy “Gia sư đang tạm nghỉ”' })}</span>}
         </label>
 
+        <fieldset className="flex flex-col gap-3 rounded-2xl border border-line bg-surface p-4">
+          <legend className="px-1 text-sm font-semibold text-ink">{t({ en: 'Automatic translation for teachers', vi: 'Dịch tự động cho giáo viên' })}</legend>
+          <p className="text-sm text-ink-muted">
+            {t({
+              en: 'Fills empty English when a lesson or question is saved. Uses the same service and model as the tutor.',
+              vi: 'Điền phần tiếng Anh còn trống khi lưu bài hoặc câu hỏi. Dùng cùng dịch vụ và model với gia sư.',
+            })}
+          </p>
+          <label className="flex min-h-11 cursor-pointer items-center gap-3">
+            <input type="checkbox" checked={form.translateEnabled} onChange={(e) => setForm({ ...form, translateEnabled: e.target.checked })} className="h-5 w-5 accent-[var(--action)]" />
+            <span className="text-base text-ink">{t({ en: 'Turn on automatic translation while authoring', vi: 'Bật dịch tự động khi soạn bài' })}</span>
+          </label>
+          <div className="flex flex-col gap-1 sm:max-w-xs">
+            <label htmlFor={`${ids}-chars`} className="text-sm font-semibold text-ink">{t({ en: 'Characters per teacher per day', vi: 'Số ký tự mỗi giáo viên mỗi ngày' })}</label>
+            <input
+              id={`${ids}-chars`}
+              type="number"
+              min={CHARS_MIN}
+              max={CHARS_MAX}
+              step={1000}
+              inputMode="numeric"
+              value={form.translateLimit}
+              aria-invalid={!charsValid}
+              onChange={(e) => setForm({ ...form, translateLimit: e.target.value })}
+              className={`${FIELD} tabular-nums`}
+            />
+            <p className="text-xs text-ink-muted">{t({ en: `${number(CHARS_MIN)}–${number(CHARS_MAX)}. A lesson page is about 3 000.`, vi: `${number(CHARS_MIN)}–${number(CHARS_MAX)}. Một trang bài khoảng 3.000 ký tự.` })}</p>
+          </div>
+          <p className="text-sm text-ink-muted">
+            {t({
+              en: `Translated: ${number(snapshot.translate.usage.today)} characters today, ${number(snapshot.translate.usage.week)} in 7 days.`,
+              vi: `Đã dịch: ${number(snapshot.translate.usage.today)} ký tự hôm nay, ${number(snapshot.translate.usage.week)} trong 7 ngày.`,
+            })}
+          </p>
+        </fieldset>
+
         {message && <Alert tone={message.tone}>{t(message.text)}</Alert>}
 
         <div className="flex flex-wrap items-center gap-3">
-          <Button type="submit" disabled={!dirty || !limitValid || !modelValid || busy !== null}>
+          <Button type="submit" disabled={!dirty || !limitValid || !modelValid || !charsValid || busy !== null}>
             {busy === 'save' ? t({ en: 'Saving…', vi: 'Đang lưu…' }) : t({ en: 'Save settings', vi: 'Lưu cài đặt' })}
           </Button>
           <Button type="button" variant="outline" disabled={busy !== null || dirty} onClick={() => void runTest()} title={dirty ? t({ en: 'Save first, then test', vi: 'Lưu trước rồi thử' }) : undefined}>
