@@ -36,13 +36,19 @@ declare
   v_metric text;
   v_limit integer;
   v_count integer;
+  v_scope text;
+  v_class uuid;
 begin
+  -- NEW has different columns per table: read them only in that table's branch.
   if tg_table_name = 'class_rooms' then
     v_owner := new.teacher_id;
     v_metric := 'active_classes';
+    v_scope := v_owner::text;
   elsif tg_table_name = 'class_members' then
-    select c.teacher_id into v_owner from public.class_rooms as c where c.id = new.class_id;
+    v_class := new.class_id;
+    select c.teacher_id into v_owner from public.class_rooms as c where c.id = v_class;
     v_metric := 'students_per_class';
+    v_scope := v_class::text;
   else
     -- exam_blueprints: only an active exam of an author counts.
     if new.created_by is null or new.status not in ('draft', 'pending_review', 'published') then
@@ -53,6 +59,7 @@ begin
     end if;
     v_owner := new.created_by;
     v_metric := 'active_authored_exams';
+    v_scope := v_owner::text;
   end if;
   if v_owner is null then
     return new;
@@ -64,22 +71,20 @@ begin
   end if;
 
   -- One writer per owner and metric (per class for members) at a time: the count below is exact.
-  perform pg_catalog.pg_advisory_xact_lock(pg_catalog.hashtextextended(
-    v_metric || ':' || case when v_metric = 'students_per_class' then new.class_id::text else v_owner::text end, 0));
+  perform pg_catalog.pg_advisory_xact_lock(pg_catalog.hashtextextended(v_metric || ':' || v_scope, 0));
 
   if v_metric = 'active_classes' then
     select count(*) into v_count from public.class_rooms as c where c.teacher_id = v_owner;
   elsif v_metric = 'students_per_class' then
-    if exists (select 1 from public.class_members as m where m.class_id = new.class_id and m.student_id = new.student_id) then
+    if exists (select 1 from public.class_members as m where m.class_id = v_class and m.student_id = new.student_id) then
       return new; -- already a member: the primary key answers this insert
     end if;
-    select count(*) into v_count from public.class_members as m where m.class_id = new.class_id;
+    select count(*) into v_count from public.class_members as m where m.class_id = v_class;
   else
     select count(*) into v_count
       from public.exam_blueprints as e
      where e.created_by = v_owner
-       and e.status in ('draft', 'pending_review', 'published')
-       and e.id is distinct from new.id;
+       and e.status in ('draft', 'pending_review', 'published');
   end if;
 
   if v_count >= v_limit then
