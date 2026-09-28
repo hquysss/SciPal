@@ -77,26 +77,42 @@ export function lessonMediaPrefix(): string | null {
   return base ? `${base}/storage/v1/object/public/lesson-media/` : null;
 }
 
-/** Why the lesson's images cannot be saved, or null. */
-export function imageProblems(blocks: ReadonlyArray<{ type: string }>, opts: { requireAlt: boolean }): string | null {
+export type BlockProblem = { at: number; field: string; message: { vi: string; en: string } };
+
+/** Every image block that cannot be saved, with the field at fault. */
+export function imageProblemsList(blocks: ReadonlyArray<{ type: string }>, opts: { requireAlt: boolean }): BlockProblem[] {
   const base = process.env.SUPABASE_URL;
+  const out: BlockProblem[] = [];
   for (const [i, block] of blocks.entries()) {
     if (block.type !== 'image') continue;
     const image = block as z.infer<typeof ImageBlockSchema>;
     // Parsed, not a string prefix: `lesson-media/../other-bucket` must not pass.
-    if (!base || !isLessonMediaUrl(image.url, base)) return `Khối ${i + 1}: ảnh phải được tải lên SciPal.`;
-    if (opts.requireAlt && !image.alt.vi.trim()) return `Khối ${i + 1}: ảnh cần mô tả tiếng Việt.`;
+    if (!base || !isLessonMediaUrl(image.url, base)) out.push({ at: i, field: 'url', message: { vi: 'ảnh phải được tải lên SciPal.', en: 'the image must be uploaded to SciPal.' } });
+    else if (opts.requireAlt && !image.alt.vi.trim()) out.push({ at: i, field: 'alt.vi', message: { vi: 'ảnh cần mô tả tiếng Việt.', en: 'the image needs a Vietnamese description.' } });
   }
-  return null;
+  return out;
+}
+
+/** Every simulation block that cannot be saved. */
+export function simulationProblemsList(blocks: ReadonlyArray<{ type: string }>): BlockProblem[] {
+  const mediaBase = process.env.SUPABASE_URL;
+  const out: BlockProblem[] = [];
+  for (const [i, block] of blocks.entries()) {
+    if (block.type !== 'interactive') continue;
+    const check = validateSimulationBlock(block as z.infer<typeof InteractiveBlockSchema>, { mediaBase });
+    if (!check.ok) out.push({ at: i, field: 'config', message: check.message });
+  }
+  return out;
+}
+
+/** Why the lesson's images cannot be saved, or null. */
+export function imageProblems(blocks: ReadonlyArray<{ type: string }>, opts: { requireAlt: boolean }): string | null {
+  const first = imageProblemsList(blocks, opts)[0];
+  return first ? `Khối ${first.at + 1}: ${first.message.vi}` : null;
 }
 
 /** The first simulation block that cannot be saved, as a bilingual API error, or null. */
 export function simulationProblem(blocks: ReadonlyArray<{ type: string }>): { error: string; error_en: string } | null {
-  const mediaBase = process.env.SUPABASE_URL;
-  for (const [i, block] of blocks.entries()) {
-    if (block.type !== 'interactive') continue;
-    const check = validateSimulationBlock(block as z.infer<typeof InteractiveBlockSchema>, { mediaBase });
-    if (!check.ok) return { error: `Khối ${i + 1}: ${check.message.vi}`, error_en: `Block ${i + 1}: ${check.message.en}` };
-  }
-  return null;
+  const first = simulationProblemsList(blocks)[0];
+  return first ? { error: `Khối ${first.at + 1}: ${first.message.vi}`, error_en: `Block ${first.at + 1}: ${first.message.en}` } : null;
 }

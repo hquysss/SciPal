@@ -196,6 +196,23 @@ describe('authoring publish timestamps', () => {
   });
 });
 
+describe('authoring block errors', () => {
+  it('names the part, block and field of a bad block', async () => {
+    const app = await buildAuthoringApp(teacher, {
+      lessons: mockQuery({ data: { id: LESSON_ID, created_by: teacher.id, status: 'draft', updated_at: STAMP }, error: null }),
+    });
+    const res = await app.inject({
+      method: 'PATCH',
+      url: `/api/authoring/lessons/${LESSON_ID}`,
+      payload: { expected_updated_at: STAMP, blocks: [{ type: 'formula', katex: 7 }] },
+    });
+    expect(res.statusCode).toBe(400);
+    expect(res.json().issues[0]).toMatchObject({ part: 'lesson', index: 0, field: 'katex' });
+    expect(res.json().error_en).toBeDefined();
+    await app.close();
+  });
+});
+
 describe('authoring lesson ids', () => {
   it('answers a non-UUID lesson id with 404 without querying the database', async () => {
     const app = await buildAuthoringApp(admin, {});
