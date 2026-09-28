@@ -1,99 +1,77 @@
 'use client';
-import { useRef, useState, useEffect } from 'react';
-import { X } from 'lucide-react';
+
+import { useCallback, useState } from 'react';
+import { ExternalLink, GraduationCap, X } from 'lucide-react';
 import { useLanguage } from '@scipal/hooks';
-import { useAiChat } from './useAiChat';
+import type { EducationLevel } from '@/features/landing/educationLevel';
+import { TutorChat } from './TutorChat';
 
 interface AiTutorPanelProps {
   lessonId: string;
-  subjectSlug: string;
-  token: string | null;
+  lessonTitle: { vi: string; en: string };
+  level: EducationLevel;
+  /** null while the session is being checked. */
+  signedIn: boolean | null;
   onClose: () => void;
 }
 
-export function AiTutorPanel({ lessonId, subjectSlug, token, onClose }: AiTutorPanelProps) {
-  const { lang, t } = useLanguage();
-  const { messages, loading, send } = useAiChat(lessonId, subjectSlug, token);
-  const [input, setInput] = useState('');
-  const bottomRef = useRef<HTMLDivElement>(null);
+const LINK =
+  'inline-flex items-center gap-1.5 text-sm font-semibold text-action underline-offset-4 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus';
 
-  useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages]);
-
-  const handleSend = () => {
-    if (!input.trim() || loading) return;
-    send(input.trim(), lang);
-    setInput('');
-  };
+/** The tutor beside a lesson: questions carry the lesson, and the chat continues on /tutor. */
+export function AiTutorPanel({ lessonId, lessonTitle, level, signedIn, onClose }: AiTutorPanelProps) {
+  const { t } = useLanguage();
+  const [conversationId, setConversationId] = useState<string | null>(null);
+  const onConversation = useCallback((id: string) => setConversationId(id), []);
+  const fullPage = conversationId ? `/tutor?conversation=${conversationId}` : `/tutor?lesson=${lessonId}`;
 
   return (
-    <div className="fixed bottom-0 right-4 z-50 flex w-full max-w-sm flex-col overflow-hidden rounded-t-2xl border border-line bg-surface shadow-lg">
-      {/* Header */}
-      <div className="flex items-center gap-2 rounded-t-2xl bg-action px-4 py-2 text-action-ink">
-        <span className="text-xl" aria-hidden="true">🤖</span>
-        <span className="text-sm font-semibold">
-          {t({ en: `AI tutor · ${subjectSlug}`, vi: `Gia sư AI · ${subjectSlug}` })}
-        </span>
+    <div
+      role="dialog"
+      aria-label={t({ en: 'AI tutor', vi: 'Gia sư AI' })}
+      className="fixed inset-x-2 bottom-2 z-50 flex h-[min(34rem,calc(100dvh-5rem))] flex-col overflow-hidden rounded-2xl border border-line bg-surface shadow-[0_24px_60px_-24px_color-mix(in_srgb,var(--ink)_55%,transparent)] sm:inset-x-auto sm:right-4 sm:w-[26rem]"
+    >
+      <div className="flex items-center gap-3 border-b border-line px-4 py-2">
+        <GraduationCap aria-hidden="true" className="h-5 w-5 shrink-0 text-action" />
+        <div className="min-w-0 flex-1">
+          <p className="text-sm font-semibold text-ink">{t({ en: 'AI tutor', vi: 'Gia sư AI' })}</p>
+          <p className="truncate text-xs text-ink-muted">{t(lessonTitle)}</p>
+        </div>
+        {signedIn && (
+          <a href={fullPage} className={`${LINK} shrink-0 text-xs`}>
+            {t({ en: 'Open on the tutor page', vi: 'Mở ở trang Gia sư' })}
+            <ExternalLink aria-hidden="true" className="h-3.5 w-3.5" />
+          </a>
+        )}
         <button
           type="button"
           onClick={onClose}
-          className="ml-auto flex min-h-11 min-w-11 items-center justify-center rounded-full transition-colors hover:bg-action-hover focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-focus"
+          className="flex min-h-11 min-w-11 items-center justify-center rounded-full text-ink-muted transition-colors hover:bg-surface-sunken hover:text-ink focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-focus"
           aria-label={t({ en: 'Close', vi: 'Đóng' })}
         >
           <X aria-hidden="true" className="h-5 w-5" />
         </button>
       </div>
 
-      {/* Messages */}
-      <div className="h-72 space-y-3 overflow-y-auto bg-surface-sunken px-4 py-3">
-        {messages.length === 0 && (
-          <div className="flex h-full flex-col items-center justify-center px-4 text-center text-sm text-ink-muted">
-            <span className="mb-2 text-3xl" aria-hidden="true">💡</span>
-            <p>
-              {t({
-                en: 'Ask anything about this lesson. The AI tutor is here to help you learn!',
-                vi: 'Hỏi bất kỳ điều gì về bài học này. Gia sư AI sẽ hướng dẫn từng bước!',
-              })}
+      <div className="min-h-0 flex-1">
+        {signedIn === null ? (
+          <p className="p-5 text-sm text-ink-muted">{t({ en: 'Loading…', vi: 'Đang tải…' })}</p>
+        ) : signedIn ? (
+          <TutorChat lessonId={lessonId} level={level} compact onConversation={onConversation} />
+        ) : (
+          <div className="flex h-full flex-col items-start justify-center gap-3 p-6">
+            <p className="text-lg font-bold text-ink">{t({ en: 'Sign in to ask the tutor', vi: 'Đăng nhập để hỏi thầy' })}</p>
+            <p className="text-sm text-ink-muted">
+              {t({ en: 'Your questions about this lesson are kept so you can come back to them.', vi: 'Câu hỏi của em về bài này được lưu lại để em xem tiếp sau.' })}
             </p>
+            <a
+              href={`/login?redirect=${encodeURIComponent(`/tutor?lesson=${lessonId}`)}`}
+              className="inline-flex min-h-11 items-center rounded-xl bg-action px-4 text-sm font-semibold text-action-ink hover:bg-action-hover focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
+            >
+              {t({ en: 'Sign in', vi: 'Đăng nhập' })}
+            </a>
           </div>
         )}
-        {messages.map((m, i) => (
-          <div key={i} className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-            <div
-              className={`max-w-[85%] rounded-2xl px-3.5 py-2.5 text-sm ${
-                m.role === 'user' ? 'bg-action font-medium text-action-ink' : 'bg-surface leading-relaxed text-ink'
-              }`}
-            >
-              {m.content || (loading && m.role === 'assistant' ? (
-                <span className="inline-flex gap-1 motion-safe:animate-pulse">
-                  <span>•</span><span>•</span><span>•</span>
-                </span>
-              ) : '')}
-            </div>
-          </div>
-        ))}
-        <div ref={bottomRef} />
-      </div>
-
-      {/* Input */}
-      <div className="flex gap-2 border-t border-line bg-surface px-3 py-2.5">
-        <input
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
-          onKeyDown={(e) => e.key === 'Enter' && handleSend()}
-          placeholder={t({ en: 'Ask a question…', vi: 'Hỏi về bài học…' })}
-          aria-label={t({ en: 'Your question', vi: 'Câu hỏi của bạn' })}
-          className="min-h-11 flex-1 rounded-full border border-edge bg-surface px-4 text-base text-ink focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
-        />
-        <button
-          type="button"
-          onClick={handleSend}
-          disabled={loading || !input.trim()}
-          className="min-h-11 rounded-full bg-action px-4 text-sm font-semibold text-action-ink hover:bg-action-hover focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus disabled:opacity-40"
-        >
-          {t({ en: 'Send', vi: 'Gửi' })}
-        </button>
       </div>
     </div>
   );

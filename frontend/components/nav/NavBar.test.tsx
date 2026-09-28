@@ -1,6 +1,6 @@
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it, vi } from 'vitest';
-import { NavBar, roleLinks } from './NavBar';
+import { NavBar, roleLinks, tutorLink } from './NavBar';
 
 vi.mock('next/link', () => ({
   default: ({ href, children, prefetch: _prefetch, ...props }: { href: string; children: React.ReactNode; prefetch?: boolean }) =>
@@ -44,5 +44,13 @@ describe('role menus', () => {
     expect(roleLinks('admin', 'vi', 0).adminLinks.map((l) => l.href)).toContain('/admin/topics');
     expect(roleLinks('teacher', 'vi', 0).teacherLinks.map((l) => l.href)).not.toContain('/admin/topics');
     expect(roleLinks('student', 'vi', 0)).toEqual({ teacherLinks: [], adminLinks: [] });
+  });
+});
+
+describe('tutorLink', () => {
+  it('shows "Gia sư AI" only to signed-in users', () => {
+    expect(tutorLink(true, 'vi')).toEqual({ href: '/tutor', label: 'Gia sư AI' });
+    expect(tutorLink(true, 'en')).toEqual({ href: '/tutor', label: 'AI tutor' });
+    expect(tutorLink(false, 'vi')).toBeNull();
   });
 });

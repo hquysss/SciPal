@@ -1,4 +1,5 @@
 import { renderToStaticMarkup } from 'react-dom/server';
+import { readFileSync } from 'node:fs';
 import { describe, expect, it, vi } from 'vitest';
 import { countRawColors } from '../../lib/theme/rawColors';
 import { TutorSection } from './TutorSection';
@@ -36,5 +37,11 @@ describe('TutorSection', () => {
 
   it('uses only theme tokens', () => {
     expect(countRawColors(renderToStaticMarkup(<TutorSection href="/tutor" />)).total).toBe(0);
+  });
+});
+
+describe('LandingPage', () => {
+  it('points the tutor section at the tutor page', () => {
+    expect(readFileSync('features/landing/LandingPage.tsx', 'utf8')).toContain('<TutorSection href="/tutor"');
   });
 });

@@ -49,7 +49,7 @@ export default async function LessonPage({
             lessonId={lesson.id}
             completion={<LessonCompletionBar lessonId={lesson.id} subjectSlug={subjectSlug} />}
           />
-          <AiTutorButton lessonId={lesson.id} subjectSlug={subjectSlug} token={null} />
+          <AiTutorButton lessonId={lesson.id} lessonTitle={{ vi: lesson.title_vi, en: lesson.title_en }} level={level} />
         </main>
       </SubjectProvider>
     </LevelScope>

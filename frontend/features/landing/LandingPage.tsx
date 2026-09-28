@@ -175,7 +175,7 @@ export function LandingPage({ level, levelSource, catalog, informatics }: Landin
         </section>
 
         <HowItWorks level={level} />
-        <TutorSection level={level} />
+        <TutorSection href="/tutor" level={level} />
 
         <section className={styles.finalCta} aria-labelledby="start-title" data-landing-reveal>
           <h2 id="start-title" className={styles.finalTitle}>{t({ en: 'Ready?', vi: 'Sẵn sàng chưa?' })}</h2>
