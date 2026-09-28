@@ -4,6 +4,12 @@ import { examRoutes } from '../routes/exam.js';
 import { examImportRoutes, type ExamImportPackage } from '../routes/examImport.js';
 import { mockQuery, mockSupabase, type MockBuilder } from './helpers/supabaseMock.js';
 
+// Teacher imports hold one file of the monthly quota; these tests are about the import itself.
+const importQuota = () => ({
+  'rpc:billing_reserve_quota': mockQuery({ data: { operation_id: '55555555-5555-4555-8555-555555555555', state: 'reserved', kind: 'monthly', remaining: 4, resets_at: '2026-09-30T17:00:00+00:00' }, error: null }),
+  'rpc:billing_settle_quota': mockQuery({ data: true, error: null }),
+});
+
 // Practice questions (lessons) and exam questions never mix: exams serve and score only exam
 // rows, and a content import sorts each question into one pool.
 
@@ -15,7 +21,7 @@ const bi = (vi: string) => ({ vi, en: `${vi} (en)` });
 
 async function examApp(tables: Record<string, MockBuilder | MockBuilder[]>, user?: object) {
   const app = Fastify();
-  app.decorate('supabase', mockSupabase(tables));
+  app.decorate('supabase', mockSupabase({ ...importQuota(), ...tables }));
   if (user) app.addHook('onRequest', async (req) => { (req as any).user = user; });
   await app.register(examRoutes);
   await app.ready();
@@ -112,7 +118,7 @@ function importTables(log: string[], fail?: string) {
 
 async function importApp(user: object, tables: Record<string, MockBuilder | MockBuilder[]>) {
   const app = Fastify();
-  app.decorate('supabase', mockSupabase(tables));
+  app.decorate('supabase', mockSupabase({ ...importQuota(), ...tables }));
   app.addHook('onRequest', async (req) => { (req as any).user = user; });
   await app.register(examImportRoutes);
   await app.ready();

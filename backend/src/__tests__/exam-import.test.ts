@@ -3,6 +3,12 @@ import Fastify from 'fastify';
 import { examImportRoutes, groupPendingImports, pickExamQuestions, questionData, type ExamImportPackage } from '../routes/examImport.js';
 import { mockQuery, mockSupabase } from './helpers/supabaseMock.js';
 
+// Teacher imports hold one file of the monthly quota; these tests are about the import itself.
+const importQuota = () => ({
+  'rpc:billing_reserve_quota': mockQuery({ data: { operation_id: '55555555-5555-4555-8555-555555555555', state: 'reserved', kind: 'monthly', remaining: 4, resets_at: '2026-09-30T17:00:00+00:00' }, error: null }),
+  'rpc:billing_settle_quota': mockQuery({ data: true, error: null }),
+});
+
 const admin = { id: 'admin-1', app_metadata: { app_role: 'admin' } };
 const teacher = { id: 'teacher-1', app_metadata: { app_role: 'teacher' } };
 const student = { id: 'student-1', app_metadata: { app_role: 'student' } };
@@ -34,7 +40,7 @@ const pkg = (over: Partial<ExamImportPackage> = {}): ExamImportPackage => ({
 
 async function buildApp(user: typeof admin, tables: Parameters<typeof mockSupabase>[0]) {
   const app = Fastify();
-  app.decorate('supabase', mockSupabase(tables));
+  app.decorate('supabase', mockSupabase({ ...importQuota(), ...tables }));
   app.addHook('onRequest', async (request) => { (request as any).user = user; });
   await app.register(examImportRoutes);
   await app.ready();

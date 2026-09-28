@@ -1,10 +1,11 @@
-import { randomUUID } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 import type { FastifyPluginAsync, FastifyReply, FastifyRequest } from 'fastify';
 import { z } from 'zod';
 import { BlockSchema, imageProblems, simulationProblem } from '../schemas/blocks.js';
 import { makeSlug, planNewTopic, type ExistingTopic } from '../authoring/topicPlanning.js';
 import { storedQuestionData, validateQuestionInput } from '../schemas/questions.js';
 import { capacityRefusal } from '../billing/capacity.js';
+import { BillingRepositoryError, createBillingRepository } from '../billing/repository.js';
 
 // The package the import page sends after Word/PDF lessons and an Excel workbook are parsed and
 // reviewed in the browser. Keep it aligned with frontend/features/content-import/
@@ -411,6 +412,36 @@ export const examImportRoutes: FastifyPluginAsync = async (app) => {
     // Each insert is atomic on its own; when a later one fails, the earlier ones are removed again
     // so a rejected import leaves nothing behind. Lessons go in before questions (a practice
     // question points at its lesson) and questions before the exams that list them.
+    // One imported file = one import_files request of the teacher's plan (Free 5, Pro 100 a month;
+    // admins not metered), held here and counted only when the whole import is saved. The server
+    // counts requests it receives, not a number the browser reports.
+    const billing = createBillingRepository((name, args) => supabase.rpc(name, args));
+    const metered = role === 'teacher';
+    let remaining: number | null = null;
+    if (metered) {
+      try {
+        const hash = createHash('sha256').update(`${user.id}:${JSON.stringify(pkg)}`).digest('hex');
+        remaining = (await billing.reserveQuota(user.id, 'import_files', importId, 1, hash)).remaining;
+      } catch (err) {
+        if (err instanceof BillingRepositoryError && err.code === 'QUOTA_EXCEEDED') {
+          const quota = await billing.getEffectiveQuotas(user.id, new Date()).then((qs) => qs.find((q) => q.metric === 'import_files')).catch(() => undefined);
+          const limit = quota?.limit ?? 0;
+          return reply.code(429).send({
+            code: 'QUOTA_EXCEEDED',
+            error: `Thầy/cô đã nhập đủ ${limit} tệp tháng này. Nâng cấp Teacher Pro hoặc nhờ admin nới hạn mức.`,
+            error_en: `You have imported your ${limit} files this month. Upgrade to Teacher Pro or ask an admin to raise the quota.`,
+            remaining: 0,
+            limit,
+            resetsAt: quota?.resetsAt ?? null,
+          });
+        }
+        request.log.error({ err }, 'Failed to hold an import');
+        return reply.code(503).send({ code: 'BILLING_UNAVAILABLE', error: 'Chưa kiểm tra được lượt nhập tệp. Thử lại sau.', error_en: 'Could not check your imports. Try again later.' });
+      }
+    }
+    const settle = (outcome: 'commit' | 'release') =>
+      metered ? billing.settleQuota(importId, outcome).catch((err) => request.log.error({ err, outcome }, 'Failed to settle an import')) : Promise.resolve();
+
     const done: Array<'topics' | 'lessons' | 'questions' | 'blueprints'> = [];
     const rollback = async () => {
       const undo = async (label: string, query: PromiseLike<{ error: unknown }>) => {
@@ -424,6 +455,7 @@ export const examImportRoutes: FastifyPluginAsync = async (app) => {
     };
     const failed = async (error: { code?: string; message?: string; details?: string; hint?: string } | null, what: string) => {
       await rollback();
+      await settle('release');
       const full = capacityRefusal(error);
       if (full) return reply.code(429).send(full);
       if (error?.code === '42703') return reply.code(503).send({ error: 'Cơ sở dữ liệu chưa chạy migration nhập nội dung.' });
@@ -473,7 +505,9 @@ export const examImportRoutes: FastifyPluginAsync = async (app) => {
       done.push('blueprints');
     }
 
+    await settle('commit');
     return reply.code(201).send({
+      remaining,
       imported: { lessons: lessonRows.length, questions: questions.length, blueprints: blueprintRows.length },
       status,
       lesson_status: lessonStatus,
