@@ -4,12 +4,12 @@ import { initialTutorState, tutorReducer, tutorRequest } from './useTutorChat';
 describe('tutorReducer', () => {
   it('adds the question and an empty answer, then fills the answer from deltas', () => {
     let s = tutorReducer(initialTutorState([]), { type: 'send', text: 'Hỏi' });
-    s = tutorReducer(s, { type: 'event', event: { event: 'meta', conversation_id: 'c1', remaining: 5 } });
+    s = tutorReducer(s, { type: 'event', event: { event: 'meta', conversation_id: 'c1', remaining: 5, period: 'month' } });
     s = tutorReducer(s, { type: 'event', event: { event: 'delta', text: 'Gợi ' } });
     s = tutorReducer(s, { type: 'event', event: { event: 'delta', text: 'ý' } });
     s = tutorReducer(s, { type: 'event', event: { event: 'done' } });
     expect(s.messages).toEqual([{ role: 'user', content: 'Hỏi' }, { role: 'assistant', content: 'Gợi ý' }]);
-    expect(s).toMatchObject({ conversationId: 'c1', remaining: 5, streaming: false, error: null });
+    expect(s).toMatchObject({ conversationId: 'c1', remaining: 5, period: 'month', streaming: false, error: null });
   });
 
   it('drops an empty answer on error and marks the limit on 429', () => {
@@ -23,7 +23,7 @@ describe('tutorReducer', () => {
 describe('retry', () => {
   it('adds only a new answer placeholder, not the question again', () => {
     let s = tutorReducer(initialTutorState([]), { type: 'send', text: 'Hỏi' });
-    s = tutorReducer(s, { type: 'event', event: { event: 'meta', conversation_id: 'c1', remaining: 5 } });
+    s = tutorReducer(s, { type: 'event', event: { event: 'meta', conversation_id: 'c1', remaining: 5, period: 'day' } });
     s = tutorReducer(s, { type: 'event', event: { event: 'error', error: { vi: 'Bận', en: 'Busy' } } });
     s = tutorReducer(s, { type: 'retry' });
     expect(s.messages).toEqual([{ role: 'user', content: 'Hỏi' }, { role: 'assistant', content: '' }]);
@@ -40,7 +40,7 @@ describe('retry', () => {
 describe('a failed answer', () => {
   it('shows the refunded count and forgets a conversation the server removed', () => {
     let s = tutorReducer(initialTutorState([]), { type: 'send', text: 'Hỏi' });
-    s = tutorReducer(s, { type: 'event', event: { event: 'meta', conversation_id: 'c1', remaining: 26 } });
+    s = tutorReducer(s, { type: 'event', event: { event: 'meta', conversation_id: 'c1', remaining: 26, period: 'day' } });
     s = tutorReducer(s, { type: 'event', event: { event: 'error', error: { vi: 'Quá tải', en: 'Overloaded' }, remaining: 27, conversationRemoved: true } });
     expect(s).toMatchObject({ remaining: 27, conversationId: null, streaming: false });
     expect(s.messages).toEqual([{ role: 'user', content: 'Hỏi' }]);

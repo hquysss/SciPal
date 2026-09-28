@@ -30,6 +30,7 @@ values
 
 \ir ../migrations/20260928102931_billing_foundation.sql
 \ir ../migrations/20260928230000_account_quota_admin.sql
+\ir ../migrations/20260929000000_tutor_daily_quota.sql
 
 insert into public.billing_subscriptions (user_id, plan_code, paid_through)
 values ('00000000-0000-4000-8000-000000000001', 'student_plus', '2027-09-30T16:00:00Z');
@@ -55,8 +56,8 @@ begin
   if (select count(*) from public.billing_prices) <> 4 then
     raise exception 'Expected four paid price records';
   end if;
-  if (select count(*) from public.billing_plan_limits) <> 14 then
-    raise exception 'Expected fourteen plan limits';
+  if (select count(*) from public.billing_plan_limits) <> 16 then
+    raise exception 'Expected sixteen plan limits';
   end if;
   if (select amount_vnd from public.billing_prices where plan_code = 'student_plus' and interval = 'month') <> 39000
     or (select amount_vnd from public.billing_prices where plan_code = 'student_plus' and interval = 'year') <> 390000
@@ -68,7 +69,9 @@ begin
     raise exception 'Free plans must not have checkout prices';
   end if;
   if (select count(*) from public.billing_plan_limits where plan_code in ('student_plus', 'student_free') and metric in ('tutor_requests', 'graded_exam_attempts')) <> 4
-    or (select limit_value from public.billing_plan_limits where plan_code = 'student_free' and metric = 'tutor_requests') <> 10
+    or (select limit_value from public.billing_plan_limits where plan_code = 'student_free' and metric = 'tutor_requests' and kind = 'daily') <> 5
+    or (select limit_value from public.billing_plan_limits where plan_code = 'teacher_free' and metric = 'tutor_requests' and kind = 'daily') <> 5
+    or (select limit_value from public.billing_plan_limits where plan_code = 'student_plus' and metric = 'tutor_requests' and kind = 'monthly') <> 200
     or (select limit_value from public.billing_plan_limits where plan_code = 'student_plus' and metric = 'graded_exam_attempts') <> 30
     or (select limit_value from public.billing_plan_limits where plan_code = 'teacher_free' and metric = 'author_ai_requests') <> 0 then
     raise exception 'Seeded plan limits do not match the approved catalog';
@@ -297,7 +300,7 @@ declare
 begin
   -- An account without app_role is a Free student.
   select * into v_quota from public.billing_get_effective_quotas('00000000-0000-4000-8000-000000000004', c_now) where metric = 'tutor_requests';
-  if v_quota.quota_limit <> 10 or v_quota.source <> 'plan' then
+  if v_quota.quota_limit <> 5 or v_quota.kind <> 'daily' or v_quota.source <> 'plan' then
     raise exception 'An account without a role did not get the Student Free quota';
   end if;
 
@@ -360,10 +363,10 @@ begin
   end;
 
   -- Reset returns to the plan and keeps usage history.
-  insert into public.quota_usage (user_id, metric, period_start, used) values (c_student, 'tutor_requests', '2026-09-01', 40);
+  insert into public.quota_usage (user_id, metric, period_start, used) values (c_student, 'tutor_requests', '2026-09-15', 40);
   v_version := public.billing_update_account_quotas(c_admin, c_student, 1, '[{"metric":"tutor_requests","action":"reset"}]', 'Hết thử nghiệm', c_now);
   select * into v_quota from public.billing_get_effective_quotas(c_student, c_now) where metric = 'tutor_requests';
-  if v_version <> 2 or v_quota.quota_limit <> 10 or v_quota.source <> 'plan' or v_quota.used <> 40 then
+  if v_version <> 2 or v_quota.quota_limit <> 5 or v_quota.source <> 'plan' or v_quota.used <> 40 then
     raise exception 'Reset did not return to the plan while keeping usage';
   end if;
   if (select count(*) from public.account_quota_audit where target_id = c_student) <> 2 then raise exception 'Reset was not audited'; end if;
@@ -388,6 +391,52 @@ begin
   if not v_denied then
     raise exception 'A signed-in user could change quotas directly';
   end if;
+end;
+$$;
+reset role;
+
+-- Tutor per Vietnam day for free accounts (migration 20260929000000).
+set role service_role;
+do $$
+declare
+  v_quota record;
+  v_reservation jsonb;
+  v_failed text;
+  i integer;
+  c_free constant uuid := '00000000-0000-4000-8000-000000000004';
+begin
+  -- A day counts on its own and resets at the next Vietnam midnight (17:00Z).
+  insert into public.quota_usage (user_id, metric, period_start, used) values (c_free, 'tutor_requests', '2026-09-20', 4);
+  select * into v_quota from public.billing_get_effective_quotas(c_free, '2026-09-20T16:59:00Z') where metric = 'tutor_requests';
+  if v_quota.used <> 4 or v_quota.resets_at <> '2026-09-20T17:00:00Z'::timestamptz then
+    raise exception 'Daily usage or reset time is wrong: used %, resets %', v_quota.used, v_quota.resets_at;
+  end if;
+  select * into v_quota from public.billing_get_effective_quotas(c_free, '2026-09-20T17:00:00Z') where metric = 'tutor_requests';
+  if v_quota.used <> 0 then raise exception 'Yesterday still counted after Vietnam midnight'; end if;
+
+  -- A free teacher has 5 a day too.
+  select * into v_quota from public.billing_get_effective_quotas('00000000-0000-4000-8000-000000000003', '2026-09-20T00:00:00Z') where metric = 'tutor_requests';
+  if v_quota.quota_limit <> 5 or v_quota.kind <> 'daily' then raise exception 'Free teacher has no daily Tutor quota'; end if;
+
+  -- Five reservations today, the sixth is refused; the answer says the quota is daily; lease 10 min.
+  for i in 1..5 loop
+    v_reservation := public.billing_reserve_quota(c_free, 'tutor_requests', ('30000000-0000-4000-8000-00000000000' || i)::uuid, repeat('d', 64), 1);
+  end loop;
+  if v_reservation ->> 'kind' <> 'daily' or (v_reservation ->> 'remaining')::integer <> 0 then
+    raise exception 'Daily reservation answer is wrong: %', v_reservation;
+  end if;
+  begin
+    perform public.billing_reserve_quota(c_free, 'tutor_requests', '30000000-0000-4000-8000-000000000006', repeat('d', 64), 1);
+    raise exception 'unreachable';
+  exception when others then v_failed := sqlerrm; end;
+  if v_failed <> 'QUOTA_EXCEEDED' then raise exception 'Sixth daily request: %', v_failed; end if;
+  if (select min(lease_expires_at - created_at) from public.quota_operations where user_id = c_free) < interval '9 minutes' then
+    raise exception 'Lease is shorter than ten minutes';
+  end if;
+  -- Releasing gives the request back.
+  if not public.billing_settle_quota('30000000-0000-4000-8000-000000000005', 'release') then raise exception 'Release refused'; end if;
+  v_reservation := public.billing_reserve_quota(c_free, 'tutor_requests', '30000000-0000-4000-8000-000000000007', repeat('d', 64), 1);
+  if v_reservation ->> 'state' <> 'reserved' then raise exception 'Released request was not given back'; end if;
 end;
 $$;
 reset role;

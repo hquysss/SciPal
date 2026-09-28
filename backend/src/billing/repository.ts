@@ -11,7 +11,7 @@ const QuotaMetricSchema = z.enum([
 ]);
 const EffectiveQuotaRowSchema = z.object({
   metric: QuotaMetricSchema,
-  kind: z.enum(['monthly', 'capacity']),
+  kind: z.enum(['daily', 'monthly', 'capacity']),
   quota_limit: z.number().int().nonnegative(),
   used: z.number().int().nonnegative(),
   reserved: z.number().int().nonnegative(),
@@ -22,12 +22,13 @@ const EffectiveQuotaRowSchema = z.object({
 const ReservationRowSchema = z.object({
   operation_id: z.string().uuid(),
   state: z.enum(['reserved', 'committed', 'released']),
+  kind: z.enum(['daily', 'monthly']).optional(),
   remaining: z.number().int().nonnegative(),
   resets_at: z.string().datetime({ offset: true }).nullable(),
 }).strict();
 type EffectiveQuota = {
   metric: z.infer<typeof QuotaMetricSchema>;
-  kind: 'monthly' | 'capacity';
+  kind: 'daily' | 'monthly' | 'capacity';
   limit: number;
   used: number;
   reserved: number;
@@ -38,6 +39,8 @@ type EffectiveQuota = {
 type Reservation = {
   operationId: string;
   state: 'reserved' | 'committed' | 'released';
+  /** A Vietnam day or month; older answers without it are monthly. */
+  kind: 'daily' | 'monthly';
   remaining: number;
   resetsAt: string | null;
 };
@@ -115,6 +118,7 @@ export function createBillingRepository(rpc: BillingRpc) {
       return {
         operationId: parsed.data.operation_id,
         state: parsed.data.state,
+        kind: parsed.data.kind ?? 'monthly',
         remaining: parsed.data.remaining,
         resetsAt: parsed.data.resets_at === null ? null : new Date(parsed.data.resets_at).toISOString(),
       };

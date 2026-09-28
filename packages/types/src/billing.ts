@@ -18,7 +18,7 @@ export const QuotaMetricSchema = z.enum([
   'active_authored_exams',
   'author_ai_requests',
 ]);
-export const QuotaKindSchema = z.enum(['monthly', 'capacity']);
+export const QuotaKindSchema = z.enum(['daily', 'monthly', 'capacity']);
 export const QuotaSourceSchema = z.enum(['plan', 'override']);
 
 const BilingualTextSchema = z.object({ en: z.string(), vi: z.string() }).strict();

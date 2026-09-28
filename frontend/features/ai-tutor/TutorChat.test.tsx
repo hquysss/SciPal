@@ -12,6 +12,8 @@ describe('TutorChatView', () => {
     const html = renderToStaticMarkup(<TutorChatView {...base} />);
     expect(html.match(/data-example/g)).toHaveLength(4);
     expect(html).toContain('Còn 12 lượt hôm nay');
+    expect(renderToStaticMarkup(<TutorChatView {...base} period="month" />)).toContain('Còn 12 lượt tháng này');
+    expect(renderToStaticMarkup(<TutorChatView {...base} remaining={null} />)).not.toContain('lượt');
     expect(html).toMatch(/<label[^>]*>Câu hỏi của em<\/label>/);
     expect(countRawColors(html).total).toBe(0);
   });

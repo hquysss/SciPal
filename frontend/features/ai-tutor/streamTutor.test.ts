@@ -9,7 +9,7 @@ describe('createSseParser', () => {
     feed('ning":4}\n\nevent: delta\ndata: {"text":"Gợi"}\n\nevent: delta\ndata: {"text":" ý"}\n\n');
     feed('event: done\ndata: {}\n\n');
     expect(seen).toEqual([
-      { event: 'meta', conversation_id: 'c1', remaining: 4 },
+      { event: 'meta', conversation_id: 'c1', remaining: 4, period: 'day' },
       { event: 'delta', text: 'Gợi' },
       { event: 'delta', text: ' ý' },
       { event: 'done' },
@@ -29,5 +29,14 @@ describe('createSseParser', () => {
     feed('event: error\ndata: {"error":"Quá tải","error_en":"Overloaded","remaining":27,"conversation_removed":true}\n\n');
     expect(seen).toEqual([{ event: 'error', error: { vi: 'Quá tải', en: 'Overloaded' }, remaining: 27, conversationRemoved: true }]);
   });
-});
 
+  it('reads the period of the count, and no count at all for admins', () => {
+    const seen: TutorEvent[] = [];
+    const feed = createSseParser((e) => seen.push(e));
+    feed('event: meta\ndata: {"conversation_id":"c1","remaining":3,"period":"month"}\n\nevent: meta\ndata: {"conversation_id":"c2","remaining":null,"period":null}\n\n');
+    expect(seen).toEqual([
+      { event: 'meta', conversation_id: 'c1', remaining: 3, period: 'month' },
+      { event: 'meta', conversation_id: 'c2', remaining: null, period: 'day' },
+    ]);
+  });
+});

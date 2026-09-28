@@ -5,7 +5,7 @@ import { authoringCall } from '../authoring/apiClient';
 
 export interface AccountQuota {
   metric: QuotaMetric;
-  kind: 'monthly' | 'capacity';
+  kind: 'daily' | 'monthly' | 'capacity';
   limit: number;
   /** What the plan alone would give. */
   planLimit: number;
