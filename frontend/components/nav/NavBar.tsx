@@ -87,6 +87,7 @@ export function roleLinks(role: string | null, lang: 'en' | 'vi', openRequests: 
   ] : [];
   const adminLinks = role === 'admin' ? [
     { href: '/admin/accounts', label: label('Accounts', 'Quản lý tài khoản') },
+    { href: '/admin/billing', label: label('Payment reconciliation', 'Đối soát thanh toán') },
     { href: '/teacher/lessons', label: label('Lesson Studio', 'Soạn bài') },
     { href: '/teacher/exams', label: label('Exams', 'Đề thi') },
     { href: '/admin/lessons/review', label: label('Review Queue', 'Duyệt bài') },
