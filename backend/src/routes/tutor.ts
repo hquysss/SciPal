@@ -74,7 +74,7 @@ export const tutorRoutes: FastifyPluginAsync = async (app) => {
   app.post('/api/tutor/chat', async (request, reply) => {
     const supabase = app.supabase!;
     const uid = userId(request)!;
-    const body = (request.body ?? {}) as { conversation_id?: unknown; lesson_id?: unknown; message?: unknown; language?: unknown };
+    const body = (request.body ?? {}) as { conversation_id?: unknown; lesson_id?: unknown; message?: unknown; language?: unknown; retry?: unknown };
     const message = typeof body.message === 'string' ? body.message.trim() : '';
     const language = body.language === 'en' ? 'en' : 'vi';
     if (!message || message.length > MESSAGE_MAX) {
@@ -83,6 +83,23 @@ export const tutorRoutes: FastifyPluginAsync = async (app) => {
     const conversationId = typeof body.conversation_id === 'string' ? body.conversation_id : undefined;
     if (conversationId !== undefined && !UUID.test(conversationId)) return reply.code(404).send(notFound);
     const askedLesson = typeof body.lesson_id === 'string' && UUID.test(body.lesson_id) ? body.lesson_id : null;
+
+    let lessonId = askedLesson;
+    let lessonFromConversation = false;
+    let resend = false;
+    if (conversationId) {
+      const { data: conv } = await supabase.from('tutor_conversations').select('id, lesson_id').eq('id', conversationId).eq('user_id', uid).maybeSingle();
+      if (!conv) return reply.code(404).send(notFound);
+      lessonId = (conv as { lesson_id: string | null }).lesson_id;
+      lessonFromConversation = true;
+      // "Thử lại" after a failed answer: the question is already stored and counted.
+      if (body.retry === true) {
+        const { data: last } = await supabase
+          .from('tutor_messages').select('role, content').eq('conversation_id', conversationId).order('created_at', { ascending: false }).limit(1).maybeSingle();
+        const row = last as { role: string; content: string } | null;
+        resend = row?.role === 'user' && row.content === message;
+      }
+    }
 
     // Two questions sent at the same moment at limit − 1 can both pass: an overshoot of one is accepted.
     const { count, error: countError } = await supabase
@@ -97,16 +114,10 @@ export const tutorRoutes: FastifyPluginAsync = async (app) => {
     }
     const limit = dailyLimit();
     const used = count ?? 0;
-    if (used >= limit) {
+    if (!resend && used >= limit) {
       return reply.code(429).send({ ...msg('Em đã hết lượt hỏi hôm nay. Lượt mới có lúc 0 giờ.', 'You have used today’s questions. New ones arrive at midnight (Vietnam time).'), remaining: 0 });
     }
-
-    let lessonId = askedLesson;
-    if (conversationId) {
-      const { data: conv } = await supabase.from('tutor_conversations').select('id, lesson_id').eq('id', conversationId).eq('user_id', uid).maybeSingle();
-      if (!conv) return reply.code(404).send(notFound);
-      lessonId = (conv as { lesson_id: string | null }).lesson_id;
-    }
+    const remaining = Math.max(0, limit - used - (resend ? 0 : 1));
 
     let lessonText: string | undefined;
     if (lessonId) {
@@ -114,9 +125,10 @@ export const tutorRoutes: FastifyPluginAsync = async (app) => {
         .from('lessons').select('title_vi, title_en, blocks, status, subjects(name_vi, name_en)').eq('id', lessonId).maybeSingle();
       const row = lesson as { title_vi: string; title_en: string; blocks: unknown[]; status: string; subjects: { name_vi: string; name_en: string } | null } | null;
       if (!row || row.status !== 'published') {
-        return reply.code(404).send(msg('Không tìm thấy bài học.', 'Lesson not found.'));
-      }
-      lessonText = lessonContext(
+        // A new question about a lesson needs it published; an older conversation carries on
+        // without the lesson's text once the lesson is unpublished (e.g. back in review).
+        if (!lessonFromConversation) return reply.code(404).send(msg('Không tìm thấy bài học.', 'Lesson not found.'));
+      } else lessonText = lessonContext(
         { title_vi: row.title_vi, title_en: row.title_en, blocks: Array.isArray(row.blocks) ? row.blocks : [], subject_name: (language === 'vi' ? row.subjects?.name_vi : row.subjects?.name_en) ?? '' },
         language,
       );
@@ -135,7 +147,9 @@ export const tutorRoutes: FastifyPluginAsync = async (app) => {
       }
       id = (created as { id: string }).id;
     }
-    const { error: saveError } = await supabase.from('tutor_messages').insert({ conversation_id: id, user_id: uid, role: 'user', content: message });
+    const { error: saveError } = resend
+      ? { error: null }
+      : await supabase.from('tutor_messages').insert({ conversation_id: id, user_id: uid, role: 'user', content: message });
     if (saveError) {
       request.log.error({ err: saveError }, 'Failed to store tutor question');
       return reply.code(500).send(msg('Không lưu được câu hỏi.', 'Could not save your question.'));
@@ -143,6 +157,8 @@ export const tutorRoutes: FastifyPluginAsync = async (app) => {
     const { data: recent } = await supabase
       .from('tutor_messages').select('role, content').eq('conversation_id', id).order('created_at', { ascending: false }).limit(CONTEXT_MESSAGES);
     const history = ((recent ?? []) as Array<{ role: 'user' | 'assistant'; content: string }>).reverse();
+    // The model's conversation starts with the student: drop assistant turns cut off at the front.
+    while (history.length > 1 && history[0].role === 'assistant') history.shift();
 
     reply.hijack();
     const raw = reply.raw;
@@ -156,15 +172,16 @@ export const tutorRoutes: FastifyPluginAsync = async (app) => {
     const send = (event: string, data: unknown) => {
       if (!raw.writableEnded && !raw.destroyed) raw.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
     };
-    let closed = false;
-    request.raw.on('close', () => { closed = true; });
+    // The response's close event is the disconnect signal (the request's fires once its body is read).
+    let closed = raw.destroyed;
+    raw.on('close', () => { closed = true; });
 
-    send('meta', { conversation_id: id, remaining: limit - used - 1 });
+    send('meta', { conversation_id: id, remaining });
     let answer = '';
     let failed = false;
     try {
       for await (const text of app.aiProvider.chat(history, buildSystemPrompt({ language, level, lesson: lessonText }))) {
-        if (closed) break;
+        if (closed || raw.destroyed) break;
         answer += text;
         send('delta', { text });
       }

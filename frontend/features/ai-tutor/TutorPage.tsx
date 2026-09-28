@@ -16,6 +16,14 @@ import type { TutorLesson } from './tutorLessonTypes';
 type Bilingual = { vi: string; en: string };
 type Open = { key: string; id: string | null; messages: TutorMessage[]; lessonId: string | null };
 
+/**
+ * The lesson a chat is about: the one picked on a chat that started empty (it stays after the
+ * first answer gives the chat an id), otherwise the stored lesson of the conversation opened.
+ */
+export function chatLessonId(open: Pick<Open, 'id' | 'messages' | 'lessonId'>, picked: string | null): string | null {
+  return open.messages.length === 0 ? picked : open.lessonId;
+}
+
 const fresh = (lessonId: string | null = null): Open => ({ key: `new-${Date.now()}`, id: null, messages: [], lessonId });
 
 /** The tutor page: conversations on the left (a drawer on phones), the chat on the right. */
@@ -148,7 +156,7 @@ function OpenChat({
   onConversation: (id: string) => void;
 }) {
   const [picked, setPicked] = useState<string | null>(open.lessonId);
-  const lessonId = open.id ? open.lessonId : picked;
+  const lessonId = chatLessonId(open, picked);
   return (
     <TutorChat
       conversationId={open.id ?? undefined}
@@ -156,7 +164,7 @@ function OpenChat({
       initialMessages={open.messages}
       level={level}
       lessonTitle={lessonTitle(lessonId)}
-      picker={open.id ? undefined : <LessonPicker lessons={lessons} value={picked} onChange={setPicked} />}
+      picker={open.messages.length > 0 ? undefined : <LessonPicker lessons={lessons} value={picked} onChange={setPicked} />}
       onConversation={onConversation}
     />
   );

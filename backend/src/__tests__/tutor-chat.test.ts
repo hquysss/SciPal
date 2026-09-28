@@ -144,4 +144,85 @@ describe('POST /api/tutor/chat', () => {
     expect(events(res.body).map((e) => e.event)).toEqual(['meta', 'error']);
     await app.close();
   });
+
+  it('stops asking the model and stores the partial answer when the student disconnects', async () => {
+    const assistantInsert = ok();
+    let captured: { raw: { destroy(): void } } | null = null;
+    let pulledAfterClose = false;
+    const ai = {
+      calls: [] as unknown[],
+      chat: async function* () {
+        yield 'Bước 1. ';
+        captured!.raw.destroy();
+        await new Promise((r) => setTimeout(r, 5));
+        yield 'late';
+        pulledAfterClose = true;
+        yield 'never';
+      },
+    };
+    const app = Fastify();
+    app.decorate('supabase', mockSupabase({
+      tutor_messages: [mockQuery({ data: null, error: null, count: 0 }), ok(), ok([{ role: 'user', content: 'Hỏi' }]), assistantInsert],
+      profiles: ok(null),
+      tutor_conversations: [ok({ id: C1 }), ok()],
+    }));
+    app.decorate('aiProvider', ai);
+    app.addHook('onRequest', async (req) => { (req as any).user = student; });
+    app.addHook('preHandler', async (_req, reply) => { captured = reply as any; });
+    await app.register(tutorRoutes);
+    await app.ready();
+    await app.inject({ method: 'POST', url: '/api/tutor/chat', payload: { message: 'Hỏi', language: 'vi' } }).catch(() => null);
+    await new Promise((r) => setTimeout(r, 30));
+    expect(assistantInsert.inserted[0]).toMatchObject({ content: 'Bước 1. ' });
+    expect(pulledAfterClose).toBe(false);
+    await app.close();
+  });
+
+  it('retrying the unanswered last question neither stores nor counts it again', async () => {
+    const last = ok({ role: 'user', content: 'Hỏi' });
+    const count = mockQuery({ data: null, error: null, count: 30 });
+    const history = ok([{ role: 'user', content: 'Hỏi' }]);
+    const assistantInsert = ok();
+    const { app } = await build({
+      tutor_conversations: [ok({ id: C1, lesson_id: null }), ok()],
+      tutor_messages: [last, count, history, assistantInsert],
+      profiles: ok(null),
+    });
+    const res = await app.inject({ method: 'POST', url: '/api/tutor/chat', payload: { conversation_id: C1, message: 'Hỏi', language: 'vi', retry: true } });
+    expect(res.statusCode).toBe(200);
+    expect(events(res.body)[0].data).toEqual({ conversation_id: C1, remaining: 0 });
+    expect(history.inserted).toEqual([]);
+    expect(assistantInsert.inserted[0]).toMatchObject({ role: 'assistant', content: 'Gợi ý một bước.' });
+    await app.close();
+  });
+
+  it('keeps an old conversation going without lesson text when its lesson is no longer published', async () => {
+    const { app, ai } = await build({
+      tutor_conversations: [ok({ id: C1, lesson_id: L1 }), ok()],
+      tutor_messages: [mockQuery({ data: null, error: null, count: 0 }), ok(), ok([{ role: 'user', content: 'Hỏi' }]), ok()],
+      lessons: ok({ title_vi: 'Bài nháp', title_en: 'Draft', status: 'draft', blocks: [{ type: 'theory', content: { vi: 'NỘI DUNG NHÁP', en: 'x' } }], subjects: null }),
+      profiles: ok(null),
+    });
+    const res = await app.inject({ method: 'POST', url: '/api/tutor/chat', payload: { conversation_id: C1, message: 'Hỏi', language: 'vi' } });
+    expect(res.statusCode).toBe(200);
+    expect(ai.calls[0].system).not.toContain('NỘI DUNG NHÁP');
+    await app.close();
+  });
+
+  it('sends the model a history that starts with the student', async () => {
+    const { app, ai } = await build({
+      tutor_messages: [
+        mockQuery({ data: null, error: null, count: 0 }),
+        ok(),
+        ok([{ role: 'user', content: 'Q3' }, { role: 'assistant', content: 'A2' }, { role: 'user', content: 'Q2' }, { role: 'assistant', content: 'A1' }]),
+        ok(),
+      ],
+      tutor_conversations: [ok({ id: C1, lesson_id: null }), ok()],
+      profiles: ok(null),
+    });
+    await app.inject({ method: 'POST', url: '/api/tutor/chat', payload: { conversation_id: C1, message: 'Q3', language: 'vi' } });
+    expect((ai.calls[0].messages as Array<{ role: string; content: string }>).map((m) => m.content)).toEqual(['Q2', 'A2', 'Q3']);
+    await app.close();
+  });
 });
+

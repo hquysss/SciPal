@@ -17,6 +17,7 @@ export type TutorState = {
 };
 type Action =
   | { type: 'send'; text: string }
+  | { type: 'retry' }
   | { type: 'event'; event: TutorEvent }
   | { type: 'failed'; status: number; error: Bilingual; remaining?: number }
   | { type: 'finished' };
@@ -35,6 +36,9 @@ export function tutorReducer(state: TutorState, action: Action): TutorState {
   switch (action.type) {
     case 'send':
       return { ...state, streaming: true, error: null, lastQuestion: action.text, messages: [...state.messages, { role: 'user', content: action.text }, { role: 'assistant', content: '' }] };
+    case 'retry':
+      // The question is already on screen (and stored): only a new answer is awaited.
+      return { ...state, streaming: true, error: null, messages: [...trimEmpty(state.messages), { role: 'assistant', content: '' }] };
     case 'event': {
       const e = action.event;
       if (e.event === 'meta') return { ...state, conversationId: e.conversation_id, remaining: e.remaining };
@@ -61,6 +65,16 @@ export function tutorReducer(state: TutorState, action: Action): TutorState {
   }
 }
 
+/** The chat request body; `retry` reuses the stored question, so it only applies inside a conversation. */
+export function tutorRequest(opts: { conversationId: string | null; lessonId: string | undefined; text: string; language: 'vi' | 'en'; retry: boolean }) {
+  return {
+    ...(opts.conversationId ? { conversation_id: opts.conversationId } : opts.lessonId ? { lesson_id: opts.lessonId } : {}),
+    message: opts.text,
+    language: opts.language,
+    ...(opts.retry && opts.conversationId ? { retry: true } : {}),
+  };
+}
+
 export function useTutorChat(opts: { conversationId?: string; lessonId?: string; initialMessages?: TutorMessage[] }) {
   const { lang } = useLanguage();
   const [state, dispatch] = useReducer(tutorReducer, initialTutorState(opts.initialMessages ?? [], opts.conversationId ?? null));
@@ -68,21 +82,25 @@ export function useTutorChat(opts: { conversationId?: string; lessonId?: string;
   const conversation = useRef(state.conversationId);
   conversation.current = state.conversationId;
 
-  const send = useCallback(async (text: string) => {
-    const message = text.trim();
-    if (!message || abort.current) return;
-    const controller = new AbortController();
-    abort.current = controller;
-    dispatch({ type: 'send', text: message });
-    const res = await streamTutor(
-      { message, language: lang === 'en' ? 'en' : 'vi', ...(conversation.current ? { conversation_id: conversation.current } : opts.lessonId ? { lesson_id: opts.lessonId } : {}) },
-      (event) => dispatch({ type: 'event', event }),
-      controller.signal,
-    );
-    abort.current = null;
-    if (!res.ok) dispatch({ type: 'failed', status: res.status, error: res.error, remaining: res.remaining });
-    else dispatch({ type: 'finished' });
-  }, [lang, opts.lessonId]);
+  const ask = useCallback(
+    async (text: string, retry: boolean) => {
+      const message = text.trim();
+      if (!message || abort.current) return;
+      const controller = new AbortController();
+      abort.current = controller;
+      dispatch(retry ? { type: 'retry' } : { type: 'send', text: message });
+      const res = await streamTutor(
+        tutorRequest({ conversationId: conversation.current, lessonId: opts.lessonId, text: message, language: lang === 'en' ? 'en' : 'vi', retry }),
+        (event) => dispatch({ type: 'event', event }),
+        controller.signal,
+      );
+      abort.current = null;
+      if (!res.ok) dispatch({ type: 'failed', status: res.status, error: res.error, remaining: res.remaining });
+      else dispatch({ type: 'finished' });
+    },
+    [lang, opts.lessonId],
+  );
+  const send = useCallback((text: string) => ask(text, false), [ask]);
 
   const stop = useCallback(() => {
     abort.current?.abort();
@@ -90,8 +108,8 @@ export function useTutorChat(opts: { conversationId?: string; lessonId?: string;
   }, []);
 
   const retry = useCallback(async () => {
-    if (state.lastQuestion) await send(state.lastQuestion);
-  }, [send, state.lastQuestion]);
+    if (state.lastQuestion) await ask(state.lastQuestion, true);
+  }, [ask, state.lastQuestion]);
 
   return { ...state, send, stop, retry };
 }
