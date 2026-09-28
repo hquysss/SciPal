@@ -6,6 +6,7 @@ import { useLanguage } from '@scipal/hooks';
 import type { FormulaBlock } from '@scipal/types';
 import { Input } from '@/components/ui/input';
 import { LangTabs } from './LangTabs';
+import { AutoTranslatedNote } from '../../translation/AutoTranslateContext';
 import { LABEL } from './styles';
 
 interface FormulaEditorProps {
@@ -38,6 +39,7 @@ export function FormulaEditor({ block, onChange, lang, onLangChange }: FormulaEd
         </label>
         <Input
           id={`${id}-tex`}
+          data-field="katex"
           value={block.katex}
           onChange={(e) => onChange({ ...block, katex: e.target.value })}
           spellCheck={false}
@@ -64,9 +66,11 @@ export function FormulaEditor({ block, onChange, lang, onLangChange }: FormulaEd
         </div>
         <Input
           id={`${id}-caption`}
+          data-field="caption"
           value={caption[lang]}
           onChange={(e) => onChange({ ...block, caption: { ...caption, [lang]: e.target.value } })}
         />
+        {lang === 'en' && <AutoTranslatedNote text={caption} onEnglish={(en) => onChange({ ...block, caption: { ...caption, en } })} />}
       </div>
     </div>
   );

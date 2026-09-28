@@ -1,6 +1,6 @@
 'use client';
 
-import { useId, useState } from 'react';
+import { useContext, useId, useRef, useState } from 'react';
 import { Plus, Trash2 } from 'lucide-react';
 import { useLanguage } from '@scipal/hooks';
 import { QUESTION_TYPES, questionIncomplete, validateQuestionInput, type QuestionType } from '@scipal/types';
@@ -8,6 +8,11 @@ import { buttonVariants } from '@/components/ui/button';
 import { LangTabs } from '../editor/editors/LangTabs';
 import { LABEL, SMALL_BUTTON, TEXTAREA } from '../editor/editors/styles';
 import { createQuestion, updateQuestion, type AuthorQuestion } from './api';
+import { nextNotice, translateBeforeSave } from '../translation/autoTranslate';
+import { AutoTranslateContext, AutoTranslatedNote } from '../translation/AutoTranslateContext';
+import { draftFields, setDraftField } from '../translation/bilingualFields';
+import { translateTexts } from '../translation/translateApi';
+import { readAutoTranslate } from '../translation/useAutoTranslate';
 import {
   QUESTION_TYPE_LABEL,
   draftFromQuestion,
@@ -52,6 +57,8 @@ export function QuestionEditor({ context, question, initial, onSaved, onCancel }
   const [lang, setLang] = useState<'vi' | 'en'>('vi');
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<Bilingual | null>(null);
+  const [translationNotice, setTranslationNotice] = useState<Bilingual | null>(null);
+  const autoTranslate = useContext(AutoTranslateContext);
   const [dirty, setDirty] = useState(!question);
   const [grade, setGrade] = useState<number | null>(() => (question ? question.grade : context.usage === 'exam' ? context.grade : null));
   const ctx: QuestionContext =
@@ -60,6 +67,8 @@ export function QuestionEditor({ context, question, initial, onSaved, onCancel }
   const checked = validateQuestionInput(questionInput(draft, ctx));
   const missingEnglish = checked.ok && questionIncomplete(checked.value) !== null;
   const { data } = draft;
+  const draftRef = useRef(draft);
+  draftRef.current = draft;
 
   const change = (next: QuestionDraft) => {
     setDraft(next);
@@ -73,7 +82,22 @@ export function QuestionEditor({ context, question, initial, onSaved, onCancel }
     if (problem || saving) return;
     setSaving(true);
     setSaveError(null);
-    const payload = questionInput(draft, ctx);
+    // Empty English is filled first; the question is saved even when that fails.
+    const translated = await translateBeforeSave({
+      enabled: readAutoTranslate(),
+      value: draft,
+      current: () => draftRef.current,
+      fields: (d) => draftFields(d).map((f) => ({ key: f.path, text: f.text })),
+      set: setDraftField,
+      call: translateTexts,
+    });
+    setTranslationNotice((prev) => nextNotice(prev, translated.failed));
+    const filled = Object.values(translated.marks);
+    if (filled.length) {
+      setDraft(translated.value);
+      autoTranslate?.addMarks(filled);
+    }
+    const payload = questionInput(translated.value, ctx);
     const res = question ? await updateQuestion(question.id, payload) : await createQuestion(payload);
     setSaving(false);
     if (!res.ok) {
@@ -92,6 +116,7 @@ export function QuestionEditor({ context, question, initial, onSaved, onCancel }
           {t(label)}
         </label>
         <textarea id={id} rows={rows} value={text?.[lang] ?? ''} onChange={(e) => onText(e.target.value)} className={TEXTAREA} />
+        {lang === 'en' && text && <AutoTranslatedNote text={text} onEnglish={onText} />}
       </div>
     );
   };
@@ -276,6 +301,11 @@ export function QuestionEditor({ context, question, initial, onSaved, onCancel }
       {(problem || saveError) && (
         <p role="alert" className="text-sm font-medium text-danger">
           {t(saveError ?? problem!)}
+        </p>
+      )}
+      {translationNotice && (
+        <p role="status" className="text-sm text-warning">
+          {t({ en: 'Not translated to English yet — it will try again on the next save.', vi: 'Chưa dịch được sang tiếng Anh — sẽ thử lại ở lần lưu sau.' })} ({t(translationNotice)})
         </p>
       )}
       <div className="flex flex-wrap items-center gap-2">

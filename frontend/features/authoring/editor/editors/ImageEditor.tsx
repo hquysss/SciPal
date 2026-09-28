@@ -7,6 +7,7 @@ import type { ImageBlock } from '@scipal/types';
 import { Input } from '@/components/ui/input';
 import { IMAGE_TYPES, uploadLessonImage } from '../mediaApi';
 import { LangTabs } from './LangTabs';
+import { AutoTranslatedNote } from '../../translation/AutoTranslateContext';
 import { LABEL, SMALL_BUTTON } from './styles';
 
 type Bilingual = { en: string; vi: string };
@@ -103,7 +104,7 @@ export function ImageEditor({ block, onChange, lang, onLangChange }: ImageEditor
       <div className="flex flex-col items-center gap-2 rounded-lg border border-line bg-surface-sunken p-3">
         {/* eslint-disable-next-line @next/next/no-img-element -- Storage images of unknown size */}
         <img src={block.url} alt={block.alt[lang] || block.alt.vi} className="max-h-72 w-auto max-w-full rounded-md" />
-        <button type="button" onClick={() => fileRef.current?.click()} disabled={busy} className={SMALL_BUTTON}>
+        <button type="button" data-field="url" onClick={() => fileRef.current?.click()} disabled={busy} className={SMALL_BUTTON}>
           {busy ? t({ en: 'Uploading…', vi: 'Đang tải…' }) : t({ en: 'Replace image', vi: 'Thay ảnh' })}
         </button>
         <input
@@ -131,10 +132,12 @@ export function ImageEditor({ block, onChange, lang, onLangChange }: ImageEditor
         </label>
         <Input
           id={`${id}-alt`}
+          data-field="alt"
           value={block.alt[lang]}
           onChange={(e) => onChange({ ...block, alt: { ...block.alt, [lang]: e.target.value } })}
           aria-invalid={lang === 'vi' && !block.alt.vi.trim() ? true : undefined}
         />
+        {lang === 'en' && <AutoTranslatedNote text={block.alt} onEnglish={(en) => onChange({ ...current.current, alt: { ...current.current.alt, en } })} />}
       </div>
       <div className="flex flex-col gap-1.5">
         <label htmlFor={`${id}-caption`} className={LABEL}>
@@ -142,9 +145,11 @@ export function ImageEditor({ block, onChange, lang, onLangChange }: ImageEditor
         </label>
         <Input
           id={`${id}-caption`}
+          data-field="caption"
           value={caption[lang]}
           onChange={(e) => onChange({ ...block, caption: { ...caption, [lang]: e.target.value } })}
         />
+        {lang === 'en' && <AutoTranslatedNote text={caption} onEnglish={(en) => onChange({ ...current.current, caption: { ...(current.current.caption ?? caption), en } })} />}
       </div>
     </div>
   );

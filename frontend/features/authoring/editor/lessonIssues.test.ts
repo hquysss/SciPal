@@ -73,3 +73,27 @@ describe('lessonIssues', () => {
     });
   });
 });
+
+describe('lessonIssues fields and hints', () => {
+  it('names the field at fault', () => {
+    const issues = lessonIssues([
+      { type: 'theory', content: { vi: 'A', en: '' } },
+      { type: 'theory', content: { vi: '', en: '' } },
+      { type: 'formula', katex: '' },
+      { type: 'image', url: 'https://x/lesson-media/a.png', alt: { vi: '', en: '' } },
+      { type: 'code', tabs: [{ lang: 'python', code: '' }] },
+    ]);
+    expect(issues.map((i) => i.field)).toEqual(['content.en', 'content.vi', 'katex', 'alt.vi', 'tabs']);
+  });
+
+  it('explains a formula error with what KaTeX says, without its prefix', () => {
+    const [issue] = lessonIssues([{ type: 'formula', katex: '\frac{1}{' }]);
+    expect(issue!.hint?.en).toBeTruthy();
+    expect(issue!.hint?.en).not.toMatch(/KaTeX parse error/);
+  });
+
+  it('tells how to fill missing English', () => {
+    const [issue] = lessonIssues([{ type: 'theory', content: { vi: 'A', en: '' } }]);
+    expect(issue!.hint?.vi).toMatch(/Tự dịch/);
+  });
+});

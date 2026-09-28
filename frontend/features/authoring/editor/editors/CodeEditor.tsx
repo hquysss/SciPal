@@ -75,6 +75,7 @@ export function CodeEditor({ block, onChange }: { block: CodeBlock; onChange: (b
         ))}
       </div>
       <textarea
+        data-field="tabs"
         rows={10}
         spellCheck={false}
         value={tab.code}
