@@ -118,6 +118,23 @@ describe('provider settings', () => {
     });
   });
 
+  it('takes an explicit provider and model (the admin settings) over the environment', async () => {
+    const { providerSettings } = await import('../providers/ai.js');
+    await withEnv({ AI_PROVIDER: 'gemini', TUTOR_MODEL: 'env-model', GEMINI_API_KEY: 'g-key', OPENAI_API_KEY: 'o-key' }, () => {
+      expect(providerSettings({ provider: 'openai', model: 'admin-model' })).toEqual({ apiKey: 'o-key', baseURL: undefined, model: 'admin-model' });
+    });
+  });
+
+  it('refuses to build a client without that provider’s own key (never sends the OpenAI key to Google)', async () => {
+    const { ChatCompletionsProvider } = await import('../providers/ai.js');
+    await withEnv({ GEMINI_API_KEY: undefined, OPENAI_API_KEY: 'o-key' }, () => {
+      expect(() => new ChatCompletionsProvider({ provider: 'gemini', model: 'gemini-3.8-flash' })).toThrow(/GEMINI_API_KEY/);
+    });
+    await withEnv({ GEMINI_API_KEY: 'g-key', OPENAI_API_KEY: undefined }, () => {
+      expect(() => new ChatCompletionsProvider({ provider: 'openai', model: 'gpt-4o-mini' })).toThrow(/OPENAI_API_KEY/);
+    });
+  });
+
   it('has no Claude provider left', async () => {
     const mod = await import('../providers/ai.js');
     expect('ClaudeProvider' in mod).toBe(false);
