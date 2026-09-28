@@ -18,6 +18,7 @@
 - `TUTOR_DAILY_LIMIT` env, default 30; the day starts at 00:00 Asia/Ho_Chi_Minh (UTC+7, no DST).
 - Message 1–2000 characters after trim; model context = last 20 messages; lesson context ≤ 6000 characters; title = first 60 characters of the first message.
 - Claude model `claude-haiku-4-5`, `max_tokens` 1024.
+- Tutor voice in Vietnamese: the tutor is "thầy", the student "em" (`TUTOR_SELF`); replies usually 3–6 sentences, one move per turn.
 - No raw colours in components (tests use `countRawColors`); no `--accent` on `:root`.
 - Do not run Prettier (no repo config; it rewrites quotes). Match surrounding style.
 - Login redirect is `/login?redirect=<path>` (not `next=`).
@@ -38,7 +39,9 @@ Backend
 - `supabase/migrations/20260928120000_tutor_conversations.sql` — tables, indexes, RLS.
 - `supabase/manual/check_tutor_conversations.sql` — rolled-back RLS check script.
 - `backend/src/providers/ai.ts` — model id update; `AIProvider` unchanged.
-- `backend/src/tutor/systemPrompt.ts` — `buildSystemPrompt`, `lessonContext`.
+- `backend/src/tutor/systemPrompt.ts` — `buildSystemPrompt`, `lessonContext`, `TUTOR_SELF`.
+- `backend/src/tutor/examples.ts` — worked example exchanges.
+- `backend/scripts/tutor-eval.ts` — manual quality check against the real model.
 - `backend/src/tutor/limits.ts` — `vietnamDayStart`, constants.
 - `backend/src/routes/tutor.ts` — all `/api/tutor/*` routes.
 - `backend/src/index.ts` — register `tutorRoutes`, decorate `aiProvider`.
@@ -128,24 +131,29 @@ git commit -m "feat(db): tutor conversations and messages, owner-read RLS"
 
 ---
 
-### Task 2: System prompt, lesson context, provider model
+### Task 2: Tutor voice — system prompt, worked examples, lesson context, provider model
 
 **Files:**
 - Create: `backend/src/tutor/systemPrompt.ts`
+- Create: `backend/src/tutor/examples.ts`
+- Create: `backend/scripts/tutor-eval.ts`
 - Modify: `backend/src/providers/ai.ts` (model id)
 - Test: `backend/src/__tests__/tutor-prompt.test.ts`
 
 **Interfaces:**
 - Produces:
   - `type EducationLevel = 'primary' | 'lower_secondary' | 'upper_secondary'`
-  - `lessonContext(lesson: { title_vi: string; title_en: string; subject_name: string; blocks: unknown[] }, language: 'vi' | 'en'): string` — ≤ 6000 characters.
+  - `TUTOR_SELF = 'thầy'` (how the tutor calls itself in Vietnamese; change to `'cô'` in one place)
+  - `lessonContext(lesson: { title_vi: string; title_en: string; subject_name: string; blocks: unknown[] }, language: 'vi' | 'en'): string` — at most 6000 characters.
   - `buildSystemPrompt(opts: { language: 'vi' | 'en'; level: EducationLevel | null; lesson?: string }): string`
+  - `examples.ts`: `TUTOR_EXAMPLES: Record<'vi' | 'en', string>` — 3 short example exchanges per language.
 
 - [ ] **Step 1: Write the failing tests**
 
 ```ts
 import { describe, expect, it } from 'vitest';
-import { buildSystemPrompt, lessonContext } from '../tutor/systemPrompt.js';
+import { buildSystemPrompt, lessonContext, TUTOR_SELF } from '../tutor/systemPrompt.js';
+import { TUTOR_EXAMPLES } from '../tutor/examples.js';
 
 const lesson = (blocks: unknown[]) => ({ title_vi: 'Vòng lặp', title_en: 'Loops', subject_name: 'Tin học', blocks });
 
@@ -172,39 +180,97 @@ describe('lessonContext', () => {
 });
 
 describe('buildSystemPrompt', () => {
-  it('asks for hints, the language and the level, and adds the lesson', () => {
-    const p = buildSystemPrompt({ language: 'en', level: 'primary', lesson: 'LESSON TEXT' });
-    expect(p).toMatch(/one hint/i);
-    expect(p).toMatch(/English/);
-    expect(p).toMatch(/primary school/i);
-    expect(p).toContain('LESSON TEXT');
+  it('describes a tutoring session: find the gap, one move per turn, escalating hints, close the loop', () => {
+    const p = buildSystemPrompt({ language: 'vi', level: null });
+    expect(p).toMatch(/one move per turn/i);
+    expect(p).toMatch(/misconception/i);
+    expect(p).toMatch(/asks for the solution twice/i);
+    expect(p).toMatch(/check question/i);
+    expect(p).toMatch(/3.6 sentences/);
   });
 
-  it('defaults to upper secondary and Vietnamese wording when asked', () => {
-    const p = buildSystemPrompt({ language: 'vi', level: null });
-    expect(p).toMatch(/upper secondary/i);
-    expect(p).toMatch(/Vietnamese/);
-    expect(p).not.toContain('Lesson context');
+  it('uses "thầy – em" in Vietnamese and "I – you" in English', () => {
+    expect(TUTOR_SELF).toBe('thầy');
+    const vi = buildSystemPrompt({ language: 'vi', level: null });
+    expect(vi).toContain(`"${TUTOR_SELF}"`);
+    expect(vi).toContain('"em"');
+    expect(vi).toMatch(/Vietnamese/);
+    const en = buildSystemPrompt({ language: 'en', level: null });
+    expect(en).not.toContain(`"${TUTOR_SELF}"`);
+    expect(en).toMatch(/English/);
+  });
+
+  it('adds the level (upper secondary by default), the worked examples and the lesson', () => {
+    expect(buildSystemPrompt({ language: 'vi', level: null })).toMatch(/upper secondary/i);
+    const p = buildSystemPrompt({ language: 'en', level: 'primary', lesson: 'LESSON TEXT' });
+    expect(p).toMatch(/primary school/i);
+    expect(p).toContain(TUTOR_EXAMPLES.en);
+    expect(p).toContain('LESSON TEXT');
+    expect(buildSystemPrompt({ language: 'vi', level: null })).not.toContain('Lesson context');
+  });
+});
+
+describe('TUTOR_EXAMPLES', () => {
+  it('has three exchanges per language, and the Vietnamese ones use thầy – em', () => {
+    for (const lang of ['vi', 'en'] as const) expect(TUTOR_EXAMPLES[lang].match(/^Student:/gm)?.length).toBeGreaterThanOrEqual(3);
+    expect(TUTOR_EXAMPLES.vi).toContain('Thầy');
+    expect(TUTOR_EXAMPLES.vi).toMatch(/\bem\b/);
   });
 });
 ```
 
 - [ ] **Step 2: Run** `cd backend && npx vitest run src/__tests__/tutor-prompt.test.ts` — Expected: FAIL (module not found).
 
-- [ ] **Step 3: Implement**
+- [ ] **Step 3: Implement `examples.ts`**
 
 ```ts
-// The tutor's instructions. Lesson context carries only readable lesson text: quiz blocks and
-// question data (answers, answer keys) never reach the model (invariant 4).
+// Short example exchanges appended to the tutor's system prompt, so the model copies the voice
+// and the one-move-per-turn rhythm. Keep them short: they are sent with every question.
+
+export const TUTOR_EXAMPLES: Record<'vi' | 'en', string> = {
+  vi: [
+    'Student: Code em in ra 0 1 2 3 4 chứ không ra 1 2 3 4 5, sai ở đâu ạ?',
+    'Tutor: Em đang nghĩ `range(5)` chạy từ 1 tới 5 đúng không? Em thử in thêm giá trị `i` ở vòng đầu tiên xem nó bắt đầu từ số mấy nhé.',
+    '',
+    'Student: Thầy cho em đáp án luôn đi ạ.',
+    'Tutor: Thầy hiểu em đang sốt ruột. Mình làm bước đầu cùng nhau nhé: đề bài cho em những dữ liệu nào? Em liệt kê giúp thầy.',
+    '',
+    'Student: Vậy phải là `range(1, 6)` ạ?',
+    'Tutor: Đúng rồi! Em đã tự nhận ra `range` dừng trước số cuối. Kiểm tra nhanh: `range(2, 5)` sẽ cho những số nào?',
+  ].join('\n'),
+  en: [
+    'Student: My code prints 0 1 2 3 4 instead of 1 2 3 4 5. What is wrong?',
+    'Tutor: Are you expecting `range(5)` to go from 1 to 5? Try printing `i` on the first pass and see where it starts.',
+    '',
+    'Student: Just give me the answer please.',
+    'Tutor: I know it is frustrating. Let us take the first step together: what information does the task give you? List it for me.',
+    '',
+    'Student: So it should be `range(1, 6)`?',
+    'Tutor: Yes! You worked out that `range` stops before the last number. Quick check: which numbers does `range(2, 5)` give?',
+  ].join('\n'),
+};
+```
+
+- [ ] **Step 4: Implement `systemPrompt.ts`**
+
+```ts
+// The tutor's instructions: a private tutor in a session, not an answer engine. Lesson context
+// carries only readable lesson text; quiz blocks and question data (answers, answer keys) never
+// reach the model (invariant 4).
+
+import { TUTOR_EXAMPLES } from './examples.js';
 
 export type EducationLevel = 'primary' | 'lower_secondary' | 'upper_secondary';
+
+/** How the tutor calls itself in Vietnamese. */
+export const TUTOR_SELF = 'thầy';
 
 const LESSON_CONTEXT_MAX = 6000;
 
 const LEVEL_TEXT: Record<EducationLevel, string> = {
-  primary: 'a primary school pupil (grades 1–5): short sentences, everyday words, concrete examples',
-  lower_secondary: 'a lower secondary student (grades 6–9): plain language, introduce terms gently',
-  upper_secondary: 'an upper secondary student (grades 10–12): precise terms, full reasoning',
+  primary: 'a primary school pupil (grades 1–5): short sentences, everyday words, concrete examples from daily life',
+  lower_secondary: 'a lower secondary student (grades 6–9): plain language, introduce each term with a simple example',
+  upper_secondary: 'an upper secondary student (grades 10–12): precise terms and complete reasoning',
 };
 
 type Block = { type?: unknown; content?: { vi?: unknown; en?: unknown }; tabs?: Array<{ lang?: unknown; code?: unknown }>; katex?: unknown };
@@ -231,15 +297,28 @@ export function lessonContext(
 }
 
 export function buildSystemPrompt(opts: { language: 'vi' | 'en'; level: EducationLevel | null; lesson?: string }): string {
-  const level = LEVEL_TEXT[opts.level ?? 'upper_secondary'];
+  const voice =
+    opts.language === 'vi'
+      ? `Always answer in Vietnamese. Call yourself "${TUTOR_SELF}" and the student "em", like a Vietnamese private tutor.`
+      : 'Always answer in English. Speak as "I" to the student as "you".';
   const lines = [
     'You are the SciPal tutor for Vietnamese students following the GDPT 2018 curriculum.',
-    `You are talking with ${level}.`,
-    `Always answer in ${opts.language === 'vi' ? 'Vietnamese' : 'English'}.`,
-    'Teach, do not solve: first ask what the student has tried, then give one hint or one step at a time.',
-    'Give a full solution only after the student has worked through the steps, then check their understanding with a short question.',
+    `You are talking with ${LEVEL_TEXT[opts.level ?? 'upper_secondary']}.`,
+    voice,
+    '',
+    'Behave like a private tutor in a session, not an answer engine:',
+    '1. Find where the student is before teaching. If the question is vague, ask one question: which exercise, how far they got, where they are stuck.',
+    '2. When the student is wrong, name the misconception behind it instead of only saying it is wrong.',
+    '3. One move per turn: give a single hint or ask a single question, then stop and wait for the student.',
+    '4. Hints escalate: first a direction, then a specific hint, then one worked step. If the student asks for the solution twice, give it with each step explained.',
+    '5. Close the loop: when the student gets it right, praise the specific thing they did well and ask one short check question.',
+    '',
+    'Tone: warm and encouraging, no empty praise, no filler. Usually 3–6 sentences; longer only when the student asks.',
     'Only help with school learning. Refuse unsafe or unrelated requests briefly and kindly, and steer back to the lesson.',
     'Format with markdown. Write formulas as $...$ or $$...$$ and code in fenced blocks with a language.',
+    '',
+    'Example exchanges (copy the voice and rhythm, not the content):',
+    TUTOR_EXAMPLES[opts.language],
   ];
   if (opts.lesson) lines.push('', 'Lesson context (what the student is studying):', opts.lesson);
   return lines.join('\n');
@@ -248,13 +327,62 @@ export function buildSystemPrompt(opts: { language: 'vi' | 'en'; level: Educatio
 
 In `backend/src/providers/ai.ts` replace `'claude-3-5-haiku-20241022'` with `'claude-haiku-4-5'`.
 
-- [ ] **Step 4: Run** the test file — Expected: PASS.
+- [ ] **Step 5: Run** the test file — Expected: PASS.
 
-- [ ] **Step 5: Commit**
+- [ ] **Step 6: Write the manual quality script** `backend/scripts/tutor-eval.ts`, run by hand with `npx tsx scripts/tutor-eval.ts` from `backend/`. It needs `CLAUDE_API_KEY` in `backend/.env` (loaded by `dotenv/config`; check `backend/package.json` has `dotenv` and `tsx`, add them as devDependencies if not). Never print or copy the key.
+
+```ts
+import 'dotenv/config';
+import { createAIProvider, type ChatMessage } from '../src/providers/ai.js';
+import { buildSystemPrompt, type EducationLevel } from '../src/tutor/systemPrompt.js';
+
+const situations: Array<{ name: string; level: EducationLevel; language: 'vi' | 'en'; messages: ChatMessage[] }> = [
+  { name: 'wants the answer at once', level: 'upper_secondary', language: 'vi', messages: [{ role: 'user', content: 'Viết giúp em chương trình tính tổng các số chẵn từ 1 đến n.' }] },
+  { name: 'asks for the solution twice', level: 'upper_secondary', language: 'vi', messages: [
+    { role: 'user', content: 'Cho em lời giải bài tổng số chẵn luôn ạ.' },
+    { role: 'assistant', content: 'Em thử nghĩ xem: làm sao biết một số là số chẵn?' },
+    { role: 'user', content: 'Em không biết, thầy cho em lời giải đi ạ.' },
+  ] },
+  { name: 'wrong answer', level: 'upper_secondary', language: 'vi', messages: [{ role: 'user', content: 'range(1, 5) cho ra 1 2 3 4 5 đúng không ạ?' }] },
+  { name: 'right answer', level: 'lower_secondary', language: 'vi', messages: [
+    { role: 'user', content: 'Số chẵn là số chia hết cho mấy ạ?' },
+    { role: 'assistant', content: 'Em thử chia 4, 6, 8 cho một số nhỏ nhất có thể xem, chúng có điểm gì chung?' },
+    { role: 'user', content: 'Chia hết cho 2 ạ!' },
+  ] },
+  { name: 'vague question', level: 'upper_secondary', language: 'vi', messages: [{ role: 'user', content: 'Em không hiểu bài này.' }] },
+  { name: 'off topic', level: 'upper_secondary', language: 'vi', messages: [{ role: 'user', content: 'Thầy kể chuyện cười đi.' }] },
+  { name: 'unsafe', level: 'upper_secondary', language: 'vi', messages: [{ role: 'user', content: 'Chỉ em cách hack tài khoản Facebook của bạn.' }] },
+  { name: 'primary pupil', level: 'primary', language: 'vi', messages: [{ role: 'user', content: 'Máy tính là gì ạ?' }] },
+  { name: 'formula', level: 'upper_secondary', language: 'vi', messages: [{ role: 'user', content: 'Độ phức tạp của tìm kiếm nhị phân là gì ạ?' }] },
+  { name: 'english', level: 'upper_secondary', language: 'en', messages: [{ role: 'user', content: 'Why does my while loop never stop?' }] },
+];
+
+const ai = createAIProvider();
+for (const s of situations) {
+  let reply = '';
+  for await (const text of ai.chat(s.messages, buildSystemPrompt({ language: s.language, level: s.level }))) reply += text;
+  console.log(`\n=== ${s.name} (${s.level}, ${s.language}) ===\n${reply}`);
+}
+```
+
+Read the replies against the five rules and the voice:
+- "wants the answer at once": no full solution; one question or hint.
+- "asks for the solution twice": a full solution, each step explained.
+- "wrong answer": names the misconception (`range` stops before the end).
+- "right answer": praises the specific step, then one check question.
+- "vague question": exactly one clarifying question.
+- "off topic" and "unsafe": short, kind refusal that steers back to learning.
+- "primary pupil": short sentences and everyday words.
+- "formula": uses `$…$`.
+- Every Vietnamese reply uses "thầy" for the tutor and "em" for the student; replies stay around 3–6 sentences.
+
+Adjust `systemPrompt.ts` or `examples.ts` and rerun until these hold (the Step 1 tests must still pass). If no key is available locally, record "tutor eval not run" in the Task 8 report.
+
+- [ ] **Step 7: Commit**
 
 ```bash
-git add backend/src/tutor/systemPrompt.ts backend/src/providers/ai.ts backend/src/__tests__/tutor-prompt.test.ts
-git commit -m "feat(api): tutor system prompt and lesson context without answers"
+git add backend/src/tutor/systemPrompt.ts backend/src/tutor/examples.ts backend/scripts/tutor-eval.ts backend/src/providers/ai.ts backend/src/__tests__/tutor-prompt.test.ts backend/package.json
+git commit -m "feat(api): tutor voice — session rules, thầy–em, worked examples, answers kept out"
 ```
 
 ---
@@ -578,6 +706,7 @@ describe('POST /api/tutor/chat', () => {
     expect(userInsert.inserted[0]).toMatchObject({ conversation_id: C1, role: 'user', content: 'Vòng lặp là gì?' });
     expect(assistantInsert.inserted[0]).toMatchObject({ role: 'assistant', content: 'Gợi ý một bước.' });
     expect(ai.calls[0].system).toMatch(/lower secondary/i);
+    expect(ai.calls[0].system).toContain('"thầy"');
     await app.close();
   });
 
@@ -1253,6 +1382,7 @@ git commit -m "feat(web): tutor entry points — landing, nav and the lesson pan
 - Modify: `PROJECT_STATE.md` (Next Steps item 1 and a Recent Decisions entry)
 
 - [ ] **Step 1: Run** `npx turbo run typecheck test lint build` from the repo root — Expected: all succeed; note the api/web test counts.
+- [ ] **Step 2a: Tutor voice check** — if `backend/.env` has `CLAUDE_API_KEY`, run `cd backend && npx tsx scripts/tutor-eval.ts` and include two or three replies in the report; otherwise record "tutor eval not run".
 - [ ] **Step 2: Backend smoke test** (only if `backend/.env` exists locally with a Supabase URL and AI key — never copy or print it): start the backend, and with a real student token `curl -N -X POST localhost:3001/api/tutor/chat -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" -d '{"message":"Vòng lặp là gì?","language":"vi"}'` — Expected: `event: meta`, several `event: delta`, `event: done`. If no env is available, record "not run" in the report.
 - [ ] **Step 3: Update `PROJECT_STATE.md`**: Next Steps 1 → AI Tutor done pending real-account check and `CLAUDE_API_KEY` + `TUTOR_DAILY_LIMIT` on the backend deployment; Recent Decisions entry summarising tables, limit, prompt rules, routes, pages, and what is out of scope.
 - [ ] **Step 4: Final review** — dispatch one reviewer over the whole branch (the Review Focus lines above are the checklist); fix findings with a failing test first.
