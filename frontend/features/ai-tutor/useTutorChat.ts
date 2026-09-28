@@ -48,7 +48,16 @@ export function tutorReducer(state: TutorState, action: Action): TutorState {
         messages[messages.length - 1] = { ...last, content: last.content + e.text };
         return { ...state, messages };
       }
-      if (e.event === 'error') return { ...state, streaming: false, error: e.error, messages: trimEmpty(state.messages) };
+      if (e.event === 'error') {
+        return {
+          ...state,
+          streaming: false,
+          error: e.error,
+          messages: trimEmpty(state.messages),
+          remaining: e.remaining ?? state.remaining,
+          conversationId: e.conversationRemoved ? null : state.conversationId,
+        };
+      }
       return { ...state, streaming: false };
     }
     case 'failed':

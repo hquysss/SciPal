@@ -22,4 +22,12 @@ describe('createSseParser', () => {
     feed(': ping\n\nevent: error\ndata: {"error":"Bận","error_en":"Busy"}\n\nevent: delta\ndata: not-json\n\n');
     expect(seen).toEqual([{ event: 'error', error: { vi: 'Bận', en: 'Busy' } }]);
   });
+
+  it('passes on the refunded count and a removed conversation with an error', () => {
+    const seen: TutorEvent[] = [];
+    const feed = createSseParser((e) => seen.push(e));
+    feed('event: error\ndata: {"error":"Quá tải","error_en":"Overloaded","remaining":27,"conversation_removed":true}\n\n');
+    expect(seen).toEqual([{ event: 'error', error: { vi: 'Quá tải', en: 'Overloaded' }, remaining: 27, conversationRemoved: true }]);
+  });
 });
+

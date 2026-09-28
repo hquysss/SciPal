@@ -37,3 +37,13 @@ describe('retry', () => {
   });
 });
 
+describe('a failed answer', () => {
+  it('shows the refunded count and forgets a conversation the server removed', () => {
+    let s = tutorReducer(initialTutorState([]), { type: 'send', text: 'Hỏi' });
+    s = tutorReducer(s, { type: 'event', event: { event: 'meta', conversation_id: 'c1', remaining: 26 } });
+    s = tutorReducer(s, { type: 'event', event: { event: 'error', error: { vi: 'Quá tải', en: 'Overloaded' }, remaining: 27, conversationRemoved: true } });
+    expect(s).toMatchObject({ remaining: 27, conversationId: null, streaming: false });
+    expect(s.messages).toEqual([{ role: 'user', content: 'Hỏi' }]);
+  });
+});
+

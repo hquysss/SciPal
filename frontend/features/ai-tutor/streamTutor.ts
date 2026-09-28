@@ -7,7 +7,7 @@ export type TutorEvent =
   | { event: 'meta'; conversation_id: string; remaining: number }
   | { event: 'delta'; text: string }
   | { event: 'done' }
-  | { event: 'error'; error: Bilingual };
+  | { event: 'error'; error: Bilingual; remaining?: number; conversationRemoved?: boolean };
 
 /** Feeds text chunks of an SSE stream; calls onEvent for each complete, well-formed event. */
 export function createSseParser(onEvent: (e: TutorEvent) => void) {
@@ -35,7 +35,13 @@ export function createSseParser(onEvent: (e: TutorEvent) => void) {
       } else if (name === 'delta' && typeof parsed.text === 'string') onEvent({ event: 'delta', text: parsed.text });
       else if (name === 'done') onEvent({ event: 'done' });
       else if (name === 'error') {
-        onEvent({ event: 'error', error: { vi: String(parsed.error ?? 'Có lỗi xảy ra.'), en: String(parsed.error_en ?? 'Something went wrong.') } });
+        onEvent({
+          event: 'error',
+          error: { vi: String(parsed.error ?? 'Có lỗi xảy ra.'), en: String(parsed.error_en ?? 'Something went wrong.') },
+          // A failed answer gives the question back: the server sends the new count.
+          ...(typeof parsed.remaining === 'number' ? { remaining: parsed.remaining } : {}),
+          ...(parsed.conversation_removed === true ? { conversationRemoved: true } : {}),
+        });
       }
     }
   };

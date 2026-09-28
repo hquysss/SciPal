@@ -131,17 +131,53 @@ describe('POST /api/tutor/chat', () => {
     await app.close();
   });
 
-  it('stores nothing from the model when it fails before any text', async () => {
+  it('gives the question back when the model fails before any text: no answer, no lost question, empty new chat removed', async () => {
+    const userInsert = ok({ id: 'q1' });
+    const questionDelete = ok();
+    const conversationDelete = ok();
     const { app } = await build(
       {
-        tutor_messages: [mockQuery({ data: null, error: null, count: 0 }), ok(), ok([{ role: 'user', content: 'Hỏi' }])],
+        tutor_messages: [mockQuery({ data: null, error: null, count: 3 }), userInsert, ok([{ role: 'user', content: 'Hỏi' }]), questionDelete],
         profiles: ok(null),
-        tutor_conversations: [ok({ id: C1 }), ok()],
+        tutor_conversations: [ok({ id: C1 }), conversationDelete],
       },
       provider(['x'], 0),
     );
     const res = await app.inject({ method: 'POST', url: '/api/tutor/chat', payload: { message: 'Hỏi', language: 'vi' } });
-    expect(events(res.body).map((e) => e.event)).toEqual(['meta', 'error']);
+    const ev = events(res.body);
+    expect(ev.map((e) => e.event)).toEqual(['meta', 'error']);
+    expect(ev[0].data.remaining).toBe(26);
+    expect(ev[1].data).toMatchObject({ remaining: 27, conversation_removed: true });
+    expect(ev[1].data.error).toMatch(/không bị tính lượt/);
+    expect(questionDelete.deleteCalls).toBe(1);
+    expect(questionDelete.eqCalls).toContainEqual(['id', 'q1']);
+    expect(conversationDelete.deleteCalls).toBe(1);
+    expect(conversationDelete.eqCalls).toContainEqual(['id', C1]);
+    await app.close();
+  });
+
+  it('keeps an existing conversation and says the tutor is overloaded on a provider 429', async () => {
+    const questionDelete = ok();
+    const overloaded = {
+      calls: [] as unknown[],
+      chat: async function* () {
+        throw Object.assign(new Error('429 status code (no body)'), { status: 429 });
+      },
+    };
+    const { app } = await build(
+      {
+        tutor_conversations: ok({ id: C1, lesson_id: null }),
+        tutor_messages: [mockQuery({ data: null, error: null, count: 0 }), ok({ id: 'q2' }), ok([{ role: 'user', content: 'Hỏi' }]), questionDelete],
+        profiles: ok(null),
+      },
+      overloaded as never,
+    );
+    const res = await app.inject({ method: 'POST', url: '/api/tutor/chat', payload: { conversation_id: C1, message: 'Hỏi', language: 'vi' } });
+    const error = events(res.body)[1].data;
+    expect(error.error).toMatch(/quá tải/);
+    expect(error.error_en).toMatch(/overloaded/i);
+    expect(error).toMatchObject({ remaining: 30, conversation_removed: false });
+    expect(questionDelete.eqCalls).toContainEqual(['id', 'q2']);
     await app.close();
   });
 
