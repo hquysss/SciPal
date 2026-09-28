@@ -24,6 +24,25 @@ export function setBlockField(block: Block, path: string, text: Bilingual): Bloc
   return { ...block, [path]: text } as Block;
 }
 
+/** A lesson as automatic translation sees it: the title and the flat list of blocks. */
+export type LessonDoc = { title: Bilingual; blocks: Block[] };
+
+/** The lesson's fields keyed `title` and `<block index>:<path>`. */
+export function lessonFields(doc: LessonDoc): Array<{ key: string; text: Bilingual }> {
+  return [
+    { key: 'title', text: doc.title },
+    ...doc.blocks.flatMap((block, i) => blockFields(block).map((f) => ({ key: `${i}:${f.path}`, text: f.text }))),
+  ];
+}
+
+export function setLessonField(doc: LessonDoc, key: string, text: Bilingual): LessonDoc {
+  if (key === 'title') return { ...doc, title: text };
+  const [at, path] = key.split(':');
+  const i = Number(at);
+  if (!doc.blocks[i] || !path) return doc;
+  return { ...doc, blocks: doc.blocks.map((b, j) => (j === i ? setBlockField(b, path, text) : b)) };
+}
+
 /** The question's bilingual fields; the short answer key is never translated. */
 export function draftFields(draft: QuestionDraft): Field[] {
   const { stem, options, items, rubric, explanation } = draft.data;

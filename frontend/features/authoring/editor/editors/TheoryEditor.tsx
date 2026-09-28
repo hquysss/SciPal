@@ -7,6 +7,7 @@ import type { ImageBlock, TheoryBlock } from '@scipal/types';
 import { applyFormat, type MarkdownFormat } from '../markdownToolbar';
 import { uploadLessonImage } from '../mediaApi';
 import { LangTabs } from './LangTabs';
+import { AutoTranslatedNote } from '../../translation/AutoTranslateContext';
 import { SMALL_BUTTON, TEXTAREA } from './styles';
 
 interface TheoryEditorProps {
@@ -79,6 +80,7 @@ export function TheoryEditor({ block, onChange, lang, onLangChange, onInsertImag
         placeholder={lang === 'vi' ? 'Viết nội dung bằng tiếng Việt…' : 'Write the English text…'}
         className={TEXTAREA}
       />
+      {lang === 'en' && <AutoTranslatedNote text={block.content} onEnglish={(en) => onChange({ ...block, content: { ...block.content, en } })} />}
       <p className="text-xs text-ink-muted" aria-live="polite">
         {status ??
           t({

@@ -6,6 +6,7 @@ import { useLanguage } from '@scipal/hooks';
 import type { FormulaBlock } from '@scipal/types';
 import { Input } from '@/components/ui/input';
 import { LangTabs } from './LangTabs';
+import { AutoTranslatedNote } from '../../translation/AutoTranslateContext';
 import { LABEL } from './styles';
 
 interface FormulaEditorProps {
@@ -67,6 +68,7 @@ export function FormulaEditor({ block, onChange, lang, onLangChange }: FormulaEd
           value={caption[lang]}
           onChange={(e) => onChange({ ...block, caption: { ...caption, [lang]: e.target.value } })}
         />
+        {lang === 'en' && <AutoTranslatedNote text={caption} onEnglish={(en) => onChange({ ...block, caption: { ...caption, en } })} />}
       </div>
     </div>
   );

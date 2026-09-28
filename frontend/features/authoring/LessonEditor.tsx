@@ -24,6 +24,11 @@ import { LessonRequestsPanel } from './simulationRequests/LessonRequestsPanel';
 import { PracticeQuestionsContext, usePracticeQuestionRows } from './practice/PracticeQuestionsContext';
 import { leavingHref } from './editor/leaveGuard';
 import { uploadLessonImage } from './editor/mediaApi';
+import { nextNotice, translateBeforeSave, type Mark } from './translation/autoTranslate';
+import { AutoTranslateContext, AutoTranslatedNote, type AutoTranslateValue } from './translation/AutoTranslateContext';
+import { lessonFields, setLessonField, type LessonDoc } from './translation/bilingualFields';
+import { translateTexts } from './translation/translateApi';
+import { useAutoTranslate } from './translation/useAutoTranslate';
 
 const LESSON_TEMPLATE_URL = '/templates/scipal-lesson-template.docx';
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL ?? 'https://sci-pal-backend.vercel.app';
@@ -88,6 +93,9 @@ export function LessonEditor({
   const [message, setMessage] = useState<Message | null>(null);
   const [mobileView, setMobileView] = useState<'edit' | 'preview'>('edit');
   const [previewLang, setPreviewLang] = useState<'vi' | 'en'>('vi');
+  const [autoTranslate, setAutoTranslate] = useAutoTranslate();
+  const [marks, setMarks] = useState<Mark[]>([]);
+  const [translationNotice, setTranslationNotice] = useState<Bilingual | null>(null);
 
   const canEditContent = canReview ? status === 'draft' || status === 'published' : status === 'draft' || status === 'rejected';
   const quizIds = useMemo(() => parts.practice.flatMap((b) => (b.type === 'quiz' ? [b.question_id] : [])), [parts.practice]);
@@ -106,6 +114,55 @@ export function LessonEditor({
   // request sends the lesson version the previous save returned.
   const latest = useRef({ titleVi, titleEn, blocks, updatedAt, status });
   latest.current = { ...latest.current, titleVi, titleEn, blocks };
+
+  // ── Automatic translation ─────────────────────────────────────────────────────────────────
+  const autoRef = useRef(autoTranslate);
+  autoRef.current = autoTranslate;
+  // The Vietnamese of each field at the previous save: autosave only translates text that has
+  // stopped changing, so a sentence is not translated half-typed.
+  const seenVi = useRef(new Map<string, string>());
+
+  /** Fills empty English before a save; the save goes ahead whatever happens here. */
+  const translateLesson = async (mode: 'autosave' | 'all') => {
+    const doc = (): LessonDoc => ({ title: { vi: latest.current.titleVi, en: latest.current.titleEn }, blocks: latest.current.blocks });
+    const before = seenVi.current;
+    const result = await translateBeforeSave({
+      enabled: autoRef.current,
+      value: doc(),
+      current: doc,
+      fields: lessonFields,
+      set: setLessonField,
+      call: translateTexts,
+      only: mode === 'autosave' ? (key, vi) => before.get(key) === vi : undefined,
+    });
+    seenVi.current = new Map(lessonFields(result.value).map((f) => [f.key, f.text.vi]));
+    setTranslationNotice((prev) => nextNotice(prev, result.failed));
+    const filled = Object.values(result.marks);
+    if (filled.length === 0) return;
+    latest.current.titleEn = result.value.title.en;
+    latest.current.blocks = result.value.blocks;
+    setTitleEn(result.value.title.en);
+    setParts(splitLessonParts(result.value.blocks));
+    setMarks((m) => [...m, ...filled]);
+  };
+
+  const autoTranslateValue = useMemo<AutoTranslateValue>(
+    () => ({
+      marks,
+      addMarks: (added) => setMarks((m) => [...m, ...added]),
+      retranslate: async (vi) => {
+        const res = await translateTexts([vi]).catch(() => null);
+        const en = res?.ok ? res.data.texts[0] : undefined;
+        if (en) {
+          setMarks((m) => [...m, { vi, en }]);
+          return en;
+        }
+        setTranslationNotice((prev) => nextNotice(prev, res && !res.ok ? res.error : { vi: 'Không kết nối được dịch vụ dịch.', en: 'Could not reach the translation service.' }));
+        return null;
+      },
+    }),
+    [marks],
+  );
 
   const applyLesson = (lesson: LessonRow) => {
     const previous = latest.current.status;
@@ -135,6 +192,7 @@ export function LessonEditor({
   // ── Saving ────────────────────────────────────────────────────────────────────────────────
 
   const saveDraft = useCallback(async (): Promise<SaveOutcome> => {
+    await translateLesson('autosave');
     const { titleVi: vi, titleEn: en, blocks: content, updatedAt: version } = latest.current;
     const body: Record<string, unknown> = { blocks: content, expected_updated_at: version };
     // The API refuses empty titles; keep saving the blocks while a title is being typed.
@@ -220,10 +278,11 @@ export function LessonEditor({
     setSaving(true);
     setMessage(null);
     await saver.saveNow(async () => {
+      await translateLesson('all');
       try {
         const res = await callApi(`/api/authoring/lessons/${lessonId}`, 'PATCH', {
-          title_vi: titleVi,
-          title_en: titleEn,
+          title_vi: latest.current.titleVi,
+          title_en: latest.current.titleEn,
           blocks: latest.current.blocks,
           expected_updated_at: latest.current.updatedAt,
           ...(canReview ? { status: publishChecked ? 'published' : 'draft' } : {}),
@@ -251,10 +310,15 @@ export function LessonEditor({
   };
 
   const handleSubmitForReview = async () => {
-    const found = blocks.length === 0
+    // English is needed to send: translate first, then judge what is still missing.
+    setSubmittingForReview(true);
+    await translateLesson('all');
+    setSubmittingForReview(false);
+    const { blocks: now, titleVi: vi, titleEn: en } = latest.current;
+    const found = now.length === 0
       ? [{ part: 'lesson' as const, index: 0, blocking: true, message: { vi: 'Bài chưa có nội dung.', en: 'The lesson has no content.' } }]
-      : issues;
-    const titleIssue = !titleVi.trim() || !titleEn.trim();
+      : lessonIssues(now, practice.loaded ? practice.rows : undefined);
+    const titleIssue = !vi.trim() || !en.trim();
     if (found.length > 0 || titleIssue) {
       setSubmitIssues(found);
       if (titleIssue) setMessage({ text: { en: 'Enter both titles first.', vi: 'Hãy nhập tiêu đề tiếng Việt và tiếng Anh.' }, type: 'error' });
@@ -268,8 +332,8 @@ export function LessonEditor({
     await saver.saveNow(async () => {
       try {
         const res = await callApi(`/api/authoring/lessons/${lessonId}/submit`, 'POST', {
-          title_vi: titleVi,
-          title_en: titleEn,
+          title_vi: latest.current.titleVi,
+          title_en: latest.current.titleEn,
           blocks: latest.current.blocks,
           expected_updated_at: latest.current.updatedAt,
         });
@@ -390,6 +454,7 @@ export function LessonEditor({
   const statusLabel = lessonStatusLabel(status);
 
   return (
+    <AutoTranslateContext.Provider value={autoTranslateValue}>
     <div className="flex flex-col gap-5">
       <header className="flex flex-col gap-4 rounded-xl border border-line bg-surface p-4 sm:p-5">
         <div className="flex flex-wrap items-center justify-between gap-3">
@@ -402,6 +467,20 @@ export function LessonEditor({
             )}
           </div>
           <div className="flex flex-wrap items-center gap-2">
+            {canEditContent && (
+              <button
+                type="button"
+                role="switch"
+                aria-checked={autoTranslate}
+                onClick={() => setAutoTranslate(!autoTranslate)}
+                className="flex min-h-11 items-center gap-2 rounded-lg px-2 text-sm font-semibold text-ink focus-visible:outline focus-visible:outline-2 focus-visible:outline-focus"
+              >
+                <span aria-hidden="true" className={`relative inline-flex h-5 w-9 shrink-0 rounded-full transition-colors ${autoTranslate ? 'bg-action' : 'bg-line'}`}>
+                  <span className={`absolute top-0.5 h-4 w-4 rounded-full bg-surface shadow-sm transition-transform ${autoTranslate ? 'translate-x-4' : 'translate-x-0.5'}`} />
+                </span>
+                {t({ en: 'Translate to English automatically', vi: 'Tự dịch sang tiếng Anh' })}
+              </button>
+            )}
             {canReview && (status === 'draft' || status === 'published') && (
               <label className="flex min-h-11 cursor-pointer items-center gap-2 text-sm font-semibold text-ink">
                 <input type="checkbox" checked={publishChecked} onChange={(e) => setPublishChecked(e.target.checked)} className="h-4 w-4 accent-[var(--action)]" />
@@ -449,6 +528,13 @@ export function LessonEditor({
               disabled={!canEditContent}
               maxLength={200}
               placeholder="e.g. Array data structures"
+            />
+            <AutoTranslatedNote
+              text={{ vi: titleVi, en: titleEn }}
+              onEnglish={(en) => {
+                setTitleEn(en);
+                changed();
+              }}
             />
           </label>
         </div>
@@ -504,6 +590,11 @@ export function LessonEditor({
 
       {message && (
         <Alert tone={message.type === 'success' ? 'success' : 'danger'}>{typeof message.text === 'string' ? message.text : t(message.text)}</Alert>
+      )}
+      {translationNotice && (
+        <Alert tone="warning">
+          {t({ en: 'Not translated to English yet — it will try again on the next save.', vi: 'Chưa dịch được sang tiếng Anh — sẽ thử lại ở lần lưu sau.' })} ({t(translationNotice)})
+        </Alert>
       )}
 
       <IssueList
@@ -620,5 +711,6 @@ export function LessonEditor({
         </aside>
       </div>
     </div>
+    </AutoTranslateContext.Provider>
   );
 }

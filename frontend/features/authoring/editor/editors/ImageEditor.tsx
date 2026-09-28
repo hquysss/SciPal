@@ -7,6 +7,7 @@ import type { ImageBlock } from '@scipal/types';
 import { Input } from '@/components/ui/input';
 import { IMAGE_TYPES, uploadLessonImage } from '../mediaApi';
 import { LangTabs } from './LangTabs';
+import { AutoTranslatedNote } from '../../translation/AutoTranslateContext';
 import { LABEL, SMALL_BUTTON } from './styles';
 
 type Bilingual = { en: string; vi: string };
@@ -135,6 +136,7 @@ export function ImageEditor({ block, onChange, lang, onLangChange }: ImageEditor
           onChange={(e) => onChange({ ...block, alt: { ...block.alt, [lang]: e.target.value } })}
           aria-invalid={lang === 'vi' && !block.alt.vi.trim() ? true : undefined}
         />
+        {lang === 'en' && <AutoTranslatedNote text={block.alt} onEnglish={(en) => onChange({ ...current.current, alt: { ...current.current.alt, en } })} />}
       </div>
       <div className="flex flex-col gap-1.5">
         <label htmlFor={`${id}-caption`} className={LABEL}>
@@ -145,6 +147,7 @@ export function ImageEditor({ block, onChange, lang, onLangChange }: ImageEditor
           value={caption[lang]}
           onChange={(e) => onChange({ ...block, caption: { ...caption, [lang]: e.target.value } })}
         />
+        {lang === 'en' && <AutoTranslatedNote text={caption} onEnglish={(en) => onChange({ ...current.current, caption: { ...(current.current.caption ?? caption), en } })} />}
       </div>
     </div>
   );
