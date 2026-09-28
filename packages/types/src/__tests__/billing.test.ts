@@ -21,13 +21,13 @@ describe('billing contracts', () => {
 
   it('validates bilingual catalog entries and requires both paid intervals', () => {
     const catalog = [
-      { code: 'student_free', audience: 'student', name: { en: 'Free', vi: 'Miễn phí' }, description: { en: 'Free', vi: 'Miễn phí' }, active: true, version: 1, prices: [] },
-      { code: 'student_plus', audience: 'student', name: { en: 'Plus', vi: 'Plus' }, description: { en: 'Plus', vi: 'Plus' }, active: true, version: 1, prices: [
+      { code: 'student_free', audience: 'student', name: { en: 'Free', vi: 'Miễn phí' }, description: { en: 'Free', vi: 'Miễn phí' }, active: true, version: 1, limits: [], prices: [] },
+      { code: 'student_plus', audience: 'student', name: { en: 'Plus', vi: 'Plus' }, description: { en: 'Plus', vi: 'Plus' }, active: true, version: 1, limits: [{ metric: 'tutor_requests', kind: 'monthly', limit: 200 }], prices: [
         { id: 'b0000000-0000-4000-8000-000000000001', interval: 'month', amountVnd: 39000 },
         { id: 'b0000000-0000-4000-8000-000000000002', interval: 'year', amountVnd: 390000 },
       ] },
-      { code: 'teacher_free', audience: 'teacher', name: { en: 'Free', vi: 'Miễn phí' }, description: { en: 'Free', vi: 'Miễn phí' }, active: true, version: 1, prices: [] },
-      { code: 'teacher_pro', audience: 'teacher', name: { en: 'Pro', vi: 'Pro' }, description: { en: 'Pro', vi: 'Pro' }, active: true, version: 1, prices: [
+      { code: 'teacher_free', audience: 'teacher', name: { en: 'Free', vi: 'Miễn phí' }, description: { en: 'Free', vi: 'Miễn phí' }, active: true, version: 1, limits: [], prices: [] },
+      { code: 'teacher_pro', audience: 'teacher', name: { en: 'Pro', vi: 'Pro' }, description: { en: 'Pro', vi: 'Pro' }, active: true, version: 1, limits: [{ metric: 'tutor_requests', kind: 'monthly', limit: 200 }], prices: [
         { id: 'b0000000-0000-4000-8000-000000000003', interval: 'month', amountVnd: 99000 },
         { id: 'b0000000-0000-4000-8000-000000000004', interval: 'year', amountVnd: 990000 },
       ] },

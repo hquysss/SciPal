@@ -44,4 +44,15 @@ describe('authPlugin', () => {
     expect(res.statusCode).toBe(200);
     expect(res.json()).toEqual({ user: null });
   });
+
+  it('opens only the plan catalog of billing to visitors', async () => {
+    const billing = Fastify();
+    await billing.register(authPlugin);
+    billing.get('/api/billing/plans', async () => ({ ok: true }));
+    billing.get('/api/billing/me', async () => ({ ok: true }));
+    await billing.ready();
+    expect((await billing.inject({ method: 'GET', url: '/api/billing/plans' })).statusCode).toBe(200);
+    expect((await billing.inject({ method: 'GET', url: '/api/billing/me' })).statusCode).toBe(401);
+    await billing.close();
+  });
 });
