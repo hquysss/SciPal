@@ -82,6 +82,12 @@
   width: min(18rem, 80vw);
 }
 
+/* In the grid a card with a subject scope fills its cell like the others. */
+.levelGrid .cardScope {
+  width: 100%;
+  min-width: 0;
+}
+
 .cardScope .card {
   width: 100%;
   flex: initial;

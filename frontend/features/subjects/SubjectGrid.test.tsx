@@ -33,4 +33,11 @@ describe('SubjectGrid', () => {
     expect(html.match(/data-landing-reveal=""/g)).toHaveLength(3);
     expect(html).not.toContain('duplicate');
   });
+
+  it('lets a card with a subject scope fill its grid cell like the others', async () => {
+    const { readFileSync } = await import('node:fs');
+    const css = readFileSync('features/subjects/subject-grid.module.css', 'utf8');
+    expect(css).toMatch(/\.levelGrid \.cardScope \{[^}]*width: 100%/);
+  });
 });
+
