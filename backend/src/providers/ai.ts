@@ -35,6 +35,24 @@ export function providerSettings(choice?: ModelChoice): { apiKey: string | undef
     : { apiKey: process.env.GEMINI_API_KEY, baseURL: GEMINI_BASE_URL, model };
 }
 
+// Gemini 3 models think before answering, and the thinking counts against max_tokens: with a
+// small limit the answer stopped mid-sentence. Keep the thinking short and the limit roomy.
+const MAX_TOKENS = 8192;
+
+/** The streaming request for one call. */
+export function completionRequest(settings: ReturnType<typeof providerSettings>, messages: ChatMessage[], systemPrompt: string) {
+  return {
+    model: settings.model,
+    stream: true as const,
+    max_tokens: MAX_TOKENS,
+    ...(settings.baseURL ? { reasoning_effort: 'low' as const } : {}),
+    messages: [
+      { role: 'system' as const, content: systemPrompt },
+      ...messages.map((m) => ({ role: m.role, content: m.content })),
+    ],
+  };
+}
+
 export class ChatCompletionsProvider implements AIProvider {
   private settings: ReturnType<typeof providerSettings>;
   private client: OpenAI;
@@ -47,15 +65,7 @@ export class ChatCompletionsProvider implements AIProvider {
   }
 
   async *chat(messages: ChatMessage[], systemPrompt: string): AsyncIterable<string> {
-    const stream = await this.client.chat.completions.create({
-      model:  this.settings.model,
-      stream: true,
-      max_tokens: 1024,
-      messages: [
-        { role: 'system', content: systemPrompt },
-        ...messages.map(m => ({ role: m.role, content: m.content })),
-      ],
-    });
+    const stream = await this.client.chat.completions.create(completionRequest(this.settings, messages, systemPrompt));
     for await (const chunk of stream) {
       const text = chunk.choices[0]?.delta?.content;
       if (text) yield text;
