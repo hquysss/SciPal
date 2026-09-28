@@ -66,6 +66,7 @@ export function roleLinks(role: string | null, lang: 'en' | 'vi', openRequests: 
     { href: '/teacher/lessons', label: label('Lesson Studio', 'Soạn bài') },
     { href: '/teacher/exams', label: label('Exams', 'Đề thi') },
     { href: '/admin/lessons/review', label: label('Review Queue', 'Duyệt bài') },
+    { href: '/admin/topics', label: label('Topics', 'Chủ đề') },
     { href: '/admin/simulation-requests', label: requestsLinkLabel(lang, openRequests) },
   ] : [];
   return { teacherLinks, adminLinks };

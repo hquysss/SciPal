@@ -8,6 +8,7 @@ import { ExamBuilder } from '@/features/authoring/exams/ExamBuilder';
 import { ExamReviewCard } from '@/features/authoring/exams/ExamReview';
 import { QuestionBank } from '@/features/authoring/exams/QuestionBank';
 import { TeacherAreaTabs } from '@/components/nav/TeacherAreaTabs';
+import { TopicManager } from '@/features/authoring/topics/TopicManager';
 import type { AuthorQuestion } from '@/features/authoring/practice/api';
 
 type SearchParams = Record<string, string | string[] | undefined>;
@@ -59,6 +60,15 @@ export default async function TeacherShowcase({ searchParams }: { searchParams: 
           <TeacherAreaTabs active="exams" />
           <QuestionBank subjects={SUBJECTS} />
         </>
+      ) : view === 'topics' ? (
+        <TopicManager
+          subjects={[{ id: 's1', slug: 'informatics', name_en: 'Informatics', name_vi: 'Tin học', sort_order: 1, grades: [10, 11, 12] }]}
+          initialTopics={[
+            { id: 'a', subject_id: 's1', slug: 'g10-a', grade: 10, name_en: 'Computers and society', name_vi: 'Máy tính và xã hội tri thức', sort_order: 0, lesson_count: 4 },
+            { id: 'b', subject_id: 's1', slug: 'g10-b', grade: 10, name_en: 'Programming basics', name_vi: 'Lập trình cơ bản', sort_order: 1, lesson_count: 0 },
+            { id: 'c', subject_id: 's1', slug: 'legacy', grade: null, name_en: 'Ethics online', name_vi: 'Đạo đức trên mạng', sort_order: 2, lesson_count: 1 },
+          ]}
+        />
       ) : view === 'review' ? (
         <ExamReviewCard exam={{ ...EXAM, status: 'pending_review', mine: false }} />
       ) : view === 'classes' ? (
