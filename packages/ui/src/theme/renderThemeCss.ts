@@ -67,6 +67,8 @@ function declarations(level: ThemeLevel, mode: ThemeMode): string {
     `--pattern-opacity:${palette.patternOpacity};` +
     `--pattern-url:url("${PATTERN_URLS[level]}");` +
     `--accent-ink-ratio:${Math.round(ACCENT_INK_RATIO[mode] * 100)}%;` +
+    // Dark pages need stronger glows and subject tints to keep their colour on a dark ground.
+    `--glow-scale:${mode === 'dark' ? 1.6 : 1};--tint-scale:${mode === 'dark' ? 2 : 1};` +
     `color-scheme:${mode};`
   );
 }
