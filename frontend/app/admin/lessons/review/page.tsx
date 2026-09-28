@@ -7,6 +7,7 @@ import {
   getPendingReviewLessons,
 } from '@/features/authoring/authoringQueries';
 import { ExamImportReviewActions } from '@/features/content-import/ExamImportReviewActions';
+import { PendingExamReviews } from '@/features/authoring/exams/ExamReview';
 import { LessonDeleteActions } from '@/features/authoring/LessonDeleteActions';
 import { lessonStatusLabel } from '@/features/authoring/lessonStatus';
 import { getAuthoringSession } from '@/features/authoring/serverAuth';
@@ -27,13 +28,14 @@ function formatDate(value: string) {
     : new Intl.DateTimeFormat('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' }).format(date);
 }
 
-export default async function LessonReviewQueuePage() {
+export default async function LessonReviewQueuePage({ searchParams }: { searchParams: Promise<{ tab?: string }> }) {
   const { token, role } = await getAuthoringSession('/admin/lessons/review');
   if (role !== 'admin') redirect('/profile');
+  const tab = (await searchParams).tab === 'exams' ? 'exams' : 'lessons';
 
   let lessons = null;
   let loadError = false;
-  try {
+  if (tab === 'lessons') try {
     lessons = await getPendingReviewLessons(token);
   } catch (error) {
     loadError = true;
@@ -43,7 +45,7 @@ export default async function LessonReviewQueuePage() {
 
   // Exam imports and delete requests load on their own: the review queue still works if one fails.
   let examImports = null;
-  try {
+  if (tab === 'exams') try {
     examImports = await getPendingExamImports(token);
   } catch (error) {
     if (error instanceof AuthoringApiError) console.error('Could not load pending exam imports:', error.status);
@@ -51,7 +53,7 @@ export default async function LessonReviewQueuePage() {
   }
 
   let deleteRequests = null;
-  try {
+  if (tab === 'lessons') try {
     deleteRequests = await getDeleteRequests(token);
   } catch (error) {
     if (error instanceof AuthoringApiError) console.error('Could not load lesson delete requests:', error.status);
@@ -68,15 +70,38 @@ export default async function LessonReviewQueuePage() {
       />
 
       <header className="flex flex-col gap-2">
-        <h1 className="text-2xl font-extrabold text-ink sm:text-3xl"><Bi en="Review queue" vi="Hàng chờ duyệt bài giảng" /></h1>
+        <h1 className="text-2xl font-extrabold text-ink sm:text-3xl"><Bi en="Review queue" vi="Hàng chờ duyệt" /></h1>
         <p className="max-w-prose text-base text-ink-muted">
-          <Bi en="Only lessons an admin approves are published to students." vi="Chỉ bài được admin duyệt mới xuất bản và hiển thị cho học sinh." />
+          <Bi en="Only lessons and exams an admin approves are published to students." vi="Chỉ bài giảng và đề thi được admin duyệt mới xuất bản cho học sinh." />
         </p>
       </header>
 
+      <nav aria-label="Hàng chờ" className="flex gap-1 border-b border-line">
+        {([['lessons', '/admin/lessons/review', 'Lessons', 'Bài giảng'], ['exams', '/admin/lessons/review?tab=exams', 'Exams', 'Đề thi']] as const).map(([id, href, en, vi]) => (
+          <Link
+            key={id}
+            href={href}
+            aria-current={tab === id ? 'page' : undefined}
+            className={`-mb-px inline-flex min-h-11 items-center border-b-2 px-3 text-sm font-semibold ${tab === id ? 'border-action text-ink' : 'border-transparent text-ink-muted hover:text-ink'}`}
+          >
+            <Bi en={en} vi={vi} />
+          </Link>
+        ))}
+      </nav>
+
+      {tab === 'exams' && (
+      <section aria-labelledby="builder-exams-title" className="flex flex-col gap-3">
+        <h2 id="builder-exams-title" className="text-lg font-bold text-ink">
+          <Bi en="Exams built in SciPal" vi="Đề soạn trong ứng dụng" />
+        </h2>
+        <PendingExamReviews />
+      </section>
+      )}
+
+      {tab === 'exams' && (
       <section aria-labelledby="exam-imports-title" className="flex flex-col gap-3">
         <h2 id="exam-imports-title" className="text-lg font-bold text-ink">
-          Đề thi chờ duyệt{examImports ? ` (${examImports.length})` : ''}
+          Lượt nhập đề từ Excel{examImports ? ` (${examImports.length})` : ''}
         </h2>
         {examImports === null ? (
           <p role="alert" className="rounded-xl bg-danger-surface p-4 text-sm text-danger">Không tải được đề thi chờ duyệt.</p>
@@ -120,7 +145,9 @@ export default async function LessonReviewQueuePage() {
           })
         )}
       </section>
+      )}
 
+      {tab === 'lessons' && (
       <section aria-labelledby="delete-requests-title" className="flex flex-col gap-3">
         <h2 id="delete-requests-title" className="text-lg font-bold text-ink">
           Yêu cầu xóa bài{deleteRequests ? ` (${deleteRequests.length})` : ''}
@@ -154,8 +181,9 @@ export default async function LessonReviewQueuePage() {
           ))
         )}
       </section>
+      )}
 
-      {loadError ? (
+      {tab === 'lessons' && (loadError ? (
         <Alert tone="danger" title={<Bi en="Could not load the review queue." vi="Không tải được hàng chờ duyệt." />}>
           <p><Bi en="Check the server connection, then reload." vi="Kiểm tra kết nối máy chủ rồi thử tải lại." /></p>
           <Link href="/admin/lessons/review" className="mt-2 inline-flex font-semibold underline underline-offset-4">
@@ -193,7 +221,7 @@ export default async function LessonReviewQueuePage() {
           title={<Bi en="No lessons to review" vi="Không có bài chờ duyệt" />}
           description={<Bi en="Lessons teachers send for review will appear here." vi="Bài giáo viên gửi sẽ xuất hiện ở đây." />}
         />
-      )}
+      ))}
     </main>
   );
 }

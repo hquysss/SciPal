@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { TeacherAreaTabs } from '@/components/nav/TeacherAreaTabs';
 import { getTeacherLessons, AuthoringApiError } from '@/features/authoring/authoringQueries';
 import { getAuthoringSession } from '@/features/authoring/serverAuth';
 import { LessonStatusBadge } from '@/features/authoring/lessonStatusBadge';
@@ -46,6 +47,7 @@ export default async function TeacherLessonsPage() {
         ]}
       />
 
+      <TeacherAreaTabs active="lessons" />
       <header className="max-w-2xl">
         <h1 className="text-3xl font-extrabold tracking-tight text-ink sm:text-4xl">
           <Bi en="Lesson studio" vi="Soạn bài giảng" />

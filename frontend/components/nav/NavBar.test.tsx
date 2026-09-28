@@ -1,6 +1,6 @@
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it, vi } from 'vitest';
-import { NavBar } from './NavBar';
+import { NavBar, roleLinks } from './NavBar';
 
 vi.mock('next/link', () => ({
   default: ({ href, children, prefetch: _prefetch, ...props }: { href: string; children: React.ReactNode; prefetch?: boolean }) =>
@@ -34,5 +34,13 @@ describe('simulation request link', () => {
     expect(requestsLinkLabel('vi', 0)).toBe('Đề xuất mô phỏng');
     expect(requestsLinkLabel('vi', 3)).toBe('Đề xuất mô phỏng (3)');
     expect(requestsLinkLabel('en', 12)).toBe('Simulation requests (12)');
+  });
+});
+
+describe('role menus', () => {
+  it('gives teachers and admins the exam area', () => {
+    expect(roleLinks('teacher', 'vi', 0).teacherLinks.map((l) => l.href)).toContain('/teacher/exams');
+    expect(roleLinks('admin', 'vi', 0).adminLinks.map((l) => l.href)).toContain('/teacher/exams');
+    expect(roleLinks('student', 'vi', 0)).toEqual({ teacherLinks: [], adminLinks: [] });
   });
 });

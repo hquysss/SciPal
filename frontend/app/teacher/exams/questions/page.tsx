@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { TeacherAreaTabs } from '@/components/nav/TeacherAreaTabs';
 import { AuthoringApiError, getAuthoringOptions } from '@/features/authoring/authoringQueries';
 import { getAuthoringSession } from '@/features/authoring/serverAuth';
 import { QuestionBank } from '@/features/authoring/exams/QuestionBank';
@@ -27,6 +28,7 @@ export default async function ExamQuestionBankPage() {
           { label: { en: 'Question bank', vi: 'Ngân hàng câu hỏi' } },
         ]}
       />
+      <TeacherAreaTabs active="exams" />
       <header>
         <h1 className="text-3xl font-extrabold tracking-tight text-ink">
           <Bi en="Exam question bank" vi="Ngân hàng câu hỏi đề thi" />

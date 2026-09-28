@@ -1,4 +1,5 @@
 import { getAuthoringSession } from '@/features/authoring/serverAuth';
+import { TeacherAreaTabs } from '@/components/nav/TeacherAreaTabs';
 import { TeacherRequestsPage } from '@/features/authoring/simulationRequests/TeacherRequestsPage';
 
 export const dynamic = 'force-dynamic';
@@ -8,6 +9,7 @@ export default async function SimulationRequestsPage() {
   await getAuthoringSession('/teacher/simulation-requests');
   return (
     <main className="mx-auto w-full max-w-3xl px-4 py-8 sm:px-6">
+      <TeacherAreaTabs active="simulations" />
       <TeacherRequestsPage />
     </main>
   );

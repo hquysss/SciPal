@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { TeacherAreaTabs } from '@/components/nav/TeacherAreaTabs';
 import { getAuthoringSession } from '@/features/authoring/serverAuth';
 import { ExamList } from '@/features/authoring/exams/ExamList';
 import { PageBreadcrumb } from '@/components/nav/PageBreadcrumb';
@@ -18,6 +19,7 @@ export default async function TeacherExamsPage() {
           { label: { en: 'Exams', vi: 'Đề thi' } },
         ]}
       />
+      <TeacherAreaTabs active="exams" />
       <header className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div className="max-w-2xl">
           <h1 className="text-3xl font-extrabold tracking-tight text-ink">

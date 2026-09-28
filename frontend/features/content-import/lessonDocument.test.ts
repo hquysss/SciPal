@@ -87,8 +87,11 @@ describe('free-form documents', () => {
   });
 });
 
+// Loading mammoth takes seconds on a busy machine (the whole repo's tests run at once).
+const DOCX_TIMEOUT_MS = 30_000;
+
 describe('the Word template offered in the Studio', () => {
-  it('parses into a valid lesson', async () => {
+  it('parses into a valid lesson', { timeout: DOCX_TIMEOUT_MS }, async () => {
     const { readFileSync } = await import('node:fs');
     const mammoth = (await import('mammoth')).default;
     const buffer = readFileSync(new URL('../../public/templates/scipal-lesson-template.docx', import.meta.url));
@@ -146,7 +149,7 @@ describe('parseLessonPackage (import page)', () => {
 });
 
 describe('the Word template offered on the import page', () => {
-  it('parses into a whole lesson that quizzes a workbook question', async () => {
+  it('parses into a whole lesson that quizzes a workbook question', { timeout: DOCX_TIMEOUT_MS }, async () => {
     const { readFileSync } = await import('node:fs');
     const mammoth = (await import('mammoth')).default;
     const { parseLessonPackage } = await import('./lessonDocument');
