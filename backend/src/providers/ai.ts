@@ -11,7 +11,7 @@ export interface AIProvider {
 }
 
 // ── Claude provider ──────────────────────────────────────────────
-import Anthropic from '@anthropic-ai/sdk';
+import { Anthropic } from '@anthropic-ai/sdk';
 
 export class ClaudeProvider implements AIProvider {
   private client = new Anthropic({ apiKey: process.env.CLAUDE_API_KEY });
@@ -35,7 +35,7 @@ export class ClaudeProvider implements AIProvider {
 }
 
 // ── OpenAI provider ──────────────────────────────────────────────
-import OpenAI from 'openai';
+import { OpenAI } from 'openai';
 
 export class OpenAIProvider implements AIProvider {
   private client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
