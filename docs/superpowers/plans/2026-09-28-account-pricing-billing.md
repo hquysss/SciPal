@@ -114,11 +114,11 @@ Mọi interface bên dưới dùng các DTO trên; `BillingRepository` là backe
 
 **Consumes:** effective capacity limits + authenticated owner. **Produces:** atomic create/join/reactivate and archive lifecycle.
 
-- [ ] Failing tests: Free lớp thứ 2 bị chặn; Pro lớp thứ 11 bị chặn; thành viên thứ 51 bị chặn theo chủ lớp; hai join tranh chỗ cuối chỉ một thành công.
-- [ ] Failing tests: Free đề thứ 6/Pro đề thứ 101 bị chặn qua cả tạo trực tiếp và import; status draft không né quota; archive không xóa bài làm, reactivate cần chỗ trống.
-- [ ] Run `pnpm --filter @scipal/api test -- src/__tests__/teacher-capacity.test.ts`.
-- [ ] Add archived_at và transactional RPC cho các mutation; Student quota không quyết định sức chứa lớp. Giữ quyền read/export khi downgrade. Không sửa quy trình duyệt thành tự xuất bản vì đã trả phí.
-- [ ] UI archive/reactivate và quota exceeded; test lỗi không xóa dữ liệu. Run focused + SQL concurrency + full gate, commit, PR.
+- [x] Failing tests: Free lớp thứ 2 bị chặn; Pro lớp thứ 11 bị chặn; thành viên thứ 51 bị chặn theo chủ lớp; hai join tranh chỗ cuối chỉ một thành công.
+- [x] Failing tests: Free đề thứ 6/Pro đề thứ 101 bị chặn qua cả tạo trực tiếp và import; status draft không né quota; archive không xóa bài làm, reactivate cần chỗ trống.
+- [x] Run `pnpm --filter @scipal/api test -- src/__tests__/teacher-capacity.test.ts`.
+- [ ] (Để sau) Add archived_at và transactional RPC cho các mutation; Student quota không quyết định sức chứa lớp. Giữ quyền read/export khi downgrade. Không sửa quy trình duyệt thành tự xuất bản vì đã trả phí.
+- [ ] (Để sau) UI archive/reactivate và quota exceeded; test lỗi không xóa dữ liệu. Run focused + SQL concurrency + full gate, commit, PR.
 
 ## Task 5 / PR group: Quyền lợi giáo viên còn thiếu trước mở bán
 

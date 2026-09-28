@@ -6,6 +6,7 @@ import { checkExamQuestions } from '../authoring/examQuestions.js';
 import { countBlueprintQuestions } from '../exam/blueprintSummary.js';
 import { MAX_EXAM_ANSWERS } from './exam.js';
 import { examSections, validateExamInput } from '../schemas/exams.js';
+import { capacityRefusal } from '../billing/capacity.js';
 
 // The exam builder (authoring Part 4). Exams are exam_blueprints rows with an ordered question
 // list. Imported exams (import_id) are listed and editable here once published, but go through
@@ -122,7 +123,9 @@ export const examRoutesAuthoring: FastifyPluginAsync = async (app) => {
       return reply.code(403).send(msg('Chỉ giáo viên và admin mới soạn được đề thi.', 'Only teachers and admins can build exams.'));
     }
   };
-  const writeError = (request: FastifyRequest, reply: FastifyReply, error: { code?: string }, what: string) => {
+  const writeError = (request: FastifyRequest, reply: FastifyReply, error: { code?: string; message?: string; details?: string; hint?: string }, what: string) => {
+    const full = capacityRefusal(error);
+    if (full) return reply.code(429).send(full);
     if (error.code === '23505') return reply.code(409).send(duplicateName);
     if (error.code === '23503') return reply.code(400).send(msg('Môn học không tồn tại.', 'The subject does not exist.'));
     request.log.error({ err: error }, what);

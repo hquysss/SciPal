@@ -4,6 +4,7 @@ import { z } from 'zod';
 import { BlockSchema, imageProblems, simulationProblem } from '../schemas/blocks.js';
 import { makeSlug, planNewTopic, type ExistingTopic } from '../authoring/topicPlanning.js';
 import { storedQuestionData, validateQuestionInput } from '../schemas/questions.js';
+import { capacityRefusal } from '../billing/capacity.js';
 
 // The package the import page sends after Word/PDF lessons and an Excel workbook are parsed and
 // reviewed in the browser. Keep it aligned with frontend/features/content-import/
@@ -421,8 +422,10 @@ export const examImportRoutes: FastifyPluginAsync = async (app) => {
       if (done.includes('lessons')) await undo('lessons', supabase.from('lessons').delete().in('id', lessonRows.map((l) => l.id as string)));
       if (done.includes('topics')) await undo('topics', supabase.from('topics').delete().in('id', newTopics.map((t) => t.id as string)));
     };
-    const failed = async (error: { code?: string } | null, what: string) => {
+    const failed = async (error: { code?: string; message?: string; details?: string; hint?: string } | null, what: string) => {
       await rollback();
+      const full = capacityRefusal(error);
+      if (full) return reply.code(429).send(full);
       if (error?.code === '42703') return reply.code(503).send({ error: 'Cơ sở dữ liệu chưa chạy migration nhập nội dung.' });
       if (error?.code === '23505') {
         return reply.code(409).send({
