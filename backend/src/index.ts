@@ -17,6 +17,7 @@ import { topicAdminRoutes } from './routes/topicAdmin.js';
 import { tutorRoutes } from './routes/tutor.js';
 import { lazyAIProvider } from './providers/ai.js';
 import { aiSettingsRoutes, loadAiSettings } from './routes/aiSettings.js';
+import { translateRoutes } from './routes/translate.js';
 import { createSettingsStore } from './tutor/settings.js';
 import { questionRoutes } from './routes/questions.js';
 import { practiceRoutes } from './routes/practice.js';
@@ -43,6 +44,7 @@ await app.register(examRoutesAuthoring);
 await app.register(topicAdminRoutes);
 await app.register(tutorRoutes);
 await app.register(aiSettingsRoutes);
+await app.register(translateRoutes);
 await app.register(practiceRoutes);
 
 app.get('/health', async () => ({ status: 'ok' }));

@@ -124,8 +124,19 @@ export function mockQuery(result: QueryResult): MockBuilder {
  * Map table name → builder. Pass an array to return a different builder on
  * each successive `from(table)` call.
  */
+/** `rpc(name, args)` answers from `tables['rpc:<name>']` (a mockQuery) and records its args in `rpcCalls`. */
+export const rpcCalls: Array<[string, unknown]> = [];
+
 export function mockSupabase(tables: Record<string, MockBuilder | MockBuilder[]>): SupabaseClient {
   return {
+    rpc(name: string, args: unknown) {
+      rpcCalls.push([name, args]);
+      const entry = tables[`rpc:${name}`];
+      if (!entry) throw new Error(`Unexpected rpc in test: ${name}`);
+      const next = Array.isArray(entry) ? entry.shift() : entry;
+      if (!next) throw new Error(`No more mock results for rpc: ${name}`);
+      return next;
+    },
     from(table: string) {
       const entry = tables[table];
       if (!entry) throw new Error(`Unexpected table in test: ${table}`);
