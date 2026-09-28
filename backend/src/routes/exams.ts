@@ -263,6 +263,9 @@ export const examRoutesAuthoring: FastifyPluginAsync = async (app) => {
       }
       // The exam's questions stay in the bank.
       const { error } = await supabase.from('exam_blueprints').delete().eq('id', found.row.id);
+      if (error?.code === '23503') {
+        return reply.code(409).send(msg('Học sinh đã có bài làm với đề này nên không xóa được.', 'Students have taken this exam, so it cannot be deleted.'));
+      }
       if (error) {
         request.log.error({ err: error, examId: found.row.id }, 'Failed to delete exam');
         return reply.code(500).send(msg('Không xóa được đề thi.', 'Could not delete the exam.'));
@@ -365,10 +368,15 @@ export const examRoutesAuthoring: FastifyPluginAsync = async (app) => {
       ),
   });
 
-  // Approve also publishes an admin's own draft ("Xuất bản").
+  // Approve also publishes an admin's own draft ("Xuất bản"); another author's draft is submitted first.
+  const approver = (user: ExamUser, row: ExamRow): Failure | null =>
+    adminOnly(user) ??
+    (row.status === 'draft' && row.created_by !== user.id
+      ? { status: 409, body: msg('Bản nháp của giáo viên cần được gửi duyệt trước.', 'A teacher’s draft must be submitted for review first.') }
+      : null);
   app.post('/api/authoring/exams/:id/approve', {
     preHandler: [requireAuthor],
-    handler: (request, reply) => transition(request, reply, adminOnly, ['draft', 'pending_review'], { status: 'published', review_note: null }, true),
+    handler: (request, reply) => transition(request, reply, approver, ['draft', 'pending_review'], { status: 'published', review_note: null }, true),
   });
 
   app.post('/api/authoring/exams/:id/reject', {

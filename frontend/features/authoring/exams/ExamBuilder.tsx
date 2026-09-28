@@ -12,7 +12,7 @@ import type { AuthoringSubjectOption } from '../authoringQueries';
 import { fetchQuestionsByIds, type AuthorQuestion } from '../practice/api';
 import { QuestionEditor } from '../practice/QuestionEditor';
 import { emptyQuestion, QUESTION_TYPE_LABEL } from '../practice/questionDraft';
-import { approveExam, createExam, drawExamQuestions, submitExam, updateExam, type ExamDetail, type ExamInput } from './api';
+import { approveExam, createExam, deleteExam, drawExamQuestions, submitExam, updateExam, type ExamDetail, type ExamInput } from './api';
 import { BankBrowser } from './BankBrowser';
 import { DrawPanel } from './DrawPanel';
 import { addQuestions, examPatch, examProblem, examTotals, moveQuestion, removeQuestion, swapQuestion } from './examDraft';
@@ -137,6 +137,17 @@ export function ExamBuilder({ exam, subjects, isAdmin, initialQuestions = [] }: 
     }
     setBusy(false);
     router.refresh();
+  };
+
+  /** Deletes a draft after a confirmation; its questions stay in the bank. */
+  const remove = async () => {
+    if (!saved || busy) return;
+    if (!window.confirm(t({ en: 'Delete this exam? Its questions stay in the bank.', vi: 'Xóa đề này? Các câu hỏi vẫn còn trong ngân hàng.' }))) return;
+    setBusy(true);
+    const res = await deleteExam(saved.id);
+    setBusy(false);
+    if (!res.ok) return setMessage({ text: res.error, tone: 'danger' });
+    router.replace('/teacher/exams');
   };
 
   /** "Đổi câu": one question of the same type and difficulty that the exam does not have yet. */
@@ -375,9 +386,14 @@ export function ExamBuilder({ exam, subjects, isAdmin, initialQuestions = [] }: 
               {t({ en: 'Send for review', vi: 'Gửi duyệt' })}
             </Button>
           )}
-          {saved?.status === 'draft' && isAdmin && (
+          {saved?.status === 'draft' && isAdmin && saved.mine && (
             <Button type="button" variant="outline" disabled={busy} onClick={() => void run('publish')}>
               {t({ en: 'Publish', vi: 'Xuất bản' })}
+            </Button>
+          )}
+          {saved?.status === 'draft' && (
+            <Button type="button" variant="ghost" disabled={busy} onClick={() => void remove()}>
+              {t({ en: 'Delete exam', vi: 'Xóa đề' })}
             </Button>
           )}
           {problem && <p className="text-sm text-danger">{t(problem)}</p>}

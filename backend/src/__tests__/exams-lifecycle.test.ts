@@ -97,6 +97,25 @@ describe('exam review', () => {
     await imported.close();
   });
 
+  it('publishes only an admin’s own draft; a teacher’s draft goes through review', async () => {
+    const app = await build(admin, { exam_blueprints: mockQuery({ data: exam({ status: 'draft' }), error: null }), questions: mockQuery({ data: [question], error: null }) });
+    expect((await app.inject({ method: 'POST', url: `/api/authoring/exams/${EXAM}/approve` })).statusCode).toBe(409);
+    await app.close();
+
+    const update = mockQuery({ data: exam({ status: 'published', created_by: 'admin-1' }), error: null });
+    const own = await build(admin, { exam_blueprints: [mockQuery({ data: exam({ status: 'draft', created_by: 'admin-1' }), error: null }), update], questions: mockQuery({ data: [{ ...question, created_by: 'admin-1' }], error: null }) });
+    expect((await own.inject({ method: 'POST', url: `/api/authoring/exams/${EXAM}/approve` })).statusCode).toBe(200);
+    await own.close();
+  });
+
+  it('refuses with 409 to delete an exam students have taken', async () => {
+    const app = await build(admin, { exam_blueprints: [mockQuery({ data: exam({ status: 'published' }), error: null }), mockQuery({ data: null, error: { code: '23503', message: 'fk' } })] });
+    const res = await app.inject({ method: 'DELETE', url: `/api/authoring/exams/${EXAM}` });
+    expect(res.statusCode).toBe(409);
+    expect(res.json().error).toMatch(/bài làm/);
+    await app.close();
+  });
+
   it('answers 409 when the exam moved on meanwhile', async () => {
     const app = await build(admin, { exam_blueprints: [mockQuery({ data: exam({ status: 'pending_review' }), error: null }), mockQuery({ data: null, error: null })], questions: mockQuery({ data: [question], error: null }) });
     expect((await app.inject({ method: 'POST', url: `/api/authoring/exams/${EXAM}/approve` })).statusCode).toBe(409);
