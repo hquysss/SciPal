@@ -63,13 +63,13 @@ export const THEME_PALETTES: Record<ThemeLevel, Record<ThemeMode, ThemePalette>>
       patternInk: '#8B5A2B', patternOpacity: 0.06,
     },
     dark: {
-      paper: '#1C1712', surface: '#26201A', surfaceSunken: '#16120E',
-      ink: '#F4ECE2', muted: '#C9B8A4', line: '#3E342A', edge: '#8A7A68',
-      action: '#E0B98C', actionHover: '#EBCDA8', actionInk: '#1C1712', focus: '#E0B98C',
+      paper: '#1A1511', surface: '#2C241C', surfaceSunken: '#130F0B',
+      ink: '#F4ECE2', muted: '#C9B8A4', line: '#4D4033', edge: '#8E7D6A',
+      action: '#F2B45C', actionHover: '#F7C77F', actionInk: '#1A1511', focus: '#F2B45C',
       nav: '#96693F', navInk: '#FFFFFF',
       ...DARK_STATUS,
       sun: '#F5C66E', coral: '#EE9A82', sky: '#8CC9BF',
-      patternInk: '#E0B98C', patternOpacity: 0.07,
+      patternInk: '#F2B45C', patternOpacity: 0.04,
     },
   },
   // THCS: xanh dương của bút bi
@@ -84,13 +84,13 @@ export const THEME_PALETTES: Record<ThemeLevel, Record<ThemeMode, ThemePalette>>
       patternInk: '#2563EB', patternOpacity: 0.07,
     },
     dark: {
-      paper: '#0E1424', surface: '#151E36', surfaceSunken: '#0A0F1C',
-      ink: '#E8EEFF', muted: '#A9B7D6', line: '#26345A', edge: '#6A7CA8',
-      action: '#7FA8FF', actionHover: '#A3C0FF', actionInk: '#0E1424', focus: '#7FA8FF',
+      paper: '#0D1322', surface: '#19233F', surfaceSunken: '#090E1A',
+      ink: '#E8EEFF', muted: '#A9B7D6', line: '#31416B', edge: '#6E80AC',
+      action: '#7FA8FF', actionHover: '#A3C0FF', actionInk: '#0D1322', focus: '#7FA8FF',
       nav: '#2563EB', navInk: '#FFFFFF',
       ...DARK_STATUS,
       sun: '#F8CB63', coral: '#F59591', sky: '#B4A1F8',
-      patternInk: '#7FA8FF', patternOpacity: 0.07,
+      patternInk: '#7FA8FF', patternOpacity: 0.04,
     },
   },
   // THPT: xanh lá của bảng lớp
@@ -105,15 +105,15 @@ export const THEME_PALETTES: Record<ThemeLevel, Record<ThemeMode, ThemePalette>>
       patternInk: '#15803D', patternOpacity: 0.06,
     },
     dark: {
-      paper: '#0F2419', surface: '#163222', surfaceSunken: '#0B1C13',
-      ink: '#EAF6EE', muted: '#B3CDBB', line: '#2A4A36', edge: '#6F9A7E',
-      action: '#6EE7A0', actionHover: '#95EEBA', actionInk: '#0F2419', focus: '#6EE7A0',
+      paper: '#0E2218', surface: '#17352A', surfaceSunken: '#0A1A12',
+      ink: '#EAF6EE', muted: '#B3CDBB', line: '#33573F', edge: '#72A081',
+      action: '#6EE7A0', actionHover: '#95EEBA', actionInk: '#0E2218', focus: '#6EE7A0',
       nav: '#15803D', navInk: '#FFFFFF',
       danger: '#FFB0A5', dangerSurface: '#3F2226',
       success: '#9EDBAB', successSurface: '#1B3A26',
       warning: '#F2C66D', warningSurface: '#3A2F12',
       sun: '#F7D46E', coral: '#F6A881', sky: '#6BBDDB',
-      patternInk: '#6EE7A0', patternOpacity: 0.06,
+      patternInk: '#6EE7A0', patternOpacity: 0.04,
     },
   },
   // Chưa rõ cấp: giấy trắng, xanh thương hiệu trên navbar
@@ -128,19 +128,19 @@ export const THEME_PALETTES: Record<ThemeLevel, Record<ThemeMode, ThemePalette>>
       patternInk: '#275B42', patternOpacity: 0.05,
     },
     dark: {
-      paper: '#151A17', surface: '#1D2420', surfaceSunken: '#101412',
-      ink: '#E9EEEA', muted: '#AAB6AE', line: '#323B35', edge: '#737F77',
-      action: '#8FD3AE', actionHover: '#AEE0C3', actionInk: '#151A17', focus: '#8FD3AE',
+      paper: '#141916', surface: '#212A24', surfaceSunken: '#0F1311',
+      ink: '#E9EEEA', muted: '#AAB6AE', line: '#3C4840', edge: '#77847B',
+      action: '#8FD3AE', actionHover: '#AEE0C3', actionInk: '#141916', focus: '#8FD3AE',
       nav: '#123821', navInk: '#E9EEEA',
       ...DARK_STATUS,
       sun: '#F5C66E', coral: '#EF9A83', sky: '#7AB6D6',
-      patternInk: '#8FD3AE', patternOpacity: 0.06,
+      patternInk: '#8FD3AE', patternOpacity: 0.04,
     },
   },
 };
 
 /** Share of the subject accent in --accent-ink; the rest is --ink. */
-export const ACCENT_INK_RATIO: Record<ThemeMode, number> = { light: 0.6, dark: 0.4 };
+export const ACCENT_INK_RATIO: Record<ThemeMode, number> = { light: 0.6, dark: 0.5 };
 
 /** School-supply motif per level, drawn as a single-colour mask tile. */
 export const PATTERN_URLS: Record<ThemeLevel, string> = {

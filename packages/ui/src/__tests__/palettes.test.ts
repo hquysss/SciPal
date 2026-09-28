@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  ACCENT_INK_RATIO,
   contrastRatio,
   mixHex,
   THEME_LEVELS,
@@ -72,3 +73,36 @@ describe.each(THEME_LEVELS.flatMap((level) => THEME_MODES.map((mode) => [level, 
     });
   },
 );
+
+// Subject accents stored in `subjects.accent_color` (28/09): the darkest and most saturated ones
+// must still read as their colour, and as text, on dark surfaces.
+const SUBJECT_ACCENTS = [
+  '#DC2626', '#B91C1C', '#2563EB', '#0284C7', '#0369A1', '#DB2777', '#BE185D', '#9D174D', '#059669', '#0891B2',
+  '#0E7490', '#B45309', '#92400E', '#A16207', '#7C3AED', '#0D9488', '#65A30D', '#4338CA', '#16A34A', '#475569',
+  '#EA580C', '#57534E', '#C026D3', '#A21CAF', '#9333EA', '#D97706', '#C2410C', '#7E22CE', '#0F766E',
+];
+
+describe.each(THEME_LEVELS)('dark palette %s has depth and colour', (level) => {
+  const p = THEME_PALETTES[level].dark;
+
+  it('lifts cards off the page and shows their edges', () => {
+    expect(contrastRatio(p.surface, p.paper)).toBeGreaterThanOrEqual(1.18);
+    expect(contrastRatio(p.line, p.surface)).toBeGreaterThanOrEqual(1.35);
+  });
+
+  it('keeps the pattern quiet and the action colour apart from the text colour', () => {
+    expect(p.patternOpacity).toBeLessThanOrEqual(0.045);
+    expect(contrastRatio(p.action, p.ink)).toBeGreaterThanOrEqual(1.3);
+  });
+
+  it.each(SUBJECT_ACCENTS)('subject accent %s as text reaches 4.5:1 on paper and surface', (accent) => {
+    const accentInk = mixHex(accent, p.ink, ACCENT_INK_RATIO.dark);
+    expect(contrastRatio(accentInk, p.surface)).toBeGreaterThanOrEqual(4.5);
+    expect(contrastRatio(accentInk, p.paper)).toBeGreaterThanOrEqual(4.5);
+  });
+
+  it('gives subject accents a real share of the text colour', () => {
+    expect(ACCENT_INK_RATIO.dark).toBeGreaterThanOrEqual(0.5);
+  });
+});
+

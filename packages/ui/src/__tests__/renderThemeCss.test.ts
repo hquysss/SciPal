@@ -47,3 +47,13 @@ describe('renderThemeCss', () => {
     expect(renderThemeCss({ systemDark: false })).not.toContain('prefers-color-scheme');
   });
 });
+
+describe('dark mode depth', () => {
+  it('scales the background glows and subject tints up in dark mode only', () => {
+    const css = renderThemeCss({ systemDark: true });
+    expect(css).toContain('--glow-scale:1;');
+    expect(css).toContain('--glow-scale:1.6;');
+    expect(css).toContain('--tint-scale:1;');
+    expect(css).toContain('--tint-scale:2;');
+  });
+});

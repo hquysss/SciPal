@@ -60,6 +60,7 @@ Menu, popover hay dialog render qua portal phải gắn vào trong `[data-app-sh
 - Ba lựa chọn: Theo hệ thống (mặc định), Sáng, Tối — nút trên navbar desktop, trong menu mobile, ở Profile và trang đăng nhập; lưu `localStorage['scipal-theme']`, script boot áp lên `[data-app-shell]` trước khi vẽ. Không bao giờ gắn `data-theme`/`.dark` lên `<html>`.
 - Ở chế độ tối `action` là màu sáng, nên chữ trên nền `action` luôn dùng `action-ink` (không viết cứng trắng). Mảng đặt cố định trên ảnh minh hoạ (huy hiệu slide đăng nhập) giữ chữ sáng cố định.
 - Khối code (Monaco) chuyển `vs-dark` theo `useShellDark()`.
+- Chế độ tối có chiều sâu (28/09): `surface` sáng hơn `paper` ≥ 1,18:1 và `line` trên `surface` ≥ 1,35:1 để thẻ tách khỏi nền; hoạ tiết mờ hơn (`patternOpacity` ≤ 0,04); màu nhấn khác xa màu chữ (Tiểu học vàng mật ong `#F2B45C`); `--accent-ink` lấy 50% màu môn (đủ 4,5:1 với mọi màu môn trong `subjects`). `--glow-scale` (sáng 1, tối 1,6) nhân độ đậm quầng sáng nền; `--tint-scale` (sáng 1, tối 2) nhân các nền/viền pha màu môn trên thẻ môn. Test ở `packages/ui/src/__tests__/palettes.test.ts`.
 
 ### Trạng thái bài giảng
 
