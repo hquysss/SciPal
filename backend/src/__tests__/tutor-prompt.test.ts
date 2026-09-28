@@ -68,31 +68,45 @@ describe('TUTOR_EXAMPLES', () => {
 describe('lazyAIProvider', () => {
   it('does not build the SDK client (which needs a key) until the first question', async () => {
     const { lazyAIProvider } = await import('../providers/ai.js');
-    const saved = process.env.OPENAI_API_KEY;
+    const saved = { gemini: process.env.GEMINI_API_KEY, openai: process.env.OPENAI_API_KEY };
+    delete process.env.GEMINI_API_KEY;
     delete process.env.OPENAI_API_KEY;
     try {
       expect(() => lazyAIProvider()).not.toThrow();
     } finally {
-      if (saved !== undefined) process.env.OPENAI_API_KEY = saved;
+      if (saved.gemini !== undefined) process.env.GEMINI_API_KEY = saved.gemini;
+      if (saved.openai !== undefined) process.env.OPENAI_API_KEY = saved.openai;
     }
   });
 });
 
-describe('tutorModel', () => {
-  it('uses TUTOR_MODEL when set, otherwise gpt-4o-mini', async () => {
-    const { tutorModel } = await import('../providers/ai.js');
-    const saved = process.env.TUTOR_MODEL;
-    try {
-      delete process.env.TUTOR_MODEL;
-      expect(tutorModel()).toBe('gpt-4o-mini');
-      process.env.TUTOR_MODEL = '  some-model  ';
-      expect(tutorModel()).toBe('some-model');
-      process.env.TUTOR_MODEL = '   ';
-      expect(tutorModel()).toBe('gpt-4o-mini');
-    } finally {
-      if (saved === undefined) delete process.env.TUTOR_MODEL;
-      else process.env.TUTOR_MODEL = saved;
+describe('provider settings', () => {
+  const withEnv = async (env: Record<string, string | undefined>, run: () => Promise<void> | void) => {
+    const saved = Object.fromEntries(Object.keys(env).map((k) => [k, process.env[k]]));
+    for (const [k, v] of Object.entries(env)) if (v === undefined) delete process.env[k]; else process.env[k] = v;
+    try { await run(); } finally {
+      for (const [k, v] of Object.entries(saved)) if (v === undefined) delete process.env[k]; else process.env[k] = v;
     }
+  };
+
+  it('uses Gemini by default and OpenAI when AI_PROVIDER=openai', async () => {
+    const { providerSettings } = await import('../providers/ai.js');
+    await withEnv({ AI_PROVIDER: undefined, TUTOR_MODEL: undefined, GEMINI_API_KEY: 'g-key', OPENAI_API_KEY: 'o-key' }, () => {
+      expect(providerSettings()).toEqual({ apiKey: 'g-key', baseURL: 'https://generativelanguage.googleapis.com/v1beta/openai/', model: 'gemini-3.8-flash' });
+    });
+    await withEnv({ AI_PROVIDER: ' OpenAI ', TUTOR_MODEL: undefined, GEMINI_API_KEY: 'g-key', OPENAI_API_KEY: 'o-key' }, () => {
+      expect(providerSettings()).toEqual({ apiKey: 'o-key', baseURL: undefined, model: 'gpt-4o-mini' });
+    });
+  });
+
+  it('takes the model from TUTOR_MODEL when set', async () => {
+    const { providerSettings } = await import('../providers/ai.js');
+    await withEnv({ AI_PROVIDER: 'gemini', TUTOR_MODEL: '  gemini-custom  ' }, () => {
+      expect(providerSettings().model).toBe('gemini-custom');
+    });
+    await withEnv({ AI_PROVIDER: 'gemini', TUTOR_MODEL: '  ' }, () => {
+      expect(providerSettings().model).toBe('gemini-3.8-flash');
+    });
   });
 
   it('has no Claude provider left', async () => {

@@ -91,9 +91,11 @@ Errors are `{ error, error_en }`, as in the authoring routes.
 
 ### Provider
 
-`providers/ai.ts`: OpenAI only (Claude dropped on 28/09 for cost). Model from `TUTOR_MODEL`, default
-`gpt-4o-mini`, `max_tokens` 1024. The provider is decorated on the Fastify app (built on the first
-question) so tests inject a fake one.
+`providers/ai.ts`: one OpenAI-SDK client for two services, chosen by `AI_PROVIDER` — `gemini`
+(default, through Gemini's OpenAI-compatible endpoint, key `GEMINI_API_KEY`, model
+`gemini-3.8-flash`) or `openai` (key `OPENAI_API_KEY`, model `gpt-4o-mini`). `TUTOR_MODEL` overrides
+the model. Claude was dropped on 28/09 for cost. `max_tokens` 1024. The provider is decorated on the
+Fastify app (built on the first question) so tests inject a fake one.
 
 ## Web
 

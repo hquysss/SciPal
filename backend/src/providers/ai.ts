@@ -12,20 +12,30 @@ export interface AIProvider {
   ): AsyncIterable<string>;
 }
 
-const DEFAULT_MODEL = 'gpt-4o-mini';
+// Gemini is reached through its OpenAI-compatible endpoint, so one SDK serves both.
+// https://ai.google.dev/gemini-api/docs/openai
+const GEMINI_BASE_URL = 'https://generativelanguage.googleapis.com/v1beta/openai/';
+const DEFAULT_MODELS = { gemini: 'gemini-3.8-flash', openai: 'gpt-4o-mini' } as const;
 
-/** The model to call: `TUTOR_MODEL` when set (so it changes without a code deploy), else gpt-4o-mini. */
-export function tutorModel(): string {
-  return process.env.TUTOR_MODEL?.trim() || DEFAULT_MODEL;
+/**
+ * Which service answers the tutor: `AI_PROVIDER` = `gemini` (default) or `openai`, each with its own
+ * key; `TUTOR_MODEL` overrides the model without a code change.
+ */
+export function providerSettings(): { apiKey: string | undefined; baseURL: string | undefined; model: string } {
+  const provider = process.env.AI_PROVIDER?.trim().toLowerCase() === 'openai' ? 'openai' : 'gemini';
+  const model = process.env.TUTOR_MODEL?.trim() || DEFAULT_MODELS[provider];
+  return provider === 'openai'
+    ? { apiKey: process.env.OPENAI_API_KEY, baseURL: undefined, model }
+    : { apiKey: process.env.GEMINI_API_KEY, baseURL: GEMINI_BASE_URL, model };
 }
 
-// ── OpenAI provider ──────────────────────────────────────────────
-export class OpenAIProvider implements AIProvider {
-  private client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+export class ChatCompletionsProvider implements AIProvider {
+  private settings = providerSettings();
+  private client = new OpenAI({ apiKey: this.settings.apiKey, baseURL: this.settings.baseURL });
 
   async *chat(messages: ChatMessage[], systemPrompt: string): AsyncIterable<string> {
     const stream = await this.client.chat.completions.create({
-      model:  tutorModel(),
+      model:  this.settings.model,
       stream: true,
       max_tokens: 1024,
       messages: [
@@ -40,9 +50,8 @@ export class OpenAIProvider implements AIProvider {
   }
 }
 
-// ── Factory ──────────────────────────────────────────────────────
 export function createAIProvider(): AIProvider {
-  return new OpenAIProvider();
+  return new ChatCompletionsProvider();
 }
 
 /**
