@@ -139,11 +139,11 @@ Thực thi từng nhánh/PR con, phụ thuộc Task 1 và 4. Đây là dependenc
 
 **Files:** new `backend/src/routes/authorAi.ts`, `backend/src/authoring/authorAiPrompt.ts`, `backend/src/__tests__/author-ai.test.ts`, `frontend/features/authoring/AuthorAiDialog.tsx` + tests; modify `backend/src/index.ts`, `frontend/features/authoring/LessonEditor.tsx`, provider options only if required to cap output.
 
-- [ ] Test fail: Free 0 từ chối, Pro request 101 từ chối, student role từ chối dù override > 0; provider failure không charge; retry không charge lại; invalid BlockSchema không nhận kết quả.
-- [ ] Run `pnpm --filter @scipal/api test -- src/__tests__/author-ai.test.ts`.
-- [ ] `POST /api/authoring/ai-draft` nhận operationId, topic, grade, language và yêu cầu <= 8000 ký tự; tái sử dụng provider/settings hiện có, output token cap 2048 là mặc định kỹ thuật cần đánh giá chất lượng/chi phí.
-- [ ] Trả các theory blocks EN/VI hợp lệ để giáo viên xem/áp dụng thủ công; không tạo đáp án thi, không auto publish. Chốt quota chỉ khi output validate + lưu kết quả để replay được.
-- [ ] UI loading/error/preview/apply, không đè bài đang gõ; test trước, QA, full gate, commit, PR.
+- [x] Test fail: Free 0 từ chối, Pro request 101 từ chối, student role từ chối dù override > 0; provider failure không charge; retry không charge lại; invalid BlockSchema không nhận kết quả.
+- [x] Run `pnpm --filter @scipal/api test -- src/__tests__/author-ai.test.ts`.
+- [x] `POST /api/authoring/ai-draft` nhận operationId, topic, grade, language và yêu cầu <= 8000 ký tự; tái sử dụng provider/settings hiện có, output token cap 2048 là mặc định kỹ thuật cần đánh giá chất lượng/chi phí.
+- [x] Trả các theory blocks EN/VI hợp lệ để giáo viên xem/áp dụng thủ công; không tạo đáp án thi, không auto publish. Chốt quota chỉ khi output validate + lưu kết quả để replay được.
+- [x] UI loading/error/preview/apply, không đè bài đang gõ; test trước, QA, full gate, commit, PR.
 
 ### 5c. Nghiệm thu giao bài — codex/class-assignments-readiness
 
