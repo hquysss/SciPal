@@ -69,6 +69,8 @@ function declarations(level: ThemeLevel, mode: ThemeMode): string {
     `--accent-ink-ratio:${Math.round(ACCENT_INK_RATIO[mode] * 100)}%;` +
     // Dark pages need stronger glows and subject tints to keep their colour on a dark ground.
     `--glow-scale:${mode === 'dark' ? 1.6 : 1};--tint-scale:${mode === 'dark' ? 2 : 1};` +
+    // Illustrations are objects on a desk: their paper stays paper-coloured in dark mode.
+    `--art-paper:${THEME_PALETTES[level].light.paper};--art-surface:${THEME_PALETTES[level].light.surface};--art-ink:${THEME_PALETTES[level].light.ink};` +
     `color-scheme:${mode};`
   );
 }

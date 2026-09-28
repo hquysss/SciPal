@@ -1,6 +1,6 @@
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it, vi } from 'vitest';
-import { NavBar, roleLinks, tutorLink } from './NavBar';
+import { NavBar, primaryLinks, roleLinks, tutorLink } from './NavBar';
 
 vi.mock('next/link', () => ({
   default: ({ href, children, prefetch: _prefetch, ...props }: { href: string; children: React.ReactNode; prefetch?: boolean }) =>
@@ -55,3 +55,14 @@ describe('tutorLink', () => {
     expect(tutorLink(false, 'vi')).toBeNull();
   });
 });
+
+describe('primaryLinks', () => {
+  it('leaves Profile to the account button on the desktop bar, keeps it in the mobile menu', () => {
+    const desktop = primaryLinks('vi', true, 'desktop').map((l) => l.href);
+    const mobile = primaryLinks('vi', true, 'mobile').map((l) => l.href);
+    expect(desktop).toEqual(['/glossary', '/exam', '/tutor', '/progress']);
+    expect(mobile).toEqual(['/glossary', '/exam', '/tutor', '/progress', '/profile']);
+    expect(primaryLinks('vi', false, 'desktop').map((l) => l.href)).toEqual(['/glossary', '/exam']);
+  });
+});
+
