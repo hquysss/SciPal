@@ -57,6 +57,25 @@ export function tutorLink(signedIn: boolean, lang: 'en' | 'vi') {
   return signedIn ? { href: '/tutor', label: lang === 'en' ? 'AI tutor' : 'Gia sư AI' } : null;
 }
 
+/**
+ * The main links after Home and Subjects. On the desktop bar Profile is the account button (the
+ * avatar), which keeps a full admin bar from overflowing at 1366px; the mobile menu lists it.
+ */
+export function primaryLinks(lang: 'en' | 'vi', signedIn: boolean, place: 'desktop' | 'mobile') {
+  const label = (en: string, vi: string) => (lang === 'en' ? en : vi);
+  return [
+    { href: '/glossary', label: label('Glossary', 'Từ điển') },
+    { href: '/exam', label: label('Exams', 'Thi thử') },
+    ...(signedIn
+      ? [
+          tutorLink(true, lang)!,
+          { href: '/progress', label: label('Progress', 'Tiến trình') },
+          ...(place === 'mobile' ? [{ href: '/profile', label: label('Profile', 'Hồ sơ') }] : []),
+        ]
+      : []),
+  ];
+}
+
 /** The teacher and admin menus for a role (empty for others). */
 export function roleLinks(role: string | null, lang: 'en' | 'vi', openRequests: number) {
   const label = (en: string, vi: string) => (lang === 'en' ? en : vi);
@@ -219,15 +238,9 @@ export function NavBar({ currentSubject }: NavBarProps) {
   // The Subjects tab stays marked inside any subject or lesson, not only on /subjects.
   const subjectsActive = pathname === '/subjects' || Boolean(currentSubject ?? params?.subject);
   const accountName = displayName ?? (lang === 'en' ? 'Account' : 'Tài khoản');
-  const links = [
-    { href: '/glossary', label: lang === 'en' ? 'Glossary' : 'Từ điển' },
-    { href: '/exam', label: lang === 'en' ? 'Exams' : 'Thi thử' },
-    ...(appRole ? [
-      tutorLink(true, lang === 'en' ? 'en' : 'vi')!,
-      { href: '/progress', label: lang === 'en' ? 'Progress' : 'Tiến trình' },
-      { href: '/profile', label: lang === 'en' ? 'Profile' : 'Hồ sơ' },
-    ] : []),
-  ];
+  const navLang = lang === 'en' ? 'en' : 'vi';
+  const links = primaryLinks(navLang, Boolean(appRole), 'desktop');
+  const mobileLinks = primaryLinks(navLang, Boolean(appRole), 'mobile');
   const { teacherLinks, adminLinks } = roleLinks(appRole, lang === 'en' ? 'en' : 'vi', openRequests);
   const teacherMenuOpen = openNavGroup === 'teacher';
   const adminMenuOpen = openNavGroup === 'admin';
@@ -350,18 +363,24 @@ export function NavBar({ currentSubject }: NavBarProps) {
           )}
         </nav>
 
-        <div className={`${navStyles.rise} hidden min-w-0 flex-1 items-center justify-end gap-3 xl:flex`} style={{ '--i': 8 } as React.CSSProperties}>
+        <div className={`${navStyles.rise} ml-auto hidden shrink-0 items-center justify-end gap-3 xl:flex`} style={{ '--i': 8 } as React.CSSProperties}>
           <OnlinePill />
           <LanguageToggle />
           <ThemeToggle />
           <span aria-hidden="true" className={navStyles.divider} />
           {appRole ? (
             <div className="flex min-w-0 items-center gap-3">
-              <span className={navStyles.account} title={displayName ?? undefined}>
+              <Link
+                href="/profile"
+                className={navStyles.account}
+                title={displayName ?? undefined}
+                aria-label={`${lang === 'en' ? 'Profile' : 'Hồ sơ'} · ${accountName}`}
+                aria-current={pathname === '/profile' ? 'page' : undefined}
+              >
                 <span aria-hidden="true" className={navStyles.avatar}>{accountName.trim().charAt(0).toUpperCase()}</span>
                 {/* Below 1536px the avatar stands in for the name so a full admin bar still fits at 1280px. */}
-                <span className="max-w-36 truncate max-2xl:sr-only">{accountName}</span>
-              </span>
+                <span aria-hidden="true" className="max-w-36 truncate max-2xl:hidden">{accountName}</span>
+              </Link>
               <button
                 type="button"
                 onClick={handleSignOut}
@@ -429,7 +448,7 @@ export function NavBar({ currentSubject }: NavBarProps) {
             >
               {subjectsLabel}
             </Link>
-            {links.map((link) => (
+            {mobileLinks.map((link) => (
               <Link
                 key={link.href}
                 href={link.href}

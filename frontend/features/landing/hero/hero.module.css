@@ -154,8 +154,8 @@
   to { opacity: 1; scale: 1; }
 }
 
-.paper { fill: var(--paper); }
-.surface { fill: var(--surface); }
+.paper { fill: var(--art-paper, var(--paper)); }
+.surface { fill: var(--art-surface, var(--surface)); }
 .ink { fill: var(--ink); }
 .nav { fill: var(--nav); }
 .action { fill: var(--action); }
@@ -166,7 +166,7 @@
 .navSide { fill: color-mix(in srgb, var(--nav) 68%, var(--ink)); }
 .actionSide { fill: color-mix(in srgb, var(--action) 68%, var(--ink)); }
 .inkSide { fill: color-mix(in srgb, var(--ink) 78%, var(--nav)); }
-.surfaceSide { fill: color-mix(in srgb, var(--surface) 78%, var(--ink)); }
+.surfaceSide { fill: color-mix(in srgb, var(--art-surface, var(--surface)) 78%, var(--art-ink, var(--ink))); }
 .sunSide { fill: color-mix(in srgb, var(--sun) 70%, var(--ink)); }
 .coralSide { fill: color-mix(in srgb, var(--coral) 70%, var(--ink)); }
 .skySide { fill: color-mix(in srgb, var(--sky) 70%, var(--ink)); }
@@ -180,8 +180,8 @@
   stroke-width: 1;
 }
 
-.surfaceTile { fill: var(--surface); }
-.paperTile { fill: var(--paper); }
+.surfaceTile { fill: var(--art-surface, var(--surface)); }
+.paperTile { fill: var(--art-paper, var(--paper)); }
 .navInkTile { fill: var(--nav-ink); }
 .sunTile { fill: var(--sun); }
 .coralTile { fill: var(--coral); }
@@ -209,8 +209,8 @@
 
 .contact { fill: var(--ink); fill-opacity: 0.16; }
 
-.stopShade { stop-color: var(--ink); stop-opacity: 0.16; }
-.stopClear { stop-color: var(--ink); stop-opacity: 0; }
+.stopShade { stop-color: var(--art-ink, var(--ink)); stop-opacity: 0.16; }
+.stopClear { stop-color: var(--art-ink, var(--ink)); stop-opacity: 0; }
 
 .roundJoin {
   stroke-linejoin: round;
@@ -249,11 +249,11 @@
   stroke-linejoin: round;
 }
 
-.strokeRule { stroke: var(--line); stroke-width: 1.4; }
-.strokeTitle { stroke: var(--ink); stroke-width: 4; }
-.strokeAxis { stroke: var(--ink-muted); stroke-width: 1.6; }
-.strokeCurve { stroke: var(--action); stroke-width: 3; }
-.strokeGuide { stroke: var(--ink-muted); stroke-width: 1.4; stroke-dasharray: 2 3; }
+.strokeRule { stroke: color-mix(in srgb, var(--art-ink, var(--ink)) 16%, var(--art-paper, var(--paper))); stroke-width: 1.4; }
+.strokeTitle { stroke: var(--art-ink, var(--ink)); stroke-width: 4; }
+.strokeAxis { stroke: color-mix(in srgb, var(--art-ink, var(--ink)) 60%, var(--art-paper, var(--paper))); stroke-width: 1.6; }
+.strokeCurve { stroke: color-mix(in srgb, var(--action) 72%, var(--art-ink, var(--ink))); stroke-width: 3; }
+.strokeGuide { stroke: color-mix(in srgb, var(--art-ink, var(--ink)) 60%, var(--art-paper, var(--paper))); stroke-width: 1.4; stroke-dasharray: 2 3; }
 .strokeSpine { stroke: color-mix(in srgb, var(--ink) 22%, transparent); stroke-width: 1.2; }
 .strokeTick { stroke: var(--ink); stroke-width: 1.3; }
 .strokeGlint { stroke: var(--surface); stroke-width: 3; stroke-opacity: 0.9; }

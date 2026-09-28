@@ -18,6 +18,11 @@
   transition: background-color 160ms ease-out, box-shadow 160ms ease-out;
 }
 
+/* A full signed-in admin bar must fit at 1280–1535px. */
+@media (max-width: 1535px) {
+  .navLink { padding-inline: 0.625rem; }
+}
+
 .navLink:hover,
 .navLink[aria-expanded='true'] {
   background: color-mix(in srgb, var(--nav-ink) 12%, transparent);
@@ -60,6 +65,9 @@
 
 .account {
   display: inline-flex;
+  border-radius: 999px;
+  padding: 0.125rem;
+  transition: background-color 160ms ease-out;
   min-width: 0;
   align-items: center;
   gap: 0.5rem;
@@ -289,3 +297,7 @@
     transition: none;
   }
 }
+
+.account:hover { background: color-mix(in srgb, var(--nav-ink) 12%, transparent); }
+.account:focus-visible { outline: 2px solid var(--nav-ink); outline-offset: 2px; }
+.account[aria-current='page'] .avatar { box-shadow: 0 0 0 2px var(--nav-ink); }

@@ -22,7 +22,7 @@ SciPal should feel like a warm, modern field notebook for curious Vietnamese lea
 
 ### Navbar
 
-Navbar tô màu chính của cấp: Tiểu học nâu nhạt `#96693F` (chữ trắng), THCS xanh dương `#2563EB`, THPT xanh lá `#15803D`, chưa chọn cấp `#15803D`. Nút đăng nhập và công tắc đang chọn đảo màu (`bg-nav-ink text-nav`). Mục đang ở được đánh dấu bằng vạch 3px ở mép dưới thanh (`navLink` trong `navbar.module.css`), hover là nền mờ bo tròn. Công tắc ngôn ngữ là nhóm viên thuốc cao 32px, vùng bấm mở rộng tới 44px. Nhãn "Ngoại tuyến" chỉ hiện khi mất mạng. Tài khoản: ô chữ cái đầu + tên (tên ẩn dưới 1536px để thanh admin vẫn vừa 1280px) và nút "Đăng xuất" dạng viền.
+Navbar tô màu chính của cấp: Tiểu học nâu nhạt `#96693F` (chữ trắng), THCS xanh dương `#2563EB`, THPT xanh lá `#15803D`, chưa chọn cấp `#15803D`. Nút đăng nhập và công tắc đang chọn đảo màu (`bg-nav-ink text-nav`). Mục đang ở được đánh dấu bằng vạch 3px ở mép dưới thanh (`navLink` trong `navbar.module.css`), hover là nền mờ bo tròn. Công tắc ngôn ngữ là nhóm viên thuốc cao 32px, vùng bấm mở rộng tới 44px. Nhãn "Ngoại tuyến" chỉ hiện khi mất mạng. Tài khoản: ô chữ cái đầu + tên là link tới Hồ sơ (tên ẩn dưới 1536px; mục "Hồ sơ" không nằm trên thanh desktop, chỉ trong menu mobile) và nút "Đăng xuất" dạng viền; dưới 1536px các mục sát nhau hơn để thanh admin vừa 1280–1366px.
 
 ### Trang Môn học
 
@@ -60,7 +60,7 @@ Menu, popover hay dialog render qua portal phải gắn vào trong `[data-app-sh
 - Ba lựa chọn: Theo hệ thống (mặc định), Sáng, Tối — nút trên navbar desktop, trong menu mobile, ở Profile và trang đăng nhập; lưu `localStorage['scipal-theme']`, script boot áp lên `[data-app-shell]` trước khi vẽ. Không bao giờ gắn `data-theme`/`.dark` lên `<html>`.
 - Ở chế độ tối `action` là màu sáng, nên chữ trên nền `action` luôn dùng `action-ink` (không viết cứng trắng). Mảng đặt cố định trên ảnh minh hoạ (huy hiệu slide đăng nhập) giữ chữ sáng cố định.
 - Khối code (Monaco) chuyển `vs-dark` theo `useShellDark()`.
-- Chế độ tối có chiều sâu (28/09): `surface` sáng hơn `paper` ≥ 1,18:1 và `line` trên `surface` ≥ 1,35:1 để thẻ tách khỏi nền; hoạ tiết mờ hơn (`patternOpacity` ≤ 0,04); màu nhấn khác xa màu chữ (Tiểu học vàng mật ong `#F2B45C`); `--accent-ink` lấy 50% màu môn (đủ 4,5:1 với mọi màu môn trong `subjects`). `--glow-scale` (sáng 1, tối 1,6) nhân độ đậm quầng sáng nền; `--tint-scale` (sáng 1, tối 2) nhân các nền/viền pha màu môn trên thẻ môn. Test ở `packages/ui/src/__tests__/palettes.test.ts`.
+- Chế độ tối có chiều sâu (28/09): `surface` sáng hơn `paper` ≥ 1,18:1 và `line` trên `surface` ≥ 1,35:1 để thẻ tách khỏi nền; hoạ tiết mờ hơn (`patternOpacity` ≤ 0,04); màu nhấn khác xa màu chữ (Tiểu học vàng mật ong `#F2B45C`); `--accent-ink` lấy 50% màu môn (đủ 4,5:1 với mọi màu môn trong `subjects`). `--glow-scale` (sáng 1, tối 1,6) nhân độ đậm quầng sáng nền; `--tint-scale` (sáng 1, tối 2) nhân các nền/viền pha màu môn trên thẻ môn. Test ở `packages/ui/src/__tests__/palettes.test.ts`. Nền tối nâng thêm một bậc (29/09 — THPT `#12271D`, THCS `#131B30`, Tiểu học `#221B15`, chưa chọn cấp `#1A201C`). Tranh minh hoạ dùng `--art-paper`/`--art-surface`/`--art-ink` = màu giấy của bảng **sáng**: trang sách, ô giấy và nét vẽ trên giấy giữ sáng ở chế độ tối.
 
 ### Trạng thái bài giảng
 

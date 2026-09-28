@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { renderThemeCss, THEME_LEVELS } from '../theme';
+import { renderThemeCss, THEME_LEVELS, THEME_PALETTES } from '../theme';
 
 describe('renderThemeCss', () => {
   const css = renderThemeCss({ systemDark: true });
@@ -55,5 +55,18 @@ describe('dark mode depth', () => {
     expect(css).toContain('--glow-scale:1.6;');
     expect(css).toContain('--tint-scale:1;');
     expect(css).toContain('--tint-scale:2;');
+  });
+});
+
+describe('illustration materials', () => {
+  it('keeps paper light in illustrations even in dark mode', () => {
+    const css = renderThemeCss({ systemDark: true });
+    for (const level of THEME_LEVELS) {
+      const light = THEME_PALETTES[level].light;
+      const occurrences = css.split(`--art-paper:${light.paper};`).length - 1;
+      expect(occurrences).toBeGreaterThanOrEqual(2);
+      expect(css).toContain(`--art-surface:${light.surface};`);
+      expect(css).toContain(`--art-ink:${light.ink};`);
+    }
   });
 });
