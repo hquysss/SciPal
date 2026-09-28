@@ -37,8 +37,8 @@ describe('exams use exam questions only', () => {
 
   it('scores only against exam rows, so a practice id listed by a blueprint counts for nothing', async () => {
     const questions = mockQuery({ data: [row], error: null });
-    const app = await examApp({ exam_blueprints: mockQuery({ data: listed, error: null }), questions, xp_log: mockQuery({ data: null, error: null }) }, { id: 'student-1' });
-    const res = await app.inject({ method: 'POST', url: '/api/score/exam', payload: { blueprint_id: BLUEPRINT_ID, answers: [{ question_id: 'q2', selected_option: 'a' }] } });
+    const app = await examApp({ exam_blueprints: mockQuery({ data: listed, error: null }), questions, xp_log: mockQuery({ data: null, error: null }), exam_attempts: [mockQuery({ data: { id: '44444444-4444-4444-8444-444444444444', user_id: 'student-1', blueprint_id: BLUEPRINT_ID, metered: false, status: 'started', score: null, correct_count: null, total_questions: null, xp_earned: null }, error: null }), mockQuery({ data: [{ id: '44444444-4444-4444-8444-444444444444' }], error: null })], }, { id: 'student-1' });
+    const res = await app.inject({ method: 'POST', url: '/api/score/exam', payload: { blueprint_id: BLUEPRINT_ID, attempt_id: '44444444-4444-4444-8444-444444444444', answers: [{ question_id: 'q2', selected_option: 'a' }] } });
     expect(res.statusCode).toBe(200);
     expect(questions.eqCalls).toEqual(expect.arrayContaining([['usage', 'exam'], ['status', 'published']]));
     // q2 was not returned as an exam row: the exam has one question and the answer to q2 is ignored.

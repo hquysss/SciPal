@@ -31,6 +31,7 @@ values
 \ir ../migrations/20260928102931_billing_foundation.sql
 \ir ../migrations/20260928230000_account_quota_admin.sql
 \ir ../migrations/20260929000000_tutor_daily_quota.sql
+\ir ../migrations/20260929010000_exam_attempts.sql
 \ir ../migrations/20260929020000_teacher_capacity.sql
 -- Supabase's service_role writes these tables; the stubs above need the same grant.
 grant select, insert, update, delete on public.class_rooms, public.class_members, public.exam_blueprints to service_role;
@@ -444,6 +445,38 @@ end;
 $$;
 reset role;
 
+-- Graded exam attempts (migration 20260929010000).
+set role service_role;
+do $$
+declare
+  v_reservation jsonb;
+  c_free constant uuid := '00000000-0000-4000-8000-000000000004';
+begin
+  v_reservation := public.billing_reserve_quota(c_free, 'graded_exam_attempts', '40000000-0000-4000-8000-000000000001', repeat('e', 64), 1);
+  if v_reservation ->> 'kind' <> 'monthly' then raise exception 'Exam attempts are not monthly: %', v_reservation; end if;
+  if (select lease_expires_at - created_at from public.quota_operations where operation_id = '40000000-0000-4000-8000-000000000001') < interval '2 hours 59 minutes' then
+    raise exception 'An exam hold is shorter than three hours';
+  end if;
+  insert into public.exam_attempts (id, user_id, blueprint_id, metered) values ('40000000-0000-4000-8000-000000000001', c_free, 'bp-1', true);
+  begin
+    update public.exam_attempts set status = 'submitted' where id = '40000000-0000-4000-8000-000000000001';
+    raise exception 'A submitted attempt without a result was accepted';
+  exception when check_violation then null;
+  end;
+end;
+$$;
+reset role;
+
+set role authenticated;
+do $$
+declare
+  v_denied boolean := false;
+begin
+  begin
+    perform 1 from public.exam_attempts;
+  exception when insufficient_privilege then v_denied := true;
+  end;
+  if not v_denied then raise exception 'A signed-in user read exam attempts directly'; end if;
 -- Teacher capacity (migration 20260929020000).
 set role service_role;
 do $$

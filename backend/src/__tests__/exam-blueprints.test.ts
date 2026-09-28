@@ -79,13 +79,14 @@ describe('exam routes without demo content', () => {
     app.decorate('supabase', mockSupabase({
       questions: mockQuery({ data: [], error: null }),
       exam_blueprints: mockQuery({ data: { id: BP }, error: null }),
+      exam_attempts: [mockQuery({ data: { id: '44444444-4444-4444-8444-444444444444', user_id: 'student-1', blueprint_id: BP, metered: false, status: 'started', score: null, correct_count: null, total_questions: null, xp_earned: null }, error: null }), mockQuery({ data: [{ id: '44444444-4444-4444-8444-444444444444' }], error: null })],
     }));
     app.addHook('onRequest', async (request) => { (request as any).user = { id: 'student-1' }; });
     await app.register(examRoutes);
     await app.ready();
     const res = await app.inject({
       method: 'POST', url: '/api/score/exam',
-      payload: { blueprint_id: BP, answers: [{ question_id: 'q-demo-1', selected_option: 'opt-b' }] },
+      payload: { blueprint_id: BP, attempt_id: '44444444-4444-4444-8444-444444444444', answers: [{ question_id: 'q-demo-1', selected_option: 'opt-b' }] },
     });
     expect(res.json()).toMatchObject({ correct_count: 0 });
     await app.close();
