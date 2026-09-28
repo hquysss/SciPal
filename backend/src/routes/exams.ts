@@ -223,7 +223,9 @@ export const examRoutesAuthoring: FastifyPluginAsync = async (app) => {
       // A published exam stays complete: English name, and every question published and complete.
       const live = row.status === 'published';
       if (live && !(patch.name_en ?? row.name_en)) return reply.code(400).send(needEnglish);
-      if (patch.question_ids !== undefined || live) {
+      // An older exam without a list draws from the subject pool: editing its details leaves that alone.
+      const poolExam = patch.question_ids === undefined && (row.question_ids ?? []).length === 0;
+      if (patch.question_ids !== undefined || (live && !poolExam)) {
         const ids = patch.question_ids ?? row.question_ids ?? [];
         const questions = await checkExamQuestions(supabase, ids, { subject_id: row.subject_id, created_by: row.created_by }, live ? 'review' : 'draft');
         if (!questions.ok) return reply.code(questions.status).send(questions.body);

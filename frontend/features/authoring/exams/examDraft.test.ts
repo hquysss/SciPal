@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { addQuestions, examProblem, examTotals, moveQuestion, removeQuestion, swapQuestion } from './examDraft';
+import { examPatch } from './examDraft';
 
 describe('exam list helpers', () => {
   it('adds without duplicates, moves, removes and swaps in place', () => {
@@ -28,5 +29,14 @@ describe('examProblem', () => {
     expect(examProblem({ ...draft, question_ids: [] }, false)).toBeNull();
     expect(examProblem({ ...draft, question_ids: [] }, true)?.vi).toBe('Đề cần ít nhất một câu hỏi.');
     expect(examProblem({ ...draft, name_en: '' }, true)?.vi).toMatch(/tiếng Anh/);
+  });
+});
+
+describe('examPatch', () => {
+  const form = { name: 'Đề', name_en: 'Exam', subject_id: 's', grade: 10, duration_minutes: 60, question_ids: [] as string[] };
+  it('leaves the question list alone for an older exam that draws from the pool', () => {
+    expect(examPatch(form, { question_ids: [] }, 't')).not.toHaveProperty('question_ids');
+    expect(examPatch({ ...form, question_ids: ['a'] }, { question_ids: [] }, 't')).toMatchObject({ question_ids: ['a'] });
+    expect(examPatch(form, { question_ids: ['a'] }, 't')).toMatchObject({ question_ids: [], expected_updated_at: 't' });
   });
 });

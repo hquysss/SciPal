@@ -53,3 +53,17 @@ describe('listQuestions', () => {
     fetchSpy.mockRestore();
   });
 });
+
+describe('fetchQuestionsByIds', () => {
+  it('asks in batches of 100 (an exam may list 200) and merges the pages', async () => {
+    const ids = Array.from({ length: 150 }, (_, i) => `q${i}`);
+    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockImplementation(async (url) => {
+      const asked = new URL(String(url), 'http://x').searchParams.get('ids')!.split(',');
+      return new Response(JSON.stringify({ questions: asked.map((id) => ({ id })), page: 1, page_size: asked.length, total: asked.length }), { status: 200 });
+    });
+    const res = await fetchQuestionsByIds(ids, 'exam');
+    expect(fetchSpy).toHaveBeenCalledTimes(2);
+    expect(res.ok && res.data.questions.map((q) => q.id)).toEqual(ids);
+    fetchSpy.mockRestore();
+  });
+});

@@ -31,6 +31,16 @@ export function examTotals(rows: Array<{ type: string; difficulty: number }>) {
   return { byType, byDifficulty, total: rows.length };
 }
 
+/**
+ * The body of a save. An older exam that draws from the subject pool (no stored list) keeps
+ * drawing while the author has not added questions, so its empty list is not sent.
+ */
+export function examPatch<F extends { question_ids: string[] }>(form: F, saved: { question_ids: string[] }, expectedUpdatedAt: string) {
+  const { question_ids, ...rest } = form;
+  const keepPool = saved.question_ids.length === 0 && question_ids.length === 0;
+  return { ...rest, ...(keepPool ? {} : { question_ids }), expected_updated_at: expectedUpdatedAt };
+}
+
 /** Why the exam cannot be saved (or, with `forReview`, submitted or published) yet; null when it can. */
 export function examProblem(
   draft: { name: string; name_en: string; duration_minutes: number; question_ids: string[] },

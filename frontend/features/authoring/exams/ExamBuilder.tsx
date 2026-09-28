@@ -15,7 +15,7 @@ import { emptyQuestion, QUESTION_TYPE_LABEL } from '../practice/questionDraft';
 import { approveExam, createExam, drawExamQuestions, submitExam, updateExam, type ExamDetail, type ExamInput } from './api';
 import { BankBrowser } from './BankBrowser';
 import { DrawPanel } from './DrawPanel';
-import { addQuestions, examProblem, examTotals, moveQuestion, removeQuestion, swapQuestion } from './examDraft';
+import { addQuestions, examPatch, examProblem, examTotals, moveQuestion, removeQuestion, swapQuestion } from './examDraft';
 import { DIFFICULTY_LABEL, questionStem } from './QuestionBank';
 
 type Bilingual = { en: string; vi: string };
@@ -56,6 +56,7 @@ export function ExamBuilder({ exam, subjects, isAdmin, initialQuestions = [] }: 
   const [dirty, setDirty] = useState(false);
   const [rows, setRows] = useState<Record<string, AuthorQuestion>>(() => Object.fromEntries(initialQuestions.map((q) => [q.id, q])));
   const [loadingRows, setLoadingRows] = useState(false);
+  const [rowsFailed, setRowsFailed] = useState(false);
   const [panel, setPanel] = useState<Panel>(null);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<Message | null>(null);
@@ -76,6 +77,7 @@ export function ExamBuilder({ exam, subjects, isAdmin, initialQuestions = [] }: 
     void fetchQuestionsByIds(missingKey.split(','), 'exam').then((res) => {
       if (!live) return;
       setLoadingRows(false);
+      setRowsFailed(!res.ok);
       if (res.ok) setRows((old) => ({ ...old, ...Object.fromEntries(res.data.questions.map((q) => [q.id, q])) }));
     });
     return () => {
@@ -98,7 +100,7 @@ export function ExamBuilder({ exam, subjects, isAdmin, initialQuestions = [] }: 
       return null;
     }
     const res = saved
-      ? await updateExam(saved.id, { ...form, expected_updated_at: saved.updated_at })
+      ? await updateExam(saved.id, examPatch(form, saved, saved.updated_at))
       : await createExam({ ...form, ...(isAdmin && publishNow ? { publish: true } : {}) });
     if (!res.ok) {
       setMessage({ text: res.error, tone: 'danger' });
@@ -315,7 +317,11 @@ export function ExamBuilder({ exam, subjects, isAdmin, initialQuestions = [] }: 
                       </>
                     ) : (
                       <p className="text-sm text-ink-muted">
-                        {loadingRows ? t({ en: 'Loading…', vi: 'Đang tải…' }) : t({ en: 'Question not found — remove it.', vi: 'Không tìm thấy câu hỏi — hãy bỏ khỏi đề.' })}
+                        {loadingRows
+                          ? t({ en: 'Loading…', vi: 'Đang tải…' })
+                          : rowsFailed
+                            ? t({ en: 'Could not load this question. Reload the page.', vi: 'Không tải được câu hỏi. Hãy tải lại trang.' })
+                            : t({ en: 'Question not found — remove it.', vi: 'Không tìm thấy câu hỏi — hãy bỏ khỏi đề.' })}
                       </p>
                     )}
                   </div>

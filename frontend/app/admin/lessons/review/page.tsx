@@ -8,6 +8,7 @@ import {
 } from '@/features/authoring/authoringQueries';
 import { ExamImportReviewActions } from '@/features/content-import/ExamImportReviewActions';
 import { PendingExamReviews } from '@/features/authoring/exams/ExamReview';
+import { ReviewTabs } from '@/components/nav/ReviewTabs';
 import { LessonDeleteActions } from '@/features/authoring/LessonDeleteActions';
 import { lessonStatusLabel } from '@/features/authoring/lessonStatus';
 import { getAuthoringSession } from '@/features/authoring/serverAuth';
@@ -76,18 +77,7 @@ export default async function LessonReviewQueuePage({ searchParams }: { searchPa
         </p>
       </header>
 
-      <nav aria-label="Hàng chờ" className="flex gap-1 border-b border-line">
-        {([['lessons', '/admin/lessons/review', 'Lessons', 'Bài giảng'], ['exams', '/admin/lessons/review?tab=exams', 'Exams', 'Đề thi']] as const).map(([id, href, en, vi]) => (
-          <Link
-            key={id}
-            href={href}
-            aria-current={tab === id ? 'page' : undefined}
-            className={`-mb-px inline-flex min-h-11 items-center border-b-2 px-3 text-sm font-semibold ${tab === id ? 'border-action text-ink' : 'border-transparent text-ink-muted hover:text-ink'}`}
-          >
-            <Bi en={en} vi={vi} />
-          </Link>
-        ))}
-      </nav>
+      <ReviewTabs active={tab} />
 
       {tab === 'exams' && (
       <section aria-labelledby="builder-exams-title" className="flex flex-col gap-3">

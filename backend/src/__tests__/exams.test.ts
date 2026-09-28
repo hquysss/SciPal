@@ -104,6 +104,16 @@ describe('exam authoring routes', () => {
     await app.close();
   });
 
+  it('lets an admin fix the details of an older exam that draws from the subject pool', async () => {
+    const legacy = exam({ status: 'published', question_ids: null, sections: [{ type: 'mc', difficulty: 1, count: 20 }] });
+    const write = mockQuery({ data: { ...legacy, duration_minutes: 60 }, error: null });
+    const app = await build(admin, { exam_blueprints: [mockQuery({ data: legacy, error: null }), write] });
+    const res = await app.inject({ method: 'PATCH', url: `/api/authoring/exams/${EXAM}`, payload: { duration_minutes: 60, expected_updated_at: STAMP } });
+    expect(res.statusCode).toBe(200);
+    expect(write.updated[0]).toEqual({ duration_minutes: 60 });
+    await app.close();
+  });
+
   it('refuses to move an exam to another subject', async () => {
     const app = await build(teacher, { exam_blueprints: mockQuery({ data: exam(), error: null }) });
     const res = await app.inject({ method: 'PATCH', url: `/api/authoring/exams/${EXAM}`, payload: { subject_id: '99999999-9999-4999-8999-999999999999', expected_updated_at: STAMP } });
