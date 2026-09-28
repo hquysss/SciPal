@@ -157,6 +157,8 @@ Thực thi từng nhánh/PR con, phụ thuộc Task 1 và 4. Đây là dependenc
 
 ## Task 6 / PR 6: Order state machine và QR payOS
 
+> **29/09 — đã làm:** migration `20260929040000_billing_payments` (`billing_create_order`, `billing_apply_payment`, `checkout_url`), `billing/providers/payos.ts`, `routes/billingCheckout.ts` (checkout / order / webhook), SQL tests + kiểm 10 callback đồng thời. Đối soát: đơn đang chờ được đối chiếu với payOS mỗi khi chủ đơn mở trang đơn (thay cho job định kỳ); chưa có trang admin xem đối soát. Chưa thử với merchant thật (chưa có khóa).
+
 **Branch:** `codex/billing-payos`; depends Task 1.
 
 **Files:** create `backend/src/billing/payments.ts`, `backend/src/billing/providers/payos.ts`, `backend/src/routes/billing.ts`, `backend/src/routes/billingWebhooks.ts`, `backend/src/__tests__/billing-payments.test.ts`, `backend/src/__tests__/payos.test.ts`; modify `backend/src/plugins/auth.ts`, `backend/src/index.ts`.

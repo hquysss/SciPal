@@ -27,4 +27,10 @@ describe('middleware legacy education preference cleanup', () => {
     expect(response.headers.get('set-cookie')).toBeNull();
     expect(middlewareMocks.createServerClient).not.toHaveBeenCalled();
   });
+
+  it('sends a visitor of an order page to sign in first, then back to the order', async () => {
+    const response = await middleware(new NextRequest('http://localhost/checkout/c0000000-0000-4000-8000-000000000001'));
+    expect(response.status).toBe(307);
+    expect(response.headers.get('location')).toContain('/login?redirect=%2Fcheckout%2Fc0000000-0000-4000-8000-000000000001');
+  });
 });

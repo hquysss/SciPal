@@ -34,7 +34,7 @@ async function build(user: object | null, tables: Record<string, MockBuilder | M
   await app.ready();
   return app;
 }
-const checkout = (app: Awaited<ReturnType<typeof build>>, payload: unknown = input) => app.inject({ method: 'POST', url: '/api/billing/checkout', payload });
+const checkout = (app: Awaited<ReturnType<typeof build>>, payload: Record<string, unknown> = input) => app.inject({ method: 'POST', url: '/api/billing/checkout', payload });
 
 beforeEach(() => { rpcCalls.length = 0; });
 
