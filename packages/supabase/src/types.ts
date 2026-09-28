@@ -1,4 +1,4 @@
-import type { Block } from '@scipal/types';
+import type { BillingInterval, Block, PlanCode, QuotaMetric } from '@scipal/types';
 
 export type Json =
   | string
@@ -14,9 +14,256 @@ export type CurriculumRole = 'required' | 'elective_choice' | 'optional' | 'requ
 export type CodeLanguage = 'python' | 'cpp';
 export interface BilingualText { en: string; vi: string }
 
+type DbTable<Row, Insert, Update = Partial<Row>> = {
+  Row: Row;
+  Insert: Insert;
+  Update: Update;
+  Relationships: [];
+};
+type WithDefaults<Row, Defaults extends keyof Row> = Omit<Row, Defaults> & Partial<Pick<Row, Defaults>>;
+type PaidPlanCode = Exclude<PlanCode, 'student_free' | 'teacher_free'>;
+type BillingTables = {
+  billing_plans: DbTable<{
+    code: PlanCode;
+    audience: 'student' | 'teacher';
+    name_en: string;
+    name_vi: string;
+    description_en: string;
+    description_vi: string;
+    active: boolean;
+    version: number;
+    created_at: string;
+  }, WithDefaults<{
+    code: PlanCode;
+    audience: 'student' | 'teacher';
+    name_en: string;
+    name_vi: string;
+    description_en: string;
+    description_vi: string;
+    active: boolean;
+    version: number;
+    created_at: string;
+  }, 'active' | 'version' | 'created_at'>>;
+  billing_prices: DbTable<{
+    id: string;
+    plan_code: PaidPlanCode;
+    interval: BillingInterval;
+    amount_vnd: number;
+    currency: 'VND';
+    active: boolean;
+    created_at: string;
+  }, WithDefaults<{
+    id: string;
+    plan_code: PaidPlanCode;
+    interval: BillingInterval;
+    amount_vnd: number;
+    currency: 'VND';
+    active: boolean;
+    created_at: string;
+  }, 'id' | 'currency' | 'active' | 'created_at'>>;
+  billing_plan_limits: DbTable<{
+    plan_code: PlanCode;
+    metric: QuotaMetric;
+    kind: 'monthly' | 'capacity';
+    limit_value: number;
+  }, { plan_code: PlanCode; metric: QuotaMetric; kind: 'monthly' | 'capacity'; limit_value: number }>;
+  billing_orders: DbTable<{
+    id: string;
+    user_id: string | null;
+    price_id: string;
+    plan_code: PaidPlanCode;
+    interval: BillingInterval;
+    amount_vnd: number;
+    currency: 'VND';
+    purpose: 'subscription';
+    status: 'pending' | 'paid' | 'failed' | 'expired' | 'cancelled' | 'reconciliation';
+    idempotency_key: string;
+    payload_hash: string;
+    expires_at: string;
+    paid_at: string | null;
+    created_at: string;
+  }, WithDefaults<{
+    id: string;
+    user_id: string | null;
+    price_id: string;
+    plan_code: PaidPlanCode;
+    interval: BillingInterval;
+    amount_vnd: number;
+    currency: 'VND';
+    purpose: 'subscription';
+    status: 'pending' | 'paid' | 'failed' | 'expired' | 'cancelled' | 'reconciliation';
+    idempotency_key: string;
+    payload_hash: string;
+    expires_at: string;
+    paid_at: string | null;
+    created_at: string;
+  }, 'id' | 'currency' | 'purpose' | 'status' | 'paid_at' | 'created_at'>>;
+  billing_payment_attempts: DbTable<{
+    id: string;
+    order_id: string;
+    provider: 'payos' | 'vnpay';
+    provider_reference: string;
+    provider_transaction_id: string | null;
+    status: 'pending' | 'paid' | 'failed' | 'cancelled' | 'expired' | 'reconciliation';
+    amount_vnd: number;
+    currency: 'VND';
+    created_at: string;
+    updated_at: string;
+  }, WithDefaults<{
+    id: string;
+    order_id: string;
+    provider: 'payos' | 'vnpay';
+    provider_reference: string;
+    provider_transaction_id: string | null;
+    status: 'pending' | 'paid' | 'failed' | 'cancelled' | 'expired' | 'reconciliation';
+    amount_vnd: number;
+    currency: 'VND';
+    created_at: string;
+    updated_at: string;
+  }, 'id' | 'provider_transaction_id' | 'status' | 'currency' | 'created_at' | 'updated_at'>>;
+  billing_events: DbTable<{
+    id: string;
+    provider: 'payos' | 'vnpay';
+    fingerprint: string;
+    event_type: string;
+    merchant_reference: string | null;
+    provider_transaction_id: string | null;
+    outcome: 'paid' | 'failed' | 'cancelled' | 'expired' | 'unverified';
+    verification_state: 'verified' | 'rejected' | 'reconciliation';
+    received_at: string;
+    processed_at: string | null;
+  }, WithDefaults<{
+    id: string;
+    provider: 'payos' | 'vnpay';
+    fingerprint: string;
+    event_type: string;
+    merchant_reference: string | null;
+    provider_transaction_id: string | null;
+    outcome: 'paid' | 'failed' | 'cancelled' | 'expired' | 'unverified';
+    verification_state: 'verified' | 'rejected' | 'reconciliation';
+    received_at: string;
+    processed_at: string | null;
+  }, 'id' | 'merchant_reference' | 'provider_transaction_id' | 'received_at' | 'processed_at'>>;
+  billing_subscriptions: DbTable<{
+    user_id: string;
+    plan_code: PaidPlanCode;
+    paid_through: string;
+    pending_price_id: string | null;
+    renewal_mode: 'manual' | 'auto';
+    mandate_id: string | null;
+    version: number;
+    created_at: string;
+    updated_at: string;
+  }, WithDefaults<{
+    user_id: string;
+    plan_code: PaidPlanCode;
+    paid_through: string;
+    pending_price_id: string | null;
+    renewal_mode: 'manual' | 'auto';
+    mandate_id: string | null;
+    version: number;
+    created_at: string;
+    updated_at: string;
+  }, 'pending_price_id' | 'renewal_mode' | 'mandate_id' | 'version' | 'created_at' | 'updated_at'>>;
+  billing_grants: DbTable<{
+    id: string;
+    order_id: string;
+    user_id: string | null;
+    plan_code: PaidPlanCode;
+    starts_at: string;
+    paid_through: string;
+    created_at: string;
+  }, WithDefaults<{
+    id: string;
+    order_id: string;
+    user_id: string | null;
+    plan_code: PaidPlanCode;
+    starts_at: string;
+    paid_through: string;
+    created_at: string;
+  }, 'id' | 'user_id' | 'created_at'>>;
+  account_quota_versions: DbTable<{
+    user_id: string;
+    version: number;
+    updated_at: string;
+  }, WithDefaults<{ user_id: string; version: number; updated_at: string }, 'version' | 'updated_at'>>;
+  account_quota_overrides: DbTable<{
+    user_id: string;
+    metric: QuotaMetric;
+    limit_value: number;
+    expires_at: string | null;
+    version: number;
+    updated_by: string | null;
+    updated_at: string;
+  }, WithDefaults<{
+    user_id: string;
+    metric: QuotaMetric;
+    limit_value: number;
+    expires_at: string | null;
+    version: number;
+    updated_by: string | null;
+    updated_at: string;
+  }, 'updated_by' | 'updated_at'>>;
+  account_quota_audit: DbTable<{
+    id: string;
+    actor_id: string | null;
+    target_id: string | null;
+    before_state: Json;
+    after_state: Json;
+    reason: string;
+    created_at: string;
+  }, WithDefaults<{
+    id: string;
+    actor_id: string | null;
+    target_id: string | null;
+    before_state: Json;
+    after_state: Json;
+    reason: string;
+    created_at: string;
+  }, 'id' | 'actor_id' | 'target_id' | 'created_at'>>;
+  quota_usage: DbTable<{
+    user_id: string;
+    metric: QuotaMetric;
+    period_start: string;
+    used: number;
+    reserved: number;
+    updated_at: string;
+  }, WithDefaults<{
+    user_id: string;
+    metric: QuotaMetric;
+    period_start: string;
+    used: number;
+    reserved: number;
+    updated_at: string;
+  }, 'used' | 'reserved' | 'updated_at'>>;
+  quota_operations: DbTable<{
+    operation_id: string;
+    user_id: string;
+    metric: QuotaMetric;
+    period_start: string;
+    request_hash: string;
+    units: number;
+    state: 'reserved' | 'committed' | 'released';
+    lease_expires_at: string;
+    created_at: string;
+    settled_at: string | null;
+  }, WithDefaults<{
+    operation_id: string;
+    user_id: string;
+    metric: QuotaMetric;
+    period_start: string;
+    request_hash: string;
+    units: number;
+    state: 'reserved' | 'committed' | 'released';
+    lease_expires_at: string;
+    created_at: string;
+    settled_at: string | null;
+  }, 'created_at' | 'settled_at'>>;
+};
+
 export interface Database {
   public: {
-    Tables: {
+    Tables: BillingTables & {
       subjects: {
         Row: {
           id: string;
@@ -801,7 +1048,33 @@ export interface Database {
       [_ in never]: never;
     };
     Functions: {
-      [_ in never]: never;
+      billing_get_effective_quotas: {
+        Args: { p_user_id: string; p_now: string };
+        Returns: Array<{
+          metric: QuotaMetric;
+          kind: 'monthly' | 'capacity';
+          quota_limit: number;
+          used: number;
+          reserved: number;
+          source: 'plan' | 'override';
+          expires_at: string | null;
+          resets_at: string | null;
+        }>;
+      };
+      billing_reserve_quota: {
+        Args: {
+          p_user_id: string;
+          p_metric: QuotaMetric;
+          p_operation_id: string;
+          p_request_hash: string;
+          p_units?: number;
+        };
+        Returns: Json;
+      };
+      billing_settle_quota: {
+        Args: { p_operation_id: string; p_outcome: 'commit' | 'release' };
+        Returns: boolean;
+      };
     };
     Enums: {
       [_ in never]: never;

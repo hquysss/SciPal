@@ -67,12 +67,12 @@ Mọi interface bên dưới dùng các DTO trên; `BillingRepository` là backe
 
 **Consumes:** user IDs/roles đã xác thực, schema hiện tại. **Produces:** catalog + effective quota + order/subscription ledger theo spec.
 
-- [ ] Viết test trước: đúng bốn gói và giá; override 500 thắng 200; override hết hạn về 200; 0 chặn; reset không xóa used=40; tháng VN đổi tại 17:00Z ngày cuối tháng; annual không cấp 12 lần quota.
-- [ ] Chạy `pnpm --filter @scipal/types test -- src/__tests__/billing.test.ts` và `pnpm --filter @scipal/api test -- src/__tests__/billing-periods.test.ts src/__tests__/billing-repository.test.ts`; xác nhận fail do behavior thiếu.
-- [ ] Implement `quotaPeriod(now: Date): { start: string; end: string }`, `paidThrough(start: Date, interval: BillingInterval): string`; SQL seed catalog/limits EN/VI chính xác; price snapshots bất biến.
+- [x] Viết test trước: đúng bốn gói và giá; override 500 thắng 200; override hết hạn về 200; 0 chặn; reset không xóa used=40; tháng VN đổi tại 17:00Z ngày cuối tháng; annual không cấp 12 lần quota.
+- [x] Chạy `pnpm --filter @scipal/types test -- src/__tests__/billing.test.ts` và `pnpm --filter @scipal/api test -- src/__tests__/billing-periods.test.ts src/__tests__/billing-repository.test.ts`; xác nhận fail do behavior thiếu.
+- [x] Implement `quotaPeriod(now: Date): { start: string; end: string }`, `paidThrough(start: Date, interval: BillingInterval): string`; SQL seed catalog/limits EN/VI chính xác; price snapshots bất biến.
 - [ ] Implement repository `getEffectiveQuotas(userId, now): Promise<EffectiveQuota[]>`, `reserveQuota(userId, metric, operationId, units, requestHash): Promise<Reservation>`, `settleQuota(operationId, outcome: 'commit'|'release'): Promise<void>`. Reservation có lease, status và id; retry requestHash khác trả 409.
 - [ ] SQL RPC lock theo account/metric/period, counter không âm, audit/event uniqueness, quyền service_role. Capacity mutation + kiểm limit cùng transaction, không read-count rồi insert hai request riêng.
-- [ ] Chạy lại unit tests; chạy SQL integration bằng `psql -X -v ON_ERROR_STOP=1 --file supabase/tests/billing.sql` trên DB thử nghiệm được cấu hình qua kết nối của runner, không lấy credential từ .env. SQL kiểm rollback/grant/RLS; sau đó chạy `pnpm --filter @scipal/api exec tsx scripts/verify-billing-concurrency.ts` dùng kết nối DB thử nghiệm của runner: Promise.all 20 RPC reserve độc lập với một lượt còn lại, đúng một success; user A/B isolation. Script từ chối chạy nếu chưa có dấu xác nhận database thử nghiệm, không tự lấy credential remote. Nếu chưa có DB thử nghiệm, ghi blocked SQL evidence, không gọi foundation ready.
+- [ ] Chạy SQL integration bằng `psql -X -v ON_ERROR_STOP=1 --file supabase/tests/billing.sql` trên PostgreSQL thử nghiệm CI, không lấy credential từ .env. SQL kiểm RLS/grant/quota/idempotency/snapshot; sau đó chạy `pnpm --filter @scipal/api exec tsx scripts/verify-billing-concurrency.ts`: Promise.all 20 RPC reserve độc lập với một lượt còn lại, đúng một success; user A/B isolation. Script từ chối chạy nếu chưa có dấu xác nhận database thử nghiệm, không tự lấy credential remote. Nếu CI chưa xác nhận, không gọi foundation ready.
 - [ ] Chạy full gate theo Global Constraints, review diff, commit `feat(billing): add catalog and atomic quota ledger`, mở PR.
 
 ## Task 2 / PR 2: Admin chỉnh quota từng tài khoản
