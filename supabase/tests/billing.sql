@@ -477,6 +477,10 @@ begin
   exception when insufficient_privilege then v_denied := true;
   end;
   if not v_denied then raise exception 'A signed-in user read exam attempts directly'; end if;
+end;
+$$;
+reset role;
+
 -- Teacher capacity (migration 20260929020000).
 set role service_role;
 do $$
