@@ -126,6 +126,8 @@ Thực thi từng nhánh/PR con, phụ thuộc Task 1 và 4. Đây là dependenc
 
 ### 5a. Nhập file có xác nhận server — codex/teacher-import-metering
 
+> **28/09 — tạm thời đã làm:** mỗi lần nhập của giáo viên giữ/chốt 1 lượt `import_files` ngay trong `routes/examImport.ts` (tính khi lưu xong, trả khi lỗi; `import-quotas.test.ts`). Các mục dưới (receipt server, upload riêng, parse phía server) vẫn chưa làm.
+
 **Files:** new `backend/src/routes/importFiles.ts`, `backend/src/imports/fileReceipts.ts`, `backend/src/__tests__/import-quotas.test.ts`; modify `backend/src/routes/examImport.ts`, `frontend/features/content-import/ContentImportStudio.tsx`, `lessonDocument.ts`, `examWorkbook.ts`; new SQL cho import receipt/private temporary storage.
 
 - [ ] Test fail: client fileCount=0 không miễn lượt; hai route import đều cần receipt owner; preview/corrupt file không trừ; retry save cùng receipt một lần; receipt A không dùng cho account B hoặc payload khác; batch lỗi không bị trừ thành công.
@@ -146,6 +148,8 @@ Thực thi từng nhánh/PR con, phụ thuộc Task 1 và 4. Đây là dependenc
 - [x] UI loading/error/preview/apply, không đè bài đang gõ; test trước, QA, full gate, commit, PR.
 
 ### 5c. Nghiệm thu giao bài — codex/class-assignments-readiness
+
+> **Khảo sát 28/09 (base sau #42):** bảng `assignments` (class_id, lesson_id, blueprint_id, due_at) có từ `0003_user_data`; RLS chỉ SELECT cho giáo viên chủ lớp/thành viên, không ai ghi được từ client; backend không có route tạo/xem bài giao (`routes/classes.ts` chỉ tạo lớp, vào lớp, xem danh sách); frontend không có UI giao bài. ⇒ Chưa có luồng thật; bước tiếp là spec/plan con. Trang `/pricing` không quảng cáo "giao bài".
 
 - [ ] Khảo sát lại API assignments/UI trên base mới; kiểm teacher ownership, class membership, học sinh chỉ thấy bài được giao, error/empty và không gửi answer key.
 - [ ] Nếu chưa có luồng thật, viết spec/plan con theo schema assignments hiện tại trước triển khai; đầu ra bắt buộc là giao bài và học sinh mở đúng bài, có test trước và full gate.
@@ -195,6 +199,8 @@ Thực thi từng nhánh/PR con, phụ thuộc Task 1 và 4. Đây là dependenc
 - [ ] Test tại môi trường provider đã cấp, full gate, commit, PR. Không dùng user request “cả hai” để tự đăng ký dịch vụ hoặc charge thật.
 
 ## Task 9 / PR 9: Pricing, checkout và quản lý gói
+
+> **28/09 — phần không thanh toán đã làm:** `GET /api/billing/plans` (công khai) + `GET /api/billing/me` (`routes/billingPlans.ts`), `/pricing` (`features/billing/PricingPage.tsx`, nút "Sắp mở bán" khi `checkoutOpen=false`), `/profile/plan` "Gói của tôi" (`features/billing/MyPlan.tsx`; đặt dưới `/profile/` để dùng sẵn bảo vệ của middleware thay cho `/account/billing`). Chưa làm: checkout, poll đơn, chọn QR/thẻ, auto-renew (phụ thuộc Task 6–8); chưa thêm link Bảng giá vào NavBar.
 
 **Branch:** `codex/account-pricing`; depends Task 2–7; Task 8 optional capability.
 

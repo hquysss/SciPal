@@ -2,7 +2,8 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { BookOpen, Languages } from 'lucide-react';
+import Link from 'next/link';
+import { BookOpen, Gauge, Languages } from 'lucide-react';
 import { useLanguage } from '@scipal/hooks';
 import { buttonVariants } from '@/components/ui/button';
 import { createBrowserClient } from '@/lib/supabase';
@@ -80,6 +81,23 @@ export function AccountSettings({ currentRole = 'student', educationPreference, 
               {t({ en: 'This role reflects SciPal access and does not verify a school or class.', vi: 'Vai trò này phản ánh quyền trong SciPal, không xác minh trường hoặc lớp học.' })}
             </p>
           </div>
+
+          {isAuthenticated && (
+            <div className="flex flex-col justify-between gap-3 border-b border-line pb-4 sm:flex-row sm:items-center">
+              <div>
+                <div className={rowLabel}>
+                  <Gauge aria-hidden="true" className="h-4 w-4" />
+                  <span>{t({ en: 'My plan', vi: 'Gói của tôi' })}</span>
+                </div>
+                <div className={rowHint}>
+                  {t({ en: 'Your plan and how many AI tutor and exam turns are left', vi: 'Gói đang dùng và số lượt Gia sư AI, lượt thi còn lại' })}
+                </div>
+              </div>
+              <Link href="/profile/plan" className={buttonVariants({ variant: 'outline', className: 'self-start sm:self-auto' })}>
+                {t({ en: 'View', vi: 'Xem' })}
+              </Link>
+            </div>
+          )}
 
           <EducationLevelSetting preference={educationPreference} isAuthenticated={isAuthenticated} />
 

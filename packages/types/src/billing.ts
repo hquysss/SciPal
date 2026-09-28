@@ -30,6 +30,12 @@ export const BillingPriceSchema = z.object({
   amountVnd: z.number().int().positive(),
 }).strict();
 
+export const PlanLimitSchema = z.object({
+  metric: QuotaMetricSchema,
+  kind: QuotaKindSchema,
+  limit: z.number().int().nonnegative(),
+}).strict();
+
 export const BillingPlanSchema = z.object({
   code: PlanCodeSchema,
   audience: BillingAudienceSchema,
@@ -38,6 +44,7 @@ export const BillingPlanSchema = z.object({
   active: z.boolean(),
   version: z.number().int().positive(),
   prices: z.array(BillingPriceSchema),
+  limits: z.array(PlanLimitSchema),
 }).strict().superRefine((plan, context) => {
   const expectedAudience = plan.code.startsWith('student_') ? 'student' : 'teacher';
   if (plan.audience !== expectedAudience) {
@@ -67,6 +74,14 @@ export const EffectiveQuotaSchema = z.object({
   source: QuotaSourceSchema,
   expiresAt: IsoDateTimeSchema.nullable(),
   resetsAt: IsoDateTimeSchema.nullable(),
+}).strict();
+
+/** GET /api/billing/me: the plan of the signed-in account; admins have no plan and no limits. */
+export const BillingAccountSchema = z.object({
+  role: z.enum(['student', 'teacher', 'admin']),
+  plan: PlanCodeSchema.nullable(),
+  paidThrough: IsoDateTimeSchema.nullable(),
+  quotas: z.array(EffectiveQuotaSchema),
 }).strict();
 
 export const QuotaChangeSchema = z.discriminatedUnion('action', [
@@ -112,4 +127,6 @@ export type EffectiveQuota = z.infer<typeof EffectiveQuotaSchema>;
 export type BillingCatalog = z.infer<typeof BillingCatalogSchema>;
 export type BillingPlan = z.infer<typeof BillingPlanSchema>;
 export type BillingPrice = z.infer<typeof BillingPriceSchema>;
+export type PlanLimit = z.infer<typeof PlanLimitSchema>;
+export type BillingAccount = z.infer<typeof BillingAccountSchema>;
 export type Reservation = z.infer<typeof ReservationSchema>;
