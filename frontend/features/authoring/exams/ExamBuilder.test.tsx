@@ -37,4 +37,16 @@ describe('ExamBuilder', () => {
     expect(html).toContain('Thêm câu khó');
     expect(html).toContain('Lưu đề');
   });
+
+  it('offers "Xuất bản" only on an admin’s own draft', () => {
+    const draft = { ...exam, status: 'draft' as const, editable: true };
+    expect(renderToStaticMarkup(<ExamBuilder exam={draft} subjects={subjects} isAdmin />)).toContain('>Xuất bản<');
+    expect(renderToStaticMarkup(<ExamBuilder exam={{ ...draft, mine: false }} subjects={subjects} isAdmin />)).not.toContain('>Xuất bản<');
+  });
+
+  it('offers "Xóa đề" on a saved draft', () => {
+    const draft = { ...exam, status: 'draft' as const, editable: true };
+    expect(renderToStaticMarkup(<ExamBuilder exam={draft} subjects={subjects} isAdmin={false} />)).toContain('Xóa đề');
+    expect(renderToStaticMarkup(<ExamBuilder exam={null} subjects={subjects} isAdmin={false} />)).not.toContain('Xóa đề');
+  });
 });
