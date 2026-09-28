@@ -75,6 +75,7 @@ it('reports the exam service unavailable, with no XP, when there is no database'
     url: '/api/score/exam',
     payload: {
       blueprint_id: 'demo-bp',
+      attempt_id: ATTEMPT_ID,
       answers: [{ question_id: 'q-demo-1', selected_option: 'opt-b' }],
     },
   });
@@ -84,9 +85,16 @@ it('reports the exam service unavailable, with no XP, when there is no database'
   await app.close();
 });
 
-async function buildScoringApp(tables: Parameters<typeof mockSupabase>[0]) {
+const ATTEMPT_ID = '44444444-4444-4444-8444-444444444444';
+/** A started, unmetered attempt for the exam, so scoring tests need not repeat it. */
+const attemptFor = (blueprintId: string) => [
+  mockQuery({ data: { id: ATTEMPT_ID, user_id: 'student-1', blueprint_id: blueprintId, metered: false, status: 'started', score: null, correct_count: null, total_questions: null, xp_earned: null }, error: null }),
+  mockQuery({ data: [{ id: ATTEMPT_ID }], error: null }),
+];
+
+async function buildScoringApp(tables: Parameters<typeof mockSupabase>[0], blueprintId = BLUEPRINT_ID) {
   const scoringApp = Fastify();
-  scoringApp.decorate('supabase', mockSupabase(tables));
+  scoringApp.decorate('supabase', mockSupabase({ exam_attempts: attemptFor(blueprintId), ...tables }));
   scoringApp.addHook('onRequest', async (request) => {
     (request as typeof request & { user: { id: string } }).user = { id: 'student-1' };
   });
@@ -111,7 +119,7 @@ describe('POST /api/score/exam integrity', () => {
       method: 'POST',
       url: '/api/score/exam',
       payload: {
-        blueprint_id: BLUEPRINT_ID,
+        blueprint_id: BLUEPRINT_ID, attempt_id: ATTEMPT_ID,
         answers: Array.from({ length: 5 }, () => ({ question_id: 'q1', selected_option: 'a' })),
       },
     });
@@ -134,7 +142,7 @@ describe('POST /api/score/exam integrity', () => {
     const res = await scoringApp.inject({
       method: 'POST',
       url: '/api/score/exam',
-      payload: { blueprint_id: BLUEPRINT_ID, answers: [{ question_id: 'q1', selected_option: 'a' }] },
+      payload: { blueprint_id: BLUEPRINT_ID, attempt_id: ATTEMPT_ID, answers: [{ question_id: 'q1', selected_option: 'a' }] },
     });
 
     expect(res.statusCode).toBe(200);
@@ -154,6 +162,7 @@ describe('POST /api/score/exam integrity', () => {
       url: '/api/score/exam',
       payload: {
         blueprint_id: 'bp-1',
+        attempt_id: ATTEMPT_ID,
         answers: [{ question_id: 'q1', selected_option: 'a' }],
       },
     });
@@ -175,7 +184,7 @@ describe('POST /api/score/exam integrity', () => {
       method: 'POST',
       url: '/api/score/exam',
       payload: {
-        blueprint_id: BLUEPRINT_ID,
+        blueprint_id: BLUEPRINT_ID, attempt_id: ATTEMPT_ID,
         answers: [{ question_id: 'q1', selected_option: 'a' }],
       },
     });
@@ -195,7 +204,7 @@ describe('POST /api/score/exam integrity', () => {
     const res = await scoringApp.inject({
       method: 'POST',
       url: '/api/score/exam',
-      payload: { blueprint_id: BLUEPRINT_ID, answers: [{ question_id: 'q1', selected_option: 'a' }] },
+      payload: { blueprint_id: BLUEPRINT_ID, attempt_id: ATTEMPT_ID, answers: [{ question_id: 'q1', selected_option: 'a' }] },
     });
 
     expect(res.json()).toMatchObject({ score: 5, correct_count: 1, total_questions: 2 });
@@ -214,7 +223,7 @@ describe('POST /api/score/exam integrity', () => {
       method: 'POST',
       url: '/api/score/exam',
       payload: {
-        blueprint_id: BLUEPRINT_ID,
+        blueprint_id: BLUEPRINT_ID, attempt_id: ATTEMPT_ID,
         answers: [
           { question_id: 'q1', selected_option: 'b' },
           ...Array.from({ length: 50 }, (_, i) => ({ question_id: `other-${i}`, selected_option: 'a' })),
