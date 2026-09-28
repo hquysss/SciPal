@@ -57,6 +57,15 @@ describe('buildSystemPrompt', () => {
   });
 });
 
+describe('buildSystemPrompt limits', () => {
+  it('says the student can only type text and allows one question per turn', () => {
+    const p = buildSystemPrompt({ language: 'vi', level: null });
+    expect(p).toMatch(/only type text/i);
+    expect(p).toMatch(/never ask for (a )?(photo|image)/i);
+    expect(p).toMatch(/at most one question/i);
+  });
+});
+
 describe('TUTOR_EXAMPLES', () => {
   it('has three exchanges per language, and the Vietnamese ones use thầy – em', () => {
     for (const lang of ['vi', 'en'] as const) expect(TUTOR_EXAMPLES[lang].match(/^Student:/gm)?.length).toBeGreaterThanOrEqual(3);
