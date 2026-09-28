@@ -20,6 +20,7 @@ as $$
 declare
   v_event_id uuid;
   v_attempt record;
+  v_attempt_found boolean := false;
   v_order record;
   v_role text;
   v_audience text;
@@ -34,22 +35,38 @@ begin
     raise exception using errcode = '22023', message = 'INVALID_PAYMENT_EVENT';
   end if;
 
-  insert into public.billing_events (provider, fingerprint, event_type, merchant_reference, provider_transaction_id, amount_vnd, paid_at, outcome, verification_state)
-  values (p_provider, p_fingerprint, coalesce(p_event_type, 'payment'), p_reference, p_transaction_id, p_amount_vnd, p_paid_at, p_outcome, 'verified')
-  on conflict (provider, fingerprint) do nothing
-  returning id into v_event_id;
-  if v_event_id is null then return 'duplicate'; end if;
-
   select a.* into v_attempt
     from public.billing_payment_attempts as a
    where a.provider = p_provider and a.provider_reference = p_reference
    for update;
-  if not found then
+  v_attempt_found := found;
+  if v_attempt_found then
+    select o.* into v_order from public.billing_orders as o where o.id = v_attempt.order_id for update;
+  end if;
+
+  if v_admin_recheck and v_attempt_found and p_outcome = 'paid' and p_transaction_id is not null then
+    select e.id into v_event_id
+      from public.billing_events as e
+     where e.provider = p_provider
+       and e.merchant_reference = p_reference
+       and e.provider_transaction_id is not distinct from p_transaction_id
+     order by (e.verification_state = 'reconciliation') desc, e.received_at desc, e.id desc
+     limit 1
+     for update;
+  end if;
+
+  if v_event_id is null then
+    insert into public.billing_events (provider, fingerprint, event_type, merchant_reference, provider_transaction_id, amount_vnd, paid_at, outcome, verification_state)
+    values (p_provider, p_fingerprint, coalesce(p_event_type, 'payment'), p_reference, p_transaction_id, p_amount_vnd, p_paid_at, p_outcome, 'verified')
+    on conflict (provider, fingerprint) do nothing
+    returning id into v_event_id;
+    if v_event_id is null then return 'duplicate'; end if;
+  end if;
+
+  if not v_attempt_found then
     update public.billing_events set verification_state = 'reconciliation', processed_at = v_now where id = v_event_id;
     return 'reconciliation';
   end if;
-
-  select o.* into v_order from public.billing_orders as o where o.id = v_attempt.order_id for update;
 
   if p_outcome <> 'paid' then
     if v_attempt.status = 'pending' then
@@ -59,8 +76,31 @@ begin
     return 'recorded';
   end if;
 
-  if v_attempt.status = 'paid' and v_attempt.provider_transaction_id is not distinct from p_transaction_id then
+  if v_attempt.provider_transaction_id is not distinct from p_transaction_id
+     and (
+       v_attempt.status = 'paid'
+       or (
+         v_admin_recheck
+         and v_attempt.status = 'reconciliation'
+         and v_order.status = 'paid'
+         and exists (
+           select 1 from public.billing_events as e
+            where e.provider = p_provider
+              and e.merchant_reference = p_reference
+              and e.provider_transaction_id is not distinct from p_transaction_id
+              and e.verification_state = 'verified'
+         )
+       )
+     ) then
     update public.billing_events set processed_at = v_now where id = v_event_id;
+    if v_admin_recheck then
+      update public.billing_events
+         set verification_state = 'verified', processed_at = v_now
+       where provider = p_provider
+         and merchant_reference = p_reference
+         and provider_transaction_id is not distinct from p_transaction_id
+         and verification_state = 'reconciliation';
+    end if;
     return 'duplicate';
   end if;
 

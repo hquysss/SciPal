@@ -580,6 +580,7 @@ declare
   v_before timestamptz;
   v_page_items jsonb;
   v_total_count bigint;
+  v_event_count bigint;
 begin
   select id into v_month from public.billing_prices where plan_code = 'student_plus' and interval = 'month' and active;
   select id into v_year from public.billing_prices where plan_code = 'student_plus' and interval = 'year' and active;
@@ -648,6 +649,41 @@ begin
   v_result := public.billing_apply_payment('payos', '1001', null, 39000, 'failed', null, 'fp-failed-late', 'webhook');
   if (select status from public.billing_payment_attempts where provider_reference = '1001') <> 'paid' then raise exception 'Failure undid a payment'; end if;
 
+  v_result := public.billing_apply_payment('payos', '1001', 'tx-double-payos', 39000, 'paid', now(), 'fp-double-same-link', 'webhook');
+  if v_result <> 'reconciliation' then raise exception 'Second transaction on the paid payOS link: %', v_result; end if;
+  if (select count(*) from public.billing_grants where order_id = v_order.order_id) <> 1 then raise exception 'Second payOS transaction granted twice'; end if;
+  if (select provider_transaction_id from public.billing_payment_attempts where provider_reference = '1001') <> 'tx-1' then
+    raise exception 'The duplicate transaction replaced the original paid transaction';
+  end if;
+
+  select count(*) into v_event_count from public.billing_events
+   where provider = 'payos' and merchant_reference = '1001' and provider_transaction_id = 'tx-1';
+  v_result := public.billing_apply_payment('payos', '1001', 'tx-1', 39000, 'paid', now(), 'fp-admin-original-first', 'admin_reconciliation');
+  if v_result <> 'duplicate' then raise exception 'Rechecking the original transaction: %', v_result; end if;
+  if (select count(*) from public.billing_events where provider = 'payos' and merchant_reference = '1001' and provider_transaction_id = 'tx-1') <> v_event_count
+     or exists (select 1 from public.billing_events where provider = 'payos' and merchant_reference = '1001' and provider_transaction_id = 'tx-1' and verification_state = 'reconciliation') then
+    raise exception 'Rechecking the original transaction created an unresolved incident';
+  end if;
+
+  select count(*) into v_event_count from public.billing_events
+   where provider = 'payos' and merchant_reference = '1001' and provider_transaction_id = 'tx-double-payos';
+  if v_event_count <> 1 then raise exception 'Expected one second-transaction event, got %', v_event_count; end if;
+  v_result := public.billing_apply_payment('payos', '1001', 'tx-double-payos', 39000, 'paid', now(), 'fp-admin-second-first', 'admin_reconciliation');
+  if v_result <> 'reconciliation' then raise exception 'Rechecking the second transaction: %', v_result; end if;
+  if (select count(*) from public.billing_events where provider = 'payos' and merchant_reference = '1001' and provider_transaction_id = 'tx-double-payos') <> v_event_count
+     or (select count(*) from public.billing_events where provider = 'payos' and merchant_reference = '1001' and provider_transaction_id = 'tx-double-payos' and verification_state = 'reconciliation') <> 1 then
+    raise exception 'Rechecking the second transaction duplicated or cleared its incident';
+  end if;
+
+  v_result := public.billing_apply_payment('payos', '1001', 'tx-1', 39000, 'paid', now(), 'fp-admin-original-repeat', 'admin_reconciliation');
+  if v_result <> 'duplicate' then raise exception 'Repeated original-transaction recheck: %', v_result; end if;
+  v_result := public.billing_apply_payment('payos', '1001', 'tx-double-payos', 39000, 'paid', now(), 'fp-admin-second-repeat', 'admin_reconciliation');
+  if v_result <> 'reconciliation' then raise exception 'Repeated second-transaction recheck: %', v_result; end if;
+  if (select count(*) from public.billing_events where provider = 'payos' and merchant_reference = '1001' and provider_transaction_id = 'tx-double-payos') <> v_event_count
+     or (select count(*) from public.billing_events where provider = 'payos' and merchant_reference = '1001' and provider_transaction_id = 'tx-double-payos' and verification_state = 'reconciliation') <> 1 then
+    raise exception 'Repeated recheck created another second-payment incident';
+  end if;
+
   -- Paid twice (QR and card): one grant, the second payment kept for reconciliation.
   v_result := public.billing_apply_payment('vnpay', 'VN1001', 'vn-tx-1', 39000, 'paid', now(), 'fp-vn', 'ipn');
   if v_result <> 'reconciliation' then raise exception 'Second payment: %', v_result; end if;
@@ -696,8 +732,8 @@ begin
   end if;
 
   select items, total_count into v_page_items, v_total_count from public.billing_reconciliation_page(100, 0);
-  if v_total_count <> 4 or pg_catalog.jsonb_array_length(v_page_items) <> 4 then
-    raise exception 'The reconciliation page did not include exactly four payOS incidents: % %', v_total_count, v_page_items;
+  if v_total_count <> 5 or pg_catalog.jsonb_array_length(v_page_items) <> 5 then
+    raise exception 'The reconciliation page did not include exactly five payOS incidents: % %', v_total_count, v_page_items;
   end if;
   if not exists (
     select 1 from pg_catalog.jsonb_array_elements(v_page_items) as item(value)
@@ -717,7 +753,7 @@ begin
     raise exception 'Reconciliation reason belongs to the backend, not the database result';
   end if;
   select items, total_count into v_page_items, v_total_count from public.billing_reconciliation_page(2, 0);
-  if v_total_count <> 4 or pg_catalog.jsonb_array_length(v_page_items) <> 2 then
+  if v_total_count <> 5 or pg_catalog.jsonb_array_length(v_page_items) <> 2 then
     raise exception 'Reconciliation pagination did not return a two-row page and global count';
   end if;
 end;
