@@ -101,4 +101,27 @@ if (isolation.stdout !== '0,0') {
   throw new Error('Quota usage for one account appeared in another account.');
 }
 
-process.stdout.write('Billing concurrency verified: 1 reservation, 19 rejections, isolated accounts.\n');
+// Ten callbacks for the same bank transaction at once (webhook retries and our own queries):
+// the plan is granted once.
+const buyer = '00000000-0000-4000-8000-000000000006';
+const created = await query(`
+  set role service_role;
+  select order_id from public.billing_create_order(
+    '${buyer}',
+    (select id from public.billing_prices where plan_code = 'student_plus' and interval = 'month' and active),
+    'concurrency-order', repeat('c', 64), now() + interval '30 minutes');
+  reset role;
+`);
+const orderId = created.stdout.split('\n').map((line) => line.trim()).find((line) => /^[0-9a-f-]{36}$/.test(line));
+if (!orderId) throw new Error('The concurrency order was not created.');
+await query(`insert into public.billing_payment_attempts (order_id, provider, provider_reference, amount_vnd) values ('${orderId}', 'payos', '777000', 39000)`);
+const applied = await Promise.all(Array.from({ length: 10 }, async (_, i) => {
+  const result = await query(`set role service_role; select public.billing_apply_payment('payos', '777000', 'FT-777', 39000, 'paid', now(), ${literal(`concurrent-${i}`)}, 'webhook'); reset role`);
+  return result.stdout.split('\n').map((line) => line.trim()).find((line) => ['applied', 'duplicate', 'reconciliation'].includes(line));
+}));
+const grants = await query(`select count(*) from public.billing_grants where order_id = '${orderId}'`);
+if (applied.filter((r) => r === 'applied').length !== 1 || applied.filter((r) => r === 'duplicate').length !== 9 || grants.stdout !== '1') {
+  throw new Error(`Expected 1 applied payment, 9 duplicates and 1 grant; got ${JSON.stringify(applied)} and ${grants.stdout} grants.`);
+}
+
+process.stdout.write('Billing concurrency verified: 1 reservation, 19 rejections, isolated accounts, 1 grant for 10 callbacks.\n');

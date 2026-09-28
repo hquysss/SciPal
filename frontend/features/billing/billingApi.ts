@@ -22,6 +22,24 @@ export async function fetchCatalog(): Promise<Catalog | null> {
   }
 }
 
+export type CheckoutAnswer = { orderId: string; status: string; checkoutUrl: string | null; expiresAt: string };
+export type OrderView = {
+  id: string;
+  planCode: string;
+  interval: string;
+  amountVnd: number;
+  status: 'pending' | 'paid' | 'expired' | 'failed' | 'cancelled' | 'reconciliation';
+  expiresAt: string;
+  paidAt: string | null;
+  checkoutUrl: string | null;
+};
+
+/** Starts (or, with the same key, resumes) a QR checkout; the backend sets the amount. */
+export const startCheckout = (priceId: string, idempotencyKey: string): Promise<ApiResult<CheckoutAnswer>> =>
+  authoringCall<CheckoutAnswer>('/api/billing/checkout', 'POST', { priceId, provider: 'payos', idempotencyKey, autoRenew: false });
+
+export const fetchOrder = (id: string): Promise<ApiResult<OrderView>> => authoringCall<OrderView>(`/api/billing/orders/${encodeURIComponent(id)}`, 'GET');
+
 export const fetchMyPlan = (): Promise<ApiResult<BillingAccount>> => authoringCall<BillingAccount>('/api/billing/me', 'GET');
 
 /** "390.000 ₫" */

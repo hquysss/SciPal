@@ -1,20 +1,27 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { Check } from 'lucide-react';
 import { useLanguage } from '@scipal/hooks';
+import { createBrowserClient } from '@scipal/supabase';
 import type { BillingAudience, BillingInterval } from '@scipal/types';
 import { Alert } from '@/components/ui/alert';
 import { buttonVariants } from '@/components/ui/button';
-import { formatVnd, limitText, type PublicPlan } from './billingApi';
+import { formatVnd, limitText, startCheckout, type PublicPlan } from './billingApi';
 
 type Props = {
   plans: PublicPlan[] | null;
   checkoutOpen: boolean;
   initialAudience?: BillingAudience;
   initialInterval?: BillingInterval;
+  /** Role of the signed-in viewer, null for a visitor; read from the session when not given. */
+  viewerRole?: ViewerRole | null;
 };
+
+type ViewerRole = 'student' | 'teacher' | 'admin';
+type Bilingual = { vi: string; en: string };
+const newKey = () => (typeof crypto !== 'undefined' && 'randomUUID' in crypto ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(36).slice(2)}`);
 
 const segment = (active: boolean) =>
   `min-h-11 rounded-md px-4 text-sm font-semibold transition-colors motion-reduce:transition-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus ${
@@ -23,10 +30,47 @@ const segment = (active: boolean) =>
 
 const FREE_START: Record<BillingAudience, string> = { student: '/subjects', teacher: '/teacher/classes' };
 
-export function PricingPage({ plans, checkoutOpen, initialAudience = 'student', initialInterval = 'month' }: Props) {
+export function PricingPage({ plans, checkoutOpen, initialAudience = 'student', initialInterval = 'month', viewerRole: givenRole }: Props) {
   const { t } = useLanguage();
+  // undefined while the session is being read: the buy button waits.
+  const [viewerRole, setViewerRole] = useState<ViewerRole | null | undefined>(givenRole);
+  useEffect(() => {
+    if (givenRole !== undefined || !checkoutOpen) return;
+    let cancelled = false;
+    createBrowserClient()
+      .auth.getSession()
+      .then(({ data: { session } }) => {
+        if (cancelled) return;
+        const role = session?.user.app_metadata?.app_role;
+        setViewerRole(!session ? null : role === 'admin' || role === 'teacher' ? role : 'student');
+      })
+      .catch(() => { if (!cancelled) setViewerRole(null); });
+    return () => { cancelled = true; };
+  }, [givenRole, checkoutOpen]);
   const [audience, setAudience] = useState<BillingAudience>(initialAudience);
   const [interval, setInterval] = useState<BillingInterval>(initialInterval);
+  const [buying, setBuying] = useState<string | null>(null);
+  const [buyError, setBuyError] = useState<Bilingual | null>(null);
+  // One key per price while the page is open: a double click or a retry resumes the same order.
+  const keys = useRef(new Map<string, string>());
+
+  const buy = async (priceId: string) => {
+    setBuying(priceId);
+    setBuyError(null);
+    let key = keys.current.get(priceId);
+    if (!key) {
+      key = newKey();
+      keys.current.set(priceId, key);
+    }
+    const result = await startCheckout(priceId, key);
+    if (!result.ok) {
+      setBuyError(result.error);
+      setBuying(null);
+      return;
+    }
+    // Pay on the payOS page when a link exists; otherwise follow the order (paid or expired).
+    window.location.assign(result.data.checkoutUrl ?? `/checkout/${result.data.orderId}`);
+  };
 
   if (!plans) {
     return (
@@ -58,6 +102,12 @@ export function PricingPage({ plans, checkoutOpen, initialAudience = 'student', 
           </button>
         </div>
       </div>
+
+      {buyError && (
+        <Alert tone="danger">
+          <p>{t(buyError)}</p>
+        </Alert>
+      )}
 
       <div className="grid gap-4 sm:grid-cols-2">
         {shown.map((plan) => {
@@ -105,7 +155,7 @@ export function PricingPage({ plans, checkoutOpen, initialAudience = 'student', 
                   <Link href={FREE_START[audience]} className={buttonVariants({ variant: 'outline', className: 'w-full' })}>
                     {t({ en: 'Start for free', vi: 'Bắt đầu miễn phí' })}
                   </Link>
-                ) : checkoutOpen ? null : (
+                ) : !checkoutOpen ? (
                   <>
                     <button type="button" disabled className={buttonVariants({ className: 'w-full' })}>
                       {t({ en: 'Coming soon', vi: 'Sắp mở bán' })}
@@ -114,7 +164,38 @@ export function PricingPage({ plans, checkoutOpen, initialAudience = 'student', 
                       {t({ en: 'QR and card payment open soon.', vi: 'Thanh toán bằng QR và thẻ sẽ mở sớm.' })}
                     </p>
                   </>
-                )}
+                ) : viewerRole === undefined ? (
+                  <button type="button" disabled className={buttonVariants({ className: 'w-full' })}>
+                    {t({ en: 'Buy with QR', vi: 'Mua bằng QR' })}
+                  </button>
+                ) : viewerRole === null ? (
+                  <Link href="/login?redirect=%2Fpricing" className={buttonVariants({ className: 'w-full' })}>
+                    {t({ en: 'Sign in to buy', vi: 'Đăng nhập để mua' })}
+                  </Link>
+                ) : viewerRole === 'admin' ? (
+                  <p className="text-center text-sm text-ink-muted">
+                    {t({ en: 'Admin accounts do not need a plan.', vi: 'Tài khoản quản trị không cần mua gói.' })}
+                  </p>
+                ) : viewerRole !== plan.audience ? (
+                  <button type="button" disabled className={buttonVariants({ variant: 'outline', className: 'w-full' })}>
+                    {plan.audience === 'student' ? t({ en: 'A plan for students', vi: 'Gói dành cho học sinh' }) : t({ en: 'A plan for teachers', vi: 'Gói dành cho giáo viên' })}
+                  </button>
+                ) : price ? (
+                  <>
+                    <button
+                      type="button"
+                      onClick={() => void buy(price.id)}
+                      disabled={buying !== null}
+                      aria-busy={buying === price.id}
+                      className={buttonVariants({ className: 'w-full' })}
+                    >
+                      {buying === price.id ? t({ en: 'Opening the QR code…', vi: 'Đang mở mã QR…' }) : t({ en: 'Buy with QR', vi: 'Mua bằng QR' })}
+                    </button>
+                    <p className="text-center text-xs text-ink-muted">
+                      {t({ en: 'Bank transfer by VietQR through payOS. The plan starts once the bank confirms.', vi: 'Chuyển khoản VietQR qua payOS. Gói có hiệu lực khi ngân hàng xác nhận.' })}
+                    </p>
+                  </>
+                ) : null}
               </div>
             </section>
           );

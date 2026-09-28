@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { countRawColors } from '../../lib/theme/rawColors';
 import { PricingPage } from './PricingPage';
 import { MyPlanView } from './MyPlan';
+import { CheckoutStatusView } from './CheckoutStatus';
 import { formatVnd, limitText, type PublicPlan } from './billingApi';
 
 vi.mock('@scipal/hooks', () => ({ useLanguage: () => ({ lang: 'vi', t: (o: { vi: string }) => o.vi }) }));
@@ -85,5 +86,54 @@ describe('MyPlanView', () => {
     const html = renderToStaticMarkup(<MyPlanView state={{ status: 'error', message: { en: 'x', vi: 'Chưa tải được thông tin gói.' } }} onRetry={() => {}} />);
     expect(html).toContain('Chưa tải được thông tin gói.');
     expect(html).toContain('Thử lại');
+  });
+});
+
+describe('PricingPage checkout', () => {
+  it('asks a visitor to sign in to buy, and brings them back to the pricing page', () => {
+    const html = renderToStaticMarkup(<PricingPage plans={plans} checkoutOpen viewerRole={null} />);
+    expect(html).toContain('href="/login?redirect=%2Fpricing"');
+    expect(html).toContain('Đăng nhập để mua');
+  });
+
+  it('lets a student buy the student plan by QR', () => {
+    const html = renderToStaticMarkup(<PricingPage plans={plans} checkoutOpen viewerRole="student" />);
+    expect(html).toContain('Mua bằng QR');
+    expect(html).not.toContain('Sắp mở bán');
+  });
+
+  it('does not sell a teacher the student plan, nor an admin anything', () => {
+    const teacher = renderToStaticMarkup(<PricingPage plans={plans} checkoutOpen viewerRole="teacher" />);
+    expect(teacher).toContain('Gói dành cho học sinh');
+    expect(teacher).not.toContain('Mua bằng QR');
+    const admin = renderToStaticMarkup(<PricingPage plans={plans} checkoutOpen viewerRole="admin" initialAudience="teacher" />);
+    expect(admin).toContain('Tài khoản quản trị không cần mua gói');
+  });
+});
+
+describe('CheckoutStatusView', () => {
+  const order = { id: 'o1', planCode: 'student_plus', interval: 'month', amountVnd: 39000, expiresAt: '2026-09-29T03:45:00.000Z', paidAt: null, checkoutUrl: null } as const;
+
+  it('waits for the bank, with the payment page and a check-again button', () => {
+    const html = renderToStaticMarkup(<CheckoutStatusView state={{ status: 'ready', order: { ...order, status: 'pending', checkoutUrl: 'https://pay.payos.vn/web/x' } }} onCheck={() => {}} />);
+    expect(html).toContain('Đang chờ xác nhận thanh toán');
+    expect(html).toContain('href="https://pay.payos.vn/web/x"');
+    expect(html).toContain('Kiểm tra lại');
+    expect(html).toContain('39.000 ₫');
+    expect(countRawColors(html).total).toBe(0);
+  });
+
+  it('says the plan is active once paid', () => {
+    const html = renderToStaticMarkup(<CheckoutStatusView state={{ status: 'ready', order: { ...order, status: 'paid', paidAt: '2026-09-29T03:20:00.000Z' } }} />);
+    expect(html).toContain('Thanh toán thành công');
+    expect(html).toContain('href="/profile/plan"');
+  });
+
+  it('explains an expired order and money kept for review', () => {
+    const expired = renderToStaticMarkup(<CheckoutStatusView state={{ status: 'ready', order: { ...order, status: 'expired' } }} />);
+    expect(expired).toContain('Đơn đã hết hạn');
+    expect(expired).toContain('href="/pricing"');
+    const review = renderToStaticMarkup(<CheckoutStatusView state={{ status: 'ready', order: { ...order, status: 'reconciliation' } }} />);
+    expect(review).toContain('đang được đối soát');
   });
 });

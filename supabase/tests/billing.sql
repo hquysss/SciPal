@@ -34,6 +34,7 @@ values
 \ir ../migrations/20260929010000_exam_attempts.sql
 \ir ../migrations/20260929020000_teacher_capacity.sql
 \ir ../migrations/20260929030000_author_ai_drafts.sql
+\ir ../migrations/20260929040000_billing_payments.sql
 -- Supabase's service_role writes these tables; the stubs above need the same grant.
 grant select, insert, update, delete on public.class_rooms, public.class_members, public.exam_blueprints to service_role;
 
@@ -548,6 +549,130 @@ begin
   exception when insufficient_privilege then v_denied := true;
   end;
   if not v_denied then raise exception 'A signed-in user read AI drafts directly'; end if;
+end;
+$$;
+reset role;
+
+-- Orders and verified payments (migration 20260929040000).
+set role service_role;
+do $$
+declare
+  c_student constant uuid := '00000000-0000-4000-8000-000000000004'; -- no app_role: a student
+  c_teacher constant uuid := '00000000-0000-4000-8000-000000000003';
+  c_admin constant uuid := '00000000-0000-4000-8000-000000000005';
+  c_hash constant text := repeat('a', 64);
+  v_month uuid;
+  v_year uuid;
+  v_pro uuid;
+  v_order record;
+  v_again record;
+  v_late record;
+  v_failed text;
+  v_result text;
+  v_through timestamptz;
+  v_before timestamptz;
+begin
+  select id into v_month from public.billing_prices where plan_code = 'student_plus' and interval = 'month' and active;
+  select id into v_year from public.billing_prices where plan_code = 'student_plus' and interval = 'year' and active;
+  select id into v_pro from public.billing_prices where plan_code = 'teacher_pro' and interval = 'month' and active;
+
+  -- The order snapshots the price; the same key replays it; another request with that key is refused.
+  select * into v_order from public.billing_create_order(c_student, v_month, 'key-one-000', c_hash, now() + interval '30 minutes');
+  if not v_order.created or v_order.amount_vnd <> 39000 or v_order.plan_code <> 'student_plus' or v_order.status <> 'pending' then
+    raise exception 'Order snapshot: %', row_to_json(v_order);
+  end if;
+  select * into v_again from public.billing_create_order(c_student, v_month, 'key-one-000', c_hash, now() + interval '30 minutes');
+  if v_again.created or v_again.order_id <> v_order.order_id then raise exception 'Replay made a second order'; end if;
+  begin
+    perform public.billing_create_order(c_student, v_year, 'key-one-000', repeat('b', 64), now() + interval '30 minutes');
+    raise exception 'unreachable';
+  exception when others then get stacked diagnostics v_failed = message_text;
+  end;
+  if v_failed <> 'IDEMPOTENCY_CONFLICT' then raise exception 'Changed payload: %', v_failed; end if;
+
+  -- A student cannot buy the teacher plan, an admin buys nothing.
+  begin
+    perform public.billing_create_order(c_student, v_pro, 'key-two-000', c_hash, now() + interval '30 minutes');
+    raise exception 'unreachable';
+  exception when others then get stacked diagnostics v_failed = message_text;
+  end;
+  if v_failed <> 'PLAN_NOT_FOR_ROLE' then raise exception 'Student bought teacher plan: %', v_failed; end if;
+  begin
+    perform public.billing_create_order(c_admin, v_month, 'key-three-00', c_hash, now() + interval '30 minutes');
+    raise exception 'unreachable';
+  exception when others then get stacked diagnostics v_failed = message_text;
+  end;
+  if v_failed <> 'UNSUPPORTED_BILLING_ROLE' then raise exception 'Admin order: %', v_failed; end if;
+
+  insert into public.billing_payment_attempts (order_id, provider, provider_reference, amount_vnd)
+  values (v_order.order_id, 'payos', '1001', 39000), (v_order.order_id, 'vnpay', 'VN1001', 39000);
+
+  -- A wrong amount is not granted.
+  select * into v_late from public.billing_create_order(c_student, v_month, 'key-four-000', c_hash, now() + interval '30 minutes');
+  insert into public.billing_payment_attempts (order_id, provider, provider_reference, amount_vnd) values (v_late.order_id, 'payos', '1002', 39000);
+  v_result := public.billing_apply_payment('payos', '1002', 'tx-short', 3900, 'paid', now(), 'fp-short', 'webhook');
+  if v_result <> 'reconciliation' then raise exception 'Short payment: %', v_result; end if;
+  if (select status from public.billing_orders where id = v_late.order_id) <> 'reconciliation' then raise exception 'Short payment order status'; end if;
+
+  -- A failure is recorded; the payment then grants one month from now.
+  v_result := public.billing_apply_payment('payos', '1001', null, 39000, 'cancelled', null, 'fp-cancel', 'webhook');
+  if v_result <> 'recorded' then raise exception 'Cancel: %', v_result; end if;
+  v_before := now();
+  v_result := public.billing_apply_payment('payos', '1001', 'tx-1', 39000, 'paid', now(), 'fp-paid', 'webhook');
+  if v_result <> 'applied' then raise exception 'Paid: %', v_result; end if;
+  select paid_through into v_through from public.billing_subscriptions where user_id = c_student and plan_code = 'student_plus';
+  if v_through is null or v_through < v_before + interval '27 days' or v_through > v_before + interval '32 days' then
+    raise exception 'One month: %', v_through;
+  end if;
+  if (select status from public.billing_orders where id = v_order.order_id) <> 'paid' then raise exception 'Order not paid'; end if;
+
+  -- The same event again, or the same money under a new event id: nothing more.
+  v_result := public.billing_apply_payment('payos', '1001', 'tx-1', 39000, 'paid', now(), 'fp-paid', 'webhook');
+  if v_result <> 'duplicate' then raise exception 'Same event: %', v_result; end if;
+  v_result := public.billing_apply_payment('payos', '1001', 'tx-1', 39000, 'paid', now(), 'fp-paid-query', 'query');
+  if v_result <> 'duplicate' then raise exception 'Same money: %', v_result; end if;
+  -- A later failure does not take the payment back.
+  v_result := public.billing_apply_payment('payos', '1001', null, 39000, 'failed', null, 'fp-failed-late', 'webhook');
+  if (select status from public.billing_payment_attempts where provider_reference = '1001') <> 'paid' then raise exception 'Failure undid a payment'; end if;
+
+  -- Paid twice (QR and card): one grant, the second payment kept for reconciliation.
+  v_result := public.billing_apply_payment('vnpay', 'VN1001', 'vn-tx-1', 39000, 'paid', now(), 'fp-vn', 'ipn');
+  if v_result <> 'reconciliation' then raise exception 'Second payment: %', v_result; end if;
+  if (select count(*) from public.billing_grants where order_id = v_order.order_id) <> 1 then raise exception 'Two grants'; end if;
+  if (select paid_through from public.billing_subscriptions where user_id = c_student) <> v_through then raise exception 'Second payment extended the plan'; end if;
+
+  -- Renewing the same plan follows the current period (a year here).
+  select * into v_again from public.billing_create_order(c_student, v_year, 'key-five-000', c_hash, now() + interval '30 minutes');
+  insert into public.billing_payment_attempts (order_id, provider, provider_reference, amount_vnd) values (v_again.order_id, 'payos', '1003', 390000);
+  v_result := public.billing_apply_payment('payos', '1003', 'tx-3', 390000, 'paid', now(), 'fp-year', 'webhook');
+  if v_result <> 'applied' then raise exception 'Year: %', v_result; end if;
+  if (select paid_through from public.billing_subscriptions where user_id = c_student)
+     <> ((v_through at time zone 'Asia/Ho_Chi_Minh') + interval '12 months') at time zone 'Asia/Ho_Chi_Minh' then
+    raise exception 'Year did not follow the month';
+  end if;
+
+  -- Money after the order expired is not granted; an unknown reference is kept too.
+  select * into v_late from public.billing_create_order(c_teacher, v_pro, 'key-six-0000', c_hash, now() - interval '1 minute');
+  insert into public.billing_payment_attempts (order_id, provider, provider_reference, amount_vnd) values (v_late.order_id, 'payos', '1004', 99000);
+  v_result := public.billing_apply_payment('payos', '1004', 'tx-4', 99000, 'paid', now(), 'fp-late', 'webhook');
+  if v_result <> 'reconciliation' then raise exception 'Late: %', v_result; end if;
+  if exists (select 1 from public.billing_subscriptions where user_id = c_teacher) then raise exception 'Late payment granted'; end if;
+  v_result := public.billing_apply_payment('payos', '999999', 'tx-x', 1000, 'paid', now(), 'fp-unknown', 'webhook');
+  if v_result <> 'reconciliation' then raise exception 'Unknown reference: %', v_result; end if;
+end;
+$$;
+reset role;
+
+set role authenticated;
+do $$
+declare
+  v_denied boolean := false;
+begin
+  begin
+    perform public.billing_apply_payment('payos', '1', 't', 1, 'paid', now(), 'f', 'x');
+  exception when insufficient_privilege then v_denied := true;
+  end;
+  if not v_denied then raise exception 'A signed-in user applied a payment'; end if;
 end;
 $$;
 reset role;
