@@ -12,6 +12,7 @@ import { TopicManager } from '@/features/authoring/topics/TopicManager';
 import { AiSettingsForm } from '@/features/admin-ai/AiSettingsForm';
 import { AdminChatsPreview } from '@/features/admin-ai/AdminChatsPreview';
 import { AdminAiTabs } from '@/features/admin-ai/AdminAiTabs';
+import { AccountQuotaForm } from '@/features/admin/AccountQuotaDialog';
 import type { AuthorQuestion } from '@/features/authoring/practice/api';
 
 type SearchParams = Record<string, string | string[] | undefined>;
@@ -68,6 +69,21 @@ export default async function TeacherShowcase({ searchParams }: { searchParams: 
           <TeacherAreaTabs active="exams" />
           <QuestionBank subjects={SUBJECTS} />
         </>
+      ) : view === 'quotas' ? (
+        <div className="max-w-2xl rounded-xl border border-line bg-surface p-6">
+          <AccountQuotaForm
+            accountId="u1"
+            initial={{
+              account: { id: 'u1', plan: 'student_free', paidThrough: null },
+              version: 2,
+              quotas: [
+                { metric: 'graded_exam_attempts', kind: 'monthly', limit: 3, planLimit: 3, used: 1, reserved: 0, source: 'plan', expiresAt: null, resetsAt: '2026-09-30T17:00:00.000Z' },
+                { metric: 'tutor_requests', kind: 'monthly', limit: 30, planLimit: 10, used: 40, reserved: 0, source: 'override', expiresAt: '2026-10-31T16:59:00.000Z', resetsAt: '2026-09-30T17:00:00.000Z' },
+              ],
+            }}
+            initialAudit={{ entries: [{ id: 'e1', actor: { id: 'a1', name: 'Cô Hà' }, before: {}, after: { tutor_requests: { limit: 30, expires_at: '2026-10-31T16:59:00.000Z' } }, reason: 'Lớp chuyên thử nghiệm', createdAt: '2026-09-20T03:00:00.000Z' }], next: null }}
+          />
+        </div>
       ) : view === 'ai-chats' ? (
         <div className="flex flex-col gap-6">
           <AdminAiTabs active="chats" />

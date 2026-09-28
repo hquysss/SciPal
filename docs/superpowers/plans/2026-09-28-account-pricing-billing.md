@@ -83,12 +83,12 @@ Mọi interface bên dưới dùng các DTO trên; `BillingRepository` là backe
 
 **Consumes:** getEffectiveQuotas, QuotaChange. **Produces:** three admin endpoints in spec + dialog.
 
-- [ ] Test fail trước: non-admin 403, user ID khác không vượt quyền, unknown metric/negative/fraction/past expiry 400; set tutor 500 với used=40 giữ used; reset về 200; hai admin expectedVersion=1 chỉ một update; audit lỗi thì quota không đổi.
-- [ ] Chạy `pnpm --filter @scipal/api test -- src/__tests__/account-quotas.test.ts`.
-- [ ] Implement `updateAccountQuotas(actorId, targetId, expectedVersion, changes: QuotaChange[], reason): Promise<{ version: number; quotas: EffectiveQuota[] }>` trong repository + route; auth role kiểm server, không dựa RequireAdmin UI.
-- [ ] Viết/chạy test UI trước: Theo gói/giá trị 0/set/reset, cảnh báo hạ dưới usage, ngày giờ, lỗi 409, keyboard focus, error không báo lưu thành công.
-- [ ] Dựng dialog bằng primitives có sẵn; loading/error/dirty state, audit phân trang. Không thêm nút reset usage hoặc sửa giá.
-- [ ] Run `pnpm --filter @scipal/web test -- features/admin/AccountQuotaDialog.test.tsx`; QA admin/student và hai cửa sổ cùng sửa, full gate, commit và PR.
+- [x] Test fail trước: non-admin 403, user ID khác không vượt quyền, unknown metric/negative/fraction/past expiry 400; set tutor 500 với used=40 giữ used; reset về 200; hai admin expectedVersion=1 chỉ một update; audit lỗi thì quota không đổi.
+- [x] Chạy `pnpm --filter @scipal/api test -- src/__tests__/account-quotas.test.ts`.
+- [x] Implement `updateAccountQuotas(actorId, targetId, expectedVersion, changes: QuotaChange[], reason): Promise<{ version: number; quotas: EffectiveQuota[] }>` trong repository + route; auth role kiểm server, không dựa RequireAdmin UI.
+- [x] Viết/chạy test UI trước: Theo gói/giá trị 0/set/reset, cảnh báo hạ dưới usage, ngày giờ, lỗi 409, keyboard focus, error không báo lưu thành công.
+- [x] Dựng dialog bằng primitives có sẵn; loading/error/dirty state, audit phân trang. Không thêm nút reset usage hoặc sửa giá.
+- [x] Run `pnpm --filter @scipal/web test -- features/admin/AccountQuotaDialog.test.tsx`; QA admin/student và hai cửa sổ cùng sửa, full gate, commit và PR.
 
 ## Task 3 / PR 3: Hạn mức Tutor và lượt thi có chấm điểm
 

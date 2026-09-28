@@ -59,7 +59,7 @@ export class BillingRepositoryError extends Error {
 
 function throwRpcError(error: RpcError): never {
   const message = error.message ?? 'Billing database request failed';
-  const knownCode = ['QUOTA_EXCEEDED', 'IDEMPOTENCY_CONFLICT', 'CAPACITY_RESERVATION_UNSUPPORTED']
+  const knownCode = ['QUOTA_EXCEEDED', 'IDEMPOTENCY_CONFLICT', 'CAPACITY_RESERVATION_UNSUPPORTED', 'BILLING_ACCOUNT_NOT_FOUND', 'UNSUPPORTED_BILLING_ROLE']
     .find((code) => message.includes(code));
   const code = knownCode ?? error.code ?? 'BILLING_DATABASE_ERROR';
   throw new BillingRepositoryError(code, message);
