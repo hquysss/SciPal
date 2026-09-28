@@ -17,14 +17,19 @@ const subjects: LandingSubject[] = ['informatics', 'math', 'physics'].map((slug,
   accent_color: '#16a34a',
   sort_order,
   education_level: 'upper_secondary',
-  status: slug === 'informatics' ? 'active' : 'upcoming',
+  status: slug === 'physics' ? 'upcoming' : 'active',
+  liveGrades: slug === 'physics' ? [] : [10],
 }));
 
 describe('SubjectGrid', () => {
   it('shows each upper-secondary subject once in a static, navigable grid', () => {
     const html = renderToStaticMarkup(<SubjectGrid level="upper_secondary" catalog={{ kind: 'ready', subjects }} informatics={{ kind: 'available', lesson: { slug: 'binary-search', title_en: 'Binary search', title_vi: 'Tìm kiếm nhị phân' } }} />);
     expect(html.match(/<article/g)).toHaveLength(3);
-    expect(html.match(/href="\/informatics"/g)).toHaveLength(1);
+    expect(html.match(/href="\/informatics#lop-10"/g)).toHaveLength(1);
+    expect(html.match(/href="\/math#lop-10"/g)).toHaveLength(1);
+    expect(html).not.toContain('href="/physics');
+    expect(html.match(/Có bài học/g)).toHaveLength(2);
+    expect(html.match(/Đang biên soạn/g)?.length).toBeGreaterThanOrEqual(1);
     expect(html.match(/data-landing-reveal=""/g)).toHaveLength(3);
     expect(html).not.toContain('duplicate');
   });

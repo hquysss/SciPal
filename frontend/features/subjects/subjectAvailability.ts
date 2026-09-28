@@ -1,19 +1,12 @@
-import type { EducationLevel } from '../landing/educationLevel';
-import type { InformaticsAvailability, LandingSubject } from '../landing/getLandingData';
+import type { LandingSubject } from '../landing/getLandingData';
 
-export function getSubjectAction(
-  level: EducationLevel,
-  subject: LandingSubject,
-  informatics: InformaticsAvailability,
-): string | null {
-  if (
-    level !== 'upper_secondary' ||
-    subject.slug !== 'informatics' ||
-    subject.status !== 'active' ||
-    informatics.kind !== 'available'
-  ) {
-    return null;
-  }
-
-  return '/informatics';
+/**
+ * Where a subject card leads: any subject with published lessons at its level opens at the first
+ * grade that has them (the subject page marks each grade group with `id="lop-N"`), as on /subjects.
+ */
+export function getSubjectAction(subject: LandingSubject): string | null {
+  if (subject.status !== 'active') return null;
+  if (subject.liveGrades === undefined) return `/${subject.slug}`;
+  const first = [...subject.liveGrades].sort((a, b) => a - b)[0];
+  return first === undefined ? null : `/${subject.slug}#lop-${first}`;
 }
