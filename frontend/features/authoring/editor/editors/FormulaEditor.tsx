@@ -39,6 +39,7 @@ export function FormulaEditor({ block, onChange, lang, onLangChange }: FormulaEd
         </label>
         <Input
           id={`${id}-tex`}
+          data-field="katex"
           value={block.katex}
           onChange={(e) => onChange({ ...block, katex: e.target.value })}
           spellCheck={false}
@@ -65,6 +66,7 @@ export function FormulaEditor({ block, onChange, lang, onLangChange }: FormulaEd
         </div>
         <Input
           id={`${id}-caption`}
+          data-field="caption"
           value={caption[lang]}
           onChange={(e) => onChange({ ...block, caption: { ...caption, [lang]: e.target.value } })}
         />

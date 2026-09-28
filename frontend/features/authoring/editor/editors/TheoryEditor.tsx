@@ -72,6 +72,7 @@ export function TheoryEditor({ block, onChange, lang, onLangChange, onInsertImag
       </div>
       <textarea
         ref={ref}
+        data-field="content"
         rows={8}
         value={block.content[lang]}
         onChange={(e) => setValue(e.target.value)}

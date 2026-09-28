@@ -83,6 +83,10 @@ interface BlockListProps {
   readOnly: boolean;
   /** Open and scroll to this block (from the issue list). */
   focusIndex?: number;
+  /** …and focus this field of it (`katex`, `content.en`…). */
+  focusField?: string;
+  /** Changes on every jump, so jumping to the same place again still scrolls. */
+  focusNonce?: number;
 }
 
 type Pending =
@@ -90,7 +94,7 @@ type Pending =
   | { index: number; kind: 'question'; type: QuestionType }
   | { index: number; kind: 'pick' };
 
-export function BlockList({ part, blocks, onChange, subjectId, readOnly, focusIndex }: BlockListProps) {
+export function BlockList({ part, blocks, onChange, subjectId, readOnly, focusIndex, focusField, focusNonce }: BlockListProps) {
   const { t, lang: uiLang } = useLanguage();
   const [expanded, setExpanded] = useState<number | null>(focusIndex ?? null);
   const [menuAt, setMenuAt] = useState<number | null>(null);
@@ -111,8 +115,16 @@ export function BlockList({ part, blocks, onChange, subjectId, readOnly, focusIn
   useEffect(() => {
     if (focusIndex === undefined) return;
     setExpanded(focusIndex);
-    cards.current[focusIndex]?.scrollIntoView({ block: 'center', behavior: 'smooth' });
-  }, [focusIndex]);
+    if (focusField?.endsWith('.en')) setEditLang('en');
+    else if (focusField?.endsWith('.vi')) setEditLang('vi');
+    const card = cards.current[focusIndex];
+    card?.scrollIntoView({ block: 'center', behavior: 'smooth' });
+    const root = focusField?.split('.')[0];
+    if (!root) return;
+    // The block opens on this render; its field exists on the next frame.
+    const timer = setTimeout(() => card?.querySelector<HTMLElement>(`[data-field="${root}"]`)?.focus({ preventScroll: true }), 60);
+    return () => clearTimeout(timer);
+  }, [focusIndex, focusField, focusNonce]);
 
   useEffect(() => {
     if (!undo) return;

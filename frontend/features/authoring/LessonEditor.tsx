@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useRef, useState, type ChangeEvent } from 'react';
-import { useRouter } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { createBrowserClient } from '@scipal/supabase';
 import { toPublicPracticeQuestion, type Block } from '@scipal/types';
 import { useLanguage } from '@scipal/hooks';
@@ -18,6 +18,7 @@ import { documentKind, importLessonDocument } from '../content-import/lessonDocu
 import { canAutosave, createAutosaver, type Autosaver, type AutosaveState, type SaveOutcome } from './editor/autosave';
 import { BlockList } from './editor/BlockList';
 import { IssueList } from './editor/IssueList';
+import { errorMessage, mergeIssues, parseServerIssues, type ServerIssues } from './editor/serverIssues';
 import { lessonIssues, type LessonIssue } from './editor/lessonIssues';
 import { PartTabs } from './editor/PartTabs';
 import { LessonRequestsPanel } from './simulationRequests/LessonRequestsPanel';
@@ -76,7 +77,7 @@ export function LessonEditor({
   const [parts, setParts] = useState(() => splitLessonParts(initialBlocks));
   const blocks = useMemo(() => joinLessonParts(parts), [parts]);
   const [activePart, setActivePart] = useState<LessonPart>('lesson');
-  const [focus, setFocus] = useState<{ part: LessonPart; index: number; nonce: number } | null>(null);
+  const [focus, setFocus] = useState<{ part: LessonPart; index: number; field?: string; nonce: number } | null>(null);
   const [updatedAt, setUpdatedAt] = useState(initialUpdatedAt);
   const [status, setStatus] = useState<LessonStatus>(initialStatus);
   const [reviewNote, setReviewNote] = useState<string | null>(initialReviewNote);
@@ -91,6 +92,9 @@ export function LessonEditor({
   const [pendingImport, setPendingImport] = useState<Extract<LessonImportResult, { ok: true }> | null>(null);
   const [submitIssues, setSubmitIssues] = useState<LessonIssue[]>([]);
   const [message, setMessage] = useState<Message | null>(null);
+  const [serverIssues, setServerIssues] = useState<ServerIssues>(null);
+  const [recovery, setRecovery] = useState<'signin' | 'reload' | null>(null);
+  const pathname = usePathname();
   const [mobileView, setMobileView] = useState<'edit' | 'preview'>('edit');
   const [previewLang, setPreviewLang] = useState<'vi' | 'en'>('vi');
   const [autoTranslate, setAutoTranslate] = useAutoTranslate();
@@ -164,7 +168,17 @@ export function LessonEditor({
     [marks],
   );
 
+  /** A failed request: a message naming what to do, and the blocks the server found at fault. */
+  const showFailure = (res: { status: number; data: { error?: string; error_en?: string } }) => {
+    setMessage({ text: errorMessage(res), type: 'error' });
+    const found = parseServerIssues(res.data);
+    if (found.length) setServerIssues({ for: latest.current.blocks, issues: found });
+    setRecovery(res.status === 401 ? 'signin' : res.status === 409 ? 'reload' : null);
+  };
+
   const applyLesson = (lesson: LessonRow) => {
+    setRecovery(null);
+    setServerIssues(null);
     const previous = latest.current.status;
     latest.current.status = lesson.status;
     setPublishChecked((checked) => publishBoxAfterSave(previous, lesson.status, checked));
@@ -179,13 +193,13 @@ export function LessonEditor({
     const {
       data: { session },
     } = await createBrowserClient().auth.getSession();
-    if (!session) return { ok: false as const, status: 401, data: { error: 'Phiên đăng nhập đã hết hạn. Hãy đăng nhập lại.' } };
+    if (!session) return { ok: false as const, status: 401, data: {} as { error?: string; error_en?: string; lesson?: LessonRow } };
     const res = await fetch(`${API_BASE}${path}`, {
       method,
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session.access_token}` },
       body: JSON.stringify(body),
     });
-    const data = (await res.json().catch(() => ({}))) as { error?: string; lesson?: LessonRow };
+    const data = (await res.json().catch(() => ({}))) as { error?: string; error_en?: string; issues?: unknown; lesson?: LessonRow };
     return { ok: res.ok, status: res.status, data };
   };
 
@@ -205,9 +219,8 @@ export function LessonEditor({
         setLastSavedAt(new Date());
         return 'saved';
       }
-      if (res.status === 409) return 'conflict';
-      setMessage({ text: res.data.error ?? { en: 'Could not save.', vi: 'Chưa lưu được.' }, type: 'error' });
-      return 'failed';
+      showFailure(res);
+      return res.status === 409 ? 'conflict' : 'failed';
     } catch {
       return 'failed';
     }
@@ -299,10 +312,10 @@ export function LessonEditor({
           });
           return 'saved';
         }
-        setMessage({ text: res.data.error ?? { en: 'Save failed.', vi: 'Lưu thất bại.' }, type: 'error' });
+        showFailure(res);
         return res.status === 409 ? 'conflict' : 'failed';
       } catch {
-        setMessage({ text: { en: 'Could not reach the server. Changes are not saved.', vi: 'Không kết nối được máy chủ. Thay đổi chưa được lưu.' }, type: 'error' });
+        showFailure({ status: 0, data: {} });
         return 'failed';
       }
     });
@@ -338,7 +351,7 @@ export function LessonEditor({
           expected_updated_at: latest.current.updatedAt,
         });
         if (!res.ok || !res.data.lesson) {
-          setMessage({ text: res.data.error ?? { en: 'Could not send for review.', vi: 'Không gửi được bài vào hàng chờ duyệt.' }, type: 'error' });
+          showFailure(res);
           return res.status === 409 ? 'conflict' : 'failed';
         }
         applyLesson(res.data.lesson);
@@ -362,7 +375,7 @@ export function LessonEditor({
         ...(decision === 'reject' && rejectNote.trim() ? { note: rejectNote.trim() } : {}),
       });
       if (!res.ok || !res.data.lesson) {
-        setMessage({ text: res.data.error ?? { en: 'Could not save the review.', vi: 'Không lưu được kết quả duyệt bài.' }, type: 'error' });
+        showFailure(res);
         return;
       }
       applyLesson(res.data.lesson);
@@ -591,6 +604,19 @@ export function LessonEditor({
       {message && (
         <Alert tone={message.type === 'success' ? 'success' : 'danger'}>{typeof message.text === 'string' ? message.text : t(message.text)}</Alert>
       )}
+      {recovery && (
+        <div className="flex flex-wrap gap-2">
+          {recovery === 'signin' ? (
+            <a href={`/login?redirect=${encodeURIComponent(pathname)}`} target="_blank" rel="noopener" className={buttonVariants({ variant: 'outline' })}>
+              {t({ en: 'Sign in again (new tab)', vi: 'Đăng nhập lại (tab mới)' })}
+            </a>
+          ) : (
+            <button type="button" onClick={() => window.location.reload()} className={buttonVariants({ variant: 'outline' })}>
+              {t({ en: 'Load the new version', vi: 'Tải lại bản mới' })}
+            </button>
+          )}
+        </div>
+      )}
       {translationNotice && (
         <Alert tone="warning">
           {t({ en: 'Not translated to English yet — it will try again on the next save.', vi: 'Chưa dịch được sang tiếng Anh — sẽ thử lại ở lần lưu sau.' })} ({t(translationNotice)})
@@ -598,11 +624,11 @@ export function LessonEditor({
       )}
 
       <IssueList
-        issues={submitIssues}
+        issues={mergeIssues(submitIssues, serverIssues, blocks)}
         onJump={(issue) => {
           setActivePart(issue.part);
           setMobileView('edit');
-          setFocus({ part: issue.part, index: issue.index, nonce: Date.now() });
+          setFocus({ part: issue.part, index: issue.index, field: issue.field, nonce: Date.now() });
         }}
       />
 
@@ -672,6 +698,8 @@ export function LessonEditor({
               subjectId={subjectId}
               readOnly={!canEditContent}
               focusIndex={focus?.part === activePart ? focus.index : undefined}
+              focusField={focus?.part === activePart ? focus.field : undefined}
+              focusNonce={focus?.nonce}
             />
           </PracticeQuestionsContext.Provider>
           {activePart === 'simulation' && (
