@@ -98,13 +98,13 @@ Mọi interface bên dưới dùng các DTO trên; `BillingRepository` là backe
 
 **Consumes:** atomic quota reservations. **Produces:** server metering + durable exam attempts.
 
-- [ ] Tests fail: Free Tutor lần 11 trả 429; Plus lần 201 trả 429; provider/stream lỗi không trừ; xóa chat không trả lại lượt đã thành công; retry operation không đếm lại; daily global off/limit vẫn chặn và có error riêng.
-- [ ] Tests fail: Free thi chấm điểm lần 4 trả 429; hai submit cùng attempt có một result/quota charge/XP grant; chặn attempt thuộc user khác hoặc đáp án chứa question ngoài đề; lỗi ghi result rollback.
-- [ ] Run `pnpm --filter @scipal/api test -- src/__tests__/billing-metering.test.ts src/__tests__/tutor-chat.test.ts src/__tests__/exam.test.ts`.
-- [ ] Implement Tutor reserve trước provider, commit sau persist complete answer, release lỗi/cancel; done phát sau commit; no count-by-message cho quota thương mại; atomic daily guard + monthly ledger.
-- [ ] Add `POST /api/exam/:blueprintId/attempts` auth-required và `GET /api/exam/attempts/:id` owner-only, explicit guards dù prefix exam đang public; update submit dùng attemptId. Start/resume cùng operation không tạo mới; scoring từ questions snapshot/validated blueprint server.
-- [ ] Viết rồi chạy test frontend cho expired session/429/resume, render usage từ DTO; không tự tính điểm hoặc reset lượt.
-- [ ] Backend + frontend focused tests, concurrency DB, full gate; commit và PR.
+- [x] Tests fail: Free Tutor lần 11 trả 429; Plus lần 201 trả 429; provider/stream lỗi không trừ; xóa chat không trả lại lượt đã thành công; retry operation không đếm lại; daily global off/limit vẫn chặn và có error riêng.
+- [x] Tests fail: Free thi chấm điểm lần 4 trả 429; hai submit cùng attempt có một result/quota charge/XP grant; chặn attempt thuộc user khác hoặc đáp án chứa question ngoài đề; lỗi ghi result rollback.
+- [x] Run `pnpm --filter @scipal/api test -- src/__tests__/billing-metering.test.ts src/__tests__/tutor-chat.test.ts src/__tests__/exam.test.ts`.
+- [x] Implement Tutor reserve trước provider, commit sau persist complete answer, release lỗi/cancel; done phát sau commit; no count-by-message cho quota thương mại; atomic daily guard + monthly ledger.
+- [x] Add `POST /api/exam/:blueprintId/attempts` auth-required và `GET /api/exam/attempts/:id` owner-only, explicit guards dù prefix exam đang public; update submit dùng attemptId. Start/resume cùng operation không tạo mới; scoring từ questions snapshot/validated blueprint server.
+- [x] Viết rồi chạy test frontend cho expired session/429/resume, render usage từ DTO; không tự tính điểm hoặc reset lượt.
+- [x] Backend + frontend focused tests, concurrency DB, full gate; commit và PR.
 
 ## Task 4 / PR 4: Sức chứa lớp và đề của giáo viên
 

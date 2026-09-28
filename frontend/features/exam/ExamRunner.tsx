@@ -6,6 +6,7 @@ import { usePathname, useRouter } from 'next/navigation';
 import { ChevronLeft, ChevronRight, CircleCheck, CircleX, Timer } from 'lucide-react';
 import { useLanguage } from '@scipal/hooks';
 import { AnswerPalette } from './AnswerPalette';
+import { forgetExamAttempt, startExamAttempt } from './examAttempt';
 import { createBrowserClient } from '../../lib/supabase';
 import { Alert } from '../../components/ui/alert';
 import { buttonVariants } from '../../components/ui/button';
@@ -121,6 +122,31 @@ export function ExamRunner({
     total_questions: number;
     xp_earned: number;
   } | null>(null);
+  // The graded attempt (created before the exam for a signed-in student; guests sign in at submit).
+  const [attempt, setAttempt] = useState<{ id: string; remaining: number | null } | null>(null);
+  const [attemptProblem, setAttemptProblem] = useState<{ error: Bilingual; blocked: boolean } | null>(null);
+
+  const begin = useCallback(async (authToken: string) => {
+    const res = await startExamAttempt(blueprintId, authToken);
+    if (res.ok) {
+      setAttempt({ id: res.attemptId, remaining: res.remaining });
+      setAttemptProblem(null);
+      return res.attemptId;
+    }
+    setAttemptProblem({ error: res.error, blocked: res.blocked });
+    return null;
+  }, [blueprintId]);
+
+  useEffect(() => {
+    let active = true;
+    void (async () => {
+      const authToken = token ?? (await createBrowserClient().auth.getSession()).data.session?.access_token;
+      if (active && authToken) await begin(authToken);
+    })();
+    return () => {
+      active = false;
+    };
+  }, [begin, token]);
 
   const handleSubmit = useCallback(async () => {
     if (submitting) return;
@@ -137,13 +163,16 @@ export function ExamRunner({
         return;
       }
 
+      const attemptId = attempt?.id ?? (await begin(authToken));
+      if (!attemptId) return;
+
       const res = await fetch(`${API_BASE}/api/score/exam`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${authToken}`,
         },
-        body: JSON.stringify({ blueprint_id: blueprintId, answers: formatted }),
+        body: JSON.stringify({ blueprint_id: blueprintId, attempt_id: attemptId, answers: formatted }),
       });
 
       if (!res.ok) throw new Error(`Exam scoring failed: ${res.status}`);
@@ -152,6 +181,7 @@ export function ExamRunner({
         throw new Error('Invalid exam score response');
       }
       setResult(data);
+      forgetExamAttempt(blueprintId);
     } catch {
       setSubmissionError(t({
         en: 'Your exam could not be submitted. Answers are still here; please try again.',
@@ -160,7 +190,7 @@ export function ExamRunner({
     } finally {
       setSubmitting(false);
     }
-  }, [answers, blueprintId, pathname, questions, router, submitting, t, token]);
+  }, [answers, attempt, begin, blueprintId, pathname, questions, router, submitting, t, token]);
 
   // Countdown timer with auto-submit
   useEffect(() => {
@@ -246,8 +276,26 @@ export function ExamRunner({
     );
   }
 
+  if (attemptProblem?.blocked) {
+    return (
+      <section className="flex flex-col items-start gap-4 rounded-xl border border-line bg-surface p-6 sm:p-8">
+        <h2 className="text-xl font-bold text-ink">{t({ en: 'No graded attempts left', vi: 'Đã hết lượt thi chấm điểm' })}</h2>
+        <p className="text-base text-ink-muted">{t(attemptProblem.error)}</p>
+        <Link href="/exam" className={buttonVariants({ variant: 'outline' })}>
+          {t({ en: 'Back to exams', vi: 'Về danh sách đề' })}
+        </Link>
+      </section>
+    );
+  }
+
   return (
     <div className="flex flex-col gap-6">
+      {attemptProblem && (
+        <Alert tone="warning">
+          {t(attemptProblem.error)}{' '}
+          {t({ en: 'Your answers are kept; submitting will try again.', vi: 'Câu trả lời vẫn được giữ; khi nộp bài sẽ thử lại.' })}
+        </Alert>
+      )}
       {/* Top sticky timer bar */}
       <div className="sticky top-20 z-30 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-line bg-surface px-4 py-3 sm:px-6">
         <div className="flex flex-wrap items-center gap-3">
@@ -261,6 +309,11 @@ export function ExamRunner({
               {String(minutes).padStart(2, '0')}:{String(seconds).padStart(2, '0')}
             </span>
           </div>
+          {attempt?.remaining != null && (
+            <span className="text-sm text-ink-muted">
+              {t({ en: `${attempt.remaining} graded attempts left this month`, vi: `Còn ${attempt.remaining} lượt thi chấm điểm tháng này` })}
+            </span>
+          )}
           <span aria-live="polite" className="text-sm font-semibold text-ink-muted">
             {tone === 'danger'
               ? t({ en: 'Under 1 minute left', vi: 'Còn dưới 1 phút' })

@@ -1,5 +1,7 @@
-import type { FastifyPluginAsync } from 'fastify';
+import { createHash, randomUUID } from 'node:crypto';
+import type { FastifyPluginAsync, FastifyRequest } from 'fastify';
 import type { SupabaseClient } from '@supabase/supabase-js';
+import { BillingRepositoryError, createBillingRepository } from '../billing/repository.js';
 import {
   BLUEPRINT_COLUMNS,
   blueprintQuestionIds,
@@ -134,7 +136,101 @@ export function dedupeAnswers(answers: unknown[]): ExamAnswer[] {
   return [...seen.values()];
 }
 
+type AttemptRow = {
+  id: string;
+  user_id: string;
+  blueprint_id: string;
+  metered: boolean;
+  status: 'started' | 'submitted';
+  score: number | string | null;
+  correct_count: number | null;
+  total_questions: number | null;
+  xp_earned: number | null;
+};
+type Caller = { id?: string; sub?: string; app_metadata?: { app_role?: string } };
+const bi = (error: string, error_en: string) => ({ error, error_en });
+const ATTEMPT_COLUMNS = 'id, user_id, blueprint_id, metered, status, score, correct_count, total_questions, xp_earned';
+const attemptNotFound = { code: 'ATTEMPT_NOT_FOUND', ...bi('Không tìm thấy lượt làm bài này.', 'This exam attempt was not found.') };
+
+/** The stored result of a submitted attempt, as the scoring route answers it. */
+const storedResult = (a: AttemptRow) => ({
+  score: Number(a.score),
+  correct_count: a.correct_count ?? 0,
+  total_questions: a.total_questions ?? 0,
+  xp_earned: a.xp_earned ?? 0,
+  already_awarded: true,
+  already_submitted: true,
+});
+
 export const examRoutes: FastifyPluginAsync = async (app) => {
+  const caller = (request: FastifyRequest) => (request as FastifyRequest & { user?: Caller }).user;
+
+  // A graded attempt is created before the exam starts (spec §5): for students it holds one
+  // graded_exam_attempts request, counted when the result is stored. The same attempt_id resumes.
+  app.post('/api/exam/:blueprintId/attempts', async (request, reply) => {
+    const user = caller(request);
+    const uid = user?.id ?? user?.sub;
+    // /api/exam/ is public for reading exams; starting a graded attempt is not.
+    if (!uid) return reply.code(401).send({ code: 'AUTH_REQUIRED', ...bi('Hãy đăng nhập để làm bài thi có chấm điểm.', 'Sign in to take a graded exam.') });
+    const supabase = app.supabase;
+    if (!supabase) return reply.code(503).send(bi('Dịch vụ đề thi chưa sẵn sàng.', 'The exam service is not available.'));
+    const { blueprintId } = request.params as { blueprintId: string };
+    const asked = (request.body as { attempt_id?: unknown } | undefined)?.attempt_id;
+    const attemptId = typeof asked === 'string' && UUID_PATTERN.test(asked) ? asked.toLowerCase() : randomUUID();
+
+    const { data: existing, error: readError } = await supabase.from('exam_attempts').select(ATTEMPT_COLUMNS).eq('id', attemptId).maybeSingle();
+    if (readError) {
+      request.log.error({ err: readError }, 'Failed to read an exam attempt');
+      return reply.code(500).send(bi('Chưa bắt đầu được bài thi.', 'Could not start the exam.'));
+    }
+    const found = existing as AttemptRow | null;
+    if (found) {
+      if (found.user_id !== uid || found.blueprint_id !== blueprintId) return reply.code(404).send(attemptNotFound);
+      return { attempt_id: found.id, status: found.status, remaining: null, ...(found.status === 'submitted' ? { result: storedResult(found) } : {}) };
+    }
+
+    const bp = await loadBlueprint(supabase, blueprintId);
+    if (bp.kind === 'error') {
+      request.log.error({ err: bp.err, blueprintId }, 'Failed to load exam blueprint for an attempt');
+      return reply.code(500).send(bi('Chưa bắt đầu được bài thi.', 'Could not start the exam.'));
+    }
+    if (bp.kind === 'not_found') return reply.code(404).send(bi('Không tìm thấy đề thi.', 'Exam not found.'));
+
+    // Teachers and admins are not metered for exams (their plans have no exam quota).
+    const role = user?.app_metadata?.app_role;
+    const metered = role !== 'admin' && role !== 'teacher';
+    const billing = createBillingRepository((name, args) => supabase.rpc(name, args));
+    let remaining: number | null = null;
+    if (metered) {
+      try {
+        const hash = createHash('sha256').update(`${uid}:${blueprintId}:${attemptId}`).digest('hex');
+        remaining = (await billing.reserveQuota(uid, 'graded_exam_attempts', attemptId, 1, hash)).remaining;
+      } catch (err) {
+        if (err instanceof BillingRepositoryError && err.code === 'QUOTA_EXCEEDED') {
+          const quota = await billing.getEffectiveQuotas(uid, new Date()).then((qs) => qs.find((q) => q.metric === 'graded_exam_attempts')).catch(() => undefined);
+          const limit = quota?.limit ?? 0;
+          return reply.code(429).send({
+            code: 'QUOTA_EXCEEDED',
+            ...bi(`Em đã dùng hết ${limit} lượt thi chấm điểm tháng này.`, `You have used your ${limit} graded exam attempts this month.`),
+            remaining: 0,
+            limit,
+            resetsAt: quota?.resetsAt ?? null,
+          });
+        }
+        request.log.error({ err }, 'Failed to hold an exam attempt');
+        return reply.code(503).send({ code: 'BILLING_UNAVAILABLE', ...bi('Chưa kiểm tra được lượt thi. Em thử lại sau ít phút nhé.', 'Could not check your exam attempts. Try again in a few minutes.') });
+      }
+    }
+
+    const { error: insertError } = await supabase.from('exam_attempts').insert({ id: attemptId, user_id: uid, blueprint_id: blueprintId, metered });
+    if (insertError) {
+      if (metered) await billing.settleQuota(attemptId, 'release').catch((err) => request.log.error({ err }, 'Failed to give back an exam attempt'));
+      request.log.error({ err: insertError }, 'Failed to store an exam attempt');
+      return reply.code(500).send(bi('Chưa bắt đầu được bài thi.', 'Could not start the exam.'));
+    }
+    return { attempt_id: attemptId, status: 'started', remaining };
+  });
+
   app.get('/api/exam/blueprints', async (request, reply) => {
     if (!app.supabase) return reply.code(503).send({ error: 'Dịch vụ đề thi chưa sẵn sàng.' });
     const { data, error } = await app.supabase
@@ -189,8 +285,9 @@ export const examRoutes: FastifyPluginAsync = async (app) => {
 
   // Score exam server-side
   app.post('/api/score/exam', async (request, reply) => {
-    const { blueprint_id, answers } = (request.body ?? {}) as {
+    const { blueprint_id, attempt_id, answers } = (request.body ?? {}) as {
       blueprint_id?: unknown;
+      attempt_id?: unknown;
       answers?: unknown;
     };
 
@@ -204,10 +301,30 @@ export const examRoutes: FastifyPluginAsync = async (app) => {
       return reply.status(400).send({ error: 'Too many answers' });
     }
 
+    if (typeof attempt_id !== 'string' || !UUID_PATTERN.test(attempt_id)) {
+      return reply.status(400).send({ code: 'ATTEMPT_REQUIRED', ...bi('Thiếu lượt làm bài. Tải lại trang đề thi.', 'The exam attempt is missing. Reload the exam page.') });
+    }
+
     const blueprintId = blueprint_id.trim();
-    const user = (request as any).user as { id?: string; sub?: string } | undefined;
+    const user = caller(request);
     const userId = user?.id ?? user?.sub;
     if (!app.supabase) return reply.status(503).send({ error: 'Dịch vụ đề thi chưa sẵn sàng.' });
+    const supabase = app.supabase;
+    const attemptId = attempt_id.toLowerCase();
+
+    const loadAttempt = async () => {
+      const { data, error } = await supabase.from('exam_attempts').select(ATTEMPT_COLUMNS).eq('id', attemptId).eq('user_id', userId ?? '').maybeSingle();
+      return { attempt: data as AttemptRow | null, error };
+    };
+    const first = await loadAttempt();
+    if (first.error) {
+      request.log.error({ err: first.error }, 'Failed to read an exam attempt');
+      return reply.status(500).send({ error: 'Không chấm được bài thi.' });
+    }
+    const attempt = first.attempt;
+    if (!attempt || attempt.blueprint_id !== blueprintId) return reply.status(404).send(attemptNotFound);
+    // Submitting the same attempt again answers the stored result: no new score, XP or charge.
+    if (attempt.status === 'submitted') return reply.send(storedResult(attempt));
 
     const bp = await loadBlueprint(app.supabase, blueprintId);
     if (bp.kind === 'error') {
@@ -256,12 +373,28 @@ export const examRoutes: FastifyPluginAsync = async (app) => {
       }
     }
 
-    return reply.send({
-      score,
-      correct_count: correctCount,
-      total_questions: total,
-      xp_earned,
-      already_awarded,
-    });
+    const result = { score, correct_count: correctCount, total_questions: total, xp_earned };
+    const { data: saved, error: saveError } = await supabase
+      .from('exam_attempts')
+      .update({ status: 'submitted', ...result, submitted_at: new Date().toISOString() })
+      .eq('id', attemptId)
+      .eq('status', 'started')
+      .select('id');
+    if (saveError) {
+      request.log.error({ err: saveError }, 'Failed to store an exam result');
+      return reply.status(500).send({ error: 'Không lưu được kết quả bài thi. Em nộp lại nhé.' });
+    }
+    if (!saved || (saved as unknown[]).length === 0) {
+      // Another submit of this attempt stored its result first: answer that one.
+      const again = await loadAttempt();
+      if (again.attempt?.status === 'submitted') return reply.send(storedResult(again.attempt));
+      return reply.status(500).send({ error: 'Không lưu được kết quả bài thi. Em nộp lại nhé.' });
+    }
+    if (attempt.metered) {
+      const billing = createBillingRepository((name, args) => supabase.rpc(name, args));
+      await billing.settleQuota(attemptId, 'commit').catch((err) => request.log.error({ err }, 'Failed to count an exam attempt'));
+    }
+
+    return reply.send({ ...result, already_awarded });
   });
 };
