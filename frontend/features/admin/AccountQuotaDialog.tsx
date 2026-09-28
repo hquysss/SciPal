@@ -7,7 +7,7 @@ import { useLanguage } from '@scipal/hooks';
 import { Alert } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Dialog } from '@/components/ui/dialog';
-import { belowUsage, changesFrom, METRIC_LABEL, PLAN_LABEL, rowsFrom, validRow, type QuotaRow } from './quotaForm';
+import { belowUsage, changesFrom, PLAN_LABEL, quotaLabel, rowsFrom, validRow, type QuotaRow } from './quotaForm';
 import { getAccountQuotas, getQuotaAudit, saveAccountQuotas, type AccountQuotaSnapshot, type QuotaAuditEntry } from './quotasApi';
 
 type Bilingual = { vi: string; en: string };
@@ -17,13 +17,13 @@ const FIELD = 'min-h-11 w-full rounded-lg border border-edge bg-surface px-3 tex
 const when = (iso: string) => new Date(iso).toLocaleString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Ho_Chi_Minh' });
 
 /** "Lượt Tutor mỗi tháng: 30; Lượt thi…: theo gói" for the metrics an audit entry changed. */
-function auditSummary(entry: QuotaAuditEntry, t: (b: Bilingual) => string): string {
+function auditSummary(entry: QuotaAuditEntry, t: (b: Bilingual) => string, kinds: Map<string, AccountQuotaSnapshot['quotas'][number]['kind']>): string {
   const metrics = [...new Set([...Object.keys(entry.before), ...Object.keys(entry.after)])] as QuotaMetric[];
   return metrics
     .filter((m) => JSON.stringify(entry.before[m] ?? null) !== JSON.stringify(entry.after[m] ?? null))
     .map((m) => {
       const after = entry.after[m];
-      const label = t(METRIC_LABEL[m] ?? { vi: m, en: m });
+      const label = t(quotaLabel(m, kinds.get(m) ?? 'monthly'));
       if (!after) return `${label}: ${t({ vi: 'theo gói', en: 'plan default' })}`;
       return `${label}: ${after.limit}${after.expires_at ? ` (${t({ vi: 'đến', en: 'until' })} ${when(after.expires_at)})` : ''}`;
     })
@@ -108,7 +108,7 @@ export function AccountQuotaForm({
           return (
             <li key={q.metric} className="flex flex-col gap-3 p-4">
               <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
-                <span className="font-semibold text-ink">{t(METRIC_LABEL[q.metric])}</span>
+                <span className="font-semibold text-ink">{t(quotaLabel(q.metric, q.kind))}</span>
                 <span className="text-sm tabular-nums text-ink-muted">
                   {t({ vi: `Đã dùng ${q.used}`, en: `Used ${q.used}` })}
                   {q.reserved > 0 ? t({ vi: ` · đang giữ ${q.reserved}`, en: ` · held ${q.reserved}` }) : ''}
@@ -118,7 +118,7 @@ export function AccountQuotaForm({
               </div>
               <div className="grid gap-3 sm:grid-cols-[auto_1fr_1fr] sm:items-end">
                 <select
-                  aria-label={t({ vi: `Cách tính ${METRIC_LABEL[q.metric].vi}`, en: `How ${METRIC_LABEL[q.metric].en} is set` })}
+                  aria-label={t({ vi: `Cách tính ${quotaLabel(q.metric, q.kind).vi}`, en: `How ${quotaLabel(q.metric, q.kind).en} is set` })}
                   value={row.mode}
                   onChange={(e) => setRow(i, { mode: e.target.value as QuotaRow['mode'], ...(e.target.value === 'custom' && q.source === 'plan' ? { limit: String(q.planLimit) } : {}) })}
                   className={`${FIELD} sm:w-56`}
@@ -195,7 +195,7 @@ export function AccountQuotaForm({
           <ul className="flex flex-col gap-2">
             {audit.entries.map((e) => (
               <li key={e.id} className="rounded-lg bg-surface-sunken px-3 py-2 text-sm">
-                <p className="text-ink">{auditSummary(e, t)}</p>
+                <p className="text-ink">{auditSummary(e, t, new Map(snapshot.quotas.map((q) => [q.metric, q.kind])))}</p>
                 <p className="text-xs text-ink-muted">
                   {e.actor?.name ?? t({ vi: 'Admin', en: 'Admin' })} · {when(e.createdAt)} · “{e.reason}”
                 </p>

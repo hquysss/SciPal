@@ -4,7 +4,8 @@ const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL ?? 'https://sci-pal-backen
 type Bilingual = { vi: string; en: string };
 
 export type TutorEvent =
-  | { event: 'meta'; conversation_id: string; remaining: number }
+  /** remaining is null for admins (not metered); period says whether it counts a day or a month. */
+  | { event: 'meta'; conversation_id: string; remaining: number | null; period: 'day' | 'month' }
   | { event: 'delta'; text: string }
   | { event: 'done' }
   | { event: 'error'; error: Bilingual; remaining?: number; conversationRemoved?: boolean };
@@ -30,8 +31,8 @@ export function createSseParser(onEvent: (e: TutorEvent) => void) {
       } catch {
         continue;
       }
-      if (name === 'meta' && typeof parsed.conversation_id === 'string' && typeof parsed.remaining === 'number') {
-        onEvent({ event: 'meta', conversation_id: parsed.conversation_id, remaining: parsed.remaining });
+      if (name === 'meta' && typeof parsed.conversation_id === 'string' && (typeof parsed.remaining === 'number' || parsed.remaining === null)) {
+        onEvent({ event: 'meta', conversation_id: parsed.conversation_id, remaining: parsed.remaining, period: parsed.period === 'month' ? 'month' : 'day' });
       } else if (name === 'delta' && typeof parsed.text === 'string') onEvent({ event: 'delta', text: parsed.text });
       else if (name === 'done') onEvent({ event: 'done' });
       else if (name === 'error') {

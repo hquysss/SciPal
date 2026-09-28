@@ -1,7 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import Fastify from 'fastify';
 import { tutorRoutes } from '../routes/tutor.js';
-import { mockQuery, mockSupabase, type MockBuilder } from './helpers/supabaseMock.js';
+import { mockQuery, mockSupabase as rawSupabase, type MockBuilder } from './helpers/supabaseMock.js';
+
+/** The quota ledger answers "plenty left" unless a test sets its own rpc results. */
+const quota = (remaining = 99, kind = 'daily') =>
+  mockQuery({ data: { operation_id: 'd0000000-0000-4000-8000-000000000001', state: 'reserved', kind, remaining, resets_at: '2026-09-28T17:00:00+00:00' }, error: null });
+const mockSupabase = (tables: Record<string, MockBuilder | MockBuilder[]>) =>
+  rawSupabase({ 'rpc:billing_reserve_quota': quota(), 'rpc:billing_settle_quota': mockQuery({ data: true, error: null }), ...tables });
 
 const C1 = 'c0000000-0000-4000-8000-000000000001';
 const L1 = 'b0000000-0000-4000-8000-000000000001';
@@ -72,7 +78,7 @@ describe('POST /api/tutor/chat', () => {
     expect(res.headers['content-type']).toContain('text/event-stream');
     const ev = events(res.body);
     expect(ev.map((e) => e.event)).toEqual(['meta', 'delta', 'delta', 'done']);
-    expect(ev[0].data).toEqual({ conversation_id: C1, remaining: 26 });
+    expect(ev[0].data).toEqual({ conversation_id: C1, remaining: 26 , period: 'day' });
     expect(convInsert.inserted[0]).toMatchObject({ user_id: 'student-1', title: 'Vòng lặp là gì?', lesson_id: null });
     expect(userInsert.inserted[0]).toMatchObject({ conversation_id: C1, role: 'user', content: 'Vòng lặp là gì?' });
     expect(assistantInsert.inserted[0]).toMatchObject({ role: 'assistant', content: 'Gợi ý một bước.' });
@@ -226,7 +232,7 @@ describe('POST /api/tutor/chat', () => {
     });
     const res = await app.inject({ method: 'POST', url: '/api/tutor/chat', payload: { conversation_id: C1, message: 'Hỏi', language: 'vi', retry: true } });
     expect(res.statusCode).toBe(200);
-    expect(events(res.body)[0].data).toEqual({ conversation_id: C1, remaining: 0 });
+    expect(events(res.body)[0].data).toEqual({ conversation_id: C1, remaining: 0 , period: 'day' });
     expect(history.inserted).toEqual([]);
     expect(assistantInsert.inserted[0]).toMatchObject({ role: 'assistant', content: 'Gợi ý một bước.' });
     await app.close();
@@ -296,7 +302,7 @@ describe('POST /api/tutor/chat', () => {
     app.addHook('onRequest', async (req) => { (req as any).user = student; });
     await app.register(tutorRoutes);
     const res = await app.inject({ method: 'POST', url: '/api/tutor/chat', payload: { message: 'Hỏi', language: 'vi' } });
-    expect(events(res.body)[0].data).toEqual({ conversation_id: C1, remaining: 4 });
+    expect(events(res.body)[0].data).toEqual({ conversation_id: C1, remaining: 4 , period: 'day' });
     expect(ai.choices[0]).toEqual({ provider: 'openai', model: 'admin-model' });
     await app.close();
   });

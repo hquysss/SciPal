@@ -53,6 +53,7 @@ describe('billing repository', () => {
     await expect(repository.reserveQuota(USER_ID, 'tutor_requests', OPERATION_ID, 1, 'a'.repeat(64))).resolves.toEqual({
       operationId: OPERATION_ID,
       state: 'reserved',
+      kind: 'monthly',
       remaining: 0,
       resetsAt: '2026-09-30T17:00:00.000Z',
     });

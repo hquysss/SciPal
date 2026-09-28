@@ -6,15 +6,23 @@ import type { AccountQuota, AccountQuotaSnapshot, QuotaChangeInput } from './quo
 type Bilingual = { vi: string; en: string };
 export type QuotaRow = { metric: QuotaMetric; mode: 'plan' | 'custom'; limit: string; expires: string };
 
-export const METRIC_LABEL: Record<QuotaMetric, Bilingual> = {
-  tutor_requests: { vi: 'Lượt Tutor mỗi tháng', en: 'Tutor requests a month' },
-  graded_exam_attempts: { vi: 'Lượt thi chấm điểm mỗi tháng', en: 'Graded exam attempts a month' },
-  import_files: { vi: 'Tệp nhập mỗi tháng', en: 'Imported files a month' },
-  author_ai_requests: { vi: 'Lượt AI soạn bài mỗi tháng', en: 'Authoring AI requests a month' },
+const METRIC_NAME: Record<QuotaMetric, Bilingual> = {
+  tutor_requests: { vi: 'Lượt Tutor', en: 'Tutor requests' },
+  graded_exam_attempts: { vi: 'Lượt thi chấm điểm', en: 'Graded exam attempts' },
+  import_files: { vi: 'Tệp nhập', en: 'Imported files' },
+  author_ai_requests: { vi: 'Lượt AI soạn bài', en: 'Authoring AI requests' },
   active_classes: { vi: 'Lớp đang hoạt động', en: 'Active classes' },
   students_per_class: { vi: 'Học sinh mỗi lớp', en: 'Students per class' },
   active_authored_exams: { vi: 'Đề tự soạn đang hoạt động', en: 'Active authored exams' },
 };
+
+/** "Lượt Tutor mỗi ngày" / "… mỗi tháng"; capacity limits have no period. */
+export function quotaLabel(metric: QuotaMetric, kind: 'daily' | 'monthly' | 'capacity'): Bilingual {
+  const name = METRIC_NAME[metric] ?? { vi: metric, en: metric };
+  if (kind === 'daily') return { vi: `${name.vi} mỗi ngày`, en: `${name.en} a day` };
+  if (kind === 'monthly') return { vi: `${name.vi} mỗi tháng`, en: `${name.en} a month` };
+  return name;
+}
 
 export const PLAN_LABEL: Record<string, Bilingual> = {
   student_free: { vi: 'Học sinh Miễn phí', en: 'Student Free' },

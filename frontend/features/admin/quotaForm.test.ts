@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { AccountQuotaSnapshot } from './quotasApi';
-import { belowUsage, changesFrom, fromVietnamLocal, rowsFrom, toVietnamLocal, validRow } from './quotaForm';
+import { belowUsage, changesFrom, fromVietnamLocal, quotaLabel, rowsFrom, toVietnamLocal, validRow } from './quotaForm';
 
 const snapshot: AccountQuotaSnapshot = {
   account: { id: 'u1', plan: 'student_free', paidThrough: null },
@@ -16,6 +16,14 @@ describe('Vietnam local time', () => {
     expect(toVietnamLocal('2026-10-31T16:59:00.000Z')).toBe('2026-10-31T23:59');
     expect(fromVietnamLocal('2026-10-31T23:59')).toBe('2026-10-31T16:59:00.000Z');
     expect(fromVietnamLocal('')).toBeNull();
+  });
+});
+
+describe('quotaLabel', () => {
+  it('says per day or per month from the quota kind', () => {
+    expect(quotaLabel('tutor_requests', 'daily').vi).toBe('Lượt Tutor mỗi ngày');
+    expect(quotaLabel('tutor_requests', 'monthly').vi).toBe('Lượt Tutor mỗi tháng');
+    expect(quotaLabel('active_classes', 'capacity').vi).toBe('Lớp đang hoạt động');
   });
 });
 

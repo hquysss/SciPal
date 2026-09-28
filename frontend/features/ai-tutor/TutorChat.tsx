@@ -22,6 +22,7 @@ export interface TutorChatViewProps {
   messages: Message[];
   streaming: boolean;
   remaining: number | null;
+  period?: 'day' | 'month';
   error: Bilingual | null;
   limitReached: boolean;
   level: EducationLevel;
@@ -41,6 +42,7 @@ export function TutorChatView({
   messages,
   streaming,
   remaining,
+  period = 'day',
   error,
   limitReached,
   level,
@@ -177,7 +179,10 @@ export function TutorChatView({
           </form>
           <div className="flex min-h-5 items-center justify-between gap-3 px-1 text-xs text-ink-muted">
             <span>
-              {remaining !== null && t({ en: `${remaining} questions left today`, vi: `Còn ${remaining} lượt hôm nay` })}
+              {remaining !== null &&
+                (period === 'month'
+                  ? t({ en: `${remaining} questions left this month`, vi: `Còn ${remaining} lượt tháng này` })
+                  : t({ en: `${remaining} questions left today`, vi: `Còn ${remaining} lượt hôm nay` }))}
             </span>
             {draft.length > COUNTER_FROM && (
               <span className="tabular-nums" aria-live="polite">
@@ -226,6 +231,7 @@ export function TutorChat({
       messages={chat.messages}
       streaming={chat.streaming}
       remaining={chat.remaining}
+      period={chat.period}
       error={chat.error}
       limitReached={chat.limitReached}
       level={level}

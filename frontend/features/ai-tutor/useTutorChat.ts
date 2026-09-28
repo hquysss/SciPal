@@ -11,6 +11,8 @@ export type TutorState = {
   messages: TutorMessage[];
   streaming: boolean;
   remaining: number | null;
+  /** What `remaining` counts: today's questions or this month's. */
+  period: 'day' | 'month';
   error: Bilingual | null;
   limitReached: boolean;
   lastQuestion: string | null;
@@ -23,7 +25,7 @@ type Action =
   | { type: 'finished' };
 
 export const initialTutorState = (messages: TutorMessage[], conversationId: string | null = null): TutorState => ({
-  conversationId, messages, streaming: false, remaining: null, error: null, limitReached: false, lastQuestion: null,
+  conversationId, messages, streaming: false, remaining: null, period: 'day', error: null, limitReached: false, lastQuestion: null,
 });
 
 /** Drops a trailing empty assistant message (an answer that never started). */
@@ -41,7 +43,7 @@ export function tutorReducer(state: TutorState, action: Action): TutorState {
       return { ...state, streaming: true, error: null, messages: [...trimEmpty(state.messages), { role: 'assistant', content: '' }] };
     case 'event': {
       const e = action.event;
-      if (e.event === 'meta') return { ...state, conversationId: e.conversation_id, remaining: e.remaining };
+      if (e.event === 'meta') return { ...state, conversationId: e.conversation_id, remaining: e.remaining, period: e.period };
       if (e.event === 'delta') {
         const messages = [...state.messages];
         const last = messages[messages.length - 1];
