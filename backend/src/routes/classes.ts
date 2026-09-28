@@ -1,5 +1,6 @@
 import type { FastifyPluginAsync, FastifyReply, FastifyRequest } from 'fastify';
 import crypto from 'node:crypto';
+import { capacityRefusal } from '../billing/capacity.js';
 
 interface ClassUser {
   id?: string;
@@ -141,6 +142,8 @@ export const classRoutes: FastifyPluginAsync = async (app) => {
         .select('id, name, subject_id, invite_code, created_at, subjects(slug, name_en, name_vi)')
         .single();
       if (error?.code === '23505') continue; // invite code collision — retry
+      const full = capacityRefusal(error);
+      if (full) return reply.code(429).send(full);
       if (error || !data) {
         request.log.error({ err: error }, 'Failed to create class');
         return reply.code(500).send({ error: 'Không tạo được lớp học.' });
@@ -181,6 +184,8 @@ export const classRoutes: FastifyPluginAsync = async (app) => {
     const { error } = await supabase
       .from('class_members')
       .insert({ class_id: classRoom.id, student_id: user.id });
+    const full = capacityRefusal(error);
+    if (full) return reply.code(429).send(full);
     if (error && error.code !== '23505') {
       request.log.error({ err: error }, 'Failed to join class');
       return reply.code(500).send({ error: 'Không tham gia được lớp học.' });

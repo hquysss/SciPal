@@ -53,7 +53,7 @@ export function CreateClassModal({ open, onClose, onCreated, token }: CreateClas
         return;
       }
       const errData = await res.json().catch(() => ({}));
-      setError(errData.error ?? t({ en: 'Could not create the class.', vi: 'Không thể tạo lớp học.' }));
+      setError((lang === 'en' ? errData.error_en : undefined) ?? errData.error ?? t({ en: 'Could not create the class.', vi: 'Không thể tạo lớp học.' }));
     } catch (err) {
       console.warn('Create class error:', err);
       setError(t({

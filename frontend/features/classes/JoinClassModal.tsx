@@ -16,7 +16,7 @@ interface JoinClassModalProps {
 }
 
 export function JoinClassModal({ open, onClose, onJoined, token }: JoinClassModalProps) {
-  const { t } = useLanguage();
+  const { t, lang } = useLanguage();
   const [code, setCode] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -48,7 +48,7 @@ export function JoinClassModal({ open, onClose, onJoined, token }: JoinClassModa
         return;
       }
       const errData = await res.json().catch(() => ({}));
-      setError(errData.error ?? t({ en: 'This class code is invalid or has expired.', vi: 'Mã lớp không hợp lệ hoặc đã hết hạn.' }));
+      setError((lang === 'en' ? errData.error_en : undefined) ?? errData.error ?? t({ en: 'This class code is invalid or has expired.', vi: 'Mã lớp không hợp lệ hoặc đã hết hạn.' }));
     } catch (err) {
       console.warn('Join class error:', err);
       setError(t({

@@ -31,6 +31,9 @@ values
 \ir ../migrations/20260928102931_billing_foundation.sql
 \ir ../migrations/20260928230000_account_quota_admin.sql
 \ir ../migrations/20260929000000_tutor_daily_quota.sql
+\ir ../migrations/20260929020000_teacher_capacity.sql
+-- Supabase's service_role writes these tables; the stubs above need the same grant.
+grant select, insert, update, delete on public.class_rooms, public.class_members, public.exam_blueprints to service_role;
 
 insert into public.billing_subscriptions (user_id, plan_code, paid_through)
 values ('00000000-0000-4000-8000-000000000001', 'student_plus', '2027-09-30T16:00:00Z');
@@ -437,6 +440,61 @@ begin
   if not public.billing_settle_quota('30000000-0000-4000-8000-000000000005', 'release') then raise exception 'Release refused'; end if;
   v_reservation := public.billing_reserve_quota(c_free, 'tutor_requests', '30000000-0000-4000-8000-000000000007', repeat('d', 64), 1);
   if v_reservation ->> 'state' <> 'reserved' then raise exception 'Released request was not given back'; end if;
+end;
+$$;
+reset role;
+
+-- Teacher capacity (migration 20260929020000).
+set role service_role;
+do $$
+declare
+  v_failed text;
+  v_detail text;
+  i integer;
+  c_teacher constant uuid := '00000000-0000-4000-8000-000000000003';
+  c_admin constant uuid := '00000000-0000-4000-8000-000000000005';
+  c_class constant uuid := '10000000-0000-4000-8000-000000000001';
+begin
+  -- Teacher Free: one active class (already has one).
+  begin
+    insert into public.class_rooms (id, teacher_id) values ('10000000-0000-4000-8000-000000000002', c_teacher);
+    raise exception 'unreachable';
+  exception when others then
+    get stacked diagnostics v_failed = message_text, v_detail = pg_exception_detail;
+  end;
+  if v_failed <> 'QUOTA_EXCEEDED' or v_detail <> 'active_classes' then raise exception 'Second class: % %', v_failed, v_detail; end if;
+
+  -- Admins are not limited.
+  insert into public.class_rooms (id, teacher_id) values ('10000000-0000-4000-8000-000000000003', c_admin);
+  insert into public.class_rooms (id, teacher_id) values ('10000000-0000-4000-8000-000000000004', c_admin);
+
+  -- Students per class follow the owner's quota (override to 3; the class has 2).
+  insert into public.account_quota_overrides (user_id, metric, limit_value, version) values (c_teacher, 'students_per_class', 3, 1);
+  insert into public.class_members (class_id, student_id) values (c_class, '00000000-0000-4000-8000-000000000004');
+  begin
+    insert into public.class_members (class_id, student_id) values (c_class, '00000000-0000-4000-8000-000000000006');
+    raise exception 'unreachable';
+  exception when others then
+    get stacked diagnostics v_failed = message_text, v_detail = pg_exception_detail;
+  end;
+  if v_failed <> 'QUOTA_EXCEEDED' or v_detail <> 'students_per_class' then raise exception 'Fourth member: % %', v_failed, v_detail; end if;
+
+  -- Teacher Free: five active authored exams, drafts included; the sixth is refused.
+  for i in 1..5 loop
+    insert into public.exam_blueprints (id, created_by, status) values (('50000000-0000-4000-8000-00000000000' || i)::uuid, c_teacher, 'draft');
+  end loop;
+  begin
+    insert into public.exam_blueprints (id, created_by, status) values ('50000000-0000-4000-8000-000000000006', c_teacher, 'pending_review');
+    raise exception 'unreachable';
+  exception when others then
+    get stacked diagnostics v_failed = message_text, v_detail = pg_exception_detail;
+  end;
+  if v_failed <> 'QUOTA_EXCEEDED' or v_detail <> 'active_authored_exams' then raise exception 'Sixth exam: % %', v_failed, v_detail; end if;
+  -- Changing the status of an exam already counted is not a new exam.
+  update public.exam_blueprints set status = 'pending_review' where id = '50000000-0000-4000-8000-000000000001';
+  -- Deleting one frees a place.
+  delete from public.exam_blueprints where id = '50000000-0000-4000-8000-000000000002';
+  insert into public.exam_blueprints (id, created_by, status) values ('50000000-0000-4000-8000-000000000006', c_teacher, 'draft');
 end;
 $$;
 reset role;
