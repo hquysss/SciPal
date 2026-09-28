@@ -18,7 +18,7 @@ export class ClaudeProvider implements AIProvider {
 
   async *chat(messages: ChatMessage[], systemPrompt: string): AsyncIterable<string> {
     const stream = await this.client.messages.stream({
-      model:      'claude-3-5-haiku-20241022',
+      model:      'claude-haiku-4-5',
       max_tokens: 1024,
       system:     systemPrompt,
       messages:   messages.map(m => ({ role: m.role, content: m.content })),
