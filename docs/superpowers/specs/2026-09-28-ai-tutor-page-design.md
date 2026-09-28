@@ -91,8 +91,9 @@ Errors are `{ error, error_en }`, as in the authoring routes.
 
 ### Provider
 
-`providers/ai.ts`: Claude model `claude-haiku-4-5`, `max_tokens` 1024; OpenAI stays available
-through `AI_PROVIDER`. The provider is decorated on the Fastify app so tests inject a fake one.
+`providers/ai.ts`: OpenAI only (Claude dropped on 28/09 for cost). Model from `TUTOR_MODEL`, default
+`gpt-4o-mini`, `max_tokens` 1024. The provider is decorated on the Fastify app (built on the first
+question) so tests inject a fake one.
 
 ## Web
 

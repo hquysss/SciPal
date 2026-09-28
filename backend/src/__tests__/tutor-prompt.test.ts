@@ -68,33 +68,35 @@ describe('TUTOR_EXAMPLES', () => {
 describe('lazyAIProvider', () => {
   it('does not build the SDK client (which needs a key) until the first question', async () => {
     const { lazyAIProvider } = await import('../providers/ai.js');
-    const saved = { claude: process.env.CLAUDE_API_KEY, anthropic: process.env.ANTHROPIC_API_KEY };
-    delete process.env.CLAUDE_API_KEY;
-    delete process.env.ANTHROPIC_API_KEY;
+    const saved = process.env.OPENAI_API_KEY;
+    delete process.env.OPENAI_API_KEY;
     try {
       expect(() => lazyAIProvider()).not.toThrow();
     } finally {
-      if (saved.claude !== undefined) process.env.CLAUDE_API_KEY = saved.claude;
-      if (saved.anthropic !== undefined) process.env.ANTHROPIC_API_KEY = saved.anthropic;
+      if (saved !== undefined) process.env.OPENAI_API_KEY = saved;
     }
   });
 });
 
 describe('tutorModel', () => {
-  it('uses TUTOR_MODEL when set, otherwise each provider’s default', async () => {
+  it('uses TUTOR_MODEL when set, otherwise gpt-4o-mini', async () => {
     const { tutorModel } = await import('../providers/ai.js');
     const saved = process.env.TUTOR_MODEL;
     try {
       delete process.env.TUTOR_MODEL;
-      expect(tutorModel('claude')).toBe('claude-haiku-4-5');
-      expect(tutorModel('openai')).toBe('gpt-4o-mini');
+      expect(tutorModel()).toBe('gpt-4o-mini');
       process.env.TUTOR_MODEL = '  some-model  ';
-      expect(tutorModel('openai')).toBe('some-model');
+      expect(tutorModel()).toBe('some-model');
       process.env.TUTOR_MODEL = '   ';
-      expect(tutorModel('claude')).toBe('claude-haiku-4-5');
+      expect(tutorModel()).toBe('gpt-4o-mini');
     } finally {
       if (saved === undefined) delete process.env.TUTOR_MODEL;
       else process.env.TUTOR_MODEL = saved;
     }
+  });
+
+  it('has no Claude provider left', async () => {
+    const mod = await import('../providers/ai.js');
+    expect('ClaudeProvider' in mod).toBe(false);
   });
 });

@@ -1,3 +1,5 @@
+import { OpenAI } from 'openai';
+
 export interface ChatMessage {
   role:    'user' | 'assistant';
   content: string;
@@ -10,50 +12,25 @@ export interface AIProvider {
   ): AsyncIterable<string>;
 }
 
-const DEFAULT_MODELS = { claude: 'claude-haiku-4-5', openai: 'gpt-4o-mini' } as const;
+const DEFAULT_MODEL = 'gpt-4o-mini';
 
-/** The model to call: `TUTOR_MODEL` when set (so it changes without a deploy of code), else the provider's default. */
-export function tutorModel(provider: keyof typeof DEFAULT_MODELS): string {
-  return process.env.TUTOR_MODEL?.trim() || DEFAULT_MODELS[provider];
-}
-
-// ── Claude provider ──────────────────────────────────────────────
-import { Anthropic } from '@anthropic-ai/sdk';
-
-export class ClaudeProvider implements AIProvider {
-  private client = new Anthropic({ apiKey: process.env.CLAUDE_API_KEY });
-
-  async *chat(messages: ChatMessage[], systemPrompt: string): AsyncIterable<string> {
-    const stream = await this.client.messages.stream({
-      model:      tutorModel('claude'),
-      max_tokens: 1024,
-      system:     systemPrompt,
-      messages:   messages.map(m => ({ role: m.role, content: m.content })),
-    });
-    for await (const chunk of stream) {
-      if (
-        chunk.type === 'content_block_delta' &&
-        chunk.delta.type === 'text_delta'
-      ) {
-        yield chunk.delta.text;
-      }
-    }
-  }
+/** The model to call: `TUTOR_MODEL` when set (so it changes without a code deploy), else gpt-4o-mini. */
+export function tutorModel(): string {
+  return process.env.TUTOR_MODEL?.trim() || DEFAULT_MODEL;
 }
 
 // ── OpenAI provider ──────────────────────────────────────────────
-import { OpenAI } from 'openai';
-
 export class OpenAIProvider implements AIProvider {
   private client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
   async *chat(messages: ChatMessage[], systemPrompt: string): AsyncIterable<string> {
     const stream = await this.client.chat.completions.create({
-      model:  tutorModel('openai'),
+      model:  tutorModel(),
       stream: true,
+      max_tokens: 1024,
       messages: [
         { role: 'system', content: systemPrompt },
-        ...messages.map(m => ({ role: m.role as 'user'|'assistant', content: m.content })),
+        ...messages.map(m => ({ role: m.role, content: m.content })),
       ],
     });
     for await (const chunk of stream) {
@@ -65,13 +42,11 @@ export class OpenAIProvider implements AIProvider {
 
 // ── Factory ──────────────────────────────────────────────────────
 export function createAIProvider(): AIProvider {
-  const provider = process.env.AI_PROVIDER ?? 'claude';
-  if (provider === 'openai') return new OpenAIProvider();
-  return new ClaudeProvider();
+  return new OpenAIProvider();
 }
 
 /**
- * The provider, built on the first question: the SDK clients throw without an API key, and a
+ * The provider, built on the first question: the SDK client throws without an API key, and a
  * missing key must not stop the rest of the backend from starting.
  */
 export function lazyAIProvider(): AIProvider {
