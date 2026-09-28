@@ -68,7 +68,8 @@ translating Excel exam imports.
 - **On save** (the "Lưu" button, autosave, "Lưu câu hỏi", and before "Gửi duyệt"): collect every
   bilingual field whose Vietnamese side has text and English side is empty — lesson titles,
   theory content, formula captions, image alt, simulation heading/caption; question stem, options
-  / statements, explanation, rubric, short-answer answer — translate them in one request, merge,
+  / statements, explanation, rubric (the short-answer `answer_key` is one string, not bilingual, so it
+  is never translated) — translate them in one request, merge,
   then save.
 - Never overwrites English that has text. A teacher who writes English themselves is never
   touched.
@@ -101,8 +102,7 @@ translating Excel exam imports.
 ## Invariants kept
 
 - AI keys only in the backend environment; the browser calls `/api/authoring/translate` only.
-- Answers: the short-answer `answer_key` is translated only when it is plain words (a number,
-  formula or code is copied); multiple-choice correctness flags never leave the draft.
+- Answers: `answer_key` and multiple-choice correctness flags are never sent for translation.
 - Bilingual `{ en, vi }` everywhere; no content becomes Vietnamese-only.
 - No schema change to lessons or questions.
 
