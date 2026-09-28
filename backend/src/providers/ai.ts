@@ -1,3 +1,5 @@
+import { OpenAI } from 'openai';
+
 export interface ChatMessage {
   role:    'user' | 'assistant';
   content: string;
@@ -10,43 +12,35 @@ export interface AIProvider {
   ): AsyncIterable<string>;
 }
 
-// ── Claude provider ──────────────────────────────────────────────
-import { Anthropic } from '@anthropic-ai/sdk';
+// Gemini is reached through its OpenAI-compatible endpoint, so one SDK serves both.
+// https://ai.google.dev/gemini-api/docs/openai
+const GEMINI_BASE_URL = 'https://generativelanguage.googleapis.com/v1beta/openai/';
+const DEFAULT_MODELS = { gemini: 'gemini-3.8-flash', openai: 'gpt-4o-mini' } as const;
 
-export class ClaudeProvider implements AIProvider {
-  private client = new Anthropic({ apiKey: process.env.CLAUDE_API_KEY });
-
-  async *chat(messages: ChatMessage[], systemPrompt: string): AsyncIterable<string> {
-    const stream = await this.client.messages.stream({
-      model:      'claude-haiku-4-5',
-      max_tokens: 1024,
-      system:     systemPrompt,
-      messages:   messages.map(m => ({ role: m.role, content: m.content })),
-    });
-    for await (const chunk of stream) {
-      if (
-        chunk.type === 'content_block_delta' &&
-        chunk.delta.type === 'text_delta'
-      ) {
-        yield chunk.delta.text;
-      }
-    }
-  }
+/**
+ * Which service answers the tutor: `AI_PROVIDER` = `gemini` (default) or `openai`, each with its own
+ * key; `TUTOR_MODEL` overrides the model without a code change.
+ */
+export function providerSettings(): { apiKey: string | undefined; baseURL: string | undefined; model: string } {
+  const provider = process.env.AI_PROVIDER?.trim().toLowerCase() === 'openai' ? 'openai' : 'gemini';
+  const model = process.env.TUTOR_MODEL?.trim() || DEFAULT_MODELS[provider];
+  return provider === 'openai'
+    ? { apiKey: process.env.OPENAI_API_KEY, baseURL: undefined, model }
+    : { apiKey: process.env.GEMINI_API_KEY, baseURL: GEMINI_BASE_URL, model };
 }
 
-// ── OpenAI provider ──────────────────────────────────────────────
-import { OpenAI } from 'openai';
-
-export class OpenAIProvider implements AIProvider {
-  private client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+export class ChatCompletionsProvider implements AIProvider {
+  private settings = providerSettings();
+  private client = new OpenAI({ apiKey: this.settings.apiKey, baseURL: this.settings.baseURL });
 
   async *chat(messages: ChatMessage[], systemPrompt: string): AsyncIterable<string> {
     const stream = await this.client.chat.completions.create({
-      model:  'gpt-4o-mini',
+      model:  this.settings.model,
       stream: true,
+      max_tokens: 1024,
       messages: [
         { role: 'system', content: systemPrompt },
-        ...messages.map(m => ({ role: m.role as 'user'|'assistant', content: m.content })),
+        ...messages.map(m => ({ role: m.role, content: m.content })),
       ],
     });
     for await (const chunk of stream) {
@@ -56,15 +50,12 @@ export class OpenAIProvider implements AIProvider {
   }
 }
 
-// ── Factory ──────────────────────────────────────────────────────
 export function createAIProvider(): AIProvider {
-  const provider = process.env.AI_PROVIDER ?? 'claude';
-  if (provider === 'openai') return new OpenAIProvider();
-  return new ClaudeProvider();
+  return new ChatCompletionsProvider();
 }
 
 /**
- * The provider, built on the first question: the SDK clients throw without an API key, and a
+ * The provider, built on the first question: the SDK client throws without an API key, and a
  * missing key must not stop the rest of the backend from starting.
  */
 export function lazyAIProvider(): AIProvider {
