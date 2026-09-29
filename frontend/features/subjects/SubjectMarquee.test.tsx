@@ -55,3 +55,15 @@ describe('SubjectMarquee', () => {
     expect(render([])).toContain('đang được chuẩn bị');
   });
 });
+
+describe('subject strip styles', () => {
+  it('marks subjects with lessons in the warm sun → coral colours (no subject accent) at one card size', async () => {
+    const { readFileSync } = await import('node:fs');
+    const css = readFileSync('features/subjects/subject-marquee.module.css', 'utf8');
+    expect(css).not.toContain('--accent');
+    expect(css).toMatch(/\.live \{[^}]*var\(--coral\)/);
+    expect(css).toMatch(/\.go \{[^}]*var\(--sun\)[^}]*var\(--coral\)/);
+    // A card with lessons stands out by colour, not by size.
+    expect(css).not.toMatch(/\.live \{[^}]*\swidth:/);
+  });
+});

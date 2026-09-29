@@ -1,6 +1,7 @@
 /* The landing subjects strip. It runs left forever (the rail holds two identical halves and moves
    by exactly one half), pauses under the pointer or keyboard focus, and fades at both edges.
-   Cards with lessons carry their subject accent and glow; the rest stay quiet. */
+   Cards with lessons stand out in warm sun → coral (not each subject's accent) with a soft glow;
+   every card has the same size. */
 
 .marquee {
   position: relative;
@@ -45,7 +46,7 @@
   grid-template-rows: auto 1fr auto;
   justify-items: start;
   gap: 0.85rem;
-  width: 14.5rem;
+  width: 15.5rem;
   min-height: 11.5rem;
   border: 1px solid var(--line);
   border-radius: 1.25rem;
@@ -119,16 +120,16 @@
   background: var(--edge);
 }
 
-/* A subject with lessons: wider, in its accent, breathing a soft glow, with a light sweep. */
+/* A subject with lessons: same size, in warm sun → coral (it stands out on the green site),
+   a soft glow and a light sweep. */
 .live {
   overflow: hidden;
   isolation: isolate;
-  width: 18.5rem;
-  border-color: color-mix(in srgb, var(--accent, var(--action)) 45%, var(--line));
+  border-color: color-mix(in srgb, var(--coral) 55%, var(--line));
   background:
-    radial-gradient(120% 90% at 100% 0%, color-mix(in srgb, var(--accent, var(--action)) 22%, transparent), transparent 60%),
-    linear-gradient(160deg, color-mix(in srgb, var(--accent, var(--action)) 10%, var(--surface)), var(--surface));
-  box-shadow: 0 1.1rem 2.2rem -1.3rem color-mix(in srgb, var(--accent, var(--action)) 70%, transparent);
+    radial-gradient(120% 90% at 100% 0%, color-mix(in srgb, var(--sun) 30%, transparent), transparent 60%),
+    linear-gradient(160deg, color-mix(in srgb, var(--coral) 14%, var(--surface)), var(--surface));
+  box-shadow: 0 0.6rem 1.4rem -1rem color-mix(in srgb, var(--coral) 60%, transparent);
   animation: live-breathe 3.6s ease-in-out infinite;
 }
 
@@ -143,14 +144,14 @@
 }
 
 .live:hover {
-  border-color: var(--accent, var(--action));
-  box-shadow: 0 1.6rem 2.8rem -1.3rem color-mix(in srgb, var(--accent, var(--action)) 85%, transparent);
+  border-color: var(--coral);
+  box-shadow: 0 0.8rem 1.6rem -1rem color-mix(in srgb, var(--coral) 70%, transparent);
 }
 
 .live .icon {
-  border-color: color-mix(in srgb, var(--accent, var(--action)) 40%, var(--line));
-  background: color-mix(in srgb, var(--accent, var(--action)) 14%, var(--surface));
-  color: var(--accent-ink, var(--accent, var(--action)));
+  border-color: color-mix(in srgb, var(--coral) 45%, var(--line));
+  background: linear-gradient(135deg, color-mix(in srgb, var(--sun) 35%, var(--surface)), color-mix(in srgb, var(--coral) 30%, var(--surface)));
+  color: var(--ink);
 }
 
 .go {
@@ -160,8 +161,10 @@
   gap: 0.45rem;
   border-radius: 999px;
   padding: 0 1.1rem;
-  background: var(--accent, var(--action));
-  color: var(--action-ink);
+  /* Light warm gradient in both themes, so its label stays dark (like the sign-in button). */
+  background: linear-gradient(120deg, var(--sun), var(--coral));
+  color: oklch(0.24 0.03 150);
+  box-shadow: 0 0.5rem 1rem -0.6rem color-mix(in srgb, var(--coral) 80%, transparent);
   font-size: 0.88rem;
   font-weight: 750;
   text-decoration: none;
@@ -190,7 +193,7 @@
 
 @keyframes live-breathe {
   50% {
-    box-shadow: 0 1.4rem 2.6rem -1.1rem color-mix(in srgb, var(--accent, var(--action)) 85%, transparent);
+    box-shadow: 0 0.75rem 1.5rem -1rem color-mix(in srgb, var(--coral) 75%, transparent);
   }
 }
 
