@@ -23,12 +23,11 @@ describe('callbackUrl', () => {
 
 describe('readAuthSettings', () => {
   it('reads which providers are on and whether sign-up is open', () => {
-    expect(readAuthSettings({ external: { google: true, facebook: false, email: true }, disable_signup: false })).toEqual({
+    expect(readAuthSettings({ external: { google: true, facebook: true, email: true }, disable_signup: false })).toEqual({
       google: true,
-      facebook: false,
       signupOpen: true,
     });
-    expect(readAuthSettings({ external: { google: 'yes' }, disable_signup: true })).toEqual({ google: false, facebook: false, signupOpen: false });
+    expect(readAuthSettings({ external: { google: 'yes' }, disable_signup: true })).toEqual({ google: false, signupOpen: false });
     expect(readAuthSettings(null)).toBeNull();
     expect(readAuthSettings({ nope: 1 })).toBeNull();
   });

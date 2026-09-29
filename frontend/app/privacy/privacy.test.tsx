@@ -10,10 +10,12 @@ describe('/privacy', () => {
 
   it('names what SciPal keeps and who processes it', () => {
     expect(html).toContain('Chính sách quyền riêng tư');
-    for (const name of ['Supabase', 'Vercel', 'payOS', 'Google Gemini', 'OpenAI', 'Facebook']) expect(html).toContain(name);
+    for (const name of ['Supabase', 'Vercel', 'payOS', 'Google Gemini', 'OpenAI']) expect(html).toContain(name);
+    // Sign-in with Facebook was removed; the policy must not claim it.
+    expect(html).not.toContain('Facebook');
   });
 
-  it('tells people how to have their data deleted (Facebook asks for this)', () => {
+  it('tells people how to have their data deleted', () => {
     expect(html).toContain('id="xoa-du-lieu"');
     expect(html).toContain('href="mailto:tuilangus@gmail.com');
   });

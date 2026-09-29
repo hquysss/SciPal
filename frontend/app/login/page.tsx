@@ -52,7 +52,7 @@ function LoginContent() {
   const [notice, setNotice] = useState<(Bilingual & { tone: 'danger' | 'info' }) | null>(() => {
     const failure = searchParams.get('error');
     if (failure === 'oauth') {
-      return { tone: 'danger', vi: 'Chưa đăng nhập được bằng Google/Facebook. Bạn thử lại, hoặc dùng email.', en: 'Google/Facebook sign-in did not finish. Try again, or use e-mail.' };
+      return { tone: 'danger', vi: 'Chưa đăng nhập được bằng Google. Bạn thử lại, hoặc dùng email.', en: 'Google sign-in did not finish. Try again, or use e-mail.' };
     }
     if (failure === 'link') {
       return { tone: 'info', vi: 'Link xác nhận đã dùng rồi. Email của bạn có thể đã được xác nhận — hãy đăng nhập.', en: 'That confirmation link was already used. Your e-mail is probably confirmed — sign in.' };
@@ -570,7 +570,7 @@ function LoginContent() {
 
             <OAuthButtons
               // Until the settings arrive (or if they cannot be read) both are offered.
-              providers={{ google: authSettings?.google ?? true, facebook: authSettings?.facebook ?? true }}
+              providers={{ google: authSettings?.google ?? true }}
               redirect={targetDestination}
               onError={(message) => setNotice({ ...message, tone: 'danger' })}
             />
@@ -625,8 +625,8 @@ function LoginContent() {
             </div>
             <p id="katha-help-body" className="katha-login-modal-body">
               {lang === 'en'
-                ? 'No account yet? Choose “Create account” to make a free student account with e-mail, Google or Facebook. Teacher accounts and accounts issued by your school come from an administrator: if you forgot that password, contact your teacher or the school’s ICT staff.'
-                : 'Chưa có tài khoản? Chọn “Tạo tài khoản” để lập tài khoản học sinh miễn phí bằng email, Google hoặc Facebook. Tài khoản giáo viên và tài khoản do trường cấp được quản trị viên tạo: nếu quên mật khẩu, bạn liên hệ giáo viên hoặc bộ phận Tin học của trường.'}
+                ? 'No account yet? Choose “Create account” to make a free student account with e-mail or Google. Teacher accounts and accounts issued by your school come from an administrator: if you forgot that password, contact your teacher or the school’s ICT staff.'
+                : 'Chưa có tài khoản? Chọn “Tạo tài khoản” để lập tài khoản học sinh miễn phí bằng email hoặc Google. Tài khoản giáo viên và tài khoản do trường cấp được quản trị viên tạo: nếu quên mật khẩu, bạn liên hệ giáo viên hoặc bộ phận Tin học của trường.'}
             </p>
             <div className="katha-login-modal-footer">
               <button

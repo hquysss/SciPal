@@ -4,8 +4,7 @@ import type { ReactNode } from 'react';
 import Link from 'next/link';
 import { useLanguage } from '@scipal/hooks';
 
-// The public privacy policy (also the "Privacy Policy URL" and data-deletion instructions that
-// Facebook Login asks for). It describes what the code actually does; update it with the code.
+// The public privacy policy, with data-deletion instructions. It describes what the code actually does; update it with the code.
 
 const CONTACT_EMAIL = 'tuilangus@gmail.com';
 const UPDATED = { vi: 'Cập nhật ngày 29/09/2026', en: 'Updated 29 September 2026' };
@@ -59,7 +58,7 @@ export default function PrivacyPage() {
       <Section title={{ vi: 'Dữ liệu SciPal thu thập', en: 'What SciPal collects' }}>
         <Items
           items={[
-            { vi: 'Tài khoản: email, họ tên, mật khẩu (được mã hóa, SciPal không đọc được). Khi đăng nhập bằng Google hoặc Facebook: email, tên và ảnh đại diện mà nhà cung cấp chia sẻ.', en: 'Account: e-mail, name, password (hashed; SciPal cannot read it). With Google or Facebook sign-in: the e-mail, name and profile picture the provider shares.' },
+            { vi: 'Tài khoản: email, họ tên, mật khẩu (được mã hóa, SciPal không đọc được). Khi đăng nhập bằng Google: email, tên và ảnh đại diện mà Google chia sẻ.', en: 'Account: e-mail, name, password (hashed; SciPal cannot read it). With Google sign-in: the e-mail, name and profile picture Google shares.' },
             { vi: 'Việc học: cấp học đã chọn, tiến trình bài học, điểm và bài làm khi thi thử, lớp học tham gia.', en: 'Learning: chosen school level, lesson progress, exam answers and scores, classes joined.' },
             { vi: 'Gia sư AI: câu hỏi và câu trả lời trong các cuộc trò chuyện của tài khoản, để bạn xem lại. Câu hỏi thử của khách chưa đăng nhập không được lưu.', en: 'AI tutor: questions and answers in your account’s conversations, so you can come back to them. A visitor’s trial question is not stored.' },
             { vi: 'Thanh toán: mã đơn, gói, số tiền và trạng thái giao dịch. SciPal không nhận và không lưu số thẻ hay thông tin ngân hàng.', en: 'Payments: order code, plan, amount and status. SciPal never receives or stores card or bank details.' },
@@ -89,7 +88,7 @@ export default function PrivacyPage() {
             { vi: 'Vercel: máy chủ chạy website và API.', en: 'Vercel: hosting for the website and API.' },
             { vi: 'Google Gemini và OpenAI: tạo câu trả lời của Gia sư AI và hỗ trợ soạn bài. Chỉ nội dung câu hỏi và ngữ cảnh bài học được gửi đi, không kèm email hay tên của bạn.', en: 'Google Gemini and OpenAI: generate AI tutor answers and help write lessons. Only the question and lesson context are sent, not your e-mail or name.' },
             { vi: 'payOS: xử lý thanh toán chuyển khoản/QR.', en: 'payOS: processes bank transfer / QR payments.' },
-            { vi: 'Google và Facebook: chỉ khi bạn chọn đăng nhập bằng các dịch vụ này.', en: 'Google and Facebook: only if you choose to sign in with them.' },
+            { vi: 'Google: chỉ khi bạn chọn đăng nhập bằng Google.', en: 'Google: only if you choose to sign in with Google.' },
           ]}
         />
       </Section>
@@ -114,7 +113,7 @@ export default function PrivacyPage() {
 
       <Section id="xoa-du-lieu" title={{ vi: 'Xóa dữ liệu của bạn', en: 'Deleting your data' }}>
         <p>
-          {t({ vi: 'Để xóa tài khoản và toàn bộ dữ liệu liên quan (kể cả khi bạn đăng nhập bằng Google hoặc Facebook):', en: 'To delete your account and all related data (including accounts made with Google or Facebook):' })}
+          {t({ vi: 'Để xóa tài khoản và toàn bộ dữ liệu liên quan (kể cả khi bạn đăng nhập bằng Google):', en: 'To delete your account and all related data (including accounts made with Google):' })}
         </p>
         <ol className="flex list-decimal flex-col gap-2 pl-5">
           <li>
@@ -123,12 +122,6 @@ export default function PrivacyPage() {
             {t({ vi: ' từ địa chỉ email của tài khoản, tiêu đề "Xóa dữ liệu".', en: ' from your account’s e-mail address with the subject “Delete my data”.' })}
           </li>
           <li>{t({ vi: 'SciPal xác nhận và xóa tài khoản trong vòng 30 ngày, rồi báo lại cho bạn.', en: 'SciPal confirms and deletes the account within 30 days, then lets you know.' })}</li>
-          <li>
-            {t({
-              vi: 'Nếu bạn đăng nhập bằng Facebook, bạn cũng có thể gỡ SciPal trong Cài đặt Facebook → Ứng dụng và trang web.',
-              en: 'If you signed in with Facebook, you can also remove SciPal under Facebook Settings → Apps and websites.',
-            })}
-          </li>
         </ol>
       </Section>
 

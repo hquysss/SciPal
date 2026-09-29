@@ -41,21 +41,16 @@ describe('SignUpSent', () => {
 });
 
 describe('OAuthButtonsView', () => {
-  it('offers only the providers that are switched on', () => {
-    const both = renderToStaticMarkup(<OAuthButtonsView providers={{ google: true, facebook: true }} busy={null} onChoose={() => {}} />);
-    // Short visible names keep both buttons on one line; the full phrase is the accessible name.
-    expect(both).toMatch(/aria-label="Tiếp tục với Google"[^>]*>[\s\S]*?<span>Google<\/span>/);
-    expect(both).toMatch(/aria-label="Tiếp tục với Facebook"[^>]*>[\s\S]*?<span>Facebook<\/span>/);
-
-    const google = renderToStaticMarkup(<OAuthButtonsView providers={{ google: true, facebook: false }} busy={null} onChoose={() => {}} />);
-    expect(google).not.toContain('Facebook');
-
-    expect(renderToStaticMarkup(<OAuthButtonsView providers={{ google: false, facebook: false }} busy={null} onChoose={() => {}} />)).toBe('');
+  it('offers Google only (Facebook sign-in was removed)', () => {
+    const html = renderToStaticMarkup(<OAuthButtonsView providers={{ google: true }} busy={null} onChoose={() => {}} />);
+    expect(html).toMatch(/aria-label="Tiếp tục với Google"[^>]*>[\s\S]*?<span>Google<\/span>/);
+    expect(html).not.toContain('Facebook');
+    expect(renderToStaticMarkup(<OAuthButtonsView providers={{ google: false }} busy={null} onChoose={() => {}} />)).toBe('');
   });
 
-  it('holds both buttons while one provider opens', () => {
-    const html = renderToStaticMarkup(<OAuthButtonsView providers={{ google: true, facebook: true }} busy="google" onChoose={() => {}} />);
-    expect(html.match(/disabled=""/g)).toHaveLength(2);
+  it('holds the button while Google opens', () => {
+    const html = renderToStaticMarkup(<OAuthButtonsView providers={{ google: true }} busy="google" onChoose={() => {}} />);
+    expect(html.match(/disabled=""/g)).toHaveLength(1);
     expect(html).toContain('Đang mở Google');
   });
 });
