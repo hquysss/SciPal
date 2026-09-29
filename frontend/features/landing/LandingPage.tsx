@@ -267,7 +267,12 @@ export function LandingPage({ level, levelSource, catalog, onChangeLevel, pricin
               </a>
             </nav>
           </div>
-          <p className={styles.footerCopyright}>© SciPal</p>
+          <p className={styles.footerCopyright}>
+            <Link href="/privacy" className={styles.footerPolicy}>
+              {t({ en: 'Privacy', vi: 'Quyền riêng tư' })}
+            </Link>
+            <span aria-hidden="true"> · </span>© SciPal
+          </p>
         </div>
       </footer>
     </div>

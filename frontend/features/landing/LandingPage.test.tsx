@@ -84,6 +84,12 @@ describe('LandingPage', () => {
     lang = 'vi';
   });
 
+  it('links the privacy policy from the footer', () => {
+    lang = 'vi';
+    const footer = render('upper_secondary').match(/<footer[\s\S]*<\/footer>/)?.[0] ?? '';
+    expect(footer).toMatch(/<a[^>]*href="\/privacy"[^>]*>[\s\S]*?Quyền riêng tư/);
+  });
+
   it('uses only theme tokens', () => {
     expect(countRawColors(render('primary')).total).toBe(0);
   });
