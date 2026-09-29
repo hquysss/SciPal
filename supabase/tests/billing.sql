@@ -25,6 +25,7 @@ values
   ('00000000-0000-4000-8000-000000000005', '{"app_role":"admin"}'),
   ('00000000-0000-4000-8000-000000000006', '{"app_role":"student"}');
 update auth.users set email = 'student@example.test', raw_user_meta_data = '{"display_name":"Learner"}' where id = '00000000-0000-4000-8000-000000000004';
+grant update (raw_app_meta_data) on auth.users to service_role;
 insert into public.profiles (id, display_name, role) values ('00000000-0000-4000-8000-000000000004', 'Learner', 'student');
 insert into public.class_rooms (id, teacher_id)
 values ('10000000-0000-4000-8000-000000000001', '00000000-0000-4000-8000-000000000003');
