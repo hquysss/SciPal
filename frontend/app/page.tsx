@@ -6,6 +6,7 @@ import { LevelGate } from '@/features/landing/LevelGate';
 import { GuestLandingFlow } from '@/features/landing/GuestLandingFlow';
 import { parseEducationLevel, type EducationLevel } from '@/features/landing/educationLevel';
 import { getLandingData } from '@/features/landing/getLandingData';
+import { fetchCatalog } from '@/features/billing/billingApi';
 
 export const dynamic = 'force-dynamic';
 
@@ -43,7 +44,7 @@ export default async function HomePage({ searchParams }: HomePageProps) {
     }
   })();
   const landingPromise = getLandingData(cookieStore, supabase ?? undefined);
-  const [, landingData] = await Promise.all([authPromise, landingPromise]);
+  const [, landingData, pricing] = await Promise.all([authPromise, landingPromise, fetchCatalog()]);
 
   const isAuthenticated = verifiedUserId !== null;
   let accountLevel: EducationLevel | null = null;
@@ -65,6 +66,7 @@ export default async function HomePage({ searchParams }: HomePageProps) {
         forceChooseLevel={chooseLevel}
         catalog={landingData.catalog}
         informatics={landingData.informatics}
+        pricing={pricing}
         saveError={saveError}
       />
     );
@@ -86,6 +88,7 @@ export default async function HomePage({ searchParams }: HomePageProps) {
       levelSource="account"
       catalog={landingData.catalog}
       informatics={landingData.informatics}
+      pricing={pricing}
     />
   );
 }
