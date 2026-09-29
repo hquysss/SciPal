@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { LevelGate } from './LevelGate';
 import { DeferredLandingPage } from './DeferredLandingPage';
+import type { Catalog } from '@/features/billing/billingApi';
 import {
   readSessionEducationLevel,
   writeSessionEducationLevel,
@@ -14,6 +15,7 @@ interface GuestLandingFlowProps {
   forceChooseLevel: boolean;
   catalog: LandingCatalog;
   informatics: InformaticsAvailability;
+  pricing?: Catalog | null;
   saveError: boolean;
 }
 
@@ -21,6 +23,7 @@ export function GuestLandingFlow({
   forceChooseLevel,
   catalog,
   informatics,
+  pricing = null,
   saveError,
 }: GuestLandingFlowProps) {
   const [sessionLevel, setSessionLevel] = useState<EducationLevel | null>(null);
@@ -73,6 +76,7 @@ export function GuestLandingFlow({
       levelSource="session"
       catalog={catalog}
       informatics={informatics}
+      pricing={pricing}
       onChangeLevel={() => {
         setForceGate(true);
         window.scrollTo({ top: 0 });

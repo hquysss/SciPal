@@ -13,6 +13,8 @@ import type { InformaticsAvailability, LandingCatalog } from './getLandingData';
 import { HeroStage } from './hero/HeroStage';
 import { HowItWorks } from './HowItWorks';
 import { TutorSection } from './TutorSection';
+import { PricingSection } from './PricingSection';
+import type { Catalog } from '@/features/billing/billingApi';
 import styles from './landing.module.css';
 
 const CONTACT_FACEBOOK_URL = 'https://www.facebook.com/nguoivietchimtayto/';
@@ -25,6 +27,8 @@ export interface LandingPageProps {
   onChangeLevel?: () => void;
   catalog: LandingCatalog;
   informatics: InformaticsAvailability;
+  /** The plan catalog; the pricing section is left out when it could not be read. */
+  pricing?: Catalog | null;
 }
 
 type Copy = { en: string; vi: string };
@@ -129,7 +133,7 @@ function ChangeLevel({ onChangeLevel, className }: { onChangeLevel?: () => void;
   );
 }
 
-export function LandingPage({ level, levelSource, catalog, informatics, onChangeLevel }: LandingPageProps) {
+export function LandingPage({ level, levelSource, catalog, informatics, onChangeLevel, pricing = null }: LandingPageProps) {
   const { t, lang } = useLanguage();
   const pageRef = useRef<HTMLDivElement>(null);
   const [titleFirst, titleSecond] = HERO_TITLE[level];
@@ -189,6 +193,7 @@ export function LandingPage({ level, levelSource, catalog, informatics, onChange
 
         <HowItWorks level={level} />
         <TutorSection href="/tutor" level={level} />
+        {pricing && <PricingSection catalog={pricing} />}
 
         <section className={styles.finalCta} aria-labelledby="start-title" data-landing-reveal>
           <h2 id="start-title" className={styles.finalTitle}>{t({ en: 'Ready?', vi: 'Sẵn sàng chưa?' })}</h2>

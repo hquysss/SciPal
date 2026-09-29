@@ -13,7 +13,8 @@ export type Catalog = { plans: PublicPlan[]; checkoutOpen: boolean };
 /** The catalog for the pricing page, or null when it cannot be read (no made-up prices). */
 export async function fetchCatalog(): Promise<Catalog | null> {
   try {
-    const res = await fetch(`${API_BASE}/api/billing/plans`, { next: { revalidate: 300 } } as RequestInit);
+    // A slow backend must not hold up the page that shows the prices (the landing waits for it).
+    const res = await fetch(`${API_BASE}/api/billing/plans`, { next: { revalidate: 300 }, signal: AbortSignal.timeout(3000) } as RequestInit);
     if (!res.ok) return null;
     const body = (await res.json()) as Partial<Catalog>;
     return Array.isArray(body.plans) && body.plans.length > 0 ? { plans: body.plans, checkoutOpen: body.checkoutOpen === true } : null;

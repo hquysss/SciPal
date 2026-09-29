@@ -1,0 +1,294 @@
+/* Landing pricing: a plain sheet for the free plan beside the paid plan in its aura. The aura is
+   the level's three supporting colors (sun → coral → sky) turning slowly behind the card; it is
+   decoration only (text sits on --surface) and stops for reduced motion or more contrast. */
+
+.pricing {
+  display: grid;
+  grid-template-columns: minmax(0, 0.8fr) minmax(0, 1.2fr);
+  align-items: center;
+  gap: clamp(2rem, 5vw, 4.5rem);
+  padding-block: clamp(3rem, 8vw, 6rem);
+}
+
+.intro {
+  display: grid;
+  justify-items: start;
+  gap: 1.25rem;
+}
+
+.title {
+  margin: 0;
+  color: var(--ink);
+  font-size: clamp(2rem, 4.4vw, 3.4rem);
+  font-weight: 800;
+  line-height: 1.05;
+  letter-spacing: -0.04em;
+  text-wrap: balance;
+}
+
+.lead {
+  max-width: 36ch;
+  margin: 0;
+  color: var(--ink-muted);
+  font-size: clamp(1.05rem, 1.5vw, 1.2rem);
+  line-height: 1.55;
+}
+
+.switches {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-top: 0.5rem;
+}
+
+.segment {
+  display: inline-flex;
+  gap: 0.25rem;
+  border: 1px solid var(--edge);
+  border-radius: 999px;
+  padding: 0.25rem;
+  background: var(--surface-sunken);
+}
+
+.segment button {
+  min-height: 2.75rem;
+  border: 0;
+  border-radius: 999px;
+  padding: 0 1.1rem;
+  background: transparent;
+  color: var(--ink-muted);
+  font: inherit;
+  font-size: 0.95rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background-color 180ms ease-out, color 180ms ease-out, box-shadow 180ms ease-out;
+}
+
+.segment button:hover {
+  color: var(--ink);
+}
+
+.segment button[aria-pressed='true'] {
+  background: var(--surface);
+  color: var(--ink);
+  box-shadow: 0 0.25rem 0.75rem -0.35rem color-mix(in srgb, var(--ink) 35%, transparent);
+}
+
+.segment button:focus-visible,
+.freeAction:focus-visible,
+.paidAction:focus-visible {
+  outline: 3px solid var(--focus);
+  outline-offset: 3px;
+}
+
+.plans {
+  display: grid;
+  grid-template-columns: minmax(0, 0.85fr) minmax(0, 1.15fr);
+  align-items: center;
+  gap: clamp(1rem, 2.5vw, 1.75rem);
+}
+
+.free,
+.paid {
+  display: grid;
+  align-content: start;
+  gap: 1rem;
+  border-radius: 1.75rem;
+  padding: clamp(1.4rem, 3vw, 2rem);
+  background: var(--surface);
+  color: var(--ink);
+}
+
+.free {
+  border: 1px solid var(--line);
+  box-shadow: 0 1.25rem 2.5rem -2rem color-mix(in srgb, var(--ink) 35%, transparent);
+}
+
+.planName {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0;
+  font-size: 1.15rem;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+}
+
+.spark {
+  color: var(--action);
+}
+
+.price {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.4rem;
+  margin: 0;
+}
+
+.amount {
+  font-size: clamp(2rem, 4vw, 2.6rem);
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: -0.04em;
+  font-variant-numeric: tabular-nums;
+}
+
+.amountPaid {
+  font-size: clamp(2.5rem, 5vw, 3.4rem);
+}
+
+.per,
+.note {
+  color: var(--ink-muted);
+  font-size: 0.95rem;
+}
+
+.note {
+  margin: -0.5rem 0 0;
+}
+
+.limits {
+  display: grid;
+  gap: 0.6rem;
+  margin: 0.25rem 0 0.5rem;
+  padding: 0;
+  list-style: none;
+  font-size: 0.98rem;
+  line-height: 1.4;
+}
+
+.limits li {
+  display: flex;
+  gap: 0.55rem;
+}
+
+.limits svg {
+  flex: none;
+  margin-top: 0.15rem;
+  color: var(--action);
+}
+
+.freeAction,
+.paidAction {
+  display: inline-flex;
+  min-height: 3rem;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  border-radius: 999px;
+  padding: 0 1.5rem;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.freeAction {
+  border: 1px solid var(--edge);
+  color: var(--ink);
+}
+
+.freeAction:hover {
+  background: var(--surface-sunken);
+}
+
+.paidAction {
+  background: var(--action);
+  color: var(--action-ink);
+  box-shadow: 0 0.75rem 1.5rem -0.75rem color-mix(in srgb, var(--action) 70%, transparent);
+  transition: background-color 180ms ease-out, transform 180ms ease-out;
+}
+
+.paidAction:hover {
+  background: var(--action-hover);
+  transform: translateY(-1px);
+}
+
+.soon,
+.soon:hover {
+  background: var(--surface-sunken);
+  color: var(--ink-muted);
+  box-shadow: none;
+  transform: none;
+  cursor: default;
+}
+
+/* ---------- the aura ---------- */
+
+.aura {
+  position: relative;
+  isolation: isolate;
+  padding: 2px;
+  border-radius: calc(1.75rem + 2px);
+  /* The ring: the three colors around the card, the halo's sharp edge. */
+  background: conic-gradient(from var(--aura-turn, 0deg), var(--sun), var(--coral), var(--sky), var(--sun));
+  box-shadow: 0 2.5rem 4rem -2.5rem color-mix(in srgb, var(--coral) 55%, transparent);
+  animation: aura-turn 14s linear infinite;
+}
+
+/* The glow: the same colors, blurred wide behind the card. */
+.aura::before {
+  content: '';
+  position: absolute;
+  z-index: -1;
+  inset: -14%;
+  border-radius: 50%;
+  background: conic-gradient(from var(--aura-turn, 0deg), var(--sun), var(--coral), var(--sky), var(--sun));
+  filter: blur(46px);
+  opacity: 0.55;
+}
+
+.paid {
+  position: relative;
+  border-radius: 1.75rem;
+}
+
+@property --aura-turn {
+  syntax: '<angle>';
+  inherits: true;
+  initial-value: 0deg;
+}
+
+@keyframes aura-turn {
+  to {
+    --aura-turn: 360deg;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .aura {
+    animation: none;
+  }
+}
+
+@media (prefers-contrast: more) {
+  .aura {
+    background: var(--edge);
+    box-shadow: none;
+  }
+
+  .aura::before {
+    display: none;
+  }
+}
+
+@media (max-width: 64rem) {
+  .pricing {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 40rem) {
+  .plans {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  /* The paid plan leads on a phone. */
+  .aura {
+    order: -1;
+  }
+
+  .aura::before {
+    inset: -6%;
+    filter: blur(32px);
+  }
+}
