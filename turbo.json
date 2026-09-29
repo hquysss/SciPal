@@ -4,7 +4,7 @@
   "tasks": {
     "build": {
       "dependsOn": ["^build"],
-      "env": ["SUPABASE_URL", "SUPABASE_SERVICE_ROLE_KEY", "CORS_ORIGINS", "PORT"],
+      "env": ["SUPABASE_URL", "SUPABASE_SERVICE_ROLE_KEY", "CORS_ORIGINS", "PORT", "GUEST_TRIAL_SECRET"],
       "outputs": [".next/**", "dist/**", "!.next/cache/**"]
     },
     "dev": {
