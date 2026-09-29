@@ -29,11 +29,22 @@ export function filterTerms(terms: TermItem[], { query, subject, saved }: TermFi
   });
 }
 
-/** How many terms each subject has; subjects with none are left out. */
-export function subjectCounts(terms: TermItem[]): Record<string, number> {
-  const counts: Record<string, number> = {};
+export type TermSubject = { slug: string; name: { en: string; vi: string }; count: number };
+
+/** The subjects that have terms, in curriculum order, with how many each has. */
+export function termSubjects(terms: TermItem[]): TermSubject[] {
+  const bySlug = new Map<string, TermSubject & { order: number }>();
   for (const term of terms) {
-    if (term.subject_slug) counts[term.subject_slug] = (counts[term.subject_slug] ?? 0) + 1;
+    if (!term.subject_slug) continue;
+    const found = bySlug.get(term.subject_slug);
+    if (found) found.count += 1;
+    else
+      bySlug.set(term.subject_slug, {
+        slug: term.subject_slug,
+        name: { en: term.subject_name_en ?? term.subject_slug, vi: term.subject_name_vi ?? term.subject_slug },
+        count: 1,
+        order: term.subject_order ?? Number.MAX_SAFE_INTEGER,
+      });
   }
-  return counts;
+  return [...bySlug.values()].sort((a, b) => a.order - b.order).map(({ order: _order, ...subject }) => subject);
 }

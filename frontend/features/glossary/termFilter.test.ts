@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { filterTerms, normalize, subjectCounts } from './termFilter';
+import { filterTerms, normalize, termSubjects } from './termFilter';
 import type { TermItem } from './termQueries';
 
 const term = (id: string, en: string, vi: string, subject: string | null): TermItem => ({
@@ -12,6 +12,9 @@ const term = (id: string, en: string, vi: string, subject: string | null): TermI
   example_en: null,
   example_vi: null,
   subject_slug: subject,
+  subject_name_en: subject ? `${subject} EN` : null,
+  subject_name_vi: subject ? `${subject} VI` : null,
+  subject_order: subject === 'math' ? 1 : subject === 'physics' ? 2 : 3,
 });
 
 const TERMS = [
@@ -37,7 +40,11 @@ describe('glossary filter', () => {
     expect(filterTerms(TERMS, { query: '', subject: 'all', saved: new Set(['d']) }).map((t) => t.id)).toEqual(['d']);
   });
 
-  it('counts terms per subject, leaving out subjects with none', () => {
-    expect(subjectCounts(TERMS)).toEqual({ informatics: 2, math: 1, physics: 1 });
+  it('lists the subjects that have terms, in curriculum order, with counts', () => {
+    expect(termSubjects(TERMS)).toEqual([
+      { slug: 'math', name: { en: 'math EN', vi: 'math VI' }, count: 1 },
+      { slug: 'physics', name: { en: 'physics EN', vi: 'physics VI' }, count: 1 },
+      { slug: 'informatics', name: { en: 'informatics EN', vi: 'informatics VI' }, count: 2 },
+    ]);
   });
 });

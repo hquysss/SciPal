@@ -27,6 +27,7 @@ describe('Glossary', () => {
   const TERM = {
     id: 't1', term_en: 'algorithm', term_vi: 'thuật toán', part_of_speech: 'noun',
     definition_en: 'Steps', definition_vi: 'Các bước', example_en: null, example_vi: null, subject_slug: 'informatics',
+    subject_name_en: 'Informatics', subject_name_vi: 'Tin học', subject_order: 1,
   };
 
   it('offers only subjects that have terms, with their counts, plus saved terms', () => {

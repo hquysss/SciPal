@@ -3,8 +3,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Bookmark, BookmarkCheck, Link2, Search, Volume2, X } from 'lucide-react';
 import { useLanguage } from '@scipal/hooks';
 import { EmptyState } from '../../components/ui/empty-state';
-import { SUBJECT_CONFIG } from '../../lib/subject-config';
-import { filterTerms, subjectCounts } from './termFilter';
+import { filterTerms, termSubjects } from './termFilter';
 import type { TermItem } from './termQueries';
 
 const TERM_TONES = ['var(--sun)', 'var(--sky)', 'var(--coral)'];
@@ -69,8 +68,7 @@ export function GlossarySearch({ terms }: { terms: TermItem[] }) {
     if (q) setQuery(q);
   }, []);
 
-  const counts = useMemo(() => subjectCounts(terms), [terms]);
-  const subjects = Object.values(SUBJECT_CONFIG).filter((s) => counts[s.slug]);
+  const subjects = useMemo(() => termSubjects(terms), [terms]);
   const showSaved = activeFilter === SAVED;
   const filtered = filterTerms(terms, { query, subject: showSaved ? 'all' : activeFilter, saved: showSaved ? saved : null });
 
@@ -136,8 +134,8 @@ export function GlossarySearch({ terms }: { terms: TermItem[] }) {
         </button>
         {subjects.map((sub) => (
           <button key={sub.slug} type="button" aria-pressed={activeFilter === sub.slug} onClick={() => setActiveFilter(sub.slug)} className={chipClass(activeFilter === sub.slug)}>
-            {t({ en: sub.nameEn, vi: sub.nameVi })}
-            <span className="text-xs opacity-80">{counts[sub.slug]}</span>
+            {t(sub.name)}
+            <span className="text-xs opacity-80">{sub.count}</span>
           </button>
         ))}
         <button type="button" aria-pressed={showSaved} onClick={() => setActiveFilter(SAVED)} className={chipClass(showSaved)}>
