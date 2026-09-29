@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { ConversationList } from '@/features/ai-tutor/ConversationList';
 import { LessonPicker } from '@/features/ai-tutor/LessonPicker';
 import { TutorChatView } from '@/features/ai-tutor/TutorChat';
+import { TutorChatFrame, TutorListFrame } from '@/features/ai-tutor/TutorPage';
 import type { TutorMessage } from '@/features/ai-tutor/api';
 
 const FENCE = '`'.repeat(3);
@@ -59,12 +60,10 @@ export function TutorShowcase({ view }: { view: string }) {
 
   return (
     <div className="grid gap-4 lg:grid-cols-[17rem_minmax(0,1fr)] lg:gap-6">
-      <aside className="hidden lg:block">
+      <TutorListFrame>
         <ConversationList conversations={CONVERSATIONS} activeId="c1" onOpen={noop} onNew={noop} onDelete={noop} />
-      </aside>
-      <section className="h-[calc(100dvh-13rem)] min-h-[28rem] overflow-hidden rounded-2xl border border-line bg-surface shadow-[0_18px_40px_-30px_color-mix(in_srgb,var(--ink)_45%,transparent)] lg:h-[calc(100dvh-11rem)]">
-        {chat}
-      </section>
+      </TutorListFrame>
+      <TutorChatFrame>{chat}</TutorChatFrame>
     </div>
   );
 }
