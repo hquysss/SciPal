@@ -48,13 +48,16 @@ export function OAuthButtonsView({
       <p className="katha-oauth-divider"><span>{t({ vi: 'hoặc', en: 'or' })}</span></p>
       <div className="katha-oauth-buttons">
         {shown.map((provider) => (
-          <button key={provider} type="button" className="katha-oauth-button" disabled={busy !== null} onClick={() => onChoose(provider)}>
+          <button
+            key={provider}
+            type="button"
+            className="katha-oauth-button"
+            disabled={busy !== null}
+            aria-label={t({ vi: `Tiếp tục với ${NAME[provider]}`, en: `Continue with ${NAME[provider]}` })}
+            onClick={() => onChoose(provider)}
+          >
             {provider === 'google' ? <GoogleMark /> : <FacebookMark />}
-            <span>
-              {busy === provider
-                ? t({ vi: `Đang mở ${NAME[provider]}…`, en: `Opening ${NAME[provider]}…` })
-                : t({ vi: `Tiếp tục với ${NAME[provider]}`, en: `Continue with ${NAME[provider]}` })}
-            </span>
+            <span>{busy === provider ? t({ vi: `Đang mở ${NAME[provider]}…`, en: `Opening ${NAME[provider]}…` }) : NAME[provider]}</span>
           </button>
         ))}
       </div>

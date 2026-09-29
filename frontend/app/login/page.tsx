@@ -46,13 +46,16 @@ function LoginContent() {
     searchParams.get('mode') === 'signup' || searchParams.get('reason') === 'trial' ? 'signup' : 'signin',
   );
   const [authSettings, setAuthSettings] = useState<AuthSettings | null>(null);
-  const [notice, setNotice] = useState<Bilingual | null>(() => {
+  // A failed provider sign-in is an error; a spent confirmation link usually is not: Supabase
+  // confirms the e-mail before the redirect, so opening the link in another browser or a second
+  // time still leaves a working account.
+  const [notice, setNotice] = useState<(Bilingual & { tone: 'danger' | 'info' }) | null>(() => {
     const failure = searchParams.get('error');
     if (failure === 'oauth') {
-      return { vi: 'Chưa đăng nhập được bằng Google/Facebook. Bạn thử lại, hoặc dùng email.', en: 'Google/Facebook sign-in did not finish. Try again, or use e-mail.' };
+      return { tone: 'danger', vi: 'Chưa đăng nhập được bằng Google/Facebook. Bạn thử lại, hoặc dùng email.', en: 'Google/Facebook sign-in did not finish. Try again, or use e-mail.' };
     }
     if (failure === 'link') {
-      return { vi: 'Link xác nhận đã hết hạn hoặc đã được dùng. Hãy đăng nhập, hoặc tạo tài khoản lại để nhận link mới.', en: 'This confirmation link has expired or was already used. Sign in, or sign up again for a new link.' };
+      return { tone: 'info', vi: 'Link xác nhận đã dùng rồi. Email của bạn có thể đã được xác nhận — hãy đăng nhập.', en: 'That confirmation link was already used. Your e-mail is probably confirmed — sign in.' };
     }
     return null;
   });
@@ -398,7 +401,7 @@ function LoginContent() {
                   </span>
                 </div>
               </div>
-              <SciPalMascot />
+              <SciPalMascot size={68} />
             </div>
 
             <div className="katha-login-heading">
@@ -417,7 +420,7 @@ function LoginContent() {
                     : 'Học miễn phí ngay, nâng cấp khi bạn cần thêm.'
                   : lang === 'en'
                     ? 'Continue your journey exploring bilingual sciences.'
-                    : 'Tiếp tục hành trình khám phá khoa học tự nhiên của bạn.'}
+                    : 'Tiếp tục hành trình khám phá khoa học của bạn.'}
               </p>
             </div>
 
@@ -432,9 +435,19 @@ function LoginContent() {
             {searchParams.get('reason') === 'trial' && <TrialEndedNote />}
 
             {notice && (
-              <div role="alert" className="katha-login-error katha-auth-notice">
-                <span aria-hidden="true">!</span>
+              <div
+                role={notice.tone === 'danger' ? 'alert' : 'status'}
+                className={`katha-auth-notice ${notice.tone === 'danger' ? 'is-danger' : 'is-info'}`}
+              >
                 <p>{lang === 'en' ? notice.en : notice.vi}</p>
+                <button
+                  type="button"
+                  className="katha-auth-notice-close"
+                  onClick={() => setNotice(null)}
+                  aria-label={lang === 'en' ? 'Dismiss' : 'Đóng thông báo'}
+                >
+                  <CloseIcon />
+                </button>
               </div>
             )}
 
@@ -559,7 +572,7 @@ function LoginContent() {
               // Until the settings arrive (or if they cannot be read) both are offered.
               providers={{ google: authSettings?.google ?? true, facebook: authSettings?.facebook ?? true }}
               redirect={targetDestination}
-              onError={setNotice}
+              onError={(message) => setNotice({ ...message, tone: 'danger' })}
             />
             </div>
 
