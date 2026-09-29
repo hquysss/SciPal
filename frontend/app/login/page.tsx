@@ -2,6 +2,10 @@
 
 import { Suspense, useEffect, useRef, useState, type FormEvent } from 'react';
 import { TrialEndedNote } from '@/features/guest/TrialEndedNote';
+import { readAuthSettings, safeRedirect, type AuthSettings, type Bilingual } from '@/lib/authFlow';
+import { AuthModeTabs, type AuthMode } from './AuthModeTabs';
+import { OAuthButtons } from './OAuthButtons';
+import { SignUpForm } from './SignUpForm';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useRouter, useSearchParams } from 'next/navigation';
@@ -36,11 +40,22 @@ function LoginContent() {
   const { lang } = useLanguage();
   const router = useRouter();
   const searchParams = useSearchParams();
-  const requestedDestination = searchParams.get('redirect');
-  const targetDestination = requestedDestination?.startsWith('/') &&
-    !requestedDestination.startsWith('//') && !requestedDestination.includes('\\')
-    ? requestedDestination
-    : '/';
+  const targetDestination = safeRedirect(searchParams.get('redirect'));
+  // A visitor whose trial ended most likely has no account yet.
+  const [mode, setMode] = useState<AuthMode>(
+    searchParams.get('mode') === 'signup' || searchParams.get('reason') === 'trial' ? 'signup' : 'signin',
+  );
+  const [authSettings, setAuthSettings] = useState<AuthSettings | null>(null);
+  const [notice, setNotice] = useState<Bilingual | null>(() => {
+    const failure = searchParams.get('error');
+    if (failure === 'oauth') {
+      return { vi: 'Chưa đăng nhập được bằng Google/Facebook. Bạn thử lại, hoặc dùng email.', en: 'Google/Facebook sign-in did not finish. Try again, or use e-mail.' };
+    }
+    if (failure === 'link') {
+      return { vi: 'Link xác nhận đã hết hạn hoặc đã được dùng. Hãy đăng nhập, hoặc tạo tài khoản lại để nhận link mới.', en: 'This confirmation link has expired or was already used. Sign in, or sign up again for a new link.' };
+    }
+    return null;
+  });
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -89,6 +104,18 @@ function LoginContent() {
       Graphic: ChemistrySlideGraphic,
     },
   ];
+
+  useEffect(() => {
+    const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+    if (!url || !key) return;
+    const controller = new AbortController();
+    fetch(`${url}/auth/v1/settings`, { headers: { apikey: key }, signal: controller.signal })
+      .then((res) => (res.ok ? res.json() : null))
+      .then((body) => setAuthSettings(readAuthSettings(body)))
+      .catch(() => {});
+    return () => controller.abort();
+  }, []);
 
   const [activeSlide, setActiveSlide] = useState(0);
   const [slidePaused, setSlidePaused] = useState(false);
@@ -182,8 +209,8 @@ function LoginContent() {
         setError(
           signInError.message.includes('Invalid login credentials')
             ? lang === 'en'
-              ? 'Invalid credentials. Please verify your issued account information.'
-              : 'Thông tin đăng nhập không chính xác. Vui lòng kiểm tra lại tài khoản được cấp.'
+              ? 'Wrong email or password. Please check and try again.'
+              : 'Email hoặc mật khẩu chưa đúng. Vui lòng kiểm tra lại.'
             : /failed to fetch|fetch failed|network/i.test(signInError.message)
               ? lang === 'en'
                 ? 'Cannot connect to sign-in. Please check your connection and try again.'
@@ -376,20 +403,45 @@ function LoginContent() {
 
             <div className="katha-login-heading">
               <h2 id="katha-login-form-title">
-                {lang === 'en' ? 'Welcome back' : 'Chào mừng trở lại'}{' '}
+                {mode === 'signup'
+                  ? lang === 'en' ? 'Join SciPal' : 'Tham gia SciPal'
+                  : lang === 'en' ? 'Welcome back' : 'Chào mừng trở lại'}{' '}
                 <span className="katha-login-sparkle" aria-hidden="true">
                   ✨
                 </span>
               </h2>
               <p>
-                {lang === 'en'
-                  ? 'Continue your journey exploring bilingual sciences.'
-                  : 'Tiếp tục hành trình khám phá khoa học tự nhiên của bạn.'}
+                {mode === 'signup'
+                  ? lang === 'en'
+                    ? 'Free to start. Upgrade only when you need more.'
+                    : 'Học miễn phí ngay, nâng cấp khi bạn cần thêm.'
+                  : lang === 'en'
+                    ? 'Continue your journey exploring bilingual sciences.'
+                    : 'Tiếp tục hành trình khám phá khoa học tự nhiên của bạn.'}
               </p>
             </div>
 
+            <AuthModeTabs
+              mode={mode}
+              onChange={(next) => {
+                setMode(next);
+                setError(null);
+              }}
+            />
+
             {searchParams.get('reason') === 'trial' && <TrialEndedNote />}
 
+            {notice && (
+              <div role="alert" className="katha-login-error katha-auth-notice">
+                <span aria-hidden="true">!</span>
+                <p>{lang === 'en' ? notice.en : notice.vi}</p>
+              </div>
+            )}
+
+            <div id="auth-panel" role="tabpanel" aria-labelledby={`auth-tab-${mode}`}>
+            {mode === 'signup' ? (
+              <SignUpForm redirect={targetDestination} signupOpen={authSettings?.signupOpen ?? true} />
+            ) : (
             <form className="katha-login-form" onSubmit={handleSubmit} noValidate>
               <label className="katha-login-label" htmlFor="login-email">
                 <span>{lang === 'en' ? 'Email' : 'Email'}</span>
@@ -501,6 +553,15 @@ function LoginContent() {
                 )}
               </button>
             </form>
+            )}
+
+            <OAuthButtons
+              // Until the settings arrive (or if they cannot be read) both are offered.
+              providers={{ google: authSettings?.google ?? true, facebook: authSettings?.facebook ?? true }}
+              redirect={targetDestination}
+              onError={setNotice}
+            />
+            </div>
 
             <p className="katha-login-footnote">
               <span className="katha-login-sparkle" aria-hidden="true">✨</span>
@@ -537,7 +598,7 @@ function LoginContent() {
             <div className="katha-login-modal-header">
               <h3 id="katha-help-title">
                 <QuantumNodeMark className="katha-login-eyebrow-mark text-action" />
-                {lang === 'en' ? 'Institutional Account Notice' : 'Chính sách Tài khoản Cấp phát'}
+                {lang === 'en' ? 'Account help' : 'Hỗ trợ tài khoản'}
               </h3>
               <button
                 ref={modalCloseBtnRef}
@@ -551,8 +612,8 @@ function LoginContent() {
             </div>
             <p id="katha-help-body" className="katha-login-modal-body">
               {lang === 'en'
-                ? 'Accounts on SciPal are issued directly by your school administration or class teacher. If you forgot your password or haven’t received credentials yet, please contact your Class Homeroom Teacher or your school’s Informatics/ICT department.'
-                : 'Tài khoản trên hệ thống SciPal do nhà trường hoặc quản trị viên cấp phát. Nếu bạn quên mật khẩu hoặc chưa nhận được thông tin tài khoản, vui lòng liên hệ Giáo viên chủ nhiệm hoặc Giáo viên bộ môn Tin học tại trường của bạn.'}
+                ? 'No account yet? Choose “Create account” to make a free student account with e-mail, Google or Facebook. Teacher accounts and accounts issued by your school come from an administrator: if you forgot that password, contact your teacher or the school’s ICT staff.'
+                : 'Chưa có tài khoản? Chọn “Tạo tài khoản” để lập tài khoản học sinh miễn phí bằng email, Google hoặc Facebook. Tài khoản giáo viên và tài khoản do trường cấp được quản trị viên tạo: nếu quên mật khẩu, bạn liên hệ giáo viên hoặc bộ phận Tin học của trường.'}
             </p>
             <div className="katha-login-modal-footer">
               <button

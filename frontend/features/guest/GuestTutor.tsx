@@ -12,7 +12,7 @@ import { TutorMessage } from '@/features/ai-tutor/TutorMessage';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL ?? 'https://sci-pal-backend.vercel.app';
 const MESSAGE_MAX = 2000;
-const LOGIN = `/login?redirect=${encodeURIComponent('/tutor')}`;
+const LOGIN = `/login?mode=signup&redirect=${encodeURIComponent('/tutor')}`;
 
 type Bilingual = { vi: string; en: string };
 export type GuestTutorState =
@@ -26,7 +26,7 @@ export function GuestTutorView({ state, question, onQuestion, onAsk }: { state: 
   const { t } = useLanguage();
   const signIn = (
     <Link href={LOGIN} className={buttonVariants({ className: 'self-start' })}>
-      {t({ vi: 'Đăng nhập để hỏi tiếp', en: 'Sign in to keep asking' })}
+      {t({ vi: 'Tạo tài khoản miễn phí để hỏi tiếp', en: 'Create a free account to keep asking' })}
     </Link>
   );
 
@@ -35,7 +35,7 @@ export function GuestTutorView({ state, question, onQuestion, onAsk }: { state: 
       <div className="flex flex-col gap-1">
         <h2 id="guest-tutor-title" className="text-lg font-bold text-ink">{t({ vi: 'Hỏi thử 1 câu', en: 'Try one question' })}</h2>
         <p className="text-sm text-ink-muted">
-          {t({ vi: 'Khách được hỏi gia sư 1 câu. Đăng nhập (miễn phí) để hỏi tiếp và lưu cuộc trò chuyện.', en: 'Visitors can ask the tutor one question. Sign in (free) to keep asking and keep the chat.' })}
+          {t({ vi: 'Khách được hỏi gia sư 1 câu. Tạo tài khoản miễn phí (hoặc đăng nhập) để hỏi tiếp và lưu cuộc trò chuyện.', en: 'Visitors can ask the tutor one question. Create a free account (or sign in) to keep asking and keep the chat.' })}
         </p>
       </div>
 

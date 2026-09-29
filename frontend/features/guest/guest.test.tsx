@@ -26,7 +26,7 @@ describe('GuestTrialBannerView', () => {
     const html = renderToStaticMarkup(<GuestTrialBannerView notice={{ feature: 'learn', minutesLeft: 23 }} pathname="/informatics/vong-lap" />);
     expect(html).toContain('Bạn đang dùng thử Môn học');
     expect(html).toContain('còn 23 phút');
-    expect(html).toContain(`href="/login?redirect=${encodeURIComponent('/informatics/vong-lap')}"`);
+    expect(html).toContain(`href="/login?mode=signup&amp;redirect=${encodeURIComponent('/informatics/vong-lap')}"`);
     expect(countRawColors(html).total).toBe(0);
   });
 });
@@ -42,14 +42,14 @@ describe('GuestTutorView', () => {
     const html = renderToStaticMarkup(<GuestTutorView state={{ status: 'answered', question: 'Vòng lặp là gì?', answer: 'Thử **nghĩ** xem.' }} question="" onQuestion={() => {}} onAsk={() => {}} />);
     expect(html).toContain('Vòng lặp là gì?');
     expect(html).toMatch(/<strong[^>]*>nghĩ<\/strong>/);
-    expect(html).toContain('href="/login?redirect=%2Ftutor"');
+    expect(html).toContain('href="/login?mode=signup&amp;redirect=%2Ftutor"');
     expect(html).not.toContain('Câu hỏi của em');
   });
 
   it('asks to sign in once the trial question is used', () => {
     const html = renderToStaticMarkup(<GuestTutorView state={{ status: 'used', message: { vi: 'Em đã dùng lượt hỏi thử.', en: 'x' } }} question="" onQuestion={() => {}} onAsk={() => {}} />);
     expect(html).toContain('Em đã dùng lượt hỏi thử.');
-    expect(html).toContain('href="/login?redirect=%2Ftutor"');
+    expect(html).toContain('href="/login?mode=signup&amp;redirect=%2Ftutor"');
   });
 });
 
@@ -57,5 +57,6 @@ describe('TrialEndedNote', () => {
   it('explains why the visitor was sent to sign in', () => {
     const html = renderToStaticMarkup(<TrialEndedNote />);
     expect(html).toContain('Bạn đã dùng hết lượt thử');
+    expect(html).toContain('Tạo tài khoản miễn phí');
   });
 });

@@ -99,7 +99,7 @@ export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const access = routeAccess(pathname);
 
-  // The landing page, sign-in and the tutor page (one guest question) are open to visitors.
+  // The landing page, sign-in (with its callback) and the tutor page (one guest question) are open to visitors.
   if (access.kind === 'public') {
     const response = NextResponse.next();
     clearLegacyLevelCookie(request, response);
