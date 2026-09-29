@@ -52,9 +52,9 @@ function getDisplayName(user: AuthUser | null): string | null {
   return user.email?.split('@')[0]?.trim() || null;
 }
 
-/** "Gia sư AI" in the main links, for signed-in users only (the tutor needs an account). */
-export function tutorLink(signedIn: boolean, lang: 'en' | 'vi') {
-  return signedIn ? { href: '/tutor', label: lang === 'en' ? 'AI tutor' : 'Gia sư AI' } : null;
+/** "Gia sư AI" in the main links, for everyone: a visitor gets a trial question, then signs in. */
+export function tutorLink(lang: 'en' | 'vi') {
+  return { href: '/tutor', label: lang === 'en' ? 'AI tutor' : 'Gia sư AI' };
 }
 
 /** Pricing sits right after Home, for everyone (admins keep it to check the page). */
@@ -73,9 +73,9 @@ export function primaryLinks(lang: 'en' | 'vi', signedIn: boolean, place: 'deskt
   return [
     { href: '/glossary', label: label('Glossary', 'Từ điển') },
     { href: '/exam', label: label('Exams', 'Thi thử') },
+    tutorLink(lang),
     ...(signedIn
       ? [
-          tutorLink(true, lang)!,
           { href: '/progress', label: label('Progress', 'Tiến trình') },
           ...(isStudent ? [{ href: '/classes', label: label('My classes', 'Lớp của em') }] : []),
           ...(place === 'mobile' ? [{ href: '/profile', label: label('Profile', 'Hồ sơ') }] : []),

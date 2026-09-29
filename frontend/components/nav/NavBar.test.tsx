@@ -67,10 +67,9 @@ describe('role menus', () => {
 });
 
 describe('tutorLink', () => {
-  it('shows "Gia sư AI" only to signed-in users', () => {
-    expect(tutorLink(true, 'vi')).toEqual({ href: '/tutor', label: 'Gia sư AI' });
-    expect(tutorLink(true, 'en')).toEqual({ href: '/tutor', label: 'AI tutor' });
-    expect(tutorLink(false, 'vi')).toBeNull();
+  it('shows "Gia sư AI" to everyone: visitors get a trial question', () => {
+    expect(tutorLink('vi')).toEqual({ href: '/tutor', label: 'Gia sư AI' });
+    expect(tutorLink('en')).toEqual({ href: '/tutor', label: 'AI tutor' });
   });
 });
 
@@ -80,7 +79,7 @@ describe('primaryLinks', () => {
     const mobile = primaryLinks('vi', true, 'mobile').map((l) => l.href);
     expect(desktop).toEqual(['/glossary', '/exam', '/tutor', '/progress']);
     expect(mobile).toEqual(['/glossary', '/exam', '/tutor', '/progress', '/profile']);
-    expect(primaryLinks('vi', false, 'desktop').map((l) => l.href)).toEqual(['/glossary', '/exam']);
+    expect(primaryLinks('vi', false, 'desktop').map((l) => l.href)).toEqual(['/glossary', '/exam', '/tutor']);
   });
 
   it('gives students their classes; teachers keep theirs in the teacher menu', () => {
