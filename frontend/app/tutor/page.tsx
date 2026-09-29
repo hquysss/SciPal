@@ -1,9 +1,9 @@
 import { cookies } from 'next/headers';
-import { redirect } from 'next/navigation';
 import { createServerClient } from '@scipal/supabase';
 import { Bi } from '@/components/ui/bilingual';
 import { parseEducationLevel, type EducationLevel } from '@/features/landing/educationLevel';
 import { TutorPage } from '@/features/ai-tutor/TutorPage';
+import { GuestTutor } from '@/features/guest/GuestTutor';
 import { getTutorLessons } from '@/features/ai-tutor/tutorLessons';
 
 export const dynamic = 'force-dynamic';
@@ -18,8 +18,20 @@ export default async function TutorRoute({ searchParams }: { searchParams: Promi
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) {
-    const back = params.lesson && uuidParam(params.lesson) ? `/tutor?lesson=${params.lesson}` : '/tutor';
-    redirect(`/login?redirect=${encodeURIComponent(back)}`);
+    // A visitor may ask one question (counted per visitor by the backend), then signs in.
+    return (
+      <main className="mx-auto flex w-full max-w-6xl flex-col gap-4 px-4 pb-6 pt-6 sm:px-6">
+        <header className="flex flex-col gap-1">
+          <h1 className="text-2xl font-extrabold tracking-tight text-ink sm:text-3xl">
+            <Bi en="AI tutor" vi="Gia sư AI" />
+          </h1>
+          <p className="max-w-prose text-sm text-ink-muted sm:text-base">
+            <Bi en="Hints one step at a time, so you work out the answer yourself." vi="Thầy gợi ý từng bước để em tự tìm ra lời giải." />
+          </p>
+        </header>
+        <GuestTutor />
+      </main>
+    );
   }
 
   const [{ data: profile }, lessons] = await Promise.all([

@@ -1,6 +1,7 @@
 'use client';
 
 import { Suspense, useEffect, useRef, useState, type FormEvent } from 'react';
+import { TrialEndedNote } from '@/features/guest/TrialEndedNote';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useRouter, useSearchParams } from 'next/navigation';
@@ -386,6 +387,8 @@ function LoginContent() {
                   : 'Tiếp tục hành trình khám phá khoa học tự nhiên của bạn.'}
               </p>
             </div>
+
+            {searchParams.get('reason') === 'trial' && <TrialEndedNote />}
 
             <form className="katha-login-form" onSubmit={handleSubmit} noValidate>
               <label className="katha-login-label" htmlFor="login-email">

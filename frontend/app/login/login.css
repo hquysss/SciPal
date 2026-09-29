@@ -2226,3 +2226,15 @@
     linear-gradient(135deg, color-mix(in srgb, var(--nav) 92%, var(--sun)), var(--art-bg-end));
   opacity: 1;
 }
+
+/* A visitor's trial ended: calm information, not an error. */
+.katha-login-trial-note {
+  margin: 0 0 1rem;
+  padding: 0.7rem 0.9rem;
+  border: 1px solid var(--edge);
+  border-radius: 0.8rem;
+  background: var(--surface-sunken);
+  color: var(--ink);
+  font-size: 0.85rem;
+  line-height: 1.5;
+}
