@@ -17,7 +17,7 @@ describe('ExamReviewCard', () => {
     const html = renderToStaticMarkup(<ExamReviewCard exam={exam} onDone={() => {}} />);
     expect(html).toContain('Đề cuối kỳ');
     expect(html).toContain('Tin học · Lớp 11 · 30 câu · 60 phút');
-    expect(html).toContain('href="/teacher/exams/e1"');
+    expect(html).toContain('href="/exam/manage/e1"');
     expect(html).toContain('Duyệt');
     expect(html).toContain('Trả lại');
     expect(countRawColors(html).total).toBe(0);

@@ -13,6 +13,13 @@ const SECURITY_HEADERS = [
 
 const nextConfig: NextConfig = {
   transpilePackages: ['@scipal/ui', '@scipal/hooks', '@scipal/supabase', '@scipal/types'],
+  // Exam authoring moved under Thi thử (/exam/manage); old links keep working.
+  async redirects() {
+    return [
+      { source: '/teacher/exams', destination: '/exam/manage', permanent: true },
+      { source: '/teacher/exams/:path*', destination: '/exam/manage/:path*', permanent: true },
+    ];
+  },
   async headers() {
     return [{ source: '/:path*', headers: SECURITY_HEADERS }];
   },

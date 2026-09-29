@@ -7,7 +7,7 @@ import { StudentRoster } from '@/features/classes/StudentRoster';
 import { ExamBuilder } from '@/features/authoring/exams/ExamBuilder';
 import { ExamReviewCard } from '@/features/authoring/exams/ExamReview';
 import { QuestionBank } from '@/features/authoring/exams/QuestionBank';
-import { TeacherAreaTabs } from '@/components/nav/TeacherAreaTabs';
+import { ExamManageTabs } from '@/components/nav/TeacherAreaTabs';
 import { TopicManager } from '@/features/authoring/topics/TopicManager';
 import { AiSettingsForm } from '@/features/admin-ai/AiSettingsForm';
 import { AdminChatsPreview } from '@/features/admin-ai/AdminChatsPreview';
@@ -54,7 +54,7 @@ export default async function TeacherShowcase({ searchParams }: { searchParams: 
     <main className="mx-auto w-full flex max-w-6xl flex-col gap-6 px-4 py-8">
       {view === 'exam' ? (
         <>
-          <TeacherAreaTabs active="exams" />
+          <ExamManageTabs active="exams" />
           <ExamBuilder
             exam={{ ...EXAM, status: status === 'rejected' ? 'draft' : status, editable: status === 'draft' || status === 'rejected' || params.role === 'admin', review_note: status === 'rejected' ? 'Thêm câu mức khó.' : null }}
             subjects={SUBJECTS}
@@ -66,7 +66,7 @@ export default async function TeacherShowcase({ searchParams }: { searchParams: 
         <ExamBuilder exam={null} subjects={SUBJECTS} isAdmin={params.role === 'admin'} />
       ) : view === 'bank' ? (
         <>
-          <TeacherAreaTabs active="exams" />
+          <ExamManageTabs active="exams" />
           <QuestionBank subjects={SUBJECTS} />
         </>
       ) : view === 'quotas' ? (

@@ -50,7 +50,7 @@ describe('role menus', () => {
       const { teacherLinks, adminLinks } = roleLinks(role, 'vi', 0);
       const hrefs = [...teacherLinks, ...adminLinks].map((l) => l.href);
       expect(hrefs).not.toContain('/teacher/lessons');
-      expect(hrefs).not.toContain('/teacher/exams');
+      expect(hrefs).not.toContain('/exam/manage');
       expect(hrefs).not.toContain('/admin/plans');
     }
     expect(roleLinks('teacher', 'vi', 0).teacherLinks.map((l) => l.href)).toContain('/teacher/classes');

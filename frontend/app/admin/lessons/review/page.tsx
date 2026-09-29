@@ -3,12 +3,8 @@ import { redirect } from 'next/navigation';
 import {
   AuthoringApiError,
   getDeleteRequests,
-  getPendingExamImports,
   getPendingReviewLessons,
 } from '@/features/authoring/authoringQueries';
-import { ExamImportReviewActions } from '@/features/content-import/ExamImportReviewActions';
-import { PendingExamReviews } from '@/features/authoring/exams/ExamReview';
-import { ReviewTabs } from '@/components/nav/ReviewTabs';
 import { LessonDeleteActions } from '@/features/authoring/LessonDeleteActions';
 import { lessonStatusLabel } from '@/features/authoring/lessonStatus';
 import { getAuthoringSession } from '@/features/authoring/serverAuth';
@@ -32,7 +28,9 @@ function formatDate(value: string) {
 export default async function LessonReviewQueuePage({ searchParams }: { searchParams: Promise<{ tab?: string }> }) {
   const { token, role } = await getAuthoringSession('/admin/lessons/review');
   if (role !== 'admin') redirect('/profile');
-  const tab = (await searchParams).tab === 'exams' ? 'exams' : 'lessons';
+  // Exam review moved to Quản lý đề thi under Thi thử.
+  if ((await searchParams).tab === 'exams') redirect('/exam/manage');
+  const tab = 'lessons';
 
   let lessons = null;
   let loadError = false;
@@ -44,15 +42,7 @@ export default async function LessonReviewQueuePage({ searchParams }: { searchPa
     else console.error('Could not connect to the authoring API.');
   }
 
-  // Exam imports and delete requests load on their own: the review queue still works if one fails.
-  let examImports = null;
-  if (tab === 'exams') try {
-    examImports = await getPendingExamImports(token);
-  } catch (error) {
-    if (error instanceof AuthoringApiError) console.error('Could not load pending exam imports:', error.status);
-    else console.error('Could not connect to the authoring API.');
-  }
-
+  // Delete requests load on their own: the review queue still works if they fail.
   let deleteRequests = null;
   if (tab === 'lessons') try {
     deleteRequests = await getDeleteRequests(token);
@@ -73,69 +63,10 @@ export default async function LessonReviewQueuePage({ searchParams }: { searchPa
       <header className="flex flex-col gap-2">
         <h1 className="text-2xl font-extrabold text-ink sm:text-3xl"><Bi en="Review queue" vi="Hàng chờ duyệt" /></h1>
         <p className="max-w-prose text-base text-ink-muted">
-          <Bi en="Only lessons and exams an admin approves are published to students." vi="Chỉ bài giảng và đề thi được admin duyệt mới xuất bản cho học sinh." />
+          <Bi en="Only lessons an admin approves are published to students. Exams are reviewed under Practice exams → Manage exams." vi="Chỉ bài giảng được admin duyệt mới xuất bản cho học sinh. Đề thi được duyệt ở Thi thử → Quản lý đề thi." />
         </p>
       </header>
 
-      <ReviewTabs active={tab} />
-
-      {tab === 'exams' && (
-      <section aria-labelledby="builder-exams-title" className="flex flex-col gap-3">
-        <h2 id="builder-exams-title" className="text-lg font-bold text-ink">
-          <Bi en="Exams built in SciPal" vi="Đề soạn trong ứng dụng" />
-        </h2>
-        <PendingExamReviews />
-      </section>
-      )}
-
-      {tab === 'exams' && (
-      <section aria-labelledby="exam-imports-title" className="flex flex-col gap-3">
-        <h2 id="exam-imports-title" className="text-lg font-bold text-ink">
-          Lượt nhập đề từ Excel{examImports ? ` (${examImports.length})` : ''}
-        </h2>
-        {examImports === null ? (
-          <p role="alert" className="rounded-xl bg-danger-surface p-4 text-sm text-danger">Không tải được đề thi chờ duyệt.</p>
-        ) : examImports.length === 0 ? (
-          <p className="rounded-xl border border-dashed border-edge p-4 text-sm text-ink-muted">Không có đề thi nào giáo viên gửi đang chờ duyệt.</p>
-        ) : (
-          examImports.map((item) => {
-            const label = item.blueprints[0]?.name ?? `${item.question_count} câu hỏi`;
-            return (
-              <article key={item.import_id} className="flex flex-col justify-between gap-4 rounded-2xl border border-line bg-surface p-5 sm:flex-row sm:items-center">
-                <div className="flex flex-col gap-1.5">
-                  <span className="text-xs font-semibold text-ink-muted">
-                    {item.teacher_name ?? 'Giáo viên'}
-                    {item.created_at ? ` · gửi ${formatDate(item.created_at)}` : ''}
-                    {' · '}
-                    {item.question_count} câu hỏi (
-                    {Object.entries(item.question_types)
-                      .map(([type, count]) => `${count} ${type === 'mc' ? 'trắc nghiệm' : type === 'truefalse' ? 'đúng/sai' : 'trả lời ngắn'}`)
-                      .join(', ')}
-                    )
-                  </span>
-                  {item.blueprints.length > 0 ? (
-                    <ul className="flex flex-col gap-1">
-                      {item.blueprints.map((b) => (
-                        <li key={b.id} className="text-sm text-ink">
-                          <span className="font-bold">{b.name}</span>
-                          <span className="text-ink-muted">
-                            {' · '}{b.subject_name_vi ?? ''} {b.grade ?? ''} · {b.question_count} câu
-                            {b.duration_minutes ? ` · ${b.duration_minutes} phút` : ''}
-                          </span>
-                        </li>
-                      ))}
-                    </ul>
-                  ) : (
-                    <p className="text-sm text-ink">Chỉ có câu hỏi, chưa có đề (vào ngân hàng câu hỏi của môn).</p>
-                  )}
-                </div>
-                <ExamImportReviewActions importId={item.import_id} label={label} />
-              </article>
-            );
-          })
-        )}
-      </section>
-      )}
 
       {tab === 'lessons' && (
       <section aria-labelledby="delete-requests-title" className="flex flex-col gap-3">

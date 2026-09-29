@@ -26,7 +26,7 @@ export function staffLinks(place: StaffPlace, role: string | null): StaffLink[] 
     ];
   }
   if (place === 'exams' && AUTHOR_ROLES.has(role)) {
-    return [{ href: '/teacher/exams', label: { vi: 'Soạn đề thi', en: 'Build exams' }, Icon: FilePenLine, primary: true }];
+    return [{ href: '/exam/manage', label: { vi: 'Quản lý đề thi', en: 'Manage exams' }, Icon: FilePenLine, primary: true }];
   }
   if (place === 'pricing' && role === 'admin') {
     return [{ href: '/admin/plans', label: { vi: 'Quản lý giá gói', en: 'Manage plans' }, Icon: Settings2, primary: true }];

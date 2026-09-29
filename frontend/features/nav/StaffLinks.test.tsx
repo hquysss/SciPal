@@ -17,8 +17,9 @@ describe('staffLinks', () => {
   });
 
   it('puts exam authoring on Exams for teachers and admins', () => {
-    expect(hrefs('exams', 'teacher')).toEqual(['/teacher/exams']);
-    expect(hrefs('exams', 'admin')).toEqual(['/teacher/exams']);
+    expect(hrefs('exams', 'teacher')).toEqual(['/exam/manage']);
+    expect(staffLinks('exams', 'teacher')[0].label.vi).toBe('Quản lý đề thi');
+    expect(hrefs('exams', 'admin')).toEqual(['/exam/manage']);
     expect(hrefs('exams', 'student')).toEqual([]);
   });
 
