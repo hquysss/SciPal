@@ -15,6 +15,7 @@ import { HowItWorks } from './HowItWorks';
 import { TutorSection } from './TutorSection';
 import { PricingSection } from './PricingSection';
 import type { Catalog } from '@/features/billing/billingApi';
+import { ReportProblemButton } from '@/features/problemReports/ReportProblem';
 import styles from './landing.module.css';
 
 const CONTACT_FACEBOOK_URL = 'https://www.facebook.com/nguoivietchimtayto/';
@@ -271,6 +272,8 @@ export function LandingPage({ level, levelSource, catalog, onChangeLevel, pricin
             <Link href="/privacy" className={styles.footerPolicy}>
               {t({ en: 'Privacy', vi: 'Quyền riêng tư' })}
             </Link>
+            <span aria-hidden="true"> · </span>
+            <ReportProblemButton className={styles.footerPolicy} />
             <span aria-hidden="true"> · </span>© SciPal
           </p>
         </div>

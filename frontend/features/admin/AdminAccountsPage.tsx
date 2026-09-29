@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState, type FormEvent } from 'react';
 import { TeacherRequestsPanel } from '@/features/teacherRequests/TeacherRequestsPanel';
+import { ProblemReportsPanel } from '@/features/problemReports/ProblemReportsPanel';
 import { useLanguage } from '@scipal/hooks';
 import {
   AccountsApiError,
@@ -199,6 +200,8 @@ export function AdminAccountsPage() {
           setAccounts((current) => current.map((account) => (account.id === userId ? { ...account, app_role: 'teacher' } : account)))
         }
       />
+
+      <ProblemReportsPanel />
 
       <div className="grid gap-6 lg:grid-cols-[minmax(19rem,0.8fr)_minmax(0,1.4fr)]">
         <Card className="gap-0 py-0" aria-labelledby="create-account-heading">

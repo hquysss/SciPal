@@ -43,11 +43,15 @@ describe('SubjectMarquee', () => {
     expect(html).toContain('Đang biên soạn');
   });
 
-  it('fills the loop with hidden, unfocusable copies so the strip never gaps', () => {
+  it('fills the loop with copies hidden from readers and keys, but a pointer can still click them', () => {
     const html = render([subject('informatics', 0, true)]);
-    const copies = html.match(/<li[^>]*aria-hidden="true"[^>]*inert=""/g) ?? [];
+    const copies = html.match(/<li[^>]*aria-hidden="true"/g) ?? [];
     expect(copies.length).toBeGreaterThanOrEqual(7);
     expect(html.match(/<li(?![^>]*aria-hidden)/g)).toHaveLength(1);
+    expect(html).not.toContain('inert');
+    // Every copy's link is out of the tab order; the real one stays in it.
+    expect(html.match(/<a [^>]*tabindex="-1"/gi)?.length).toBe(copies.length);
+    expect(html.match(/<a (?![^>]*tabindex)/gi)).toHaveLength(1);
   });
 
   it('keeps the catalog messages', () => {
