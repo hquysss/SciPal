@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { StaffLinks } from '@/features/nav/StaffLinks';
 import Link from 'next/link';
 import { LevelScope, SubjectProvider } from '@scipal/ui';
 import { useLanguage } from '@scipal/hooks';
@@ -127,6 +128,7 @@ export function SubjectsPage({ accountLevel, catalog }: SubjectsPageProps) {
               })
             : t({ en: 'Choose your grade to see its subjects.', vi: 'Chọn lớp của em để xem các môn học.' })}
         </p>
+        <StaffLinks place="subjects" />
       </header>
 
       <div role="group" aria-label={t({ en: 'Grade', vi: 'Lớp' })} className="flex flex-wrap gap-x-6 gap-y-4">

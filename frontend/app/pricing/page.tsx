@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import { StaffLinks } from '@/features/nav/StaffLinks';
 import { Bi } from '@/components/ui/bilingual';
 import { PricingPage } from '@/features/billing/PricingPage';
 import { fetchCatalog } from '@/features/billing/billingApi';
@@ -20,6 +21,7 @@ export default async function PricingRoute() {
             vi="Mọi bài học vẫn miễn phí. Gói trả phí nâng số lượt Gia sư AI, lượt thi có chấm điểm và công cụ dạy học."
           />
         </p>
+        <StaffLinks place="pricing" />
       </header>
       <PricingPage plans={catalog?.plans ?? null} checkoutOpen={catalog?.checkoutOpen ?? false} />
     </main>

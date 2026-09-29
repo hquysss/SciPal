@@ -15,8 +15,8 @@ export default async function TeacherExamsPage() {
     <main className="mx-auto flex w-full max-w-5xl flex-col gap-6 px-4 py-8 pb-20 sm:px-6">
       <PageBreadcrumb
         items={[
-          { href: '/profile', label: { en: 'Profile', vi: 'Hồ sơ' } },
-          { label: { en: 'Exams', vi: 'Đề thi' } },
+          { href: '/exam', label: { en: 'Practice exams', vi: 'Thi thử' } },
+          { label: { en: 'Build exams', vi: 'Soạn đề thi' } },
         ]}
       />
       <TeacherAreaTabs active="exams" />

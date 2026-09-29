@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import { StaffLinks } from '@/features/nav/StaffLinks';
 import { useLanguage } from '@scipal/hooks';
 import { EmptyState } from '../../components/ui/empty-state';
 import type { BlueprintSummary } from './examQueries';
@@ -47,6 +48,9 @@ export function ExamListHeader() {
             vi: 'Bài thi bấm giờ có bảng điều hướng câu hỏi. Điểm được chấm trên máy chủ, đáp án không bao giờ gửi xuống trình duyệt.',
           })}
         </p>
+        <div className="mt-4">
+          <StaffLinks place="exams" />
+        </div>
       </header>
     </>
   );
