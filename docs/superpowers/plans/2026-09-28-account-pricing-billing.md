@@ -157,7 +157,7 @@ Thực thi từng nhánh/PR con, phụ thuộc Task 1 và 4. Đây là dependenc
 
 ## Task 6 / PR 6: Order state machine và QR payOS
 
-> **29/09 — đã làm:** migration `20260929040000_billing_payments` (`billing_create_order`, `billing_apply_payment`, `checkout_url`), `billing/providers/payos.ts`, `routes/billingCheckout.ts` (checkout / order / webhook), SQL tests + kiểm 10 callback đồng thời. Đối soát: đơn đang chờ được đối chiếu với payOS mỗi khi chủ đơn mở trang đơn (thay cho job định kỳ); chưa có trang admin xem đối soát. Chưa thử với merchant thật (chưa có khóa).
+> **29/09 — tiến độ:** migration `20260929040000_billing_payments` đã áp Supabase ngày 29/09; checkout/webhook và kiểm thử đồng thời đã có. Nhánh `codex/billing-reconciliation` thêm trang admin/API payOS. Migration bổ sung `20260929100000_billing_reconciliation` ghi `amount_vnd`/`paid_at`, tạo `billing_reconciliation_page` và cho phép áp lại bằng chứng payOS qua `billing_apply_payment`; **chưa áp migration bổ sung**. Chưa thử merchant thật vì chưa có khóa. Sau review, migration được cập nhật để recheck giao dịch gốc không tạo incident mới, còn giao dịch thứ hai vẫn nằm trong đối soát; SQL regression bao phủ recheck lặp lại. CI của PR #46 đã chạy SQL test và phát hiện thiếu quyền cập nhật `raw_app_meta_data` trong fixture; đã thêm quyền theo cột riêng trong test harness, chờ CI chạy lại. Test API tập trung sau sửa đạt 9/9. `npx turbo run typecheck test lint` thoát 0 (13/13 tác vụ cached) và `npx turbo run build` thoát 0 (2/2 tác vụ cached; log có `/admin/billing`). `PROJECT_STATE.md` ghi đúng trạng thái migration 29/09. Browser route cục bộ không kết nối, chưa có phiên admin nên chưa xác nhận dữ liệu thật hoặc 375px đã đăng nhập. PR #46 đã tạo; người dùng yêu cầu merge sau khi CI xanh.
 
 **Branch:** `codex/billing-payos`; depends Task 1.
 
@@ -177,7 +177,7 @@ Thực thi từng nhánh/PR con, phụ thuộc Task 1 và 4. Đây là dependenc
 
 **Branch:** `codex/billing-vnpay`; depends Task 6.
 
-**Files:** create `backend/src/billing/providers/vnpay.ts`, `backend/src/__tests__/vnpay.test.ts`; extend `billing.ts`, `billingWebhooks.ts`, `billing-payments.test.ts`; create admin reconciliation API/UI scoped files.
+**Files:** create `backend/src/billing/providers/vnpay.ts`, `backend/src/__tests__/vnpay.test.ts`; extend `billing.ts`, `billingWebhooks.ts`, `billing-payments.test.ts`; extend the existing admin reconciliation API/UI for VNPAY.
 
 **Consumes/produces:** same CheckoutInput and PaymentEvent, cùng order ledger.
 

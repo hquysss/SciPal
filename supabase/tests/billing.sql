@@ -7,8 +7,11 @@ select 'create role service_role nologin bypassrls' where not exists (select 1 f
 create schema if not exists auth;
 create table auth.users (
   id uuid primary key,
-  raw_app_meta_data jsonb not null default '{}'::jsonb
+  raw_app_meta_data jsonb not null default '{}'::jsonb,
+  email text,
+  raw_user_meta_data jsonb not null default '{}'::jsonb
 );
+create table public.profiles (id uuid primary key, display_name text, role text);
 create table public.class_rooms (id uuid primary key, teacher_id uuid not null);
 create table public.class_members (class_id uuid not null, student_id uuid not null);
 create table public.exam_blueprints (id uuid primary key, created_by uuid, status text not null);
@@ -21,6 +24,9 @@ values
   ('00000000-0000-4000-8000-000000000004', '{}'),
   ('00000000-0000-4000-8000-000000000005', '{"app_role":"admin"}'),
   ('00000000-0000-4000-8000-000000000006', '{"app_role":"student"}');
+update auth.users set email = 'student@example.test', raw_user_meta_data = '{"display_name":"Learner"}' where id = '00000000-0000-4000-8000-000000000004';
+grant update (raw_app_meta_data) on auth.users to service_role;
+insert into public.profiles (id, display_name, role) values ('00000000-0000-4000-8000-000000000004', 'Learner', 'student');
 insert into public.class_rooms (id, teacher_id)
 values ('10000000-0000-4000-8000-000000000001', '00000000-0000-4000-8000-000000000003');
 insert into public.class_members (class_id, student_id)
@@ -35,6 +41,7 @@ values
 \ir ../migrations/20260929020000_teacher_capacity.sql
 \ir ../migrations/20260929030000_author_ai_drafts.sql
 \ir ../migrations/20260929040000_billing_payments.sql
+\ir ../migrations/20260929100000_billing_reconciliation.sql
 -- Supabase's service_role writes these tables; the stubs above need the same grant.
 grant select, insert, update, delete on public.class_rooms, public.class_members, public.exam_blueprints to service_role;
 
@@ -567,10 +574,14 @@ declare
   v_order record;
   v_again record;
   v_late record;
+  v_role_order record;
   v_failed text;
   v_result text;
   v_through timestamptz;
   v_before timestamptz;
+  v_page_items jsonb;
+  v_total_count bigint;
+  v_event_count bigint;
 begin
   select id into v_month from public.billing_prices where plan_code = 'student_plus' and interval = 'month' and active;
   select id into v_year from public.billing_prices where plan_code = 'student_plus' and interval = 'year' and active;
@@ -613,6 +624,10 @@ begin
   v_result := public.billing_apply_payment('payos', '1002', 'tx-short', 3900, 'paid', now(), 'fp-short', 'webhook');
   if v_result <> 'reconciliation' then raise exception 'Short payment: %', v_result; end if;
   if (select status from public.billing_orders where id = v_late.order_id) <> 'reconciliation' then raise exception 'Short payment order status'; end if;
+  if (select amount_vnd from public.billing_events where fingerprint = 'fp-short') <> 3900
+     or (select paid_at from public.billing_events where fingerprint = 'fp-short') is null then
+    raise exception 'Reconciliation event did not retain its received amount and payment time';
+  end if;
 
   -- A failure is recorded; the payment then grants one month from now.
   v_result := public.billing_apply_payment('payos', '1001', null, 39000, 'cancelled', null, 'fp-cancel', 'webhook');
@@ -635,11 +650,49 @@ begin
   v_result := public.billing_apply_payment('payos', '1001', null, 39000, 'failed', null, 'fp-failed-late', 'webhook');
   if (select status from public.billing_payment_attempts where provider_reference = '1001') <> 'paid' then raise exception 'Failure undid a payment'; end if;
 
+  v_result := public.billing_apply_payment('payos', '1001', 'tx-double-payos', 39000, 'paid', now(), 'fp-double-same-link', 'webhook');
+  if v_result <> 'reconciliation' then raise exception 'Second transaction on the paid payOS link: %', v_result; end if;
+  if (select count(*) from public.billing_grants where order_id = v_order.order_id) <> 1 then raise exception 'Second payOS transaction granted twice'; end if;
+  if (select provider_transaction_id from public.billing_payment_attempts where provider_reference = '1001') <> 'tx-1' then
+    raise exception 'The duplicate transaction replaced the original paid transaction';
+  end if;
+
+  select count(*) into v_event_count from public.billing_events
+   where provider = 'payos' and merchant_reference = '1001' and provider_transaction_id = 'tx-1';
+  v_result := public.billing_apply_payment('payos', '1001', 'tx-1', 39000, 'paid', now(), 'fp-admin-original-first', 'admin_reconciliation');
+  if v_result <> 'duplicate' then raise exception 'Rechecking the original transaction: %', v_result; end if;
+  if (select count(*) from public.billing_events where provider = 'payos' and merchant_reference = '1001' and provider_transaction_id = 'tx-1') <> v_event_count
+     or exists (select 1 from public.billing_events where provider = 'payos' and merchant_reference = '1001' and provider_transaction_id = 'tx-1' and verification_state = 'reconciliation') then
+    raise exception 'Rechecking the original transaction created an unresolved incident';
+  end if;
+
+  select count(*) into v_event_count from public.billing_events
+   where provider = 'payos' and merchant_reference = '1001' and provider_transaction_id = 'tx-double-payos';
+  if v_event_count <> 1 then raise exception 'Expected one second-transaction event, got %', v_event_count; end if;
+  v_result := public.billing_apply_payment('payos', '1001', 'tx-double-payos', 39000, 'paid', now(), 'fp-admin-second-first', 'admin_reconciliation');
+  if v_result <> 'reconciliation' then raise exception 'Rechecking the second transaction: %', v_result; end if;
+  if (select count(*) from public.billing_events where provider = 'payos' and merchant_reference = '1001' and provider_transaction_id = 'tx-double-payos') <> v_event_count
+     or (select count(*) from public.billing_events where provider = 'payos' and merchant_reference = '1001' and provider_transaction_id = 'tx-double-payos' and verification_state = 'reconciliation') <> 1 then
+    raise exception 'Rechecking the second transaction duplicated or cleared its incident';
+  end if;
+
+  v_result := public.billing_apply_payment('payos', '1001', 'tx-1', 39000, 'paid', now(), 'fp-admin-original-repeat', 'admin_reconciliation');
+  if v_result <> 'duplicate' then raise exception 'Repeated original-transaction recheck: %', v_result; end if;
+  v_result := public.billing_apply_payment('payos', '1001', 'tx-double-payos', 39000, 'paid', now(), 'fp-admin-second-repeat', 'admin_reconciliation');
+  if v_result <> 'reconciliation' then raise exception 'Repeated second-transaction recheck: %', v_result; end if;
+  if (select count(*) from public.billing_events where provider = 'payos' and merchant_reference = '1001' and provider_transaction_id = 'tx-double-payos') <> v_event_count
+     or (select count(*) from public.billing_events where provider = 'payos' and merchant_reference = '1001' and provider_transaction_id = 'tx-double-payos' and verification_state = 'reconciliation') <> 1 then
+    raise exception 'Repeated recheck created another second-payment incident';
+  end if;
+
   -- Paid twice (QR and card): one grant, the second payment kept for reconciliation.
   v_result := public.billing_apply_payment('vnpay', 'VN1001', 'vn-tx-1', 39000, 'paid', now(), 'fp-vn', 'ipn');
   if v_result <> 'reconciliation' then raise exception 'Second payment: %', v_result; end if;
   if (select count(*) from public.billing_grants where order_id = v_order.order_id) <> 1 then raise exception 'Two grants'; end if;
   if (select paid_through from public.billing_subscriptions where user_id = c_student) <> v_through then raise exception 'Second payment extended the plan'; end if;
+  insert into public.billing_payment_attempts (order_id, provider, provider_reference, amount_vnd) values (v_order.order_id, 'payos', '1005', 39000);
+  v_result := public.billing_apply_payment('payos', '1005', 'tx-double', 39000, 'paid', now(), 'fp-double', 'webhook');
+  if v_result <> 'reconciliation' then raise exception 'Second payOS payment: %', v_result; end if;
 
   -- Renewing the same plan follows the current period (a year here).
   select * into v_again from public.billing_create_order(c_student, v_year, 'key-five-000', c_hash, now() + interval '30 minutes');
@@ -659,6 +712,51 @@ begin
   if exists (select 1 from public.billing_subscriptions where user_id = c_teacher) then raise exception 'Late payment granted'; end if;
   v_result := public.billing_apply_payment('payos', '999999', 'tx-x', 1000, 'paid', now(), 'fp-unknown', 'webhook');
   if v_result <> 'reconciliation' then raise exception 'Unknown reference: %', v_result; end if;
+  if (select amount_vnd from public.billing_events where fingerprint = 'fp-unknown') <> 1000
+     or (select paid_at from public.billing_events where fingerprint = 'fp-unknown') is null then
+    raise exception 'Unmatched payment did not retain its received facts';
+  end if;
+
+  -- A fresh provider query may resolve the same transaction after its role mismatch is corrected.
+  select * into v_role_order from public.billing_create_order(c_student, v_month, 'key-seven-0000', c_hash, now() + interval '30 minutes');
+  insert into public.billing_payment_attempts (order_id, provider, provider_reference, amount_vnd) values (v_role_order.order_id, 'payos', '1006', 39000);
+  update auth.users set raw_app_meta_data = '{"app_role":"teacher"}' where id = c_student;
+  v_result := public.billing_apply_payment('payos', '1006', 'tx-role', 39000, 'paid', now(), 'fp-role-webhook', 'webhook');
+  if v_result <> 'reconciliation' then raise exception 'Changed role was not held for review: %', v_result; end if;
+  update auth.users set raw_app_meta_data = '{"app_role":"student"}' where id = c_student;
+  v_result := public.billing_apply_payment('payos', '1006', 'tx-role', 39000, 'paid', now(), 'fp-role-recheck', 'admin_reconciliation');
+  if v_result <> 'applied' then raise exception 'Verified role correction did not resolve: %', v_result; end if;
+  if (select status from public.billing_orders where id = v_role_order.order_id) <> 'paid'
+     or (select status from public.billing_payment_attempts where provider_reference = '1006') <> 'paid'
+     or (select verification_state from public.billing_events where fingerprint = 'fp-role-webhook') <> 'verified' then
+    raise exception 'Resolved provider evidence remained in reconciliation';
+  end if;
+
+  select items, total_count into v_page_items, v_total_count from public.billing_reconciliation_page(100, 0);
+  if v_total_count <> 5 or pg_catalog.jsonb_array_length(v_page_items) <> 5 then
+    raise exception 'The reconciliation page did not include exactly five payOS incidents: % %', v_total_count, v_page_items;
+  end if;
+  if not exists (
+    select 1 from pg_catalog.jsonb_array_elements(v_page_items) as item(value)
+     where item.value ->> 'provider_reference' = '1002'
+       and (item.value ->> 'amount_received_vnd')::integer = 3900
+       and (item.value ->> 'order_amount_vnd')::integer = 39000
+       and item.value ->> 'account_email' = 'student@example.test'
+       and item.value ->> 'plan_name_en' = 'Student Plus'
+  ) then raise exception 'Wrong-amount row is missing account, plan or amounts'; end if;
+  if not exists (
+    select 1 from pg_catalog.jsonb_array_elements(v_page_items) as item(value)
+     where item.value ->> 'provider_reference' = '999999'
+       and item.value ->> 'order_id' is null
+       and (item.value ->> 'amount_received_vnd')::integer = 1000
+  ) then raise exception 'Unknown-order row is missing its received transaction'; end if;
+  if exists (select 1 from pg_catalog.jsonb_array_elements(v_page_items) as item(value) where item.value ? 'reason') then
+    raise exception 'Reconciliation reason belongs to the backend, not the database result';
+  end if;
+  select items, total_count into v_page_items, v_total_count from public.billing_reconciliation_page(2, 0);
+  if v_total_count <> 5 or pg_catalog.jsonb_array_length(v_page_items) <> 2 then
+    raise exception 'Reconciliation pagination did not return a two-row page and global count';
+  end if;
 end;
 $$;
 reset role;
@@ -673,6 +771,12 @@ begin
   exception when insufficient_privilege then v_denied := true;
   end;
   if not v_denied then raise exception 'A signed-in user applied a payment'; end if;
+  v_denied := false;
+  begin
+    perform * from public.billing_reconciliation_page(20, 0);
+  exception when insufficient_privilege then v_denied := true;
+  end;
+  if not v_denied then raise exception 'A signed-in user read billing reconciliation'; end if;
 end;
 $$;
 reset role;

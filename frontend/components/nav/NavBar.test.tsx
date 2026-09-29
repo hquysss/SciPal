@@ -46,6 +46,11 @@ describe('role menus', () => {
     expect(roleLinks('teacher', 'vi', 0).teacherLinks.map((l) => l.href)).not.toContain('/admin/topics');
     expect(roleLinks('student', 'vi', 0)).toEqual({ teacherLinks: [], adminLinks: [] });
   });
+
+  it('links admins to payment reconciliation in both languages', () => {
+    expect(roleLinks('admin', 'vi', 0).adminLinks).toContainEqual({ href: '/admin/billing', label: 'Đối soát thanh toán' });
+    expect(roleLinks('admin', 'en', 0).adminLinks).toContainEqual({ href: '/admin/billing', label: 'Payment reconciliation' });
+  });
 });
 
 describe('tutorLink', () => {
