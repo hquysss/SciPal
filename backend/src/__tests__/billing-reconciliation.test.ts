@@ -197,3 +197,64 @@ describe('POST /api/admin/billing/orders/:id/reconcile', () => {
     await app.close();
   });
 });
+
+describe('GET /api/admin/billing/orders', () => {
+  const USER = 'a0000000-0000-4000-8000-000000000001';
+  const orderRow = { id: ORDER, user_id: USER, plan_code: 'student_plus', interval: 'month', amount_vnd: 39000, status: 'paid', created_at: '2026-09-29T11:21:54Z', paid_at: '2026-09-29T11:22:39Z', expires_at: '2026-09-29T11:36:54Z' };
+
+  async function buildOrders(user: object | null, orders: MockBuilder, getUserById = vi.fn(async () => ({ data: { user: { email: 'an@gmail.com' } }, error: null }))) {
+    const app = Fastify();
+    const supabase = mockSupabase({
+      billing_orders: orders,
+      billing_payment_attempts: mockQuery({ data: [
+        { order_id: ORDER, provider_reference: '1790680000000', provider_transaction_id: null, status: 'cancelled', created_at: '2026-09-29T11:21:00Z' },
+        { order_id: ORDER, provider_reference: '1790680914261', provider_transaction_id: 'FT26272707395690', status: 'paid', created_at: '2026-09-29T11:22:00Z' },
+      ], error: null }),
+      billing_plans: mockQuery({ data: [{ code: 'student_plus', name_vi: 'Học sinh Plus', name_en: 'Student Plus' }], error: null }),
+      profiles: mockQuery({ data: [{ id: USER, display_name: 'Lê An' }], error: null }),
+    }) as unknown as Record<string, unknown>;
+    supabase.auth = { admin: { getUserById } };
+    app.decorate('supabase', supabase as never);
+    if (user) app.addHook('onRequest', async (request) => { Object.assign(request, { user }); });
+    await app.register(billingReconciliationRoutes, { payos: fakePayos() });
+    await app.ready();
+    return { app, getUserById };
+  }
+
+  it('lists every order newest first with its account, plan and latest payment', async () => {
+    const orders = mockQuery({ data: [orderRow], error: null, count: 1 });
+    const { app, getUserById } = await buildOrders(admin, orders);
+    const res = await app.inject({ method: 'GET', url: '/api/admin/billing/orders?page=1&limit=20' });
+    expect(res.statusCode).toBe(200);
+    const body = res.json();
+    expect(body.totalCount).toBe(1);
+    expect(body.items[0]).toMatchObject({
+      id: ORDER,
+      status: 'paid',
+      amountVnd: 39000,
+      interval: 'month',
+      account: { id: USER, email: 'an@gmail.com', displayName: 'Lê An' },
+      plan: { code: 'student_plus', nameVi: 'Học sinh Plus' },
+      providerReference: '1790680914261',
+      bankTransactionId: 'FT26272707395690',
+    });
+    expect(orders.rangeCalls).toContainEqual([0, 19]);
+    expect(getUserById).toHaveBeenCalledTimes(1);
+    await app.close();
+  });
+
+  it('filters by status and refuses an unknown one', async () => {
+    const orders = mockQuery({ data: [], error: null, count: 0 });
+    const { app } = await buildOrders(admin, orders);
+    expect((await app.inject({ method: 'GET', url: '/api/admin/billing/orders?status=paid' })).statusCode).toBe(200);
+    expect(orders.eqCalls).toContainEqual(['status', 'paid']);
+    expect((await app.inject({ method: 'GET', url: '/api/admin/billing/orders?status=hacked' })).statusCode).toBe(400);
+    await app.close();
+  });
+
+  it('is for admins only', async () => {
+    const { app } = await buildOrders(student, mockQuery({ data: [], error: null, count: 0 }));
+    expect((await app.inject({ method: 'GET', url: '/api/admin/billing/orders' })).statusCode).toBe(403);
+    await app.close();
+  });
+});
