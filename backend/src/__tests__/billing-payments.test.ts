@@ -192,3 +192,53 @@ describe('POST /api/billing/webhooks/payos', () => {
     await app.close();
   });
 });
+
+describe('GET /api/billing/transactions', () => {
+  const row = (n: number, patch: Record<string, unknown> = {}) => ({
+    id: `c0000000-0000-4000-8000-00000000000${n}`, plan_code: 'student_plus', interval: 'month', amount_vnd: 39000,
+    status: 'paid', expires_at: '2026-09-29T03:45:00Z', paid_at: '2026-09-29T03:20:00Z', created_at: `2026-09-2${n}T03:00:00Z`, ...patch,
+  });
+
+  it('lists only the account\'s own orders, newest first, with a cursor for the next page', async () => {
+    const orders = ok([row(9), row(8, { status: 'pending', paid_at: null, expires_at: '2020-01-01T00:00:00Z' }), row(7)]);
+    const app = await build(student, { billing_orders: orders });
+    const res = await app.inject({ method: 'GET', url: '/api/billing/transactions?limit=2' });
+    expect(res.statusCode).toBe(200);
+    const body = res.json();
+    expect(body.items).toHaveLength(2);
+    expect(body.items[0]).toEqual({ id: row(9).id, planCode: 'student_plus', interval: 'month', amountVnd: 39000, status: 'paid', createdAt: '2026-09-29T03:00:00.000Z', paidAt: '2026-09-29T03:20:00.000Z' });
+    // A pending order past its time reads as expired.
+    expect(body.items[1].status).toBe('expired');
+    expect(body.nextCursor).toBe('2026-09-28T03:00:00.000Z');
+    expect(orders.eqCalls).toContainEqual(['user_id', student.id]);
+    await app.close();
+  });
+
+  it('continues after a cursor and ends without one', async () => {
+    const orders = ok([row(7)]);
+    const app = await build(student, { billing_orders: orders });
+    const res = await app.inject({ method: 'GET', url: '/api/billing/transactions?cursor=2026-09-28T03%3A00%3A00.000Z' });
+    expect(res.json().nextCursor).toBeNull();
+    expect(orders.ltCalls).toContainEqual(['created_at', '2026-09-28T03:00:00.000Z']);
+    expect((await app.inject({ method: 'GET', url: '/api/billing/transactions?cursor=yesterday' })).statusCode).toBe(400);
+    await app.close();
+  });
+});
+
+describe('BILLING_CHECKOUT_DISABLED (rollback switch)', () => {
+  it('stops new checkouts but still applies payments already made', async () => {
+    process.env.BILLING_CHECKOUT_DISABLED = 'true';
+    try {
+      const payment = { orderCode: 1234567890, amount: 39000, reference: 'FT9', paymentLinkId: 'link-9', paid: true, paidAt: '2026-09-29T03:15:00.000Z' };
+      const app = await build(student, { 'rpc:billing_apply_payment': ok('applied') }, fakePayos({ verifyWebhook: vi.fn().mockReturnValue(payment) }));
+      const res = await checkout(app);
+      expect(res.statusCode).toBe(503);
+      expect(res.json().code).toBe('CHECKOUT_CLOSED');
+      expect(rpcCalls).toHaveLength(0);
+      expect((await app.inject({ method: 'POST', url: '/api/billing/webhooks/payos', payload: { data: {}, signature: 'x' } })).statusCode).toBe(200);
+      await app.close();
+    } finally {
+      delete process.env.BILLING_CHECKOUT_DISABLED;
+    }
+  });
+});

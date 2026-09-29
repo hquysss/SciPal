@@ -1,7 +1,7 @@
 import { createHash, randomInt } from 'node:crypto';
 import type { FastifyPluginAsync, FastifyReply, FastifyRequest } from 'fastify';
 import { z } from 'zod';
-import { payosFromEnv, type PayosClient } from '../billing/providers/payos.js';
+import { checkoutDisabled, payosFromEnv, type PayosClient } from '../billing/providers/payos.js';
 
 // Checkout by payOS QR and the order it pays (billing plan Task 6, spec §6–7).
 // - The order and its payment reference are saved before payOS is asked for a link.
@@ -68,7 +68,7 @@ export const billingCheckoutRoutes: FastifyPluginAsync<{ payos?: PayosClient | n
   app.post('/api/billing/checkout', async (request, reply) => {
     const parsed = CheckoutInput.safeParse(request.body);
     if (!parsed.success) return reply.code(400).send(INVALID);
-    if (!payos) return reply.code(503).send(CLOSED);
+    if (!payos || checkoutDisabled()) return reply.code(503).send(CLOSED);
     const user = userOf(request)!;
     const supabase = app.supabase!;
     const input = parsed.data;
@@ -201,6 +201,41 @@ export const billingCheckoutRoutes: FastifyPluginAsync<{ payos?: PayosClient | n
       request.log.error({ err: error }, 'Order could not be read');
       return reply.code(503).send(UNAVAILABLE);
     }
+  });
+
+  // The account's own orders (payment receipts, not tax invoices), newest first.
+  const TransactionsQuery = z.object({
+    cursor: z.string().datetime({ offset: true }).optional(),
+    limit: z.coerce.number().int().min(1).max(50).default(20),
+  }).strict();
+  app.get('/api/billing/transactions', async (request, reply) => {
+    const parsed = TransactionsQuery.safeParse(request.query);
+    if (!parsed.success) return reply.code(400).send(INVALID);
+    const { cursor, limit } = parsed.data;
+    const user = userOf(request)!;
+    let query = app.supabase!
+      .from('billing_orders')
+      .select('id, plan_code, interval, amount_vnd, status, expires_at, paid_at, created_at')
+      .eq('user_id', user.id);
+    if (cursor) query = query.lt('created_at', new Date(cursor).toISOString());
+    const { data, error } = await query.order('created_at', { ascending: false }).limit(limit + 1);
+    if (error) {
+      request.log.error({ err: error }, 'Transactions could not be read');
+      return reply.code(503).send(UNAVAILABLE);
+    }
+    const rows = (data ?? []) as Array<StoredOrder & { created_at: string }>;
+    const page = rows.slice(0, limit);
+    const now = new Date();
+    const items = page.map((o) => ({
+      id: o.id,
+      planCode: o.plan_code,
+      interval: o.interval,
+      amountVnd: o.amount_vnd,
+      status: o.status === 'pending' && new Date(o.expires_at) <= now ? 'expired' : o.status,
+      createdAt: new Date(o.created_at).toISOString(),
+      paidAt: o.paid_at ? new Date(o.paid_at).toISOString() : null,
+    }));
+    return { items, nextCursor: rows.length > limit ? items[items.length - 1].createdAt : null };
   });
 
   // Public: payOS calls it. Only a correctly signed body is used.

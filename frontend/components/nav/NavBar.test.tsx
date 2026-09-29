@@ -67,7 +67,7 @@ describe('primaryLinks', () => {
     const mobile = primaryLinks('vi', true, 'mobile').map((l) => l.href);
     expect(desktop).toEqual(['/glossary', '/exam', '/tutor', '/progress']);
     expect(mobile).toEqual(['/glossary', '/exam', '/tutor', '/progress', '/profile']);
-    expect(primaryLinks('vi', false, 'desktop').map((l) => l.href)).toEqual(['/glossary', '/exam']);
+    expect(primaryLinks('vi', false, 'desktop').map((l) => l.href)).toEqual(['/glossary', '/exam', '/pricing']);
   });
 
   it('gives students their classes; teachers keep theirs in the teacher menu', () => {
