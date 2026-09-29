@@ -15,6 +15,8 @@ create table public.profiles (id uuid primary key, display_name text, role text)
 create table public.class_rooms (id uuid primary key, teacher_id uuid not null);
 create table public.class_members (class_id uuid not null, student_id uuid not null);
 create table public.exam_blueprints (id uuid primary key, created_by uuid, status text not null);
+-- The live assignments table predates 0003's final shape (due_date, no blueprint_id).
+create table public.assignments (id uuid primary key default gen_random_uuid(), class_id uuid not null, lesson_id uuid, due_date timestamptz, created_at timestamptz);
 
 insert into auth.users (id, raw_app_meta_data)
 values
@@ -42,8 +44,9 @@ values
 \ir ../migrations/20260929030000_author_ai_drafts.sql
 \ir ../migrations/20260929040000_billing_payments.sql
 \ir ../migrations/20260929100000_billing_reconciliation.sql
+\ir ../migrations/20260929120000_class_assignments.sql
 -- Supabase's service_role writes these tables; the stubs above need the same grant.
-grant select, insert, update, delete on public.class_rooms, public.class_members, public.exam_blueprints to service_role;
+grant select, insert, update, delete on public.class_rooms, public.class_members, public.exam_blueprints, public.assignments to service_role;
 
 insert into public.billing_subscriptions (user_id, plan_code, paid_through)
 values ('00000000-0000-4000-8000-000000000001', 'student_plus', '2027-09-30T16:00:00Z');
@@ -777,6 +780,58 @@ begin
   exception when insufficient_privilege then v_denied := true;
   end;
   if not v_denied then raise exception 'A signed-in user read billing reconciliation'; end if;
+end;
+$$;
+reset role;
+
+-- Class assignments (migration 20260929120000).
+set role service_role;
+do $$
+declare
+  c_class constant uuid := '10000000-0000-4000-8000-000000000001';
+  c_lesson constant uuid := '60000000-0000-4000-8000-000000000001';
+  c_exam constant uuid := '50000000-0000-4000-8000-000000000001';
+  v_failed text;
+begin
+  if not exists (select 1 from information_schema.columns where table_name = 'assignments' and column_name = 'due_at') then
+    raise exception 'due_date was not renamed to due_at';
+  end if;
+  insert into public.assignments (class_id, lesson_id, due_at) values (c_class, c_lesson, now() + interval '1 day');
+  insert into public.assignments (class_id, blueprint_id) values (c_class, c_exam);
+  begin
+    insert into public.assignments (class_id, lesson_id) values (c_class, c_lesson);
+    raise exception 'unreachable';
+  exception when unique_violation then v_failed := 'unique';
+  end;
+  if v_failed is distinct from 'unique' then raise exception 'Same lesson given twice'; end if;
+  v_failed := null;
+  begin
+    insert into public.assignments (class_id, lesson_id, blueprint_id) values (c_class, '60000000-0000-4000-8000-000000000002', c_exam);
+    raise exception 'unreachable';
+  exception when check_violation then v_failed := 'check';
+  end;
+  if v_failed is distinct from 'check' then raise exception 'Lesson and exam in one assignment'; end if;
+  v_failed := null;
+  begin
+    insert into public.assignments (class_id) values (c_class);
+    raise exception 'unreachable';
+  exception when check_violation then v_failed := 'check';
+  end;
+  if v_failed is distinct from 'check' then raise exception 'Empty assignment'; end if;
+end;
+$$;
+reset role;
+
+set role authenticated;
+do $$
+declare
+  v_denied boolean := false;
+begin
+  begin
+    insert into public.assignments (class_id, lesson_id) values ('10000000-0000-4000-8000-000000000001', '60000000-0000-4000-8000-000000000009');
+  exception when insufficient_privilege then v_denied := true;
+  end;
+  if not v_denied then raise exception 'A signed-in user wrote an assignment directly'; end if;
 end;
 $$;
 reset role;
