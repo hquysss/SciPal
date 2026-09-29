@@ -295,3 +295,9 @@
     transition: none;
   }
 }
+
+/* The drifting colour fades out before the page ends, so no blur is cut by an edge. */
+.stageFade {
+  -webkit-mask-image: linear-gradient(to bottom, #000 55%, transparent 92%);
+  mask-image: linear-gradient(to bottom, #000 55%, transparent 92%);
+}

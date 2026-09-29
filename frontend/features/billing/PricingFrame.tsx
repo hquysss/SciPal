@@ -8,7 +8,7 @@ export function PricingFrame({ staff, children }: { staff?: ReactNode; children:
   // The colour spans the whole window; the content stays in its column.
   return (
     <div className="relative isolate w-full overflow-x-clip">
-      <div className={`${shared.stage} overflow-hidden`} aria-hidden="true">
+      <div className={`${shared.stage} ${s.stageFade} overflow-hidden`} aria-hidden="true">
         <span className={shared.orbSun} />
         <span className={shared.orbCoral} />
         <span className={shared.orbSky} />
