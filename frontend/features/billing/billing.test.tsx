@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { countRawColors } from '../../lib/theme/rawColors';
 import { PricingPage } from './PricingPage';
 import { MyPlanView, TransactionsView } from './MyPlan';
-import { CheckoutStatusView } from './CheckoutStatus';
+import { CheckoutStatusView, countdown } from './CheckoutStatus';
 import { formatVnd, limitText, type PublicPlan } from './billingApi';
 
 vi.mock('@scipal/hooks', () => ({ useLanguage: () => ({ lang: 'vi', t: (o: { vi: string }) => o.vi }) }));
@@ -157,5 +157,27 @@ describe('TransactionsView', () => {
     const html = renderToStaticMarkup(<TransactionsView state={{ status: 'ready', items: [], nextCursor: null, loadingMore: false }} onMore={() => {}} />);
     expect(html).toContain('Chưa có giao dịch nào');
     expect(html).not.toContain('Xem thêm');
+  });
+});
+
+describe('checkout countdown and cancel', () => {
+  const order = { id: 'o1', planCode: 'student_plus', interval: 'month', amountVnd: 39000, expiresAt: '2026-09-29T03:30:00.000Z', paidAt: null, checkoutUrl: 'https://pay.payos.vn/web/x', status: 'pending' } as const;
+
+  it('counts down the minutes and seconds left, never below zero', () => {
+    expect(countdown('2026-09-29T03:30:00.000Z', new Date('2026-09-29T03:00:30.000Z'))).toBe('29:30');
+    expect(countdown('2026-09-29T03:30:00.000Z', new Date('2026-09-29T03:29:59.000Z'))).toBe('00:01');
+    expect(countdown('2026-09-29T03:30:00.000Z', new Date('2026-09-29T04:00:00.000Z'))).toBe('00:00');
+  });
+
+  it('shows the time left and a cancel button while waiting', () => {
+    const html = renderToStaticMarkup(<CheckoutStatusView state={{ status: 'ready', order }} now={new Date('2026-09-29T03:10:00.000Z')} onCheck={() => {}} onCancel={() => {}} />);
+    expect(html).toContain('Còn 20:00');
+    expect(html).toContain('Hủy giao dịch');
+  });
+
+  it('says the order was cancelled', () => {
+    const html = renderToStaticMarkup(<CheckoutStatusView state={{ status: 'ready', order: { ...order, status: 'cancelled', checkoutUrl: null } }} />);
+    expect(html).toContain('Đã hủy giao dịch');
+    expect(html).not.toContain('Hủy giao dịch</button>');
   });
 });

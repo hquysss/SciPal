@@ -62,7 +62,13 @@ export function PricingPage({ plans, checkoutOpen, initialAudience = 'student', 
       key = newKey();
       keys.current.set(priceId, key);
     }
-    const result = await startCheckout(priceId, key);
+    let result = await startCheckout(priceId, key);
+    // That order was cancelled or ran out: this click starts a new one.
+    if (result.ok && ['cancelled', 'expired', 'failed'].includes(result.data.status)) {
+      key = newKey();
+      keys.current.set(priceId, key);
+      result = await startCheckout(priceId, key);
+    }
     if (!result.ok) {
       setBuyError(result.error);
       setBuying(null);

@@ -68,6 +68,7 @@ export function primaryLinks(lang: 'en' | 'vi', signedIn: boolean, place: 'deskt
   return [
     { href: '/glossary', label: label('Glossary', 'Từ điển') },
     { href: '/exam', label: label('Exams', 'Thi thử') },
+    { href: '/pricing', label: label('Pricing', 'Bảng giá') },
     ...(signedIn
       ? [
           tutorLink(true, lang)!,
@@ -75,7 +76,7 @@ export function primaryLinks(lang: 'en' | 'vi', signedIn: boolean, place: 'deskt
           ...(isStudent ? [{ href: '/classes', label: label('My classes', 'Lớp của em') }] : []),
           ...(place === 'mobile' ? [{ href: '/profile', label: label('Profile', 'Hồ sơ') }] : []),
         ]
-      : [{ href: '/pricing', label: label('Pricing', 'Bảng giá') }]),
+      : []),
   ];
 }
 
