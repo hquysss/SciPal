@@ -124,7 +124,7 @@ describe('guest trials', () => {
   });
 
   it('keeps the landing page, sign-in and the tutor page open to visitors', async () => {
-    for (const path of ['/', '/login', '/tutor']) expect((await visit(path)).status, path).toBe(200);
+    for (const path of ['/', '/login', '/tutor', '/auth/callback']) expect((await visit(path)).status, path).toBe(200);
     expect(fetchMock).not.toHaveBeenCalled();
   });
 

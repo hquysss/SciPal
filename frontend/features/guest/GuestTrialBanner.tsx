@@ -36,10 +36,10 @@ export function GuestTrialBannerView({ notice, pathname }: { notice: TrialNotice
           </span>
         </p>
         <Link
-          href={`/login?redirect=${encodeURIComponent(pathname)}`}
+          href={`/login?mode=signup&redirect=${encodeURIComponent(pathname)}`}
           className="font-semibold text-action underline-offset-4 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
         >
-          {t({ vi: 'Đăng nhập để học tiếp', en: 'Sign in to keep going' })}
+          {t({ vi: 'Tạo tài khoản miễn phí', en: 'Create a free account' })}
         </Link>
       </div>
     </div>
