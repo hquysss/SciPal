@@ -10,7 +10,8 @@ import styles from './subject-marquee.module.css';
 
 // The landing page's subjects as one strip that keeps running sideways. Subjects with lessons lead
 // and stand out in warm sun → coral; the rest follow as quieter cards. Readers and keyboards get each subject once: the
-// copies that make the loop seamless are aria-hidden and inert. Hover or focus pauses the strip;
+// copies that make the loop seamless are aria-hidden and their links leave the tab order (not inert:
+// most cards on screen are copies, and a pointer must still open them). Hover or focus pauses the strip;
 // with reduced motion it stops and scrolls by hand instead.
 
 /** Cards per half of the loop at least, so a short catalog still fills a wide screen. */
@@ -25,7 +26,7 @@ export function marqueeOrder(subjects: LandingSubject[]): LandingSubject[] {
   return [...live, ...rest];
 }
 
-function MarqueeCard({ subject }: { subject: LandingSubject }) {
+function MarqueeCard({ subject, copy }: { subject: LandingSubject; copy: boolean }) {
   const { lang, t } = useLanguage();
   const href = getSubjectAction(subject);
   const name = lang === 'en' ? subject.name_en : subject.name_vi;
@@ -51,7 +52,7 @@ function MarqueeCard({ subject }: { subject: LandingSubject }) {
         <h3>{name}</h3>
         <span lang={lang === 'en' ? 'vi' : 'en'}>{other}</span>
       </span>
-      <Link href={href} className={styles.go}>
+      <Link href={href} className={styles.go} tabIndex={copy ? -1 : undefined}>
         {t({ en: 'Start now', vi: 'Học ngay' })}
         <span aria-hidden="true">→</span>
       </Link>
@@ -112,8 +113,8 @@ export function SubjectMarquee({ level, catalog }: { level: EducationLevel; cata
         {cards.map((subject, index) => {
           const copy = index >= subjects.length;
           return (
-            <li key={`${subject.slug}-${index}`} aria-hidden={copy || undefined} inert={copy || undefined} data-copy={copy || undefined}>
-              <MarqueeCard subject={subject} />
+            <li key={`${subject.slug}-${index}`} aria-hidden={copy || undefined} data-copy={copy || undefined}>
+              <MarqueeCard subject={subject} copy={copy} />
             </li>
           );
         })}
