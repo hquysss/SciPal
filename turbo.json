@@ -3,20 +3,48 @@
   "ui": "tui",
   "tasks": {
     "build": {
-      "dependsOn": ["^build"],
-      "env": ["SUPABASE_URL", "SUPABASE_SERVICE_ROLE_KEY", "CORS_ORIGINS", "PORT", "GUEST_TRIAL_SECRET"],
-      "outputs": [".next/**", "dist/**", "!.next/cache/**"]
+      "dependsOn": [
+        "^build"
+      ],
+      "env": [
+        "SUPABASE_URL",
+        "SUPABASE_SERVICE_ROLE_KEY",
+        "CORS_ORIGINS",
+        "PORT",
+        "WEB_APP_URL",
+        "GUEST_TRIAL_SECRET",
+        "GUEST_TUTOR_DAILY_CAP",
+        "AI_PROVIDER",
+        "GEMINI_API_KEY",
+        "OPENAI_API_KEY",
+        "TUTOR_MODEL",
+        "TUTOR_DAILY_LIMIT",
+        "AUTHOR_TRANSLATE_DAILY_CHARS",
+        "BILLING_CHECKOUT_DISABLED",
+        "PAYOS_CLIENT_ID",
+        "PAYOS_API_KEY",
+        "PAYOS_CHECKSUM_KEY"
+      ],
+      "outputs": [
+        ".next/**",
+        "dist/**",
+        "!.next/cache/**"
+      ]
     },
     "dev": {
       "cache": false,
       "persistent": true
     },
     "test": {
-      "outputs": ["coverage/**"]
+      "outputs": [
+        "coverage/**"
+      ]
     },
     "lint": {},
     "typecheck": {
-      "dependsOn": ["^build"]
+      "dependsOn": [
+        "^build"
+      ]
     }
   }
 }
