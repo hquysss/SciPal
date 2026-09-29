@@ -2238,3 +2238,184 @@
   font-size: 0.85rem;
   line-height: 1.5;
 }
+
+/* ---- sign in / create account ---- */
+.katha-auth-tabs {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.25rem;
+  margin-top: 1.4rem;
+  padding: 0.25rem;
+  border: 1px solid var(--lg-line);
+  border-radius: 0.95rem;
+  background: color-mix(in srgb, var(--lg-ink) 4%, var(--lg-pane));
+}
+
+.katha-auth-tab {
+  min-height: 2.75rem;
+  border: 0;
+  border-radius: 0.75rem;
+  background: transparent;
+  color: var(--lg-muted);
+  font: inherit;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 180ms ease, color 180ms ease, box-shadow 180ms ease;
+}
+
+.katha-auth-tab:hover:not(.is-active) {
+  color: var(--lg-ink);
+}
+
+.katha-auth-tab.is-active {
+  background: var(--lg-field);
+  color: var(--lg-ink);
+  box-shadow: 0 1px 2px color-mix(in srgb, var(--lg-ink) 12%, transparent), 0 0 0 1px var(--lg-line);
+}
+
+.katha-auth-tab:focus-visible,
+.katha-oauth-button:focus-visible {
+  outline: 2px solid var(--lg-field-focus-line);
+  outline-offset: 2px;
+}
+
+.katha-auth-notice {
+  margin-top: 1rem;
+}
+
+.katha-auth-tabs + .katha-login-trial-note,
+.katha-auth-tabs ~ .katha-login-trial-note {
+  margin-top: 1rem;
+}
+
+.katha-signup-fineprint {
+  margin: 0;
+  color: var(--lg-muted);
+  font-size: 0.75rem;
+  line-height: 1.5;
+}
+
+.katha-signup-sent {
+  display: grid;
+  justify-items: start;
+  gap: 0.6rem;
+  margin-top: 1.6rem;
+  padding: 1.1rem 1.2rem;
+  border: 1px solid var(--lg-line);
+  border-radius: 0.95rem;
+  background: var(--lg-field);
+  color: var(--lg-ink-soft);
+  font-size: 0.88rem;
+  line-height: 1.6;
+}
+
+.katha-signup-sent p {
+  margin: 0;
+}
+
+.katha-signup-sent strong {
+  color: var(--lg-ink);
+  word-break: break-all;
+}
+
+.katha-signup-sent-icon {
+  width: 1.6rem;
+  height: 1.6rem;
+  color: var(--lg-gold);
+}
+
+.katha-signup-sent-title {
+  color: var(--lg-ink);
+  font-family: var(--font-serif);
+  font-size: 1.15rem;
+  font-weight: 600;
+}
+
+.katha-signup-sent .katha-login-help-trigger:disabled {
+  color: var(--lg-muted);
+  cursor: default;
+}
+
+/* ---- Google / Facebook ---- */
+.katha-oauth {
+  display: grid;
+  gap: 0.9rem;
+  margin-top: 1.1rem;
+}
+
+.katha-oauth-divider {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin: 0;
+  color: var(--lg-muted);
+  font-size: 0.75rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.katha-oauth-divider::before,
+.katha-oauth-divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--lg-line);
+}
+
+.katha-oauth-buttons {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(10.5rem, 1fr));
+  gap: 0.6rem;
+}
+
+.katha-oauth-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.6rem;
+  min-height: 3rem;
+  padding: 0 1rem;
+  border: 1px solid var(--lg-field-line);
+  border-radius: 0.95rem;
+  background: var(--lg-field);
+  color: var(--lg-ink);
+  font: inherit;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: border-color 180ms ease, background 180ms ease, transform 180ms ease;
+}
+
+.katha-oauth-button:hover:not(:disabled) {
+  border-color: color-mix(in srgb, var(--lg-ink) 35%, transparent);
+  transform: translateY(-1px);
+}
+
+.katha-oauth-button:disabled {
+  cursor: wait;
+  opacity: 0.62;
+}
+
+.katha-oauth-mark {
+  width: 1.2rem;
+  height: 1.2rem;
+  flex: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .katha-auth-tab,
+  .katha-oauth-button {
+    transition: none;
+  }
+  .katha-oauth-button:hover:not(:disabled) {
+    transform: none;
+  }
+}
+
+/* Provider marks keep their brand colours in every theme (Google and Meta brand guidelines). */
+.katha-oauth-google-blue { fill: #4285f4; }
+.katha-oauth-google-green { fill: #34a853; }
+.katha-oauth-google-yellow { fill: #fbbc05; }
+.katha-oauth-google-red { fill: #ea4335; }
+.katha-oauth-facebook { fill: #1877f2; }
