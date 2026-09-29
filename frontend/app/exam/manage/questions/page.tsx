@@ -1,3 +1,4 @@
+import type { Metadata } from 'next';
 import Link from 'next/link';
 import { ExamManageTabs } from '@/components/nav/TeacherAreaTabs';
 import { AuthoringApiError, getAuthoringOptions } from '@/features/authoring/authoringQueries';
@@ -6,6 +7,9 @@ import { QuestionBank } from '@/features/authoring/exams/QuestionBank';
 import { PageBreadcrumb } from '@/components/nav/PageBreadcrumb';
 import { Alert } from '@/components/ui/alert';
 import { Bi } from '@/components/ui/bilingual';
+import { pageTitle } from '@/lib/pageTitle';
+
+export const metadata: Metadata = { ...pageTitle('Question bank', 'Ngân hàng câu hỏi') };
 
 export const dynamic = 'force-dynamic';
 

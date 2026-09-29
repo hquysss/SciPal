@@ -1,3 +1,5 @@
+import { cache } from 'react';
+import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { LevelScope, SubjectProvider } from '@scipal/ui';
 import { LoadErrorNotice } from '@/components/feedback/LoadErrorNotice';
@@ -8,8 +10,18 @@ import { LessonCompletionBar } from '@/features/lessons/LessonCompletionBar';
 import { LessonHeader } from '@/features/lessons/LessonHeader';
 import { fetchLessonPractice } from '@/features/lessons/practiceApi';
 import { levelOfGrade } from '@/features/landing/educationLevel';
+import { pageTitle } from '@/lib/pageTitle';
 
 export const dynamic = 'force-dynamic';
+
+// One query per request for the page and its tab title.
+const loadLesson = cache(getLessonDetail);
+
+export async function generateMetadata({ params }: { params: Promise<{ subject: string; lesson: string }> }): Promise<Metadata> {
+  const { subject, lesson } = await params;
+  const result = await loadLesson(subject, lesson);
+  return result.kind === 'ok' ? pageTitle(result.lesson.title_en, result.lesson.title_vi) : pageTitle('Lesson', 'Bài học');
+}
 
 export default async function LessonPage({
   params,
@@ -17,7 +29,7 @@ export default async function LessonPage({
   params: Promise<{ subject: string; lesson: string }>;
 }) {
   const { subject: subjectSlug, lesson: lessonSlug } = await params;
-  const result = await getLessonDetail(subjectSlug, lessonSlug);
+  const result = await loadLesson(subjectSlug, lessonSlug);
   if (result.kind === 'not_found') notFound();
   if (result.kind === 'error') {
     return (

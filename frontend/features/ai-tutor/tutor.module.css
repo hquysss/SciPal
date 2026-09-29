@@ -194,7 +194,7 @@
     0 1rem 2rem -1.6rem color-mix(in srgb, var(--ink) 60%, transparent);
 }
 
-/* The send button: warm sun → coral, the same call to action as the rest of the site. */
+/* The send button: the brand green (sun → coral is kept for sign-in and buying). */
 .send {
   display: grid;
   flex: none;
@@ -203,16 +203,16 @@
   aspect-ratio: 1;
   border: 0;
   border-radius: 50%;
-  background: linear-gradient(135deg, var(--sun), var(--coral));
-  color: oklch(0.24 0.03 150);
+  background: var(--action);
+  color: var(--action-ink);
   cursor: pointer;
-  box-shadow: 0 0.6rem 1.1rem -0.7rem color-mix(in srgb, var(--coral) 90%, transparent);
-  transition: transform 160ms ease-out, filter 160ms ease-out;
+  box-shadow: 0 0.6rem 1.1rem -0.7rem color-mix(in srgb, var(--action) 90%, transparent);
+  transition: transform 160ms ease-out, background-color 160ms ease-out;
 }
 
 .send:hover:not(:disabled) {
   transform: translateY(-1px) scale(1.04);
-  filter: saturate(1.1);
+  background: var(--action-hover);
 }
 
 .send:disabled {
@@ -241,21 +241,25 @@
   align-items: center;
   justify-content: center;
   gap: 0.5rem;
-  border: 0;
+  border: 1px solid color-mix(in srgb, var(--action) 35%, var(--edge));
   border-radius: 999px;
   padding: 0 1.1rem;
-  background: linear-gradient(120deg, var(--sun), var(--coral));
-  color: oklch(0.24 0.03 150);
+  background: var(--surface);
+  color: var(--ink);
   font: inherit;
   font-size: 0.92rem;
-  font-weight: 800;
+  font-weight: 700;
   cursor: pointer;
-  box-shadow: 0 0.7rem 1.3rem -0.9rem color-mix(in srgb, var(--coral) 90%, transparent);
-  transition: transform 160ms ease-out;
+  transition: background-color 160ms ease-out, border-color 160ms ease-out;
+}
+
+.newChat svg {
+  color: var(--action);
 }
 
 .newChat:hover {
-  transform: translateY(-1px);
+  border-color: var(--action);
+  background: color-mix(in srgb, var(--action) 8%, var(--surface));
 }
 
 .newChat:focus-visible {
@@ -278,8 +282,7 @@
   }
 
   .example:hover:not(:disabled),
-  .send:hover:not(:disabled),
-  .newChat:hover {
+  .send:hover:not(:disabled) {
     transform: none;
   }
 }

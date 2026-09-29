@@ -1,6 +1,10 @@
+import type { Metadata } from 'next';
 import { getExamBlueprints } from '@/features/exam/examQueries';
 import { ExamBlueprintList, ExamListHeader, NoExamsNotice } from '@/features/exam/ExamListNotices';
 import { LoadErrorNotice } from '@/components/feedback/LoadErrorNotice';
+import { pageTitle } from '@/lib/pageTitle';
+
+export const metadata: Metadata = { ...pageTitle('Mock exams', 'Thi thử') };
 
 export const dynamic = 'force-dynamic';
 

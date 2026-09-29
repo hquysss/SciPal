@@ -11,10 +11,10 @@ import { fetchCatalog } from '@/features/billing/billingApi';
 export const dynamic = 'force-dynamic';
 
 export const metadata: Metadata = {
-  title: 'SciPal | Học khoa học tự nhiên song ngữ',
+  title: { absolute: 'SciPal' },
   description: 'Khám phá khoa học qua câu hỏi và học liệu song ngữ theo cấp học trên SciPal.',
   openGraph: {
-    title: 'SciPal | Học khoa học tự nhiên song ngữ',
+    title: 'SciPal',
     description: 'Khám phá khoa học qua câu hỏi và học liệu song ngữ theo cấp học.',
     type: 'website',
   },

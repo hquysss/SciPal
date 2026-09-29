@@ -1,6 +1,10 @@
+import type { Metadata } from 'next';
 import { getAuthoringSession } from '@/features/authoring/serverAuth';
 import { TeacherAreaTabs } from '@/components/nav/TeacherAreaTabs';
 import { TeacherRequestsPage } from '@/features/authoring/simulationRequests/TeacherRequestsPage';
+import { pageTitle } from '@/lib/pageTitle';
+
+export const metadata: Metadata = { ...pageTitle('Simulation requests', 'Đề xuất mô phỏng') };
 
 export const dynamic = 'force-dynamic';
 

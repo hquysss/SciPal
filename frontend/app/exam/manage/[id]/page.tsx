@@ -1,3 +1,4 @@
+import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { AuthoringApiError, getAuthoringOptions } from '@/features/authoring/authoringQueries';
 import { getAuthoringSession } from '@/features/authoring/serverAuth';
@@ -5,6 +6,9 @@ import { ExamBuilderLoader } from '@/features/authoring/exams/ExamList';
 import { PageBreadcrumb } from '@/components/nav/PageBreadcrumb';
 import { Alert } from '@/components/ui/alert';
 import { Bi } from '@/components/ui/bilingual';
+import { pageTitle } from '@/lib/pageTitle';
+
+export const metadata: Metadata = { ...pageTitle('Edit exam', 'Sửa đề thi') };
 
 export const dynamic = 'force-dynamic';
 

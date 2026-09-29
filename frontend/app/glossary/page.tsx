@@ -1,6 +1,10 @@
+import type { Metadata } from 'next';
 import { getAllTerms } from '@/features/glossary/termQueries';
 import { GlossaryHeader } from '@/features/glossary/GlossaryHeader';
 import { GlossarySearch } from '@/features/glossary/GlossarySearch';
+import { pageTitle } from '@/lib/pageTitle';
+
+export const metadata: Metadata = { ...pageTitle('Glossary', 'Từ điển') };
 
 export default async function GlossaryPage() {
   const terms = await getAllTerms();

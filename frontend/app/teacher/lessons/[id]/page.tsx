@@ -1,3 +1,4 @@
+import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { LessonEditor } from '@/features/authoring/LessonEditor';
@@ -6,6 +7,9 @@ import { getAuthoringSession } from '@/features/authoring/serverAuth';
 import { PageBreadcrumb } from '@/components/nav/PageBreadcrumb';
 import { Alert } from '@/components/ui/alert';
 import { Bi } from '@/components/ui/bilingual';
+import { pageTitle } from '@/lib/pageTitle';
+
+export const metadata: Metadata = { ...pageTitle('Edit lesson', 'Soạn bài giảng') };
 
 export const dynamic = 'force-dynamic';
 

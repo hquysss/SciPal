@@ -1,9 +1,13 @@
+import type { Metadata } from 'next';
 import { ClassList } from '@/features/classes/ClassList';
 import { getTeacherClasses } from '@/features/classes/classQueries';
 import { getAuthoringSession } from '@/features/authoring/serverAuth';
 import { LoadErrorNotice } from '@/components/feedback/LoadErrorNotice';
 import { PageBreadcrumb } from '@/components/nav/PageBreadcrumb';
 import { Bi } from '@/components/ui/bilingual';
+import { pageTitle } from '@/lib/pageTitle';
+
+export const metadata: Metadata = { ...pageTitle('Classes', 'Lớp học') };
 
 export const dynamic = 'force-dynamic';
 

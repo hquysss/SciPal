@@ -1,3 +1,4 @@
+import type { Metadata } from 'next';
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { createServerClient } from '@scipal/supabase';
@@ -10,6 +11,9 @@ import { AccountSettings } from '@/features/profile/AccountSettings';
 import { FeatureRequestBoard } from '@/features/survey/FeatureRequestBoard';
 import { TeacherRequestCard } from '@/features/teacherRequests/TeacherRequestCard';
 import { ReportProblemCard } from '@/features/problemReports/ReportProblem';
+import { pageTitle } from '@/lib/pageTitle';
+
+export const metadata: Metadata = { ...pageTitle('Profile', 'Hồ sơ') };
 
 export const dynamic = 'force-dynamic';
 

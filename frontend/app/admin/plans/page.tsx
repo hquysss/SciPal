@@ -3,8 +3,9 @@ import { cookies } from 'next/headers';
 import { createServerClient } from '@scipal/supabase';
 import { AdminPlansPage } from '@/features/admin/AdminPlansPage';
 import { RequireAdmin } from '@/features/admin/RequireAdmin';
+import { pageTitle } from '@/lib/pageTitle';
 
-export const metadata: Metadata = { title: 'Plan limits & prices — SciPal Admin' };
+export const metadata: Metadata = { ...pageTitle('Plan limits & prices', 'Hạn mức & giá gói') };
 export const dynamic = 'force-dynamic';
 
 export default async function AdminPlansRoute() {

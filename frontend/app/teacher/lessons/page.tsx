@@ -1,3 +1,4 @@
+import type { Metadata } from 'next';
 import Link from 'next/link';
 import { TeacherAreaTabs } from '@/components/nav/TeacherAreaTabs';
 import { getTeacherLessons, AuthoringApiError } from '@/features/authoring/authoringQueries';
@@ -11,6 +12,9 @@ import { buttonVariants } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
 import { EmptyState } from '@/components/ui/empty-state';
+import { pageTitle } from '@/lib/pageTitle';
+
+export const metadata: Metadata = { ...pageTitle('Lessons', 'Bài giảng') };
 
 export const dynamic = 'force-dynamic';
 

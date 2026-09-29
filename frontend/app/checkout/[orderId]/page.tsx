@@ -1,6 +1,10 @@
+import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { Bi } from '@/components/ui/bilingual';
 import { CheckoutStatus } from '@/features/billing/CheckoutStatus';
+import { pageTitle } from '@/lib/pageTitle';
+
+export const metadata: Metadata = { ...pageTitle('Checkout', 'Thanh toán') };
 
 export const dynamic = 'force-dynamic';
 

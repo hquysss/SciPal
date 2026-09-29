@@ -1,9 +1,13 @@
+import type { Metadata } from 'next';
 import { AuthoringApiError, getAuthoringOptions } from '@/features/authoring/authoringQueries';
 import { getAuthoringSession } from '@/features/authoring/serverAuth';
 import { ExamBuilder } from '@/features/authoring/exams/ExamBuilder';
 import { PageBreadcrumb } from '@/components/nav/PageBreadcrumb';
 import { Alert } from '@/components/ui/alert';
 import { Bi } from '@/components/ui/bilingual';
+import { pageTitle } from '@/lib/pageTitle';
+
+export const metadata: Metadata = { ...pageTitle('New exam', 'Đề thi mới') };
 
 export const dynamic = 'force-dynamic';
 

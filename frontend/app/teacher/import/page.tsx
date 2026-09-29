@@ -1,6 +1,10 @@
+import type { Metadata } from 'next';
 import Link from 'next/link';
 import { ContentImportStudio } from '@/features/content-import/ContentImportStudio';
 import { getAuthoringSession } from '@/features/authoring/serverAuth';
+import { pageTitle } from '@/lib/pageTitle';
+
+export const metadata: Metadata = { ...pageTitle('Import', 'Nhập dữ liệu') };
 
 export const dynamic = 'force-dynamic';
 

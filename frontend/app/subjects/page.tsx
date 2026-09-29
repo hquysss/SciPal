@@ -4,11 +4,12 @@ import { createServerClient } from '@scipal/supabase';
 import { parseEducationLevel, type EducationLevel } from '@/features/landing/educationLevel';
 import { getLandingData } from '@/features/landing/getLandingData';
 import { SubjectsPage } from '@/features/subjects/SubjectsPage';
+import { pageTitle } from '@/lib/pageTitle';
 
 export const dynamic = 'force-dynamic';
 
 export const metadata: Metadata = {
-  title: 'Môn học | SciPal',
+  ...pageTitle('Subjects', 'Môn học'),
   description: 'Các môn học song ngữ theo Chương trình GDPT 2018, chia theo cấp học.',
 };
 
