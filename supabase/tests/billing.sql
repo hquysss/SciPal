@@ -45,6 +45,7 @@ values
 \ir ../migrations/20260929040000_billing_payments.sql
 \ir ../migrations/20260929100000_billing_reconciliation.sql
 \ir ../migrations/20260929120000_class_assignments.sql
+\ir ../migrations/20260929140000_admin_plan_settings.sql
 -- Supabase's service_role writes these tables; the stubs above need the same grant.
 grant select, insert, update, delete on public.class_rooms, public.class_members, public.exam_blueprints, public.assignments to service_role;
 
@@ -832,6 +833,93 @@ begin
   exception when insufficient_privilege then v_denied := true;
   end;
   if not v_denied then raise exception 'A signed-in user wrote an assignment directly'; end if;
+end;
+$$;
+reset role;
+
+-- Admin plan settings (migration 20260929140000).
+set role service_role;
+do $$
+declare
+  c_admin constant uuid := '00000000-0000-4000-8000-000000000005';
+  v_version integer;
+  v_failed text;
+  v_old uuid;
+begin
+  select version into v_version from public.billing_plans where code = 'teacher_free';
+  v_version := public.billing_update_plan(c_admin, 'teacher_free', v_version, 'Thử nâng tệp nhập',
+    '[{"metric":"import_files","kind":"monthly","limit":7}]'::jsonb, null, null);
+  if (select limit_value from public.billing_plan_limits where plan_code = 'teacher_free' and metric = 'import_files') <> 7 then
+    raise exception 'Limit not saved';
+  end if;
+  if not exists (select 1 from public.billing_plan_audit where plan_code = 'teacher_free' and actor_id = c_admin
+                  and before_state -> 'limits' @> '[{"metric":"import_files","limit":5}]'
+                  and after_state -> 'limits' @> '[{"metric":"import_files","limit":7}]') then
+    raise exception 'Audit missing';
+  end if;
+
+  -- A stale version is refused.
+  begin
+    perform public.billing_update_plan(c_admin, 'teacher_free', v_version - 1, 'cũ', '[]'::jsonb, null, null);
+    raise exception 'unreachable';
+  exception when others then get stacked diagnostics v_failed = message_text;
+  end;
+  if v_failed <> 'PLAN_VERSION_CONFLICT' then raise exception 'Stale save: %', v_failed; end if;
+
+  -- Tutor may switch between daily and monthly; other metrics keep their kind; unknown metrics are refused.
+  select version into v_version from public.billing_plans where code = 'student_free';
+  v_version := public.billing_update_plan(c_admin, 'student_free', v_version, 'Tutor theo tháng',
+    '[{"metric":"tutor_requests","kind":"monthly","limit":60}]'::jsonb, '{"en":"Free","vi":"Miễn phí"}'::jsonb, null);
+  if (select kind from public.billing_plan_limits where plan_code = 'student_free' and metric = 'tutor_requests') <> 'monthly' then
+    raise exception 'Tutor kind not switched';
+  end if;
+  if (select description_vi from public.billing_plans where code = 'student_free') <> 'Miễn phí' then raise exception 'Description not saved'; end if;
+  foreach v_failed in array array[
+    '[{"metric":"graded_exam_attempts","kind":"daily","limit":3}]',
+    '[{"metric":"active_classes","kind":"capacity","limit":3}]',
+    '[{"metric":"tutor_requests","kind":"monthly","limit":-1}]'
+  ] loop
+    begin
+      perform public.billing_update_plan(c_admin, 'student_free', v_version, 'sai', v_failed::jsonb, null, null);
+      raise exception 'unreachable: %', v_failed;
+    exception when others then
+      if sqlerrm <> 'INVALID_PLAN_CHANGE' then raise exception 'Bad limit %: %', v_failed, sqlerrm; end if;
+    end;
+  end loop;
+
+  -- A new price replaces the active one; the old row stays for the orders sold at it.
+  select id into v_old from public.billing_prices where plan_code = 'student_plus' and interval = 'month' and active;
+  select version into v_version from public.billing_plans where code = 'student_plus';
+  v_version := public.billing_update_plan(c_admin, 'student_plus', v_version, 'Tăng giá tháng', null, null, '{"month":49000,"year":390000}'::jsonb);
+  if (select active from public.billing_prices where id = v_old) then raise exception 'Old price still active'; end if;
+  if (select amount_vnd from public.billing_prices where plan_code = 'student_plus' and interval = 'month' and active) <> 49000 then
+    raise exception 'New price missing';
+  end if;
+  if (select count(*) from public.billing_prices where plan_code = 'student_plus' and interval = 'year') <> 1 then
+    raise exception 'Unchanged yearly price was replaced';
+  end if;
+  -- Back to the published price for the checks that follow.
+  perform public.billing_update_plan(c_admin, 'student_plus', v_version, 'Trả giá cũ', null, null, '{"month":39000}'::jsonb);
+  begin
+    perform public.billing_update_plan(c_admin, 'student_free', (select version from public.billing_plans where code = 'student_free'), 'giá', null, null, '{"month":10000}'::jsonb);
+    raise exception 'unreachable';
+  exception when others then get stacked diagnostics v_failed = message_text;
+  end;
+  if v_failed <> 'INVALID_PLAN_CHANGE' then raise exception 'Free plan got a price: %', v_failed; end if;
+end;
+$$;
+reset role;
+
+set role authenticated;
+do $$
+declare
+  v_denied boolean := false;
+begin
+  begin
+    perform public.billing_update_plan(null, 'student_free', 1, 'x', null, null, null);
+  exception when insufficient_privilege then v_denied := true;
+  end;
+  if not v_denied then raise exception 'A signed-in user changed a plan'; end if;
 end;
 $$;
 reset role;
