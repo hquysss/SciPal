@@ -9,6 +9,8 @@ export interface TermItem {
   definition_vi: string;
   example_en: string | null;
   example_vi: string | null;
+  /** The subject the term belongs to; null for the offline sample terms. */
+  subject_slug: string | null;
 }
 
 export async function getAllTerms(subjectSlug?: string): Promise<TermItem[]> {
@@ -25,7 +27,12 @@ export async function getAllTerms(subjectSlug?: string): Promise<TermItem[]> {
     }
 
     const { data } = await query;
-    if (data && data.length > 0) return data as TermItem[];
+    if (data && data.length > 0) {
+      return data.map(({ subjects, ...term }) => {
+        const subject = Array.isArray(subjects) ? subjects[0] : subjects;
+        return { ...term, subject_slug: (subject as { slug?: string } | null)?.slug ?? null } as TermItem;
+      });
+    }
   } catch (err) {
     console.warn('Supabase getAllTerms failed, falling back:', err);
   }
@@ -41,6 +48,7 @@ export async function getAllTerms(subjectSlug?: string): Promise<TermItem[]> {
       definition_vi: 'Một tập hợp các bước có thứ tự để giải quyết một vấn đề.',
       example_en: 'Binary search is an efficient search algorithm.',
       example_vi: 'Tìm kiếm nhị phân là một thuật toán tìm kiếm hiệu quả.',
+      subject_slug: 'informatics',
     },
     {
       id: 'term-complexity',
@@ -51,6 +59,7 @@ export async function getAllTerms(subjectSlug?: string): Promise<TermItem[]> {
       definition_vi: 'Thước đo mô tả thời gian máy tính cần để thực thi một thuật toán theo kích thước đầu vào.',
       example_en: 'The time complexity of binary search is O(log n).',
       example_vi: 'Độ phức tạp thời gian của tìm kiếm nhị phân là O(log n).',
+      subject_slug: 'informatics',
     },
     {
       id: 'term-recursion',
@@ -61,6 +70,7 @@ export async function getAllTerms(subjectSlug?: string): Promise<TermItem[]> {
       definition_vi: 'Một phương pháp trong đó một hàm tự gọi lại chính nó trực tiếp hoặc gián tiếp.',
       example_en: 'Binary search can be implemented using recursion.',
       example_vi: 'Tìm kiếm nhị phân có thể được cài đặt bằng đệ quy.',
+      subject_slug: 'informatics',
     },
   ];
 }
