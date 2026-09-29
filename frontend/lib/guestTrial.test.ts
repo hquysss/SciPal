@@ -5,7 +5,7 @@ const SECRET = 'test-guest-secret-0123456789abcdef0123';
 
 describe('routeAccess', () => {
   it('keeps the landing page, sign-in and the tutor page open', () => {
-    for (const path of ['/', '/login', '/tutor', '/auth/callback']) expect(routeAccess(path), path).toEqual({ kind: 'public' });
+    for (const path of ['/', '/login', '/tutor', '/auth/callback', '/privacy']) expect(routeAccess(path), path).toEqual({ kind: 'public' });
   });
 
   it('needs an account for personal and paying pages', () => {

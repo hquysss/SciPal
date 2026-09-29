@@ -544,6 +544,16 @@
   outline-offset: 3px;
 }
 
+.footerPolicy {
+  color: inherit;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.footerPolicy:hover {
+  color: var(--ink);
+}
+
 /* ---------- scroll reveal: sheets rise out of the page ---------- */
 /* translate/rotate compose with each element's own transform (cards keep their tilt). */
 

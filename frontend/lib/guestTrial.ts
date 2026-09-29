@@ -23,7 +23,7 @@ const under = (pathname: string, prefix: string) => pathname === prefix || pathn
 
 export function routeAccess(pathname: string): RouteAccess {
   // /auth/callback finishes Google, Facebook and e-mail confirmation sign-ins.
-  if (pathname === '/' || under(pathname, '/login') || under(pathname, '/auth') || pathname === '/tutor') return { kind: 'public' };
+  if (pathname === '/' || under(pathname, '/login') || under(pathname, '/auth') || pathname === '/tutor' || pathname === '/privacy') return { kind: 'public' };
   if (ACCOUNT_PREFIXES.some((prefix) => under(pathname, prefix)) || pathname.startsWith('/exam/')) return { kind: 'account' };
   if (under(pathname, '/glossary')) return { kind: 'trial', feature: 'glossary' };
   if (pathname === '/exam') return { kind: 'trial', feature: 'exam' };
