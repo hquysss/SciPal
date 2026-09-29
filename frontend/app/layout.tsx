@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import Script from "next/script";
 import { Be_Vietnam_Pro, JetBrains_Mono } from 'next/font/google';
 import './globals.css';
+import { TabTitle } from '@/components/nav/TabTitle';
 import { NavBar } from '@/components/nav/NavBar';
 import { GuestTrialBanner } from '@/features/guest/GuestTrialBanner';
 import { renderThemeCss } from '@scipal/ui';
@@ -16,7 +17,8 @@ const beVietnamPro = Be_Vietnam_Pro({
 });
 
 export const metadata: Metadata = {
-  title: 'SciPal — Học khoa học tự nhiên',
+  // A page sets its English name; the home and sign-in pages show SciPal alone.
+  title: { default: 'SciPal', template: '%s | SciPal' },
   description: 'Nền tảng học tập song ngữ cho học sinh THPT Việt Nam',
   icons: {
     icon: '/favicon.svg',
@@ -58,6 +60,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body className={`${jetbrainsMono.variable} ${beVietnamPro.variable} font-sans antialiased`}>
         <div data-app-shell="" data-level="neutral" suppressHydrationWarning className="flex min-h-screen flex-col">
           <script dangerouslySetInnerHTML={{ __html: buildBootScript({ darkMode: DARK_MODE_ENABLED }) }} />
+          <TabTitle />
           <NavBar />
           <GuestTrialBanner />
           <div className="flex flex-1 flex-col">{children}</div>

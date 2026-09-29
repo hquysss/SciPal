@@ -1,8 +1,12 @@
+import type { Metadata } from 'next';
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { createServerClient } from '@scipal/supabase';
 import { getUserProgress } from '@/features/progress/progressQueries';
 import { ProgressView } from '@/features/progress/ProgressView';
+import { pageTitle } from '@/lib/pageTitle';
+
+export const metadata: Metadata = { ...pageTitle('Progress', 'Tiến độ') };
 
 export const dynamic = 'force-dynamic';
 

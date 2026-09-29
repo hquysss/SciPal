@@ -1,6 +1,10 @@
+import type { Metadata } from 'next';
 import { redirect } from 'next/navigation';
 import { getAuthoringSession } from '@/features/authoring/serverAuth';
 import { AdminQueue } from '@/features/authoring/simulationRequests/AdminQueue';
+import { pageTitle } from '@/lib/pageTitle';
+
+export const metadata: Metadata = { ...pageTitle('Simulation requests', 'Đề xuất mô phỏng') };
 
 export const dynamic = 'force-dynamic';
 

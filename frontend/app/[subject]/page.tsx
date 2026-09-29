@@ -1,3 +1,5 @@
+import { cache } from 'react';
+import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { LevelScope, SubjectProvider } from '@scipal/ui';
 import { TopicAccordion } from '@/features/lessons/TopicAccordion';
@@ -6,8 +8,17 @@ import { GradeHeading, InDevelopmentNotice } from '@/features/lessons/SubjectPag
 import { SubjectHeader } from '@/features/lessons/SubjectHeader';
 import { levelOfGrade } from '@/features/landing/educationLevel';
 import { LoadErrorNotice } from '@/components/feedback/LoadErrorNotice';
+import { pageTitle } from '@/lib/pageTitle';
 
 export const dynamic = 'force-dynamic';
+
+// One query per request for the page and its tab title.
+const loadSubject = cache(getSubjectPage);
+
+export async function generateMetadata({ params }: { params: Promise<{ subject: string }> }): Promise<Metadata> {
+  const result = await loadSubject((await params).subject);
+  return result.kind === 'ok' ? pageTitle(result.subject.name_en, result.subject.name_vi) : pageTitle('Subject', 'Môn học');
+}
 
 export default async function SubjectPage({
   params,
@@ -15,7 +26,7 @@ export default async function SubjectPage({
   params: Promise<{ subject: string }>;
 }) {
   const { subject: subjectSlug } = await params;
-  const result = await getSubjectPage(subjectSlug);
+  const result = await loadSubject(subjectSlug);
   if (result.kind === 'not_found') notFound();
 
   if (result.kind === 'error') {

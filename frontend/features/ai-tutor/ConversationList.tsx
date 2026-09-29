@@ -3,6 +3,7 @@
 import { MessageSquarePlus, Trash2 } from 'lucide-react';
 import { useLanguage } from '@scipal/hooks';
 import type { TutorConversation } from './api';
+import styles from './tutor.module.css';
 
 /** The student's conversations, newest first, with "Hội thoại mới" on top. */
 export function ConversationList({
@@ -26,9 +27,9 @@ export function ConversationList({
       <button
         type="button"
         onClick={onNew}
-        className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-edge bg-surface px-4 text-sm font-semibold text-ink transition-colors hover:bg-surface-sunken focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
+        className={styles.newChat}
       >
-        <MessageSquarePlus aria-hidden="true" className="h-4 w-4 text-action" />
+        <MessageSquarePlus aria-hidden="true" className="h-4 w-4" />
         {t({ en: 'New conversation', vi: 'Hội thoại mới' })}
       </button>
 
@@ -37,6 +38,8 @@ export function ConversationList({
       ) : conversations.length === 0 ? (
         <p className="px-1 text-sm text-ink-muted">{t({ en: 'No conversations yet.', vi: 'Chưa có hội thoại nào.' })}</p>
       ) : (
+        <>
+        <p className="px-1 pt-1 text-xs font-bold uppercase tracking-wider text-ink-muted">{t({ en: 'Recent', vi: 'Gần đây' })}</p>
         <ul className="-mx-1 flex min-h-0 flex-col gap-0.5 overflow-y-auto px-1">
           {conversations.map((c) => {
             const active = c.id === activeId;
@@ -46,7 +49,7 @@ export function ConversationList({
                   type="button"
                   onClick={() => onOpen(c.id)}
                   aria-current={active ? 'page' : undefined}
-                  className={`flex min-h-11 w-full flex-col items-start rounded-lg py-2 pl-3 pr-11 text-left transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-focus ${active ? 'bg-surface-sunken' : 'hover:bg-surface-sunken'}`}
+                  className={`${styles.item} flex min-h-11 w-full flex-col items-start rounded-lg py-2 pl-3 pr-11 text-left transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-focus ${active ? '' : 'hover:bg-surface-sunken'}`}
                 >
                   <span className={`line-clamp-2 text-sm leading-snug ${active ? 'font-semibold text-ink' : 'text-ink'}`}>{c.title}</span>
                   <span className="mt-0.5 text-xs text-ink-muted">{date.format(new Date(c.updated_at))}</span>
@@ -65,6 +68,7 @@ export function ConversationList({
             );
           })}
         </ul>
+        </>
       )}
     </nav>
   );

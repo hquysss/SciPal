@@ -1,3 +1,4 @@
+import type { Metadata } from 'next';
 import Link from 'next/link';
 import { AuthoringApiError, getAuthoringOptions } from '@/features/authoring/authoringQueries';
 import { LessonCreateForm } from '@/features/authoring/LessonCreateForm';
@@ -5,6 +6,9 @@ import { getAuthoringSession } from '@/features/authoring/serverAuth';
 import { PageBreadcrumb } from '@/components/nav/PageBreadcrumb';
 import { Alert } from '@/components/ui/alert';
 import { Bi } from '@/components/ui/bilingual';
+import { pageTitle } from '@/lib/pageTitle';
+
+export const metadata: Metadata = { ...pageTitle('New lesson', 'Bài giảng mới') };
 
 export const dynamic = 'force-dynamic';
 

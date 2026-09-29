@@ -1,3 +1,4 @@
+import type { Metadata } from 'next';
 import { cookies } from 'next/headers';
 import { createServerClient } from '@scipal/supabase';
 import { Bi } from '@/components/ui/bilingual';
@@ -5,6 +6,9 @@ import { parseEducationLevel, type EducationLevel } from '@/features/landing/edu
 import { TutorPage } from '@/features/ai-tutor/TutorPage';
 import { GuestTutor } from '@/features/guest/GuestTutor';
 import { getTutorLessons } from '@/features/ai-tutor/tutorLessons';
+import { pageTitle } from '@/lib/pageTitle';
+
+export const metadata: Metadata = { ...pageTitle('AI tutor', 'Gia sư AI') };
 
 export const dynamic = 'force-dynamic';
 

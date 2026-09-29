@@ -69,3 +69,27 @@ export function listBillingReconciliation(page: number, signal?: AbortSignal): P
 export function recheckBillingOrder(orderId: string): Promise<BillingReconciliationResult> {
   return apiFetch(`/api/admin/billing/orders/${encodeURIComponent(orderId)}/reconcile`, { method: 'POST' });
 }
+
+export type BillingOrderStatus = 'pending' | 'paid' | 'failed' | 'expired' | 'cancelled' | 'reconciliation';
+
+export type BillingOrderItem = {
+  id: string;
+  status: BillingOrderStatus;
+  amountVnd: number;
+  interval: string;
+  createdAt: string;
+  paidAt: string | null;
+  account: { id: string; email: string | null; displayName: string | null };
+  plan: { code: string; nameVi: string | null; nameEn: string | null };
+  providerReference: string | null;
+  bankTransactionId: string | null;
+};
+
+export type BillingOrdersPage = { page: number; pageSize: number; totalCount: number; items: BillingOrderItem[] };
+
+/** Every order, newest first; `status` narrows it to one state. */
+export function listBillingOrders(page: number, status: BillingOrderStatus | null, signal?: AbortSignal): Promise<BillingOrdersPage> {
+  const query = new URLSearchParams({ page: String(page), limit: '20' });
+  if (status) query.set('status', status);
+  return apiFetch(`/api/admin/billing/orders?${query}`, { signal });
+}

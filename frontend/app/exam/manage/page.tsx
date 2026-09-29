@@ -1,3 +1,4 @@
+import type { Metadata } from 'next';
 import Link from 'next/link';
 import { ExamReviewQueue } from '@/features/authoring/exams/ExamReviewQueue';
 import { ExamManageTabs } from '@/components/nav/TeacherAreaTabs';
@@ -6,6 +7,9 @@ import { ExamList } from '@/features/authoring/exams/ExamList';
 import { PageBreadcrumb } from '@/components/nav/PageBreadcrumb';
 import { Bi } from '@/components/ui/bilingual';
 import { buttonVariants } from '@/components/ui/button';
+import { pageTitle } from '@/lib/pageTitle';
+
+export const metadata: Metadata = { ...pageTitle('Exam management', 'Quản lý đề thi') };
 
 export const dynamic = 'force-dynamic';
 

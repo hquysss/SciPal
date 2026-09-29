@@ -5,6 +5,7 @@ import remarkMath from 'remark-math';
 import rehypeKatex from 'rehype-katex';
 import 'katex/dist/katex.min.css';
 import type { TutorMessage as Message } from './api';
+import styles from './tutor.module.css';
 
 // The tutor's answers are written on the page like a teacher's note, not boxed in a bubble;
 // the student's own questions sit in a bubble on the right, as plain text.
@@ -56,7 +57,7 @@ const REHYPE: NonNullable<Parameters<typeof ReactMarkdown>[0]['rehypePlugins']> 
 export function TutorMessage({ message, streaming = false }: { message: Message; streaming?: boolean }) {
   if (message.role === 'user') {
     return (
-      <p className="ml-auto max-w-[85%] whitespace-pre-wrap break-words rounded-2xl rounded-br-md bg-action px-4 py-2.5 text-base leading-relaxed text-action-ink">
+      <p className={`${styles.question} whitespace-pre-wrap break-words text-base leading-relaxed`}>
         {message.content}
       </p>
     );

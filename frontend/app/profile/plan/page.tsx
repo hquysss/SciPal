@@ -1,6 +1,10 @@
+import type { Metadata } from 'next';
 import { Bi } from '@/components/ui/bilingual';
 import { ProfileBreadcrumb } from '@/features/profile/ProfileBreadcrumb';
 import { MyPlan } from '@/features/billing/MyPlan';
+import { pageTitle } from '@/lib/pageTitle';
+
+export const metadata: Metadata = { ...pageTitle('My plan', 'Gói của tôi') };
 
 export const dynamic = 'force-dynamic';
 

@@ -3,8 +3,9 @@ import { cookies } from 'next/headers';
 import { createServerClient } from '@scipal/supabase';
 import { BillingReconciliationPage } from '@/features/admin/BillingReconciliationPage';
 import { RequireAdmin } from '@/features/admin/RequireAdmin';
+import { pageTitle } from '@/lib/pageTitle';
 
-export const metadata: Metadata = { title: 'Payment reconciliation — SciPal Admin' };
+export const metadata: Metadata = { ...pageTitle('Payment reconciliation', 'Đối soát thanh toán') };
 export const dynamic = 'force-dynamic';
 
 export default async function AdminBillingRoute() {

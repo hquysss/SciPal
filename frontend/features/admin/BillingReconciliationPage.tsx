@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { buttonVariants } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { EmptyState } from '@/components/ui/empty-state';
+import { BillingOrdersTable } from './BillingOrdersTable';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import {
   BillingReconciliationApiError,
@@ -38,6 +39,7 @@ export function BillingReconciliationPage() {
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<{ tone: 'success' | 'info'; text: string } | null>(null);
   const [busyOrderId, setBusyOrderId] = useState<string | null>(null);
+  const [reloadKey, setReloadKey] = useState(0);
 
   const loadPage = useCallback(async (signal?: AbortSignal) => {
     setState('loading');
@@ -101,7 +103,10 @@ export function BillingReconciliationPage() {
             {t({ en: 'Review payments payOS could not safely match. Rechecks use provider records and never mark an order paid by hand.', vi: 'Kiểm tra các giao dịch payOS chưa thể khớp an toàn. Việc đối chiếu dùng dữ liệu từ payOS, không có thao tác ghi nhận đã trả thủ công.' })}
           </p>
         </div>
-        <button type="button" className={buttonVariants({ variant: 'outline' })} onClick={() => void loadPage()} disabled={state === 'loading'}>
+        <button type="button" className={buttonVariants({ variant: 'outline' })} onClick={() => {
+          setReloadKey((key) => key + 1);
+          void loadPage();
+        }} disabled={state === 'loading'}>
           {state === 'loading' ? t({ en: 'Loading…', vi: 'Đang tải…' }) : t({ en: 'Refresh', vi: 'Tải lại' })}
         </button>
       </header>
@@ -193,6 +198,8 @@ export function BillingReconciliationPage() {
           </nav>
         )}
       </Card>
+
+      <BillingOrdersTable reloadKey={reloadKey} />
     </main>
   );
 }
