@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { BookOpen, Gauge, Languages } from 'lucide-react';
+import { BookOpen, Gauge, GraduationCap, Languages, LifeBuoy, LogOut, Palette, UserRound } from 'lucide-react';
 import { useLanguage } from '@scipal/hooks';
 import { buttonVariants } from '@/components/ui/button';
 import { createBrowserClient } from '@/lib/supabase';
@@ -55,62 +55,41 @@ export function AccountSettings({ currentRole = 'student', educationPreference, 
       active ? 'bg-action text-action-ink' : 'text-ink-muted hover:text-ink'
     }`;
 
+  const group = 'flex flex-col gap-4 rounded-xl border border-line bg-surface-sunken p-4 sm:p-5';
+  const groupTitle = 'flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-ink-muted';
+  const row = 'flex flex-col justify-between gap-3 sm:flex-row sm:items-center';
+
   return (
     <>
-      <section className="flex flex-col gap-6 rounded-xl border border-line bg-surface p-6 sm:p-8">
-        {/* Header */}
-        <div className="border-b border-line pb-4">
-          <h2 className="text-lg font-bold text-ink">{t({ en: 'Account', vi: 'Tài khoản' })}</h2>
+      <section aria-labelledby="settings-title" className="flex flex-col gap-5 rounded-2xl border border-line bg-surface p-5 sm:p-7">
+        <div>
+          <h2 id="settings-title" className="text-lg font-bold text-ink">{t({ en: 'Settings', vi: 'Cài đặt' })}</h2>
           <p className={rowHint}>
             {t({ en: 'Account details and learning preferences', vi: 'Thông tin tài khoản và tùy chọn học tập' })}
           </p>
         </div>
 
-        <div className="flex flex-col gap-5">
-          <ThemeToggle tone="surface" />
-          <div className="rounded-lg border border-line bg-surface-sunken p-4">
-            <div className="text-sm font-semibold text-ink-muted">{t({ en: 'SciPal role', vi: 'Vai trò trong SciPal' })}</div>
-            <p className="mt-1 text-sm font-semibold text-ink">
-              {currentRole === 'teacher'
-                ? t({ en: 'Teacher', vi: 'Giáo viên' })
-                : currentRole === 'admin'
-                  ? t({ en: 'Admin', vi: 'Quản trị viên' })
-                  : t({ en: 'Student', vi: 'Học sinh' })}
-            </p>
-            <p className={`mt-1 ${rowHint}`}>
-              {t({ en: 'This role reflects SciPal access and does not verify a school or class.', vi: 'Vai trò này phản ánh quyền trong SciPal, không xác minh trường hoặc lớp học.' })}
-            </p>
-          </div>
-
-          {isAuthenticated && (
-            <div className="flex flex-col justify-between gap-3 border-b border-line pb-4 sm:flex-row sm:items-center">
-              <div>
-                <div className={rowLabel}>
-                  <Gauge aria-hidden="true" className="h-4 w-4" />
-                  <span>{t({ en: 'My plan', vi: 'Gói của tôi' })}</span>
-                </div>
-                <div className={rowHint}>
-                  {t({ en: 'Your plan and how many AI tutor and exam turns are left', vi: 'Gói đang dùng và số lượt Gia sư AI, lượt thi còn lại' })}
-                </div>
-              </div>
-              <Link href="/profile/plan" className={buttonVariants({ variant: 'outline', className: 'self-start sm:self-auto' })}>
-                {t({ en: 'View', vi: 'Xem' })}
-              </Link>
+        <div className={group}>
+          <h3 className={groupTitle}>
+            <Palette aria-hidden="true" className="h-4 w-4" />
+            {t({ en: 'Appearance', vi: 'Giao diện' })}
+          </h3>
+          <div className={row}>
+            <div>
+              <div className={rowLabel}>{t({ en: 'Theme', vi: 'Chế độ sáng / tối' })}</div>
+              <div className={rowHint}>{t({ en: 'Follow the device, or pick light or dark', vi: 'Theo thiết bị, hoặc chọn sáng hay tối' })}</div>
             </div>
-          )}
-
-          <EducationLevelSetting preference={educationPreference} isAuthenticated={isAuthenticated} />
-
-          {/* Display Language setting */}
-          <div className="flex flex-col justify-between gap-3 border-b border-line pb-4 sm:flex-row sm:items-center">
+            <ThemeToggle tone="surface" />
+          </div>
+          <div className={row}>
             <div>
               <div className={rowLabel}>
                 <Languages aria-hidden="true" className="h-4 w-4" />
                 <span>{t({ en: 'Language', vi: 'Ngôn ngữ' })}</span>
               </div>
-              <div className={rowHint}>{t({ en: 'Language switching', vi: 'Chuyển đổi ngôn ngữ' })}</div>
+              <div className={rowHint}>{t({ en: 'Language of the interface', vi: 'Ngôn ngữ hiển thị' })}</div>
             </div>
-            <div className="flex items-center gap-1 self-start rounded-lg border border-edge bg-surface-sunken p-1 sm:self-auto">
+            <div className="flex items-center gap-1 self-start rounded-lg border border-edge bg-surface p-1 sm:self-auto">
               <button type="button" aria-pressed={lang === 'vi'} onClick={() => setLang('vi')} className={langButton(lang === 'vi')}>
                 Tiếng Việt (VI)
               </button>
@@ -119,9 +98,15 @@ export function AccountSettings({ currentRole = 'student', educationPreference, 
               </button>
             </div>
           </div>
+        </div>
 
-          {/* Bilingual Term Tooltips Preference */}
-          <div className="flex items-center justify-between gap-3 border-b border-line pb-4">
+        <div className={group}>
+          <h3 className={groupTitle}>
+            <GraduationCap aria-hidden="true" className="h-4 w-4" />
+            {t({ en: 'Learning', vi: 'Học tập' })}
+          </h3>
+          <EducationLevelSetting preference={educationPreference} isAuthenticated={isAuthenticated} />
+          <div className="flex items-center justify-between gap-3">
             <div>
               <div className={rowLabel}>
                 <BookOpen aria-hidden="true" className="h-4 w-4" />
@@ -157,25 +142,67 @@ export function AccountSettings({ currentRole = 'student', educationPreference, 
               </span>
             </button>
           </div>
+        </div>
 
-          {/* Support and Assistance */}
-          <div className="flex flex-wrap items-center justify-between gap-2 text-sm text-ink-muted">
-            <span>
-              {t({ en: 'Need help with your account or password?', vi: 'Cần hỗ trợ về tài khoản hoặc mật khẩu?' })}
-            </span>
-            <button type="button" onClick={() => setShowHelpModal(true)} className={buttonVariants({ variant: 'link' })}>
-              {t({ en: 'Support', vi: 'Hỗ trợ' })}
+        <div className={group}>
+          <h3 className={groupTitle}>
+            <UserRound aria-hidden="true" className="h-4 w-4" />
+            {t({ en: 'Account', vi: 'Tài khoản' })}
+          </h3>
+          <div>
+            <div className={rowLabel}>
+              {t({ en: 'SciPal role', vi: 'Vai trò trong SciPal' })}:{' '}
+              {currentRole === 'teacher'
+                ? t({ en: 'Teacher', vi: 'Giáo viên' })
+                : currentRole === 'admin'
+                  ? t({ en: 'Admin', vi: 'Quản trị viên' })
+                  : t({ en: 'Student', vi: 'Học sinh' })}
+            </div>
+            <p className={rowHint}>
+              {t({ en: 'This role reflects SciPal access and does not verify a school or class.', vi: 'Vai trò này phản ánh quyền trong SciPal, không xác minh trường hoặc lớp học.' })}
+            </p>
+          </div>
+
+          {isAuthenticated && (
+            <div className={row}>
+              <div>
+                <div className={rowLabel}>
+                  <Gauge aria-hidden="true" className="h-4 w-4" />
+                  <span>{t({ en: 'My plan', vi: 'Gói của tôi' })}</span>
+                </div>
+                <div className={rowHint}>
+                  {t({ en: 'Your plan and how many AI tutor and exam turns are left', vi: 'Gói đang dùng và số lượt Gia sư AI, lượt thi còn lại' })}
+                </div>
+              </div>
+              <Link href="/profile/plan" className={buttonVariants({ variant: 'outline', className: 'self-start sm:self-auto' })}>
+                {t({ en: 'View', vi: 'Xem' })}
+              </Link>
+            </div>
+          )}
+
+          <div className={row}>
+            <div>
+              <div className={rowLabel}>
+                <LifeBuoy aria-hidden="true" className="h-4 w-4" />
+                <span>{t({ en: 'Help', vi: 'Hỗ trợ' })}</span>
+              </div>
+              <div className={rowHint}>
+                {t({ en: 'Need help with your account or password?', vi: 'Cần hỗ trợ về tài khoản hoặc mật khẩu?' })}
+              </div>
+            </div>
+            <button type="button" onClick={() => setShowHelpModal(true)} className={buttonVariants({ variant: 'outline', className: 'self-start sm:self-auto' })}>
+              {t({ en: 'Get help', vi: 'Liên hệ hỗ trợ' })}
             </button>
           </div>
         </div>
 
-        {/* Sign out section */}
         <button
           type="button"
           onClick={handleSignOut}
           disabled={signingOut}
           className={buttonVariants({ variant: 'destructive', className: 'w-full' })}
         >
+          <LogOut aria-hidden="true" />
           {signingOut ? t({ en: 'Signing out…', vi: 'Đang đăng xuất…' }) : t({ en: 'Sign out', vi: 'Đăng xuất' })}
         </button>
       </section>

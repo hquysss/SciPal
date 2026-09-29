@@ -8,11 +8,12 @@ import { ProfileCard } from '@/features/profile/ProfileCard';
 import { ProfileBreadcrumb } from '@/features/profile/ProfileBreadcrumb';
 import { AccountSettings } from '@/features/profile/AccountSettings';
 import { FeatureRequestBoard } from '@/features/survey/FeatureRequestBoard';
+import { TeacherRequestCard } from '@/features/teacherRequests/TeacherRequestCard';
 
 export const dynamic = 'force-dynamic';
 
 export default async function ProfilePage() {
-  let user: { id: string; email?: string } | null = null;
+  let user: { id: string; email?: string; created_at?: string } | null = null;
   let appRole: string | undefined;
   let accountLevel: EducationLevel | null = null;
   const cookieStore = await cookies();
@@ -50,7 +51,7 @@ export default async function ProfilePage() {
       : ((profile?.role as 'student' | 'teacher') ?? 'student');
 
   return (
-    <main className="mx-auto flex w-full max-w-2xl flex-col gap-6 px-4 pb-20 pt-8 sm:px-6 sm:pt-12">
+    <main className="mx-auto flex w-full max-w-6xl flex-col gap-6 px-4 pb-20 pt-8 sm:px-6 sm:pt-10">
       <ProfileBreadcrumb />
 
       {loadFailed && (
@@ -62,22 +63,25 @@ export default async function ProfilePage() {
         />
       )}
 
-      {/* Profile Stats Card */}
-      <ProfileCard
-        displayName={displayName}
-        role={role}
-        avatarUrl={profile?.avatar_url}
-        stats={stats}
-      />
+      <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)]">
+        {/* Who and where to go: stays in view beside the settings on wide screens. */}
+        <div className="flex flex-col gap-6 lg:sticky lg:top-24">
+          <ProfileCard
+            displayName={displayName}
+            role={role}
+            email={user.email ?? null}
+            joinedAt={user.created_at ?? null}
+            avatarUrl={profile?.avatar_url}
+            stats={stats}
+          />
+        </div>
 
-      {/* Account & Learning Settings */}
-      <AccountSettings
-        currentRole={role}
-        educationPreference={educationPreference}
-        isAuthenticated
-      />
+        <div className="flex flex-col gap-6">
+          {role === 'student' && <TeacherRequestCard />}
+          <AccountSettings currentRole={role} educationPreference={educationPreference} isAuthenticated />
+        </div>
+      </div>
 
-      {/* Feature Request & Innovation Board (§9.7) */}
       <FeatureRequestBoard />
     </main>
   );
