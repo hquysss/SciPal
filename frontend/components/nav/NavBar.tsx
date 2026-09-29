@@ -61,8 +61,10 @@ export function tutorLink(signedIn: boolean, lang: 'en' | 'vi') {
  * The main links after Home and Subjects. On the desktop bar Profile is the account button (the
  * avatar), which keeps a full admin bar from overflowing at 1366px; the mobile menu lists it.
  */
-export function primaryLinks(lang: 'en' | 'vi', signedIn: boolean, place: 'desktop' | 'mobile') {
+export function primaryLinks(lang: 'en' | 'vi', signedIn: boolean, place: 'desktop' | 'mobile', role: string | null = null) {
   const label = (en: string, vi: string) => (lang === 'en' ? en : vi);
+  // Teachers and admins reach classes from their own menu.
+  const isStudent = role !== null && role !== 'teacher' && role !== 'admin';
   return [
     { href: '/glossary', label: label('Glossary', 'Từ điển') },
     { href: '/exam', label: label('Exams', 'Thi thử') },
@@ -70,6 +72,7 @@ export function primaryLinks(lang: 'en' | 'vi', signedIn: boolean, place: 'deskt
       ? [
           tutorLink(true, lang)!,
           { href: '/progress', label: label('Progress', 'Tiến trình') },
+          ...(isStudent ? [{ href: '/classes', label: label('My classes', 'Lớp của em') }] : []),
           ...(place === 'mobile' ? [{ href: '/profile', label: label('Profile', 'Hồ sơ') }] : []),
         ]
       : []),
@@ -240,8 +243,8 @@ export function NavBar({ currentSubject }: NavBarProps) {
   const subjectsActive = pathname === '/subjects' || Boolean(currentSubject ?? params?.subject);
   const accountName = displayName ?? (lang === 'en' ? 'Account' : 'Tài khoản');
   const navLang = lang === 'en' ? 'en' : 'vi';
-  const links = primaryLinks(navLang, Boolean(appRole), 'desktop');
-  const mobileLinks = primaryLinks(navLang, Boolean(appRole), 'mobile');
+  const links = primaryLinks(navLang, Boolean(appRole), 'desktop', appRole);
+  const mobileLinks = primaryLinks(navLang, Boolean(appRole), 'mobile', appRole);
   const { teacherLinks, adminLinks } = roleLinks(appRole, lang === 'en' ? 'en' : 'vi', openRequests);
   const teacherMenuOpen = openNavGroup === 'teacher';
   const adminMenuOpen = openNavGroup === 'admin';

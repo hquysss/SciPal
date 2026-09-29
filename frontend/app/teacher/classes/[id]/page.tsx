@@ -1,5 +1,6 @@
 import { notFound } from 'next/navigation';
 import { StudentRoster } from '@/features/classes/StudentRoster';
+import { ClassAssignments } from '@/features/classes/ClassAssignments';
 import { getClassRoster } from '@/features/classes/classQueries';
 import { getAuthoringSession } from '@/features/authoring/serverAuth';
 import { LoadErrorNotice } from '@/components/feedback/LoadErrorNotice';
@@ -48,6 +49,8 @@ export default async function ClassDetailPage({
         inviteCode={classRoom.invite_code}
         members={members}
       />
+
+      <ClassAssignments classId={id} />
     </main>
   );
 }

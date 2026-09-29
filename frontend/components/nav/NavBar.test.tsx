@@ -69,5 +69,12 @@ describe('primaryLinks', () => {
     expect(mobile).toEqual(['/glossary', '/exam', '/tutor', '/progress', '/profile']);
     expect(primaryLinks('vi', false, 'desktop').map((l) => l.href)).toEqual(['/glossary', '/exam']);
   });
+
+  it('gives students their classes; teachers keep theirs in the teacher menu', () => {
+    expect(primaryLinks('vi', true, 'desktop', 'student')).toContainEqual({ href: '/classes', label: 'Lớp của em' });
+    expect(primaryLinks('en', true, 'mobile', 'student')).toContainEqual({ href: '/classes', label: 'My classes' });
+    expect(primaryLinks('vi', true, 'desktop', 'teacher').map((l) => l.href)).not.toContain('/classes');
+    expect(primaryLinks('vi', true, 'desktop', 'admin').map((l) => l.href)).not.toContain('/classes');
+  });
 });
 
