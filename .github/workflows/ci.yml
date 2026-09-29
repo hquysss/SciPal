@@ -44,4 +44,5 @@ jobs:
       - run: sudo apt-get update
       - run: sudo apt-get install --no-install-recommends -y postgresql-client
       - run: psql -X -v ON_ERROR_STOP=1 --file supabase/tests/billing.sql
+      - run: psql -X -v ON_ERROR_STOP=1 --file supabase/tests/lessons_columns.sql
       - run: pnpm --filter @scipal/api exec tsx scripts/verify-billing-concurrency.ts
