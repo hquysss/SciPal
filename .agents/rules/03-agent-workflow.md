@@ -65,3 +65,4 @@ Vercel gói Free chỉ cho 100 lượt deploy mỗi 24 giờ; mỗi lần push l
 - **Push ít nhất có thể.** Commit ở máy trong lúc làm; push một lần khi xong cả đợt yêu cầu, không push sau từng sửa nhỏ.
 - **Lỡ có hai PR:** merge nhánh này vào nhánh kia (không rebase, không force-push), đóng PR thừa với ghi chú "Đã gộp vào #N", cập nhật tiêu đề và mô tả PR còn lại.
 - Chỉ mở PR mới sau khi PR trước đã được merge.
+- **PR đã merge thì phải tạo nhánh mới.** Trước mỗi lần push lên nhánh của một PR, chạy `gh pr view <số PR> --json state`; nếu là `MERGED` thì không push vào nhánh đó nữa (commit sẽ không bao giờ vào `main`), mà tạo nhánh mới từ `main` mới nhất (`git checkout main && git pull && git checkout -b <nhánh mới>`) rồi mở PR mới.
