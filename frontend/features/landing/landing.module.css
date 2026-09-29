@@ -544,7 +544,13 @@
   outline-offset: 3px;
 }
 
+/* A link, or the "Báo cáo vấn đề" button that looks like one. */
 .footerPolicy {
+  border: 0;
+  padding: 0;
+  background: none;
+  font: inherit;
+  cursor: pointer;
   color: inherit;
   text-decoration: underline;
   text-underline-offset: 3px;

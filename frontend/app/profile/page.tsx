@@ -9,6 +9,7 @@ import { ProfileBreadcrumb } from '@/features/profile/ProfileBreadcrumb';
 import { AccountSettings } from '@/features/profile/AccountSettings';
 import { FeatureRequestBoard } from '@/features/survey/FeatureRequestBoard';
 import { TeacherRequestCard } from '@/features/teacherRequests/TeacherRequestCard';
+import { ReportProblemCard } from '@/features/problemReports/ReportProblem';
 
 export const dynamic = 'force-dynamic';
 
@@ -83,6 +84,8 @@ export default async function ProfilePage() {
       </div>
 
       <FeatureRequestBoard />
+
+      <ReportProblemCard />
     </main>
   );
 }
