@@ -50,6 +50,7 @@ describe('role menus', () => {
   it('links admins to payment reconciliation in both languages', () => {
     expect(roleLinks('admin', 'vi', 0).adminLinks).toContainEqual({ href: '/admin/billing', label: 'Đối soát thanh toán' });
     expect(roleLinks('admin', 'en', 0).adminLinks).toContainEqual({ href: '/admin/billing', label: 'Payment reconciliation' });
+    expect(roleLinks('admin', 'vi', 0).adminLinks).toContainEqual({ href: '/admin/plans', label: 'Hạn mức & giá gói' });
   });
 });
 
