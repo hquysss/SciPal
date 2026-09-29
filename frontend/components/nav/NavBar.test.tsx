@@ -64,6 +64,12 @@ describe('role menus', () => {
     expect(roleLinks('admin', 'vi', 0).adminLinks).toContainEqual({ href: '/admin/billing', label: 'Đối soát thanh toán' });
     expect(roleLinks('admin', 'en', 0).adminLinks).toContainEqual({ href: '/admin/billing', label: 'Payment reconciliation' });
   });
+
+  it('links teachers to their glossary terms and admins to the review, with the pending count', () => {
+    expect(roleLinks('teacher', 'vi', 0).teacherLinks).toContainEqual({ href: '/teacher/terms', label: 'Thuật ngữ' });
+    expect(roleLinks('admin', 'vi', 0, 3).adminLinks).toContainEqual({ href: '/admin/terms', label: 'Duyệt thuật ngữ (3)' });
+    expect(roleLinks('admin', 'en', 0, 0).adminLinks).toContainEqual({ href: '/admin/terms', label: 'Glossary review' });
+  });
 });
 
 describe('tutorLink', () => {

@@ -14,6 +14,7 @@ import type { SubjectSlug } from '@/lib/subject-config';
 import { createBrowserClient } from '@/lib/supabase';
 import { adoptAccountLevel, forgetAccountLevel, getShell, safeSessionStorage } from '@/lib/theme/shellTheme';
 import { countOpenSimulationRequests } from '@/features/authoring/simulationRequests/api';
+import { countPendingTerms } from '@/features/glossary/staff/api';
 
 /** The admin menu entry, with the number of requests still waiting. */
 export function requestsLinkLabel(lang: 'en' | 'vi', open: number): string {
@@ -88,11 +89,12 @@ export function primaryLinks(lang: 'en' | 'vi', signedIn: boolean, place: 'deskt
  * The teacher and admin menus for a role (empty for others). Lesson and exam authoring open from the Subjects and Exams pages,
  * plan prices from Pricing (features/nav/StaffLinks), so they are not repeated here.
  */
-export function roleLinks(role: string | null, lang: 'en' | 'vi', openRequests: number) {
+export function roleLinks(role: string | null, lang: 'en' | 'vi', openRequests: number, pendingTerms = 0) {
   const label = (en: string, vi: string) => (lang === 'en' ? en : vi);
   const teacherLinks = role === 'teacher' ? [
     { href: '/teacher/classes', label: label('Classes', 'Lớp học') },
     { href: '/teacher/simulation-requests', label: label('Simulation requests', 'Đề xuất mô phỏng') },
+    { href: '/teacher/terms', label: label('Glossary terms', 'Thuật ngữ') },
   ] : [];
   const adminLinks = role === 'admin' ? [
     { href: '/admin/accounts', label: label('Accounts', 'Quản lý tài khoản') },
@@ -101,6 +103,7 @@ export function roleLinks(role: string | null, lang: 'en' | 'vi', openRequests: 
     { href: '/admin/topics', label: label('Topics', 'Chủ đề') },
     { href: '/admin/ai', label: label('AI settings', 'Cài đặt AI') },
     { href: '/admin/simulation-requests', label: requestsLinkLabel(lang, openRequests) },
+    { href: '/admin/terms', label: `${label('Glossary review', 'Duyệt thuật ngữ')}${pendingTerms > 0 ? ` (${pendingTerms})` : ''}` },
   ] : [];
   return { teacherLinks, adminLinks };
 }
@@ -116,6 +119,7 @@ export function NavBar({ currentSubject }: NavBarProps) {
   const [displayName, setDisplayName] = useState<string | null>(null);
   const [signingOut, setSigningOut] = useState(false);
   const [openRequests, setOpenRequests] = useState(0);
+  const [pendingTerms, setPendingTerms] = useState(0);
   const mobileMenuButtonRef = useRef<HTMLButtonElement>(null);
   const openNavTriggerRef = useRef<HTMLButtonElement>(null);
 
@@ -138,6 +142,22 @@ export function NavBar({ currentSubject }: NavBarProps) {
     return () => {
       live = false;
       window.removeEventListener('scipal:simulation-requests-changed', refresh);
+    };
+  }, [appRole, pathname]);
+
+  // Admins also see how many glossary terms wait for review.
+  useEffect(() => {
+    if (appRole !== 'admin') return;
+    let live = true;
+    const refresh = () =>
+      void countPendingTerms().then((result) => {
+        if (live && result.ok) setPendingTerms(result.data.pending);
+      });
+    refresh();
+    window.addEventListener('scipal:terms-changed', refresh);
+    return () => {
+      live = false;
+      window.removeEventListener('scipal:terms-changed', refresh);
     };
   }, [appRole, pathname]);
 
@@ -250,7 +270,7 @@ export function NavBar({ currentSubject }: NavBarProps) {
   const pricing = pricingLink(navLang);
   const links = primaryLinks(navLang, Boolean(appRole), 'desktop', appRole);
   const mobileLinks = primaryLinks(navLang, Boolean(appRole), 'mobile', appRole);
-  const { teacherLinks, adminLinks } = roleLinks(appRole, lang === 'en' ? 'en' : 'vi', openRequests);
+  const { teacherLinks, adminLinks } = roleLinks(appRole, lang === 'en' ? 'en' : 'vi', openRequests, pendingTerms);
   const teacherMenuOpen = openNavGroup === 'teacher';
   const adminMenuOpen = openNavGroup === 'admin';
   const teacherRouteActive = teacherLinks.some((link) => pathname === link.href || pathname.startsWith(`${link.href}/`));
