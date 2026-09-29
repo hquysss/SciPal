@@ -6,7 +6,7 @@ Cho chủ dự án/admin vận hành bán gói. Chi tiết thiết kế: `docs/s
 
 | Phần | Ở đâu |
 |---|---|
-| Bảng giá, gói, hạn mức | Bảng `billing_plans`, `billing_prices`, `billing_plan_limits` (dữ liệu, không phải code) |
+| Bảng giá, gói, hạn mức | Bảng `billing_plans`, `billing_prices`, `billing_plan_limits`; admin sửa ở `/admin/plans` (có lịch sử), không sửa tay trong database |
 | Tạo đơn, cấp gói | `billing_create_order`, `billing_apply_payment` (một transaction, cấp tối đa một lần/đơn) |
 | API | `backend/src/routes/billingCheckout.ts` (checkout, đơn, lịch sử, webhook), `billingPlans.ts` (catalog, gói của tôi), `billingReconciliation.ts` (admin) |
 | payOS | `backend/src/billing/providers/payos.ts` |
