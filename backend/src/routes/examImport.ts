@@ -6,6 +6,7 @@ import { makeSlug, planNewTopic, type ExistingTopic } from '../authoring/topicPl
 import { storedQuestionData, validateQuestionInput } from '../schemas/questions.js';
 import { capacityRefusal } from '../billing/capacity.js';
 import { BillingRepositoryError, createBillingRepository } from '../billing/repository.js';
+import { periodOf, periodWords, type QuotaPeriod } from '../billing/quotaPeriod.js';
 
 // The package the import page sends after Word/PDF lessons and an Excel workbook are parsed and
 // reviewed in the browser. Keep it aligned with frontend/features/content-import/
@@ -418,19 +419,25 @@ export const examImportRoutes: FastifyPluginAsync = async (app) => {
     const billing = createBillingRepository((name, args) => supabase.rpc(name, args));
     const metered = role === 'teacher';
     let remaining: number | null = null;
+    let period: QuotaPeriod | null = null;
     if (metered) {
       try {
         const hash = createHash('sha256').update(`${user.id}:${JSON.stringify(pkg)}`).digest('hex');
-        remaining = (await billing.reserveQuota(user.id, 'import_files', importId, 1, hash)).remaining;
+        const hold = await billing.reserveQuota(user.id, 'import_files', importId, 1, hash);
+        remaining = hold.remaining;
+        period = periodOf(hold.kind);
       } catch (err) {
         if (err instanceof BillingRepositoryError && err.code === 'QUOTA_EXCEEDED') {
           const quota = await billing.getEffectiveQuotas(user.id, new Date()).then((qs) => qs.find((q) => q.metric === 'import_files')).catch(() => undefined);
           const limit = quota?.limit ?? 0;
+          const refusedPeriod = periodOf(quota?.kind);
+          const words = periodWords(refusedPeriod);
           return reply.code(429).send({
             code: 'QUOTA_EXCEEDED',
-            error: `Thầy/cô đã nhập đủ ${limit} tệp tháng này. Nâng cấp Teacher Pro hoặc nhờ admin nới hạn mức.`,
-            error_en: `You have imported your ${limit} files this month. Upgrade to Teacher Pro or ask an admin to raise the quota.`,
+            error: `Thầy/cô đã nhập đủ ${limit} tệp ${words.vi}. Nâng cấp Teacher Pro hoặc nhờ admin nới hạn mức.`,
+            error_en: `You have imported your ${limit} files ${words.en}. Upgrade to Teacher Pro or ask an admin to raise the quota.`,
             remaining: 0,
+            period: refusedPeriod,
             limit,
             resetsAt: quota?.resetsAt ?? null,
           });
@@ -508,6 +515,7 @@ export const examImportRoutes: FastifyPluginAsync = async (app) => {
     await settle('commit');
     return reply.code(201).send({
       remaining,
+      period,
       imported: { lessons: lessonRows.length, questions: questions.length, blueprints: blueprintRows.length },
       status,
       lesson_status: lessonStatus,

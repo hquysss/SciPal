@@ -65,15 +65,13 @@ export function PlanCard({ plan, onSaved }: { plan: AdminPlan; onSaved: () => vo
             <div key={l.metric} className="flex flex-wrap items-center gap-2">
               <label htmlFor={id(l.metric)} className="min-w-0 flex-1 basis-40 text-sm text-ink">{label}</label>
               <Input id={id(l.metric)} inputMode="numeric" value={row.limit} onChange={(e) => setLimit(l.metric, { limit: e.target.value })} className="w-24 text-right tabular-nums" />
-              {l.metric === 'tutor_requests' ? (
-                <select aria-label={t({ vi: 'Chu kỳ lượt Tutor', en: 'Tutor period' })} value={row.kind} onChange={(e) => setLimit(l.metric, { kind: e.target.value as 'daily' | 'monthly' })} className={selectClass}>
+              {row.kind !== 'capacity' ? (
+                <select aria-label={t({ vi: `Chu kỳ tính lượt: ${label}`, en: `Counting period: ${label}` })} value={row.kind} onChange={(e) => setLimit(l.metric, { kind: e.target.value as 'daily' | 'monthly' })} className={selectClass}>
                   <option value="daily">{t({ vi: 'Mỗi ngày', en: 'A day' })}</option>
                   <option value="monthly">{t({ vi: 'Mỗi tháng', en: 'A month' })}</option>
                 </select>
               ) : (
-                <span className="w-24 text-sm text-ink-muted">
-                  {row.kind === 'monthly' ? t({ vi: 'Mỗi tháng', en: 'A month' }) : row.kind === 'daily' ? t({ vi: 'Mỗi ngày', en: 'A day' }) : t({ vi: 'Tối đa', en: 'At most' })}
-                </span>
+                <span className="w-24 text-sm text-ink-muted">{t({ vi: 'Tối đa', en: 'At most' })}</span>
               )}
             </div>
           );

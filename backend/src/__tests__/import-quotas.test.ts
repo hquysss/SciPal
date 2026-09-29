@@ -63,3 +63,18 @@ describe('imported files follow the plan quota', () => {
     await adminApp.close();
   });
 });
+
+describe('imports counted per day', () => {
+  it('says "today" when the plan counts files per day', async () => {
+    const app = await build(teacher, {
+      questions: ok(),
+      'rpc:billing_reserve_quota': mockQuery({ data: null, error: { code: 'P0001', message: 'QUOTA_EXCEEDED' } }),
+      'rpc:billing_get_effective_quotas': ok([{ metric: 'import_files', kind: 'daily', quota_limit: 2, used: 2, reserved: 0, source: 'plan', expires_at: null, resets_at: '2026-09-29T17:00:00+00:00' }]),
+    });
+    const res = await send(app);
+    expect(res.statusCode).toBe(429);
+    expect(res.json().error).toContain('2 tệp hôm nay');
+    expect(res.json().period).toBe('day');
+    await app.close();
+  });
+});

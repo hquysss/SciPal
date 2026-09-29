@@ -12,10 +12,10 @@ afterEach(() => {
 
 describe('startExamAttempt', () => {
   it('starts one attempt and reuses its id after a reload', async () => {
-    const fetchMock = vi.fn((_url: string, init: RequestInit) => reply(200, { attempt_id: JSON.parse(String(init.body)).attempt_id, status: 'started', remaining: 2 }));
+    const fetchMock = vi.fn((_url: string, init: RequestInit) => reply(200, { attempt_id: JSON.parse(String(init.body)).attempt_id, status: 'started', remaining: 2, period: 'day' }));
     vi.stubGlobal('fetch', fetchMock);
     const first = await startExamAttempt('bp-1', 'token', storage);
-    expect(first).toMatchObject({ ok: true, remaining: 2 });
+    expect(first).toMatchObject({ ok: true, remaining: 2, period: 'day' });
     const again = await startExamAttempt('bp-1', 'token', storage);
     expect(again.ok && first.ok && again.attemptId === first.attemptId).toBe(true);
     const [url, init] = fetchMock.mock.calls[0];

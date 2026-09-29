@@ -30,7 +30,7 @@ const write = (s: Store | undefined, k: string, v: string | null) => {
 };
 
 export type StartResult =
-  | { ok: true; attemptId: string; remaining: number | null }
+  | { ok: true; attemptId: string; remaining: number | null; period: 'day' | 'month' | null }
   | { ok: false; blocked: boolean; error: Bilingual };
 
 export async function startExamAttempt(blueprintId: string, token: string, storage: Store | undefined = session(), retried = false): Promise<StartResult> {
@@ -42,7 +42,7 @@ export async function startExamAttempt(blueprintId: string, token: string, stora
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
       body: JSON.stringify({ attempt_id: attemptId }),
     });
-    const data = (await res.json().catch(() => ({}))) as { attempt_id?: string; status?: string; remaining?: number | null; error?: string; error_en?: string };
+    const data = (await res.json().catch(() => ({}))) as { attempt_id?: string; status?: string; remaining?: number | null; period?: 'day' | 'month' | null; error?: string; error_en?: string };
     if (!res.ok) {
       if (res.status === 404) write(storage, key(blueprintId), null);
       return {
@@ -57,7 +57,7 @@ export async function startExamAttempt(blueprintId: string, token: string, stora
       if (!retried) return startExamAttempt(blueprintId, token, storage, true);
       return { ok: false, blocked: false, error: { vi: 'Chưa bắt đầu được bài thi.', en: 'Could not start the exam.' } };
     }
-    return { ok: true, attemptId: data.attempt_id ?? attemptId, remaining: data.remaining ?? null };
+    return { ok: true, attemptId: data.attempt_id ?? attemptId, remaining: data.remaining ?? null, period: data.period ?? null };
   } catch {
     return { ok: false, blocked: false, error: { vi: 'Không kết nối được máy chủ.', en: 'Could not reach the server.' } };
   }

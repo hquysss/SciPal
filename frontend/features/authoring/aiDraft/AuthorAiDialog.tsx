@@ -14,7 +14,7 @@ import { authoringCall } from '../apiClient';
 
 type Bilingual = { vi: string; en: string };
 type DraftInput = { topic: string; grade: number; request: string };
-type Draft = { blocks: TheoryBlock[]; remaining: number | null };
+type Draft = { blocks: TheoryBlock[]; remaining: number | null; period?: 'day' | 'month' | null };
 
 const FIELD = 'min-h-11 w-full rounded-lg border border-edge bg-surface px-3 text-base text-ink focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-focus';
 
@@ -69,13 +69,15 @@ export function AiDraftForm({ initialTopic, busy, error, blocked = false, onSubm
   );
 }
 
-export function AiDraftPreview({ blocks, remaining, onApply, onAgain }: { blocks: TheoryBlock[]; remaining: number | null; onApply: () => void; onAgain: () => void }) {
+export function AiDraftPreview({ blocks, remaining, period = 'month', onApply, onAgain }: { blocks: TheoryBlock[]; remaining: number | null; period?: 'day' | 'month' | null; onApply: () => void; onAgain: () => void }) {
   const { t } = useLanguage();
   return (
     <div className="flex flex-col gap-4">
       <p className="text-sm text-ink-muted">
         {t({ vi: 'Bản nháp do AI soạn — hãy đọc lại và sửa trước khi gửi duyệt.', en: 'An AI draft — read and edit it before sending for review.' })}
-        {remaining !== null && ` ${t({ vi: `Còn ${remaining} lượt AI soạn bài tháng này.`, en: `${remaining} AI drafts left this month.` })}`}
+        {remaining !== null && ` ${period === 'day'
+          ? t({ vi: `Còn ${remaining} lượt AI soạn bài hôm nay.`, en: `${remaining} AI drafts left today.` })
+          : t({ vi: `Còn ${remaining} lượt AI soạn bài tháng này.`, en: `${remaining} AI drafts left this month.` })}`}
       </p>
       <ol className="flex max-h-[50dvh] flex-col gap-3 overflow-y-auto">
         {blocks.map((b, i) => (
@@ -125,6 +127,7 @@ export function AuthorAiDialog({ open, onClose, initialTopic, onApply }: { open:
           <AiDraftPreview
             blocks={draft.blocks}
             remaining={draft.remaining}
+            period={draft.period ?? 'month'}
             onApply={() => {
               onApply(draft.blocks);
               setDraft(null);

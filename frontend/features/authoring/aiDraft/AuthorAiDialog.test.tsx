@@ -29,6 +29,7 @@ describe('AiDraftPreview', () => {
       <AiDraftPreview
         blocks={[{ type: 'theory', content: { vi: '## Vòng lặp\nLặp **n** lần.', en: '## Loops\nRuns **n** times.' } }]}
         remaining={99}
+        period="month"
         onApply={() => {}}
         onAgain={() => {}}
       />,
@@ -38,5 +39,11 @@ describe('AiDraftPreview', () => {
     expect(html).toContain('Còn 99 lượt AI soạn bài tháng này');
     expect(html).toContain('Thêm vào cuối phần Bài học');
     expect(html).toContain('đọc lại');
+  });
+
+  it('names the day when AI drafts are counted per day', async () => {
+    const { AiDraftPreview } = await import('./AuthorAiDialog');
+    const html = renderToStaticMarkup(<AiDraftPreview blocks={[]} remaining={3} period="day" onApply={() => {}} onAgain={() => {}} />);
+    expect(html).toContain('Còn 3 lượt AI soạn bài hôm nay');
   });
 });
