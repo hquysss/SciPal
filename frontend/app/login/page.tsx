@@ -54,6 +54,9 @@ function LoginContent() {
     if (failure === 'oauth') {
       return { tone: 'danger', vi: 'Chưa đăng nhập được bằng Google/Facebook. Bạn thử lại, hoặc dùng email.', en: 'Google/Facebook sign-in did not finish. Try again, or use e-mail.' };
     }
+    if (failure === 'oauth_email') {
+      return { tone: 'danger', vi: 'Facebook chưa cho SciPal biết email của bạn. Hãy đăng nhập lại và cho phép chia sẻ email, hoặc dùng Google / email.', en: 'Facebook did not share your e-mail with SciPal. Try again and allow the e-mail, or use Google / e-mail.' };
+    }
     if (failure === 'link') {
       return { tone: 'info', vi: 'Link xác nhận đã dùng rồi. Email của bạn có thể đã được xác nhận — hãy đăng nhập.', en: 'That confirmation link was already used. Your e-mail is probably confirmed — sign in.' };
     }

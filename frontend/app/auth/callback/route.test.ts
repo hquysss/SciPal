@@ -52,6 +52,11 @@ describe('GET /auth/callback', () => {
     expect(location(response)).toBe('https://scipal.vn/login?error=oauth&redirect=%2Fglossary');
   });
 
+  it('names the missing e-mail when the provider would not share one', async () => {
+    const response = await visit('error=server_error&error_description=Error+getting+user+email+from+external+provider&redirect=%2F');
+    expect(location(response)).toBe('https://scipal.vn/login?error=oauth_email&redirect=%2F');
+  });
+
   it('reports an expired or reused link', async () => {
     mocks.createServerClient.mockReturnValue({ auth: { exchangeCodeForSession: async () => ({ error: new Error('invalid grant') }) } });
     expect(location(await visit('code=old'))).toBe('https://scipal.vn/login?error=link&redirect=%2F');

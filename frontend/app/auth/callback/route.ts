@@ -11,7 +11,7 @@ type CookieOptions = Parameters<NextResponse['cookies']['set']>[2];
 type EmailOtpType = 'signup' | 'email' | 'invite' | 'magiclink' | 'recovery' | 'email_change';
 const EMAIL_TYPES: EmailOtpType[] = ['signup', 'email', 'invite', 'magiclink', 'recovery', 'email_change'];
 
-function toLogin(request: NextRequest, error: 'oauth' | 'link', redirect: string) {
+function toLogin(request: NextRequest, error: 'oauth' | 'oauth_email' | 'link', redirect: string) {
   const url = new URL('/login', request.url);
   url.searchParams.set('error', error);
   url.searchParams.set('redirect', redirect);
@@ -22,8 +22,12 @@ export async function GET(request: NextRequest) {
   const params = request.nextUrl.searchParams;
   const redirect = safeRedirect(params.get('redirect'));
 
-  // The visitor cancelled at Google/Facebook, or the provider refused.
-  if (params.get('error')) return toLogin(request, 'oauth', redirect);
+  // The visitor cancelled at Google/Facebook, or the provider refused. Facebook without the
+  // e-mail permission (or an account with no e-mail) is common enough to name on its own.
+  if (params.get('error')) {
+    const missingEmail = /user email/i.test(params.get('error_description') ?? '');
+    return toLogin(request, missingEmail ? 'oauth_email' : 'oauth', redirect);
+  }
 
   const code = params.get('code');
   const tokenHash = params.get('token_hash');
