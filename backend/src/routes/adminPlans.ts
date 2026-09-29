@@ -13,7 +13,7 @@ type ErrorBody = { code: string; error: string; error_en: string };
 const err = (code: string, error: string, error_en: string): ErrorBody => ({ code, error, error_en });
 const FORBIDDEN = err('FORBIDDEN', 'Chỉ quản trị viên mới chỉnh được gói.', 'Only admins can edit plans.');
 const NOT_FOUND = err('PLAN_NOT_FOUND', 'Không tìm thấy gói.', 'Plan not found.');
-const INVALID = err('INVALID_PLAN_CHANGE', 'Thay đổi không hợp lệ: hạn mức là số nguyên ≥ 0, giá từ 1.000 ₫, mô tả EN/VI 1–500 ký tự, lý do 1–500 ký tự; chỉ Tutor đổi được theo ngày/tháng.', 'Invalid change: limits are whole numbers ≥ 0, prices from 1,000 VND, EN/VI descriptions of 1–500 characters, a reason of 1–500 characters; only Tutor can switch between daily and monthly.');
+const INVALID = err('INVALID_PLAN_CHANGE', 'Thay đổi không hợp lệ: hạn mức là số nguyên ≥ 0, giá từ 1.000 ₫, mô tả EN/VI 1–500 ký tự, lý do 1–500 ký tự; lớp, học sinh/lớp và đề đang hoạt động không tính theo ngày/tháng.', 'Invalid change: limits are whole numbers ≥ 0, prices from 1,000 VND, EN/VI descriptions of 1–500 characters, a reason of 1–500 characters; classes, students per class and active exams are not counted per day or month.');
 const CONFLICT = err('PLAN_VERSION_CONFLICT', 'Một admin khác vừa sửa gói này. Tải lại rồi sửa tiếp.', 'Another admin has just changed this plan. Reload, then edit again.');
 const UNAVAILABLE = err('BILLING_UNAVAILABLE', 'Chưa đọc hoặc lưu được gói. Thử lại sau.', 'Plans could not be read or saved. Try again later.');
 

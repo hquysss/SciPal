@@ -58,7 +58,7 @@ describe('POST /api/authoring/ai-draft', () => {
     const { app, ai } = await build(teacher, { author_ai_drafts: [ok(null), store], 'rpc:billing_reserve_quota': hold(99), 'rpc:billing_settle_quota': ok(true) });
     const res = await draft(app);
     expect(res.statusCode).toBe(200);
-    expect(res.json()).toEqual({ blocks: [expect.objectContaining({ type: 'theory' })], remaining: 99, replayed: false });
+    expect(res.json()).toEqual({ blocks: [expect.objectContaining({ type: 'theory' })], remaining: 99, period: 'month', replayed: false });
     expect(store.inserted[0]).toMatchObject({ operation_id: OP, user_id: 'teacher-1', blocks: [expect.objectContaining({ type: 'theory' })] });
     expect(names()).toEqual(['billing_reserve_quota', 'billing_settle_quota:commit']);
     expect(rpcCalls[0][1]).toMatchObject({ p_metric: 'author_ai_requests', p_operation_id: OP });
@@ -104,7 +104,7 @@ describe('POST /api/authoring/ai-draft', () => {
     const stored = { operation_id: OP, user_id: 'teacher-1', request_hash: 'x', blocks: [{ type: 'theory', content: { vi: 'A', en: 'B' } }] };
     const { app, ai } = await build(teacher, { author_ai_drafts: ok(stored) });
     const res = await draft(app);
-    expect(res.json()).toEqual({ blocks: stored.blocks, remaining: null, replayed: true });
+    expect(res.json()).toEqual({ blocks: stored.blocks, remaining: null, period: null, replayed: true });
     expect(ai.calls).toHaveLength(0);
     expect(rpcCalls).toHaveLength(0);
     await app.close();
@@ -119,6 +119,21 @@ describe('POST /api/authoring/ai-draft', () => {
     for (const bad of [{ ...body, operation_id: 'x' }, { ...body, topic: '' }, { ...body, grade: 13 }, { ...body, request: 'x'.repeat(8001) }, { ...body, language: 'fr' }]) {
       expect((await draft(app, bad)).statusCode).toBe(400);
     }
+    await app.close();
+  });
+});
+
+describe('AI drafts counted per day', () => {
+  it('says "today" when the day\'s drafts are used up', async () => {
+    const { app } = await build(teacher, {
+      author_ai_drafts: ok(null),
+      'rpc:billing_reserve_quota': refused('QUOTA_EXCEEDED'),
+      'rpc:billing_get_effective_quotas': ok([{ metric: 'author_ai_requests', kind: 'daily', quota_limit: 5, used: 5, reserved: 0, source: 'plan', expires_at: null, resets_at: '2026-09-29T17:00:00+00:00' }]),
+    });
+    const res = await draft(app);
+    expect(res.statusCode).toBe(429);
+    expect(res.json().error).toContain('5 lượt AI soạn bài hôm nay');
+    expect(res.json().period).toBe('day');
     await app.close();
   });
 });

@@ -2,6 +2,7 @@ import { createHash, randomUUID } from 'node:crypto';
 import type { FastifyPluginAsync, FastifyRequest } from 'fastify';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { BillingRepositoryError, createBillingRepository } from '../billing/repository.js';
+import { periodOf, periodWords, type QuotaPeriod } from '../billing/quotaPeriod.js';
 import {
   BLUEPRINT_COLUMNS,
   blueprintQuestionIds,
@@ -186,7 +187,7 @@ export const examRoutes: FastifyPluginAsync = async (app) => {
     const found = existing as AttemptRow | null;
     if (found) {
       if (found.user_id !== uid || found.blueprint_id !== blueprintId) return reply.code(404).send(attemptNotFound);
-      return { attempt_id: found.id, status: found.status, remaining: null, ...(found.status === 'submitted' ? { result: storedResult(found) } : {}) };
+      return { attempt_id: found.id, status: found.status, remaining: null, period: null, ...(found.status === 'submitted' ? { result: storedResult(found) } : {}) };
     }
 
     const bp = await loadBlueprint(supabase, blueprintId);
@@ -201,18 +202,24 @@ export const examRoutes: FastifyPluginAsync = async (app) => {
     const metered = role !== 'admin' && role !== 'teacher';
     const billing = createBillingRepository((name, args) => supabase.rpc(name, args));
     let remaining: number | null = null;
+    let period: QuotaPeriod | null = null;
     if (metered) {
       try {
         const hash = createHash('sha256').update(`${uid}:${blueprintId}:${attemptId}`).digest('hex');
-        remaining = (await billing.reserveQuota(uid, 'graded_exam_attempts', attemptId, 1, hash)).remaining;
+        const hold = await billing.reserveQuota(uid, 'graded_exam_attempts', attemptId, 1, hash);
+        remaining = hold.remaining;
+        period = periodOf(hold.kind);
       } catch (err) {
         if (err instanceof BillingRepositoryError && err.code === 'QUOTA_EXCEEDED') {
           const quota = await billing.getEffectiveQuotas(uid, new Date()).then((qs) => qs.find((q) => q.metric === 'graded_exam_attempts')).catch(() => undefined);
           const limit = quota?.limit ?? 0;
+          const refusedPeriod = periodOf(quota?.kind);
+          const words = periodWords(refusedPeriod);
           return reply.code(429).send({
             code: 'QUOTA_EXCEEDED',
-            ...bi(`Em đã dùng hết ${limit} lượt thi chấm điểm tháng này.`, `You have used your ${limit} graded exam attempts this month.`),
+            ...bi(`Em đã dùng hết ${limit} lượt thi chấm điểm ${words.vi}.`, `You have used your ${limit} graded exam attempts ${words.en}.`),
             remaining: 0,
+            period: refusedPeriod,
             limit,
             resetsAt: quota?.resetsAt ?? null,
           });
@@ -228,7 +235,7 @@ export const examRoutes: FastifyPluginAsync = async (app) => {
       request.log.error({ err: insertError }, 'Failed to store an exam attempt');
       return reply.code(500).send(bi('Chưa bắt đầu được bài thi.', 'Could not start the exam.'));
     }
-    return { attempt_id: attemptId, status: 'started', remaining };
+    return { attempt_id: attemptId, status: 'started', remaining, period };
   });
 
   app.get('/api/exam/blueprints', async (request, reply) => {

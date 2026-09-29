@@ -43,7 +43,7 @@ describe('starting a graded exam attempt', () => {
     const app = await build({ exam_blueprints: ok({ id: BP }), exam_attempts: [ok(null), insert], 'rpc:billing_reserve_quota': hold(2) });
     const res = await start(app, { attempt_id: A1 });
     expect(res.statusCode).toBe(200);
-    expect(res.json()).toEqual({ attempt_id: A1, status: 'started', remaining: 2 });
+    expect(res.json()).toEqual({ attempt_id: A1, status: 'started', remaining: 2, period: 'month' });
     expect(insert.inserted[0]).toMatchObject({ id: A1, user_id: 'student-1', blueprint_id: BP, metered: true });
     expect(rpcCalls[0]).toEqual(['billing_reserve_quota', expect.objectContaining({ p_user_id: 'student-1', p_metric: 'graded_exam_attempts', p_operation_id: A1, p_units: 1 })]);
     await app.close();
@@ -52,7 +52,7 @@ describe('starting a graded exam attempt', () => {
   it('resumes the same attempt after a reload without holding another', async () => {
     const app = await build({ exam_blueprints: ok({ id: BP }), exam_attempts: ok(started) });
     const res = await start(app, { attempt_id: A1 });
-    expect(res.json()).toEqual({ attempt_id: A1, status: 'started', remaining: null });
+    expect(res.json()).toEqual({ attempt_id: A1, status: 'started', remaining: null, period: null });
     expect(rpcCalls).toHaveLength(0);
     await app.close();
   });
@@ -159,5 +159,27 @@ describe('submitting a graded exam attempt', () => {
     const res = await none.inject({ method: 'POST', url: '/api/score/exam', payload: { blueprint_id: BP, answers: [] } });
     expect(res.statusCode).toBe(400);
     await none.close();
+  });
+});
+
+describe('graded exams counted per day', () => {
+  it('says "today" when the plan counts attempts per day', async () => {
+    const daily = ok({ operation_id: A1, state: 'reserved', kind: 'daily', remaining: 1, resets_at: '2026-09-29T17:00:00+00:00' });
+    const app = await build({ exam_blueprints: ok({ id: BP }), exam_attempts: [ok(null), ok()], 'rpc:billing_reserve_quota': daily });
+    expect((await start(app)).json()).toMatchObject({ remaining: 1, period: 'day' });
+    await app.close();
+
+    const full = await build({
+      exam_blueprints: ok({ id: BP }),
+      exam_attempts: ok(null),
+      'rpc:billing_reserve_quota': refused('QUOTA_EXCEEDED'),
+      'rpc:billing_get_effective_quotas': ok([{ metric: 'graded_exam_attempts', kind: 'daily', quota_limit: 2, used: 2, reserved: 0, source: 'plan', expires_at: null, resets_at: '2026-09-29T17:00:00+00:00' }]),
+    });
+    const res = await start(full);
+    expect(res.statusCode).toBe(429);
+    expect(res.json().error).toContain('2 lượt thi chấm điểm hôm nay');
+    expect(res.json().error_en).toContain('today');
+    expect(res.json().period).toBe('day');
+    await full.close();
   });
 });

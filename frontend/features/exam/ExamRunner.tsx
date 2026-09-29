@@ -123,13 +123,13 @@ export function ExamRunner({
     xp_earned: number;
   } | null>(null);
   // The graded attempt (created before the exam for a signed-in student; guests sign in at submit).
-  const [attempt, setAttempt] = useState<{ id: string; remaining: number | null } | null>(null);
+  const [attempt, setAttempt] = useState<{ id: string; remaining: number | null; period: 'day' | 'month' | null } | null>(null);
   const [attemptProblem, setAttemptProblem] = useState<{ error: Bilingual; blocked: boolean } | null>(null);
 
   const begin = useCallback(async (authToken: string) => {
     const res = await startExamAttempt(blueprintId, authToken);
     if (res.ok) {
-      setAttempt({ id: res.attemptId, remaining: res.remaining });
+      setAttempt({ id: res.attemptId, remaining: res.remaining, period: res.period });
       setAttemptProblem(null);
       return res.attemptId;
     }
@@ -311,7 +311,9 @@ export function ExamRunner({
           </div>
           {attempt?.remaining != null && (
             <span className="text-sm text-ink-muted">
-              {t({ en: `${attempt.remaining} graded attempts left this month`, vi: `Còn ${attempt.remaining} lượt thi chấm điểm tháng này` })}
+              {attempt.period === 'day'
+                ? t({ en: `${attempt.remaining} graded attempts left today`, vi: `Còn ${attempt.remaining} lượt thi chấm điểm hôm nay` })
+                : t({ en: `${attempt.remaining} graded attempts left this month`, vi: `Còn ${attempt.remaining} lượt thi chấm điểm tháng này` })}
             </span>
           )}
           <span aria-live="polite" className="text-sm font-semibold text-ink-muted">

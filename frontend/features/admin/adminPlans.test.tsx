@@ -45,6 +45,8 @@ describe('PlanCard', () => {
     expect(html).toContain('Lượt hỏi Gia sư AI');
     expect(html).toContain('Mỗi tháng');
     expect(html).toContain('value="200"');
+    // Every counted quota chooses its period, not only Tutor.
+    expect(html.match(/aria-label="Chu kỳ tính lượt: [^"]+"/g)).toHaveLength(2);
     expect(html).toContain('Giá theo tháng');
     expect(html).toContain('value="39000"');
     expect(html).toContain('Lý do thay đổi');

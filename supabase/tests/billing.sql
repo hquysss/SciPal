@@ -46,6 +46,7 @@ values
 \ir ../migrations/20260929100000_billing_reconciliation.sql
 \ir ../migrations/20260929120000_class_assignments.sql
 \ir ../migrations/20260929140000_admin_plan_settings.sql
+\ir ../migrations/20260929160000_daily_counted_quotas.sql
 -- Supabase's service_role writes these tables; the stubs above need the same grant.
 grant select, insert, update, delete on public.class_rooms, public.class_members, public.exam_blueprints, public.assignments to service_role;
 
@@ -866,7 +867,7 @@ begin
   end;
   if v_failed <> 'PLAN_VERSION_CONFLICT' then raise exception 'Stale save: %', v_failed; end if;
 
-  -- Tutor may switch between daily and monthly; other metrics keep their kind; unknown metrics are refused.
+  -- Counted quotas switch between daily and monthly; capacity stays capacity; unknown metrics are refused.
   select version into v_version from public.billing_plans where code = 'student_free';
   v_version := public.billing_update_plan(c_admin, 'student_free', v_version, 'Tutor theo tháng',
     '[{"metric":"tutor_requests","kind":"monthly","limit":60}]'::jsonb, '{"en":"Free","vi":"Miễn phí"}'::jsonb, null);
@@ -875,7 +876,7 @@ begin
   end if;
   if (select description_vi from public.billing_plans where code = 'student_free') <> 'Miễn phí' then raise exception 'Description not saved'; end if;
   foreach v_failed in array array[
-    '[{"metric":"graded_exam_attempts","kind":"daily","limit":3}]',
+    '[{"metric":"graded_exam_attempts","kind":"capacity","limit":3}]',
     '[{"metric":"active_classes","kind":"capacity","limit":3}]',
     '[{"metric":"tutor_requests","kind":"monthly","limit":-1}]'
   ] loop
@@ -886,6 +887,13 @@ begin
       if sqlerrm <> 'INVALID_PLAN_CHANGE' then raise exception 'Bad limit %: %', v_failed, sqlerrm; end if;
     end;
   end loop;
+
+  -- Every counted quota can run per day (migration 20260929160000), e.g. graded exams.
+  v_version := public.billing_update_plan(c_admin, 'student_free', v_version, 'Thi theo ngày',
+    '[{"metric":"graded_exam_attempts","kind":"daily","limit":2}]'::jsonb, null, null);
+  if (select kind from public.billing_plan_limits where plan_code = 'student_free' and metric = 'graded_exam_attempts') <> 'daily' then
+    raise exception 'Graded exams did not switch to daily';
+  end if;
 
   -- A new price replaces the active one; the old row stays for the orders sold at it.
   select id into v_old from public.billing_prices where plan_code = 'student_plus' and interval = 'month' and active;

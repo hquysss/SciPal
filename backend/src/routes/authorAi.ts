@@ -2,6 +2,7 @@ import { createHash } from 'node:crypto';
 import type { FastifyPluginAsync, FastifyRequest } from 'fastify';
 import { z } from 'zod';
 import { BillingRepositoryError, createBillingRepository } from '../billing/repository.js';
+import { periodOf, periodWords, type QuotaPeriod } from '../billing/quotaPeriod.js';
 import { authorAiSystemPrompt, authorAiUserMessage, parseDraft, type TheoryDraftBlock } from '../authoring/authorAiPrompt.js';
 import { BlockSchema } from '../schemas/blocks.js';
 import { resolveTutorSettings } from '../tutor/settings.js';
@@ -50,25 +51,31 @@ export const authorAiRoutes: FastifyPluginAsync = async (app) => {
     const stored = existing as { user_id: string; blocks: TheoryDraftBlock[] } | null;
     if (stored) {
       if (stored.user_id !== uid) return reply.code(409).send({ code: 'IDEMPOTENCY_CONFLICT', ...msg('Mã yêu cầu đã được dùng.', 'This request id is already used.') });
-      return { blocks: stored.blocks, remaining: null, replayed: true };
+      return { blocks: stored.blocks, remaining: null, period: null, replayed: true };
     }
 
     const billing = createBillingRepository((name, args) => supabase.rpc(name, args));
     const metered = role === 'teacher';
     let remaining: number | null = null;
+    let period: QuotaPeriod | null = null;
     if (metered) {
       try {
-        remaining = (await billing.reserveQuota(uid, 'author_ai_requests', input.operation_id, 1, hash)).remaining;
+        const hold = await billing.reserveQuota(uid, 'author_ai_requests', input.operation_id, 1, hash);
+        remaining = hold.remaining;
+        period = periodOf(hold.kind);
       } catch (err) {
         if (err instanceof BillingRepositoryError && err.code === 'QUOTA_EXCEEDED') {
           const quota = await billing.getEffectiveQuotas(uid, new Date()).then((qs) => qs.find((q) => q.metric === 'author_ai_requests')).catch(() => undefined);
           const limit = quota?.limit ?? 0;
+          const refusedPeriod = periodOf(quota?.kind);
+          const words = periodWords(refusedPeriod);
           return reply.code(429).send({
             code: 'QUOTA_EXCEEDED',
             ...(limit === 0
               ? msg('Gói hiện tại chưa có lượt AI soạn bài. Nâng cấp lên Teacher Pro hoặc nhờ admin cấp thêm.', 'Your plan has no AI lesson drafts. Upgrade to Teacher Pro or ask an admin.')
-              : msg(`Thầy/cô đã dùng hết ${limit} lượt AI soạn bài tháng này.`, `You have used your ${limit} AI lesson drafts this month.`)),
+              : msg(`Thầy/cô đã dùng hết ${limit} lượt AI soạn bài ${words.vi}.`, `You have used your ${limit} AI lesson drafts ${words.en}.`)),
             remaining: 0,
+            period: refusedPeriod,
             limit,
             resetsAt: quota?.resetsAt ?? null,
           });
@@ -108,6 +115,6 @@ export const authorAiRoutes: FastifyPluginAsync = async (app) => {
       return reply.code(500).send(msg('Chưa lưu được bản nháp. Lượt này không bị tính.', 'Could not store the draft. This request was not counted.'));
     }
     if (metered) await billing.settleQuota(input.operation_id, 'commit').catch((err) => request.log.error({ err }, 'Failed to count an AI draft request'));
-    return { blocks, remaining, replayed: false };
+    return { blocks, remaining, period, replayed: false };
   });
 };
