@@ -28,7 +28,7 @@ export function ExamTable({ exams }: { exams: ExamSummary[] }) {
       {exams.map((exam) => (
         <li key={exam.id}>
           <Link
-            href={`/teacher/exams/${exam.id}`}
+            href={`/exam/manage/${exam.id}`}
             className="flex flex-col gap-2 rounded-lg border border-line bg-surface p-4 transition-colors hover:border-edge hover:bg-surface-sunken focus-visible:outline focus-visible:outline-2 focus-visible:outline-focus sm:flex-row sm:items-center"
           >
             <span className="min-w-0 flex-1">

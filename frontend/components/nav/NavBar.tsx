@@ -84,21 +84,19 @@ export function primaryLinks(lang: 'en' | 'vi', signedIn: boolean, place: 'deskt
   ];
 }
 
-/** The teacher and admin menus for a role (empty for others). */
+/**
+ * The teacher and admin menus for a role (empty for others). Lesson and exam authoring open from the Subjects and Exams pages,
+ * plan prices from Pricing (features/nav/StaffLinks), so they are not repeated here.
+ */
 export function roleLinks(role: string | null, lang: 'en' | 'vi', openRequests: number) {
   const label = (en: string, vi: string) => (lang === 'en' ? en : vi);
   const teacherLinks = role === 'teacher' ? [
     { href: '/teacher/classes', label: label('Classes', 'Lớp học') },
-    { href: '/teacher/lessons', label: label('Lesson Studio', 'Soạn bài') },
-    { href: '/teacher/exams', label: label('Exams', 'Đề thi') },
     { href: '/teacher/simulation-requests', label: label('Simulation requests', 'Đề xuất mô phỏng') },
   ] : [];
   const adminLinks = role === 'admin' ? [
     { href: '/admin/accounts', label: label('Accounts', 'Quản lý tài khoản') },
     { href: '/admin/billing', label: label('Payment reconciliation', 'Đối soát thanh toán') },
-    { href: '/admin/plans', label: label('Plan limits & prices', 'Hạn mức & giá gói') },
-    { href: '/teacher/lessons', label: label('Lesson Studio', 'Soạn bài') },
-    { href: '/teacher/exams', label: label('Exams', 'Đề thi') },
     { href: '/admin/lessons/review', label: label('Review Queue', 'Duyệt bài') },
     { href: '/admin/topics', label: label('Topics', 'Chủ đề') },
     { href: '/admin/ai', label: label('AI settings', 'Cài đặt AI') },

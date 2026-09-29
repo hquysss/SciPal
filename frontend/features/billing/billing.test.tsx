@@ -89,6 +89,16 @@ describe('MyPlanView', () => {
   });
 });
 
+describe('PricingPage selling points', () => {
+  it('shows the yearly saving, the price per day and the recommended paid plan', () => {
+    const html = renderToStaticMarkup(<PricingPage plans={plans} checkoutOpen={false} />);
+    expect(html).toContain('−17%');
+    expect(html).toContain('Chỉ khoảng 1.300 ₫ mỗi ngày');
+    expect(html).toContain('Khuyên dùng');
+    expect(html).toContain('Gói có tự gia hạn không?');
+  });
+});
+
 describe('PricingPage checkout', () => {
   it('asks a visitor to sign in to buy, and brings them back to the pricing page', () => {
     const html = renderToStaticMarkup(<PricingPage plans={plans} checkoutOpen viewerRole={null} />);

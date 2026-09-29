@@ -575,3 +575,28 @@
     filter: blur(32px);
   }
 }
+
+/* Phones and touch screens: wide blurs that move or turn repaint every frame and stutter there.
+   Keep the look, drop the motion: the colour stays still, the ring stops turning, no sweep. */
+@media (pointer: coarse), (max-width: 48rem) {
+  .aura,
+  .pricing[data-inview='true'] .aura,
+  .aura::before,
+  .stage span,
+  .titleGlow {
+    animation: none;
+  }
+
+  .paid::after {
+    display: none;
+  }
+
+  .aura::before {
+    filter: blur(28px);
+    opacity: 0.6;
+  }
+
+  .stage span {
+    filter: blur(40px);
+  }
+}

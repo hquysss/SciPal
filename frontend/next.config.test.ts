@@ -14,3 +14,11 @@ describe('security headers', () => {
     expect(headers['strict-transport-security']).toMatch(/^max-age=\d{8,}/);
   });
 });
+
+describe('redirects', () => {
+  it('sends the old exam authoring links to Thi thử', async () => {
+    const rules = (await nextConfig.redirects?.()) ?? [];
+    expect(rules).toContainEqual(expect.objectContaining({ source: '/teacher/exams', destination: '/exam/manage' }));
+    expect(rules).toContainEqual(expect.objectContaining({ source: '/teacher/exams/:path*', destination: '/exam/manage/:path*' }));
+  });
+});

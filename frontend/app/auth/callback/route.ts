@@ -2,7 +2,7 @@ import { createServerClient } from '@scipal/supabase';
 import { NextResponse, type NextRequest } from 'next/server';
 import { safeRedirect } from '@/lib/authFlow';
 
-// Supabase sends the browser here after Google or Facebook, and from the sign-up confirmation
+// Supabase sends the browser here after Google, and from the sign-up confirmation
 // e-mail. The code (or token hash) becomes a session cookie, then the visitor returns to the page
 // they were on. The redirect is always a path on this site.
 
@@ -22,7 +22,7 @@ export async function GET(request: NextRequest) {
   const params = request.nextUrl.searchParams;
   const redirect = safeRedirect(params.get('redirect'));
 
-  // The visitor cancelled at Google/Facebook, or the provider refused.
+  // The visitor cancelled at Google, or Google refused.
   if (params.get('error')) return toLogin(request, 'oauth', redirect);
 
   const code = params.get('code');

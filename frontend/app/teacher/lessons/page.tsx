@@ -42,7 +42,7 @@ export default async function TeacherLessonsPage() {
       <PageBreadcrumb
         items={[
           { href: '/', label: { en: 'Home', vi: 'Trang chủ' } },
-          { href: '/profile', label: { en: 'Profile', vi: 'Hồ sơ' } },
+          { href: '/subjects', label: { en: 'Subjects', vi: 'Môn học' } },
           { label: { en: 'Lesson studio', vi: 'Soạn bài' } },
         ]}
       />

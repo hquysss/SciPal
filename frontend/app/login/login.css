@@ -2337,7 +2337,7 @@
   cursor: default;
 }
 
-/* ---- Google / Facebook ---- */
+/* ---- Google ---- */
 .katha-oauth {
   display: grid;
   gap: 0.9rem;
@@ -2413,12 +2413,11 @@
   }
 }
 
-/* Provider marks keep their brand colours in every theme (Google and Meta brand guidelines). */
+/* The Google mark keeps its brand colours in every theme (Google brand guidelines). */
 .katha-oauth-google-blue { fill: #4285f4; }
 .katha-oauth-google-green { fill: #34a853; }
 .katha-oauth-google-yellow { fill: #fbbc05; }
 .katha-oauth-google-red { fill: #ea4335; }
-.katha-oauth-facebook { fill: #1877f2; }
 
 /* ============================================================
    Compact card (30/09): the same pieces, less air between them.
@@ -2545,14 +2544,14 @@
   outline-offset: 1px;
 }
 
-/* Google and Facebook side by side on one line each. */
+/* One Google button across the card. */
 .katha-oauth {
   gap: 0.7rem;
   margin-top: 0.95rem;
 }
 
 .katha-oauth-buttons {
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: minmax(0, 1fr);
 }
 
 .katha-oauth-button {

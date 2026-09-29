@@ -14,12 +14,12 @@ export function safeRedirect(value: string | null | undefined): string {
   return value;
 }
 
-/** Where Supabase sends the browser after Google, Facebook or the confirmation e-mail. */
+/** Where Supabase sends the browser after Google or the confirmation e-mail. */
 export function callbackUrl(origin: string, redirect: string | null | undefined): string {
   return `${origin}/auth/callback?redirect=${encodeURIComponent(safeRedirect(redirect))}`;
 }
 
-export type AuthSettings = { google: boolean; facebook: boolean; signupOpen: boolean };
+export type AuthSettings = { google: boolean; signupOpen: boolean };
 
 /** The public GoTrue /auth/v1/settings answer: which providers are switched on. */
 export function readAuthSettings(body: unknown): AuthSettings | null {
@@ -27,7 +27,7 @@ export function readAuthSettings(body: unknown): AuthSettings | null {
   const { external, disable_signup } = body as { external?: unknown; disable_signup?: unknown };
   if (!external || typeof external !== 'object') return null;
   const on = external as Record<string, unknown>;
-  return { google: on.google === true, facebook: on.facebook === true, signupOpen: disable_signup !== true };
+  return { google: on.google === true, signupOpen: disable_signup !== true };
 }
 
 export type SignUpFields = { name: string; email: string; password: string; confirm: string };

@@ -43,7 +43,7 @@ export function ExamReviewCard({ exam, onDone }: { exam: ExamSummary; onDone?: (
         {exam.name_en && <p className="text-sm text-ink-muted">{exam.name_en}</p>}
       </div>
       <div className="flex flex-wrap gap-2">
-        <Link href={`/teacher/exams/${exam.id}`} className={buttonVariants({ variant: 'outline' })}>
+        <Link href={`/exam/manage/${exam.id}`} className={buttonVariants({ variant: 'outline' })}>
           {t({ en: 'Open the exam', vi: 'Xem đề' })}
         </Link>
         <Button type="button" disabled={busy} onClick={() => void act('approve')}>

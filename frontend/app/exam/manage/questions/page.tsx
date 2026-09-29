@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { TeacherAreaTabs } from '@/components/nav/TeacherAreaTabs';
+import { ExamManageTabs } from '@/components/nav/TeacherAreaTabs';
 import { AuthoringApiError, getAuthoringOptions } from '@/features/authoring/authoringQueries';
 import { getAuthoringSession } from '@/features/authoring/serverAuth';
 import { QuestionBank } from '@/features/authoring/exams/QuestionBank';
@@ -11,7 +11,7 @@ export const dynamic = 'force-dynamic';
 
 export default async function ExamQuestionBankPage() {
   // Teachers and admins only; others are redirected by the session check.
-  const { token } = await getAuthoringSession('/teacher/exams/questions');
+  const { token } = await getAuthoringSession('/exam/manage/questions');
   let options: Awaited<ReturnType<typeof getAuthoringOptions>> | null = null;
   try {
     options = await getAuthoringOptions(token);
@@ -24,11 +24,11 @@ export default async function ExamQuestionBankPage() {
     <main className="mx-auto flex w-full max-w-5xl flex-col gap-6 px-4 py-8 pb-20 sm:px-6">
       <PageBreadcrumb
         items={[
-          { href: '/teacher/exams', label: { en: 'Exams', vi: 'Đề thi' } },
+          { href: '/exam', label: { en: 'Practice exams', vi: 'Thi thử' } }, { href: '/exam/manage', label: { en: 'Manage exams', vi: 'Quản lý đề thi' } },
           { label: { en: 'Question bank', vi: 'Ngân hàng câu hỏi' } },
         ]}
       />
-      <TeacherAreaTabs active="exams" />
+      <ExamManageTabs active="questions" />
       <header>
         <h1 className="text-3xl font-extrabold tracking-tight text-ink">
           <Bi en="Exam question bank" vi="Ngân hàng câu hỏi đề thi" />
@@ -44,7 +44,7 @@ export default async function ExamQuestionBankPage() {
         <QuestionBank subjects={options.subjects} />
       ) : (
         <Alert tone="danger" title={<Bi en="Could not load subjects." vi="Không tải được danh sách môn học." />}>
-          <Link href="/teacher/exams/questions" className="font-semibold underline underline-offset-4">
+          <Link href="/exam/manage/questions" className="font-semibold underline underline-offset-4">
             <Bi en="Try again" vi="Thử lại" />
           </Link>
         </Alert>

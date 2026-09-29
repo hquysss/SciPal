@@ -44,9 +44,16 @@ describe('simulation request link', () => {
 });
 
 describe('role menus', () => {
-  it('gives teachers and admins the exam area', () => {
-    expect(roleLinks('teacher', 'vi', 0).teacherLinks.map((l) => l.href)).toContain('/teacher/exams');
-    expect(roleLinks('admin', 'vi', 0).adminLinks.map((l) => l.href)).toContain('/teacher/exams');
+  it('keeps the menus short: authoring and prices live on their own pages', () => {
+    // Authoring lives on the Subjects and Exams pages, plan prices on Pricing: not in the menus.
+    for (const role of ['teacher', 'admin']) {
+      const { teacherLinks, adminLinks } = roleLinks(role, 'vi', 0);
+      const hrefs = [...teacherLinks, ...adminLinks].map((l) => l.href);
+      expect(hrefs).not.toContain('/teacher/lessons');
+      expect(hrefs).not.toContain('/exam/manage');
+      expect(hrefs).not.toContain('/admin/plans');
+    }
+    expect(roleLinks('teacher', 'vi', 0).teacherLinks.map((l) => l.href)).toContain('/teacher/classes');
     expect(roleLinks('admin', 'vi', 0).adminLinks.map((l) => l.href)).toContain('/admin/topics');
     expect(roleLinks('admin', 'vi', 0).adminLinks.map((l) => l.href)).toContain('/admin/ai');
     expect(roleLinks('teacher', 'vi', 0).teacherLinks.map((l) => l.href)).not.toContain('/admin/topics');
@@ -56,7 +63,6 @@ describe('role menus', () => {
   it('links admins to payment reconciliation in both languages', () => {
     expect(roleLinks('admin', 'vi', 0).adminLinks).toContainEqual({ href: '/admin/billing', label: 'Đối soát thanh toán' });
     expect(roleLinks('admin', 'en', 0).adminLinks).toContainEqual({ href: '/admin/billing', label: 'Payment reconciliation' });
-    expect(roleLinks('admin', 'vi', 0).adminLinks).toContainEqual({ href: '/admin/plans', label: 'Hạn mức & giá gói' });
   });
 });
 

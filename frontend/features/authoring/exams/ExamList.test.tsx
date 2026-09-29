@@ -16,7 +16,7 @@ const exam = (patch: Partial<ExamSummary> = {}): ExamSummary => ({
 describe('ExamTable', () => {
   it('lists each exam with subject, grade, questions, time and status, linking to the builder', () => {
     const html = renderToStaticMarkup(<ExamTable exams={[exam(), exam({ id: 'e2', name: 'Đề Excel', imported: true, status: 'published' })]} />);
-    expect(html).toContain('href="/teacher/exams/e1"');
+    expect(html).toContain('href="/exam/manage/e1"');
     expect(html).toContain('Đề giữa kỳ');
     expect(html).toContain('Tin học · Lớp 10');
     expect(html).toContain('12 câu');

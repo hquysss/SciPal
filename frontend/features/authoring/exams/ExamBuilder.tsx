@@ -108,7 +108,7 @@ export function ExamBuilder({ exam, subjects, isAdmin, initialQuestions = [] }: 
     }
     setSaved(res.data.exam);
     setDirty(false);
-    if (!saved) router.replace(`/teacher/exams/${res.data.exam.id}`);
+    if (!saved) router.replace(`/exam/manage/${res.data.exam.id}`);
     return res.data.exam;
   };
 
@@ -147,7 +147,7 @@ export function ExamBuilder({ exam, subjects, isAdmin, initialQuestions = [] }: 
     const res = await deleteExam(saved.id);
     setBusy(false);
     if (!res.ok) return setMessage({ text: res.error, tone: 'danger' });
-    router.replace('/teacher/exams');
+    router.replace('/exam/manage');
   };
 
   /** "Đổi câu": one question of the same type and difficulty that the exam does not have yet. */

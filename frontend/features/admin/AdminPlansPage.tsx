@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
+import { PageBreadcrumb } from '@/components/nav/PageBreadcrumb';
 import { useLanguage } from '@scipal/hooks';
 import { Alert } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
@@ -148,6 +149,12 @@ export function AdminPlansPage() {
 
   return (
     <main className="mx-auto flex w-full max-w-5xl flex-col gap-6 px-4 pb-20 pt-8 sm:px-6">
+      <PageBreadcrumb
+        items={[
+          { href: '/pricing', label: { en: 'Pricing', vi: 'Bảng giá' } },
+          { label: { en: 'Plan limits & prices', vi: 'Hạn mức & giá gói' } },
+        ]}
+      />
       <header className="flex flex-col gap-1">
         <h1 className="text-2xl font-extrabold tracking-tight text-ink sm:text-3xl">{t({ vi: 'Hạn mức & giá gói', en: 'Plan limits & prices' })}</h1>
         <p className="max-w-prose text-sm text-ink-muted">

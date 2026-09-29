@@ -3,14 +3,13 @@
 import type { CSSProperties } from 'react';
 import Link from 'next/link';
 import { useLanguage } from '@scipal/hooks';
-import { SubjectProvider } from '@scipal/ui';
 import type { EducationLevel } from '../landing/educationLevel';
 import type { LandingCatalog, LandingSubject } from '../landing/getLandingData';
 import { getSubjectAction } from './subjectAvailability';
 import styles from './subject-marquee.module.css';
 
 // The landing page's subjects as one strip that keeps running sideways. Subjects with lessons lead
-// and stand out; the rest follow as quieter cards. Readers and keyboards get each subject once: the
+// and stand out in warm sun → coral; the rest follow as quieter cards. Readers and keyboards get each subject once: the
 // copies that make the loop seamless are aria-hidden and inert. Hover or focus pauses the strip;
 // with reduced motion it stops and scrolls by hand instead.
 
@@ -46,19 +45,17 @@ function MarqueeCard({ subject }: { subject: LandingSubject }) {
   }
 
   return (
-    <SubjectProvider slug={subject.slug} accentColor={subject.accent_color ?? undefined}>
-      <article className={`${styles.card} ${styles.live}`}>
-        <span className={styles.icon} aria-hidden="true">{subject.icon}</span>
-        <span className={styles.names}>
-          <h3>{name}</h3>
-          <span lang={lang === 'en' ? 'vi' : 'en'}>{other}</span>
-        </span>
-        <Link href={href} className={styles.go}>
-          {t({ en: 'Start now', vi: 'Học ngay' })}
-          <span aria-hidden="true">→</span>
-        </Link>
-      </article>
-    </SubjectProvider>
+    <article className={`${styles.card} ${styles.live}`}>
+      <span className={styles.icon} aria-hidden="true">{subject.icon}</span>
+      <span className={styles.names}>
+        <h3>{name}</h3>
+        <span lang={lang === 'en' ? 'vi' : 'en'}>{other}</span>
+      </span>
+      <Link href={href} className={styles.go}>
+        {t({ en: 'Start now', vi: 'Học ngay' })}
+        <span aria-hidden="true">→</span>
+      </Link>
+    </article>
   );
 }
 
