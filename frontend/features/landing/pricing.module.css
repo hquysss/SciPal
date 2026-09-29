@@ -237,6 +237,8 @@
   position: absolute;
   z-index: -1;
   inset: -14%;
+  /* It spreads over the Monthly/Yearly switch above the card: never take clicks. */
+  pointer-events: none;
   border-radius: 50%;
   background: conic-gradient(from var(--aura-turn, 0deg), var(--sun), var(--coral), var(--sky), var(--sun));
   filter: blur(46px);
