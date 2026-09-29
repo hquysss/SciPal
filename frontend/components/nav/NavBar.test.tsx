@@ -26,6 +26,12 @@ describe('NavBar', () => {
     expect(html).not.toContain('Trực tuyến');
     expect(html).toMatch(/<a[^>]*href="\/subjects"[^>]*>Môn học<\/a>/);
   });
+
+  it('puts Pricing right after Home, before Subjects, in both menus', () => {
+    const html = renderToStaticMarkup(<NavBar />);
+    const order = [...html.matchAll(/<a[^>]*href="(\/|\/pricing|\/subjects)"[^>]*>(Trang chủ|Bảng giá|Môn học)<\/a>/g)].map((m) => m[1]);
+    expect(order.slice(0, 3)).toEqual(['/', '/pricing', '/subjects']);
+  });
 });
 
 describe('simulation request link', () => {
@@ -66,9 +72,9 @@ describe('primaryLinks', () => {
   it('leaves Profile to the account button on the desktop bar, keeps it in the mobile menu', () => {
     const desktop = primaryLinks('vi', true, 'desktop').map((l) => l.href);
     const mobile = primaryLinks('vi', true, 'mobile').map((l) => l.href);
-    expect(desktop).toEqual(['/glossary', '/exam', '/pricing', '/tutor', '/progress']);
-    expect(mobile).toEqual(['/glossary', '/exam', '/pricing', '/tutor', '/progress', '/profile']);
-    expect(primaryLinks('vi', false, 'desktop').map((l) => l.href)).toEqual(['/glossary', '/exam', '/pricing']);
+    expect(desktop).toEqual(['/glossary', '/exam', '/tutor', '/progress']);
+    expect(mobile).toEqual(['/glossary', '/exam', '/tutor', '/progress', '/profile']);
+    expect(primaryLinks('vi', false, 'desktop').map((l) => l.href)).toEqual(['/glossary', '/exam']);
   });
 
   it('gives students their classes; teachers keep theirs in the teacher menu', () => {
@@ -78,9 +84,9 @@ describe('primaryLinks', () => {
     expect(primaryLinks('vi', true, 'desktop', 'admin').map((l) => l.href)).not.toContain('/classes');
   });
 
-  it('keeps Pricing for everyone signed in, admins included (to check the page)', () => {
+  it('leaves Pricing to its own place after Home (shown to everyone, admins included)', () => {
     for (const role of ['student', 'teacher', 'admin']) {
-      expect(primaryLinks('vi', true, 'desktop', role).map((l) => l.href)).toContain('/pricing');
+      expect(primaryLinks('vi', true, 'desktop', role).map((l) => l.href)).not.toContain('/pricing');
     }
   });
 });

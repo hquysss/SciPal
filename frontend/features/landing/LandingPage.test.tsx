@@ -10,7 +10,7 @@ vi.mock('@scipal/hooks', () => ({
   useLanguage: () => ({ lang, t: (o: { en: string; vi: string }) => o[lang] }),
 }));
 vi.mock('next/dynamic', () => ({ default: () => () => null }));
-vi.mock('@/features/subjects/SubjectGrid', () => ({ SubjectGrid: () => <div data-subject-grid="" /> }));
+vi.mock('@/features/subjects/SubjectMarquee', () => ({ SubjectMarquee: () => <div data-subject-grid="" /> }));
 vi.mock('@/features/survey/DemandPollBanner', () => ({ DemandPollBanner: () => <div data-poll="" /> }));
 vi.mock('./hero/HeroStage', () => ({ HeroStage: ({ level }: { level: string }) => <div data-hero-stage={level} /> }));
 
@@ -51,6 +51,16 @@ describe('LandingPage', () => {
     expect(html).toContain('Môn học của bạn');
     expect(html).toContain('data-subject-grid');
     expect(html).toMatch(/<a[^>]*href="#mon-hoc"[^>]*>[\s\S]*?Bắt đầu học/);
+  });
+
+  it('closes with a lively call to action that holds the subject poll', () => {
+    lang = 'vi';
+    const html = render('upper_secondary');
+    const cta = html.match(/<section[^>]*aria-labelledby="start-title"[\s\S]*?<\/section>\s*<\/main>/)?.[0] ?? '';
+    expect(cta).toContain('Mọi bài học đều miễn phí');
+    expect(cta).toMatch(/<a[^>]*href="\/tutor"[^>]*>[\s\S]*?Hỏi Gia sư AI/);
+    expect(cta).toContain('data-poll');
+    expect(cta.match(/data-cta-float/g)?.length).toBeGreaterThanOrEqual(4);
   });
 
   it('no "in preparation" copy at any level and the poll on every level', () => {

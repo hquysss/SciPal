@@ -8,7 +8,7 @@ import type { LandingCatalog } from './getLandingData';
 
 vi.mock('@scipal/hooks', () => ({ useLanguage: () => ({ lang: 'vi', t: (o: { vi: string }) => o.vi }) }));
 vi.mock('next/dynamic', () => ({ default: () => () => null }));
-vi.mock('@/features/subjects/SubjectGrid', () => ({ SubjectGrid: () => <div data-subject-grid="" /> }));
+vi.mock('@/features/subjects/SubjectMarquee', () => ({ SubjectMarquee: () => <div data-subject-grid="" /> }));
 vi.mock('@/features/survey/DemandPollBanner', () => ({ DemandPollBanner: () => <div data-poll="" /> }));
 vi.mock('./hero/HeroStage', () => ({ HeroStage: () => <div /> }));
 
@@ -37,6 +37,15 @@ describe('PricingSection (landing)', () => {
     expect(html).toContain('href="/pricing"');
     expect(html).not.toContain('Giáo viên Pro');
     expect(countRawColors(html).total).toBe(0);
+  });
+
+  it('crowns the paid plan and plays its entrance each time it scrolls into view', () => {
+    const html = renderToStaticMarkup(<PricingSection catalog={catalog(true)} />);
+    expect(html).toContain('Khuyên dùng');
+    // Off screen until the observer says otherwise; the entrance keys off this attribute.
+    expect(html).toMatch(/<section[^>]*data-inview="false"/);
+    // The counting number is decoration; readers get the price once.
+    expect(html).toMatch(/<span class="[^"]*srOnly[^"]*">39\.000 ₫<\/span>/);
   });
 
   it('switches to teachers and to the yearly price paid up front', () => {

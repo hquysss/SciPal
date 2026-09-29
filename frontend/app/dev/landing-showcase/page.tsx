@@ -1,6 +1,7 @@
 import { notFound } from 'next/navigation';
 import { getAccentColor } from '@scipal/ui';
 import { LandingPage } from '../../../features/landing/LandingPage';
+import { fetchCatalog } from '@/features/billing/billingApi';
 import { parseEducationLevel } from '../../../features/landing/educationLevel';
 import type { InformaticsAvailability, LandingSubject } from '../../../features/landing/getLandingData';
 import type { EducationLevel } from '../../../features/landing/educationLevel';
@@ -91,12 +92,16 @@ export default async function LandingShowcase({
     ? { kind: 'error' as const }
     : { kind: 'ready' as const, subjects: catalogs[level] };
 
+  // The real plan catalog (public), so the pricing section shows as on the landing page.
+  const pricing = await fetchCatalog();
+
   return (
     <LandingPage
       level={level}
       levelSource={params.scope === 'account' ? 'account' : 'session'}
       catalog={catalog}
       informatics={informatics}
+      pricing={pricing}
     />
   );
 }

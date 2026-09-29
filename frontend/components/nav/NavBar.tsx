@@ -57,8 +57,13 @@ export function tutorLink(signedIn: boolean, lang: 'en' | 'vi') {
   return signedIn ? { href: '/tutor', label: lang === 'en' ? 'AI tutor' : 'Gia sư AI' } : null;
 }
 
+/** Pricing sits right after Home, for everyone (admins keep it to check the page). */
+export function pricingLink(lang: 'en' | 'vi') {
+  return { href: '/pricing', label: lang === 'en' ? 'Pricing' : 'Bảng giá' };
+}
+
 /**
- * The main links after Home and Subjects. On the desktop bar Profile is the account button (the
+ * The main links after Home, Pricing and Subjects. On the desktop bar Profile is the account button (the
  * avatar), which keeps a full admin bar from overflowing at 1366px; the mobile menu lists it.
  */
 export function primaryLinks(lang: 'en' | 'vi', signedIn: boolean, place: 'desktop' | 'mobile', role: string | null = null) {
@@ -68,7 +73,6 @@ export function primaryLinks(lang: 'en' | 'vi', signedIn: boolean, place: 'deskt
   return [
     { href: '/glossary', label: label('Glossary', 'Từ điển') },
     { href: '/exam', label: label('Exams', 'Thi thử') },
-    { href: '/pricing', label: label('Pricing', 'Bảng giá') },
     ...(signedIn
       ? [
           tutorLink(true, lang)!,
@@ -245,6 +249,7 @@ export function NavBar({ currentSubject }: NavBarProps) {
   const subjectsActive = pathname === '/subjects' || Boolean(currentSubject ?? params?.subject);
   const accountName = displayName ?? (lang === 'en' ? 'Account' : 'Tài khoản');
   const navLang = lang === 'en' ? 'en' : 'vi';
+  const pricing = pricingLink(navLang);
   const links = primaryLinks(navLang, Boolean(appRole), 'desktop', appRole);
   const mobileLinks = primaryLinks(navLang, Boolean(appRole), 'mobile', appRole);
   const { teacherLinks, adminLinks } = roleLinks(appRole, lang === 'en' ? 'en' : 'vi', openRequests);
@@ -280,6 +285,14 @@ export function NavBar({ currentSubject }: NavBarProps) {
             className={navStyles.navLink}
           >
             {homeLinkLabel}
+          </Link>
+          <Link
+            href={pricing.href}
+            prefetch={pathname !== '/'}
+            aria-current={pathname === pricing.href ? 'page' : undefined}
+            className={navStyles.navLink}
+          >
+            {pricing.label}
           </Link>
           <Link
             href="/subjects"
@@ -444,6 +457,15 @@ export function NavBar({ currentSubject }: NavBarProps) {
               className={`block rounded-xl px-4 py-3 text-sm font-semibold transition hover:bg-surface-sunken focus-visible:outline focus-visible:outline-2 focus-visible:outline-focus ${pathname === '/' ? 'bg-surface-sunken text-action' : 'text-ink'}`}
             >
               {homeLinkLabel}
+            </Link>
+            <Link
+              href={pricing.href}
+              prefetch={pathname !== '/'}
+              onClick={() => setMobileOpen(false)}
+              aria-current={pathname === pricing.href ? 'page' : undefined}
+              className={`block rounded-xl px-4 py-3 text-sm font-semibold transition hover:bg-surface-sunken focus-visible:outline focus-visible:outline-2 focus-visible:outline-focus ${pathname === pricing.href ? 'bg-surface-sunken text-action' : 'text-ink'}`}
+            >
+              {pricing.label}
             </Link>
             <Link
               href="/subjects"

@@ -1,0 +1,120 @@
+/* The poll strip sits on the dark closing panel (--nav): frosted glass, light ink, a light button. */
+
+.poll {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 1rem 1.25rem;
+  border: 1px solid color-mix(in srgb, var(--nav-ink) 22%, transparent);
+  border-radius: 1.4rem;
+  padding: 1rem 1rem 1rem 1.1rem;
+  background: color-mix(in srgb, var(--nav-ink) 9%, transparent);
+  -webkit-backdrop-filter: blur(14px);
+  backdrop-filter: blur(14px);
+  color: var(--nav-ink);
+  text-align: left;
+}
+
+.icon {
+  display: grid;
+  flex: none;
+  width: 2.9rem;
+  height: 2.9rem;
+  place-items: center;
+  border-radius: 0.95rem;
+  background: color-mix(in srgb, var(--nav-ink) 14%, transparent);
+  animation: poll-nod 3.2s ease-in-out infinite;
+}
+
+.copy {
+  display: grid;
+  flex: 1 1 16rem;
+  gap: 0.2rem;
+  min-width: 0;
+}
+
+.title {
+  margin: 0;
+  font-size: clamp(1rem, 1.6vw, 1.15rem);
+  font-weight: 800;
+  line-height: 1.3;
+}
+
+.note {
+  margin: 0;
+  color: color-mix(in srgb, var(--nav-ink) 78%, transparent);
+  font-size: 0.9rem;
+  line-height: 1.45;
+}
+
+.vote {
+  display: inline-flex;
+  min-height: 2.9rem;
+  align-items: center;
+  gap: 0.45rem;
+  border: 0;
+  border-radius: 999px;
+  padding: 0 1.25rem;
+  background: var(--nav-ink);
+  color: var(--nav);
+  font: inherit;
+  font-size: 0.95rem;
+  font-weight: 750;
+  cursor: pointer;
+  transition: transform 180ms ease-out, background-color 180ms ease-out;
+}
+
+.vote svg {
+  transition: translate 180ms ease-out;
+}
+
+.vote:hover {
+  background: color-mix(in srgb, var(--nav-ink) 88%, var(--nav));
+  transform: translateY(-2px);
+}
+
+.vote:hover svg,
+.vote:focus-visible svg {
+  translate: 3px 0;
+}
+
+.vote:focus-visible {
+  outline: 3px solid var(--nav-ink);
+  outline-offset: 3px;
+}
+
+@keyframes poll-nod {
+  0%,
+  70%,
+  100% {
+    rotate: 0deg;
+  }
+  78% {
+    rotate: -10deg;
+  }
+  86% {
+    rotate: 8deg;
+  }
+}
+
+@media (max-width: 30rem) {
+  .vote {
+    width: 100%;
+    justify-content: center;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .icon {
+    animation: none;
+  }
+
+  .vote,
+  .vote svg {
+    transition: none;
+  }
+
+  .vote:hover {
+    transform: none;
+  }
+}
