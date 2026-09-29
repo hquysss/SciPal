@@ -242,3 +242,72 @@ describe('BILLING_CHECKOUT_DISABLED (rollback switch)', () => {
     }
   });
 });
+
+describe('POST /api/billing/orders/:id/cancel', () => {
+  const stored = (patch: Record<string, unknown> = {}) => ({ id: ORDER, user_id: student.id, plan_code: 'student_plus', interval: 'month', amount_vnd: 39000, status: 'pending', expires_at: future(), paid_at: null, ...patch });
+  const openAttempt = [{ id: 'attempt-1', provider: 'payos', provider_reference: '1234567890', status: 'pending', checkout_url: 'https://pay.payos.vn/web/x' }];
+  const pending = () => vi.fn().mockResolvedValue({ status: 'PENDING', amountPaid: 0, paymentLinkId: 'x', transactions: [] });
+  const cancel = (app: Awaited<ReturnType<typeof build>>) => app.inject({ method: 'POST', url: `/api/billing/orders/${ORDER}/cancel` });
+
+  it('cancels the payOS link first, then the attempt and the order', async () => {
+    const payos = fakePayos({ getPaymentLink: pending() });
+    const attemptUpdate = ok();
+    const orderUpdate = ok([{ id: ORDER }]);
+    const app = await build(student, { billing_orders: [ok(stored()), orderUpdate], billing_payment_attempts: [ok(openAttempt), attemptUpdate] }, payos);
+    const res = await cancel(app);
+    expect(res.statusCode).toBe(200);
+    expect(res.json()).toMatchObject({ id: ORDER, status: 'cancelled', checkoutUrl: null });
+    expect(payos.cancelPaymentLink).toHaveBeenCalledWith(1234567890);
+    expect(attemptUpdate.updated[0]).toMatchObject({ status: 'cancelled' });
+    expect(orderUpdate.updated[0]).toEqual({ status: 'cancelled' });
+    // Only an order still pending is cancelled (a payment could land meanwhile).
+    expect(orderUpdate.eqCalls).toEqual(expect.arrayContaining([['id', ORDER], ['status', 'pending']]));
+    await app.close();
+  });
+
+  it('does not cancel an order that was just paid, and grants it instead', async () => {
+    const payos = fakePayos({ getPaymentLink: vi.fn().mockResolvedValue({ status: 'PAID', amountPaid: 39000, paymentLinkId: 'x', transactions: [{ reference: 'FT9', amount: 39000, paidAt: '2026-09-29T03:15:00.000Z' }] }) });
+    const app = await build(student, {
+      billing_orders: [ok(stored()), ok(stored({ status: 'paid', paid_at: '2026-09-29T03:15:00.000Z' }))],
+      billing_payment_attempts: ok(openAttempt),
+      'rpc:billing_apply_payment': ok('applied'),
+    }, payos);
+    const res = await cancel(app);
+    expect(res.statusCode).toBe(409);
+    expect(res.json()).toMatchObject({ code: 'ORDER_NOT_PENDING', status: 'paid' });
+    expect(payos.cancelPaymentLink).not.toHaveBeenCalled();
+    await app.close();
+  });
+
+  it('changes nothing when payOS cannot cancel the link', async () => {
+    const payos = fakePayos({ getPaymentLink: pending(), cancelPaymentLink: vi.fn().mockRejectedValue(new Error('payOS refused (500)')) });
+    const app = await build(student, { billing_orders: ok(stored()), billing_payment_attempts: ok(openAttempt) }, payos);
+    const res = await cancel(app);
+    expect(res.statusCode).toBe(502);
+    expect(res.json().code).toBe('PAYMENT_PROVIDER_ERROR');
+    await app.close();
+  });
+
+  it('is only for the owner of a pending order', async () => {
+    const other_ = await build(other, { billing_orders: ok(stored()) });
+    expect((await cancel(other_)).statusCode).toBe(404);
+    await other_.close();
+    const paid = await build(student, { billing_orders: ok(stored({ status: 'paid' })), billing_payment_attempts: ok([]) });
+    expect((await cancel(paid)).statusCode).toBe(409);
+    await paid.close();
+  });
+
+  it('shows the order cancelled when the buyer cancelled on the payOS page', async () => {
+    const payos = fakePayos({ getPaymentLink: vi.fn().mockResolvedValue({ status: 'CANCELLED', amountPaid: 0, paymentLinkId: 'x', transactions: [] }) });
+    const orderUpdate = ok([{ id: ORDER }]);
+    const app = await build(student, {
+      billing_orders: [ok(stored()), orderUpdate, ok(stored({ status: 'cancelled' }))],
+      billing_payment_attempts: ok(openAttempt),
+      'rpc:billing_apply_payment': ok('recorded'),
+    }, payos);
+    const res = await app.inject({ method: 'GET', url: `/api/billing/orders/${ORDER}` });
+    expect(res.json()).toMatchObject({ status: 'cancelled', checkoutUrl: null });
+    expect(orderUpdate.updated[0]).toEqual({ status: 'cancelled' });
+    await app.close();
+  });
+});

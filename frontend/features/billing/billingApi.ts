@@ -38,6 +38,8 @@ export type OrderView = {
 export const startCheckout = (priceId: string, idempotencyKey: string): Promise<ApiResult<CheckoutAnswer>> =>
   authoringCall<CheckoutAnswer>('/api/billing/checkout', 'POST', { priceId, provider: 'payos', idempotencyKey, autoRenew: false });
 
+export const cancelOrder = (id: string): Promise<ApiResult<OrderView>> => authoringCall<OrderView>(`/api/billing/orders/${encodeURIComponent(id)}/cancel`, 'POST');
+
 export const fetchOrder = (id: string): Promise<ApiResult<OrderView>> => authoringCall<OrderView>(`/api/billing/orders/${encodeURIComponent(id)}`, 'GET');
 
 export type Transaction = { id: string; planCode: string; interval: string; amountVnd: number; status: string; createdAt: string; paidAt: string | null };

@@ -66,8 +66,8 @@ describe('primaryLinks', () => {
   it('leaves Profile to the account button on the desktop bar, keeps it in the mobile menu', () => {
     const desktop = primaryLinks('vi', true, 'desktop').map((l) => l.href);
     const mobile = primaryLinks('vi', true, 'mobile').map((l) => l.href);
-    expect(desktop).toEqual(['/glossary', '/exam', '/tutor', '/progress']);
-    expect(mobile).toEqual(['/glossary', '/exam', '/tutor', '/progress', '/profile']);
+    expect(desktop).toEqual(['/glossary', '/exam', '/pricing', '/tutor', '/progress']);
+    expect(mobile).toEqual(['/glossary', '/exam', '/pricing', '/tutor', '/progress', '/profile']);
     expect(primaryLinks('vi', false, 'desktop').map((l) => l.href)).toEqual(['/glossary', '/exam', '/pricing']);
   });
 
@@ -76,6 +76,12 @@ describe('primaryLinks', () => {
     expect(primaryLinks('en', true, 'mobile', 'student')).toContainEqual({ href: '/classes', label: 'My classes' });
     expect(primaryLinks('vi', true, 'desktop', 'teacher').map((l) => l.href)).not.toContain('/classes');
     expect(primaryLinks('vi', true, 'desktop', 'admin').map((l) => l.href)).not.toContain('/classes');
+  });
+
+  it('keeps Pricing for everyone signed in, admins included (to check the page)', () => {
+    for (const role of ['student', 'teacher', 'admin']) {
+      expect(primaryLinks('vi', true, 'desktop', role).map((l) => l.href)).toContain('/pricing');
+    }
   });
 });
 

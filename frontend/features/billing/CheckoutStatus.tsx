@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { useLanguage } from '@scipal/hooks';
 import { Alert } from '@/components/ui/alert';
 import { buttonVariants } from '@/components/ui/button';
-import { PLAN_NAME, fetchOrder, formatVnd, type OrderView } from './billingApi';
+import { PLAN_NAME, cancelOrder, fetchOrder, formatVnd, type OrderView } from './billingApi';
 
 type Bilingual = { vi: string; en: string };
 export type CheckoutState = { status: 'loading' } | { status: 'error'; message: Bilingual } | { status: 'ready'; order: OrderView };
@@ -15,7 +15,29 @@ const TIME = new Intl.DateTimeFormat('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh', ho
 const POLL_DELAYS_MS = [3000, 3000, 5000, 5000, 10000];
 const POLL_FOR_MS = 10 * 60_000;
 
-export function CheckoutStatusView({ state, onCheck, checking = false }: { state: CheckoutState; onCheck?: () => void; checking?: boolean }) {
+/** "mm:ss" left until the order expires, never below zero. */
+export function countdown(expiresAt: string, now: Date): string {
+  const seconds = Math.max(0, Math.floor((new Date(expiresAt).getTime() - now.getTime()) / 1000));
+  return `${String(Math.floor(seconds / 60)).padStart(2, '0')}:${String(seconds % 60).padStart(2, '0')}`;
+}
+
+export function CheckoutStatusView({
+  state,
+  onCheck,
+  onCancel,
+  checking = false,
+  cancelling = false,
+  notice = null,
+  now = new Date(),
+}: {
+  state: CheckoutState;
+  onCheck?: () => void;
+  onCancel?: () => void;
+  checking?: boolean;
+  cancelling?: boolean;
+  notice?: Bilingual | null;
+  now?: Date;
+}) {
   const { t } = useLanguage();
 
   if (state.status === 'loading') {
@@ -46,8 +68,13 @@ export function CheckoutStatusView({ state, onCheck, checking = false }: { state
         <p className="text-2xl font-extrabold tabular-nums text-ink">{formatVnd(order.amountVnd)}</p>
       </section>
 
+      {notice && <Alert tone="danger">{t(notice)}</Alert>}
+
       {order.status === 'pending' && (
         <Alert title={t({ vi: 'Đang chờ xác nhận thanh toán', en: 'Waiting for the payment to be confirmed' })}>
+          <p className="text-2xl font-extrabold tabular-nums" aria-live="off">
+            {t({ vi: `Còn ${countdown(order.expiresAt, now)}`, en: `${countdown(order.expiresAt, now)} left` })}
+          </p>
           <p>
             {t({
               vi: `Quét mã QR trên trang payOS và chuyển khoản trước ${TIME.format(new Date(order.expiresAt))}. Trang này tự cập nhật khi ngân hàng xác nhận.`,
@@ -61,8 +88,13 @@ export function CheckoutStatusView({ state, onCheck, checking = false }: { state
               </a>
             )}
             {onCheck && (
-              <button type="button" onClick={onCheck} disabled={checking} className={buttonVariants({ variant: 'outline' })}>
+              <button type="button" onClick={onCheck} disabled={checking || cancelling} className={buttonVariants({ variant: 'outline' })}>
                 {checking ? t({ vi: 'Đang kiểm tra…', en: 'Checking…' }) : t({ vi: 'Kiểm tra lại', en: 'Check again' })}
+              </button>
+            )}
+            {onCancel && (
+              <button type="button" onClick={onCancel} disabled={cancelling} className={buttonVariants({ variant: 'ghost' })}>
+                {cancelling ? t({ vi: 'Đang hủy…', en: 'Cancelling…' }) : t({ vi: 'Hủy giao dịch', en: 'Cancel payment' })}
               </button>
             )}
           </div>
@@ -79,7 +111,14 @@ export function CheckoutStatusView({ state, onCheck, checking = false }: { state
       )}
 
       {(order.status === 'expired' || order.status === 'cancelled' || order.status === 'failed') && (
-        <Alert tone="warning" title={order.status === 'expired' ? t({ vi: 'Đơn đã hết hạn', en: 'This order has expired' }) : t({ vi: 'Đơn chưa được thanh toán', en: 'This order was not paid' })}>
+        <Alert
+          tone="warning"
+          title={order.status === 'expired'
+            ? t({ vi: 'Đơn đã hết hạn', en: 'This order has expired' })
+            : order.status === 'cancelled'
+              ? t({ vi: 'Đã hủy giao dịch', en: 'Payment cancelled' })
+              : t({ vi: 'Đơn chưa được thanh toán', en: 'This order was not paid' })}
+        >
           <p>
             {t({
               vi: 'Không có khoản nào bị trừ cho đơn này. Nếu bạn đã chuyển khoản, SciPal sẽ đối soát và liên hệ lại.',
@@ -107,8 +146,12 @@ export function CheckoutStatusView({ state, onCheck, checking = false }: { state
 }
 
 export function CheckoutStatus({ orderId }: { orderId: string }) {
+  const { t } = useLanguage();
   const [state, setState] = useState<CheckoutState>({ status: 'loading' });
   const [checking, setChecking] = useState(false);
+  const [cancelling, setCancelling] = useState(false);
+  const [notice, setNotice] = useState<Bilingual | null>(null);
+  const [now, setNow] = useState(() => new Date());
   const alive = useRef(true);
 
   const load = useCallback(async () => {
@@ -141,5 +184,36 @@ export function CheckoutStatus({ orderId }: { orderId: string }) {
     };
   }, [load]);
 
-  return <CheckoutStatusView state={state} checking={checking} onCheck={() => void load()} />;
+  // The countdown ticks every second while the order waits.
+  const pending = state.status === 'ready' && state.order.status === 'pending';
+  useEffect(() => {
+    if (!pending) return;
+    const clock = setInterval(() => setNow(new Date()), 1000);
+    return () => clearInterval(clock);
+  }, [pending]);
+
+  const cancel = async () => {
+    if (!window.confirm(t({ vi: 'Hủy giao dịch này? Nếu đã chuyển khoản, đừng hủy — hãy bấm Kiểm tra lại.', en: 'Cancel this payment? If you already transferred the money, do not cancel — press Check again.' }))) return;
+    setCancelling(true);
+    setNotice(null);
+    const result = await cancelOrder(orderId);
+    setCancelling(false);
+    if (result.ok) setState({ status: 'ready', order: result.data });
+    else {
+      setNotice(result.error);
+      await load();
+    }
+  };
+
+  return (
+    <CheckoutStatusView
+      state={state}
+      checking={checking}
+      cancelling={cancelling}
+      notice={notice}
+      now={now}
+      onCheck={() => void load()}
+      onCancel={() => void cancel()}
+    />
+  );
 }

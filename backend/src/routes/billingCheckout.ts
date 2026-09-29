@@ -18,6 +18,7 @@ const INVALID = err('INVALID_CHECKOUT', 'Yêu cầu thanh toán không hợp l�
 const CLOSED = err('CHECKOUT_CLOSED', 'Thanh toán chưa mở. Thử lại sau.', 'Checkout is not open yet. Try again later.');
 const NOT_FOUND = err('ORDER_NOT_FOUND', 'Không tìm thấy đơn hàng.', 'Order not found.');
 const UNAVAILABLE = err('BILLING_UNAVAILABLE', 'Chưa xử lý được thanh toán. Thử lại sau.', 'Payment could not be processed. Try again later.');
+const NOT_PENDING = err('ORDER_NOT_PENDING', 'Đơn này không còn chờ thanh toán nên không hủy được.', 'This order is no longer waiting for payment, so it cannot be cancelled.');
 const PROVIDER = err('PAYMENT_PROVIDER_ERROR', 'Cổng thanh toán chưa tạo được mã QR. Thử lại sau ít phút.', 'The payment provider could not create the QR code. Try again in a few minutes.');
 const REFUSALS: Record<string, [number, ErrorBody]> = {
   PLAN_NOT_FOR_ROLE: [403, err('PLAN_NOT_FOR_ROLE', 'Gói này dành cho vai trò khác với tài khoản của bạn.', 'This plan is for a different role than your account.')],
@@ -135,15 +136,15 @@ export const billingCheckoutRoutes: FastifyPluginAsync<{ payos?: PayosClient | n
   });
 
   /** Applies what payOS itself reports for a pending attempt (a webhook may be late or lost). */
-  const syncWithPayos = async (request: FastifyRequest, attempt: Attempt) => {
-    if (!payos) return false;
+  const syncWithPayos = async (request: FastifyRequest, attempt: Attempt): Promise<{ changed: boolean; providerStatus: string | null }> => {
+    if (!payos) return { changed: false, providerStatus: null };
     const orderCode = Number(attempt.provider_reference);
     let status;
     try {
       status = await payos.getPaymentLink(orderCode);
     } catch (error) {
       request.log.warn({ err: error, orderCode }, 'payOS status query failed');
-      return false;
+      return { changed: false, providerStatus: null };
     }
     const calls: Array<Record<string, unknown>> = [];
     if (status.status === 'PAID') {
@@ -158,47 +159,103 @@ export const billingCheckoutRoutes: FastifyPluginAsync<{ payos?: PayosClient | n
       const { error } = await app.supabase!.rpc('billing_apply_payment', { p_provider: 'payos', p_reference: attempt.provider_reference, ...call, p_event_type: 'query' });
       if (error) {
         request.log.error({ err: error, orderCode }, 'Payment from the payOS query was not applied');
-        return false;
+        return { changed: false, providerStatus: status.status };
       }
     }
-    return calls.length > 0;
+    return { changed: calls.length > 0, providerStatus: status.status };
+  };
+
+  const readOrder = async (id: string) => {
+    const { data, error } = await app.supabase!
+      .from('billing_orders')
+      .select('id, user_id, plan_code, interval, amount_vnd, status, expires_at, paid_at')
+      .eq('id', id)
+      .maybeSingle();
+    if (error) throw error;
+    return data as StoredOrder | null;
+  };
+
+  /** Cancels an order only while it is still pending: a payment landing meanwhile wins. */
+  const markCancelled = async (id: string) => {
+    const { data, error } = await app.supabase!.from('billing_orders').update({ status: 'cancelled' }).eq('id', id).eq('status', 'pending').select('id');
+    if (error) throw error;
+    return Array.isArray(data) && data.length > 0;
+  };
+
+  const orderView = (order: StoredOrder, open: Attempt | undefined) => {
+    const expired = order.status === 'pending' && new Date(order.expires_at) <= new Date();
+    const status = expired ? 'expired' : order.status;
+    return {
+      id: order.id,
+      planCode: order.plan_code,
+      interval: order.interval,
+      amountVnd: order.amount_vnd,
+      status,
+      expiresAt: new Date(order.expires_at).toISOString(),
+      paidAt: order.paid_at ? new Date(order.paid_at).toISOString() : null,
+      checkoutUrl: status === 'pending' ? open?.checkout_url ?? null : null,
+    };
   };
 
   app.get('/api/billing/orders/:id', async (request, reply) => {
     const user = userOf(request)!;
     const { id } = request.params as { id: string };
     if (!UUID.test(id)) return reply.code(404).send(NOT_FOUND);
-    const readOrder = async () => {
-      const { data, error } = await app.supabase!
-        .from('billing_orders')
-        .select('id, user_id, plan_code, interval, amount_vnd, status, expires_at, paid_at')
-        .eq('id', id)
-        .maybeSingle();
-      if (error) throw error;
-      return data as StoredOrder | null;
-    };
     try {
-      let order = await readOrder();
+      let order = await readOrder(id);
       if (!order || order.user_id !== user.id) return reply.code(404).send(NOT_FOUND);
       const attempts = await attemptsOf(order.id);
       const open = attempts.find((a) => a.provider === 'payos' && a.status === 'pending');
-      if (order.status === 'pending' && open && (await syncWithPayos(request, open))) {
-        order = (await readOrder()) ?? order;
+      if (order.status === 'pending' && open) {
+        const sync = await syncWithPayos(request, open);
+        // Cancelled on the payOS page: the order is cancelled too.
+        const cancelled = sync.providerStatus === 'CANCELLED' && (await markCancelled(order.id));
+        if (sync.changed || cancelled) order = (await readOrder(id)) ?? order;
       }
-      const expired = order.status === 'pending' && new Date(order.expires_at) <= new Date();
-      const status = expired ? 'expired' : order.status;
-      return {
-        id: order.id,
-        planCode: order.plan_code,
-        interval: order.interval,
-        amountVnd: order.amount_vnd,
-        status,
-        expiresAt: new Date(order.expires_at).toISOString(),
-        paidAt: order.paid_at ? new Date(order.paid_at).toISOString() : null,
-        checkoutUrl: status === 'pending' ? open?.checkout_url ?? null : null,
-      };
+      return orderView(order, open);
     } catch (error) {
       request.log.error({ err: error }, 'Order could not be read');
+      return reply.code(503).send(UNAVAILABLE);
+    }
+  });
+
+  // The buyer gives up a pending order. payOS is asked first: money already sent is applied, and
+  // the link is cancelled there before the order is cancelled here.
+  app.post('/api/billing/orders/:id/cancel', async (request, reply) => {
+    const user = userOf(request)!;
+    const { id } = request.params as { id: string };
+    if (!UUID.test(id)) return reply.code(404).send(NOT_FOUND);
+    try {
+      let order = await readOrder(id);
+      if (!order || order.user_id !== user.id) return reply.code(404).send(NOT_FOUND);
+      const notPending = (o: StoredOrder) => reply.code(409).send({ ...NOT_PENDING, status: orderView(o, undefined).status });
+      if (order.status !== 'pending') return notPending(order);
+      const attempts = await attemptsOf(order.id);
+      const open = attempts.find((a) => a.provider === 'payos' && a.status === 'pending');
+      if (open) {
+        const sync = await syncWithPayos(request, open);
+        if (sync.changed) {
+          order = (await readOrder(id)) ?? order;
+          if (order.status !== 'pending') return notPending(order);
+        }
+        if (sync.providerStatus !== 'CANCELLED' && payos) {
+          try {
+            await payos.cancelPaymentLink(Number(open.provider_reference));
+          } catch (error) {
+            request.log.warn({ err: error, orderId: id }, 'payOS could not cancel the payment link');
+            return reply.code(502).send(PROVIDER);
+          }
+        }
+        const { error } = await app.supabase!.from('billing_payment_attempts').update({ status: 'cancelled', updated_at: new Date().toISOString() }).eq('id', open.id);
+        if (error) throw error;
+      }
+      if (!(await markCancelled(id))) {
+        const latest = (await readOrder(id)) ?? order;
+        return notPending(latest);
+      }
+      return orderView({ ...order, status: 'cancelled' }, undefined);
+    } catch (error) {
+      request.log.error({ err: error }, 'Order could not be cancelled');
       return reply.code(503).send(UNAVAILABLE);
     }
   });
