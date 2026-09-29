@@ -1,8 +1,11 @@
-import type { Metadata } from 'next';
+import type { Metadata, Viewport } from 'next';
 import Script from "next/script";
 import { Be_Vietnam_Pro, JetBrains_Mono } from 'next/font/google';
 import './globals.css';
 import { TabTitle } from '@/components/nav/TabTitle';
+import { OfflineBanner } from '@/components/pwa/OfflineBanner';
+import { PwaRegister } from '@/components/pwa/PwaRegister';
+import { APP_THEME_COLOR } from '@/lib/pwa/brand';
 import { NavBar } from '@/components/nav/NavBar';
 import { GuestTrialBanner } from '@/features/guest/GuestTrialBanner';
 import { renderThemeCss } from '@scipal/ui';
@@ -20,11 +23,15 @@ export const metadata: Metadata = {
   // A page sets its English name; the home and sign-in pages show SciPal alone.
   title: { default: 'SciPal', template: '%s | SciPal' },
   description: 'Nền tảng học tập song ngữ cho học sinh THPT Việt Nam',
+  appleWebApp: { capable: true, title: 'SciPal', statusBarStyle: 'default' },
   icons: {
     icon: '/favicon.svg',
-    apple: '/favicon.svg',
+    apple: '/icons/apple-touch-icon.png',
   },
 };
+
+// Installed on a phone: opens full screen, the status bar in the brand green.
+export const viewport: Viewport = { themeColor: APP_THEME_COLOR };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -61,7 +68,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <div data-app-shell="" data-level="neutral" suppressHydrationWarning className="flex min-h-screen flex-col">
           <script dangerouslySetInnerHTML={{ __html: buildBootScript({ darkMode: DARK_MODE_ENABLED }) }} />
           <TabTitle />
+          <PwaRegister />
           <NavBar />
+          <OfflineBanner />
           <GuestTrialBanner />
           <div className="flex flex-1 flex-col">{children}</div>
         </div>
