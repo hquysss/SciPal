@@ -58,3 +58,10 @@ Khi hoàn tất công việc:
 ## 5. Giới hạn sử dụng model
 - **Cấm gọi hoặc chọn Astra 6 (`gpt-6-astra`)** cho bất kỳ tác vụ SciPal nào, dù là model chính, agent phụ, reviewer hay agent được ủy quyền.
 - Nếu một cấu hình tự gán Astra 6, không khởi chạy lời gọi hoặc giao việc cho model đó; tiếp tục trực tiếp bằng model hiện tại hoặc chọn model khác.
+
+## 6. Pull request: gộp một PR, merge một lần
+Vercel gói Free chỉ cho 100 lượt deploy mỗi 24 giờ; mỗi lần push lên PR deploy cả frontend lẫn backend (2 lượt).
+- **Chỉ một PR mở tại một thời điểm.** Trước khi `gh pr create`, chạy `gh pr list --author @me --state open`; còn PR chưa merge thì commit tiếp vào nhánh của PR đó, không mở PR mới.
+- **Push ít nhất có thể.** Commit ở máy trong lúc làm; push một lần khi xong cả đợt yêu cầu, không push sau từng sửa nhỏ.
+- **Lỡ có hai PR:** merge nhánh này vào nhánh kia (không rebase, không force-push), đóng PR thừa với ghi chú "Đã gộp vào #N", cập nhật tiêu đề và mô tả PR còn lại.
+- Chỉ mở PR mới sau khi PR trước đã được merge.
