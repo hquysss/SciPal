@@ -64,6 +64,12 @@ describe('role menus', () => {
     expect(roleLinks('admin', 'vi', 0).adminLinks).toContainEqual({ href: '/admin/billing', label: 'Đối soát thanh toán' });
     expect(roleLinks('admin', 'en', 0).adminLinks).toContainEqual({ href: '/admin/billing', label: 'Payment reconciliation' });
   });
+
+  it('keeps glossary terms out of the menus: they open from the Glossary page', () => {
+    expect(roleLinks('teacher', 'vi', 0).teacherLinks.map((l) => l.href)).not.toContain('/teacher/terms');
+    expect(roleLinks('admin', 'vi', 0).adminLinks.map((l) => l.href)).not.toContain('/admin/terms');
+  });
+
 });
 
 describe('tutorLink', () => {

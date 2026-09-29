@@ -27,6 +27,14 @@ describe('staffLinks', () => {
     expect(hrefs('pricing', 'admin')).toEqual(['/admin/plans']);
     expect(hrefs('pricing', 'teacher')).toEqual([]);
   });
+
+  it('puts term writing on the Glossary: teachers send terms, admins also review them', () => {
+    expect(hrefs('glossary', 'teacher')).toEqual(['/teacher/terms']);
+    expect(staffLinks('glossary', 'teacher')[0].label.vi).toBe('Thêm thuật ngữ');
+    expect(hrefs('glossary', 'admin')).toEqual(['/admin/terms']);
+    expect(staffLinks('glossary', 'admin')[0].label.vi).toBe('Thêm & duyệt thuật ngữ');
+    expect(hrefs('glossary', 'student')).toEqual([]);
+  });
 });
 
 describe('StaffLinksView', () => {

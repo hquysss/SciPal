@@ -23,4 +23,27 @@ describe('Glossary', () => {
     expect(countRawColors(html).total).toBe(0);
     expect(html).not.toContain('uppercase');
   });
+
+  const TERM = {
+    id: 't1', term_en: 'algorithm', term_vi: 'thuật toán', part_of_speech: 'noun',
+    definition_en: 'Steps', definition_vi: 'Các bước', example_en: null, example_vi: null, subject_slug: 'informatics',
+    subject_name_en: 'Informatics', subject_name_vi: 'Tin học', subject_order: 1,
+  };
+
+  it('offers only subjects that have terms, with their counts, plus saved terms', () => {
+    const html = renderToStaticMarkup(<GlossarySearch terms={[TERM]} />);
+    expect(html).toContain('Informatics');
+    expect(html).not.toContain('>Chemistry');
+    expect(html).toMatch(/Informatics[^<]*<span[^>]*>1<\/span>/);
+    expect(html).toContain('Saved');
+  });
+
+  it('each term can be heard in both languages, saved and linked to', () => {
+    const html = renderToStaticMarkup(<GlossarySearch terms={[TERM]} />);
+    expect(html).toContain('aria-label="Listen: algorithm"');
+    expect(html).toContain('aria-label="Listen: thuật toán"');
+    expect(html).toContain('aria-label="Save algorithm"');
+    expect(html).toContain('aria-label="Copy link to algorithm"');
+    expect(countRawColors(html).total).toBe(0);
+  });
 });

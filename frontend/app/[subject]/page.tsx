@@ -6,6 +6,7 @@ import { TopicAccordion } from '@/features/lessons/TopicAccordion';
 import { getSubjectPage } from '@/features/lessons/subjectPageQuery';
 import { GradeHeading, InDevelopmentNotice } from '@/features/lessons/SubjectPageNotices';
 import { SubjectHeader } from '@/features/lessons/SubjectHeader';
+import { SaveOfflineButton } from '@/features/lessons/SaveOfflineButton';
 import { levelOfGrade } from '@/features/landing/educationLevel';
 import { LoadErrorNotice } from '@/components/feedback/LoadErrorNotice';
 import { pageTitle } from '@/lib/pageTitle';
@@ -51,6 +52,11 @@ export default async function SubjectPage({
     <SubjectProvider slug={subject.slug} accentColor={subject.accent_color}>
       <main className="mx-auto w-full max-w-4xl px-4 pb-20 pt-8 sm:px-6 sm:pt-12">
         <SubjectHeader subject={subject} topicCount={topicCount} lessonCount={lessonCount} />
+        {lessonCount > 0 && (
+          <div className="-mt-4 mb-8">
+            <SaveOfflineButton urls={gradeGroups.flatMap((group) => group.topics.flatMap((topic) => topic.lessons.map((lesson) => `/${subject.slug}/${lesson.slug}`)))} />
+          </div>
+        )}
         {gradeGroups.length === 0 ? (
           <InDevelopmentNotice />
         ) : (

@@ -25,14 +25,15 @@ function Tabs<Id extends string>({ tabs, active, label }: { tabs: Array<Tab<Id>>
   );
 }
 
-export type TeacherArea = 'lessons' | 'simulations';
+export type TeacherArea = 'lessons' | 'simulations' | 'terms';
 
 const AREAS: Array<Tab<TeacherArea>> = [
   { id: 'lessons', href: '/teacher/lessons', label: { en: 'Lessons', vi: 'Bài giảng' } },
   { id: 'simulations', href: '/teacher/simulation-requests', label: { en: 'Simulation requests', vi: 'Đề xuất mô phỏng' } },
+  { id: 'terms', href: '/teacher/terms', label: { en: 'Glossary terms', vi: 'Thuật ngữ' } },
 ];
 
-/** The lesson side of the teacher area: Bài giảng · Đề xuất mô phỏng. Exams live under Thi thử. */
+/** The lesson side of the teacher area: Bài giảng · Đề xuất mô phỏng · Thuật ngữ. Exams live under Thi thử. */
 export function TeacherAreaTabs({ active }: { active: TeacherArea }) {
   return <Tabs tabs={AREAS} active={active} label={{ en: 'Teacher area', vi: 'Khu giáo viên' }} />;
 }
