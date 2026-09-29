@@ -3,9 +3,10 @@ import { cookies } from 'next/headers';
 import { createServerClient } from '@scipal/supabase';
 import { AdminAccountsPage } from '@/features/admin/AdminAccountsPage';
 import { RequireAdmin } from '@/features/admin/RequireAdmin';
+import { pageTitle } from '@/lib/pageTitle';
 
 export const metadata: Metadata = {
-  title: 'Quản lý tài khoản — SciPal Admin',
+  ...pageTitle('Accounts', 'Quản lý tài khoản'),
 };
 
 export const dynamic = 'force-dynamic';

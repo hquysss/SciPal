@@ -7,6 +7,16 @@ import { classifyReconciliationReason } from '../billing/reconciliationReason.js
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const Query = z.object({ page: z.coerce.number().int().min(1).max(2_147_483_647).default(1), limit: z.coerce.number().int().min(1).max(100).default(20) }).strict();
 
+const ORDER_STATUSES = ['pending', 'paid', 'failed', 'expired', 'cancelled', 'reconciliation'] as const;
+const OrdersQuery = z.object({
+  page: z.coerce.number().int().min(1).max(2_147_483_647).default(1),
+  limit: z.coerce.number().int().min(1).max(100).default(20),
+  status: z.enum(ORDER_STATUSES).optional(),
+}).strict();
+
+type OrderRow = { id: string; user_id: string; plan_code: string; interval: string; amount_vnd: number; status: string; created_at: string; paid_at: string | null; expires_at: string | null };
+type AttemptRow = { order_id: string; provider_reference: string | null; provider_transaction_id: string | null; status: string; created_at: string };
+
 type ErrorBody = { code: string; error: string; error_en: string };
 const err = (code: string, error: string, error_en: string): ErrorBody => ({ code, error, error_en });
 const FORBIDDEN = err('FORBIDDEN', 'Chỉ quản trị viên mới được xem đối soát thanh toán.', 'Only administrators can view payment reconciliation.');
@@ -174,5 +184,81 @@ export const billingReconciliationRoutes: FastifyPluginAsync<{ payos?: PayosClie
       request.log.error({ err: error, orderId }, 'Could not apply payOS reconciliation result');
       return reply.code(503).send(UNAVAILABLE);
     }
+  });
+
+  // Every order ever made, newest first: the payment history for admins (the reconciliation list
+  // above only holds the cases that need review).
+  app.get('/api/admin/billing/orders', { preHandler: [requireAdmin] }, async (request, reply) => {
+    const supabase = app.supabase;
+    if (!supabase) return reply.code(503).send(UNAVAILABLE);
+    const parsed = OrdersQuery.safeParse(request.query);
+    if (!parsed.success) return reply.code(400).send(INVALID);
+    const { page, limit, status } = parsed.data;
+    const offset = (page - 1) * limit;
+    if (!Number.isSafeInteger(offset) || offset > 2_147_483_647) return reply.code(400).send(INVALID);
+
+    let query = supabase
+      .from('billing_orders')
+      .select('id, user_id, plan_code, interval, amount_vnd, status, created_at, paid_at, expires_at', { count: 'exact' });
+    if (status) query = query.eq('status', status);
+    const { data, error, count } = await query.order('created_at', { ascending: false }).range(offset, offset + limit - 1);
+    if (error) {
+      request.log.error({ err: error }, 'Could not list billing orders');
+      return reply.code(503).send(UNAVAILABLE);
+    }
+    const orders = (data ?? []) as OrderRow[];
+    const orderIds = orders.map((o) => o.id);
+    const userIds = [...new Set(orders.map((o) => o.user_id))];
+    const planCodes = [...new Set(orders.map((o) => o.plan_code))];
+
+    const [attempts, plans, profiles, emails] = orders.length === 0
+      ? [[], [], [], new Map<string, string | null>()] as const
+      : await Promise.all([
+        supabase.from('billing_payment_attempts').select('order_id, provider_reference, provider_transaction_id, status, created_at').in('order_id', orderIds)
+          .then((r) => (r.data ?? []) as AttemptRow[]),
+        supabase.from('billing_plans').select('code, name_vi, name_en').in('code', planCodes)
+          .then((r) => (r.data ?? []) as Array<{ code: string; name_vi: string; name_en: string }>),
+        supabase.from('profiles').select('id, display_name').in('id', userIds)
+          .then((r) => (r.data ?? []) as Array<{ id: string; display_name: string | null }>),
+        Promise.all(userIds.map(async (id) => {
+          try {
+            const { data: found } = await supabase.auth.admin.getUserById(id);
+            return [id, found?.user?.email ?? null] as const;
+          } catch {
+            return [id, null] as const;
+          }
+        })).then((pairs) => new Map<string, string | null>(pairs)),
+      ]);
+
+    // The latest attempt of each order is the one that carries its outcome.
+    const latest = new Map<string, AttemptRow>();
+    for (const attempt of attempts) {
+      const seen = latest.get(attempt.order_id);
+      if (!seen || attempt.created_at > seen.created_at) latest.set(attempt.order_id, attempt);
+    }
+    const planByCode = new Map(plans.map((p) => [p.code, p]));
+    const nameById = new Map(profiles.map((p) => [p.id, p.display_name]));
+
+    return {
+      page,
+      pageSize: limit,
+      totalCount: count ?? 0,
+      items: orders.map((order) => {
+        const attempt = latest.get(order.id);
+        const plan = planByCode.get(order.plan_code);
+        return {
+          id: order.id,
+          status: order.status,
+          amountVnd: order.amount_vnd,
+          interval: order.interval,
+          createdAt: order.created_at,
+          paidAt: order.paid_at,
+          account: { id: order.user_id, email: emails.get(order.user_id) ?? null, displayName: nameById.get(order.user_id) ?? null },
+          plan: { code: order.plan_code, nameVi: plan?.name_vi ?? null, nameEn: plan?.name_en ?? null },
+          providerReference: attempt?.provider_reference ?? null,
+          bankTransactionId: attempt?.provider_transaction_id ?? null,
+        };
+      }),
+    };
   });
 };

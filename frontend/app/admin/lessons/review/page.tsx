@@ -1,3 +1,4 @@
+import type { Metadata } from 'next';
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import {
@@ -15,6 +16,9 @@ import { Bi } from '@/components/ui/bilingual';
 import { buttonVariants } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { EmptyState } from '@/components/ui/empty-state';
+import { pageTitle } from '@/lib/pageTitle';
+
+export const metadata: Metadata = { ...pageTitle('Lesson review', 'Duyệt bài giảng') };
 
 export const dynamic = 'force-dynamic';
 

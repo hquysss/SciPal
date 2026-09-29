@@ -1,15 +1,18 @@
 'use client';
 
 import { useEffect, useId, useRef, useState, type ReactNode } from 'react';
-import { ArrowUp, BookOpen, Square } from 'lucide-react';
+import { ArrowRight, ArrowUp, BookOpen, Lightbulb, Square } from 'lucide-react';
 import { useLanguage } from '@scipal/hooks';
 import { Alert } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
+import { Mascot } from '@/components/mascot/Mascot';
 import type { EducationLevel } from '@/features/landing/educationLevel';
 import type { TutorMessage as Message } from './api';
 import { EXAMPLE_QUESTIONS } from './examples';
 import { TutorMessage } from './TutorMessage';
 import { useTutorChat } from './useTutorChat';
+import { TutorAvatar } from './TutorAvatar';
+import styles from './tutor.module.css';
 
 type Bilingual = { vi: string; en: string };
 
@@ -61,9 +64,10 @@ export function TutorChatView({
   const examples = EXAMPLE_QUESTIONS[level].slice(0, compact ? 2 : 4);
   const lastIndex = messages.length - 1;
 
+  // Follow the newest message; an empty chat stays at the top so the greeting shows.
   useEffect(() => {
     const log = logRef.current;
-    if (log) log.scrollTop = log.scrollHeight;
+    if (log && messages.length > 0) log.scrollTop = log.scrollHeight;
   }, [messages]);
 
   const submit = () => {
@@ -87,11 +91,20 @@ export function TutorChatView({
         )}
 
         {empty ? (
-          <div className="mx-auto flex max-w-xl flex-col gap-5 pt-2 sm:pt-6">
-            <div className="flex flex-col gap-1.5">
-              <p className="text-balance text-2xl font-bold tracking-tight text-ink">{t({ en: 'Where are you stuck?', vi: 'Em đang bí ở đâu?' })}</p>
+          <div className="mx-auto flex max-w-2xl flex-col gap-6 pt-2 sm:pt-6">
+            <div className={styles.hello}>
+              <span className={styles.glow} aria-hidden="true" />
+              {compact ? (
+                <TutorAvatar size="3.25rem" />
+              ) : (
+                <Mascot directions="/mascots/owl-directions-324.webp" reactions="/mascots/owl-reactions-324.webp" size={112} label={t({ en: 'SciPal owl', vi: 'Cú SciPal' })} />
+              )}
+              <p className={styles.greeting}>
+                {t({ en: 'Where are you ', vi: 'Em đang ' })}
+                <span className={styles.greetingGlow}>{t({ en: 'stuck?', vi: 'bí ở đâu?' })}</span>
+              </p>
               {!compact && (
-                <p className="text-base text-ink-muted">
+                <p className="max-w-md text-base text-ink-muted">
                   {t({
                     en: 'Tell me what you have tried. I will give you one hint at a time so you work out the rest.',
                     vi: 'Kể thầy nghe em đã thử gì. Thầy gợi ý từng bước để em tự tìm ra phần còn lại.',
@@ -100,7 +113,7 @@ export function TutorChatView({
               )}
             </div>
             {picker}
-            <ul className="grid gap-2 sm:grid-cols-2" aria-label={t({ en: 'Example questions', vi: 'Câu hỏi gợi ý' })}>
+            <ul className="grid gap-2.5 sm:grid-cols-2" aria-label={t({ en: 'Example questions', vi: 'Câu hỏi gợi ý' })}>
               {examples.map((example, i) => (
                 <li key={example.vi}>
                   <button
@@ -109,9 +122,13 @@ export function TutorChatView({
                     disabled={streaming || limitReached}
                     onClick={() => onSend(t(example))}
                     style={{ ['--chip' as string]: CHIP_TONES[i % CHIP_TONES.length] }}
-                    className="h-full w-full rounded-xl border border-line bg-[color-mix(in_srgb,var(--chip)_16%,var(--surface))] px-4 py-3 text-left text-sm leading-snug text-ink transition-colors hover:border-edge hover:bg-[color-mix(in_srgb,var(--chip)_30%,var(--surface))] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus disabled:opacity-50"
+                    className={styles.example}
                   >
-                    {t(example)}
+                    <span className={styles.exampleIcon} aria-hidden="true">
+                      <Lightbulb className="h-4 w-4" />
+                    </span>
+                    <span>{t(example)}</span>
+                    <ArrowRight aria-hidden="true" className={`h-4 w-4 shrink-0 ${styles.exampleArrow}`} />
                   </button>
                 </li>
               ))}
@@ -119,14 +136,23 @@ export function TutorChatView({
           </div>
         ) : (
           <div className="mx-auto flex max-w-3xl flex-col gap-5">
-            {messages.map((message, i) => (
-              <TutorMessage key={message.id ?? i} message={message} streaming={streaming && i === lastIndex && message.role === 'assistant'} />
-            ))}
+            {messages.map((message, i) =>
+              message.role === 'assistant' ? (
+                <div key={message.id ?? i} className="flex items-start gap-3">
+                  <TutorAvatar size="2.25rem" />
+                  <div className="min-w-0 flex-1 pt-1">
+                    <TutorMessage message={message} streaming={streaming && i === lastIndex} />
+                  </div>
+                </div>
+              ) : (
+                <TutorMessage key={message.id ?? i} message={message} />
+              ),
+            )}
           </div>
         )}
       </div>
 
-      <div className="border-t border-line bg-surface px-3 pb-3 pt-2 sm:px-6">
+      <div className="bg-[linear-gradient(to_top,var(--surface)_70%,transparent)] px-3 pb-3 pt-2 sm:px-6">
         <div className="mx-auto flex max-w-3xl flex-col gap-2">
           {error && (
             <Alert tone="danger">
@@ -141,7 +167,7 @@ export function TutorChatView({
             </Alert>
           )}
           <form
-            className="flex items-end gap-2 rounded-2xl border border-edge bg-paper p-2 focus-within:outline focus-within:outline-2 focus-within:outline-offset-1 focus-within:outline-focus"
+            className={styles.composer}
             onSubmit={(e) => {
               e.preventDefault();
               submit();
@@ -167,23 +193,29 @@ export function TutorChatView({
               className="max-h-40 min-h-11 flex-1 resize-none bg-transparent px-2 py-2 text-base leading-6 text-ink caret-action outline-none placeholder:text-ink-muted disabled:cursor-not-allowed"
             />
             {streaming ? (
-              <Button type="button" variant="outline" onClick={onStop} className="shrink-0">
+              <Button type="button" variant="outline" onClick={onStop} className="shrink-0 rounded-full">
                 <Square aria-hidden="true" className="h-4 w-4 fill-current" />
                 {t({ en: 'Stop', vi: 'Dừng' })}
               </Button>
             ) : (
-              <Button type="submit" size="icon" disabled={!draft.trim() || limitReached} aria-label={t({ en: 'Send', vi: 'Gửi' })} className="shrink-0 rounded-xl">
-                <ArrowUp aria-hidden="true" className="h-5 w-5" />
-              </Button>
+              <button type="submit" disabled={!draft.trim() || limitReached} aria-label={t({ en: 'Send', vi: 'Gửi' })} className={styles.send}>
+                <ArrowUp aria-hidden="true" className="h-5 w-5" strokeWidth={2.5} />
+              </button>
             )}
           </form>
           <div className="flex min-h-5 items-center justify-between gap-3 px-1 text-xs text-ink-muted">
             <span>
-              {remaining !== null &&
-                (period === 'month'
-                  ? t({ en: `${remaining} questions left this month`, vi: `Còn ${remaining} lượt tháng này` })
-                  : t({ en: `${remaining} questions left today`, vi: `Còn ${remaining} lượt hôm nay` }))}
+              {remaining !== null && (
+                <span className={styles.left}>
+                  {period === 'month'
+                    ? t({ en: `${remaining} questions left this month`, vi: `Còn ${remaining} lượt tháng này` })
+                    : t({ en: `${remaining} questions left today`, vi: `Còn ${remaining} lượt hôm nay` })}
+                </span>
+              )}
             </span>
+            {draft.length <= COUNTER_FROM && !compact && (
+              <span className="hidden sm:inline">{t({ en: 'Enter to send · Shift+Enter for a new line', vi: 'Enter để gửi · Shift+Enter để xuống dòng' })}</span>
+            )}
             {draft.length > COUNTER_FROM && (
               <span className="tabular-nums" aria-live="polite">
                 {draft.length}/{MESSAGE_MAX}

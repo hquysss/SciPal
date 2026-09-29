@@ -1,8 +1,12 @@
+import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { LoadErrorNotice } from '@/components/feedback/LoadErrorNotice';
 import { ExamRunner } from '@/features/exam/ExamRunner';
 import { ExamRoomHeader } from '@/features/exam/ExamListNotices';
 import { getExamBlueprint } from '@/features/exam/examQueries';
+import { pageTitle } from '@/lib/pageTitle';
+
+export const metadata: Metadata = { ...pageTitle('Exam', 'Bài thi') };
 
 export const dynamic = 'force-dynamic';
 

@@ -1,5 +1,9 @@
+import type { Metadata } from 'next';
 import { Bi } from '@/components/ui/bilingual';
 import { MyClasses } from '@/features/classes/MyClasses';
+import { pageTitle } from '@/lib/pageTitle';
+
+export const metadata: Metadata = { ...pageTitle('My classes', 'Lớp của tôi') };
 
 export const dynamic = 'force-dynamic';
 

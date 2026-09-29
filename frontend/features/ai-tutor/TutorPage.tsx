@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useState, type ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
 import { MessagesSquare } from 'lucide-react';
 import { useLanguage } from '@scipal/hooks';
@@ -11,6 +11,8 @@ import { deleteConversation, getConversation, listConversations, type TutorConve
 import { ConversationList } from './ConversationList';
 import { LessonPicker } from './LessonPicker';
 import { TutorChat } from './TutorChat';
+import { TutorAvatar } from './TutorAvatar';
+import styles from './tutor.module.css';
 import type { TutorLesson } from './tutorLessonTypes';
 
 type Bilingual = { vi: string; en: string };
@@ -107,7 +109,7 @@ export function TutorPage({
 
   return (
     <div className="grid min-h-0 gap-4 lg:grid-cols-[17rem_minmax(0,1fr)] lg:gap-6">
-      <aside className="hidden min-h-0 lg:flex lg:max-h-[calc(100dvh-11rem)] lg:flex-col">{list}</aside>
+      <TutorListFrame>{list}</TutorListFrame>
 
       <div className="flex min-h-0 flex-col gap-3">
         <div className="flex items-center justify-between gap-3 lg:hidden">
@@ -122,22 +124,48 @@ export function TutorPage({
         </div>
         {notice && <Alert tone="danger">{t(notice)}</Alert>}
 
-        <section
-          aria-label={t({ en: 'Chat with the tutor', vi: 'Trò chuyện với gia sư' })}
-          className="h-[calc(100dvh-13rem)] min-h-[28rem] overflow-hidden rounded-2xl border border-line bg-surface shadow-[0_18px_40px_-30px_color-mix(in_srgb,var(--ink)_45%,transparent)] lg:h-[calc(100dvh-11rem)]"
-        >
+        <TutorChatFrame>
           {open ? (
             <OpenChat key={open.key} open={open} level={level} lessons={lessons} lessonTitle={lessonTitle} onConversation={onConversation} />
           ) : (
             <p className="p-6 text-sm text-ink-muted">{t({ en: 'Loading…', vi: 'Đang tải…' })}</p>
           )}
-        </section>
+        </TutorChatFrame>
       </div>
 
       <Dialog open={drawer} onClose={() => setDrawer(false)} title={t({ en: 'Conversations', vi: 'Hội thoại' })} closeLabel={t({ en: 'Close', vi: 'Đóng' })} className="max-w-md">
         {list}
       </Dialog>
     </div>
+  );
+}
+
+/** The conversations column (desktop only; phones open it as a drawer). */
+export function TutorListFrame({ children }: { children: ReactNode }) {
+  return (
+    <aside className="hidden min-h-0 rounded-2xl border border-line bg-[color-mix(in_srgb,var(--surface)_75%,transparent)] p-3 backdrop-blur-sm lg:flex lg:max-h-[calc(100dvh-11rem)] lg:flex-col">
+      {children}
+    </aside>
+  );
+}
+
+/** The chat card: the tutor's name bar on top, the chat below. */
+export function TutorChatFrame({ children }: { children: ReactNode }) {
+  const { t } = useLanguage();
+  return (
+    <section
+      aria-label={t({ en: 'Chat with the tutor', vi: 'Trò chuyện với gia sư' })}
+      className="flex h-[calc(100dvh-13rem)] min-h-[28rem] flex-col overflow-hidden rounded-3xl border border-line bg-surface shadow-[0_24px_50px_-34px_color-mix(in_srgb,var(--ink)_55%,transparent)] lg:h-[calc(100dvh-11rem)]"
+    >
+      <div className={styles.bar}>
+        <TutorAvatar />
+        <div className="flex min-w-0 flex-col">
+          <p className="font-bold leading-tight text-ink">{t({ en: 'SciPal tutor', vi: 'Gia sư SciPal' })}</p>
+          <span className={styles.online}>{t({ en: 'Hints step by step, never the whole answer', vi: 'Gợi ý từng bước, không giải hộ' })}</span>
+        </div>
+      </div>
+      <div className="min-h-0 flex-1">{children}</div>
+    </section>
   );
 }
 

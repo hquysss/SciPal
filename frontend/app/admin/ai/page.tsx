@@ -1,3 +1,4 @@
+import type { Metadata } from 'next';
 import { redirect } from 'next/navigation';
 import { getAuthoringSession } from '@/features/authoring/serverAuth';
 import { AiSettingsForm } from '@/features/admin-ai/AiSettingsForm';
@@ -5,6 +6,9 @@ import { AdminAiTabs } from '@/features/admin-ai/AdminAiTabs';
 import { AdminChats } from '@/features/admin-ai/AdminChats';
 import { PageBreadcrumb } from '@/components/nav/PageBreadcrumb';
 import { Bi } from '@/components/ui/bilingual';
+import { pageTitle } from '@/lib/pageTitle';
+
+export const metadata: Metadata = { ...pageTitle('AI settings', 'Cài đặt AI') };
 
 export const dynamic = 'force-dynamic';
 
