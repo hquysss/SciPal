@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { useLanguage } from '@scipal/hooks';
+import { StaffLinks } from '@/features/nav/StaffLinks';
 
 export function GlossaryHeader() {
   const { t } = useLanguage();
@@ -22,6 +23,9 @@ export function GlossaryHeader() {
           vi: 'Tra định nghĩa Anh – Việt và cách dùng từng thuật ngữ trong bài học.',
         })}
       </p>
+      <div className="mt-4">
+        <StaffLinks place="glossary" />
+      </div>
     </header>
   );
 }

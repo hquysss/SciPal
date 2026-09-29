@@ -159,14 +159,6 @@ export const termRoutes: FastifyPluginAsync = async (app) => {
     return reply.code(204).send();
   });
 
-  app.get('/api/admin/terms/count', { preHandler: [requireAdmin] }, async (_request, reply) => {
-    const supabase = app.supabase;
-    if (!supabase) return reply.code(503).send(unavailable);
-    const result = (await supabase.from('terms').select('id', { count: 'exact', head: true }).eq('status', 'pending')) as { count?: number | null; error: unknown };
-    if (result.error) return reply.code(500).send({ error: 'Không đếm được thuật ngữ chờ duyệt.', error_en: 'Could not count pending terms.' });
-    return reply.send({ pending: result.count ?? 0 });
-  });
-
   /** Review a term only while it is pending; 409 when someone got there first. */
   async function review(request: FastifyRequest, reply: FastifyReply, patch: { status: 'published' | 'rejected'; review_note: string | null }) {
     const supabase = app.supabase;

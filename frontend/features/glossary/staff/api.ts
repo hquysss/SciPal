@@ -41,7 +41,6 @@ export const listTerms = (status?: TermStatus) => authoringCall<{ terms: StaffTe
 export const deleteTerm = (id: string) => authoringCall<Record<string, never>>(`/api/authoring/terms/${encodeURIComponent(id)}`, 'DELETE');
 
 // Admin
-export const countPendingTerms = () => authoringCall<{ pending: number }>('/api/admin/terms/count', 'GET');
 export const approveTerm = (id: string) => authoringCall<{ term: StaffTerm }>(`/api/admin/terms/${encodeURIComponent(id)}/approve`, 'POST', {});
 export const rejectTerm = (id: string, note: string) => authoringCall<{ term: StaffTerm }>(`/api/admin/terms/${encodeURIComponent(id)}/reject`, 'POST', { note: note.trim() });
 

@@ -2,16 +2,16 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { ClipboardCheck, FilePenLine, NotebookPen, Settings2 } from 'lucide-react';
+import { BookA, ClipboardCheck, FilePenLine, NotebookPen, Settings2 } from 'lucide-react';
 import { useLanguage } from '@scipal/hooks';
 import { buttonVariants } from '@/components/ui/button';
 import { createBrowserClient } from '@/lib/supabase';
 
 // Management entry points on the pages they manage, instead of more menu items: lesson authoring
-// on Subjects, exam authoring on Exams (teachers and admins), plan limits and prices on Pricing
-// (admins). Showing a button is only a convenience; the pages themselves check the role.
+// on Subjects, exam authoring on Exams, glossary terms on the Glossary (teachers and admins), plan
+// limits and prices on Pricing (admins). Showing a button is only a convenience; the pages themselves check the role.
 
-export type StaffPlace = 'subjects' | 'exams' | 'pricing';
+export type StaffPlace = 'subjects' | 'exams' | 'pricing' | 'glossary';
 type Copy = { vi: string; en: string };
 export type StaffLink = { href: string; label: Copy; Icon: typeof NotebookPen; primary?: boolean };
 
@@ -27,6 +27,11 @@ export function staffLinks(place: StaffPlace, role: string | null): StaffLink[] 
   }
   if (place === 'exams' && AUTHOR_ROLES.has(role)) {
     return [{ href: '/exam/manage', label: { vi: 'Quản lý đề thi', en: 'Manage exams' }, Icon: FilePenLine, primary: true }];
+  }
+  if (place === 'glossary' && AUTHOR_ROLES.has(role)) {
+    return role === 'admin'
+      ? [{ href: '/admin/terms', label: { vi: 'Thêm & duyệt thuật ngữ', en: 'Add & review terms' }, Icon: BookA, primary: true }]
+      : [{ href: '/teacher/terms', label: { vi: 'Thêm thuật ngữ', en: 'Add terms' }, Icon: BookA, primary: true }];
   }
   if (place === 'pricing' && role === 'admin') {
     return [{ href: '/admin/plans', label: { vi: 'Quản lý giá gói', en: 'Manage plans' }, Icon: Settings2, primary: true }];

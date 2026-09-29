@@ -1,6 +1,8 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
+import Link from 'next/link';
+import { ArrowLeft } from 'lucide-react';
 import { useLanguage } from '@scipal/hooks';
 import { Alert } from '@/components/ui/alert';
 import { buttonVariants } from '@/components/ui/button';
@@ -10,9 +12,6 @@ import { TermForm } from './TermForm';
 import { TermRow } from './TermRow';
 
 type Bilingual = { en: string; vi: string };
-
-/** Tell the nav badge (pending count) to refresh. */
-const announce = () => window.dispatchEvent(new Event('scipal:terms-changed'));
 
 function PendingCard({ term, onDone }: { term: StaffTerm; onDone: (error?: Bilingual) => void }) {
   const { t } = useLanguage();
@@ -86,7 +85,6 @@ export function StaffTermsPage({ isAdmin }: { isAdmin: boolean }) {
   const afterReview = async (reviewError?: Bilingual) => {
     if (reviewError) setError(reviewError);
     await load();
-    announce();
   };
 
   const withdraw = async (term: StaffTerm) => {
@@ -100,6 +98,10 @@ export function StaffTermsPage({ isAdmin }: { isAdmin: boolean }) {
   return (
     <div className="flex flex-col gap-8">
       <header className="flex flex-col gap-2">
+        <Link href="/glossary" className="inline-flex min-h-11 items-center gap-1 self-start text-sm text-ink-muted underline-offset-4 hover:text-ink hover:underline">
+          <ArrowLeft aria-hidden="true" className="h-4 w-4" />
+          {t({ en: 'Glossary', vi: 'Từ điển' })}
+        </Link>
         <h1 className="text-2xl font-bold text-ink sm:text-3xl">{t({ en: 'Glossary terms', vi: 'Thuật ngữ từ điển' })}</h1>
         <p className="max-w-prose text-ink-muted">
           {isAdmin
