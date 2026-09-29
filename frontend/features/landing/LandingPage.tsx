@@ -14,6 +14,7 @@ import { HeroStage } from './hero/HeroStage';
 import { HowItWorks } from './HowItWorks';
 import { TutorSection } from './TutorSection';
 import { PricingSection } from './PricingSection';
+import { InstallAppSection } from './InstallAppSection';
 import type { Catalog } from '@/features/billing/billingApi';
 import { ReportProblemButton } from '@/features/problemReports/ReportProblem';
 import styles from './landing.module.css';
@@ -211,6 +212,7 @@ export function LandingPage({ level, levelSource, catalog, onChangeLevel, pricin
 
         <HowItWorks level={level} />
         <TutorSection href="/tutor" level={level} />
+        <InstallAppSection />
         {pricing && <PricingSection catalog={pricing} />}
 
         <section className={styles.finalCta} aria-labelledby="start-title" data-landing-reveal>
