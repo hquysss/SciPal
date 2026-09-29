@@ -1,8 +1,9 @@
 'use client';
 
-import { CheckCircle2, Download, Menu, RefreshCw, Share, Smartphone, SquarePlus, WifiOff } from 'lucide-react';
+import { CheckCircle2, Download, Menu, RefreshCw, Share, Smartphone, SquarePlus, Store, WifiOff } from 'lucide-react';
 import { useLanguage } from '@scipal/hooks';
 import { useInstall, type InstallMode } from '@/lib/pwa/installMode';
+import { MICROSOFT_STORE_URL } from '@/lib/pwa/stores';
 import styles from './install.module.css';
 
 // "Tải xuống" on the landing page: SciPal installs from the site itself (a PWA), no app store.
@@ -31,8 +32,23 @@ function Steps({ steps }: { steps: Array<{ icon: typeof Share; text: Bilingual }
   );
 }
 
-export function InstallActionView({ mode, onInstall }: { mode: InstallMode; onInstall: () => void }) {
+/** The Microsoft Store listing, for Windows once SciPal is published there. */
+function StoreLink({ href }: { href: string }) {
   const { t } = useLanguage();
+  return (
+    <a href={href} target="_blank" rel="noopener noreferrer" aria-label={t({ vi: 'Tải từ Microsoft Store', en: 'Get it from Microsoft Store' })} className={styles.store}>
+      <Store aria-hidden="true" size={20} />
+      <span>
+        <small>{t({ vi: 'Tải từ', en: 'Get it from' })}</small>
+        Microsoft Store
+      </span>
+    </a>
+  );
+}
+
+export function InstallActionView({ mode, onInstall, storeUrl = null }: { mode: InstallMode; onInstall: () => void; storeUrl?: string | null }) {
+  const { t } = useLanguage();
+  const store = storeUrl && mode !== 'installed' ? <StoreLink href={storeUrl} /> : null;
   if (mode === 'installed') {
     return (
       <p role="status" className={styles.installed}>
@@ -43,10 +59,13 @@ export function InstallActionView({ mode, onInstall }: { mode: InstallMode; onIn
   }
   if (mode === 'prompt') {
     return (
-      <button type="button" onClick={onInstall} className={styles.install}>
-        <Download aria-hidden="true" size={20} />
-        {t({ vi: 'Tải SciPal về máy', en: 'Install SciPal' })}
-      </button>
+      <div className={styles.actions}>
+        <button type="button" onClick={onInstall} className={styles.install}>
+          <Download aria-hidden="true" size={20} />
+          {t({ vi: 'Tải SciPal về máy', en: 'Install SciPal' })}
+        </button>
+        {store}
+      </div>
     );
   }
   if (mode === 'ios') {
@@ -61,13 +80,16 @@ export function InstallActionView({ mode, onInstall }: { mode: InstallMode; onIn
     );
   }
   return (
-    <Steps
+    <div className={styles.actions}>
+      {store}
+      <Steps
       steps={[
         { icon: Menu, text: { vi: 'Mở menu của trình duyệt (⋮ hoặc ⋯)', en: 'Open the browser menu (⋮ or ⋯)' } },
         { icon: Download, text: { vi: 'Chọn “Cài đặt ứng dụng” hoặc “Thêm vào màn hình chính”', en: 'Choose “Install app” or “Add to Home Screen”' } },
         { icon: Smartphone, text: { vi: 'Mở SciPal từ màn hình chính', en: 'Open SciPal from the home screen' } },
       ]}
-    />
+      />
+    </div>
   );
 }
 
@@ -98,7 +120,7 @@ function PhoneMock() {
 
 export function InstallAppSection() {
   const { t } = useLanguage();
-  const { mode, install } = useInstall();
+  const { mode, windows, install } = useInstall();
 
   return (
     <section className={styles.section} id="tai-ung-dung" aria-labelledby="install-title">
@@ -125,7 +147,7 @@ export function InstallAppSection() {
             </li>
           ))}
         </ul>
-        <InstallActionView mode={mode} onInstall={() => void install()} />
+        <InstallActionView mode={mode} onInstall={() => void install()} storeUrl={windows ? MICROSOFT_STORE_URL : null} />
       </div>
     </section>
   );

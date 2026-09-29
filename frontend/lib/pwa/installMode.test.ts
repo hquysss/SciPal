@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { installMode, isIos } from './installMode';
+import { installMode, isIos, isWindows } from './installMode';
 
 describe('how SciPal installs on this device', () => {
   it('says it is installed when opened from the home screen', () => {
@@ -25,5 +25,11 @@ describe('how SciPal installs on this device', () => {
     expect(isIos('Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)', 5)).toBe(true);
     expect(isIos('Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)', 0)).toBe(false);
     expect(isIos('Mozilla/5.0 (Linux; Android 14; Pixel 8)', 5)).toBe(false);
+  });
+
+  it('recognises Windows for the Microsoft Store link', () => {
+    expect(isWindows('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Edg/140.0')).toBe(true);
+    expect(isWindows('Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)')).toBe(false);
+    expect(isWindows('Mozilla/5.0 (Linux; Android 14; Pixel 8)')).toBe(false);
   });
 });

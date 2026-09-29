@@ -27,4 +27,14 @@ describe('install section', () => {
     expect(done).toContain('SciPal đã có trên máy này');
     expect(done).toContain('role="status"');
   });
+
+  it('offers the Microsoft Store on Windows once SciPal is listed there', () => {
+    const store = 'https://apps.microsoft.com/detail/9ABCDEF12345';
+    const html = renderToStaticMarkup(<InstallActionView mode="prompt" onInstall={noop} storeUrl={store} />);
+    expect(html).toContain(`href="${store}"`);
+    expect(html).toContain('Tải từ Microsoft Store');
+    expect(html).toContain('Tải SciPal về máy');
+    expect(renderToStaticMarkup(<InstallActionView mode="prompt" onInstall={noop} storeUrl={null} />)).not.toContain('Microsoft Store');
+    expect(renderToStaticMarkup(<InstallActionView mode="installed" onInstall={noop} storeUrl={store} />)).not.toContain('Microsoft Store');
+  });
 });

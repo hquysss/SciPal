@@ -19,18 +19,25 @@ export function isIos(userAgent: string, maxTouchPoints: number): boolean {
   return /iPhone|iPad|iPod/.test(userAgent) || (/Macintosh/.test(userAgent) && maxTouchPoints > 1);
 }
 
+/** Windows, where SciPal is also offered from the Microsoft Store. */
+export function isWindows(userAgent: string): boolean {
+  return /Windows NT/.test(userAgent);
+}
+
 type PromptEvent = Event & { prompt: () => Promise<void>; userChoice: Promise<{ outcome: 'accepted' | 'dismissed' }> };
 
 /** The install mode for this device and, where the browser allows it, the prompt to open. */
-export function useInstall(): { mode: InstallMode; install: () => Promise<void> } {
+export function useInstall(): { mode: InstallMode; windows: boolean; install: () => Promise<void> } {
   const [prompt, setPrompt] = useState<PromptEvent | null>(null);
   const [standalone, setStandalone] = useState(false);
   const [ios, setIos] = useState(false);
+  const [windows, setWindows] = useState(false);
 
   useEffect(() => {
     const nav = navigator as Navigator & { standalone?: boolean };
     setStandalone(window.matchMedia('(display-mode: standalone)').matches || nav.standalone === true);
     setIos(isIos(navigator.userAgent, navigator.maxTouchPoints ?? 0));
+    setWindows(isWindows(navigator.userAgent));
     const onPrompt = (event: Event) => {
       // Keep the browser's own mini bar away; the button on the page opens the prompt.
       event.preventDefault();
@@ -57,5 +64,5 @@ export function useInstall(): { mode: InstallMode; install: () => Promise<void> 
     if (outcome === 'accepted') setStandalone(true);
   }, [prompt]);
 
-  return { mode: installMode({ standalone, canPrompt: prompt !== null, ios }), install };
+  return { mode: installMode({ standalone, canPrompt: prompt !== null, ios }), windows, install };
 }
