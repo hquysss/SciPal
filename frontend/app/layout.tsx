@@ -3,6 +3,7 @@ import Script from "next/script";
 import { Be_Vietnam_Pro, JetBrains_Mono } from 'next/font/google';
 import './globals.css';
 import { NavBar } from '@/components/nav/NavBar';
+import { GuestTrialBanner } from '@/features/guest/GuestTrialBanner';
 import { renderThemeCss } from '@scipal/ui';
 import { buildBootScript, DARK_MODE_ENABLED } from '@/lib/theme/shellTheme';
 
@@ -58,6 +59,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <div data-app-shell="" data-level="neutral" suppressHydrationWarning className="flex min-h-screen flex-col">
           <script dangerouslySetInnerHTML={{ __html: buildBootScript({ darkMode: DARK_MODE_ENABLED }) }} />
           <NavBar />
+          <GuestTrialBanner />
           <div className="flex flex-1 flex-col">{children}</div>
         </div>
       </body>

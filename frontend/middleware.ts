@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { createServerClient } from '@scipal/supabase';
+import { TRIAL_COOKIE, TRIAL_UI_COOKIE, readTrials, routeAccess, signTrials, type TrialFeature, type Trials } from './lib/guestTrial';
 
 const LEGACY_LEVEL_COOKIE = 'scipal_education_level';
 
@@ -15,65 +16,102 @@ function clearLegacyLevelCookie(request: NextRequest, response: NextResponse) {
   });
 }
 
-function isProtectedPath(pathname: string) {
-  return (
-    pathname === '/profile' ||
-    pathname.startsWith('/profile/') ||
-    pathname === '/progress' ||
-    pathname.startsWith('/progress/') ||
-    pathname === '/teacher' ||
-    pathname.startsWith('/teacher/') ||
-    pathname === '/admin' ||
-    pathname.startsWith('/admin/') ||
-    pathname.startsWith('/exam/') ||
-    pathname.startsWith('/checkout/') ||
-    pathname === '/classes'
-  );
+const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL ?? 'https://sci-pal-backend.vercel.app';
+const TRIAL_COOKIE_DAYS = 30;
+type CookieUpdate = { name: string; value: string; options: Parameters<NextResponse['cookies']['set']>[2] };
+
+/** Vercel sets these to the client address; a browser cannot choose them. */
+function visitorIp(request: NextRequest) {
+  return request.headers.get('x-real-ip')?.trim() || request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown';
+}
+
+function loginRedirect(request: NextRequest, reason?: 'trial') {
+  const url = new URL('/login', request.url);
+  url.searchParams.set('redirect', request.nextUrl.pathname + request.nextUrl.search);
+  if (reason) url.searchParams.set('reason', reason);
+  return NextResponse.redirect(url);
+}
+
+function hasSessionCookie(request: NextRequest) {
+  return request.cookies.getAll().some((c) => c.name.startsWith('sb-') && c.name.includes('auth-token'));
+}
+
+async function signedInUser(request: NextRequest, cookieUpdates: CookieUpdate[]) {
+  if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) return null;
+  const supabase = createServerClient({
+    getAll: () => request.cookies.getAll(),
+    set: (name: string, value: string, options: CookieUpdate['options']) => {
+      request.cookies.set(name, value);
+      cookieUpdates.push({ name, value, options });
+    },
+  });
+  try {
+    const { data, error } = await supabase.auth.getUser();
+    return error ? null : data.user;
+  } catch {
+    // A failed auth service cannot turn an unverified cookie into a session.
+    return null;
+  }
+}
+
+async function rememberTrials(response: NextResponse, trials: Trials, secret: string) {
+  const options = { path: '/', maxAge: TRIAL_COOKIE_DAYS * 86_400, sameSite: 'lax' as const, secure: process.env.NODE_ENV === 'production' };
+  response.cookies.set(TRIAL_COOKIE, await signTrials(trials, secret), { ...options, httpOnly: true });
+  // The banner's copy: it shows the time left and grants nothing.
+  response.cookies.set(TRIAL_UI_COOKIE, JSON.stringify(trials), { ...options, httpOnly: false });
+}
+
+/**
+ * A visitor on a feature page: within the feature's window the page opens; after it, sign in.
+ * The window comes from the signed cookie, else from the backend (which knows the visitor by IP).
+ */
+async function guestTrial(request: NextRequest, feature: TrialFeature) {
+  const secret = process.env.GUEST_TRIAL_SECRET;
+  if (!secret || secret.length < 32) return loginRedirect(request);
+
+  const trials = await readTrials(request.cookies.get(TRIAL_COOKIE)?.value, secret);
+  const known = trials?.[feature];
+  if (known !== undefined) return known > Date.now() ? NextResponse.next() : loginRedirect(request, 'trial');
+
+  let answer: { allowed?: unknown; expiresAt?: unknown };
+  try {
+    const res = await fetch(`${API_BASE}/api/guest/trial`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-guest-key': secret },
+      body: JSON.stringify({ feature, ip: visitorIp(request) }),
+      signal: AbortSignal.timeout(2500),
+    });
+    if (!res.ok) throw new Error(`guest trial ${res.status}`);
+    answer = (await res.json()) as typeof answer;
+  } catch {
+    // The backend is unreachable: let this page through without recording anything.
+    return NextResponse.next();
+  }
+  const until = typeof answer.expiresAt === 'string' ? Date.parse(answer.expiresAt) : NaN;
+  if (typeof answer.allowed !== 'boolean' || Number.isNaN(until)) return NextResponse.next();
+
+  const response = answer.allowed ? NextResponse.next() : loginRedirect(request, 'trial');
+  await rememberTrials(response, { ...(trials ?? {}), [feature]: until }, secret);
+  return response;
 }
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
+  const access = routeAccess(pathname);
 
-  // Lessons, the glossary, exam list, and home are public content.
-  if (!isProtectedPath(pathname)) {
+  // The landing page, sign-in and the tutor page (one guest question) are open to visitors.
+  if (access.kind === 'public') {
     const response = NextResponse.next();
     clearLegacyLevelCookie(request, response);
     return response;
   }
 
-  const loginUrl = new URL('/login', request.url);
-  loginUrl.searchParams.set('redirect', pathname + request.nextUrl.search);
-
-  if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
-    const response = NextResponse.redirect(loginUrl);
-    clearLegacyLevelCookie(request, response);
-    return response;
-  }
-
-  const cookieUpdates: Array<{
-    name: string;
-    value: string;
-    options: Parameters<NextResponse['cookies']['set']>[2];
-  }> = [];
-  const supabase = createServerClient({
-    getAll: () => request.cookies.getAll(),
-    set: (name: string, value: string, options: Parameters<NextResponse['cookies']['set']>[2]) => {
-      request.cookies.set(name, value);
-      cookieUpdates.push({ name, value, options });
-    },
-  });
-
-  let user = null;
-  try {
-    const { data, error } = await supabase.auth.getUser();
-    if (!error) user = data.user;
-  } catch {
-    // A failed auth service cannot turn an unverified cookie into a session.
-  }
+  const cookieUpdates: CookieUpdate[] = [];
+  const user = hasSessionCookie(request) || access.kind === 'account' ? await signedInUser(request, cookieUpdates) : null;
 
   let response: NextResponse;
   if (!user) {
-    response = NextResponse.redirect(loginUrl);
+    response = access.kind === 'account' ? loginRedirect(request) : await guestTrial(request, access.feature);
   } else if (
     (pathname === '/teacher' || pathname.startsWith('/teacher/')) &&
     !['teacher', 'admin'].includes(user.app_metadata?.app_role)
@@ -96,5 +134,6 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/', '/profile/:path*', '/progress/:path*', '/teacher/:path*', '/admin/:path*', '/exam/:path+'],
+  // Every page; not Next internals, its API routes, or files (a dot in the path: images, patterns, templates).
+  matcher: ['/((?!_next/|api/|.*\\..*).*)'],
 };

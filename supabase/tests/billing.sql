@@ -47,6 +47,7 @@ values
 \ir ../migrations/20260929120000_class_assignments.sql
 \ir ../migrations/20260929140000_admin_plan_settings.sql
 \ir ../migrations/20260929160000_daily_counted_quotas.sql
+\ir ../migrations/20260930000000_guest_trials.sql
 -- Supabase's service_role writes these tables; the stubs above need the same grant.
 grant select, insert, update, delete on public.class_rooms, public.class_members, public.exam_blueprints, public.assignments to service_role;
 
@@ -928,6 +929,54 @@ begin
   exception when insufficient_privilege then v_denied := true;
   end;
   if not v_denied then raise exception 'A signed-in user changed a plan'; end if;
+end;
+$$;
+reset role;
+
+-- Guest trials (migration 20260930000000).
+set role service_role;
+do $$
+declare
+  c_a constant text := repeat('a', 64);
+  c_b constant text := repeat('b', 64);
+  v jsonb;
+  v_failed text;
+begin
+  v := public.guest_trial_open(c_a, 'learn');
+  if not (v ->> 'allowed')::boolean then raise exception 'First visit refused'; end if;
+  -- The window is fixed at the first visit.
+  if public.guest_trial_open(c_a, 'learn') ->> 'expires_at' <> v ->> 'expires_at' then raise exception 'Window moved'; end if;
+  update public.guest_trials set started_at = now() - interval '31 minutes' where visitor_hash = c_a and feature = 'learn';
+  if (public.guest_trial_open(c_a, 'learn') ->> 'allowed')::boolean then raise exception 'Expired window still allowed'; end if;
+  -- Features are separate.
+  if not (public.guest_trial_open(c_a, 'glossary') ->> 'allowed')::boolean then raise exception 'Glossary refused'; end if;
+  begin
+    perform public.guest_trial_open(c_a, 'tutor');
+    raise exception 'unreachable';
+  exception when others then get stacked diagnostics v_failed = message_text;
+  end;
+  if v_failed <> 'INVALID_GUEST_TRIAL' then raise exception 'Tutor opened as a page: %', v_failed; end if;
+
+  -- One Tutor question each; a failure gives it back; the daily cap holds for all guests.
+  if public.guest_tutor_claim(c_a, 1) <> 'claimed' then raise exception 'First question refused'; end if;
+  if public.guest_tutor_claim(c_a, 1) <> 'used' then raise exception 'Second question allowed'; end if;
+  if public.guest_tutor_claim(c_b, 1) <> 'busy' then raise exception 'Daily cap not applied'; end if;
+  perform public.guest_tutor_release(c_a);
+  if public.guest_tutor_claim(c_a, 1) <> 'claimed' then raise exception 'Released question not given back'; end if;
+end;
+$$;
+reset role;
+
+set role anon;
+do $$
+declare
+  v_denied boolean := false;
+begin
+  begin
+    perform public.guest_tutor_claim(repeat('c', 64), 100);
+  exception when insufficient_privilege then v_denied := true;
+  end;
+  if not v_denied then raise exception 'A visitor claimed a trial directly'; end if;
 end;
 $$;
 reset role;
