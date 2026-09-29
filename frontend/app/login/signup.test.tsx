@@ -43,8 +43,9 @@ describe('SignUpSent', () => {
 describe('OAuthButtonsView', () => {
   it('offers only the providers that are switched on', () => {
     const both = renderToStaticMarkup(<OAuthButtonsView providers={{ google: true, facebook: true }} busy={null} onChoose={() => {}} />);
-    expect(both).toContain('Tiếp tục với Google');
-    expect(both).toContain('Tiếp tục với Facebook');
+    // Short visible names keep both buttons on one line; the full phrase is the accessible name.
+    expect(both).toMatch(/aria-label="Tiếp tục với Google"[^>]*>[\s\S]*?<span>Google<\/span>/);
+    expect(both).toMatch(/aria-label="Tiếp tục với Facebook"[^>]*>[\s\S]*?<span>Facebook<\/span>/);
 
     const google = renderToStaticMarkup(<OAuthButtonsView providers={{ google: true, facebook: false }} busy={null} onChoose={() => {}} />);
     expect(google).not.toContain('Facebook');
