@@ -40,6 +40,11 @@ export const startCheckout = (priceId: string, idempotencyKey: string): Promise<
 
 export const fetchOrder = (id: string): Promise<ApiResult<OrderView>> => authoringCall<OrderView>(`/api/billing/orders/${encodeURIComponent(id)}`, 'GET');
 
+export type Transaction = { id: string; planCode: string; interval: string; amountVnd: number; status: string; createdAt: string; paidAt: string | null };
+
+export const fetchTransactions = (cursor?: string): Promise<ApiResult<{ items: Transaction[]; nextCursor: string | null }>> =>
+  authoringCall(`/api/billing/transactions${cursor ? `?cursor=${encodeURIComponent(cursor)}` : ''}`, 'GET');
+
 export const fetchMyPlan = (): Promise<ApiResult<BillingAccount>> => authoringCall<BillingAccount>('/api/billing/me', 'GET');
 
 /** "390.000 ₫" */

@@ -117,3 +117,6 @@ export function payosFromEnv(env: Record<string, string | undefined> = process.e
   if (!clientId || !apiKey || !checksumKey) return null;
   return createPayosClient({ clientId, apiKey, checksumKey });
 }
+
+/** Rollback switch: new checkouts stop, while webhooks and order checks keep applying payments. */
+export const checkoutDisabled = (env: Record<string, string | undefined> = process.env) => env.BILLING_CHECKOUT_DISABLED === 'true';

@@ -2,7 +2,7 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it, vi } from 'vitest';
 import { countRawColors } from '../../lib/theme/rawColors';
 import { PricingPage } from './PricingPage';
-import { MyPlanView } from './MyPlan';
+import { MyPlanView, TransactionsView } from './MyPlan';
 import { CheckoutStatusView } from './CheckoutStatus';
 import { formatVnd, limitText, type PublicPlan } from './billingApi';
 
@@ -135,5 +135,27 @@ describe('CheckoutStatusView', () => {
     expect(expired).toContain('href="/pricing"');
     const review = renderToStaticMarkup(<CheckoutStatusView state={{ status: 'ready', order: { ...order, status: 'reconciliation' } }} />);
     expect(review).toContain('đang được đối soát');
+  });
+});
+
+describe('TransactionsView', () => {
+  const tx = (patch: Record<string, unknown> = {}) => ({ id: 'o1', planCode: 'student_plus', interval: 'month', amountVnd: 39000, status: 'paid', createdAt: '2026-09-29T03:00:00.000Z', paidAt: '2026-09-29T03:20:00.000Z', ...patch });
+
+  it('lists payments with plan, period, amount and state, and more when there are more', () => {
+    const html = renderToStaticMarkup(<TransactionsView state={{ status: 'ready', items: [tx(), tx({ id: 'o2', interval: 'year', amountVnd: 390000, status: 'pending', paidAt: null })], nextCursor: 'x', loadingMore: false }} onMore={() => {}} />);
+    expect(html).toContain('Lịch sử giao dịch');
+    expect(html).toContain('Học sinh Plus · 1 tháng');
+    expect(html).toContain('39.000 ₫');
+    expect(html).toContain('Đã thanh toán');
+    expect(html).toContain('Đang chờ thanh toán');
+    expect(html).toContain('href="/checkout/o2"');
+    expect(html).toContain('Xem thêm');
+    expect(countRawColors(html).total).toBe(0);
+  });
+
+  it('says there are none yet', () => {
+    const html = renderToStaticMarkup(<TransactionsView state={{ status: 'ready', items: [], nextCursor: null, loadingMore: false }} onMore={() => {}} />);
+    expect(html).toContain('Chưa có giao dịch nào');
+    expect(html).not.toContain('Xem thêm');
   });
 });

@@ -111,3 +111,20 @@ describe('GET /api/billing/me', () => {
     await app.close();
   });
 });
+
+describe('checkout switch in the catalog', () => {
+  it('reports checkout closed while BILLING_CHECKOUT_DISABLED is set, even with payOS keys', async () => {
+    Object.assign(process.env, { PAYOS_CLIENT_ID: 'a', PAYOS_API_KEY: 'b', PAYOS_CHECKSUM_KEY: 'c' });
+    try {
+      const open = await build(null, catalogTables());
+      expect((await open.inject({ method: 'GET', url: '/api/billing/plans' })).json().checkoutOpen).toBe(true);
+      await open.close();
+      process.env.BILLING_CHECKOUT_DISABLED = 'true';
+      const closed = await build(null, catalogTables());
+      expect((await closed.inject({ method: 'GET', url: '/api/billing/plans' })).json().checkoutOpen).toBe(false);
+      await closed.close();
+    } finally {
+      for (const key of ['PAYOS_CLIENT_ID', 'PAYOS_API_KEY', 'PAYOS_CHECKSUM_KEY', 'BILLING_CHECKOUT_DISABLED']) delete process.env[key];
+    }
+  });
+});

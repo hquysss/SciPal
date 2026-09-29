@@ -1,6 +1,6 @@
 import type { FastifyPluginAsync, FastifyRequest } from 'fastify';
 import { createBillingRepository } from '../billing/repository.js';
-import { payosFromEnv } from '../billing/providers/payos.js';
+import { checkoutDisabled, payosFromEnv } from '../billing/providers/payos.js';
 
 // The public plan catalog and the signed-in account's plan (billing plan Task 9, without payment).
 // Prices, limits and wording are rows of billing_plans / billing_prices / billing_plan_limits.
@@ -60,7 +60,7 @@ export const billingRoutes: FastifyPluginAsync = async (app) => {
         };
       });
       reply.header('Cache-Control', 'public, max-age=300');
-      return { plans: catalog, checkoutOpen: payosFromEnv() !== null };
+      return { plans: catalog, checkoutOpen: payosFromEnv() !== null && !checkoutDisabled() };
     } catch (error) {
       request.log.error({ err: error }, 'Billing catalog could not be read');
       return reply.code(503).send(UNAVAILABLE);

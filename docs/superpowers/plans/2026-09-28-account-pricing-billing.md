@@ -149,7 +149,7 @@ Thực thi từng nhánh/PR con, phụ thuộc Task 1 và 4. Đây là dependenc
 
 ### 5c. Nghiệm thu giao bài — codex/class-assignments-readiness
 
-> **29/09 — đã làm** theo spec/plan riêng `2026-09-29-class-assignments` (giao bài, học sinh mở đúng bài, trạng thái đã làm). Migration `20260929120000_class_assignments` chờ áp.
+> **29/09 — đã làm** theo spec/plan riêng `2026-09-29-class-assignments` (giao bài, học sinh mở đúng bài, trạng thái đã làm). Migration `20260929120000_class_assignments` đã áp 29/09.
 
 > **Khảo sát 28/09 (base sau #42):** bảng `assignments` (class_id, lesson_id, blueprint_id, due_at) có từ `0003_user_data`; RLS chỉ SELECT cho giáo viên chủ lớp/thành viên, không ai ghi được từ client; backend không có route tạo/xem bài giao (`routes/classes.ts` chỉ tạo lớp, vào lớp, xem danh sách); frontend không có UI giao bài. ⇒ Chưa có luồng thật; bước tiếp là spec/plan con. Trang `/pricing` không quảng cáo "giao bài".
 
@@ -220,6 +220,8 @@ Thực thi từng nhánh/PR con, phụ thuộc Task 1 và 4. Đây là dependenc
 - [ ] Full gate, update PROJECT_STATE, commit, PR.
 
 ## Task 10 / PR 10: Readiness, rollout và vận hành
+
+> **29/09 — một phần:** runbook `docs/billing-runbook.md`, công tắc `BILLING_CHECKOUT_DISABLED` (tắt tạo đơn, vẫn nhận callback), lịch sử giao dịch, link Bảng giá. Chưa: thử tiền thật với merchant, VNPAY, thu hồi gói sau hoàn tiền.
 
 **Branch:** `codex/billing-release-readiness`; depends Task 1–9.
 
