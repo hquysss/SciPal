@@ -1,12 +1,13 @@
 'use client';
 
-import { useRef, useState, type CSSProperties, type PointerEvent } from 'react';
+import { useRef, useState, type CSSProperties } from 'react';
 import Link from 'next/link';
 import { ArrowRight, Check, Sparkles } from 'lucide-react';
 import { useLanguage } from '@scipal/hooks';
 import type { BillingAudience, BillingInterval } from '@scipal/types';
 import { formatVnd, limitText, type Catalog } from '@/features/billing/billingApi';
 import { useCountUp, useInView } from './countUp';
+import { tilt, untilt } from './tilt';
 import styles from './pricing.module.css';
 
 /** The price counting up from zero as the plans come into view; readers get the final amount. */
@@ -18,22 +19,6 @@ function CountingPrice({ amount, run, className }: { amount: number; run: boolea
       <span className={styles.srOnly}>{formatVnd(amount)}</span>
     </>
   );
-}
-
-/** The paid card leans toward the pointer and a spotlight follows it (fine pointers only, see CSS). */
-function tilt(event: PointerEvent<HTMLElement>) {
-  const card = event.currentTarget;
-  const box = card.getBoundingClientRect();
-  const x = (event.clientX - box.left) / box.width;
-  const y = (event.clientY - box.top) / box.height;
-  card.style.setProperty('--tilt-x', `${((0.5 - y) * 7).toFixed(2)}deg`);
-  card.style.setProperty('--tilt-y', `${((x - 0.5) * 9).toFixed(2)}deg`);
-  card.style.setProperty('--spot-x', `${(x * 100).toFixed(1)}%`);
-  card.style.setProperty('--spot-y', `${(y * 100).toFixed(1)}%`);
-}
-
-function untilt(event: PointerEvent<HTMLElement>) {
-  for (const name of ['--tilt-x', '--tilt-y', '--spot-x', '--spot-y']) event.currentTarget.style.removeProperty(name);
 }
 
 const item = (index: number) => ({ '--i': index }) as CSSProperties;
