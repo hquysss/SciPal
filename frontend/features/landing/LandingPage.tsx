@@ -3,10 +3,10 @@
 import { useEffect, useRef } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
-import { ArrowRight, Mail } from 'lucide-react';
+import { ArrowRight, Atom, BookOpen, Braces, Dna, FlaskConical, Globe, Lightbulb, Mail, Sigma, Sparkles } from 'lucide-react';
 import { useLanguage } from '@scipal/hooks';
 import { DemandPollBanner } from '@/features/survey/DemandPollBanner';
-import { SubjectGrid } from '@/features/subjects/SubjectGrid';
+import { SubjectMarquee } from '@/features/subjects/SubjectMarquee';
 import { applyShellLevel, getShell } from '@/lib/theme/shellTheme';
 import type { EducationLevel } from './educationLevel';
 import type { InformaticsAvailability, LandingCatalog } from './getLandingData';
@@ -32,6 +32,9 @@ export interface LandingPageProps {
 }
 
 type Copy = { en: string; vi: string };
+
+/** Subject glyphs drifting up through the closing call to action (decoration only). */
+const CTA_FLOATS = [Atom, Sigma, FlaskConical, Braces, Dna, BookOpen, Globe, Lightbulb];
 
 const LEVEL_LABEL: Record<EducationLevel, Copy> = {
   primary: { en: 'Primary · Grades 1–5', vi: 'Tiểu học · Lớp 1–5' },
@@ -70,6 +73,7 @@ function useRevealOnScroll(pageRef: React.RefObject<HTMLDivElement | null>) {
 
     const targets = Array.from(page.querySelectorAll<HTMLElement>('[data-landing-reveal]'));
     const clearReveal = (target: Element) => target.classList.remove(styles.revealPending, styles.revealed);
+    const settling = new WeakMap<Element, () => void>();
 
     // Once the entrance has played, drop the reveal classes: while they stay, their transition
     // list replaces the element's own, and hover lifts and shadows would jump instead of ease.
@@ -78,29 +82,42 @@ function useRevealOnScroll(pageRef: React.RefObject<HTMLDivElement | null>) {
         if (event.target !== target || (event as TransitionEvent).propertyName !== 'opacity') return;
         done();
       };
-      const done = () => {
+      const stop = () => {
         target.removeEventListener('transitionend', onEnd);
         window.clearTimeout(fallback);
+        settling.delete(target);
+      };
+      const done = () => {
+        stop();
         clearReveal(target);
       };
       target.addEventListener('transitionend', onEnd);
       const fallback = window.setTimeout(done, 1400);
+      settling.set(target, stop);
     };
 
+    // Every time a sheet comes into view it rises again: leaving the screen (either way) puts it
+    // back under the page, so scrolling up or down replays the entrance.
     const observer = new IntersectionObserver((entries) => {
       entries.forEach((entry) => {
-        if (!entry.isIntersecting) return;
-        entry.target.classList.add(styles.revealed);
-        settle(entry.target);
-        observer.unobserve(entry.target);
+        const target = entry.target;
+        if (!entry.isIntersecting) {
+          settling.get(target)?.();
+          target.classList.remove(styles.revealed);
+          target.classList.add(styles.revealPending);
+          return;
+        }
+        const enough = entry.intersectionRatio >= 0.12 || entry.intersectionRect.height >= window.innerHeight * 0.3;
+        if (!enough || !target.classList.contains(styles.revealPending)) return;
+        target.classList.add(styles.revealed);
+        settle(target);
       });
-    }, { threshold: 0.12, rootMargin: '0px 0px -5% 0px' });
+    }, { threshold: [0, 0.12, 0.3] });
 
     targets.forEach((target, index) => {
-      // Already on screen: leave it as is, fully visible.
-      if (target.getBoundingClientRect().top < window.innerHeight * 0.95) return;
       target.style.setProperty('--reveal-delay', String((index % 3) * 80) + 'ms');
-      target.classList.add(styles.revealPending);
+      // Already on screen at load: leave it as is, fully visible, until it first leaves.
+      if (target.getBoundingClientRect().top >= window.innerHeight * 0.95) target.classList.add(styles.revealPending);
       observer.observe(target);
     });
 
@@ -133,7 +150,7 @@ function ChangeLevel({ onChangeLevel, className }: { onChangeLevel?: () => void;
   );
 }
 
-export function LandingPage({ level, levelSource, catalog, informatics, onChangeLevel, pricing = null }: LandingPageProps) {
+export function LandingPage({ level, levelSource, catalog, onChangeLevel, pricing = null }: LandingPageProps) {
   const { t, lang } = useLanguage();
   const pageRef = useRef<HTMLDivElement>(null);
   const [titleFirst, titleSecond] = HERO_TITLE[level];
@@ -187,7 +204,7 @@ export function LandingPage({ level, levelSource, catalog, informatics, onChange
             </p>
           </div>
           <div className={styles.subjectGrid} data-landing-reveal>
-            <SubjectGrid level={level} catalog={catalog} informatics={informatics} />
+            <SubjectMarquee level={level} catalog={catalog} />
           </div>
         </section>
 
@@ -196,15 +213,35 @@ export function LandingPage({ level, levelSource, catalog, informatics, onChange
         {pricing && <PricingSection catalog={pricing} />}
 
         <section className={styles.finalCta} aria-labelledby="start-title" data-landing-reveal>
-          <h2 id="start-title" className={styles.finalTitle}>{t({ en: 'Ready?', vi: 'Sẵn sàng chưa?' })}</h2>
-          <a href="#mon-hoc" className={styles.finalAction}>
-            {t({ en: 'Start learning', vi: 'Bắt đầu học' })}
-            <ArrowRight size={18} aria-hidden="true" />
-          </a>
-        </section>
-
-        <section className={styles.poll} aria-label={t({ en: 'Subject demand poll', vi: 'Khảo sát nhu cầu môn học' })}>
-          <DemandPollBanner />
+          <div className={styles.ctaFloats} aria-hidden="true">
+            {CTA_FLOATS.map((Icon, index) => (
+              <span key={index} data-cta-float="" style={{ '--i': index } as React.CSSProperties}>
+                <Icon size={26} strokeWidth={1.6} />
+              </span>
+            ))}
+          </div>
+          <div className={styles.finalBody}>
+            <h2 id="start-title" className={styles.finalTitle}>{t({ en: 'Ready?', vi: 'Sẵn sàng chưa?' })}</h2>
+            <p className={styles.finalLead}>
+              {t({
+                en: 'Every lesson is free. Pick a subject and start today.',
+                vi: 'Mọi bài học đều miễn phí. Chọn một môn và bắt đầu ngay hôm nay.',
+              })}
+            </p>
+            <div className={styles.finalActions}>
+              <a href="#mon-hoc" className={styles.finalAction}>
+                {t({ en: 'Start learning', vi: 'Bắt đầu học' })}
+                <ArrowRight size={18} aria-hidden="true" />
+              </a>
+              <Link href="/tutor" className={styles.finalGhost}>
+                <Sparkles size={17} aria-hidden="true" />
+                {t({ en: 'Ask the AI tutor', vi: 'Hỏi Gia sư AI' })}
+              </Link>
+            </div>
+          </div>
+          <div className={styles.poll}>
+            <DemandPollBanner />
+          </div>
         </section>
       </main>
 

@@ -1,0 +1,281 @@
+/* The landing subjects strip. It runs left forever (the rail holds two identical halves and moves
+   by exactly one half), pauses under the pointer or keyboard focus, and fades at both edges.
+   Cards with lessons carry their subject accent and glow; the rest stay quiet. */
+
+.marquee {
+  position: relative;
+  overflow: hidden;
+  padding-block: 1.25rem 1.75rem;
+  -webkit-mask-image: linear-gradient(90deg, transparent, #000 7%, #000 93%, transparent);
+  mask-image: linear-gradient(90deg, transparent, #000 7%, #000 93%, transparent);
+}
+
+.rail {
+  display: flex;
+  align-items: stretch;
+  width: max-content;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  animation: marquee-run var(--marquee-duration, 40s) linear infinite;
+}
+
+/* A margin, not a flex gap: both halves then measure the same and -50% lands seamlessly. */
+.rail > li {
+  display: flex;
+  margin-inline-end: 1rem;
+}
+
+.marquee:hover .rail,
+.marquee:focus-within .rail {
+  animation-play-state: paused;
+}
+
+@keyframes marquee-run {
+  to {
+    translate: -50% 0;
+  }
+}
+
+/* ---------- cards ---------- */
+
+.card {
+  position: relative;
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+  justify-items: start;
+  gap: 0.85rem;
+  width: 14.5rem;
+  min-height: 11.5rem;
+  border: 1px solid var(--line);
+  border-radius: 1.25rem;
+  padding: 1.1rem 1.15rem;
+  background: color-mix(in srgb, var(--surface) 88%, transparent);
+  color: var(--ink);
+  transition:
+    transform 380ms cubic-bezier(0.22, 1, 0.36, 1),
+    box-shadow 380ms cubic-bezier(0.22, 1, 0.36, 1),
+    border-color 240ms ease;
+}
+
+.card:hover {
+  transform: translateY(-4px);
+  border-color: var(--edge);
+}
+
+.icon {
+  display: grid;
+  width: 2.9rem;
+  height: 2.9rem;
+  place-items: center;
+  border: 1px solid var(--line);
+  border-radius: 0.9rem;
+  background: var(--surface-sunken);
+  color: var(--ink-muted);
+  font-size: 1.15rem;
+  font-weight: 750;
+  transition: transform 420ms cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.card:hover .icon {
+  transform: scale(1.1) rotate(-6deg);
+}
+
+.names {
+  display: grid;
+  align-content: start;
+  gap: 0.2rem;
+  min-width: 0;
+}
+
+.names h3 {
+  margin: 0;
+  font-size: 1.05rem;
+  font-weight: 800;
+  line-height: 1.25;
+  letter-spacing: -0.01em;
+}
+
+.names > span {
+  color: var(--ink-muted);
+  font-size: 0.82rem;
+  line-height: 1.4;
+}
+
+.soon {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  color: var(--ink-muted);
+  font-size: 0.78rem;
+  font-weight: 650;
+}
+
+.soon::before {
+  content: '';
+  width: 0.45rem;
+  height: 0.45rem;
+  border-radius: 999px;
+  background: var(--edge);
+}
+
+/* A subject with lessons: wider, in its accent, breathing a soft glow, with a light sweep. */
+.live {
+  overflow: hidden;
+  isolation: isolate;
+  width: 18.5rem;
+  border-color: color-mix(in srgb, var(--accent, var(--action)) 45%, var(--line));
+  background:
+    radial-gradient(120% 90% at 100% 0%, color-mix(in srgb, var(--accent, var(--action)) 22%, transparent), transparent 60%),
+    linear-gradient(160deg, color-mix(in srgb, var(--accent, var(--action)) 10%, var(--surface)), var(--surface));
+  box-shadow: 0 1.1rem 2.2rem -1.3rem color-mix(in srgb, var(--accent, var(--action)) 70%, transparent);
+  animation: live-breathe 3.6s ease-in-out infinite;
+}
+
+.live::after {
+  content: '';
+  position: absolute;
+  z-index: -1;
+  inset: 0;
+  background: linear-gradient(105deg, transparent 35%, color-mix(in srgb, var(--surface) 70%, transparent) 50%, transparent 65%);
+  translate: -120% 0;
+  animation: live-sweep 4.8s ease-in-out infinite;
+}
+
+.live:hover {
+  border-color: var(--accent, var(--action));
+  box-shadow: 0 1.6rem 2.8rem -1.3rem color-mix(in srgb, var(--accent, var(--action)) 85%, transparent);
+}
+
+.live .icon {
+  border-color: color-mix(in srgb, var(--accent, var(--action)) 40%, var(--line));
+  background: color-mix(in srgb, var(--accent, var(--action)) 14%, var(--surface));
+  color: var(--accent-ink, var(--accent, var(--action)));
+}
+
+.go {
+  display: inline-flex;
+  min-height: 2.6rem;
+  align-items: center;
+  gap: 0.45rem;
+  border-radius: 999px;
+  padding: 0 1.1rem;
+  background: var(--accent, var(--action));
+  color: var(--action-ink);
+  font-size: 0.88rem;
+  font-weight: 750;
+  text-decoration: none;
+  transition: transform 180ms ease-out, filter 180ms ease-out;
+}
+
+.go span {
+  transition: translate 180ms ease-out;
+}
+
+.go:hover {
+  transform: translateY(-1px);
+  filter: brightness(0.94);
+}
+
+.go:hover span,
+.go:focus-visible span {
+  translate: 3px 0;
+}
+
+.go:focus-visible,
+.retry:focus-visible {
+  outline: 3px solid var(--focus);
+  outline-offset: 3px;
+}
+
+@keyframes live-breathe {
+  50% {
+    box-shadow: 0 1.4rem 2.6rem -1.1rem color-mix(in srgb, var(--accent, var(--action)) 85%, transparent);
+  }
+}
+
+@keyframes live-sweep {
+  0%,
+  55% {
+    translate: -120% 0;
+  }
+  100% {
+    translate: 120% 0;
+  }
+}
+
+/* ---------- messages ---------- */
+
+.message {
+  display: grid;
+  justify-items: start;
+  gap: 0.75rem;
+  margin: 0;
+  border: 1px solid var(--line);
+  border-radius: 1rem;
+  padding: 1.25rem;
+  background: var(--surface);
+  color: var(--ink-muted);
+}
+
+.message p {
+  margin: 0;
+}
+
+.retry {
+  min-height: 2.75rem;
+  border: 1px solid var(--edge);
+  border-radius: 999px;
+  padding: 0 1.1rem;
+  background: var(--surface);
+  color: var(--ink);
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* ---------- reduced motion: a still strip you scroll by hand ---------- */
+
+@media (prefers-reduced-motion: reduce) {
+  .marquee {
+    overflow-x: auto;
+    scroll-snap-type: x proximity;
+    -webkit-mask-image: none;
+    mask-image: none;
+  }
+
+  .rail {
+    animation: none;
+  }
+
+  .rail > li {
+    scroll-snap-align: start;
+  }
+
+  .rail > li[data-copy] {
+    display: none;
+  }
+
+  .card,
+  .icon,
+  .go,
+  .go span,
+  .live,
+  .live::after {
+    animation: none;
+    transition: none;
+  }
+
+  .live::after {
+    display: none;
+  }
+}

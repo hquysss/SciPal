@@ -1,12 +1,42 @@
 'use client';
 
-import { useState } from 'react';
+import { useRef, useState, type CSSProperties, type PointerEvent } from 'react';
 import Link from 'next/link';
 import { ArrowRight, Check, Sparkles } from 'lucide-react';
 import { useLanguage } from '@scipal/hooks';
 import type { BillingAudience, BillingInterval } from '@scipal/types';
 import { formatVnd, limitText, type Catalog } from '@/features/billing/billingApi';
+import { useCountUp, useInView } from './countUp';
 import styles from './pricing.module.css';
+
+/** The price counting up from zero as the plans come into view; readers get the final amount. */
+function CountingPrice({ amount, run, className }: { amount: number; run: boolean; className: string }) {
+  const shown = useCountUp(amount, run);
+  return (
+    <>
+      <span className={className} aria-hidden="true">{formatVnd(shown)}</span>
+      <span className={styles.srOnly}>{formatVnd(amount)}</span>
+    </>
+  );
+}
+
+/** The paid card leans toward the pointer and a spotlight follows it (fine pointers only, see CSS). */
+function tilt(event: PointerEvent<HTMLElement>) {
+  const card = event.currentTarget;
+  const box = card.getBoundingClientRect();
+  const x = (event.clientX - box.left) / box.width;
+  const y = (event.clientY - box.top) / box.height;
+  card.style.setProperty('--tilt-x', `${((0.5 - y) * 7).toFixed(2)}deg`);
+  card.style.setProperty('--tilt-y', `${((x - 0.5) * 9).toFixed(2)}deg`);
+  card.style.setProperty('--spot-x', `${(x * 100).toFixed(1)}%`);
+  card.style.setProperty('--spot-y', `${(y * 100).toFixed(1)}%`);
+}
+
+function untilt(event: PointerEvent<HTMLElement>) {
+  for (const name of ['--tilt-x', '--tilt-y', '--spot-x', '--spot-y']) event.currentTarget.style.removeProperty(name);
+}
+
+const item = (index: number) => ({ '--i': index }) as CSSProperties;
 
 /**
  * The plans on the landing page: the free sheet of paper next to the paid plan in its aura.
@@ -24,6 +54,8 @@ export function PricingSection({
   const { t } = useLanguage();
   const [audience, setAudience] = useState<BillingAudience>(initialAudience);
   const [interval, setInterval] = useState<BillingInterval>(initialInterval);
+  const sectionRef = useRef<HTMLElement>(null);
+  const inView = useInView(sectionRef, 0.2);
 
   const plans = catalog.plans.filter((p) => p.audience === audience);
   const free = plans.find((p) => p.prices.length === 0);
@@ -33,10 +65,18 @@ export function PricingSection({
   const yearMonths = price && monthly && interval === 'year' ? Math.round(price.amountVnd / monthly.amountVnd) : null;
 
   return (
-    <section className={styles.pricing} aria-labelledby="pricing-title">
+    <section ref={sectionRef} className={styles.pricing} aria-labelledby="pricing-title" data-inview={inView}>
+      <div className={styles.stage} aria-hidden="true">
+        <span className={styles.orbSun} />
+        <span className={styles.orbCoral} />
+        <span className={styles.orbSky} />
+      </div>
       <div className={styles.intro} data-landing-reveal>
         <h2 id="pricing-title" className={styles.title}>
-          {t({ en: 'Learn free. Go further when you need to.', vi: 'Học miễn phí. Cần thêm thì nâng cấp.' })}
+          <span className={styles.titleLine}>{t({ en: 'Learn free.', vi: 'Học miễn phí.' })}</span>{' '}
+          <span className={`${styles.titleLine} ${styles.titleGlow}`}>
+            {t({ en: 'Go further when you need to.', vi: 'Cần thêm thì nâng cấp.' })}
+          </span>
         </h2>
         <p className={styles.lead}>
           {t({
@@ -64,7 +104,7 @@ export function PricingSection({
         </div>
       </div>
 
-      <div className={styles.plans} data-landing-reveal>
+      <div className={styles.plans}>
         {free && (
           <article className={styles.free} aria-labelledby={`landing-${free.code}`}>
             <h3 id={`landing-${free.code}`} className={styles.planName}>{t(free.name)}</h3>
@@ -73,8 +113,8 @@ export function PricingSection({
               <span className={styles.per}>{t({ en: 'forever', vi: 'mãi mãi' })}</span>
             </p>
             <ul className={styles.limits}>
-              {free.limits.map((l) => (
-                <li key={l.metric}>
+              {free.limits.map((l, index) => (
+                <li key={l.metric} style={item(index)}>
                   <Check aria-hidden="true" size={16} />
                   <span>{limitText(l, t)}</span>
                 </li>
@@ -88,13 +128,17 @@ export function PricingSection({
 
         {paid && (
           <div className={styles.aura} data-aura="">
-            <article className={styles.paid} aria-labelledby={`landing-${paid.code}`}>
+            <span className={styles.sparkles} aria-hidden="true">
+              {[0, 1, 2, 3, 4].map((n) => <span key={n} style={item(n)}>✦</span>)}
+            </span>
+            <article className={styles.paid} aria-labelledby={`landing-${paid.code}`} onPointerMove={tilt} onPointerLeave={untilt}>
+              <span className={styles.badge}>{t({ en: 'Recommended', vi: 'Khuyên dùng' })}</span>
               <h3 id={`landing-${paid.code}`} className={styles.planName}>
                 <Sparkles aria-hidden="true" size={20} className={styles.spark} />
                 {t(paid.name)}
               </h3>
-              <p className={styles.price}>
-                <span className={`${styles.amount} ${styles.amountPaid}`}>{formatVnd(price?.amountVnd ?? 0)}</span>
+              <p className={styles.price} key={`${audience}-${interval}`}>
+                <CountingPrice amount={price?.amountVnd ?? 0} run={inView} className={`${styles.amount} ${styles.amountPaid}`} />
                 <span className={styles.per}>{interval === 'year' ? t({ en: '/ year', vi: '/ năm' }) : t({ en: '/ month', vi: '/ tháng' })}</span>
               </p>
               <p className={styles.note}>
@@ -103,8 +147,8 @@ export function PricingSection({
                   : t({ en: 'No auto-renewal; the plan runs to the end of the period you paid for.', vi: 'Không tự gia hạn; gói chạy tới hết kỳ đã trả.' })}
               </p>
               <ul className={styles.limits}>
-                {paid.limits.map((l) => (
-                  <li key={l.metric}>
+                {paid.limits.map((l, index) => (
+                  <li key={l.metric} style={item(index + 1)}>
                     <Check aria-hidden="true" size={16} />
                     <span>{limitText(l, t)}</span>
                   </li>

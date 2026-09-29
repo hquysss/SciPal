@@ -15,4 +15,9 @@ describe('DemandPollBanner', () => {
     expect(html).not.toContain('Khảo sát người học');
     expect(html).not.toContain('Ý kiến của bạn giúp SciPal');
   });
+
+  it('says what a vote does', () => {
+    const html = renderToStaticMarkup(<DemandPollBanner />);
+    expect(html).toContain('Bình chọn giúp SciPal biết nên biên soạn môn nào trước.');
+  });
 });
