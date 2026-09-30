@@ -5,7 +5,7 @@ import type { AIProvider } from '../providers/ai.js';
 import { CONTEXT_MESSAGES, MESSAGE_MAX, PAGE_SIZE, TITLE_LENGTH, vietnamDayStart } from '../tutor/limits.js';
 import { resolveTutorSettings, type SettingsStore } from '../tutor/settings.js';
 import { buildSystemPrompt, lessonContext, type EducationLevel } from '../tutor/systemPrompt.js';
-import { createVoiceToken, voiceModel } from '../tutor/voiceToken.js';
+import { createVoiceToken, VOICE_SESSION_MINUTES } from '../tutor/voiceToken.js';
 
 declare module 'fastify' {
   interface FastifyInstance {
@@ -91,18 +91,22 @@ export const tutorRoutes: FastifyPluginAsync = async (app) => {
     return reply.code(204).send();
   });
 
-  // A spoken session (Gemini Live): one tutor request of the plan quota buys up to ten minutes of
-  // talking. The browser gets a one-use token locked to the tutor's instruction, never the key.
+  // A spoken session (Gemini Live). The student picks 3, 5 or 10 minutes; they come off the plan's
+  // voice minutes when the session starts (fewer if fewer are left), since the browser talks to
+  // Gemini directly and the backend never sees the end. The browser gets a one-use token locked
+  // to the tutor's instruction and that length, never the key.
   app.post('/api/tutor/voice', async (request, reply) => {
     const supabase = app.supabase!;
     const uid = userId(request)!;
-    const body = (request.body ?? {}) as { lesson_id?: unknown; language?: unknown };
+    const body = (request.body ?? {}) as { lesson_id?: unknown; language?: unknown; minutes?: unknown };
     const language = body.language === 'en' ? 'en' : 'vi';
+    const asked = (VOICE_SESSION_MINUTES as readonly unknown[]).includes(body.minutes) ? (body.minutes as number) : 5;
     const settings = app.tutorSettings ? await app.tutorSettings.get() : resolveTutorSettings(null, process.env);
     if (!settings.enabled) {
       return reply.code(503).send(msg('Gia sư đang tạm nghỉ. Em quay lại sau nhé.', 'The tutor is taking a break. Please come back later.'));
     }
     const apiKey = process.env.GEMINI_API_KEY;
+    if (!settings.voiceEnabled) return reply.code(503).send({ code: 'VOICE_OFF', ...msg('Chế độ nói chuyện đang tắt.', 'Voice chat is turned off.') });
     if (!apiKey) return reply.code(503).send({ code: 'VOICE_UNAVAILABLE', ...msg('Chế độ nói chuyện chưa được bật.', 'Voice chat is not set up yet.') });
 
     let lessonText: string | undefined;
@@ -122,27 +126,38 @@ export const tutorRoutes: FastifyPluginAsync = async (app) => {
 
     const admin = isAdmin(request);
     const billing = createBillingRepository((name, args) => supabase.rpc(name, args));
+    let minutes = asked;
     let hold: { operationId: string; remaining: number; period: Period } | null = null;
     if (!admin) {
+      const refused = (limit: number, period: Period, resetsAt: string | null) => ({
+        code: 'QUOTA_EXCEEDED',
+        ...(period === 'day'
+          ? msg(`Em đã dùng hết ${limit} phút nói chuyện hôm nay.`, `You have used your ${limit} voice minutes today.`)
+          : msg(`Em đã dùng hết ${limit} phút nói chuyện tháng này.`, `You have used your ${limit} voice minutes this month.`)),
+        remaining: 0, limit, period, resetsAt,
+      });
       try {
+        const quota = (await billing.getEffectiveQuotas(uid, new Date())).find((q) => q.metric === 'voice_minutes');
+        const period: Period = quota?.kind === 'daily' ? 'day' : 'month';
+        const left = quota ? quota.limit - quota.used - quota.reserved : 0;
+        if (left < 1) return reply.code(429).send(refused(quota?.limit ?? 0, period, quota?.resetsAt ?? null));
+        minutes = Math.min(asked, left);
         const operationId = randomUUID();
-        const r = await billing.reserveQuota(uid, 'tutor_requests', operationId, 1, createHash('sha256').update(`${uid}:voice:${operationId}`).digest('hex'));
-        hold = { operationId, remaining: r.remaining, period: r.kind === 'monthly' ? 'month' : 'day' };
+        const r = await billing.reserveQuota(uid, 'voice_minutes', operationId, minutes, createHash('sha256').update(`${uid}:voice:${operationId}`).digest('hex'));
+        hold = { operationId, remaining: r.remaining, period: r.kind === 'daily' ? 'day' : 'month' };
       } catch (err) {
-        if (err instanceof BillingRepositoryError && err.code === 'QUOTA_EXCEEDED') {
-          const quota = await billing.getEffectiveQuotas(uid, new Date()).then((qs) => qs.find((q) => q.metric === 'tutor_requests')).catch(() => undefined);
-          return reply.code(429).send(quotaRefused(quota?.limit ?? 0, quota?.kind === 'monthly' ? 'month' : 'day', quota?.resetsAt ?? null));
-        }
-        request.log.error({ err }, 'Failed to hold a voice session');
+        if (err instanceof BillingRepositoryError && err.code === 'QUOTA_EXCEEDED') return reply.code(429).send(refused(0, 'month', null));
+        request.log.error({ err }, 'Failed to hold voice minutes');
         return reply.code(503).send(quotaUnavailable);
       }
     }
     try {
       const voice = await createVoiceToken({
         apiKey,
-        model: voiceModel(process.env),
+        model: settings.voiceModel,
         systemInstruction: buildSystemPrompt({ language, level, lesson: lessonText, spoken: true }),
         language,
+        minutes,
       });
       if (hold) await billing.settleQuota(hold.operationId, 'commit').catch((err) => request.log.error({ err }, 'Failed to count a voice session'));
       return reply.send({ ...voice, remaining: hold?.remaining ?? null, period: hold?.period ?? null });
@@ -314,7 +329,7 @@ export const tutorRoutes: FastifyPluginAsync = async (app) => {
     let failed = false;
     let stopped = false;
     try {
-      for await (const text of app.aiProvider.chat(history, buildSystemPrompt({ language, level, lesson: lessonText }), { provider: settings.provider, model: settings.model })) {
+      for await (const text of app.aiProvider.chat(history, buildSystemPrompt({ language, level, lesson: lessonText }), { provider: settings.provider, model: settings.model, effort: settings.reasoningEffort })) {
         if (closed || raw.destroyed) {
           stopped = true;
           break;

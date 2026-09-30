@@ -5,7 +5,7 @@ import { KeyRound, PlugZap } from 'lucide-react';
 import { useLanguage } from '@scipal/hooks';
 import { Alert } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
-import { getAiSettings, saveAiSettings, testAiSettings, type AiProvider, type AiSettingsSnapshot, type AiTestResult } from './api';
+import { getAiSettings, saveAiSettings, testAiSettings, type AiProvider, type AiSettingsSnapshot, type AiTestResult, type ReasoningEffort } from './api';
 
 type Bilingual = { vi: string; en: string };
 
@@ -15,7 +15,16 @@ const PROVIDERS: Array<{ id: AiProvider; name: string; env: string }> = [
   { id: 'openai', name: 'OpenAI', env: 'OPENAI_API_KEY' },
 ];
 
-type Form = { provider: AiProvider; model: string; limit: string; enabled: boolean; translateEnabled: boolean; translateLimit: string };
+type Form = {
+  provider: AiProvider; model: string; limit: string; enabled: boolean; translateEnabled: boolean; translateLimit: string;
+  effort: ReasoningEffort; voiceModel: string; voiceEnabled: boolean;
+};
+const EFFORTS: Array<{ id: ReasoningEffort; label: Bilingual; hint: Bilingual }> = [
+  { id: 'low', label: { en: 'Low', vi: 'Thấp' }, hint: { en: 'Fastest, cheapest', vi: 'Nhanh, rẻ nhất' } },
+  { id: 'medium', label: { en: 'Medium', vi: 'Vừa' }, hint: { en: 'Balanced', vi: 'Cân bằng' } },
+  { id: 'high', label: { en: 'High', vi: 'Cao' }, hint: { en: 'Deeper, slower, costs more', vi: 'Kỹ hơn, chậm và tốn hơn' } },
+];
+const MODEL_RE = /^[A-Za-z0-9._:/-]{1,100}$/;
 const CHARS_MIN = 1000;
 const CHARS_MAX = 5_000_000;
 const number = (n: number) => n.toLocaleString('vi-VN');
@@ -26,6 +35,9 @@ const formOf = (s: AiSettingsSnapshot): Form => ({
   enabled: s.effective.enabled,
   translateEnabled: s.translate.effective.enabled,
   translateLimit: String(s.translate.effective.dailyChars),
+  effort: s.effective.reasoningEffort ?? 'low',
+  voiceModel: s.saved?.voice_model ?? '',
+  voiceEnabled: s.effective.voiceEnabled ?? true,
 });
 
 /** The admin's AI tutor settings. API keys are never entered here: only whether each is set. */
@@ -56,16 +68,17 @@ export function AiSettingsForm({ initial }: { initial?: AiSettingsSnapshot }) {
   const limitValid = Number.isInteger(limit) && limit >= 1 && limit <= 200;
   const chars = Number(form.translateLimit);
   const charsValid = Number.isInteger(chars) && chars >= CHARS_MIN && chars <= CHARS_MAX;
-  const modelValid = form.model.trim() === '' || /^[A-Za-z0-9._:/-]{1,100}$/.test(form.model.trim());
+  const modelValid = form.model.trim() === '' || MODEL_RE.test(form.model.trim());
+  const voiceModelValid = form.voiceModel.trim() === '' || MODEL_RE.test(form.voiceModel.trim());
   const chosen = PROVIDERS.find((p) => p.id === form.provider)!;
   const saved = formOf(snapshot);
-  const dirty = form.provider !== saved.provider || form.model.trim() !== saved.model || form.limit !== saved.limit || form.enabled !== saved.enabled || form.translateEnabled !== saved.translateEnabled || form.translateLimit !== saved.translateLimit;
+  const dirty = form.provider !== saved.provider || form.model.trim() !== saved.model || form.limit !== saved.limit || form.enabled !== saved.enabled || form.translateEnabled !== saved.translateEnabled || form.translateLimit !== saved.translateLimit || form.effort !== saved.effort || form.voiceModel.trim() !== saved.voiceModel || form.voiceEnabled !== saved.voiceEnabled;
 
   const save = async () => {
     setBusy('save');
     setMessage(null);
     setTest(null);
-    const res = await saveAiSettings({ provider: form.provider, model: form.model.trim() || null, daily_limit: limit, enabled: form.enabled, translate_enabled: form.translateEnabled, translate_daily_chars: chars });
+    const res = await saveAiSettings({ provider: form.provider, model: form.model.trim() || null, daily_limit: limit, enabled: form.enabled, translate_enabled: form.translateEnabled, translate_daily_chars: chars, reasoning_effort: form.effort, voice_model: form.voiceModel.trim() || null, voice_enabled: form.voiceEnabled });
     setBusy(null);
     if (!res.ok) return setMessage({ text: res.error, tone: 'danger' });
     setSnapshot(res.data);
@@ -102,7 +115,7 @@ export function AiSettingsForm({ initial }: { initial?: AiSettingsSnapshot }) {
         className="flex flex-col gap-6"
         onSubmit={(e) => {
           e.preventDefault();
-          if (limitValid && modelValid && charsValid && dirty && !busy) void save();
+          if (limitValid && modelValid && voiceModelValid && charsValid && dirty && !busy) void save();
         }}
       >
         <fieldset className="flex flex-col gap-2">
@@ -178,6 +191,59 @@ export function AiSettingsForm({ initial }: { initial?: AiSettingsSnapshot }) {
           {!form.enabled && <span className="text-sm text-ink-muted">{t({ en: '— students see “taking a break”', vi: '— học sinh thấy “Gia sư đang tạm nghỉ”' })}</span>}
         </label>
 
+        <fieldset className="flex flex-col gap-2">
+          <legend className="mb-1 text-sm font-semibold text-ink">{t({ en: 'Thinking before answering', vi: 'Mức suy nghĩ trước khi trả lời' })}</legend>
+          <div className="grid gap-2 sm:grid-cols-3">
+            {EFFORTS.map((e) => (
+              <label
+                key={e.id}
+                className={`flex min-h-11 cursor-pointer items-center gap-3 rounded-xl border px-4 py-3 transition-colors focus-within:outline focus-within:outline-2 focus-within:outline-offset-1 focus-within:outline-focus ${form.effort === e.id ? 'border-action' : 'border-line hover:border-edge'} bg-surface`}
+              >
+                <input type="radio" name={`${ids}-effort`} value={e.id} checked={form.effort === e.id} onChange={() => setForm({ ...form, effort: e.id })} className="h-5 w-5 accent-[var(--action)]" />
+                <span className="flex flex-col">
+                  <span className="font-semibold text-ink">{t(e.label)}</span>
+                  <span className="text-xs text-ink-muted">{t(e.hint)}</span>
+                </span>
+              </label>
+            ))}
+          </div>
+          <p className="text-xs text-ink-muted">
+            {t({
+              en: 'Applies to Gemini (tutor, translation, lesson AI). OpenAI chat models ignore it.',
+              vi: 'Áp dụng cho Gemini (gia sư, dịch, AI soạn bài). Model chat của OpenAI không dùng cài đặt này.',
+            })}
+          </p>
+        </fieldset>
+
+        <fieldset className="flex flex-col gap-3 rounded-2xl border border-line bg-surface p-4">
+          <legend className="px-1 text-sm font-semibold text-ink">{t({ en: 'Voice chat', vi: 'Nói chuyện bằng giọng nói' })}</legend>
+          <label className="flex min-h-11 cursor-pointer items-center gap-3">
+            <input type="checkbox" checked={form.voiceEnabled} onChange={(e) => setForm({ ...form, voiceEnabled: e.target.checked })} className="h-5 w-5 accent-[var(--action)]" />
+            <span className="text-base text-ink">{t({ en: 'Voice chat on for students', vi: 'Bật nói chuyện cho học sinh' })}</span>
+          </label>
+          <div className="flex flex-col gap-1">
+            <label htmlFor={`${ids}-voice-model`} className="text-sm font-semibold text-ink">{t({ en: 'Live model (Gemini)', vi: 'Model giọng nói (Gemini Live)' })}</label>
+            <input
+              id={`${ids}-voice-model`}
+              value={form.voiceModel}
+              maxLength={100}
+              placeholder={snapshot.voiceDefault ?? 'gemini-3.8-live'}
+              aria-invalid={!voiceModelValid}
+              aria-describedby={`${ids}-voice-model-hint`}
+              onChange={(e) => setForm({ ...form, voiceModel: e.target.value })}
+              className={`${FIELD} font-mono text-sm`}
+            />
+            <p id={`${ids}-voice-model-hint`} className="text-xs text-ink-muted">
+              {voiceModelValid
+                ? t({
+                    en: `Empty uses ${snapshot.voiceDefault ?? 'gemini-3.8-live'}. Needs GEMINI_API_KEY. Minutes per student are set per plan on Plans & prices.`,
+                    vi: `Để trống sẽ dùng ${snapshot.voiceDefault ?? 'gemini-3.8-live'}. Cần GEMINI_API_KEY. Số phút mỗi học sinh chỉnh theo gói ở trang Hạn mức & giá gói.`,
+                  })
+                : t({ en: 'Letters, digits and . _ : / - only.', vi: 'Chỉ gồm chữ, số và . _ : / -' })}
+            </p>
+          </div>
+        </fieldset>
+
         <fieldset className="flex flex-col gap-3 rounded-2xl border border-line bg-surface p-4">
           <legend className="px-1 text-sm font-semibold text-ink">{t({ en: 'Automatic translation for teachers', vi: 'Dịch tự động cho giáo viên' })}</legend>
           <p className="text-sm text-ink-muted">
@@ -217,7 +283,7 @@ export function AiSettingsForm({ initial }: { initial?: AiSettingsSnapshot }) {
         {message && <Alert tone={message.tone}>{t(message.text)}</Alert>}
 
         <div className="flex flex-wrap items-center gap-3">
-          <Button type="submit" disabled={!dirty || !limitValid || !modelValid || !charsValid || busy !== null}>
+          <Button type="submit" disabled={!dirty || !limitValid || !modelValid || !voiceModelValid || !charsValid || busy !== null}>
             {busy === 'save' ? t({ en: 'Saving…', vi: 'Đang lưu…' }) : t({ en: 'Save settings', vi: 'Lưu cài đặt' })}
           </Button>
           <Button type="button" variant="outline" disabled={busy !== null || dirty} onClick={() => void runTest()} title={dirty ? t({ en: 'Save first, then test', vi: 'Lưu trước rồi thử' }) : undefined}>

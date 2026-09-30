@@ -8,6 +8,7 @@ const QuotaMetricSchema = z.enum([
   'import_files',
   'active_authored_exams',
   'author_ai_requests',
+  'voice_minutes',
 ]);
 const EffectiveQuotaRowSchema = z.object({
   metric: QuotaMetricSchema,

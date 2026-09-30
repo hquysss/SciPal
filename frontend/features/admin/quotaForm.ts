@@ -11,6 +11,7 @@ const METRIC_NAME: Record<QuotaMetric, Bilingual> = {
   graded_exam_attempts: { vi: 'Lượt thi chấm điểm', en: 'Graded exam attempts' },
   import_files: { vi: 'Tệp nhập', en: 'Imported files' },
   author_ai_requests: { vi: 'Lượt AI soạn bài', en: 'Authoring AI requests' },
+  voice_minutes: { vi: 'Phút nói chuyện với gia sư', en: 'Voice tutor minutes' },
   active_classes: { vi: 'Lớp đang hoạt động', en: 'Active classes' },
   students_per_class: { vi: 'Học sinh mỗi lớp', en: 'Students per class' },
   active_authored_exams: { vi: 'Đề tự soạn đang hoạt động', en: 'Active authored exams' },

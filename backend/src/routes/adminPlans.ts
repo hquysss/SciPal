@@ -6,7 +6,7 @@ import { z } from 'zod';
 // in one transaction; a new price replaces the active one and sold orders keep theirs.
 
 const PLAN_ORDER = ['student_free', 'student_plus', 'teacher_free', 'teacher_pro'] as const;
-const METRIC_ORDER = ['tutor_requests', 'graded_exam_attempts', 'active_classes', 'students_per_class', 'active_authored_exams', 'import_files', 'author_ai_requests'];
+const METRIC_ORDER = ['tutor_requests', 'voice_minutes', 'graded_exam_attempts', 'active_classes', 'students_per_class', 'active_authored_exams', 'import_files', 'author_ai_requests'];
 const AUDIT_LIMIT = 20;
 
 type ErrorBody = { code: string; error: string; error_en: string };

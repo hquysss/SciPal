@@ -5,7 +5,7 @@ import { Mic, PhoneOff } from 'lucide-react';
 import { useLanguage } from '@scipal/hooks';
 import { Alert } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
-import { startVoice } from '../api';
+import { startVoice, VOICE_MINUTES } from '../api';
 import styles from '../tutor.module.css';
 import { startLiveSession, type TranscriptLine, type VoiceState } from './liveSession';
 
@@ -27,9 +27,12 @@ export function addWords(lines: TranscriptLine[], who: TranscriptLine['who'], te
   return [...lines, { who, text: text.trimStart() }];
 }
 
-/** A spoken session with the tutor, over the page. Ends on the button, Escape, or after its time. */
-export function VoiceChat({ lessonId, onClose, onUsed }: { lessonId?: string; onClose: () => void; onUsed?: (remaining: number | null) => void }) {
+/** A spoken session with the tutor, over the page: pick a length, then talk. Ends on the button,
+ *  Escape, or when the picked minutes are up. */
+export function VoiceChat({ lessonId, onClose }: { lessonId?: string; onClose: () => void }) {
   const { lang, t } = useLanguage();
+  const [minutes, setMinutes] = useState<number | null>(null);
+  const [minutesLeft, setMinutesLeft] = useState<{ n: number; period: 'day' | 'month' } | null>(null);
   const [state, setState] = useState<VoiceState>('connecting');
   const [error, setError] = useState<Bilingual | null>(null);
   const [lines, setLines] = useState<TranscriptLine[]>([]);
@@ -39,16 +42,17 @@ export function VoiceChat({ lessonId, onClose, onUsed }: { lessonId?: string; on
   const endButton = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
+    if (minutes === null) return;
     let cancelled = false;
     void (async () => {
-      const grant = await startVoice(lessonId, lang === 'en' ? 'en' : 'vi');
+      const grant = await startVoice(lessonId, lang === 'en' ? 'en' : 'vi', minutes);
       if (cancelled) return;
       if (!grant.ok) {
         setError(grant.error);
         setState('ended');
         return;
       }
-      onUsed?.(grant.data.remaining);
+      if (grant.data.remaining !== null) setMinutesLeft({ n: grant.data.remaining, period: grant.data.period ?? 'month' });
       setLeft(grant.data.maxSeconds);
       const stop = await startLiveSession(grant.data, {
         onState: (next) => !cancelled && setState(next),
@@ -73,9 +77,9 @@ export function VoiceChat({ lessonId, onClose, onUsed }: { lessonId?: string; on
       cancelled = true;
       stopRef.current();
     };
-    // One session per opening of the panel.
+    // One session per picked length.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [minutes]);
 
   useEffect(() => {
     if (left === null || state === 'ended') return;
@@ -83,8 +87,12 @@ export function VoiceChat({ lessonId, onClose, onUsed }: { lessonId?: string; on
     return () => window.clearInterval(id);
   }, [left === null, state === 'ended']); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Focus lands in the panel once, on opening; later renders must not pull it back.
   useEffect(() => {
     endButton.current?.focus();
+  }, []);
+
+  useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') close();
     };
@@ -101,13 +109,26 @@ export function VoiceChat({ lessonId, onClose, onUsed }: { lessonId?: string; on
     <div className={styles.voiceBackdrop}>
       <div role="dialog" aria-modal="true" aria-labelledby="voice-title" className={styles.voicePanel}>
         <h2 id="voice-title" className="text-lg font-bold">{t({ vi: 'Nói chuyện với thầy', en: 'Talk with the tutor' })}</h2>
-        <div className={styles.orb} data-state={state} aria-hidden="true">
+        <div className={styles.orb} data-state={minutes === null ? 'idle' : state} aria-hidden="true">
           <Mic className="h-10 w-10" />
         </div>
-        <p role="status" className="text-center text-sm font-semibold text-ink-muted">
-          {t(STATE_TEXT[state])}
-          {left !== null && state !== 'ended' && <span className="ml-2 tabular-nums">· {clock(left)}</span>}
-        </p>
+        {minutes === null ? (
+          <div className="flex flex-col items-center gap-3">
+            <p className="text-center text-sm text-ink-muted">{t({ vi: 'Em muốn nói chuyện bao lâu?', en: 'How long do you want to talk?' })}</p>
+            <div role="group" aria-label={t({ vi: 'Thời lượng', en: 'Length' })} className="flex gap-2">
+              {VOICE_MINUTES.map((m) => (
+                <Button key={m} type="button" variant="outline" onClick={() => setMinutes(m)}>
+                  {t({ vi: `${m} phút`, en: `${m} min` })}
+                </Button>
+              ))}
+            </div>
+          </div>
+        ) : (
+          <p role="status" className="text-center text-sm font-semibold text-ink-muted">
+            {t(STATE_TEXT[state])}
+            {left !== null && state !== 'ended' && <span className="ml-2 tabular-nums">· {clock(left)}</span>}
+          </p>
+        )}
         {error && <Alert tone="danger">{t(error)}</Alert>}
         {lines.length > 0 && (
           <ul className={styles.transcript} aria-live="polite">
@@ -121,13 +142,20 @@ export function VoiceChat({ lessonId, onClose, onUsed }: { lessonId?: string; on
         )}
         <p className="text-center text-xs text-ink-muted">
           {t({
-            vi: 'Mỗi lần nói chuyện tính 1 lượt hỏi, tối đa 10 phút. Nội dung nói không được lưu lại.',
-            en: 'Each talk counts as 1 question, up to 10 minutes. What is said is not saved.',
+            vi: 'Số phút em chọn được trừ ngay khi bắt đầu, kể cả khi kết thúc sớm. Nội dung nói không được lưu lại.',
+            en: 'The minutes you pick are taken when the talk starts, even if you end early. What is said is not saved.',
           })}
+          {minutesLeft && (
+            <span className="mt-1 block font-semibold">
+              {minutesLeft.period === 'day'
+                ? t({ vi: `Còn ${minutesLeft.n} phút hôm nay`, en: `${minutesLeft.n} minutes left today` })
+                : t({ vi: `Còn ${minutesLeft.n} phút tháng này`, en: `${minutesLeft.n} minutes left this month` })}
+            </span>
+          )}
         </p>
         <Button ref={endButton} type="button" variant="destructive" onClick={close}>
           <PhoneOff aria-hidden="true" />
-          {state === 'ended' ? t({ vi: 'Đóng', en: 'Close' }) : t({ vi: 'Kết thúc', en: 'End' })}
+          {state === 'ended' || minutes === null ? t({ vi: 'Đóng', en: 'Close' }) : t({ vi: 'Kết thúc', en: 'End' })}
         </Button>
       </div>
     </div>

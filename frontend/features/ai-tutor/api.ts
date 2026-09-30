@@ -9,6 +9,7 @@ export const getConversation = (id: string) =>
 export const deleteConversation = (id: string) => authoringCall<Record<string, never>>(`/api/tutor/conversations/${encodeURIComponent(id)}`, 'DELETE');
 
 export type VoiceGrantReply = { token: string; model: string; socketUrl: string; expiresAt: string; maxSeconds: number; remaining: number | null; period: 'day' | 'month' | null };
-/** Opens a spoken session: one tutor request of the plan, up to ten minutes of talking. */
-export const startVoice = (lessonId: string | undefined, language: 'vi' | 'en') =>
-  authoringCall<VoiceGrantReply>('/api/tutor/voice', 'POST', { lesson_id: lessonId, language });
+export const VOICE_MINUTES = [3, 5, 10] as const;
+/** Opens a spoken session of the picked length; the minutes come off the plan's voice minutes (fewer if fewer are left). */
+export const startVoice = (lessonId: string | undefined, language: 'vi' | 'en', minutes: number) =>
+  authoringCall<VoiceGrantReply>('/api/tutor/voice', 'POST', { lesson_id: lessonId, language, minutes });

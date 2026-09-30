@@ -3,9 +3,8 @@
 // instruction; the browser opens the Live socket with it. The API key never leaves the backend.
 // https://ai.google.dev/gemini-api/docs/ephemeral-tokens
 
-export const VOICE_DEFAULT_MODEL = 'gemini-3.8-live';
-/** A spoken session lasts at most this long; the token expires a minute after. */
-export const VOICE_SESSION_SECONDS = 10 * 60;
+/** Lengths a student may pick for a session, in minutes; the token expires a minute after. */
+export const VOICE_SESSION_MINUTES = [3, 5, 10] as const;
 const START_WITHIN_SECONDS = 60;
 
 const TOKENS_URL = 'https://generativelanguage.googleapis.com/v1beta/auth_tokens';
@@ -16,15 +15,13 @@ export class VoiceTokenError extends Error {}
 
 export type VoiceToken = { token: string; model: string; socketUrl: string; expiresAt: string; maxSeconds: number };
 
-/** The model for spoken sessions: TUTOR_VOICE_MODEL, else the default. */
-export const voiceModel = (env: NodeJS.ProcessEnv) => env.TUTOR_VOICE_MODEL?.trim() || VOICE_DEFAULT_MODEL;
-
 export async function createVoiceToken(
-  opts: { apiKey: string; model: string; systemInstruction: string; language: 'vi' | 'en'; now?: Date },
+  opts: { apiKey: string; model: string; systemInstruction: string; language: 'vi' | 'en'; minutes: number; now?: Date },
   fetchImpl: typeof fetch = fetch,
 ): Promise<VoiceToken> {
   const now = opts.now ?? new Date();
-  const expiresAt = new Date(now.getTime() + (VOICE_SESSION_SECONDS + 60) * 1000);
+  const maxSeconds = opts.minutes * 60;
+  const expiresAt = new Date(now.getTime() + (maxSeconds + 60) * 1000);
   const res = await fetchImpl(TOKENS_URL, {
     method: 'POST',
     headers: { 'x-goog-api-key': opts.apiKey, 'Content-Type': 'application/json' },
@@ -46,5 +43,5 @@ export async function createVoiceToken(
   if (!res.ok) throw new VoiceTokenError(`auth_tokens ${res.status}: ${(await res.text().catch(() => '')).slice(0, 300)}`);
   const body = (await res.json()) as { name?: string };
   if (!body.name) throw new VoiceTokenError('auth_tokens returned no token');
-  return { token: body.name, model: opts.model, socketUrl: LIVE_SOCKET_URL, expiresAt: expiresAt.toISOString(), maxSeconds: VOICE_SESSION_SECONDS };
+  return { token: body.name, model: opts.model, socketUrl: LIVE_SOCKET_URL, expiresAt: expiresAt.toISOString(), maxSeconds };
 }

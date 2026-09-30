@@ -1,5 +1,5 @@
 import { OpenAI } from 'openai';
-import { resolveTutorSettings, type TutorProvider } from '../tutor/settings.js';
+import { resolveTutorSettings, type ReasoningEffort, type TutorProvider } from '../tutor/settings.js';
 
 export interface ChatMessage {
   role:    'user' | 'assistant';
@@ -10,6 +10,8 @@ export interface ChatMessage {
 export interface ModelChoice {
   provider: TutorProvider;
   model: string;
+  /** Gemini's thinking before the answer; low when unset. OpenAI chat models take none. */
+  effort?: ReasoningEffort;
 }
 
 export interface AIProvider {
@@ -28,11 +30,12 @@ const GEMINI_BASE_URL = 'https://generativelanguage.googleapis.com/v1beta/openai
  * Key, endpoint and model for a call. The keys always come from the environment
  * (GEMINI_API_KEY, OPENAI_API_KEY); provider and model from `choice`, else AI_PROVIDER / TUTOR_MODEL.
  */
-export function providerSettings(choice?: ModelChoice): { apiKey: string | undefined; baseURL: string | undefined; model: string } {
+export function providerSettings(choice?: ModelChoice): { apiKey: string | undefined; baseURL: string | undefined; model: string; effort?: ReasoningEffort } {
   const { provider, model } = choice ?? resolveTutorSettings(null, process.env);
+  const effort = choice?.effort;
   return provider === 'openai'
-    ? { apiKey: process.env.OPENAI_API_KEY, baseURL: undefined, model }
-    : { apiKey: process.env.GEMINI_API_KEY, baseURL: GEMINI_BASE_URL, model };
+    ? { apiKey: process.env.OPENAI_API_KEY, baseURL: undefined, model, effort }
+    : { apiKey: process.env.GEMINI_API_KEY, baseURL: GEMINI_BASE_URL, model, effort };
 }
 
 // Gemini 3 models think before answering, and the thinking counts against max_tokens: with a
@@ -45,7 +48,7 @@ export function completionRequest(settings: ReturnType<typeof providerSettings>,
     model: settings.model,
     stream: true as const,
     max_tokens: MAX_TOKENS,
-    ...(settings.baseURL ? { reasoning_effort: 'low' as const } : {}),
+    ...(settings.baseURL ? { reasoning_effort: settings.effort ?? ('low' as const) } : {}),
     messages: [
       { role: 'system' as const, content: systemPrompt },
       ...messages.map((m) => ({ role: m.role, content: m.content })),
@@ -85,7 +88,7 @@ export function lazyAIProvider(): AIProvider {
   const clients = new Map<string, AIProvider>();
   return {
     chat(messages, systemPrompt, choice) {
-      const key = choice ? `${choice.provider}|${choice.model}` : 'env';
+      const key = choice ? `${choice.provider}|${choice.model}|${choice.effort ?? 'low'}` : 'env';
       let provider = clients.get(key);
       if (!provider) {
         provider = createAIProvider(choice);

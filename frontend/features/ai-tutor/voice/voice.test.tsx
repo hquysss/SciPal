@@ -4,7 +4,7 @@ import { describe, expect, it, vi } from 'vitest';
 vi.mock('@scipal/hooks', () => ({ useLanguage: () => ({ lang: 'vi', t: (c: { vi: string }) => c.vi }) }));
 
 import { pcmToFloats, toBase64 } from './liveSession';
-import { addWords } from './VoiceChat';
+import { addWords, VoiceChat } from './VoiceChat';
 import { TutorChatView } from '../TutorChat';
 
 describe('voice audio', () => {
@@ -34,5 +34,14 @@ describe('TutorChatView microphone', () => {
   it('offers voice only when the chat can start it', () => {
     expect(renderToStaticMarkup(<TutorChatView {...base} onVoice={() => {}} />)).toContain('aria-label="Nói chuyện với thầy"');
     expect(renderToStaticMarkup(<TutorChatView {...base} />)).not.toContain('Nói chuyện với thầy');
+  });
+});
+
+describe('VoiceChat', () => {
+  it('asks how long to talk before starting anything', () => {
+    const html = renderToStaticMarkup(<VoiceChat onClose={() => {}} />);
+    for (const m of [3, 5, 10]) expect(html).toContain(`${m} phút`);
+    expect(html).toContain('trừ ngay khi bắt đầu');
+    expect(html).not.toContain('Đang kết nối');
   });
 });

@@ -26,7 +26,7 @@ async function build(opts: { user?: unknown; tables?: Record<string, MockBuilder
   const app = Fastify();
   app.decorate('supabase', mockSupabase(opts.tables ?? { translation_usage: ok(null), 'rpc:add_translation_usage': ok(10) }));
   app.decorate('aiProvider', ai);
-  app.decorate('tutorSettings', { get: async () => ({ provider: 'gemini' as const, model: 'gemini-3.8-flash', dailyLimit: 30, enabled: true }), translate: async () => opts.translate ?? { enabled: true, dailyChars: 200_000 }, invalidate: () => {} });
+  app.decorate('tutorSettings', { get: async () => ({ provider: 'gemini' as const, model: 'gemini-3.8-flash', dailyLimit: 30, enabled: true, voiceModel: 'gemini-3.8-live', voiceEnabled: true, reasoningEffort: 'low' as const }), translate: async () => opts.translate ?? { enabled: true, dailyChars: 200_000 }, invalidate: () => {} });
   app.addHook('onRequest', async (req) => { (req as any).user = opts.user ?? teacher; });
   await app.register(translateRoutes);
   await app.ready();
@@ -58,7 +58,7 @@ describe('POST /api/authoring/translate', () => {
     const res = await post(app, { from: 'vi', to: 'en', texts: ['Vòng lặp', 'Vòng **for** $i$'] });
     expect(res.statusCode).toBe(200);
     expect(res.json()).toEqual({ texts: ['Loops', 'A **for** loop $i$'] });
-    expect(ai.calls[0].choice).toEqual({ provider: 'gemini', model: 'gemini-3.8-flash' });
+    expect(ai.calls[0].choice).toEqual({ provider: 'gemini', model: 'gemini-3.8-flash', effort: 'low' });
     expect(JSON.parse(ai.calls[0].messages[0].content)).toEqual(['Vòng lặp', 'Vòng **for** $i$']);
     expect(rpcCalls[0]).toEqual(['add_translation_usage', expect.objectContaining({ p_user: 'teacher-1', p_chars: 'Vòng lặp'.length + 'Vòng **for** $i$'.length })]);
     await app.close();
