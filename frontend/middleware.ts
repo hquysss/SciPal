@@ -1,6 +1,6 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { createServerClient } from '@scipal/supabase';
-import { TRIAL_COOKIE, TRIAL_UI_COOKIE, readTrials, routeAccess, signTrials, type TrialFeature, type Trials } from './lib/guestTrial';
+import { TRIAL_COOKIE, TRIAL_UI_COOKIE, readTrials, routeAccess, signTrials, trialRenewable, type TrialFeature, type Trials } from './lib/guestTrial';
 
 const LEGACY_LEVEL_COOKIE = 'scipal_education_level';
 
@@ -62,7 +62,8 @@ async function rememberTrials(response: NextResponse, trials: Trials, secret: st
 }
 
 /**
- * A visitor on a feature page: within the feature's window the page opens; after it, sign in.
+ * A visitor on a feature page: within the feature's window the page opens; after it, sign in until
+ * the window comes round again 24 hours after it opened.
  * The window comes from the signed cookie, else from the backend (which knows the visitor by IP).
  */
 async function guestTrial(request: NextRequest, feature: TrialFeature) {
@@ -71,7 +72,9 @@ async function guestTrial(request: NextRequest, feature: TrialFeature) {
 
   const trials = await readTrials(request.cookies.get(TRIAL_COOKIE)?.value, secret);
   const known = trials?.[feature];
-  if (known !== undefined) return known > Date.now() ? NextResponse.next() : loginRedirect(request, 'trial');
+  if (known !== undefined && known > Date.now()) return NextResponse.next();
+  // An ended window stays ended until its 24 hours are up; then the backend opens a new one.
+  if (known !== undefined && !trialRenewable(known, Date.now())) return loginRedirect(request, 'trial');
 
   let answer: { allowed?: unknown; expiresAt?: unknown };
   try {

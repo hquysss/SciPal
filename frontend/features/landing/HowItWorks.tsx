@@ -248,7 +248,7 @@ export function BilingualCard({ initial = 'vi', level = 'upper_secondary' }: { i
   };
 
   return (
-    <article className={styles.card} data-landing-reveal>
+    <article className={styles.card} data-landing-scroll>
       <div ref={stageRef} className={styles.demoStage}>
         <p className={styles.sentence} lang={shown} aria-live="polite" key={shown}>
           {before}
@@ -286,7 +286,7 @@ export function TermCard({ initialFlipped = false, level = 'upper_secondary' }: 
   const example = LEVEL_EXAMPLES[level];
 
   return (
-    <article className={styles.card} data-landing-reveal>
+    <article className={styles.card} data-landing-scroll>
       <div className={styles.demoStage}>
         <div className={styles.term} data-flipped={flipped ? 'true' : undefined}>
           <button
@@ -322,11 +322,11 @@ export function HowItWorks({ level = 'upper_secondary' }: { level?: EducationLev
 
   return (
     <section className={styles.section} id="cach-hoc" aria-labelledby="how-title">
-      <h2 id="how-title" className={styles.sectionTitle} data-landing-reveal>
+      <h2 id="how-title" className={styles.sectionTitle} data-landing-title>
         {t({ en: 'How it works', vi: 'Học thế nào' })}
       </h2>
       <div className={styles.cards}>
-        <article className={styles.card} data-landing-reveal>
+        <article className={styles.card} data-landing-scroll>
           <SearchDemo level={level} />
           <h3 className={styles.cardTitle}>{t({ en: 'Understand step by step', vi: 'Hiểu từng bước' })}</h3>
           <p className={styles.cardText}>

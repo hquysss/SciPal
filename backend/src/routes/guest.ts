@@ -5,8 +5,9 @@ import { MESSAGE_MAX } from '../tutor/limits.js';
 import { resolveTutorSettings } from '../tutor/settings.js';
 import { buildSystemPrompt } from '../tutor/systemPrompt.js';
 
-// Guest trials (migration 20260930000000): a visitor may try each page feature for 30 minutes and
-// ask the Tutor one question, then must sign in. Both routes are public; the trial route answers
+// Guest trials (migrations 20260930000000, 20261003050000): a visitor may try each page feature for
+// 30 minutes and ask the Tutor one question, then must sign in; both come back 24 hours later.
+// WINDOW_MINUTES matches TRIAL_WINDOW_MS in frontend/lib/guestTrial.ts. Both routes are public; the trial route answers
 // only the web server (shared key), which names the visitor's address from the request Vercel sent.
 
 const WINDOW_MINUTES = 30;
@@ -14,8 +15,8 @@ const DEFAULT_DAILY_CAP = 200;
 
 const msg = (error: string, error_en: string) => ({ error, error_en });
 const OFF = { code: 'GUEST_TRIALS_OFF', ...msg('Dùng thử chưa mở. Hãy đăng nhập.', 'Trials are not open. Please sign in.') };
-const USED = { code: 'GUEST_TRIAL_USED', ...msg('Em đã dùng lượt hỏi thử. Đăng nhập để hỏi Giáo sư SciPal tiếp nhé.', 'You have used your trial question. Sign in to keep asking the tutor.') };
-const BUSY = { code: 'GUEST_TUTOR_BUSY', ...msg('Hôm nay đã hết lượt hỏi thử cho khách. Đăng nhập để hỏi Giáo sư SciPal.', 'Guest questions are used up for today. Sign in to ask the tutor.') };
+const USED = { code: 'GUEST_TRIAL_USED', ...msg('Em đã dùng lượt hỏi thử. Đăng nhập để hỏi tiếp ngay, hoặc chờ lượt mới sau 24 giờ nhé.', 'You have used your trial question. A new one comes in 24 hours, or sign in to keep asking now.') };
+const BUSY = { code: 'GUEST_TUTOR_BUSY', ...msg('Hôm nay đã hết lượt hỏi thử cho khách. Đăng nhập để hỏi Giáo sư SciPal.', 'Guest questions are used up for today. Sign in to ask the Professor.') };
 const UNAVAILABLE = { code: 'GUEST_UNAVAILABLE', ...msg('Chưa kiểm tra được lượt thử. Thử lại sau.', 'Could not check the trial. Try again later.') };
 
 const TrialInput = z.object({
@@ -36,12 +37,16 @@ export const guestRoutes: FastifyPluginAsync = async (app) => {
       p_feature: parsed.data.feature,
       p_window_minutes: WINDOW_MINUTES,
     });
-    const row = data as { allowed?: boolean; expires_at?: string } | null;
+    const row = data as { allowed?: boolean; expires_at?: string; resets_at?: string } | null;
     if (error || typeof row?.allowed !== 'boolean' || !row.expires_at) {
       request.log.error({ err: error }, 'Guest trial could not be opened');
       return reply.code(503).send(UNAVAILABLE);
     }
-    return { allowed: row.allowed, expiresAt: new Date(row.expires_at).toISOString() };
+    return {
+      allowed: row.allowed,
+      expiresAt: new Date(row.expires_at).toISOString(),
+      resetsAt: row.resets_at ? new Date(row.resets_at).toISOString() : null,
+    };
   });
 
   app.post('/api/tutor/guest', async (request, reply) => {

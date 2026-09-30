@@ -1,7 +1,16 @@
-// Guest trials (chủ dự án chốt 29/09): a visitor without an account tries each feature once — a
-// 30-minute window per feature — then must sign in. The window is kept by the backend per visitor
+// Guest trials (chủ dự án chốt 29/09, 30/09): a visitor without an account tries each feature for a
+// 30-minute window, then must sign in; 24 hours after the window opened they get a new one. The window is kept by the backend per visitor
 // (an HMAC of the IP) and cached here in a signed cookie, so editing the cookie does not help and
 // deleting it only makes the web ask the backend again. Runs in the edge middleware (Web Crypto).
+
+/** Length of a trial window (backend WINDOW_MINUTES) and how long after it opened a new one may. */
+export const TRIAL_WINDOW_MS = 30 * 60 * 1000;
+export const TRIAL_RESET_MS = 24 * 60 * 60 * 1000;
+
+/** Whether a window that ended at `until` has come round again (the backend then opens a new one). */
+export function trialRenewable(until: number, now: number): boolean {
+  return now >= until - TRIAL_WINDOW_MS + TRIAL_RESET_MS;
+}
 
 export type TrialFeature = 'learn' | 'glossary' | 'exam' | 'pricing';
 export type RouteAccess = { kind: 'public' } | { kind: 'account' } | { kind: 'trial'; feature: TrialFeature };

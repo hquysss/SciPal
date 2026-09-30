@@ -203,7 +203,7 @@ export function LandingPage({ level, levelSource, catalog, onChangeLevel, pricin
 
         <section className={styles.subjects} id="mon-hoc" aria-labelledby="subjects-title">
           <div className={styles.sectionHeading} data-landing-reveal>
-            <h2 id="subjects-title" className={styles.sectionTitle}>
+            <h2 id="subjects-title" className={styles.sectionTitle} data-landing-title>
               {t({ en: 'Your subjects', vi: 'Môn học của bạn' })}
             </h2>
             <ChangeLevel onChangeLevel={onChangeLevel} className={styles.inlineLink} />

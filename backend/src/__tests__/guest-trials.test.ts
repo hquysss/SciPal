@@ -56,10 +56,10 @@ describe('POST /api/guest/trial (from the web middleware)', () => {
     app.inject({ method: 'POST', url: '/api/guest/trial', headers, payload });
 
   it('opens or reads the trial of a feature for the visitor the web names', async () => {
-    const { app } = await build({ 'rpc:guest_trial_open': ok({ allowed: true, expires_at: '2026-09-30T03:30:00+00:00' }) });
+    const { app } = await build({ 'rpc:guest_trial_open': ok({ allowed: true, expires_at: '2026-09-30T03:30:00+00:00', resets_at: '2026-10-01T03:00:00+00:00' }) });
     const res = await open(app, { 'x-guest-key': SECRET }, { feature: 'learn', ip: '1.2.3.4' });
     expect(res.statusCode).toBe(200);
-    expect(res.json()).toEqual({ allowed: true, expiresAt: '2026-09-30T03:30:00.000Z' });
+    expect(res.json()).toEqual({ allowed: true, expiresAt: '2026-09-30T03:30:00.000Z', resetsAt: '2026-10-01T03:00:00.000Z' });
     expect(rpcCalls[0]).toEqual(['guest_trial_open', { p_visitor: hashOf('1.2.3.4'), p_feature: 'learn', p_window_minutes: 30 }]);
     await app.close();
   });

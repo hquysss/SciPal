@@ -8,8 +8,8 @@ export function TrialEndedNote() {
   return (
     <p role="status" className="katha-login-trial-note">
       {t({
-        vi: 'Bạn đã dùng hết lượt thử tính năng này. Tạo tài khoản miễn phí (hoặc đăng nhập) để học tiếp. SciPal sẽ đưa bạn về đúng trang vừa mở.',
-        en: 'You have used your trial of this feature. Create a free account (or sign in) to keep going — SciPal will bring you back to this page.',
+        vi: 'Bạn đã dùng hết 30 phút dùng thử tính năng này. Lượt thử mới mở lại sau 24 giờ. Muốn học tiếp ngay, hãy tạo tài khoản miễn phí (hoặc đăng nhập), SciPal sẽ đưa bạn về đúng trang vừa mở.',
+        en: 'You have used your 30-minute trial of this feature. A new trial opens in 24 hours. To keep going now, create a free account (or sign in) and SciPal will bring you back to this page.',
       })}
     </p>
   );
