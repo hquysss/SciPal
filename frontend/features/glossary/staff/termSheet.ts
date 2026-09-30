@@ -131,7 +131,9 @@ export async function createTermTemplate(): Promise<ArrayBuffer> {
   return (await workbook.xlsx.writeBuffer()) as ArrayBuffer;
 }
 
-export const isBlank = (row: SheetRow) => Object.values(row).every((v) => !v.trim());
+/** True when none of the term's cells has text. Reads only the sheet columns: a table row also
+ *  carries a numeric key and maybe an error, which are not cells. */
+export const isBlank = (row: SheetRow) => SHEET_COLUMNS.every(({ key }) => !(row[key] ?? '').trim());
 
 /** What a row still needs, or null. */
 export function rowProblem(row: SheetRow): { vi: string; en: string } | null {
