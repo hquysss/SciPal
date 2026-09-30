@@ -33,41 +33,14 @@
   min-width: 0;
   flex-direction: column;
   gap: 0.625rem;
-  border: 1px solid var(--line);
-  border-radius: var(--landing-radius-card);
-  padding: 0.75rem 0.75rem 1.5rem;
-  background: var(--surface);
-  box-shadow:
-    0 1px 0 var(--line),
-    0 1.25rem 2.5rem -2rem color-mix(in srgb, var(--ink) 40%, transparent);
-  transition:
-    transform 420ms var(--card-ease),
-    border-color 300ms ease;
-}
-
-/* The deeper hover shadow lives on its own layer and only fades in, so no large shadow is repainted per frame. */
-.card::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  z-index: -1;
-  border-radius: inherit;
-  box-shadow: 0 2.5rem 3rem -1.75rem color-mix(in srgb, var(--ink) 40%, transparent);
-  opacity: 0;
-  pointer-events: none;
-  transition: opacity 420ms var(--card-ease);
+  /* No box around each step: the demo is the only framed part, the words sit on the page. */
+  transition: transform 420ms var(--card-ease);
 }
 
 @media (hover: hover) and (pointer: fine) {
   .card:hover,
   .card:focus-within {
-    border-color: color-mix(in srgb, var(--action) 35%, var(--line));
-    transform: translateY(-6px);
-  }
-
-  .card:hover::after,
-  .card:focus-within::after {
-    opacity: 1;
+    transform: translateY(-4px);
   }
 
   .card:hover .demoStage {

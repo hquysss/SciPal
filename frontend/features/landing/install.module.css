@@ -120,10 +120,8 @@
   width: 100%;
   max-width: 30rem;
   margin: 0.25rem 0 0;
-  border: 1px solid var(--line);
-  border-radius: var(--landing-radius-card);
-  padding: 1rem 1.1rem;
-  background: var(--surface);
+  border-top: 1px solid var(--line);
+  padding: 1rem 0 0;
   list-style: none;
   counter-reset: none;
 }
