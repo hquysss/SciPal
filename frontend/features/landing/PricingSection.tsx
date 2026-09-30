@@ -89,7 +89,7 @@ export function PricingSection({
         </div>
       </div>
 
-      <div className={styles.plans}>
+      <div className={styles.plans} data-landing-reveal>
         {free && (
           <article className={styles.free} aria-labelledby={`landing-${free.code}`}>
             <h3 id={`landing-${free.code}`} className={styles.planName}>{t(free.name)}</h3>
