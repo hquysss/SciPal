@@ -94,7 +94,7 @@ export const authorAiRoutes: FastifyPluginAsync = async (app) => {
     for (let attempt = 0; attempt < 2 && !blocks; attempt++) {
       try {
         let answer = '';
-        for await (const chunk of app.aiProvider.chat([{ role: 'user', content: authorAiUserMessage(input) }], authorAiSystemPrompt(input.grade), { provider: settings.provider, model: settings.model })) answer += chunk;
+        for await (const chunk of app.aiProvider.chat([{ role: 'user', content: authorAiUserMessage(input) }], authorAiSystemPrompt(input.grade), { provider: settings.provider, model: settings.model, effort: settings.reasoningEffort })) answer += chunk;
         blocks = parseDraft(answer);
         // Belt and braces: every block must also pass the lesson block schema.
         if (blocks && !blocks.every((b) => BlockSchema.safeParse(b).success)) blocks = null;

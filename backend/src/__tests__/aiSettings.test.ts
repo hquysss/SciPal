@@ -52,7 +52,7 @@ describe('AI settings routes', () => {
     const res = await app.inject({ method: 'GET', url: '/api/admin/ai-settings' });
     expect(res.statusCode).toBe(200);
     const body = res.json();
-    expect(body.effective).toEqual({ provider: 'openai', model: 'gpt-4o-mini', dailyLimit: 12, enabled: true });
+    expect(body.effective).toEqual({ provider: 'openai', model: 'gpt-4o-mini', dailyLimit: 12, enabled: true, voiceModel: 'gemini-3.8-live', voiceEnabled: true, reasoningEffort: 'low' });
     expect(body.keys).toEqual({ gemini: true, openai: false });
     expect(body.usage).toEqual({ today: 4, week: 25, students_week: 2 });
     expect(body.defaults).toEqual({ gemini: 'gemini-3.8-flash', openai: 'gpt-4o-mini' });
@@ -90,7 +90,7 @@ describe('AI settings routes', () => {
     const res = await good.app.inject({ method: 'POST', url: '/api/admin/ai-settings/test' });
     expect(res.statusCode).toBe(200);
     expect(res.json()).toMatchObject({ ok: true, reply: 'OK', provider: 'gemini', model: 'gemini-3.8-flash' });
-    expect(choices[0]).toEqual({ provider: 'gemini', model: 'gemini-3.8-flash' });
+    expect(choices[0]).toEqual({ provider: 'gemini', model: 'gemini-3.8-flash', effort: 'low' });
     await good.app.close();
 
     const bad = await build(admin, {}, { chat: async function* () { throw new Error('404 model not found'); } });

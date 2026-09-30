@@ -1,13 +1,16 @@
 import { authoringCall } from '../authoring/apiClient';
 
 export type AiProvider = 'gemini' | 'openai';
+export type ReasoningEffort = 'low' | 'medium' | 'high';
 
 export interface AiSettingsSnapshot {
-  saved: { provider: AiProvider | null; model: string | null; daily_limit: number | null; enabled: boolean; translate_enabled?: boolean; translate_daily_chars?: number | null; updated_at: string } | null;
-  effective: { provider: AiProvider; model: string; dailyLimit: number; enabled: boolean };
+  saved: { provider: AiProvider | null; model: string | null; daily_limit: number | null; enabled: boolean; translate_enabled?: boolean; translate_daily_chars?: number | null; voice_model?: string | null; voice_enabled?: boolean; reasoning_effort?: ReasoningEffort; updated_at: string } | null;
+  effective: { provider: AiProvider; model: string; dailyLimit: number; enabled: boolean; voiceModel?: string; voiceEnabled?: boolean; reasoningEffort?: ReasoningEffort };
   /** Whether each key is set on the backend; the values never leave it. */
   keys: Record<AiProvider, boolean>;
   defaults: Record<AiProvider, string>;
+  /** The Live model used when none is set. */
+  voiceDefault?: string;
   usage: { today: number; week: number; students_week: number };
   /** Automatic translation for authors: settings in force and characters translated. */
   translate: { effective: { enabled: boolean; dailyChars: number }; usage: { today: number; week: number } };
@@ -20,6 +23,9 @@ export interface AiSettingsInput {
   enabled: boolean;
   translate_enabled: boolean;
   translate_daily_chars: number;
+  voice_model: string | null;
+  voice_enabled: boolean;
+  reasoning_effort: ReasoningEffort;
 }
 
 export type AiTestResult = { ok: true; reply: string; ms: number; provider: AiProvider; model: string } | { ok: false; error: string; ms: number; provider: AiProvider; model: string };

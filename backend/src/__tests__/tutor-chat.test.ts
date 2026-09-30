@@ -268,7 +268,7 @@ describe('POST /api/tutor/chat', () => {
   });
 
   it('follows the admin settings: off answers 503, the limit and the model come from them', async () => {
-    const settings = (value: object) => ({ get: async () => ({ provider: 'openai' as const, model: 'admin-model', dailyLimit: 5, enabled: true, ...value }), invalidate() {} });
+    const settings = (value: object) => ({ get: async () => ({ provider: 'openai' as const, model: 'admin-model', dailyLimit: 5, enabled: true, voiceModel: 'gemini-3.8-live', voiceEnabled: true, reasoningEffort: 'high' as const, ...value }), invalidate() {} });
 
     const offApp = Fastify();
     offApp.decorate('supabase', mockSupabase({}));
@@ -303,7 +303,7 @@ describe('POST /api/tutor/chat', () => {
     await app.register(tutorRoutes);
     const res = await app.inject({ method: 'POST', url: '/api/tutor/chat', payload: { message: 'Hỏi', language: 'vi' } });
     expect(events(res.body)[0].data).toEqual({ conversation_id: C1, remaining: 4 , period: 'day' });
-    expect(ai.choices[0]).toEqual({ provider: 'openai', model: 'admin-model' });
+    expect(ai.choices[0]).toEqual({ provider: 'openai', model: 'admin-model', effort: 'high' });
     await app.close();
   });
 });

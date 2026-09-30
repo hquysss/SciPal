@@ -3,20 +3,28 @@ import { createSettingsStore, resolveTranslateSettings, resolveTutorSettings } f
 
 describe('resolveTutorSettings', () => {
   it('uses the admin row first, then the environment, then the defaults', () => {
-    expect(resolveTutorSettings(null, {})).toEqual({ provider: 'gemini', model: 'gemini-3.8-flash', dailyLimit: 30, enabled: true });
+    expect(resolveTutorSettings(null, {})).toEqual({ provider: 'gemini', model: 'gemini-3.8-flash', dailyLimit: 30, enabled: true, voiceModel: 'gemini-3.8-live', voiceEnabled: true, reasoningEffort: 'low' });
     expect(resolveTutorSettings(null, { AI_PROVIDER: 'openai', TUTOR_MODEL: 'env-model', TUTOR_DAILY_LIMIT: '12' })).toEqual({
-      provider: 'openai', model: 'env-model', dailyLimit: 12, enabled: true,
+      provider: 'openai', model: 'env-model', dailyLimit: 12, enabled: true, voiceModel: 'gemini-3.8-live', voiceEnabled: true, reasoningEffort: 'low',
     });
     expect(
       resolveTutorSettings({ provider: 'gemini', model: 'row-model', daily_limit: 5, enabled: false }, { AI_PROVIDER: 'openai', TUTOR_MODEL: 'env-model', TUTOR_DAILY_LIMIT: '12' }),
-    ).toEqual({ provider: 'gemini', model: 'row-model', dailyLimit: 5, enabled: false });
+    ).toEqual({ provider: 'gemini', model: 'row-model', dailyLimit: 5, enabled: false, voiceModel: 'gemini-3.8-live', voiceEnabled: true, reasoningEffort: 'low' });
   });
 
   it('falls back field by field, and a provider change without a model takes that provider’s default', () => {
     expect(resolveTutorSettings({ provider: 'openai', model: null, daily_limit: null, enabled: true }, { TUTOR_MODEL: '' })).toEqual({
-      provider: 'openai', model: 'gpt-4o-mini', dailyLimit: 30, enabled: true,
+      provider: 'openai', model: 'gpt-4o-mini', dailyLimit: 30, enabled: true, voiceModel: 'gemini-3.8-live', voiceEnabled: true, reasoningEffort: 'low',
     });
     expect(resolveTutorSettings({ provider: null, model: '  ', daily_limit: 0, enabled: true }, { TUTOR_DAILY_LIMIT: 'abc' })).toMatchObject({ model: 'gemini-3.8-flash', dailyLimit: 30 });
+  });
+
+  it('voice model: row, then TUTOR_VOICE_MODEL, then the default; thinking level only low, medium or high', () => {
+    const row = { provider: null, model: null, daily_limit: null, enabled: true };
+    expect(resolveTutorSettings({ ...row, voice_model: 'row-live', voice_enabled: false, reasoning_effort: 'high' }, { TUTOR_VOICE_MODEL: 'env-live' }))
+      .toMatchObject({ voiceModel: 'row-live', voiceEnabled: false, reasoningEffort: 'high' });
+    expect(resolveTutorSettings(row, { TUTOR_VOICE_MODEL: 'env-live' })).toMatchObject({ voiceModel: 'env-live', voiceEnabled: true });
+    expect(resolveTutorSettings({ ...row, reasoning_effort: 'max' }, {}).reasoningEffort).toBe('low');
   });
 });
 

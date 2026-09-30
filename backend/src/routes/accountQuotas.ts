@@ -7,7 +7,7 @@ import { BillingRepositoryError, createBillingRepository } from '../billing/repo
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const AUDIT_PAGE = 20;
-const METRICS = ['tutor_requests', 'graded_exam_attempts', 'active_classes', 'students_per_class', 'import_files', 'active_authored_exams', 'author_ai_requests'] as const;
+const METRICS = ['tutor_requests', 'graded_exam_attempts', 'active_classes', 'students_per_class', 'import_files', 'active_authored_exams', 'author_ai_requests', 'voice_minutes'] as const;
 
 type ErrorBody = { code: string; error: string; error_en: string };
 const err = (code: string, error: string, error_en: string): ErrorBody => ({ code, error, error_en });

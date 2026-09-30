@@ -1,14 +1,22 @@
 // The tutor's settings: the admin's row in `ai_settings` first, then the environment
-// (AI_PROVIDER, TUTOR_MODEL, TUTOR_DAILY_LIMIT), then the defaults. API keys are never settings:
+// (AI_PROVIDER, TUTOR_MODEL, TUTOR_DAILY_LIMIT, TUTOR_VOICE_MODEL), then the defaults. API keys are never settings:
 // they stay in the environment (invariant 5).
 
 export type TutorProvider = 'gemini' | 'openai';
+/** How long the model may think before answering (Gemini's reasoning_effort). */
+export type ReasoningEffort = 'low' | 'medium' | 'high';
+export const REASONING_EFFORTS: ReasoningEffort[] = ['low', 'medium', 'high'];
 
 export interface TutorSettings {
   provider: TutorProvider;
   model: string;
   dailyLimit: number;
   enabled: boolean;
+  /** The Gemini Live model of spoken sessions (always Gemini, whatever the text provider). */
+  voiceModel: string;
+  /** Spoken sessions on or off, apart from the tutor itself. */
+  voiceEnabled: boolean;
+  reasoningEffort: ReasoningEffort;
 }
 
 /** The `ai_settings` row; every field may be unset. */
@@ -19,6 +27,9 @@ export interface AiSettingsRow {
   enabled: boolean | null;
   translate_enabled?: boolean | null;
   translate_daily_chars?: number | null;
+  voice_model?: string | null;
+  voice_enabled?: boolean | null;
+  reasoning_effort?: string | null;
 }
 
 /** Automatic translation for authors (routes/translate.ts): on/off and characters per author per day. */
@@ -34,6 +45,7 @@ export const TRANSLATE_DAILY_CHARS_MAX = 5_000_000;
 type Env = Record<string, string | undefined>;
 
 export const DEFAULT_MODELS: Record<TutorProvider, string> = { gemini: 'gemini-3.8-flash', openai: 'gpt-4o-mini' };
+export const DEFAULT_VOICE_MODEL = 'gemini-3.8-live';
 export const DEFAULT_DAILY_LIMIT = 30;
 export const DAILY_LIMIT_MAX = 200;
 const CACHE_MS = 60_000;
@@ -58,6 +70,10 @@ export function resolveTutorSettings(row: AiSettingsRow | null, env: Env): Tutor
     model: asText(row?.model) ?? envModel ?? DEFAULT_MODELS[provider],
     dailyLimit: asLimit(row?.daily_limit) ?? asLimit(env.TUTOR_DAILY_LIMIT) ?? DEFAULT_DAILY_LIMIT,
     enabled: row?.enabled ?? true,
+    voiceModel: asText(row?.voice_model) ?? asText(env.TUTOR_VOICE_MODEL) ?? DEFAULT_VOICE_MODEL,
+    voiceEnabled: row?.voice_enabled ?? true,
+    // Low keeps answers quick and cheap (it was the only setting before 03/10).
+    reasoningEffort: (REASONING_EFFORTS as string[]).includes(row?.reasoning_effort ?? '') ? (row!.reasoning_effort as ReasoningEffort) : 'low',
   };
 }
 
