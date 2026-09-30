@@ -1,0 +1,139 @@
+/* For teachers: words on the left, the four things a teacher gets on the right, split by rules
+   instead of boxes. */
+
+.teacher {
+  display: grid;
+  grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr);
+  align-items: start;
+  gap: clamp(2rem, 5vw, 4.5rem);
+  padding-block: clamp(2.5rem, 6vw, 4.5rem);
+}
+
+.intro {
+  display: grid;
+  justify-items: start;
+  gap: 1rem;
+}
+
+.eyebrow {
+  margin: 0;
+  color: var(--action);
+  font-size: 0.8rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.title {
+  margin: 0;
+  color: var(--ink);
+  font-size: clamp(2rem, 4.2vw, 3.25rem);
+  font-weight: 800;
+  line-height: 1.05;
+  letter-spacing: -0.04em;
+  text-wrap: balance;
+}
+
+.lead {
+  max-width: 38ch;
+  margin: 0;
+  color: var(--ink-muted);
+  font-size: clamp(1.05rem, 1.5vw, 1.2rem);
+  line-height: 1.55;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem 1.25rem;
+  margin-top: 0.5rem;
+}
+
+.primary {
+  display: inline-flex;
+  min-height: 3rem;
+  align-items: center;
+  gap: 0.5rem;
+  border-radius: var(--landing-radius-control, 0.5rem);
+  padding: 0 1.5rem;
+  background: var(--action);
+  color: var(--action-ink);
+  font-weight: 700;
+  text-decoration: none;
+  transition: background-color 160ms ease;
+}
+
+.primary:hover {
+  background: var(--action-hover);
+}
+
+.secondary {
+  display: inline-flex;
+  min-height: 2.75rem;
+  align-items: center;
+  color: var(--ink);
+  font-weight: 700;
+  text-decoration: underline;
+  text-decoration-color: color-mix(in srgb, var(--ink) 35%, transparent);
+  text-underline-offset: 0.3em;
+}
+
+.secondary:hover {
+  text-decoration-color: currentColor;
+}
+
+.primary:focus-visible,
+.secondary:focus-visible {
+  outline: 3px solid var(--focus);
+  outline-offset: 3px;
+}
+
+.features {
+  display: grid;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.feature {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 1rem;
+  border-top: 1px solid var(--line);
+  padding-block: 1.25rem;
+}
+
+.feature:last-child {
+  border-bottom: 1px solid var(--line);
+}
+
+.icon {
+  margin-top: 0.15rem;
+  color: var(--action);
+}
+
+.featureTitle {
+  margin: 0 0 0.3rem;
+  color: var(--ink);
+  font-size: 1.1rem;
+  font-weight: 700;
+}
+
+.featureText {
+  margin: 0;
+  color: var(--ink-muted);
+  line-height: 1.55;
+}
+
+@media (max-width: 900px) {
+  .teacher {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .primary {
+    transition: none;
+  }
+}
