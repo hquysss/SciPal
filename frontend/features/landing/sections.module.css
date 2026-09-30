@@ -34,7 +34,7 @@
   flex-direction: column;
   gap: 0.625rem;
   border: 1px solid var(--line);
-  border-radius: 1.5rem;
+  border-radius: var(--landing-radius-card);
   padding: 0.75rem 0.75rem 1.5rem;
   background: var(--surface);
   box-shadow:
@@ -86,7 +86,7 @@
   flex: 1 1 auto;
   flex-direction: column;
   gap: 0.875rem;
-  border-radius: 1rem;
+  border-radius: var(--landing-radius-control);
   padding: 1.25rem;
   background-color: color-mix(in srgb, var(--stage-tone, var(--action)) 14%, var(--surface));
   background-image: radial-gradient(color-mix(in srgb, var(--ink) 9%, transparent) 1px, transparent 1.5px);
@@ -210,7 +210,7 @@
   gap: 0.375rem;
   margin-top: auto;
   border: 1px solid var(--edge);
-  border-radius: 999px;
+  border-radius: var(--landing-radius-control);
   padding: 0 0.875rem;
   background: var(--surface);
   color: var(--ink);
@@ -354,7 +354,7 @@
   justify-content: space-between;
   gap: 0.75rem;
   border: 1px dashed var(--edge);
-  border-radius: 0.9rem;
+  border-radius: var(--landing-radius-control);
   padding: 0.85rem 1rem;
   background: var(--surface);
   color: var(--ink);
@@ -400,7 +400,7 @@
 
 .termBack {
   border: 1px solid color-mix(in srgb, var(--coral) 70%, var(--ink));
-  border-radius: 0.9rem;
+  border-radius: var(--landing-radius-control);
   padding: 0.85rem 1rem;
   background: color-mix(in srgb, var(--coral) 12%, var(--surface));
   color: var(--ink);
@@ -472,7 +472,7 @@
   min-height: 3rem;
   align-items: center;
   gap: 0.5rem;
-  border-radius: 999px;
+  border-radius: var(--landing-radius-control);
   padding: 0 1.5rem;
   background: var(--action);
   color: var(--action-ink);
@@ -494,7 +494,7 @@
 
   overflow: hidden;
   border: 1px solid var(--line);
-  border-radius: 1.5rem;
+  border-radius: var(--landing-radius-card);
   background: var(--surface);
   box-shadow: 0 2rem 4rem -2rem color-mix(in srgb, var(--ink) 40%, transparent);
   transform: rotateX(var(--tilt-x)) rotateY(var(--tilt-y));
@@ -514,7 +514,7 @@
   width: 2.5rem;
   height: 2.5rem;
   place-items: center;
-  border-radius: 0.75rem;
+  border-radius: var(--landing-radius-chip);
   background: linear-gradient(135deg, var(--sun), var(--coral));
   color: var(--ink);
 }
@@ -563,7 +563,7 @@
   height: 1.9rem;
   flex: 0 0 auto;
   place-items: center;
-  border-radius: 0.65rem;
+  border-radius: var(--landing-radius-chip);
   background: var(--surface-sunken);
   color: var(--ink-muted);
 }
@@ -577,7 +577,7 @@
 .tutorBubble {
   max-width: 85%;
   margin: 0;
-  border-radius: 1.1rem;
+  border-radius: var(--landing-radius-control);
   padding: 0.75rem 0.95rem;
   font-size: 0.95rem;
   line-height: 1.55;
@@ -640,7 +640,7 @@
   align-self: flex-start;
   margin: 0 0 0 2.4rem;
   border: 1px dashed color-mix(in srgb, var(--sun) 70%, var(--ink));
-  border-radius: 999px;
+  border-radius: var(--landing-radius-control);
   padding: 0.35rem 0.85rem;
   background: color-mix(in srgb, var(--sun) 22%, var(--surface));
   color: var(--ink);
