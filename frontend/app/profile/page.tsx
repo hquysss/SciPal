@@ -87,7 +87,8 @@ export default async function ProfilePage() {
         </div>
       </div>
 
-      <FeatureRequestBoard />
+      {/* Sample vote counts: kept for admins to look at, hidden from students and teachers. */}
+      {role === 'admin' && <FeatureRequestBoard />}
 
       <ReportProblemCard />
     </main>
