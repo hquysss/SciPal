@@ -64,7 +64,7 @@
   place-items: center;
   width: 2.25rem;
   aspect-ratio: 1;
-  border-radius: 0.75rem;
+  border-radius: var(--landing-radius-chip);
   background: color-mix(in srgb, var(--action) 12%, var(--surface));
   color: var(--action);
 }
@@ -76,7 +76,7 @@
   gap: 0.6rem;
   margin-top: 0.25rem;
   border: 0;
-  border-radius: 999px;
+  border-radius: var(--landing-radius-control);
   padding: 0 1.75rem;
   background: var(--action);
   color: var(--action-ink);
@@ -103,7 +103,7 @@
   align-items: center;
   gap: 0.5rem;
   margin: 0.25rem 0 0;
-  border-radius: 999px;
+  border-radius: var(--landing-radius-control);
   padding: 0.6rem 1rem;
   background: color-mix(in srgb, var(--action) 12%, var(--surface));
   color: var(--ink);
@@ -121,7 +121,7 @@
   max-width: 30rem;
   margin: 0.25rem 0 0;
   border: 1px solid var(--line);
-  border-radius: 1.25rem;
+  border-radius: var(--landing-radius-card);
   padding: 1rem 1.1rem;
   background: var(--surface);
   list-style: none;
@@ -252,7 +252,7 @@
   justify-self: center;
   align-items: center;
   gap: 0.35rem;
-  border-radius: 999px;
+  border-radius: var(--landing-radius-chip);
   padding: 0.35rem 0.75rem;
   background: var(--surface);
   color: var(--ink);
@@ -322,7 +322,7 @@
   min-height: 3.25rem;
   align-items: center;
   gap: 0.6rem;
-  border-radius: 0.9rem;
+  border-radius: var(--landing-radius-control);
   padding: 0 1.2rem;
   background: var(--ink);
   color: var(--surface);
