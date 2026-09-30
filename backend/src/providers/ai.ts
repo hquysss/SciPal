@@ -10,7 +10,7 @@ export interface ChatMessage {
 export interface ModelChoice {
   provider: TutorProvider;
   model: string;
-  /** Gemini's thinking before the answer; low when unset. OpenAI chat models take none. */
+  /** Thinking before the answer; low when unset. Sent to Gemini, and to OpenAI reasoning models only. */
   effort?: ReasoningEffort;
 }
 
@@ -42,13 +42,19 @@ export function providerSettings(choice?: ModelChoice): { apiKey: string | undef
 // small limit the answer stopped mid-sentence. Keep the thinking short and the limit roomy.
 const MAX_TOKENS = 8192;
 
+/** OpenAI models that accept reasoning_effort. */
+export const isOpenAiReasoningModel = (model: string) => /^(o\d|gpt-5)/i.test(model.trim());
+
 /** The streaming request for one call. */
 export function completionRequest(settings: ReturnType<typeof providerSettings>, messages: ChatMessage[], systemPrompt: string) {
+  // OpenAI takes reasoning_effort only on its reasoning models (o1, o3, o4-mini, gpt-5…), and those
+  // take max_completion_tokens instead of max_tokens; other OpenAI models refuse both.
+  const openAiReasoning = !settings.baseURL && isOpenAiReasoningModel(settings.model);
   return {
     model: settings.model,
     stream: true as const,
-    max_tokens: MAX_TOKENS,
-    ...(settings.baseURL ? { reasoning_effort: settings.effort ?? ('low' as const) } : {}),
+    ...(openAiReasoning ? { max_completion_tokens: MAX_TOKENS } : { max_tokens: MAX_TOKENS }),
+    ...(settings.baseURL || openAiReasoning ? { reasoning_effort: settings.effort ?? ('low' as const) } : {}),
     messages: [
       { role: 'system' as const, content: systemPrompt },
       ...messages.map((m) => ({ role: m.role, content: m.content })),

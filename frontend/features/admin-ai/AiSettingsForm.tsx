@@ -209,8 +209,8 @@ export function AiSettingsForm({ initial }: { initial?: AiSettingsSnapshot }) {
           </div>
           <p className="text-xs text-ink-muted">
             {t({
-              en: 'Applies to Gemini (tutor, translation, lesson AI). OpenAI chat models ignore it.',
-              vi: 'Áp dụng cho Gemini (gia sư, dịch, AI soạn bài). Model chat của OpenAI không dùng cài đặt này.',
+              en: 'Applies to the professor, translation and lesson AI. Gemini always uses it; OpenAI only on reasoning models (o1, o3, o4-mini, gpt-5…), not on gpt-4o-mini.',
+              vi: 'Áp dụng cho giáo sư, dịch và AI soạn bài. Gemini luôn dùng; OpenAI chỉ dùng với model suy luận (o1, o3, o4-mini, gpt-5…), không dùng với gpt-4o-mini.',
             })}
           </p>
         </fieldset>
