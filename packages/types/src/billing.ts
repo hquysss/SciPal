@@ -41,6 +41,7 @@ export const BillingPlanSchema = z.object({
   audience: BillingAudienceSchema,
   name: BilingualTextSchema,
   description: BilingualTextSchema,
+  perks: z.array(BilingualTextSchema).max(8).optional(),
   active: z.boolean(),
   version: z.number().int().positive(),
   prices: z.array(BillingPriceSchema),

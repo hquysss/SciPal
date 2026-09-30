@@ -65,6 +65,7 @@ describe('PATCH /api/admin/plans/:code', () => {
       limits: [{ metric: 'tutor_requests', kind: 'monthly', limit: 300 }],
       description: { en: 'More', vi: 'Nhiều hơn' },
       prices: { month: 49000, year: 490000 },
+      perks: [{ en: ' Worked solutions ', vi: 'Lời giải chi tiết' }],
     });
     expect(res.statusCode).toBe(200);
     expect(res.json()).toEqual({ version: 4 });
@@ -72,6 +73,7 @@ describe('PATCH /api/admin/plans/:code', () => {
       p_actor_id: admin.id, p_plan_code: 'student_plus', p_expected_version: 3, p_reason: 'Tăng lượt Tutor',
       p_limits: [{ metric: 'tutor_requests', kind: 'monthly', limit: 300 }],
       p_description: { en: 'More', vi: 'Nhiều hơn' }, p_prices: { month: 49000, year: 490000 },
+      p_perks: [{ en: 'Worked solutions', vi: 'Lời giải chi tiết' }],
     }]);
     await app.close();
   });
@@ -83,6 +85,8 @@ describe('PATCH /api/admin/plans/:code', () => {
       { expectedVersion: 1, reason: 'x', limits: [{ metric: 'tutor_requests', kind: 'monthly', limit: -1 }] },
       { expectedVersion: 1, reason: 'x', prices: { month: 1.5 } },
       { expectedVersion: 1, reason: 'x', role: 'admin' },
+      { expectedVersion: 1, reason: 'x', perks: [{ en: '', vi: 'a' }] },
+      { expectedVersion: 1, reason: 'x', perks: Array.from({ length: 9 }, () => ({ en: 'a', vi: 'a' })) },
     ]) {
       expect((await patch(app, 'student_plus', body)).statusCode, JSON.stringify(body)).toBe(400);
     }

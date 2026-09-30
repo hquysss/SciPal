@@ -12,7 +12,7 @@ const INTERVAL_ORDER = ['month', 'year'] as const;
 const METRIC_ORDER = ['tutor_requests', 'graded_exam_attempts', 'active_classes', 'students_per_class', 'active_authored_exams', 'import_files', 'author_ai_requests'];
 const UNAVAILABLE = { code: 'BILLING_UNAVAILABLE', error: 'Chưa tải được thông tin gói. Thử lại sau.', error_en: 'Plan information is not available. Try again later.' };
 
-type PlanRow = { code: string; audience: string; name_en: string; name_vi: string; description_en: string; description_vi: string; active: boolean; version: number };
+type PlanRow = { code: string; audience: string; name_en: string; name_vi: string; description_en: string; description_vi: string; perks: Array<{ en: string; vi: string }> | null; active: boolean; version: number };
 type PriceRow = { id: string; plan_code: string; interval: string; amount_vnd: number };
 type LimitRow = { plan_code: string; metric: string; kind: string; limit_value: number };
 
@@ -25,7 +25,7 @@ export const billingRoutes: FastifyPluginAsync = async (app) => {
     const supabase = app.supabase!;
     try {
       const [plans, prices, limits] = await Promise.all([
-        supabase.from('billing_plans').select('code, audience, name_en, name_vi, description_en, description_vi, active, version').eq('active', true),
+        supabase.from('billing_plans').select('code, audience, name_en, name_vi, description_en, description_vi, perks, active, version').eq('active', true),
         supabase.from('billing_prices').select('id, plan_code, interval, amount_vnd').eq('active', true),
         supabase.from('billing_plan_limits').select('plan_code, metric, kind, limit_value'),
       ]);
@@ -50,6 +50,7 @@ export const billingRoutes: FastifyPluginAsync = async (app) => {
           audience: row.audience,
           name: { en: row.name_en, vi: row.name_vi },
           description: { en: row.description_en, vi: row.description_vi },
+          perks: row.perks ?? [],
           active: row.active,
           version: row.version,
           prices: planPrices,

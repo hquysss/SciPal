@@ -104,6 +104,12 @@ export function PricingSection({
                   <span>{limitText(l, t)}</span>
                 </li>
               ))}
+              {(free.perks ?? []).map((p, index) => (
+                <li key={`perk-${index}`} style={item(free.limits.length + index)}>
+                  <Check aria-hidden="true" size={16} />
+                  <span>{t(p)}</span>
+                </li>
+              ))}
             </ul>
             <a href="#mon-hoc" className={styles.freeAction}>
               {t({ en: 'Learn for free', vi: 'Học miễn phí' })}
@@ -136,6 +142,12 @@ export function PricingSection({
                   <li key={l.metric} style={item(index + 1)}>
                     <Check aria-hidden="true" size={16} />
                     <span>{limitText(l, t)}</span>
+                  </li>
+                ))}
+                {(paid.perks ?? []).map((p, index) => (
+                  <li key={`perk-${index}`} style={item(paid.limits.length + index + 1)}>
+                    <Check aria-hidden="true" size={16} />
+                    <span>{t(p)}</span>
                   </li>
                 ))}
               </ul>
