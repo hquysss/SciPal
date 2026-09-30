@@ -9,7 +9,7 @@ function LandingLoading() {
 
   return (
     <main className="mx-auto flex min-h-[60vh] w-full max-w-6xl items-center justify-center px-5 text-sm text-ink-muted" role="status" aria-live="polite">
-      {t({ en: 'Opening your learning path…', vi: 'Đang mở lối học tập của bạn…' })}
+      {t({ en: 'Loading…', vi: 'Đang tải…' })}
     </main>
   );
 }

@@ -18,7 +18,7 @@ declare module 'fastify' {
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 export const msg = (error: string, error_en: string) => ({ error, error_en });
 const unavailable = msg('Dịch vụ lưu trữ chưa sẵn sàng.', 'Storage is not available.');
-const signIn = msg('Hãy đăng nhập để hỏi gia sư.', 'Sign in to ask the tutor.');
+const signIn = msg('Hãy đăng nhập để hỏi Giáo sư SciPal.', 'Sign in to ask the SciPal Professor.');
 export const notFound = msg('Không tìm thấy hội thoại.', 'Conversation not found.');
 const CONVERSATION = 'id, title, lesson_id, updated_at';
 
@@ -103,7 +103,7 @@ export const tutorRoutes: FastifyPluginAsync = async (app) => {
     const asked = VOICE_SEGMENT_MINUTES;
     const settings = app.tutorSettings ? await app.tutorSettings.get() : resolveTutorSettings(null, process.env);
     if (!settings.enabled) {
-      return reply.code(503).send(msg('Gia sư đang tạm nghỉ. Em quay lại sau nhé.', 'The tutor is taking a break. Please come back later.'));
+      return reply.code(503).send(msg('Giáo sư SciPal đang tạm nghỉ. Em quay lại sau nhé.', 'The Professor is taking a break. Please come back later.'));
     }
     const apiKey = process.env.GEMINI_API_KEY;
     if (!settings.voiceEnabled) return reply.code(503).send({ code: 'VOICE_OFF', ...msg('Chế độ nói chuyện đang tắt.', 'Voice chat is turned off.') });
@@ -174,7 +174,7 @@ export const tutorRoutes: FastifyPluginAsync = async (app) => {
     const body = (request.body ?? {}) as { conversation_id?: unknown; lesson_id?: unknown; message?: unknown; language?: unknown; retry?: unknown };
     const settings = app.tutorSettings ? await app.tutorSettings.get() : resolveTutorSettings(null, process.env);
     if (!settings.enabled) {
-      return reply.code(503).send(msg('Gia sư đang tạm nghỉ. Em quay lại sau nhé.', 'The tutor is taking a break. Please come back later.'));
+      return reply.code(503).send(msg('Giáo sư SciPal đang tạm nghỉ. Em quay lại sau nhé.', 'The Professor is taking a break. Please come back later.'));
     }
     const message = typeof body.message === 'string' ? body.message.trim() : '';
     const language = body.language === 'en' ? 'en' : 'vi';
@@ -351,8 +351,8 @@ export const tutorRoutes: FastifyPluginAsync = async (app) => {
         if (conversationRemoved) await supabase.from('tutor_conversations').delete().eq('id', id).eq('user_id', uid);
         send('error', {
           ...(overloaded
-            ? msg('Gia sư đang quá tải. Câu hỏi này không bị tính lượt — em thử lại sau ít phút nhé.', 'The tutor is overloaded. This question was not counted — try again in a few minutes.')
-            : msg('Gia sư đang gặp sự cố. Câu hỏi này không bị tính lượt — em thử lại sau nhé.', 'The tutor ran into a problem. This question was not counted — try again later.')),
+            ? msg('Giáo sư SciPal đang quá tải. Câu hỏi này không bị tính lượt, em thử lại sau ít phút nhé.', 'The Professor is overloaded. This question was not counted — try again in a few minutes.')
+            : msg('Giáo sư SciPal đang gặp sự cố. Câu hỏi này không bị tính lượt, em thử lại sau nhé.', 'The Professor ran into a problem. This question was not counted — try again later.')),
           ...shown(1),
           conversation_removed: conversationRemoved,
         });

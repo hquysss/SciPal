@@ -12,7 +12,7 @@ describe('install section', () => {
     const html = renderToStaticMarkup(<InstallAppSection />);
     expect(html).toContain('id="tai-ung-dung"');
     expect(html).toContain('Mang SciPal theo bên mình');
-    expect(html).toContain('không cần CH Play hay App Store');
+    expect(html).toContain('cài thẳng từ trình duyệt');
     expect(html).toContain('vẫn đọc được khi mất mạng');
     expect(html).toContain('Mở menu của trình duyệt');
     expect(countRawColors(html).total).toBe(0);

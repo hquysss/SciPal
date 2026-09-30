@@ -61,7 +61,7 @@ export function PostLessonSurvey({ lessonId, onDone }: PostLessonSurveyProps) {
       <Alert tone="success">
         {t({
           en: 'Thank you for your feedback! SciPal uses it to improve lessons.',
-          vi: 'Cảm ơn phản hồi của bạn! SciPal ghi nhận để nâng cao chất lượng bài giảng.',
+          vi: 'Cảm ơn bạn! Góp ý này giúp SciPal sửa bài tốt hơn.',
         })}
       </Alert>
     );
@@ -138,7 +138,7 @@ export function PostLessonSurvey({ lessonId, onDone }: PostLessonSurveyProps) {
         <Alert tone="danger">
           {t({
             en: 'Could not send your feedback. Check your connection and try again.',
-            vi: 'Chưa gửi được phản hồi. Vui lòng kiểm tra kết nối và thử lại.',
+            vi: 'Chưa gửi được góp ý. Kiểm tra kết nối rồi thử lại nhé.',
           })}
         </Alert>
       )}

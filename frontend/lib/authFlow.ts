@@ -54,13 +54,13 @@ export function authErrorText(message: string, status?: number, code?: string): 
     return { vi: `Mật khẩu quá yếu. Dùng ít nhất ${PASSWORD_MIN} ký tự, trộn chữ và số.`, en: `Password too weak. Use at least ${PASSWORD_MIN} characters with letters and numbers.` };
   }
   if (/signups? not allowed|signup.*disabled/i.test(message)) {
-    return { vi: 'SciPal đang tạm đóng đăng ký mới. Vui lòng quay lại sau.', en: 'SciPal is not taking new sign-ups right now. Please come back later.' };
+    return { vi: 'SciPal đang tạm đóng đăng ký mới. Bạn quay lại sau nhé.', en: 'SciPal is not taking new sign-ups right now. Please come back later.' };
   }
   if (status === 429 || /rate limit/i.test(message)) {
-    return { vi: 'Bạn thao tác quá nhanh. Vui lòng thử lại sau ít phút.', en: 'Too many attempts. Please try again in a few minutes.' };
+    return { vi: 'Bạn thao tác quá nhanh. Thử lại sau ít phút nhé.', en: 'Too many attempts. Please try again in a few minutes.' };
   }
   if (/failed to fetch|fetch failed|network/i.test(message)) {
-    return { vi: 'Không thể kết nối. Vui lòng kiểm tra mạng và thử lại.', en: 'Cannot connect. Please check your connection and try again.' };
+    return { vi: 'Không kết nối được. Kiểm tra mạng rồi thử lại nhé.', en: 'Cannot connect. Please check your connection and try again.' };
   }
   return { vi: `Chưa tạo được tài khoản: ${message}`, en: `Could not create the account: ${message}` };
 }

@@ -39,7 +39,7 @@ export function AiTutorPanel({ lessonId, lessonTitle, level, signedIn, onClose }
         </div>
         {signedIn && (
           <a href={fullPage} className={`${LINK} shrink-0 text-xs`}>
-            {t({ en: 'Open on the tutor page', vi: 'Mở ở trang Gia sư' })}
+            {t({ en: 'Open on the Professor page', vi: 'Mở ở trang Giáo sư SciPal' })}
             <ExternalLink aria-hidden="true" className="h-3.5 w-3.5" />
           </a>
         )}
@@ -60,7 +60,7 @@ export function AiTutorPanel({ lessonId, lessonTitle, level, signedIn, onClose }
           <TutorChat lessonId={lessonId} level={level} compact onConversation={onConversation} />
         ) : (
           <div className="flex h-full flex-col items-start justify-center gap-3 p-6">
-            <p className="text-lg font-bold text-ink">{t({ en: 'Sign in to ask the tutor', vi: 'Đăng nhập để hỏi thầy' })}</p>
+            <p className="text-lg font-bold text-ink">{t({ en: 'Sign in to ask the Professor', vi: 'Đăng nhập để hỏi thầy' })}</p>
             <p className="text-sm text-ink-muted">
               {t({ en: 'Your questions about this lesson are kept so you can come back to them.', vi: 'Câu hỏi của em về bài này được lưu lại để em xem tiếp sau.' })}
             </p>

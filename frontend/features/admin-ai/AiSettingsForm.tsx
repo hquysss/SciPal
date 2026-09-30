@@ -187,8 +187,8 @@ export function AiSettingsForm({ initial }: { initial?: AiSettingsSnapshot }) {
 
         <label className="flex min-h-11 cursor-pointer items-center gap-3">
           <input type="checkbox" checked={form.enabled} onChange={(e) => setForm({ ...form, enabled: e.target.checked })} className="h-5 w-5 accent-[var(--action)]" />
-          <span className="text-base text-ink">{t({ en: 'Tutor on for students', vi: 'Bật gia sư cho học sinh' })}</span>
-          {!form.enabled && <span className="text-sm text-ink-muted">{t({ en: '— students see “taking a break”', vi: '— học sinh thấy “Gia sư đang tạm nghỉ”' })}</span>}
+          <span className="text-base text-ink">{t({ en: 'Professor on for students', vi: 'Bật Giáo sư SciPal cho học sinh' })}</span>
+          {!form.enabled && <span className="text-sm text-ink-muted">{t({ en: '— students see “taking a break”', vi: '— học sinh thấy “Giáo sư SciPal đang tạm nghỉ”' })}</span>}
         </label>
 
         <fieldset className="flex flex-col gap-2">
@@ -210,7 +210,7 @@ export function AiSettingsForm({ initial }: { initial?: AiSettingsSnapshot }) {
           <p className="text-xs text-ink-muted">
             {t({
               en: 'Applies to the professor, translation and lesson AI. Gemini always uses it; OpenAI only on reasoning models (o1, o3, o4-mini, gpt-5…), not on gpt-4o-mini.',
-              vi: 'Áp dụng cho giáo sư, dịch và AI soạn bài. Gemini luôn dùng; OpenAI chỉ dùng với model suy luận (o1, o3, o4-mini, gpt-5…), không dùng với gpt-4o-mini.',
+              vi: 'Áp dụng cho Giáo sư SciPal, dịch và AI soạn bài. Gemini luôn dùng; OpenAI chỉ dùng với model suy luận (o1, o3, o4-mini, gpt-5…), không dùng với gpt-4o-mini.',
             })}
           </p>
         </fieldset>
@@ -248,8 +248,8 @@ export function AiSettingsForm({ initial }: { initial?: AiSettingsSnapshot }) {
           <legend className="px-1 text-sm font-semibold text-ink">{t({ en: 'Automatic translation for teachers', vi: 'Dịch tự động cho giáo viên' })}</legend>
           <p className="text-sm text-ink-muted">
             {t({
-              en: 'Fills empty English when a lesson or question is saved. Uses the same service and model as the tutor.',
-              vi: 'Điền phần tiếng Anh còn trống khi lưu bài hoặc câu hỏi. Dùng cùng dịch vụ và model với gia sư.',
+              en: 'Fills empty English when a lesson or question is saved. Uses the same service and model as the Professor.',
+              vi: 'Điền phần tiếng Anh còn trống khi lưu bài hoặc câu hỏi. Dùng cùng dịch vụ và model với Giáo sư SciPal.',
             })}
           </p>
           <label className="flex min-h-11 cursor-pointer items-center gap-3">

@@ -13,8 +13,8 @@ type Bilingual = { vi: string; en: string };
 
 const STATE_TEXT: Record<VoiceState, Bilingual> = {
   connecting: { vi: 'Đang kết nối…', en: 'Connecting…' },
-  listening: { vi: 'Thầy đang nghe — em cứ nói', en: 'Listening — go ahead' },
-  speaking: { vi: 'Thầy đang nói — em nói chen vào được', en: 'Speaking — you can cut in' },
+  listening: { vi: 'Thầy đang nghe, em cứ nói', en: 'Listening, go ahead' },
+  speaking: { vi: 'Thầy đang nói, em nói chen vào được', en: 'Speaking, you can cut in' },
   ended: { vi: 'Đã kết thúc', en: 'Ended' },
 };
 
@@ -83,7 +83,7 @@ export function VoiceChat({ lessonId, onClose }: { lessonId?: string; onClose: (
         setError(
           reason === 'microphone'
             ? { vi: 'Không dùng được micro. Hãy cho phép trình duyệt dùng micro rồi thử lại.', en: 'The microphone is not available. Allow the browser to use it, then try again.' }
-            : { vi: 'Mất kết nối với gia sư. Em thử lại sau nhé.', en: 'Lost the connection to the tutor. Please try again.' },
+            : { vi: 'Mất kết nối với Giáo sư SciPal. Em thử lại sau nhé.', en: 'Lost the connection to the Professor. Please try again.' },
         ),
     }).then((stop) => {
       if (cancelled) stop();
@@ -128,7 +128,7 @@ export function VoiceChat({ lessonId, onClose }: { lessonId?: string; onClose: (
   return (
     <div className={styles.voiceBackdrop}>
       <div role="dialog" aria-modal="true" aria-labelledby="voice-title" className={styles.voicePanel}>
-        <h2 id="voice-title" className="text-lg font-bold">{t({ vi: 'Nói chuyện với thầy', en: 'Talk with the tutor' })}</h2>
+        <h2 id="voice-title" className="text-lg font-bold">{t({ vi: 'Nói chuyện với thầy', en: 'Talk with the Professor' })}</h2>
         <div className={styles.orb} data-state={state} aria-hidden="true">
           <Mic className="h-10 w-10" />
         </div>
@@ -155,7 +155,7 @@ export function VoiceChat({ lessonId, onClose }: { lessonId?: string; onClose: (
           <ul className={styles.transcript} aria-live="polite">
             {lines.map((line, i) => (
               <li key={i} data-who={line.who}>
-                <b>{line.who === 'tutor' ? t({ vi: 'Thầy: ', en: 'Tutor: ' }) : t({ vi: 'Em: ', en: 'You: ' })}</b>
+                <b>{line.who === 'tutor' ? t({ vi: 'Thầy: ', en: 'Professor: ' }) : t({ vi: 'Em: ', en: 'You: ' })}</b>
                 {line.text}
               </li>
             ))}

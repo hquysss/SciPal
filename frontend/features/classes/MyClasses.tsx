@@ -27,11 +27,11 @@ export function MyClassesView({ state, onJoin, now = new Date() }: { state: MyCl
     <div className="flex flex-col gap-5">
       <div className="flex justify-end">{state.status === 'ready' && state.classes.length > 0 && joinButton}</div>
 
-      {state.status === 'loading' && <p role="status" className="text-sm text-ink-muted">{t({ en: 'Loading your classes…', vi: 'Đang tải lớp của em…' })}</p>}
+      {state.status === 'loading' && <p role="status" className="text-sm text-ink-muted">{t({ en: 'Loading your classes…', vi: 'Đang tải lớp của bạn…' })}</p>}
       {state.status === 'error' && <Alert tone="danger">{t(state.message)}</Alert>}
       {state.status === 'ready' && state.classes.length === 0 && (
         <EmptyState
-          title={t({ en: 'You are not in a class yet', vi: 'Em chưa vào lớp nào' })}
+          title={t({ en: 'You are not in a class yet', vi: 'Bạn chưa vào lớp nào' })}
           description={t({ en: 'Ask your teacher for the class code, then join here to see the work they give.', vi: 'Xin thầy cô mã lớp rồi vào lớp ở đây để thấy bài được giao.' })}
           action={joinButton}
         />

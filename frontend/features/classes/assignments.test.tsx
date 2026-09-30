@@ -57,7 +57,7 @@ describe('MyClassesView (student)', () => {
 
   it('asks a student in no class to join one', () => {
     const html = renderToStaticMarkup(<MyClassesView now={now} state={{ status: 'ready', classes: [] }} onJoin={() => {}} />);
-    expect(html).toContain('Em chưa vào lớp nào');
+    expect(html).toContain('Bạn chưa vào lớp nào');
   });
 
   it('says when a class has no work yet', () => {

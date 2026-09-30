@@ -84,7 +84,7 @@ export function ReportFormView({
       {askEmail && (
         <div className="flex flex-col gap-1.5">
           <label htmlFor="report-email" className={label}>
-            {t({ vi: 'Email để SciPal trả lời', en: 'E-mail for our answer' })}{' '}
+            {t({ vi: 'Email để SciPal trả lời', en: 'Email for our answer' })}{' '}
             <span className="font-normal text-ink-muted">{t({ vi: '(không bắt buộc)', en: '(optional)' })}</span>
           </label>
           <input id="report-email" name="email" type="email" maxLength={320} autoComplete="email" className={field} placeholder="ban@gmail.com" />

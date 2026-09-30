@@ -135,7 +135,7 @@ export function InstallAppSection() {
         </h2>
         <p className={styles.lead}>
           {t({
-            vi: 'Cài lên điện thoại, máy tính bảng hay máy tính chỉ trong vài giây: không cần CH Play hay App Store, không tốn phí.',
+            vi: 'Cài lên điện thoại, máy tính bảng hay máy tính chỉ trong vài giây: cài thẳng từ trình duyệt, không tốn phí.',
             en: 'Install it on a phone, tablet or computer in seconds: no app store, no cost.',
           })}
         </p>

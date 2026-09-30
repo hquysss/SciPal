@@ -251,7 +251,7 @@ function QuestionCard({ number, question, answer, result, onAnswer, onResult, t 
             ) : (
               <span className="inline-flex items-center gap-1.5 font-semibold text-danger">
                 <CircleX aria-hidden="true" className="h-5 w-5" />
-                {t({ en: 'Not quite — change your answer and try again.', vi: 'Chưa đúng — sửa câu trả lời rồi thử lại.' })}
+                {t({ en: 'Not quite — change your answer and try again.', vi: 'Chưa đúng. Sửa câu trả lời rồi thử lại.' })}
               </span>
             ))}
           {error && <span className="text-danger">{t(error)}</span>}

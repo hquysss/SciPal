@@ -47,11 +47,11 @@ const LEVEL_LABEL: Record<EducationLevel, Copy> = {
 const HERO_TITLE: Record<EducationLevel, [Copy, Copy]> = {
   primary: [
     { vi: 'Bắt đầu từ', en: 'Start with' },
-    { vi: 'điều em tò mò.', en: 'what you wonder.' },
+    { vi: 'điều bạn tò mò.', en: 'what you wonder.' },
   ],
   lower_secondary: [
-    { vi: 'Từng câu hỏi', en: 'Every question' },
-    { vi: 'mở rộng hiểu biết.', en: 'grows understanding.' },
+    { vi: 'Mỗi câu hỏi', en: 'Every question' },
+    { vi: 'là một bước hiểu thêm.', en: 'grows understanding.' },
   ],
   upper_secondary: [
     { vi: 'Hiểu từng bài,', en: 'Understand each lesson.' },
@@ -262,7 +262,7 @@ export function LandingPage({ level, levelSource, catalog, onChangeLevel, pricin
             <Image src="/logo.svg" width={39} height={39} alt="" aria-hidden="true" />
             <span>
               <strong>SciPal</strong>
-              <small>{t({ en: 'Learning made easy with SciPal.', vi: 'Học tập dễ dàng cùng SciPal.' })}</small>
+              <small>{t({ en: 'Bilingual lessons for Vietnam’s 2018 curriculum.', vi: 'Học song ngữ theo Chương trình GDPT 2018.' })}</small>
             </span>
           </Link>
           <div className={styles.footerContact}>

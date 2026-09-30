@@ -35,7 +35,7 @@ export function GuestTutorView({ state, question, onQuestion, onAsk }: { state: 
       <div className="flex flex-col gap-1">
         <h2 id="guest-tutor-title" className="text-lg font-bold text-ink">{t({ vi: 'Hỏi thử 1 câu', en: 'Try one question' })}</h2>
         <p className="text-sm text-ink-muted">
-          {t({ vi: 'Khách được hỏi gia sư 1 câu. Tạo tài khoản miễn phí (hoặc đăng nhập) để hỏi tiếp và lưu cuộc trò chuyện.', en: 'Visitors can ask the tutor one question. Create a free account (or sign in) to keep asking and keep the chat.' })}
+          {t({ vi: 'Khách được hỏi Giáo sư SciPal 1 câu. Tạo tài khoản miễn phí (hoặc đăng nhập) để hỏi tiếp và lưu cuộc trò chuyện.', en: 'Visitors can ask the SciPal Professor one question. Create a free account (or sign in) to keep asking and keep the chat.' })}
         </p>
       </div>
 
@@ -79,7 +79,7 @@ export function GuestTutorView({ state, question, onQuestion, onAsk }: { state: 
             className="w-full rounded-lg border border-edge bg-surface px-3 py-2 text-base text-ink placeholder:text-ink-muted focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
           />
           <button type="submit" disabled={!question.trim()} className={buttonVariants({ className: 'self-start' })}>
-            {t({ vi: 'Hỏi gia sư', en: 'Ask the tutor' })}
+            {t({ vi: 'Hỏi Giáo sư SciPal', en: 'Ask the SciPal Professor' })}
           </button>
         </form>
       )}
@@ -103,7 +103,7 @@ export function GuestTutor() {
         body: JSON.stringify({ message: text, language: lang }),
       });
       const body = (await res.json().catch(() => ({}))) as { answer?: string; code?: string; error?: string; error_en?: string };
-      const message = { vi: body.error ?? 'Gia sư chưa trả lời được. Em thử lại nhé.', en: body.error_en ?? 'The tutor could not answer. Try again.' };
+      const message = { vi: body.error ?? 'Giáo sư SciPal chưa trả lời được. Em thử lại nhé.', en: body.error_en ?? 'The Professor could not answer. Try again.' };
       if (res.ok && body.answer) setState({ status: 'answered', question: text, answer: body.answer });
       else if (res.status === 429) setState({ status: 'used', message });
       else setState({ status: 'error', message });

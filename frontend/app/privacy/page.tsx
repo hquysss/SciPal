@@ -117,9 +117,9 @@ export default function PrivacyPage() {
         </p>
         <ol className="flex list-decimal flex-col gap-2 pl-5">
           <li>
-            {t({ vi: 'Gửi email tới ', en: 'E-mail ' })}
+            {t({ vi: 'Gửi email tới ', en: 'Email ' })}
             {mail}
-            {t({ vi: ' từ địa chỉ email của tài khoản, tiêu đề "Xóa dữ liệu".', en: ' from your account’s e-mail address with the subject “Delete my data”.' })}
+            {t({ vi: ' từ địa chỉ email của tài khoản, tiêu đề "Xóa dữ liệu".', en: ' from your account’s email address with the subject “Delete my data”.' })}
           </li>
           <li>{t({ vi: 'SciPal xác nhận và xóa tài khoản trong vòng 30 ngày, rồi báo lại cho bạn.', en: 'SciPal confirms and deletes the account within 30 days, then lets you know.' })}</li>
         </ol>

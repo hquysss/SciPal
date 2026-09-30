@@ -32,7 +32,7 @@ describe('AiSettingsForm', () => {
     expect(html).toContain('Chưa đặt key');
     expect(control(html, 'Model')).toContain('placeholder="gemini-3.8-flash"');
     expect(control(html, 'Số câu hỏi mỗi học sinh mỗi ngày')).toContain('value="20"');
-    expect(html).toContain('Bật gia sư cho học sinh');
+    expect(html).toContain('Bật Giáo sư SciPal cho học sinh');
     expect(html).toContain('Thử kết nối');
     expect(html).toMatch(/>4<[\s\S]*>25<[\s\S]*>2</);
     expect(countRawColors(html).total).toBe(0);

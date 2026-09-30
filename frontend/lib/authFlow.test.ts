@@ -57,7 +57,7 @@ describe('authErrorText', () => {
     expect(authErrorText('User already registered').vi).toContain('đã có tài khoản');
     expect(authErrorText('Password should be at least 8 characters', 422, 'weak_password').vi).toContain('Mật khẩu');
     expect(authErrorText('Signups not allowed for this instance').vi).toContain('tạm đóng');
-    expect(authErrorText('email rate limit exceeded', 429).vi).toContain('thử lại sau');
+    expect(authErrorText('email rate limit exceeded', 429).vi).toMatch(/thử lại sau/i);
     expect(authErrorText('Failed to fetch').vi).toContain('kết nối');
     expect(authErrorText('Something odd').vi).toContain('Something odd');
   });

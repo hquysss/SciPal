@@ -193,7 +193,7 @@ export function TutorChatView({
                   submit();
                 }
               }}
-              placeholder={limitReached ? t({ en: 'No questions left today', vi: 'Hôm nay em đã hết lượt hỏi' }) : t({ en: 'Ask the tutor…', vi: 'Hỏi thầy…' })}
+              placeholder={limitReached ? t({ en: 'No questions left today', vi: 'Hôm nay em đã hết lượt hỏi' }) : t({ en: 'Ask the Professor…', vi: 'Hỏi thầy…' })}
               className="max-h-40 min-h-11 flex-1 resize-none bg-transparent px-2 py-2 text-base leading-6 text-ink caret-action outline-none placeholder:text-ink-muted disabled:cursor-not-allowed"
             />
             {onVoice && !streaming && (
@@ -201,8 +201,8 @@ export function TutorChatView({
                 type="button"
                 onClick={onVoice}
                 disabled={limitReached}
-                aria-label={t({ en: 'Talk with the tutor', vi: 'Nói chuyện với thầy' })}
-                title={t({ en: 'Talk with the tutor', vi: 'Nói chuyện với thầy' })}
+                aria-label={t({ en: 'Talk with the Professor', vi: 'Nói chuyện với thầy' })}
+                title={t({ en: 'Talk with the Professor', vi: 'Nói chuyện với thầy' })}
                 className={styles.voiceButton}
               >
                 <Mic aria-hidden="true" className="h-5 w-5" />

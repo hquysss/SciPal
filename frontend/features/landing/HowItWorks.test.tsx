@@ -35,7 +35,7 @@ describe('HowItWorks', () => {
   it('pitches the examples to the level', () => {
     lang = 'vi';
     const primary = renderToStaticMarkup(<HowItWorks level="primary" />);
-    expect(primary).toContain('Em nghĩ một số từ 1 đến 8');
+    expect(primary).toContain('Bạn nghĩ một số từ 1 đến 8');
     expect(primary).toContain('Thuật toán');
     expect(primary).not.toContain('Độ phức tạp thời gian');
   });

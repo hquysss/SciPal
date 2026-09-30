@@ -124,9 +124,9 @@ export function SubjectsPage({ accountLevel, catalog }: SubjectsPageProps) {
           {level
             ? t({
                 en: `${EDUCATION_LEVEL_LABELS[level].en}: choose your grade to see its subjects.`,
-                vi: `${EDUCATION_LEVEL_LABELS[level].vi}: chọn lớp của em để xem các môn học.`,
+                vi: `${EDUCATION_LEVEL_LABELS[level].vi}: chọn lớp của bạn để xem các môn học.`,
               })
-            : t({ en: 'Choose your grade to see its subjects.', vi: 'Chọn lớp của em để xem các môn học.' })}
+            : t({ en: 'Choose your grade to see its subjects.', vi: 'Chọn lớp của bạn để xem các môn học.' })}
         </p>
         <StaffLinks place="subjects" />
       </header>

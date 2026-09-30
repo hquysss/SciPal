@@ -163,8 +163,8 @@ export function SubjectDemandModal({ open, onClose }: SubjectDemandModalProps) {
           <div className="flex flex-col gap-5 pt-5">
             <p className="text-sm text-ink-muted">
               {t({
-                en: 'Choose the natural science subjects you would like to explore on SciPal.',
-                vi: 'Chọn các môn khoa học tự nhiên bạn muốn khám phá trên SciPal.',
+                en: 'Choose the subjects you would like SciPal to add first.',
+                vi: 'Chọn những môn bạn muốn SciPal có sớm.',
               })}
             </p>
 
