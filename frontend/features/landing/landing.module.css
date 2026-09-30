@@ -248,17 +248,18 @@
 .finalCta {
   position: relative;
   isolation: isolate;
-  overflow: hidden;
+  /* The glow may run into the band on either side; clip-path below trims it top and bottom. */
+  overflow: visible;
   display: grid;
   justify-items: center;
   gap: 1.5rem;
-  border-radius: var(--landing-radius-card);
+  /* A band across the whole width, not one more rounded box: the colour runs past the column
+     edges through the shadow, clipped at the top and bottom. */
+  border-radius: 0;
+  box-shadow: 0 0 0 100vmax var(--nav);
+  clip-path: inset(0 -100vmax);
   padding: clamp(3rem, 8vw, 5.5rem) clamp(1rem, 4vw, 3rem) clamp(1rem, 3vw, 1.75rem);
-  background:
-    radial-gradient(circle at 18% 20%, color-mix(in srgb, var(--nav-ink) 16%, transparent), transparent 40%),
-    radial-gradient(circle at 85% 90%, color-mix(in srgb, var(--sky) 22%, transparent), transparent 45%),
-    var(--nav);
-  box-shadow: 0 2.5rem 5rem -3rem color-mix(in srgb, var(--nav) 90%, transparent);
+  background: var(--nav);
   color: var(--nav-ink);
   text-align: center;
 }
