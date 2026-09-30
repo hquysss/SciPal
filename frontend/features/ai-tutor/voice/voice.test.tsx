@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from 'vitest';
 
 vi.mock('@scipal/hooks', () => ({ useLanguage: () => ({ lang: 'vi', t: (c: { vi: string }) => c.vi }) }));
 
-import { historyTurns, pcmToFloats, toBase64 } from './liveSession';
+import { historyTurns, pcmToFloats, toBase64, micLevel } from './liveSession';
 import { addWords, VoiceChat } from './VoiceChat';
 import { TutorChatView } from '../TutorChat';
 
@@ -52,5 +52,25 @@ describe('VoiceChat', () => {
     expect(html).toContain('Đang kết nối');
     expect(html).not.toContain('3 phút');
     expect(html).toContain('từng 2 phút');
+  });
+
+  it('always shows both clocks, the mute and end buttons, and a line to try', () => {
+    const html = renderToStaticMarkup(<VoiceChat onClose={() => {}} />);
+    expect(html).toContain('Đã nói');
+    expect(html).toContain('Còn lại');
+    expect(html).toContain('Tắt micro');
+    expect(html).toContain('Kết thúc');
+    expect(html).toContain('Thử nói');
+  });
+});
+
+describe('micLevel', () => {
+  it('is 0 for silence and grows with loudness, up to 1', () => {
+    expect(micLevel(new Int16Array(160).buffer)).toBe(0);
+    const quiet = micLevel(new Int16Array(160).fill(1000).buffer);
+    const loud = micLevel(new Int16Array(160).fill(20000).buffer);
+    expect(quiet).toBeGreaterThan(0);
+    expect(loud).toBeGreaterThan(quiet);
+    expect(loud).toBeLessThanOrEqual(1);
   });
 });

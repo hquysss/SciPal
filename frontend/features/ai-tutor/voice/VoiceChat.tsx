@@ -1,11 +1,11 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
-import { Mic, PhoneOff } from 'lucide-react';
+import { useEffect, useRef, useState, type CSSProperties } from 'react';
+import { Mic, MicOff, PhoneOff } from 'lucide-react';
 import { useLanguage } from '@scipal/hooks';
 import { Alert } from '@/components/ui/alert';
-import { Button } from '@/components/ui/button';
 import { startVoice } from '../api';
+import { TutorAvatar } from '../TutorAvatar';
 import styles from '../tutor.module.css';
 import { startConversation, type GrantResult, type TranscriptLine, type VoiceState } from './liveSession';
 
@@ -17,6 +17,9 @@ const STATE_TEXT: Record<VoiceState, Bilingual> = {
   speaking: { vi: 'Thầy đang nói, em nói chen vào được', en: 'Speaking, you can cut in' },
   ended: { vi: 'Đã kết thúc', en: 'Ended' },
 };
+
+const EXAMPLE: Bilingual = { vi: '“Thầy giảng lại vòng lặp for giúp em với.”', en: '“Could you explain for loops again?”' };
+const BARS = 5;
 
 const clock = (seconds: number) => `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, '0')}`;
 
@@ -44,10 +47,18 @@ export function VoiceChat({ lessonId, onClose }: { lessonId?: string; onClose: (
   // still in the plan. Null for admins (not metered).
   const [stopsAt, setStopsAt] = useState<number | null>(null);
   const [now, setNow] = useState(() => Date.now());
+  // Admins are not metered: the clock then says so instead of counting down.
+  const [unmetered, setUnmetered] = useState(false);
   const linesRef = useRef<TranscriptLine[]>([]);
   const stopRef = useRef<() => void>(() => {});
   const turnEnded = useRef(true);
   const endButton = useRef<HTMLButtonElement>(null);
+  const [muted, setMuted] = useState(false);
+  const mutedRef = useRef(false);
+  // The loudness of whoever is talking, written straight to the stage (60 times a second, no render).
+  const stageRef = useRef<HTMLDivElement>(null);
+  const level = useRef(0);
+  const transcriptEnd = useRef<HTMLLIElement>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -62,6 +73,7 @@ export function VoiceChat({ lessonId, onClose }: { lessonId?: string; onClose: (
         return { ok: false, outOfMinutes };
       }
       first = false;
+      setUnmetered(res.data.remaining === null);
       if (res.data.remaining !== null) {
         setMinutesLeft({ n: res.data.remaining, period: res.data.period ?? 'month' });
         setStopsAt(Date.now() + (res.data.maxSeconds + res.data.remaining * 60) * 1000);
@@ -79,6 +91,12 @@ export function VoiceChat({ lessonId, onClose }: { lessonId?: string; onClose: (
       onTurnEnd: () => {
         turnEnded.current = true;
       },
+      onLevel: (_who, next) => {
+        // Rise fast, fall slowly, so the rings move with speech rather than flicker.
+        level.current = next > level.current ? next : level.current * 0.85 + next * 0.15;
+        stageRef.current?.style.setProperty('--level', level.current.toFixed(3));
+      },
+      isMuted: () => mutedRef.current,
       onError: (reason) =>
         setError(
           reason === 'microphone'
@@ -125,59 +143,115 @@ export function VoiceChat({ lessonId, onClose }: { lessonId?: string; onClose: (
     onClose();
   };
 
+  const toggleMute = () => {
+    mutedRef.current = !mutedRef.current;
+    setMuted(mutedRef.current);
+  };
+
+  useEffect(() => {
+    transcriptEnd.current?.scrollIntoView({ block: 'nearest' });
+  }, [lines]);
+
+  const left = stopsAt === null ? null : Math.max(0, Math.round((stopsAt - now) / 1000));
+
   return (
     <div className={styles.voiceBackdrop}>
       <div role="dialog" aria-modal="true" aria-labelledby="voice-title" className={styles.voicePanel}>
-        <h2 id="voice-title" className="text-lg font-bold">{t({ vi: 'Nói chuyện với thầy', en: 'Talk with the Professor' })}</h2>
-        <div className={styles.orb} data-state={state} aria-hidden="true">
-          <Mic className="h-10 w-10" />
+        <header className={styles.voiceHeader}>
+          <TutorAvatar size="2.5rem" />
+          <div className="min-w-0">
+            <h2 id="voice-title" className="text-base font-bold leading-tight">{t({ vi: 'Nói chuyện với thầy', en: 'Talk with the Professor' })}</h2>
+            <p className="text-xs text-ink-muted">{t({ vi: 'Giáo sư SciPal', en: 'SciPal Professor' })}</p>
+          </div>
+        </header>
+
+        <div ref={stageRef} className={styles.voiceStage} data-state={state} aria-hidden="true">
+          <span className={styles.ring} />
+          <span className={styles.ring} />
+          <div className={styles.orb} data-state={state}>
+            <TutorAvatar size="5.5rem" />
+          </div>
+          <div className={styles.bars}>
+            {Array.from({ length: BARS }, (_, i) => (
+              <span key={i} style={{ '--bar': i } as CSSProperties} />
+            ))}
+          </div>
         </div>
-        <p role="status" className="text-center text-sm font-semibold text-ink-muted">{t(STATE_TEXT[state])}</p>
+
+        <p role="status" className={styles.voiceStatus} data-state={muted && talking ? 'muted' : state}>
+          <span aria-hidden="true" />
+          {muted && talking ? t({ vi: 'Micro đang tắt', en: 'Mic is off' }) : t(STATE_TEXT[state])}
+        </p>
         {state !== 'ended' && (
-          <div className="flex gap-6 text-center tabular-nums" aria-live="off">
+          <div className={styles.voiceClocks} aria-live="off">
             <div>
-              <div className="text-2xl font-bold text-ink">{clock(elapsed)}</div>
-              <div className="text-xs text-ink-muted">{t({ vi: 'Đã nói', en: 'Talked' })}</div>
+              <span>{t({ vi: 'Đã nói', en: 'Talked' })}</span>
+              <b>{clock(elapsed)}</b>
             </div>
-            {stopsAt !== null && (
-              <div>
-                <div className={`text-2xl font-bold ${stopsAt - now < 60_000 ? 'text-danger' : 'text-ink'}`}>{clock(Math.max(0, Math.round((stopsAt - now) / 1000)))}</div>
-                <div className="text-xs text-ink-muted">{t({ vi: 'Còn lại', en: 'Left' })}</div>
-              </div>
-            )}
+            <div data-low={left !== null && left < 60 ? 'true' : undefined}>
+              <span>{t({ vi: 'Còn lại', en: 'Left' })}</span>
+              <b>{left !== null ? clock(left) : unmetered ? t({ vi: 'Không giới hạn', en: 'Unlimited' }) : '–:––'}</b>
+            </div>
           </div>
         )}
+
         {lastCall && state !== 'ended' && (
           <Alert tone="warning">{t({ vi: 'Em sắp hết phút nói chuyện, cuộc trò chuyện sẽ dừng trong giây lát.', en: 'You are almost out of voice minutes; the talk will stop in a moment.' })}</Alert>
         )}
         {error && <Alert tone="danger">{t(error)}</Alert>}
-        {lines.length > 0 && (
+
+        {lines.length > 0 ? (
           <ul className={styles.transcript} aria-live="polite">
             {lines.map((line, i) => (
               <li key={i} data-who={line.who}>
-                <b>{line.who === 'tutor' ? t({ vi: 'Thầy: ', en: 'Professor: ' }) : t({ vi: 'Em: ', en: 'You: ' })}</b>
+                <span className="sr-only">{line.who === 'tutor' ? t({ vi: 'Thầy: ', en: 'Professor: ' }) : t({ vi: 'Em: ', en: 'You: ' })}</span>
                 {line.text}
               </li>
             ))}
+            <li ref={transcriptEnd} aria-hidden="true" className={styles.transcriptEnd} />
           </ul>
+        ) : (
+          state !== 'ended' && (
+            <p className={styles.voiceHint}>
+              {t({ vi: 'Thử nói: ', en: 'Try saying: ' })}
+              <i>{t(EXAMPLE)}</i>
+            </p>
+          )
         )}
-        <p className="text-center text-xs text-ink-muted">
+
+        <div className={styles.voiceControls}>
+          {state !== 'ended' && (
+            <button
+              type="button"
+              className={styles.voiceControl}
+              aria-pressed={muted}
+              onClick={toggleMute}
+              disabled={!talking}
+            >
+              {muted ? <MicOff aria-hidden="true" /> : <Mic aria-hidden="true" />}
+              <span>{muted ? t({ vi: 'Bật micro', en: 'Unmute' }) : t({ vi: 'Tắt micro', en: 'Mute' })}</span>
+            </button>
+          )}
+          <button ref={endButton} type="button" className={styles.voiceEnd} onClick={close}>
+            <PhoneOff aria-hidden="true" />
+            <span>{state === 'ended' ? t({ vi: 'Đóng', en: 'Close' }) : t({ vi: 'Kết thúc', en: 'End' })}</span>
+          </button>
+        </div>
+
+        <p className={styles.voiceNote}>
           {t({
-            vi: 'Em nói bao lâu cũng được; phút được trừ dần theo từng 2 phút và cuộc trò chuyện dừng khi hết phút. Nội dung nói không được lưu lại.',
-            en: 'Talk as long as you like; minutes are taken two at a time and the talk stops when they run out. What is said is not saved.',
+            vi: 'Nói bao lâu cũng được; phút được trừ dần theo từng 2 phút và dừng khi hết phút. Nội dung nói không được lưu.',
+            en: 'Talk as long as you like; minutes are taken two at a time and the talk stops when they run out. Nothing said is saved.',
           })}
           {minutesLeft && (
-            <span className="mt-1 block font-semibold">
+            <>
+              {' '}
               {minutesLeft.period === 'day'
-                ? t({ vi: `Còn ${minutesLeft.n} phút hôm nay (sau đoạn này)`, en: `${minutesLeft.n} minutes left today (after this part)` })
-                : t({ vi: `Còn ${minutesLeft.n} phút tháng này (sau đoạn này)`, en: `${minutesLeft.n} minutes left this month (after this part)` })}
-            </span>
+                ? t({ vi: `Còn ${minutesLeft.n} phút hôm nay sau đoạn này.`, en: `${minutesLeft.n} minutes left today after this part.` })
+                : t({ vi: `Còn ${minutesLeft.n} phút tháng này sau đoạn này.`, en: `${minutesLeft.n} minutes left this month after this part.` })}
+            </>
           )}
         </p>
-        <Button ref={endButton} type="button" variant="destructive" onClick={close}>
-          <PhoneOff aria-hidden="true" />
-          {state === 'ended' ? t({ vi: 'Đóng', en: 'Close' }) : t({ vi: 'Kết thúc', en: 'End' })}
-        </Button>
       </div>
     </div>
   );

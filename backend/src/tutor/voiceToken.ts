@@ -8,6 +8,11 @@ export const VOICE_SEGMENT_MINUTES = 2;
 /** Room for the browser to hand over to the next segment's connection before this one is cut. */
 const HANDOFF_SECONDS = 10;
 const START_WITHIN_SECONDS = 60;
+/**
+ * The Professor ("thầy") speaks with a male prebuilt voice; TUTOR_VOICE_NAME may pick another
+ * (Charon, Orus, Fenrir, Puck… are male; the API default is female).
+ */
+export const DEFAULT_VOICE_NAME = 'Charon';
 
 const TOKENS_URL = 'https://generativelanguage.googleapis.com/v1beta/auth_tokens';
 export const LIVE_SOCKET_URL =
@@ -18,7 +23,7 @@ export class VoiceTokenError extends Error {}
 export type VoiceToken = { token: string; model: string; socketUrl: string; expiresAt: string; maxSeconds: number };
 
 export async function createVoiceToken(
-  opts: { apiKey: string; model: string; systemInstruction: string; language: 'vi' | 'en'; minutes: number; now?: Date },
+  opts: { apiKey: string; model: string; systemInstruction: string; language: 'vi' | 'en'; minutes: number; voiceName?: string; now?: Date },
   fetchImpl: typeof fetch = fetch,
 ): Promise<VoiceToken> {
   const now = opts.now ?? new Date();
@@ -37,7 +42,10 @@ export async function createVoiceToken(
       // session setup the token is locked to. Checked against the live API on 2026-09-30.
       bidiGenerateContentSetup: {
         model: `models/${opts.model}`,
-        generationConfig: { responseModalities: ['AUDIO'] },
+        generationConfig: {
+          responseModalities: ['AUDIO'],
+          speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: opts.voiceName || DEFAULT_VOICE_NAME } } },
+        },
         systemInstruction: { parts: [{ text: opts.systemInstruction }] },
         inputAudioTranscription: {},
         outputAudioTranscription: {},
