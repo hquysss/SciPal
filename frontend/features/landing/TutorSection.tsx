@@ -18,8 +18,8 @@ export function TutorSection({ href, level = 'upper_secondary' }: { href?: strin
         </h2>
         <p className={styles.sectionLead}>
           {t({
-            en: 'Stuck on a step? The tutor answers with a hint, so you work out the rest yourself.',
-            vi: 'Bí ở bước nào, hỏi ngay: gia sư gợi ý để em tự tìm ra phần còn lại.',
+            en: 'Stuck on a step? The Professor answers with a hint, so you work out the rest yourself.',
+            vi: 'Bí ở bước nào, hỏi ngay: Giáo sư SciPal gợi ý để bạn tự tìm ra phần còn lại.',
           })}
         </p>
         {href && (

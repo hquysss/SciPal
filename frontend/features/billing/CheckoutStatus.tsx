@@ -193,7 +193,7 @@ export function CheckoutStatus({ orderId }: { orderId: string }) {
   }, [pending]);
 
   const cancel = async () => {
-    if (!window.confirm(t({ vi: 'Hủy giao dịch này? Nếu đã chuyển khoản, đừng hủy — hãy bấm Kiểm tra lại.', en: 'Cancel this payment? If you already transferred the money, do not cancel — press Check again.' }))) return;
+    if (!window.confirm(t({ vi: 'Hủy giao dịch này? Nếu đã chuyển khoản, đừng hủy mà bấm Kiểm tra lại.', en: 'Cancel this payment? If you already transferred the money, do not cancel — press Check again.' }))) return;
     setCancelling(true);
     setNotice(null);
     const result = await cancelOrder(orderId);

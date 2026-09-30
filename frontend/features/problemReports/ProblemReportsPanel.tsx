@@ -51,7 +51,7 @@ export function ProblemReportsPanelView({
               <div className="flex min-w-0 flex-1 flex-col gap-1">
                 <p className="text-sm font-semibold text-ink">
                   {t(CATEGORY_LABEL[report.category])}
-                  <span className="ml-2 font-normal text-ink-muted">{report.email ?? t({ vi: 'Khách, không để email', en: 'Visitor, no e-mail' })}</span>
+                  <span className="ml-2 font-normal text-ink-muted">{report.email ?? t({ vi: 'Khách, không để email', en: 'Visitor, no email' })}</span>
                 </p>
                 <p className="whitespace-pre-line break-words text-sm text-ink">{report.message}</p>
                 <p className="flex flex-wrap items-center gap-x-3 text-xs text-ink-muted">

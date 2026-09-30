@@ -26,8 +26,8 @@ const render = (level: EducationLevel) =>
 
 describe('LandingPage', () => {
   it.each<[EducationLevel, string, string]>([
-    ['primary', 'Bắt đầu từ', 'điều em tò mò.'],
-    ['lower_secondary', 'Từng câu hỏi', 'mở rộng hiểu biết.'],
+    ['primary', 'Bắt đầu từ', 'điều bạn tò mò.'],
+    ['lower_secondary', 'Mỗi câu hỏi', 'là một bước hiểu thêm.'],
     ['upper_secondary', 'Hiểu từng bài,', 'tiến từng bước.'],
   ])('hero copy for %s', (level, first, second) => {
     lang = 'vi';

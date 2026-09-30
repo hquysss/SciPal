@@ -45,7 +45,7 @@ export function ExamListHeader() {
         <p className="mt-2 text-base text-ink-muted">
           {t({
             en: 'Timed exams with a question grid. Scoring happens on the server, so answers are never sent to your browser.',
-            vi: 'Bài thi bấm giờ có bảng điều hướng câu hỏi. Điểm được chấm trên máy chủ, đáp án không bao giờ gửi xuống trình duyệt.',
+            vi: 'Bài thi bấm giờ có bảng điều hướng câu hỏi. Điểm được chấm ngay khi bạn nộp bài.',
           })}
         </p>
         <div className="mt-4">

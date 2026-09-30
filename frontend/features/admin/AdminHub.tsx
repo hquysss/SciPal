@@ -43,7 +43,7 @@ export const ADMIN_GROUPS: Group[] = [
   {
     title: { vi: 'Hệ thống', en: 'System' },
     tools: [
-      { href: '/admin/ai', label: { vi: 'Cài đặt AI', en: 'AI settings' }, hint: { vi: 'Gia sư, dịch tự động, hội thoại', en: 'Tutor, translation, conversations' }, Icon: Bot },
+      { href: '/admin/ai', label: { vi: 'Cài đặt AI', en: 'AI settings' }, hint: { vi: 'Giáo sư SciPal, dịch tự động, hội thoại', en: 'Professor, translation, conversations' }, Icon: Bot },
     ],
   },
 ];

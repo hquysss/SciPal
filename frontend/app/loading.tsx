@@ -35,14 +35,14 @@ export default function Loading() {
         <p className={styles.brand}>
           <span>SciPal</span>
           <span className={styles.brandDivider} aria-hidden="true">·</span>
-          {t({ en: 'Science learning space', vi: 'Không gian học khoa học' })}
+          {t({ en: 'Bilingual learning', vi: 'Học song ngữ' })}
         </p>
 
-        <h1>{t({ en: 'Preparing your page', vi: 'Đang chuẩn bị trang học tập' })}</h1>
+        <h1>{t({ en: 'Loading the page', vi: 'Đang tải trang' })}</h1>
         <p className={styles.message}>
           {t({
-            en: 'Loading your learning space…',
-            vi: 'Đang tải nội dung, chờ một chút nhé…',
+            en: 'Just a moment…',
+            vi: 'Chờ chút nhé…',
           })}
         </p>
 
@@ -58,7 +58,7 @@ export default function Loading() {
             <div className={styles.progressFill} style={{ width: `${progress}%` }} />
           </div>
           <div className={styles.progressMeta}>
-            <span>{t({ en: 'Please wait', vi: 'Vui lòng chờ' })}</span>
+            <span>{t({ en: 'Loading', vi: 'Đang tải' })}</span>
             <span aria-hidden="true">{Math.round(progress)}%</span>
           </div>
         </div>

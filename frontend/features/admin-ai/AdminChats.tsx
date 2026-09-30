@@ -150,7 +150,7 @@ export function AdminChats() {
   return (
     <div className="flex flex-col gap-4">
       <p className="text-sm text-ink-muted">
-        {t({ en: 'What students asked the tutor — for checking its quality only.', vi: 'Nội dung học sinh hỏi gia sư — chỉ dùng để kiểm tra chất lượng.' })}
+        {t({ en: 'What students asked the Professor. Used only to check answer quality.', vi: 'Nội dung học sinh hỏi Giáo sư SciPal. Chỉ dùng để kiểm tra chất lượng.' })}
       </p>
       <form
         className="grid gap-3 sm:grid-cols-[1fr_auto_auto_auto] sm:items-end"

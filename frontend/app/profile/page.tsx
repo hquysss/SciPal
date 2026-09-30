@@ -62,7 +62,7 @@ export default async function ProfilePage() {
         <LoadErrorNotice
           message={{
             en: 'We could not load your learning stats. The numbers below may be incomplete — please reload.',
-            vi: 'Chưa tải được số liệu học tập. Số liệu bên dưới có thể chưa đầy đủ — vui lòng tải lại trang.',
+            vi: 'Chưa tải được số liệu học tập. Số liệu bên dưới có thể chưa đầy đủ. Tải lại trang nhé.',
           }}
         />
       )}

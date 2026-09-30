@@ -14,8 +14,8 @@ const DEFAULT_DAILY_CAP = 200;
 
 const msg = (error: string, error_en: string) => ({ error, error_en });
 const OFF = { code: 'GUEST_TRIALS_OFF', ...msg('Dùng thử chưa mở. Hãy đăng nhập.', 'Trials are not open. Please sign in.') };
-const USED = { code: 'GUEST_TRIAL_USED', ...msg('Em đã dùng lượt hỏi thử. Đăng nhập để hỏi gia sư tiếp nhé.', 'You have used your trial question. Sign in to keep asking the tutor.') };
-const BUSY = { code: 'GUEST_TUTOR_BUSY', ...msg('Hôm nay đã hết lượt hỏi thử cho khách. Đăng nhập để hỏi gia sư.', 'Guest questions are used up for today. Sign in to ask the tutor.') };
+const USED = { code: 'GUEST_TRIAL_USED', ...msg('Em đã dùng lượt hỏi thử. Đăng nhập để hỏi Giáo sư SciPal tiếp nhé.', 'You have used your trial question. Sign in to keep asking the tutor.') };
+const BUSY = { code: 'GUEST_TUTOR_BUSY', ...msg('Hôm nay đã hết lượt hỏi thử cho khách. Đăng nhập để hỏi Giáo sư SciPal.', 'Guest questions are used up for today. Sign in to ask the tutor.') };
 const UNAVAILABLE = { code: 'GUEST_UNAVAILABLE', ...msg('Chưa kiểm tra được lượt thử. Thử lại sau.', 'Could not check the trial. Try again later.') };
 
 const TrialInput = z.object({
@@ -55,7 +55,7 @@ export const guestRoutes: FastifyPluginAsync = async (app) => {
     }
     const settings = app.tutorSettings ? await app.tutorSettings.get() : resolveTutorSettings(null, process.env);
     if (!settings.enabled) {
-      return reply.code(503).send(msg('Gia sư đang tạm nghỉ. Em quay lại sau nhé.', 'The tutor is taking a break. Please come back later.'));
+      return reply.code(503).send(msg('Giáo sư SciPal đang tạm nghỉ. Em quay lại sau nhé.', 'The Professor is taking a break. Please come back later.'));
     }
 
     const visitor = visitorHash(clientIp(request), secret);
@@ -82,7 +82,7 @@ export const guestRoutes: FastifyPluginAsync = async (app) => {
     } catch (error) {
       request.log.warn({ err: error }, 'Guest tutor answer failed');
       await app.supabase!.rpc('guest_tutor_release', { p_visitor: visitor });
-      return reply.code(502).send(msg('Gia sư chưa trả lời được. Em hỏi lại nhé — lượt thử vẫn còn.', 'The tutor could not answer. Ask again — your trial question is still there.'));
+      return reply.code(502).send(msg('Giáo sư SciPal chưa trả lời được. Em hỏi lại nhé, lượt thử vẫn còn.', 'The Professor could not answer. Ask again; your trial question is still there.'));
     }
   });
 };

@@ -42,7 +42,7 @@ const LEVEL_EXAMPLES: Record<EducationLevel, LevelExample> = {
   primary: {
     values: [1, 2, 3, 4, 5, 6, 7, 8],
     target: 6,
-    intro: { vi: 'Em nghĩ một số từ 1 đến 8. Đoán sao cho nhanh nhất?', en: 'Think of a number from 1 to 8. How can we guess it fastest?' },
+    intro: { vi: 'Bạn nghĩ một số từ 1 đến 8. Đoán sao cho nhanh nhất?', en: 'Think of a number from 1 to 8. How can we guess it fastest?' },
     step: (value, target, [from, to]) =>
       value < target
         ? { vi: `Lớn hơn ${value} không? Có! Bỏ các số từ ${from} đến ${value}.`, en: `Bigger than ${value}? Yes! Drop ${from} to ${value}.` }
@@ -78,7 +78,7 @@ const LEVEL_EXAMPLES: Record<EducationLevel, LevelExample> = {
         ? { vi: `Giữa khoảng là ${value} < ${target}: bỏ nửa trái.`, en: `Middle is ${value} < ${target}: drop the left half.` }
         : { vi: `Giữa khoảng là ${value} > ${target}: bỏ nửa phải.`, en: `Middle is ${value} > ${target}: drop the right half.` },
     found: (target, tries) => ({
-      vi: `Tìm thấy ${target} sau ${tries} lần so sánh — tối đa log₂8 = 3 lần.`,
+      vi: `Tìm thấy ${target} sau ${tries} lần so sánh, tối đa log₂8 = 3 lần.`,
       en: `Found ${target} in ${tries} comparisons — at most log₂8 = 3.`,
     }),
     sentence: {

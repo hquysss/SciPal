@@ -234,9 +234,9 @@ export function ExamRunner({
           </span>
           <span className="mt-2 text-base font-semibold text-ink-muted">
             {isHigh
-              ? t({ en: 'Excellent mastery', vi: 'Xuất sắc! Nắm vững kiến thức' })
+              ? t({ en: 'Very good! You know this well.', vi: 'Rất tốt! Bạn nắm chắc phần này.' })
               : isMedium
-                ? t({ en: 'Good effort', vi: 'Đạt yêu cầu! Tiếp tục phát huy' })
+                ? t({ en: 'Passed. Look over the questions you missed.', vi: 'Đạt rồi. Xem lại các câu sai nhé.' })
                 : t({ en: 'Needs revision', vi: 'Cần ôn tập thêm các chủ đề' })}
           </span>
         </div>
@@ -398,7 +398,7 @@ export function ExamRunner({
 
             {currentQ.type === 'short' && (
               <label className="flex flex-col gap-2 text-sm font-semibold text-ink">
-                {t({ en: 'Your answer', vi: 'Câu trả lời của em' })}
+                {t({ en: 'Your answer', vi: 'Câu trả lời của bạn' })}
                 <input
                   type="text"
                   value={answers[currentIndex]?.text ?? ''}

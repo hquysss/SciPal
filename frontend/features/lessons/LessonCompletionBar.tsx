@@ -53,12 +53,12 @@ export function LessonCompletionBar({
       {!completed ? (
         <div className="flex flex-col items-center gap-3">
           <h2 className="text-lg font-bold text-ink">
-            {t({ en: 'Have you got the hang of this lesson?', vi: 'Bạn đã nắm vững nội dung bài học này chưa?' })}
+            {t({ en: 'Have you got the hang of this lesson?', vi: 'Bạn đã hiểu bài này chưa?' })}
           </h2>
           <p className="text-sm text-ink-muted">
             {t({
-              en: 'Save your progress to earn XP and keep your streak',
-              vi: 'Ghi nhận tiến trình để tích lũy XP và duy trì chuỗi học liên tục',
+              en: 'Mark it done to earn XP and keep your streak',
+              vi: 'Đánh dấu xong để nhận XP và giữ chuỗi ngày học',
             })}
           </p>
           <button type="button" onClick={handleComplete} disabled={loading} className={buttonVariants({ size: 'lg' })}>
@@ -68,7 +68,7 @@ export function LessonCompletionBar({
             <Alert tone="danger" className="mt-3 text-left">
               {t({
                 en: 'Could not save your progress. Check your connection and try again.',
-                vi: 'Chưa thể lưu tiến trình. Vui lòng thử lại khi kết nối ổn định.',
+                vi: 'Chưa lưu được tiến trình. Kiểm tra kết nối rồi thử lại nhé.',
               })}
             </Alert>
           )}
@@ -78,11 +78,11 @@ export function LessonCompletionBar({
           <CircleCheck aria-hidden="true" className="mx-auto h-10 w-10 text-success" />
           <h2 className="text-lg font-bold text-ink">
             {xp > 0
-              ? t({ en: `Lesson saved. You earned ${xp} XP.`, vi: `Đã lưu bài. Bạn nhận +${xp} XP.` })
-              : t({ en: 'This lesson was already saved as complete', vi: 'Bài học đã được ghi nhận hoàn thành' })}
+              ? t({ en: `Lesson done! +${xp} XP`, vi: `Xong bài! +${xp} XP` })
+              : t({ en: 'You already finished this lesson', vi: 'Bạn đã học xong bài này' })}
           </h2>
           <p className="text-sm text-ink-muted">
-            {t({ en: 'Your progress is saved in your profile.', vi: 'Tiến trình đã được lưu lại trong hồ sơ cá nhân.' })}
+            {t({ en: 'You can see it on your progress page.', vi: 'Xem lại trong trang Tiến trình.' })}
           </p>
           <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
             <Link href="/progress" className={buttonVariants({ variant: 'outline' })}>

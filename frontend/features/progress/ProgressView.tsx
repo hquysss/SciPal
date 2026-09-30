@@ -39,7 +39,7 @@ export function ProgressView({ completedLessons, streaks, totalXP, badges, loadF
         <LoadErrorNotice
           message={{
             en: 'We could not load your progress. Please reload the page.',
-            vi: 'Chưa tải được tiến trình học tập. Vui lòng tải lại trang.',
+            vi: 'Chưa tải được tiến trình học tập. Tải lại trang nhé.',
           }}
         />
       )}

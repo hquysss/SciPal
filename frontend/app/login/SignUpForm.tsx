@@ -153,7 +153,7 @@ export function SignUpForm({ redirect, signupOpen }: { redirect: string; signupO
     <form className="katha-login-form" onSubmit={submit} noValidate>
       {!signupOpen && (
         <div role="status" className="katha-login-trial-note">
-          {t({ vi: 'SciPal đang tạm đóng đăng ký bằng email. Vui lòng quay lại sau.', en: 'SciPal is not taking e-mail sign-ups right now. Please come back later.' })}
+          {t({ vi: 'SciPal đang tạm đóng đăng ký bằng email. Bạn quay lại sau nhé.', en: 'SciPal is not taking email sign-ups right now. Please come back later.' })}
         </div>
       )}
 
