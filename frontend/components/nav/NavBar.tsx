@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { ArrowRight, ChevronDown, Menu, X } from 'lucide-react';
+import { ArrowRight, ChevronDown, Gauge, LogOut, Menu, UserRound, X } from 'lucide-react';
 import { useParams, usePathname, useRouter } from 'next/navigation';
 import { useLanguage } from '@scipal/hooks';
 import { LanguageToggle } from './LanguageToggle';
@@ -104,7 +104,7 @@ export function NavBar({ currentSubject }: NavBarProps) {
   const params = useParams();
   const router = useRouter();
   const [mobileOpen, setMobileOpen] = useState(false);
-  const [openNavGroup, setOpenNavGroup] = useState<'admin' | 'teacher' | null>(null);
+  const [openNavGroup, setOpenNavGroup] = useState<'admin' | 'teacher' | 'account' | null>(null);
   const [appRole, setAppRole] = useState<AppRole | null>(null);
   const [displayName, setDisplayName] = useState<string | null>(null);
   const [signingOut, setSigningOut] = useState(false);
@@ -245,17 +245,17 @@ export function NavBar({ currentSubject }: NavBarProps) {
   const mobileLinks = primaryLinks(navLang, Boolean(appRole), 'mobile', appRole);
   const { teacherLinks, adminLinks } = roleLinks(appRole, lang === 'en' ? 'en' : 'vi', openRequests);
   const teacherMenuOpen = openNavGroup === 'teacher';
-  const adminMenuOpen = openNavGroup === 'admin';
+  const accountMenuOpen = openNavGroup === 'account';
   const teacherRouteActive = teacherLinks.some((link) => pathname === link.href || pathname.startsWith(`${link.href}/`));
   const adminRouteActive = pathname === '/admin' || pathname.startsWith('/admin/');
-  const toggleNavGroup = (group: 'admin' | 'teacher', trigger: HTMLButtonElement) => {
+  const toggleNavGroup = (group: 'admin' | 'teacher' | 'account', trigger: HTMLButtonElement) => {
     openNavTriggerRef.current = trigger;
     setOpenNavGroup((current) => current === group ? null : group);
   };
 
   return (
-    <header className={`${navStyles.header} sticky top-0 z-40 w-full bg-nav text-nav-ink`}>
-      <div className="relative z-10 mx-auto flex h-16 max-w-7xl items-center justify-between gap-3 px-4 sm:px-6">
+    <header className={`${navStyles.header} sticky top-0 z-40 w-full text-nav-ink`}>
+      <div className={`${navStyles.bar} relative z-10 mx-auto flex h-16 max-w-7xl items-center justify-between gap-3 px-3 sm:px-4`}>
         <Link href="/" prefetch={pathname !== '/'} className={`${navStyles.rise} group flex shrink-0 items-center gap-3 font-bold text-nav-ink`}>
           <Image
             src="/logo.svg"
@@ -355,31 +355,54 @@ export function NavBar({ currentSubject }: NavBarProps) {
         <div className={`${navStyles.rise} ml-auto hidden shrink-0 items-center justify-end gap-3 xl:flex`} style={{ '--i': 8 } as React.CSSProperties}>
           <OnlinePill />
           <LanguageToggle />
-          <ThemeToggle />
-          <span aria-hidden="true" className={navStyles.divider} />
+          {!appRole && <ThemeToggle />}
           {appRole ? (
-            <div className="flex min-w-0 items-center gap-3">
-              <Link
-                href="/profile"
-                className={navStyles.account}
-                title={displayName ?? undefined}
-                aria-label={`${lang === 'en' ? 'Profile' : 'Hồ sơ'} · ${accountName}`}
-                aria-current={pathname === '/profile' ? 'page' : undefined}
-              >
-                <span aria-hidden="true" className={navStyles.avatar}>{accountName.trim().charAt(0).toUpperCase()}</span>
-                {/* Below 1536px the avatar stands in for the name so a full admin bar still fits at 1280px. */}
-                <span aria-hidden="true" className="max-w-36 truncate max-2xl:hidden">{accountName}</span>
-              </Link>
+            <div className="relative" data-nav-group="account">
               <button
                 type="button"
-                onClick={handleSignOut}
-                disabled={signingOut}
-                className={navStyles.ghostButton}
+                aria-expanded={accountMenuOpen}
+                aria-controls="desktop-account-menu"
+                aria-label={`${lang === 'en' ? 'Account menu' : 'Menu tài khoản'} · ${accountName}`}
+                title={displayName ?? undefined}
+                onClick={(event) => toggleNavGroup('account', event.currentTarget)}
+                className={navStyles.account}
               >
-                {signingOut
-                  ? (lang === 'en' ? 'Signing out…' : 'Đang đăng xuất…')
-                  : (lang === 'en' ? 'Sign out' : 'Đăng xuất')}
+                <span aria-hidden="true" className={navStyles.avatar}>{accountName.trim().charAt(0).toUpperCase()}</span>
+                <span aria-hidden="true" className="max-w-32 truncate max-2xl:hidden">{accountName}</span>
+                <ChevronDown aria-hidden="true" className={`h-4 w-4 transition-transform duration-150 motion-reduce:transition-none ${accountMenuOpen ? 'rotate-180' : ''}`} />
               </button>
+              <div
+                id="desktop-account-menu"
+                aria-hidden={!accountMenuOpen}
+                className={`${navStyles.dropdown} ${navStyles.dropdownEnd} ${accountMenuOpen ? navStyles.dropdownOpen : ''}`}
+              >
+                <p className="truncate px-3 pb-2 pt-1.5 text-sm font-bold text-ink">{accountName}</p>
+                <Link
+                  href="/profile"
+                  onClick={() => setOpenNavGroup(null)}
+                  aria-current={pathname === '/profile' ? 'page' : undefined}
+                  className={navStyles.menuItem}
+                >
+                  <UserRound aria-hidden="true" size={16} />
+                  {lang === 'en' ? 'Profile' : 'Hồ sơ'}
+                </Link>
+                {appRole === 'student' && (
+                  <Link href="/profile/plan" onClick={() => setOpenNavGroup(null)} aria-current={pathname === '/profile/plan' ? 'page' : undefined} className={navStyles.menuItem}>
+                    <Gauge aria-hidden="true" size={16} />
+                    {lang === 'en' ? 'My plan' : 'Gói của tôi'}
+                  </Link>
+                )}
+                <div className="flex items-center justify-between gap-3 border-y border-line px-3 py-2 my-1">
+                  <span className="text-sm font-semibold text-ink-muted">{lang === 'en' ? 'Theme' : 'Giao diện'}</span>
+                  <ThemeToggle tone="surface" />
+                </div>
+                <button type="button" onClick={handleSignOut} disabled={signingOut} className={`${navStyles.menuItem} ${navStyles.menuDanger}`}>
+                  <LogOut aria-hidden="true" size={16} />
+                  {signingOut
+                    ? (lang === 'en' ? 'Signing out…' : 'Đang đăng xuất…')
+                    : (lang === 'en' ? 'Sign out' : 'Đăng xuất')}
+                </button>
+              </div>
             </div>
           ) : (
             <Link

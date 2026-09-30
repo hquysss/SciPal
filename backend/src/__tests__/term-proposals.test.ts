@@ -136,3 +136,34 @@ describe('writing glossary terms', () => {
     await app.close();
   });
 });
+
+describe('adding many glossary terms at once', () => {
+  it('saves the good rows and reports the bad, duplicate and taken ones', async () => {
+    const saved = mockQuery({ data: { id: TERM_ID }, error: null });
+    const taken = mockQuery({ data: null, error: { code: '23505' } });
+    const app = await build(teacher, { terms: [saved, taken] });
+    const res = await app.inject({
+      method: 'POST',
+      url: '/api/authoring/terms/batch',
+      payload: { terms: [valid, { ...valid, term_vi: ' ' }, { ...valid, term_en: 'PHOTOSYNTHESIS' }, { ...valid, term_en: 'osmosis' }] },
+    });
+    expect(res.statusCode).toBe(200);
+    const body = res.json();
+    expect(body.saved).toBe(1);
+    expect(body.results.map((r: { ok: boolean }) => r.ok)).toEqual([true, false, false, false]);
+    expect(body.results[2].error).toContain('Trùng');
+    expect(body.results[3].error).toContain('đã có');
+    expect(saved.inserted[0]).toMatchObject({ status: 'pending', created_by: 'teacher-1' });
+    await app.close();
+  });
+
+  it('refuses an empty or oversized batch, and non-staff', async () => {
+    const app = await build(teacher, { terms: mockQuery({ data: null, error: null }) });
+    expect((await app.inject({ method: 'POST', url: '/api/authoring/terms/batch', payload: { terms: [] } })).statusCode).toBe(400);
+    expect((await app.inject({ method: 'POST', url: '/api/authoring/terms/batch', payload: { terms: Array(201).fill(valid) } })).statusCode).toBe(400);
+    await app.close();
+    const other = await build(student, { terms: mockQuery({ data: null, error: null }) });
+    expect((await other.inject({ method: 'POST', url: '/api/authoring/terms/batch', payload: { terms: [valid] } })).statusCode).toBe(403);
+    await other.close();
+  });
+});
