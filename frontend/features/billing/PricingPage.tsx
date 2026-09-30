@@ -233,6 +233,12 @@ export function PricingPage({ plans, checkoutOpen, initialAudience = 'student', 
                     <span>{limitText(limit, t)}</span>
                   </li>
                 ))}
+                {(plan.perks ?? []).map((p, index) => (
+                  <li key={`perk-${index}`}>
+                    <Check aria-hidden="true" size={16} />
+                    <span>{t(p)}</span>
+                  </li>
+                ))}
               </ul>
               <div className={s.actions}>{action(plan, paid, price)}</div>
             </>

@@ -8,7 +8,7 @@ vi.mock('@scipal/hooks', () => ({ useLanguage: () => ({ lang: 'vi', t: (o: { vi:
 vi.mock('@scipal/supabase', () => ({ createBrowserClient: () => ({}) }));
 
 const plus: AdminPlan = {
-  code: 'student_plus', audience: 'student', name: { en: 'Student Plus', vi: 'Học sinh Plus' }, description: { en: 'More', vi: 'Nhiều hơn' }, version: 3,
+  code: 'student_plus', audience: 'student', name: { en: 'Student Plus', vi: 'Học sinh Plus' }, description: { en: 'More', vi: 'Nhiều hơn' }, perks: [{ en: 'All lessons', vi: 'Mọi bài học' }], version: 3,
   limits: [{ metric: 'tutor_requests', kind: 'monthly', limit: 200 }, { metric: 'graded_exam_attempts', kind: 'monthly', limit: 30 }],
   prices: { month: 39000, year: 390000 },
 };
@@ -24,6 +24,7 @@ describe('patchFromForm', () => {
         reason: 'Tăng Tutor',
         limits: [{ metric: 'tutor_requests', kind: 'monthly', limit: 300 }, { metric: 'graded_exam_attempts', kind: 'monthly', limit: 30 }],
         description: { en: 'More', vi: 'Nhiều hơn' },
+        perks: [{ en: 'All lessons', vi: 'Mọi bài học' }],
         prices: { month: 49000, year: 390000 },
       },
     });
@@ -33,6 +34,8 @@ describe('patchFromForm', () => {
     expect(patchFromForm({ ...formFromPlan(plus), reason: ' ' }, plus)).toMatchObject({ ok: false });
     expect(patchFromForm({ ...formFromPlan(plus), reason: 'x', limits: { ...formFromPlan(plus).limits, tutor_requests: { kind: 'monthly', limit: '2.5' } } }, plus)).toMatchObject({ ok: false });
     expect(patchFromForm({ ...formFromPlan(plus), reason: 'x', year: '500' }, plus)).toMatchObject({ ok: false });
+    expect(patchFromForm({ ...formFromPlan(plus), reason: 'x', perksEn: 'A\nB' }, plus)).toMatchObject({ ok: false });
+    expect(patchFromForm({ ...formFromPlan(plus), reason: 'x', perksVi: '', perksEn: '' }, plus)).toMatchObject({ ok: true, body: { perks: [] } });
     const saved = patchFromForm({ ...formFromPlan(free), reason: 'x' }, free);
     expect(saved.ok && 'prices' in saved.body).toBe(false);
   });

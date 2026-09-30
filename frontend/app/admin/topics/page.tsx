@@ -24,7 +24,7 @@ export default async function AdminTopicsPage() {
 
   return (
     <main className="mx-auto flex w-full max-w-4xl flex-col gap-6 px-4 py-8 pb-20 sm:px-6">
-      <PageBreadcrumb items={[{ href: '/profile', label: { en: 'Profile', vi: 'Hồ sơ' } }, { label: { en: 'Topics', vi: 'Chủ đề' } }]} />
+      <PageBreadcrumb items={[{ href: '/admin', label: { en: 'Admin', vi: 'Quản trị' } }, { label: { en: 'Topics', vi: 'Chủ đề' } }]} />
       <header className="max-w-2xl">
         <h1 className="text-3xl font-extrabold tracking-tight text-ink">
           <Bi en="Topics" vi="Chủ đề" />

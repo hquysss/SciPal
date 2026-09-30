@@ -100,6 +100,12 @@ export function PlanCard({ plan, onSaved }: { plan: AdminPlan; onSaved: () => vo
       <Field id={id('desc-en')} label={t({ vi: 'Mô tả (tiếng Anh)', en: 'Description (English)' })}>
         {(control) => <textarea {...control} value={form.descriptionEn} onChange={(e) => setForm((f) => ({ ...f, descriptionEn: e.target.value }))} maxLength={500} className={textareaClass} />}
       </Field>
+      <Field id={id('perks-vi')} label={t({ vi: 'Quyền lợi thêm (tiếng Việt)', en: 'Extra benefits (Vietnamese)' })} description={t({ vi: 'Mỗi dòng một quyền lợi, hiện trên bảng giá dưới các hạn mức. Tối đa 8 dòng.', en: 'One benefit per line, shown on the pricing cards under the limits. Up to 8 lines.' })}>
+        {(control) => <textarea {...control} value={form.perksVi} onChange={(e) => setForm((f) => ({ ...f, perksVi: e.target.value }))} rows={4} className={textareaClass} />}
+      </Field>
+      <Field id={id('perks-en')} label={t({ vi: 'Quyền lợi thêm (tiếng Anh)', en: 'Extra benefits (English)' })} description={t({ vi: 'Cùng thứ tự và cùng số dòng với bản tiếng Việt.', en: 'Same order and number of lines as the Vietnamese.' })}>
+        {(control) => <textarea {...control} value={form.perksEn} onChange={(e) => setForm((f) => ({ ...f, perksEn: e.target.value }))} rows={4} className={textareaClass} />}
+      </Field>
       <Field id={id('reason')} label={t({ vi: 'Lý do thay đổi', en: 'Reason for the change' })} description={t({ vi: 'Bắt buộc, được ghi vào lịch sử.', en: 'Required; kept in the history.' })}>
         {(control) => <Input {...control} value={form.reason} onChange={(e) => setForm((f) => ({ ...f, reason: e.target.value }))} maxLength={500} />}
       </Field>

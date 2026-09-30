@@ -8,7 +8,6 @@ import { parseEducationLevel, resolveEducationLevel, type EducationLevel } from 
 import { ProfileCard } from '@/features/profile/ProfileCard';
 import { ProfileBreadcrumb } from '@/features/profile/ProfileBreadcrumb';
 import { AccountSettings } from '@/features/profile/AccountSettings';
-import { FeatureRequestBoard } from '@/features/survey/FeatureRequestBoard';
 import { TeacherRequestCard } from '@/features/teacherRequests/TeacherRequestCard';
 import { ReportProblemCard } from '@/features/problemReports/ReportProblem';
 import { pageTitle } from '@/lib/pageTitle';
@@ -86,8 +85,6 @@ export default async function ProfilePage() {
           <AccountSettings currentRole={role} educationPreference={educationPreference} isAuthenticated />
         </div>
       </div>
-
-      <FeatureRequestBoard />
 
       <ReportProblemCard />
     </main>

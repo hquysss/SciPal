@@ -18,7 +18,7 @@ export default async function AdminAiPage({ searchParams }: { searchParams: Prom
   const tab = (await searchParams).tab === 'chats' ? 'chats' : 'settings';
   return (
     <main className="mx-auto flex w-full max-w-3xl flex-col gap-6 px-4 py-8 pb-20 sm:px-6">
-      <PageBreadcrumb items={[{ href: '/profile', label: { en: 'Profile', vi: 'Hồ sơ' } }, { label: { en: 'AI settings', vi: 'Cài đặt AI' } }]} />
+      <PageBreadcrumb items={[{ href: '/admin', label: { en: 'Admin', vi: 'Quản trị' } }, { label: { en: 'AI settings', vi: 'Cài đặt AI' } }]} />
       <header className="max-w-2xl">
         <h1 className="text-3xl font-extrabold tracking-tight text-ink">
           <Bi en="AI settings" vi="Cài đặt AI" />

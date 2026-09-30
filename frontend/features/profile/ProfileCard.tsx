@@ -14,7 +14,6 @@ import {
   PlayCircle,
   School,
   Sparkles,
-  Users,
 } from 'lucide-react';
 import { useLanguage } from '@scipal/hooks';
 import { Badge } from '../../components/ui/badge';
@@ -45,8 +44,7 @@ const TEACHING: Shortcut[] = [
 ];
 
 const REVIEWING: Shortcut[] = [
-  { href: '/admin/lessons/review', label: { vi: 'Duyệt bài giáo viên gửi', en: 'Review lessons' }, hint: { vi: 'Bài chờ xuất bản', en: 'Waiting to publish' }, Icon: ClipboardCheck },
-  { href: '/admin/accounts', label: { vi: 'Quản lý tài khoản', en: 'Accounts' }, hint: { vi: 'Vai trò, yêu cầu giáo viên', en: 'Roles, teacher requests' }, Icon: Users },
+  { href: '/admin', label: { vi: 'Trang quản trị', en: 'Admin' }, hint: { vi: 'Mọi công cụ quản trị', en: 'Every admin tool' }, Icon: ClipboardCheck },
   { href: '/teacher/lessons', label: { vi: 'Studio bài học', en: 'Lesson studio' }, hint: { vi: 'Soạn và sửa bài', en: 'Write and edit' }, Icon: NotebookPen },
 ];
 

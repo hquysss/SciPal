@@ -42,7 +42,7 @@ describe('ProfileCard', () => {
 
   it('keeps the teaching and review tools for staff', () => {
     expect(render('teacher')).toContain('href="/teacher/classes"');
-    expect(render('admin')).toContain('href="/admin/accounts"');
+    expect(render('admin')).toContain('href="/admin"');
     expect(render('student')).not.toContain('href="/teacher/classes"');
   });
 
