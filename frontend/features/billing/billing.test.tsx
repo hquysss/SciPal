@@ -24,7 +24,7 @@ describe('billing copy', () => {
   it('writes Vietnamese đồng with dot thousands and each limit by its period', () => {
     expect(formatVnd(390000)).toBe('390.000 ₫');
     const t = (o: { vi: string }) => o.vi;
-    expect(limitText({ metric: 'tutor_requests', kind: 'daily', limit: 5 }, t)).toBe('5 lượt hỏi Gia sư AI mỗi ngày');
+    expect(limitText({ metric: 'tutor_requests', kind: 'daily', limit: 5 }, t)).toBe('5 lượt hỏi Giáo sư SciPal mỗi ngày');
     expect(limitText({ metric: 'import_files', kind: 'monthly', limit: 100 }, t)).toBe('100 tệp nhập mỗi tháng');
     expect(limitText({ metric: 'active_classes', kind: 'capacity', limit: 1 }, t)).toBe('1 lớp đang hoạt động');
     expect(limitText({ metric: 'author_ai_requests', kind: 'monthly', limit: 0 }, t)).toBe('Không có lượt AI soạn bài');
@@ -36,7 +36,7 @@ describe('PricingPage', () => {
     const html = renderToStaticMarkup(<PricingPage plans={plans} checkoutOpen={false} />);
     expect(html).toContain('Học sinh Plus');
     expect(html).toContain('39.000 ₫');
-    expect(html).toContain('5 lượt hỏi Gia sư AI mỗi ngày');
+    expect(html).toContain('5 lượt hỏi Giáo sư SciPal mỗi ngày');
     expect(html).not.toContain('Giáo viên Pro');
     expect(html).not.toContain('/login');
     expect(countRawColors(html).total).toBe(0);
@@ -70,7 +70,7 @@ describe('MyPlanView', () => {
   it('shows the plan and what is left of each quota', () => {
     const html = renderToStaticMarkup(<MyPlanView state={{ status: 'ready', account: { role: 'student', plan: 'student_free', paidThrough: null, quotas: [quota('tutor_requests', 'daily', 5, 2, 1), quota('graded_exam_attempts', 'monthly', 3, 3)] } }} />);
     expect(html).toContain('Học sinh Miễn phí');
-    expect(html).toContain('Lượt hỏi Gia sư AI');
+    expect(html).toContain('Lượt hỏi Giáo sư SciPal');
     expect(html).toContain('Còn 2 / 5 hôm nay');
     expect(html).toContain('Còn 0 / 3 tháng này');
     expect(html).toContain('href="/pricing"');

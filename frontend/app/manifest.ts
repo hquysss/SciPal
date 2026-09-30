@@ -38,16 +38,16 @@ export default function manifest(): MetadataRoute.Manifest {
     // Long-press the app icon (or right-click it on Windows) to jump straight in.
     shortcuts: [
       { name: 'Môn học · Subjects', short_name: 'Môn học', description: 'Chọn môn và học bài · Pick a subject and learn', url: '/subjects', icons: shortcutIcon },
-      { name: 'Gia sư AI · AI tutor', short_name: 'Gia sư AI', description: 'Hỏi Gia sư AI từng bước · Ask the AI tutor step by step', url: '/tutor', icons: shortcutIcon },
+      { name: 'Giáo sư SciPal · SciPal Professor', short_name: 'Giáo sư SciPal', description: 'Hỏi Giáo sư SciPal từng bước · Ask the SciPal Professor step by step', url: '/tutor', icons: shortcutIcon },
       { name: 'Từ điển · Glossary', short_name: 'Từ điển', description: 'Tra thuật ngữ Anh – Việt · Look up English–Vietnamese terms', url: '/glossary', icons: shortcutIcon },
       { name: 'Thi thử · Practice exams', short_name: 'Thi thử', description: 'Làm đề thi thử · Take a practice exam', url: '/exam', icons: shortcutIcon },
     ],
     screenshots: [
       { src: '/screenshots/wide-home.png', sizes: '1280x720', type: 'image/png', form_factor: 'wide', label: 'Trang chủ SciPal' },
-      { src: '/screenshots/wide-tutor.png', sizes: '1280x720', type: 'image/png', form_factor: 'wide', label: 'Gia sư AI gợi ý từng bước' },
+      { src: '/screenshots/wide-tutor.png', sizes: '1280x720', type: 'image/png', form_factor: 'wide', label: 'Giáo sư SciPal gợi ý từng bước' },
       { src: '/screenshots/wide-pricing.png', sizes: '1280x720', type: 'image/png', form_factor: 'wide', label: 'Bảng giá' },
       { src: '/screenshots/narrow-home.png', sizes: '540x960', type: 'image/png', form_factor: 'narrow', label: 'SciPal trên điện thoại' },
-      { src: '/screenshots/narrow-tutor.png', sizes: '540x960', type: 'image/png', form_factor: 'narrow', label: 'Gia sư AI trên điện thoại' },
+      { src: '/screenshots/narrow-tutor.png', sizes: '540x960', type: 'image/png', form_factor: 'narrow', label: 'Giáo sư SciPal trên điện thoại' },
     ],
   };
 }

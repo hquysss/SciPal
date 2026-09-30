@@ -40,7 +40,7 @@ const formOf = (s: AiSettingsSnapshot): Form => ({
   voiceEnabled: s.effective.voiceEnabled ?? true,
 });
 
-/** The admin's AI tutor settings. API keys are never entered here: only whether each is set. */
+/** The admin's SciPal Professor settings. API keys are never entered here: only whether each is set. */
 export function AiSettingsForm({ initial }: { initial?: AiSettingsSnapshot }) {
   const { t } = useLanguage();
   const ids = useId();

@@ -238,7 +238,7 @@ export function LandingPage({ level, levelSource, catalog, onChangeLevel, pricin
               </a>
               <Link href="/tutor" className={styles.finalGhost}>
                 <Sparkles size={17} aria-hidden="true" />
-                {t({ en: 'Ask the AI tutor', vi: 'Hỏi Gia sư AI' })}
+                {t({ en: 'Ask the SciPal Professor', vi: 'Hỏi Giáo sư SciPal' })}
               </Link>
             </div>
           </div>

@@ -40,6 +40,10 @@ export function VoiceChat({ lessonId, onClose }: { lessonId?: string; onClose: (
   const [lastCall, setLastCall] = useState(false);
   const [lines, setLines] = useState<TranscriptLine[]>([]);
   const [elapsed, setElapsed] = useState(0);
+  // When the talk must stop if nothing more is paid: the end of the current part plus the minutes
+  // still in the plan. Null for admins (not metered).
+  const [stopsAt, setStopsAt] = useState<number | null>(null);
+  const [now, setNow] = useState(() => Date.now());
   const linesRef = useRef<TranscriptLine[]>([]);
   const stopRef = useRef<() => void>(() => {});
   const turnEnded = useRef(true);
@@ -58,7 +62,10 @@ export function VoiceChat({ lessonId, onClose }: { lessonId?: string; onClose: (
         return { ok: false, outOfMinutes };
       }
       first = false;
-      if (res.data.remaining !== null) setMinutesLeft({ n: res.data.remaining, period: res.data.period ?? 'month' });
+      if (res.data.remaining !== null) {
+        setMinutesLeft({ n: res.data.remaining, period: res.data.period ?? 'month' });
+        setStopsAt(Date.now() + (res.data.maxSeconds + res.data.remaining * 60) * 1000);
+      }
       return { ok: true, grant: res.data };
     };
     void startConversation(nextGrant, () => linesRef.current, {
@@ -93,7 +100,10 @@ export function VoiceChat({ lessonId, onClose }: { lessonId?: string; onClose: (
   const talking = state === 'listening' || state === 'speaking';
   useEffect(() => {
     if (!talking) return;
-    const id = window.setInterval(() => setElapsed((s) => s + 1), 1000);
+    const id = window.setInterval(() => {
+      setElapsed((s) => s + 1);
+      setNow(Date.now());
+    }, 1000);
     return () => window.clearInterval(id);
   }, [talking]);
 
@@ -122,10 +132,21 @@ export function VoiceChat({ lessonId, onClose }: { lessonId?: string; onClose: (
         <div className={styles.orb} data-state={state} aria-hidden="true">
           <Mic className="h-10 w-10" />
         </div>
-        <p role="status" className="text-center text-sm font-semibold text-ink-muted">
-          {t(STATE_TEXT[state])}
-          {elapsed > 0 && <span className="ml-2 tabular-nums">· {clock(elapsed)}</span>}
-        </p>
+        <p role="status" className="text-center text-sm font-semibold text-ink-muted">{t(STATE_TEXT[state])}</p>
+        {state !== 'ended' && (
+          <div className="flex gap-6 text-center tabular-nums" aria-live="off">
+            <div>
+              <div className="text-2xl font-bold text-ink">{clock(elapsed)}</div>
+              <div className="text-xs text-ink-muted">{t({ vi: 'Đã nói', en: 'Talked' })}</div>
+            </div>
+            {stopsAt !== null && (
+              <div>
+                <div className={`text-2xl font-bold ${stopsAt - now < 60_000 ? 'text-danger' : 'text-ink'}`}>{clock(Math.max(0, Math.round((stopsAt - now) / 1000)))}</div>
+                <div className="text-xs text-ink-muted">{t({ vi: 'Còn lại', en: 'Left' })}</div>
+              </div>
+            )}
+          </div>
+        )}
         {lastCall && state !== 'ended' && (
           <Alert tone="warning">{t({ vi: 'Em sắp hết phút nói chuyện, cuộc trò chuyện sẽ dừng trong giây lát.', en: 'You are almost out of voice minutes; the talk will stop in a moment.' })}</Alert>
         )}

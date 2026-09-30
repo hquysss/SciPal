@@ -52,9 +52,9 @@ function getDisplayName(user: AuthUser | null): string | null {
   return user.email?.split('@')[0]?.trim() || null;
 }
 
-/** "Gia sư AI" in the main links, for everyone: a visitor gets a trial question, then signs in. */
+/** "Giáo sư SciPal" in the main links, for everyone: a visitor gets a trial question, then signs in. */
 export function tutorLink(lang: 'en' | 'vi') {
-  return { href: '/tutor', label: lang === 'en' ? 'AI tutor' : 'Gia sư AI' };
+  return { href: '/tutor', label: lang === 'en' ? 'SciPal Professor' : 'Giáo sư SciPal' };
 }
 
 /** Pricing sits right after Home, for everyone (admins keep it to check the page). */

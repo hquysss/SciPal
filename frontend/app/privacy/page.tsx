@@ -60,7 +60,7 @@ export default function PrivacyPage() {
           items={[
             { vi: 'Tài khoản: email, họ tên, mật khẩu (được mã hóa, SciPal không đọc được). Khi đăng nhập bằng Google: email, tên và ảnh đại diện mà Google chia sẻ.', en: 'Account: e-mail, name, password (hashed; SciPal cannot read it). With Google sign-in: the e-mail, name and profile picture Google shares.' },
             { vi: 'Việc học: cấp học đã chọn, tiến trình bài học, điểm và bài làm khi thi thử, lớp học tham gia.', en: 'Learning: chosen school level, lesson progress, exam answers and scores, classes joined.' },
-            { vi: 'Gia sư AI: câu hỏi và câu trả lời trong các cuộc trò chuyện của tài khoản, để bạn xem lại. Câu hỏi thử của khách chưa đăng nhập không được lưu.', en: 'AI tutor: questions and answers in your account’s conversations, so you can come back to them. A visitor’s trial question is not stored.' },
+            { vi: 'Giáo sư SciPal: câu hỏi và câu trả lời trong các cuộc trò chuyện của tài khoản, để bạn xem lại. Câu hỏi thử của khách chưa đăng nhập không được lưu.', en: 'SciPal Professor: questions and answers in your account’s conversations, so you can come back to them. A visitor’s trial question is not stored.' },
             { vi: 'Thanh toán: mã đơn, gói, số tiền và trạng thái giao dịch. SciPal không nhận và không lưu số thẻ hay thông tin ngân hàng.', en: 'Payments: order code, plan, amount and status. SciPal never receives or stores card or bank details.' },
             { vi: 'Khách dùng thử: một mã băm (HMAC) của địa chỉ IP để đếm lượt thử. SciPal không lưu địa chỉ IP gốc.', en: 'Trial visitors: a keyed hash (HMAC) of the IP address to count trials. SciPal does not store the IP address itself.' },
           ]}
@@ -72,7 +72,7 @@ export default function PrivacyPage() {
           items={[
             { vi: 'Cho bạn đăng nhập, lưu tiến trình và hiện đúng bài học, lớp học của bạn.', en: 'To sign you in, keep your progress and show your lessons and classes.' },
             { vi: 'Chấm bài thi, tính điểm kinh nghiệm và hạn mức của gói.', en: 'To grade exams and count XP and plan limits.' },
-            { vi: 'Trả lời câu hỏi cho Gia sư AI.', en: 'To answer your AI tutor questions.' },
+            { vi: 'Trả lời câu hỏi cho Giáo sư SciPal.', en: 'To answer your SciPal Professor questions.' },
             { vi: 'Xử lý thanh toán và hỗ trợ khi có sự cố.', en: 'To process payments and help when something goes wrong.' },
           ]}
         />
@@ -86,7 +86,7 @@ export default function PrivacyPage() {
           items={[
             { vi: 'Supabase: cơ sở dữ liệu và đăng nhập.', en: 'Supabase: database and sign-in.' },
             { vi: 'Vercel: máy chủ chạy website và API.', en: 'Vercel: hosting for the website and API.' },
-            { vi: 'Google Gemini và OpenAI: tạo câu trả lời của Gia sư AI và hỗ trợ soạn bài. Chỉ nội dung câu hỏi và ngữ cảnh bài học được gửi đi, không kèm email hay tên của bạn.', en: 'Google Gemini and OpenAI: generate AI tutor answers and help write lessons. Only the question and lesson context are sent, not your e-mail or name.' },
+            { vi: 'Google Gemini và OpenAI: tạo câu trả lời của Giáo sư SciPal và hỗ trợ soạn bài. Chỉ nội dung câu hỏi và ngữ cảnh bài học được gửi đi, không kèm email hay tên của bạn.', en: 'Google Gemini and OpenAI: generate SciPal Professor answers and help write lessons. Only the question and lesson context are sent, not your e-mail or name.' },
             { vi: 'payOS: xử lý thanh toán chuyển khoản/QR.', en: 'payOS: processes bank transfer / QR payments.' },
             { vi: 'Google: chỉ khi bạn chọn đăng nhập bằng Google.', en: 'Google: only if you choose to sign in with Google.' },
           ]}

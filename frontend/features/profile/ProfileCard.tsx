@@ -34,7 +34,7 @@ type Shortcut = { href: string; label: Copy; hint: Copy; Icon: ComponentType<{ c
 const LEARNING: Shortcut[] = [
   { href: '/subjects', label: { vi: 'Tiếp tục học', en: 'Keep learning' }, hint: { vi: 'Chọn môn và bài', en: 'Pick a subject' }, Icon: PlayCircle },
   { href: '/progress', label: { vi: 'Tiến trình', en: 'Progress' }, hint: { vi: 'XP và bài đã xong', en: 'XP and lessons done' }, Icon: LineChart },
-  { href: '/tutor', label: { vi: 'Gia sư AI', en: 'AI tutor' }, hint: { vi: 'Hỏi khi bí bài', en: 'Ask when stuck' }, Icon: MessageCircleQuestion },
+  { href: '/tutor', label: { vi: 'Giáo sư SciPal', en: 'SciPal Professor' }, hint: { vi: 'Hỏi khi bí bài', en: 'Ask when stuck' }, Icon: MessageCircleQuestion },
   { href: '/profile/plan', label: { vi: 'Gói của tôi', en: 'My plan' }, hint: { vi: 'Lượt còn lại', en: 'Turns left' }, Icon: Gauge },
 ];
 

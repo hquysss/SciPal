@@ -13,7 +13,7 @@ describe('offline banner', () => {
     const html = renderToStaticMarkup(<OfflineBannerView online={false} />);
     expect(html).toContain('role="status"');
     expect(html).toContain('Em đang offline');
-    expect(html).toContain('Gia sư AI, thi thử và thanh toán cần có mạng');
+    expect(html).toContain('Giáo sư SciPal, thi thử và thanh toán cần có mạng');
   });
 });
 

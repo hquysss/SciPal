@@ -65,8 +65,8 @@ export function PricingSection({
         </h2>
         <p className={styles.lead}>
           {t({
-            en: 'Every lesson stays free. A paid plan adds AI tutor questions, graded exams and teaching tools.',
-            vi: 'Mọi bài học vẫn miễn phí. Gói trả phí mở thêm lượt hỏi Gia sư AI, lượt thi có chấm điểm và công cụ dạy học.',
+            en: 'Every lesson stays free. A paid plan adds SciPal Professor questions, graded exams and teaching tools.',
+            vi: 'Mọi bài học vẫn miễn phí. Gói trả phí mở thêm lượt hỏi Giáo sư SciPal, lượt thi có chấm điểm và công cụ dạy học.',
           })}
         </p>
         <div className={styles.switches}>

@@ -3,7 +3,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import { vietnamDayStart } from '../tutor/limits.js';
 import { DAILY_LIMIT_MAX, DEFAULT_MODELS, DEFAULT_VOICE_MODEL, REASONING_EFFORTS, TRANSLATE_DAILY_CHARS_MAX, TRANSLATE_DAILY_CHARS_MIN, resolveTranslateSettings, resolveTutorSettings, type AiSettingsRow } from '../tutor/settings.js';
 
-// Admin settings of the AI tutor (/admin/ai): provider, model, daily limit, on/off, a connection
+// Admin settings of the SciPal Professor (/admin/ai): provider, model, daily limit, on/off, a connection
 // test and usage counts. API keys are never read from or written to the page: only whether each
 // one is set (invariant 5).
 

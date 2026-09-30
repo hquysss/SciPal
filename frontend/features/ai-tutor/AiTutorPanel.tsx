@@ -28,13 +28,13 @@ export function AiTutorPanel({ lessonId, lessonTitle, level, signedIn, onClose }
   return (
     <div
       role="dialog"
-      aria-label={t({ en: 'AI tutor', vi: 'Gia sư AI' })}
+      aria-label={t({ en: 'SciPal Professor', vi: 'Giáo sư SciPal' })}
       className="fixed inset-x-2 bottom-2 z-50 flex h-[min(34rem,calc(100dvh-5rem))] flex-col overflow-hidden rounded-2xl border border-line bg-surface shadow-[0_24px_60px_-24px_color-mix(in_srgb,var(--ink)_55%,transparent)] sm:inset-x-auto sm:right-4 sm:w-[26rem]"
     >
       <div className="flex items-center gap-3 border-b border-line px-4 py-2">
         <GraduationCap aria-hidden="true" className="h-5 w-5 shrink-0 text-action" />
         <div className="min-w-0 flex-1">
-          <p className="text-sm font-semibold text-ink">{t({ en: 'AI tutor', vi: 'Gia sư AI' })}</p>
+          <p className="text-sm font-semibold text-ink">{t({ en: 'SciPal Professor', vi: 'Giáo sư SciPal' })}</p>
           <p className="truncate text-xs text-ink-muted">{t(lessonTitle)}</p>
         </div>
         {signedIn && (
