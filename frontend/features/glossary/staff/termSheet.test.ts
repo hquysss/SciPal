@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { cellsFromText, headerKey, rowProblem, rowsFromCells } from './termSheet';
+import { EMPTY_ROW, cellsFromText, headerKey, isBlank, rowProblem, rowsFromCells } from './termSheet';
 
 describe('termSheet', () => {
   it('reads cells pasted from Excel, with a header row in either language', () => {
@@ -26,5 +26,11 @@ describe('termSheet', () => {
   it('marks a row missing a language', () => {
     expect(rowProblem({ term_vi: 'a', term_en: '', definition_vi: 'b', definition_en: 'c', example_vi: '', example_en: '', part_of_speech: '' })).not.toBeNull();
     expect(rowProblem({ term_vi: 'a', term_en: 'a', definition_vi: 'b', definition_en: 'c', example_vi: '', example_en: '', part_of_speech: '' })).toBeNull();
+  });
+
+  it('tells a blank table row from a filled one, ignoring its key and error', () => {
+    // A table row carries a numeric key: reading it as a cell crashed the "many terms" tab.
+    expect(isBlank({ ...EMPTY_ROW, key: 1 } as never)).toBe(true);
+    expect(isBlank({ ...EMPTY_ROW, term_vi: 'a', key: 2, error: { vi: 'x', en: 'x' } } as never)).toBe(false);
   });
 });
