@@ -9,6 +9,7 @@ import { buttonVariants } from '@/components/ui/button';
 import { TEXTAREA } from '@/features/authoring/editor/editors/styles';
 import { approveTerm, deleteTerm, listSubjects, listTerms, rejectTerm, type StaffTerm, type SubjectOption } from './api';
 import { TermForm } from './TermForm';
+import { TermBatch } from './TermBatch';
 import { TermRow } from './TermRow';
 
 type Bilingual = { en: string; vi: string };
@@ -69,6 +70,7 @@ export function StaffTermsPage({ isAdmin }: { isAdmin: boolean }) {
   const [error, setError] = useState<Bilingual | null>(null);
   const [withdrawing, setWithdrawing] = useState<string | null>(null);
 
+  const [mode, setMode] = useState<'one' | 'many'>('one');
   const load = useCallback(async () => {
     const result = await listTerms(isAdmin ? 'pending' : undefined);
     if (result.ok) {
@@ -111,10 +113,27 @@ export function StaffTermsPage({ isAdmin }: { isAdmin: boolean }) {
       </header>
 
       <section aria-labelledby="new-term" className="flex flex-col gap-3">
-        <h2 id="new-term" className="text-lg font-bold text-ink">
-          {t({ en: 'New term', vi: 'Thêm thuật ngữ' })}
-        </h2>
-        <TermForm subjects={subjects} isAdmin={isAdmin} onSaved={() => void load()} />
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <h2 id="new-term" className="text-lg font-bold text-ink">
+            {t({ en: 'New terms', vi: 'Thêm thuật ngữ' })}
+          </h2>
+          <div role="group" aria-label={t({ en: 'How to add', vi: 'Cách thêm' })} className="inline-flex rounded-full border border-line bg-surface-sunken p-1">
+            {([['one', { en: 'One term', vi: 'Từng thuật ngữ' }], ['many', { en: 'Many at once', vi: 'Nhiều thuật ngữ' }]] as const).map(([value, label]) => (
+              <button
+                key={value}
+                type="button"
+                aria-pressed={mode === value}
+                onClick={() => setMode(value)}
+                className={`min-h-9 rounded-full px-4 text-sm font-semibold transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-focus ${mode === value ? 'bg-surface text-ink shadow-sm' : 'text-ink-muted hover:text-ink'}`}
+              >
+                {t(label)}
+              </button>
+            ))}
+          </div>
+        </div>
+        {mode === 'one'
+          ? <TermForm subjects={subjects} isAdmin={isAdmin} onSaved={() => void load()} />
+          : <TermBatch subjects={subjects} isAdmin={isAdmin} onSaved={() => void load()} />}
       </section>
 
       <section aria-labelledby="term-list" className="flex flex-col gap-3">

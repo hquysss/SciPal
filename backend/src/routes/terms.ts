@@ -13,6 +13,7 @@ const STATUSES = ['pending', 'published', 'rejected'] as const;
 const ID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const TERM_MAX = 120;
 const TEXT_MAX = 1000;
+const BATCH_MAX = 200;
 
 const COLUMNS =
   'id, subject_id, term_en, term_vi, part_of_speech, definition_en, definition_vi, example_en, example_vi, status, created_by, review_note, reviewed_at, created_at, subjects(slug, name_en, name_vi)';
@@ -122,6 +123,53 @@ export const termRoutes: FastifyPluginAsync = async (app) => {
       return reply.code(500).send({ error: 'Chưa lưu được thuật ngữ.', error_en: 'The term could not be saved.' });
     }
     return reply.code(201).send({ term: present(data as Record<string, any>) });
+  });
+
+  // Many terms at once (pasted from Excel or typed row by row). Each row is checked and saved on its
+  // own: a bad or duplicate row is reported and the others still go in.
+  app.post('/api/authoring/terms/batch', { preHandler: [requireStaff] }, async (request, reply) => {
+    const supabase = app.supabase;
+    if (!supabase) return reply.code(503).send(unavailable);
+    const user = getUser(request)!;
+    const rows = ((request.body ?? {}) as { terms?: unknown }).terms;
+    if (!Array.isArray(rows) || rows.length === 0 || rows.length > BATCH_MAX) {
+      return reply.code(400).send({ error: `Gửi từ 1 đến ${BATCH_MAX} thuật ngữ mỗi lượt.`, error_en: `Send 1 to ${BATCH_MAX} terms at a time.` });
+    }
+    const isAdmin = user.app_metadata?.app_role === 'admin';
+    const now = new Date().toISOString();
+    const seen = new Set<string>();
+    const results: Array<{ index: number; ok: true; id: string } | { index: number; ok: false; error: string; error_en: string }> = [];
+    for (const [index, row] of rows.entries()) {
+      const read = readTerm((row ?? {}) as Record<string, unknown>);
+      if ('error' in read) {
+        results.push({ index, ok: false, ...read });
+        continue;
+      }
+      const key = `${read.term.subject_id}:${read.term.term_en.toLowerCase()}`;
+      if (seen.has(key)) {
+        results.push({ index, ok: false, error: 'Trùng với một dòng phía trên.', error_en: 'Same term as a row above.' });
+        continue;
+      }
+      seen.add(key);
+      const { data, error } = await supabase
+        .from('terms')
+        .insert({
+          ...read.term,
+          created_by: user.id,
+          status: isAdmin ? 'published' : 'pending',
+          ...(isAdmin ? { reviewed_by: user.id, reviewed_at: now } : {}),
+        })
+        .select('id')
+        .single();
+      if (!error) results.push({ index, ok: true, id: (data as { id: string }).id });
+      else if (error.code === '23505') results.push({ index, ok: false, error: 'Môn này đã có thuật ngữ đó (hoặc đang chờ duyệt).', error_en: 'This subject already has that term (or it is waiting for review).' });
+      else if (error.code === '23503') results.push({ index, ok: false, error: 'Môn học không tồn tại.', error_en: 'Unknown subject.' });
+      else {
+        request.log.error({ err: error, index }, 'Term batch insert failed');
+        results.push({ index, ok: false, error: 'Chưa lưu được dòng này.', error_en: 'This row could not be saved.' });
+      }
+    }
+    return reply.send({ results, saved: results.filter((r) => r.ok).length });
   });
 
   app.get('/api/authoring/terms', { preHandler: [requireStaff] }, async (request, reply) => {
