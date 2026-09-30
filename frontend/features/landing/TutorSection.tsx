@@ -6,7 +6,7 @@ import type { EducationLevel } from './educationLevel';
 import { TutorDemoCard } from './TutorDemoCard';
 import styles from './sections.module.css';
 
-/** AI Tutor showcase. The try button appears once a tutor page exists and its href is passed in. */
+/** SciPal Professor showcase. The try button appears once a tutor page exists and its href is passed in. */
 export function TutorSection({ href, level = 'upper_secondary' }: { href?: string; level?: EducationLevel }) {
   const { t } = useLanguage();
 

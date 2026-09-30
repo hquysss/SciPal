@@ -582,6 +582,56 @@
   filter: none;
 }
 
+/* ---------- desktop scroll effects ---------- */
+/* Wide screens with a mouse only (same query as DESKTOP_MOTION in LandingPage.tsx); phones and
+   tablets scroll plainly. Driven by the scroll position itself, so no script runs per frame. */
+
+.scrollProgress {
+  display: none;
+}
+
+@media (min-width: 1024px) and (hover: hover) and (pointer: fine) and (prefers-reduced-motion: no-preference) {
+  @supports (animation-timeline: scroll()) {
+    .scrollProgress {
+      position: fixed;
+      z-index: 60;
+      inset: 0 0 auto;
+      display: block;
+      height: 3px;
+      background: var(--action);
+      transform-origin: 0 50%;
+      animation: landing-progress linear both;
+      animation-timeline: scroll(root block);
+    }
+
+    /* The hero drifts apart as it leaves: copy rises a little faster, the art sinks and fades. */
+    .heroCopy {
+      animation: hero-copy-out linear both;
+      animation-timeline: view();
+      animation-range: exit 0% exit 100%;
+    }
+
+    .heroArt {
+      animation: hero-art-out linear both;
+      animation-timeline: view();
+      animation-range: exit 0% exit 100%;
+    }
+  }
+}
+
+@keyframes landing-progress {
+  from { transform: scaleX(0); }
+  to { transform: scaleX(1); }
+}
+
+@keyframes hero-copy-out {
+  to { translate: 0 -4rem; opacity: 0.2; }
+}
+
+@keyframes hero-art-out {
+  to { translate: 0 3rem; scale: 0.94; opacity: 0.3; }
+}
+
 /* ---------- responsive ---------- */
 
 @media (max-width: 900px) {

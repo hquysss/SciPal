@@ -32,7 +32,7 @@ describe('PricingSection (landing)', () => {
     expect(html).toContain('Học sinh Miễn phí');
     expect(html).toContain('Học sinh Plus');
     expect(html).toContain('39.000 ₫');
-    expect(html).toContain('200 lượt hỏi Gia sư AI mỗi tháng');
+    expect(html).toContain('200 lượt hỏi Giáo sư SciPal mỗi tháng');
     expect(html).toContain('data-aura=""');
     expect(html).toContain('href="/pricing"');
     expect(html).not.toContain('Giáo viên Pro');

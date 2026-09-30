@@ -58,7 +58,7 @@ describe('LandingPage', () => {
     const html = render('upper_secondary');
     const cta = html.match(/<section[^>]*aria-labelledby="start-title"[\s\S]*?<\/section>\s*<\/main>/)?.[0] ?? '';
     expect(cta).toContain('Mọi bài học đều miễn phí');
-    expect(cta).toMatch(/<a[^>]*href="\/tutor"[^>]*>[\s\S]*?Hỏi Gia sư AI/);
+    expect(cta).toMatch(/<a[^>]*href="\/tutor"[^>]*>[\s\S]*?Hỏi Giáo sư SciPal/);
     expect(cta).toContain('data-poll');
     expect(cta.match(/data-cta-float/g)?.length).toBeGreaterThanOrEqual(4);
   });

@@ -27,8 +27,8 @@ export function OfflineBannerView({ online }: { online: boolean }) {
     <div role="status" className="sticky top-0 z-40 flex items-center justify-center gap-2 bg-ink px-4 py-2 text-center text-sm font-semibold text-surface">
       <WifiOff aria-hidden="true" className="h-4 w-4 shrink-0" />
       {t({
-        vi: 'Em đang offline. Bài đã lưu vẫn đọc được; Gia sư AI, thi thử và thanh toán cần có mạng.',
-        en: 'You are offline. Saved lessons still open; the AI tutor, exams and payments need a connection.',
+        vi: 'Em đang offline. Bài đã lưu vẫn đọc được; Giáo sư SciPal, thi thử và thanh toán cần có mạng.',
+        en: 'You are offline. Saved lessons still open; the SciPal Professor, exams and payments need a connection.',
       })}
     </div>
   );

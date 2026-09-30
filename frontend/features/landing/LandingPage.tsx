@@ -59,6 +59,9 @@ const HERO_TITLE: Record<EducationLevel, [Copy, Copy]> = {
   ],
 };
 
+/** Where scroll effects run: a wide screen with a mouse (kept in step with landing.module.css). */
+export const DESKTOP_MOTION = '(min-width: 1024px) and (hover: hover) and (pointer: fine)';
+
 function useRevealOnScroll(pageRef: React.RefObject<HTMLDivElement | null>) {
   useEffect(() => {
     const page = pageRef.current;
@@ -71,7 +74,9 @@ function useRevealOnScroll(pageRef: React.RefObject<HTMLDivElement | null>) {
     if (!page) return;
 
     const motionPreference = window.matchMedia('(prefers-reduced-motion: reduce)');
-    if (motionPreference.matches || !('IntersectionObserver' in window)) return;
+    // Scroll effects are for desktops only: on phones and tablets the page just scrolls.
+    const desktop = window.matchMedia(DESKTOP_MOTION);
+    if (motionPreference.matches || !desktop.matches || !('IntersectionObserver' in window)) return;
 
     const targets = Array.from(page.querySelectorAll<HTMLElement>('[data-landing-reveal]'));
     const clearReveal = (target: Element) => target.classList.remove(styles.revealPending, styles.revealed);
@@ -124,15 +129,17 @@ function useRevealOnScroll(pageRef: React.RefObject<HTMLDivElement | null>) {
     });
 
     const revealPending = () => {
-      if (!motionPreference.matches) return;
+      if (!motionPreference.matches && desktop.matches) return;
       observer.disconnect();
       targets.forEach(clearReveal);
     };
     motionPreference.addEventListener('change', revealPending);
+    desktop.addEventListener('change', revealPending);
 
     return () => {
       observer.disconnect();
       motionPreference.removeEventListener('change', revealPending);
+      desktop.removeEventListener('change', revealPending);
     };
   }, [pageRef]);
 }
@@ -164,6 +171,7 @@ export function LandingPage({ level, levelSource, catalog, onChangeLevel, pricin
 
   return (
     <div className={styles.page} data-level={level} data-scipal-level={level} lang={lang} ref={pageRef}>
+      <div className={styles.scrollProgress} aria-hidden="true" />
       <main className={styles.shell}>
         <section className={styles.hero} aria-labelledby="landing-title">
           <div className={styles.heroCopy}>
@@ -238,7 +246,7 @@ export function LandingPage({ level, levelSource, catalog, onChangeLevel, pricin
               </a>
               <Link href="/tutor" className={styles.finalGhost}>
                 <Sparkles size={17} aria-hidden="true" />
-                {t({ en: 'Ask the AI tutor', vi: 'Hỏi Gia sư AI' })}
+                {t({ en: 'Ask the SciPal Professor', vi: 'Hỏi Giáo sư SciPal' })}
               </Link>
             </div>
           </div>

@@ -45,7 +45,7 @@ describe('PlanCard', () => {
   it('shows the plan limits, the Tutor period choice, prices and a reason field', () => {
     const html = renderToStaticMarkup(<PlanCard plan={plus} onSaved={() => {}} />);
     expect(html).toContain('Học sinh Plus');
-    expect(html).toContain('Lượt hỏi Gia sư AI');
+    expect(html).toContain('Lượt hỏi Giáo sư SciPal');
     expect(html).toContain('Mỗi tháng');
     expect(html).toContain('value="200"');
     // Every counted quota chooses its period, not only Tutor.
