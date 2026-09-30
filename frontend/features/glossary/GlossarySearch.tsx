@@ -1,6 +1,6 @@
 'use client';
 import { useEffect, useMemo, useState } from 'react';
-import { Bookmark, BookmarkCheck, Link2, Search, Volume2, X } from 'lucide-react';
+import { Bookmark, BookmarkCheck, ChevronDown, Link2, Search, Volume2, X } from 'lucide-react';
 import { useLanguage } from '@scipal/hooks';
 import { EmptyState } from '../../components/ui/empty-state';
 import { filterTerms, termSubjects } from './termFilter';
@@ -10,8 +10,11 @@ const TERM_TONES = ['var(--sun)', 'var(--sky)', 'var(--coral)'];
 const SAVED_KEY = 'scipal-saved-terms';
 const SAVED = 'saved';
 
+// Subjects shown before "+n more": the ones with the most terms.
+const FIRST_SUBJECTS = 5;
+
 const chipClass = (active: boolean) =>
-  `inline-flex min-h-11 items-center gap-2 rounded-full px-4 text-sm font-semibold transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus ${
+  `inline-flex min-h-9 items-center gap-1.5 rounded-lg px-3 text-sm font-semibold transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus ${
     active ? 'bg-action text-action-ink' : 'border border-edge bg-surface text-ink hover:bg-surface-sunken'
   }`;
 
@@ -61,6 +64,7 @@ export function GlossarySearch({ terms }: { terms: TermItem[] }) {
   const [activeFilter, setActiveFilter] = useState('all');
   const [saved, setSaved] = useState<Set<string>>(() => new Set());
   const [copied, setCopied] = useState<string | null>(null);
+  const [allSubjects, setAllSubjects] = useState(false);
 
   useEffect(() => {
     setSaved(readSaved());
@@ -69,6 +73,12 @@ export function GlossarySearch({ terms }: { terms: TermItem[] }) {
   }, []);
 
   const subjects = useMemo(() => termSubjects(terms), [terms]);
+  // The busiest subjects first; the chosen one always stays in view even when the rest are folded.
+  const bySize = useMemo(() => [...subjects].sort((a, b) => b.count - a.count), [subjects]);
+  const shownSubjects = allSubjects
+    ? subjects
+    : bySize.filter((sub, i) => i < FIRST_SUBJECTS || sub.slug === activeFilter);
+  const hiddenCount = subjects.length - shownSubjects.length;
   const showSaved = activeFilter === SAVED;
   const filtered = filterTerms(terms, { query, subject: showSaved ? 'all' : activeFilter, saved: showSaved ? saved : null });
 
@@ -126,23 +136,40 @@ export function GlossarySearch({ terms }: { terms: TermItem[] }) {
         )}
       </div>
 
-      {/* Filter chips: only subjects that have terms, then saved terms */}
-      <div className="flex flex-wrap gap-2">
+      {/* Filter chips: all, saved, the busiest subjects, then the rest behind "+n" */}
+      <div className="flex flex-wrap items-center gap-2">
         <button type="button" aria-pressed={activeFilter === 'all'} onClick={() => setActiveFilter('all')} className={chipClass(activeFilter === 'all')}>
-          {t({ en: 'All subjects', vi: 'Tất cả môn' })}
+          {t({ en: 'All', vi: 'Tất cả' })}
           <span className="text-xs opacity-80">{terms.length}</span>
         </button>
-        {subjects.map((sub) => (
-          <button key={sub.slug} type="button" aria-pressed={activeFilter === sub.slug} onClick={() => setActiveFilter(sub.slug)} className={chipClass(activeFilter === sub.slug)}>
-            {t(sub.name)}
-            <span className="text-xs opacity-80">{sub.count}</span>
-          </button>
-        ))}
         <button type="button" aria-pressed={showSaved} onClick={() => setActiveFilter(SAVED)} className={chipClass(showSaved)}>
           <BookmarkCheck aria-hidden="true" className="h-4 w-4" />
           {t({ en: 'Saved', vi: 'Đã lưu' })}
           <span className="text-xs opacity-80">{saved.size}</span>
         </button>
+        <span aria-hidden="true" className="mx-1 h-6 w-px bg-line" />
+        <div id="glossary-subjects" role="group" aria-label={t({ en: 'Subjects', vi: 'Môn học' })} className="contents">
+          {shownSubjects.map((sub) => (
+            <button key={sub.slug} type="button" aria-pressed={activeFilter === sub.slug} onClick={() => setActiveFilter(sub.slug)} className={chipClass(activeFilter === sub.slug)}>
+              {t(sub.name)}
+              <span className="text-xs opacity-80">{sub.count}</span>
+            </button>
+          ))}
+        </div>
+        {(hiddenCount > 0 || allSubjects) && subjects.length > FIRST_SUBJECTS && (
+          <button
+            type="button"
+            aria-expanded={allSubjects}
+            aria-controls="glossary-subjects"
+            onClick={() => setAllSubjects((v) => !v)}
+            className="inline-flex min-h-9 items-center gap-1 rounded-lg px-3 text-sm font-semibold text-action hover:bg-surface-sunken focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
+          >
+            {allSubjects
+              ? t({ en: 'Fewer subjects', vi: 'Thu gọn' })
+              : t({ en: `+${hiddenCount} more subjects`, vi: `+${hiddenCount} môn khác` })}
+            <ChevronDown aria-hidden="true" className={`h-4 w-4 transition-transform motion-reduce:transition-none ${allSubjects ? 'rotate-180' : ''}`} />
+          </button>
+        )}
       </div>
 
       {/* Results stats */}

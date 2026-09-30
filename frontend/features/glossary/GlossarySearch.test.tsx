@@ -38,6 +38,16 @@ describe('Glossary', () => {
     expect(html).toContain('Saved');
   });
 
+  it('keeps the chips to one row: the five busiest subjects, the rest behind "+n more"', () => {
+    const terms = Array.from({ length: 8 }, (_, i) =>
+      Array.from({ length: 8 - i }, (_, k) => ({ ...TERM, id: `t${i}-${k}`, subject_slug: `s${i}`, subject_name_en: `Subject${i}`, subject_order: i })),
+    ).flat();
+    const html = renderToStaticMarkup(<GlossarySearch terms={terms} />);
+    for (const i of [0, 1, 2, 3, 4]) expect(html).toContain(`Subject${i}`);
+    for (const i of [5, 6, 7]) expect(html).not.toContain(`Subject${i}`);
+    expect(html).toMatch(/aria-expanded="false"[^>]*>\+3 more subjects/);
+  });
+
   it('each term can be heard in both languages, saved and linked to', () => {
     const html = renderToStaticMarkup(<GlossarySearch terms={[TERM]} />);
     expect(html).toContain('aria-label="Listen: algorithm"');
