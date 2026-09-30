@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useId, useRef, useState, type ReactNode } from 'react';
-import { ArrowRight, ArrowUp, BookOpen, Lightbulb, Square } from 'lucide-react';
+import { ArrowRight, ArrowUp, BookOpen, Lightbulb, Mic, Square } from 'lucide-react';
 import { useLanguage } from '@scipal/hooks';
 import { Alert } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
@@ -13,6 +13,7 @@ import { TutorMessage } from './TutorMessage';
 import { useTutorChat } from './useTutorChat';
 import { TutorAvatar } from './TutorAvatar';
 import styles from './tutor.module.css';
+import { VoiceChat } from './voice/VoiceChat';
 
 type Bilingual = { vi: string; en: string };
 
@@ -38,6 +39,8 @@ export interface TutorChatViewProps {
   picker?: ReactNode;
   /** The lesson panel: shorter greeting, two examples. */
   compact?: boolean;
+  /** Opens a spoken session; without it there is no microphone button. */
+  onVoice?: () => void;
 }
 
 /** The chat itself, without data fetching: messages, empty state, error and composer. */
@@ -55,6 +58,7 @@ export function TutorChatView({
   lessonTitle,
   picker,
   compact = false,
+  onVoice,
 }: TutorChatViewProps) {
   const { t } = useLanguage();
   const ids = useId();
@@ -192,6 +196,18 @@ export function TutorChatView({
               placeholder={limitReached ? t({ en: 'No questions left today', vi: 'Hôm nay em đã hết lượt hỏi' }) : t({ en: 'Ask the tutor…', vi: 'Hỏi thầy…' })}
               className="max-h-40 min-h-11 flex-1 resize-none bg-transparent px-2 py-2 text-base leading-6 text-ink caret-action outline-none placeholder:text-ink-muted disabled:cursor-not-allowed"
             />
+            {onVoice && !streaming && (
+              <button
+                type="button"
+                onClick={onVoice}
+                disabled={limitReached}
+                aria-label={t({ en: 'Talk with the tutor', vi: 'Nói chuyện với thầy' })}
+                title={t({ en: 'Talk with the tutor', vi: 'Nói chuyện với thầy' })}
+                className={styles.voiceButton}
+              >
+                <Mic aria-hidden="true" className="h-5 w-5" />
+              </button>
+            )}
             {streaming ? (
               <Button type="button" variant="outline" onClick={onStop} className="shrink-0 rounded-full">
                 <Square aria-hidden="true" className="h-4 w-4 fill-current" />
@@ -249,6 +265,7 @@ export function TutorChat({
   onConversation?: (id: string) => void;
 }) {
   const chat = useTutorChat({ conversationId, lessonId, initialMessages });
+  const [talking, setTalking] = useState(false);
   const reported = useRef(conversationId ?? null);
 
   useEffect(() => {
@@ -259,6 +276,7 @@ export function TutorChat({
   }, [chat.conversationId, chat.streaming, onConversation]);
 
   return (
+    <>
     <TutorChatView
       messages={chat.messages}
       streaming={chat.streaming}
@@ -273,6 +291,9 @@ export function TutorChat({
       lessonTitle={lessonTitle}
       picker={picker}
       compact={compact}
+      onVoice={() => setTalking(true)}
     />
+    {talking && <VoiceChat lessonId={lessonId} onClose={() => setTalking(false)} />}
+    </>
   );
 }

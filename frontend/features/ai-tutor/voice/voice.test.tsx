@@ -1,0 +1,38 @@
+import { renderToStaticMarkup } from 'react-dom/server';
+import { describe, expect, it, vi } from 'vitest';
+
+vi.mock('@scipal/hooks', () => ({ useLanguage: () => ({ lang: 'vi', t: (c: { vi: string }) => c.vi }) }));
+
+import { pcmToFloats, toBase64 } from './liveSession';
+import { addWords } from './VoiceChat';
+import { TutorChatView } from '../TutorChat';
+
+describe('voice audio', () => {
+  it('reads 16-bit little-endian PCM back as samples', () => {
+    const pcm = new Int16Array([0, 16384, -32768, 32767]);
+    const floats = pcmToFloats(toBase64(pcm.buffer));
+    expect(Array.from(floats)).toEqual([0, 0.5, -1, 32767 / 32768]);
+  });
+});
+
+describe('voice transcript', () => {
+  it('grows the current turn and starts a new line when the speaker or turn changes', () => {
+    let lines = addWords([], 'student', ' Vòng lặp', true);
+    lines = addWords(lines, 'student', ' là gì?', false);
+    lines = addWords(lines, 'tutor', 'Em thử', false);
+    lines = addWords(lines, 'tutor', 'Câu mới', true);
+    expect(lines).toEqual([
+      { who: 'student', text: 'Vòng lặp là gì?' },
+      { who: 'tutor', text: 'Em thử' },
+      { who: 'tutor', text: 'Câu mới' },
+    ]);
+  });
+});
+
+describe('TutorChatView microphone', () => {
+  const base = { messages: [], streaming: false, remaining: 3, error: null, limitReached: false, level: 'upper_secondary' as const, onSend: () => {}, onStop: () => {}, onRetry: () => {} };
+  it('offers voice only when the chat can start it', () => {
+    expect(renderToStaticMarkup(<TutorChatView {...base} onVoice={() => {}} />)).toContain('aria-label="Nói chuyện với thầy"');
+    expect(renderToStaticMarkup(<TutorChatView {...base} />)).not.toContain('Nói chuyện với thầy');
+  });
+});
