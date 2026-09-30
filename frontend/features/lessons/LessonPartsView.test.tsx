@@ -24,6 +24,22 @@ describe('LessonPartsView', () => {
     expect(countRawColors(html).total).toBe(0);
   });
 
+  it('keeps simulations on the Bài học page, with Tự luyện as the only other tab', () => {
+    const sim = { type: 'interactive', kind: 'algorithm-sim', heading: { vi: 'Mô phỏng tìm kiếm', en: 'Search sim' }, offline: true, config: {} } as unknown as Block;
+    const html = renderToStaticMarkup(<LessonPartsView blocks={[theory, sim, quiz]} completion={<button>Hoàn thành</button>} />);
+    expect(html.match(/role="tab"/g)).toHaveLength(2);
+    expect(html).toContain('Nội dung');
+    expect(html).toContain('Tiếp theo: Tự luyện');
+    expect(html).not.toMatch(/role="tab"[^>]*>[\s\S]*?Mô phỏng<\/button>/);
+  });
+
+  it('shows no tabs for theory and simulations alone', () => {
+    const sim = { type: 'interactive', kind: 'algorithm-sim', heading: { vi: 'S', en: 'S' }, offline: true, config: {} } as unknown as Block;
+    const html = renderToStaticMarkup(<LessonPartsView blocks={[theory, sim]} completion={<button>Hoàn thành</button>} />);
+    expect(html).not.toContain('role="tablist"');
+    expect(html).toContain('Hoàn thành');
+  });
+
   it('shows no tabs when the lesson has one part, and the completion button right away', () => {
     const html = renderToStaticMarkup(<LessonPartsView blocks={[theory]} completion={<button>Hoàn thành</button>} />);
     expect(html).not.toContain('role="tablist"');
