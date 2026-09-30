@@ -15,9 +15,9 @@ import { createBrowserClient } from '@/lib/supabase';
 import { adoptAccountLevel, forgetAccountLevel, getShell, safeSessionStorage } from '@/lib/theme/shellTheme';
 import { countOpenSimulationRequests } from '@/features/authoring/simulationRequests/api';
 
-/** The admin menu entry, with the number of requests still waiting. */
-export function requestsLinkLabel(lang: 'en' | 'vi', open: number): string {
-  const label = lang === 'en' ? 'Simulation requests' : 'Đề xuất mô phỏng';
+/** The admin entry: one link to the page with every admin tool, with the requests still waiting. */
+export function adminLinkLabel(lang: 'en' | 'vi', open: number): string {
+  const label = lang === 'en' ? 'Admin' : 'Quản trị';
   return open > 0 ? `${label} (${open})` : label;
 }
 
@@ -94,14 +94,7 @@ export function roleLinks(role: string | null, lang: 'en' | 'vi', openRequests: 
     { href: '/teacher/classes', label: label('Classes', 'Lớp học') },
     { href: '/teacher/simulation-requests', label: label('Simulation requests', 'Đề xuất mô phỏng') },
   ] : [];
-  const adminLinks = role === 'admin' ? [
-    { href: '/admin/accounts', label: label('Accounts', 'Quản lý tài khoản') },
-    { href: '/admin/billing', label: label('Payment reconciliation', 'Đối soát thanh toán') },
-    { href: '/admin/lessons/review', label: label('Review Queue', 'Duyệt bài') },
-    { href: '/admin/topics', label: label('Topics', 'Chủ đề') },
-    { href: '/admin/ai', label: label('AI settings', 'Cài đặt AI') },
-    { href: '/admin/simulation-requests', label: requestsLinkLabel(lang, openRequests) },
-  ] : [];
+  const adminLinks = role === 'admin' ? [{ href: '/admin', label: adminLinkLabel(lang, openRequests) }] : [];
   return { teacherLinks, adminLinks };
 }
 
@@ -254,7 +247,7 @@ export function NavBar({ currentSubject }: NavBarProps) {
   const teacherMenuOpen = openNavGroup === 'teacher';
   const adminMenuOpen = openNavGroup === 'admin';
   const teacherRouteActive = teacherLinks.some((link) => pathname === link.href || pathname.startsWith(`${link.href}/`));
-  const adminRouteActive = adminLinks.some((link) => pathname === link.href || pathname.startsWith(`${link.href}/`));
+  const adminRouteActive = pathname === '/admin' || pathname.startsWith('/admin/');
   const toggleNavGroup = (group: 'admin' | 'teacher', trigger: HTMLButtonElement) => {
     openNavTriggerRef.current = trigger;
     setOpenNavGroup((current) => current === group ? null : group);
@@ -345,39 +338,18 @@ export function NavBar({ currentSubject }: NavBarProps) {
               </div>
             </div>
           )}
-          {adminLinks.length > 0 && (
-            <div className="relative" data-nav-group="admin">
-              <button
-                type="button"
-                aria-expanded={adminMenuOpen}
-                aria-controls="desktop-admin-navigation"
-                onClick={(event) => toggleNavGroup('admin', event.currentTarget)}
-                data-active={adminRouteActive || undefined}
-                className={navStyles.navLink}
-              >
-                Admin
-                <ChevronDown aria-hidden="true" className={`h-4 w-4 transition-transform duration-150 motion-reduce:transition-none ${adminMenuOpen ? 'rotate-180' : ''}`} />
-              </button>
-              <div
-                id="desktop-admin-navigation"
-                aria-hidden={!adminMenuOpen}
-                className={`${navStyles.dropdown} ${adminMenuOpen ? navStyles.dropdownOpen : ''}`}
-              >
-                {adminLinks.map((link) => (
-                  <Link
-                    key={link.href}
-                    href={link.href}
-                    prefetch={pathname !== '/'}
-                    onClick={() => setOpenNavGroup(null)}
-                    aria-current={pathname === link.href ? 'page' : undefined}
-                    className={`block rounded-lg px-3 py-2.5 text-sm font-semibold transition hover:bg-surface-sunken focus-visible:outline focus-visible:outline-2 focus-visible:outline-focus ${pathname === link.href ? 'bg-surface-sunken text-action' : 'text-ink'}`}
-                  >
-                    {link.label}
-                  </Link>
-                ))}
-              </div>
-            </div>
-          )}
+          {adminLinks.map((link) => (
+            <Link
+              key={link.href}
+              href={link.href}
+              prefetch={pathname !== '/'}
+              aria-current={pathname === link.href ? 'page' : undefined}
+              data-active={adminRouteActive || undefined}
+              className={navStyles.navLink}
+            >
+              {link.label}
+            </Link>
+          ))}
         </nav>
 
         <div className={`${navStyles.rise} ml-auto hidden shrink-0 items-center justify-end gap-3 xl:flex`} style={{ '--i': 8 } as React.CSSProperties}>
@@ -520,40 +492,18 @@ export function NavBar({ currentSubject }: NavBarProps) {
                 </div>
               </div>
             )}
-            {adminLinks.length > 0 && (
-              <div data-nav-group="admin">
-                <button
-                  type="button"
-                  aria-expanded={adminMenuOpen}
-                  aria-controls="mobile-admin-navigation"
-                  onClick={(event) => toggleNavGroup('admin', event.currentTarget)}
-                  className={`flex w-full items-center justify-between rounded-xl px-4 py-3 text-left text-sm font-bold transition hover:bg-surface-sunken focus-visible:outline focus-visible:outline-2 focus-visible:outline-focus ${adminRouteActive ? 'bg-surface-sunken text-action' : 'text-ink'}`}
-                >
-                  Admin
-                  <ChevronDown aria-hidden="true" className={`h-4 w-4 transition-transform duration-150 motion-reduce:transition-none ${adminMenuOpen ? 'rotate-180' : ''}`} />
-                </button>
-                <div
-                  id="mobile-admin-navigation"
-                  aria-hidden={!adminMenuOpen}
-                  className={`ml-3 mt-1 overflow-hidden border-l border-line transition-[max-height,opacity,visibility] duration-200 ease-out motion-reduce:transition-none ${adminMenuOpen ? 'visible max-h-80 opacity-100' : 'invisible max-h-0 opacity-0'}`}
-                >
-                  <div className="space-y-1 pl-3">
-                    {adminLinks.map((link) => (
-                      <Link
-                        key={link.href}
-                        href={link.href}
-                        prefetch={pathname !== '/'}
-                        onClick={() => { setOpenNavGroup(null); setMobileOpen(false); }}
-                        aria-current={pathname === link.href ? 'page' : undefined}
-                        className={`block rounded-xl px-4 py-3 text-sm font-semibold transition hover:bg-surface-sunken focus-visible:outline focus-visible:outline-2 focus-visible:outline-focus ${pathname === link.href ? 'bg-surface-sunken text-action' : 'text-ink'}`}
-                      >
-                        {link.label}
-                      </Link>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            )}
+            {adminLinks.map((link) => (
+              <Link
+                key={link.href}
+                href={link.href}
+                prefetch={pathname !== '/'}
+                onClick={() => setMobileOpen(false)}
+                aria-current={pathname === link.href ? 'page' : undefined}
+                className={`block rounded-xl px-4 py-3 text-sm font-bold transition hover:bg-surface-sunken focus-visible:outline focus-visible:outline-2 focus-visible:outline-focus ${adminRouteActive ? 'bg-surface-sunken text-action' : 'text-ink'}`}
+              >
+                {link.label}
+              </Link>
+            ))}
             {appRole && (
               <div className="mt-3 flex items-center justify-between gap-3 border-t border-line px-2 pt-4">
                 <span className="min-w-0 truncate text-sm font-bold text-ink" title={displayName ?? undefined}>

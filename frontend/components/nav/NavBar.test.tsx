@@ -34,12 +34,12 @@ describe('NavBar', () => {
   });
 });
 
-describe('simulation request link', () => {
-  it('shows how many requests wait for an admin', async () => {
-    const { requestsLinkLabel } = await import('./NavBar');
-    expect(requestsLinkLabel('vi', 0)).toBe('Đề xuất mô phỏng');
-    expect(requestsLinkLabel('vi', 3)).toBe('Đề xuất mô phỏng (3)');
-    expect(requestsLinkLabel('en', 12)).toBe('Simulation requests (12)');
+describe('admin link', () => {
+  it('shows how many simulation requests wait for an admin', async () => {
+    const { adminLinkLabel } = await import('./NavBar');
+    expect(adminLinkLabel('vi', 0)).toBe('Quản trị');
+    expect(adminLinkLabel('vi', 3)).toBe('Quản trị (3)');
+    expect(adminLinkLabel('en', 12)).toBe('Admin (12)');
   });
 });
 
@@ -54,15 +54,9 @@ describe('role menus', () => {
       expect(hrefs).not.toContain('/admin/plans');
     }
     expect(roleLinks('teacher', 'vi', 0).teacherLinks.map((l) => l.href)).toContain('/teacher/classes');
-    expect(roleLinks('admin', 'vi', 0).adminLinks.map((l) => l.href)).toContain('/admin/topics');
-    expect(roleLinks('admin', 'vi', 0).adminLinks.map((l) => l.href)).toContain('/admin/ai');
+    expect(roleLinks('admin', 'vi', 0).adminLinks).toEqual([{ href: '/admin', label: 'Quản trị' }]);
     expect(roleLinks('teacher', 'vi', 0).teacherLinks.map((l) => l.href)).not.toContain('/admin/topics');
     expect(roleLinks('student', 'vi', 0)).toEqual({ teacherLinks: [], adminLinks: [] });
-  });
-
-  it('links admins to payment reconciliation in both languages', () => {
-    expect(roleLinks('admin', 'vi', 0).adminLinks).toContainEqual({ href: '/admin/billing', label: 'Đối soát thanh toán' });
-    expect(roleLinks('admin', 'en', 0).adminLinks).toContainEqual({ href: '/admin/billing', label: 'Payment reconciliation' });
   });
 
   it('keeps glossary terms out of the menus: they open from the Glossary page', () => {
