@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { readTrials, routeAccess, signTrials } from './guestTrial';
+import { TRIAL_RESET_MS, TRIAL_WINDOW_MS, readTrials, routeAccess, signTrials, trialRenewable } from './guestTrial';
 
 const SECRET = 'test-guest-secret-0123456789abcdef0123';
 
@@ -38,5 +38,15 @@ describe('signed trial cookie', () => {
     expect(await readTrials(`${payload}.${signature}`, 'another-secret-of-enough-length-0000000')).toBeNull();
     expect(await readTrials('nonsense', SECRET)).toBeNull();
     expect(await readTrials(undefined, SECRET)).toBeNull();
+  });
+});
+
+describe('trialRenewable', () => {
+  it('comes round 24 hours after the window opened, not after it ended', () => {
+    const opened = 1_000_000_000_000;
+    const until = opened + TRIAL_WINDOW_MS;
+    expect(trialRenewable(until, until + 1)).toBe(false);
+    expect(trialRenewable(until, opened + TRIAL_RESET_MS - 1)).toBe(false);
+    expect(trialRenewable(until, opened + TRIAL_RESET_MS)).toBe(true);
   });
 });

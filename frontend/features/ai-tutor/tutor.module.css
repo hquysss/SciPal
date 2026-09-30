@@ -318,57 +318,228 @@
 }
 
 .voicePanel {
+  position: relative;
   display: grid;
-  justify-items: center;
-  gap: 1.25rem;
-  width: min(100%, 28rem);
+  gap: 1.1rem;
+  width: min(100%, 30rem);
   max-height: calc(100dvh - 2rem);
+  overflow-y: auto;
   border: 1px solid var(--line);
-  border-radius: 0.75rem;
-  padding: 1.5rem;
-  background: var(--surface);
+  border-radius: 1rem;
+  padding: 1.25rem 1.5rem 1.1rem;
+  background:
+    radial-gradient(26rem 16rem at 50% 30%, color-mix(in srgb, var(--action) 16%, transparent), transparent 70%),
+    var(--surface);
   color: var(--ink);
   box-shadow: 0 2rem 4rem -2rem color-mix(in srgb, var(--ink) 60%, transparent);
 }
 
-/* The orb breathes while the tutor listens and pulses while it speaks. */
+.voiceHeader {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+/* The state, with a dot: grey while connecting, green while listening, warm while speaking. */
+.voiceStatus {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  justify-self: center;
+  margin: -0.4rem 0 0;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 0.3rem 0.7rem;
+  background: var(--surface-sunken);
+  color: var(--ink-muted);
+  font-size: 0.75rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.voiceStatus span {
+  width: 0.5rem;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background: var(--ink-muted);
+}
+.voiceStatus[data-state='listening'] span { background: var(--success); animation: status-blink 1.6s ease-in-out infinite; }
+.voiceStatus[data-state='speaking'] span { background: var(--sun); }
+.voiceStatus[data-state='muted'] span { background: var(--danger); }
+
+@keyframes status-blink { 50% { opacity: 0.35; } }
+
+/* The stage: the Professor in an orb, two rings and a row of bars that follow the loudness
+   (--level, 0…1, set from the audio by VoiceChat). */
+.voiceStage {
+  --level: 0;
+  position: relative;
+  display: grid;
+  place-items: center;
+  height: 13rem;
+}
+
+.ring {
+  position: absolute;
+  width: 9rem;
+  aspect-ratio: 1;
+  border: 2px solid color-mix(in srgb, var(--action) 45%, transparent);
+  border-radius: 50%;
+  opacity: calc(0.25 + var(--level) * 0.75);
+  scale: calc(1 + var(--level) * 0.35);
+  transition: scale 90ms linear, opacity 90ms linear;
+}
+.ring + .ring {
+  width: 11rem;
+  border-color: color-mix(in srgb, var(--action) 22%, transparent);
+  scale: calc(1 + var(--level) * 0.55);
+}
+.voiceStage[data-state='speaking'] .ring { border-color: color-mix(in srgb, var(--sun) 60%, transparent); }
+.voiceStage[data-state='speaking'] .ring + .ring { border-color: color-mix(in srgb, var(--sun) 30%, transparent); }
+.voiceStage[data-state='connecting'] .ring { animation: ring-wait 1.4s ease-in-out infinite; }
+.voiceStage[data-state='ended'] .ring { opacity: 0.15; }
+
+@keyframes ring-wait { 50% { scale: 1.12; opacity: 0.6; } }
+
 .orb {
+  position: relative;
   display: grid;
   place-items: center;
   width: 7.5rem;
   aspect-ratio: 1;
   border-radius: 50%;
-  background: radial-gradient(circle at 35% 30%, color-mix(in srgb, var(--action) 70%, var(--surface)), var(--action));
-  color: var(--action-ink);
-  box-shadow: 0 0 0 0 color-mix(in srgb, var(--action) 40%, transparent);
+  background: radial-gradient(circle at 35% 30%, color-mix(in srgb, var(--action) 55%, var(--surface)), var(--action));
+  box-shadow: 0 0.75rem 2.5rem -0.75rem color-mix(in srgb, var(--action) 70%, transparent);
+  scale: calc(1 + var(--level) * 0.08);
+  transition: scale 90ms linear;
 }
-.orb[data-state='listening'] { animation: orb-breathe 2.4s ease-in-out infinite; }
-.orb[data-state='speaking'] { animation: orb-talk 0.9s ease-in-out infinite; }
-.orb[data-state='connecting'] { opacity: 0.6; }
+.orb[data-state='connecting'] { opacity: 0.7; }
+.orb[data-state='ended'] { filter: grayscale(0.7); opacity: 0.7; }
 
-@keyframes orb-breathe {
-  50% { box-shadow: 0 0 0 0.9rem color-mix(in srgb, var(--action) 18%, transparent); }
+.bars {
+  position: absolute;
+  bottom: 0;
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  height: 1.75rem;
 }
-@keyframes orb-talk {
-  50% { scale: 1.06; box-shadow: 0 0 0 1.4rem color-mix(in srgb, var(--action) 14%, transparent); }
+.bars span {
+  width: 0.3rem;
+  height: 100%;
+  border-radius: 999px;
+  background: var(--action);
+  /* The middle bar moves most, the outer ones least. */
+  scale: 1 calc(0.18 + var(--level) * (1 - (var(--bar) - 2) * (var(--bar) - 2) * 0.2));
+  transition: scale 90ms linear;
 }
+.voiceStage[data-state='speaking'] .bars span { background: var(--sun); }
 
-.transcript {
+.voiceClocks {
+  display: flex;
+  justify-content: center;
+  gap: 0.75rem;
+}
+.voiceClocks div {
   display: grid;
-  gap: 0.5rem;
-  width: 100%;
-  max-height: 14rem;
+  justify-items: center;
+  min-width: 6.5rem;
+  border: 1px solid var(--line);
+  border-radius: 0.6rem;
+  padding: 0.4rem 0.9rem;
+  background: var(--surface-sunken);
+}
+.voiceClocks span { color: var(--ink-muted); font-size: 0.7rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; }
+.voiceClocks b { font-size: 1.35rem; font-variant-numeric: tabular-nums; line-height: 1.2; }
+.voiceClocks div[data-low] { border-color: var(--danger); }
+.voiceClocks div[data-low] b { color: var(--danger); }
+
+/* What was said, as chat bubbles: the Professor on the left, the student on the right. */
+.transcript {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  max-height: 12rem;
   overflow-y: auto;
   margin: 0;
-  padding: 0;
+  padding: 0.25rem;
   list-style: none;
-  font-size: 0.95rem;
-  line-height: 1.5;
+  font-size: 0.9rem;
+  line-height: 1.45;
 }
-.transcript li[data-who='student'] { color: var(--ink-muted); }
-.transcript b { color: var(--ink); }
+.transcript li {
+  max-width: 85%;
+  border-radius: 0.9rem;
+  padding: 0.45rem 0.75rem;
+}
+.transcript li[data-who='tutor'] {
+  align-self: flex-start;
+  border-bottom-left-radius: 0.25rem;
+  background: var(--surface-sunken);
+}
+.transcript li[data-who='student'] {
+  align-self: flex-end;
+  border-bottom-right-radius: 0.25rem;
+  background: var(--action);
+  color: var(--action-ink);
+}
+.transcript .transcriptEnd { padding: 0; }
+
+.voiceHint {
+  margin: 0;
+  color: var(--ink-muted);
+  font-size: 0.85rem;
+  text-align: center;
+}
+.voiceHint i { color: var(--ink); }
+
+.voiceControls {
+  display: flex;
+  justify-content: center;
+  gap: 0.75rem;
+}
+.voiceControl,
+.voiceEnd {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  min-height: 2.75rem;
+  border-radius: 999px;
+  padding: 0 1.1rem;
+  font-size: 0.9rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background-color 160ms ease-out, opacity 160ms ease-out;
+}
+.voiceControl svg,
+.voiceEnd svg { width: 1.1rem; height: 1.1rem; }
+.voiceControl {
+  border: 1px solid var(--line);
+  background: var(--surface-sunken);
+  color: var(--ink);
+}
+.voiceControl[aria-pressed='true'] { border-color: var(--danger); color: var(--danger); }
+.voiceControl:disabled { cursor: not-allowed; opacity: 0.5; }
+.voiceEnd {
+  border: 0;
+  background: var(--danger);
+  color: var(--surface);
+}
+.voiceEnd:hover { opacity: 0.9; }
+.voiceControl:focus-visible,
+.voiceEnd:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+
+.voiceNote {
+  margin: 0;
+  color: var(--ink-muted);
+  font-size: 0.72rem;
+  line-height: 1.45;
+  text-align: center;
+}
 
 @media (prefers-reduced-motion: reduce) {
-  .orb[data-state='listening'],
-  .orb[data-state='speaking'] { animation: none; }
+  .ring,
+  .orb,
+  .bars span { transition: none; }
+  .voiceStage[data-state='connecting'] .ring,
+  .voiceStatus span { animation: none; }
 }

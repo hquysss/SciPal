@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { ConversationList } from '@/features/ai-tutor/ConversationList';
 import { LessonPicker } from '@/features/ai-tutor/LessonPicker';
+import { VoiceChat } from '@/features/ai-tutor/voice/VoiceChat';
 import { TutorChatView } from '@/features/ai-tutor/TutorChat';
 import { TutorChatFrame, TutorListFrame } from '@/features/ai-tutor/TutorPage';
 import type { TutorMessage } from '@/features/ai-tutor/api';
@@ -36,6 +37,9 @@ const noop = () => {};
 export function TutorShowcase({ view }: { view: string }) {
   const [picked, setPicked] = useState<string | null>(view === 'picker' ? 'l2' : null);
   const base = { level: 'upper_secondary' as const, onSend: noop, onStop: noop, onRetry: noop, remaining: 27, error: null, limitReached: false, streaming: false };
+
+  // The spoken panel over the page (it tries to connect, so without a backend it ends with an error).
+  if (view === 'voice') return <VoiceChat onClose={noop} />;
 
   if (view === 'list') {
     return (

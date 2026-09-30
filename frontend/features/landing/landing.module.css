@@ -565,9 +565,9 @@
 
 .page .revealPending {
   opacity: 0;
-  translate: 0 1.75rem;
-  scale: 0.97;
-  filter: blur(6px);
+  translate: 0 3rem;
+  scale: 0.94;
+  filter: blur(8px);
   transition:
     opacity 700ms var(--landing-ease) var(--reveal-delay, 0ms),
     translate 700ms cubic-bezier(0.16, 1, 0.3, 1) var(--reveal-delay, 0ms),
@@ -616,6 +616,28 @@
       animation-timeline: view();
       animation-range: exit 0% exit 100%;
     }
+
+    /* Cards rise and grow into place as they scroll in, one a beat after the other. */
+    .page [data-landing-scroll] {
+      animation: landing-card-in linear both;
+      animation-timeline: view();
+      animation-range: entry 0% cover 32%;
+    }
+
+    .page [data-landing-scroll]:nth-child(2) {
+      animation-range: entry 10% cover 40%;
+    }
+
+    .page [data-landing-scroll]:nth-child(3) {
+      animation-range: entry 20% cover 48%;
+    }
+
+    /* Section titles slide in from the left with the scroll. */
+    .page [data-landing-title] {
+      animation: landing-title-in linear both;
+      animation-timeline: view();
+      animation-range: entry 0% cover 28%;
+    }
   }
 }
 
@@ -626,6 +648,16 @@
 
 @keyframes hero-copy-out {
   to { translate: 0 -4rem; opacity: 0.2; }
+}
+
+@keyframes landing-card-in {
+  from { opacity: 0; translate: 0 5rem; scale: 0.9; }
+  to { opacity: 1; translate: 0 0; scale: 1; }
+}
+
+@keyframes landing-title-in {
+  from { opacity: 0; translate: -3rem 0; }
+  to { opacity: 1; translate: 0 0; }
 }
 
 @keyframes hero-art-out {

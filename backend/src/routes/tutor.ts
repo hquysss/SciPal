@@ -158,6 +158,7 @@ export const tutorRoutes: FastifyPluginAsync = async (app) => {
         systemInstruction: buildSystemPrompt({ language, level, lesson: lessonText, spoken: true }),
         language,
         minutes,
+        voiceName: settings.voiceName,
       });
       if (hold) await billing.settleQuota(hold.operationId, 'commit').catch((err) => request.log.error({ err }, 'Failed to count a voice session'));
       return reply.send({ ...voice, remaining: hold?.remaining ?? null, period: hold?.period ?? null });

@@ -268,7 +268,7 @@ describe('POST /api/tutor/chat', () => {
   });
 
   it('follows the admin settings: off answers 503, the limit and the model come from them', async () => {
-    const settings = (value: object) => ({ get: async () => ({ provider: 'openai' as const, model: 'admin-model', dailyLimit: 5, enabled: true, voiceModel: 'gemini-3.8-live', voiceEnabled: true, reasoningEffort: 'high' as const, ...value }), invalidate() {} });
+    const settings = (value: object) => ({ get: async () => ({ provider: 'openai' as const, model: 'admin-model', dailyLimit: 5, enabled: true, voiceModel: 'gemini-3.8-live', voiceName: 'Charon', voiceEnabled: true, reasoningEffort: 'high' as const, ...value }), invalidate() {} });
 
     const offApp = Fastify();
     offApp.decorate('supabase', mockSupabase({}));

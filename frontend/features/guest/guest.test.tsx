@@ -56,7 +56,7 @@ describe('GuestTutorView', () => {
 describe('TrialEndedNote', () => {
   it('explains why the visitor was sent to sign in', () => {
     const html = renderToStaticMarkup(<TrialEndedNote />);
-    expect(html).toContain('Bạn đã dùng hết lượt thử');
-    expect(html).toContain('Tạo tài khoản miễn phí');
+    expect(html).toContain('Lượt thử mới mở lại sau 24 giờ');
+    expect(html).toContain('tạo tài khoản miễn phí');
   });
 });

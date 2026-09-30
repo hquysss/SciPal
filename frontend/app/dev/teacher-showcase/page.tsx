@@ -101,7 +101,7 @@ export default async function TeacherShowcase({ searchParams }: { searchParams: 
             saved: { provider: 'gemini', model: null, daily_limit: 20, enabled: true, updated_at: '2026-09-28T08:00:00Z' },
             effective: { provider: 'gemini', model: 'gemini-3.8-flash', dailyLimit: 20, enabled: true },
             keys: { gemini: true, openai: false },
-            defaults: { gemini: 'gemini-3.8-flash', openai: 'gpt-4o-mini' },
+            defaults: { gemini: 'gemini-3.8-flash', openai: 'gpt-5-mini' },
             usage: { today: 42, week: 318, students_week: 27 },
             translate: { effective: { enabled: true, dailyChars: 200000 }, usage: { today: 12400, week: 86300 } },
           }}

@@ -22,6 +22,10 @@ export type VoiceHandlers = {
   onTranscript: (who: TranscriptLine['who'], text: string) => void;
   onTurnEnd: () => void;
   onError: (reason: 'microphone' | 'connection') => void;
+  /** How loud each side is right now, 0…1 (the student's microphone, the tutor's voice). */
+  onLevel?: (who: TranscriptLine['who'], level: number) => void;
+  /** While true the microphone is not sent (the student muted it). */
+  isMuted?: () => boolean;
 };
 
 const INPUT_RATE = 16000;
@@ -60,6 +64,15 @@ export function toBase64(buffer: ArrayBuffer): string {
   let binary = '';
   for (let i = 0; i < bytes.length; i += 0x8000) binary += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
   return btoa(binary);
+}
+
+/** How loud a chunk of 16-bit PCM is, 0…1 (RMS, lifted so speech fills the range). */
+export function micLevel(buffer: ArrayBuffer): number {
+  const samples = new Int16Array(buffer);
+  if (samples.length === 0) return 0;
+  let sum = 0;
+  for (const v of samples) sum += (v / 0x8000) ** 2;
+  return Math.min(1, Math.sqrt(sum / samples.length) * 5);
 }
 
 /** 16-bit little-endian PCM (base64) as samples in -1…1. */
@@ -116,6 +129,8 @@ export async function startConversation(
   let playhead = 0;
   const playing = new Set<AudioBufferSourceNode>();
   let tutorSpeaking = false;
+  let analyser: AnalyserNode | null = null;
+  let meterFrame = 0;
 
   const later = (ms: number, fn: () => void) => {
     const id = window.setTimeout(() => {
@@ -141,6 +156,7 @@ export async function startConversation(
     if (ended) return;
     ended = true;
     timers.forEach((id) => window.clearTimeout(id));
+    window.cancelAnimationFrame(meterFrame);
     stopPlayback();
     stream?.getTracks().forEach((track) => track.stop());
     void input?.close().catch(() => {});
@@ -158,7 +174,7 @@ export async function startConversation(
     buffer.copyToChannel(samples, 0);
     const source = output.createBufferSource();
     source.buffer = buffer;
-    source.connect(output.destination);
+    source.connect(analyser ?? output.destination);
     playhead = Math.max(playhead, output.currentTime);
     source.start(playhead);
     playhead += buffer.duration;
@@ -272,6 +288,22 @@ export async function startConversation(
   }
   input = new AudioContext();
   output = new AudioContext({ sampleRate: OUTPUT_RATE });
+  // The tutor's voice passes through a meter on its way out, read once a frame while it plays.
+  analyser = output.createAnalyser();
+  analyser.fftSize = 512;
+  analyser.connect(output.destination);
+  const wave = new Uint8Array(analyser.fftSize);
+  const meter = () => {
+    if (ended || !analyser) return;
+    if (playing.size > 0) {
+      analyser.getByteTimeDomainData(wave);
+      let sum = 0;
+      for (const v of wave) sum += ((v - 128) / 128) ** 2;
+      handlers.onLevel?.('tutor', Math.min(1, Math.sqrt(sum / wave.length) * 4));
+    }
+    meterFrame = window.requestAnimationFrame(meter);
+  };
+  meterFrame = window.requestAnimationFrame(meter);
   const moduleUrl = URL.createObjectURL(new Blob([CAPTURE_WORKLET], { type: 'text/javascript' }));
   try {
     await input.audioWorklet.addModule(moduleUrl);
@@ -282,6 +314,11 @@ export async function startConversation(
   input.createMediaStreamSource(stream).connect(capture);
   // The microphone always feeds the live segment.
   capture.port.onmessage = (event: MessageEvent<ArrayBuffer>) => {
+    if (handlers.isMuted?.()) {
+      handlers.onLevel?.('student', 0);
+      return;
+    }
+    handlers.onLevel?.('student', micLevel(event.data));
     if (current?.readyState !== WebSocket.OPEN) return;
     current.send(JSON.stringify({ realtimeInput: { audio: { mimeType: `audio/pcm;rate=${INPUT_RATE}`, data: toBase64(event.data) } } }));
   };

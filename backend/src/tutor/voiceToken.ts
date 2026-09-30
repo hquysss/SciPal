@@ -3,6 +3,8 @@
 // instruction; the browser opens the Live socket with it. The API key never leaves the backend.
 // https://ai.google.dev/gemini-api/docs/ephemeral-tokens
 
+import { DEFAULT_VOICE_NAME } from './settings.js';
+
 /** A conversation runs in segments of this many minutes, each paid for before its token is made. */
 export const VOICE_SEGMENT_MINUTES = 2;
 /** Room for the browser to hand over to the next segment's connection before this one is cut. */
@@ -18,7 +20,7 @@ export class VoiceTokenError extends Error {}
 export type VoiceToken = { token: string; model: string; socketUrl: string; expiresAt: string; maxSeconds: number };
 
 export async function createVoiceToken(
-  opts: { apiKey: string; model: string; systemInstruction: string; language: 'vi' | 'en'; minutes: number; now?: Date },
+  opts: { apiKey: string; model: string; systemInstruction: string; language: 'vi' | 'en'; minutes: number; voiceName?: string; now?: Date },
   fetchImpl: typeof fetch = fetch,
 ): Promise<VoiceToken> {
   const now = opts.now ?? new Date();
@@ -37,7 +39,10 @@ export async function createVoiceToken(
       // session setup the token is locked to. Checked against the live API on 2026-09-30.
       bidiGenerateContentSetup: {
         model: `models/${opts.model}`,
-        generationConfig: { responseModalities: ['AUDIO'] },
+        generationConfig: {
+          responseModalities: ['AUDIO'],
+          speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: opts.voiceName || DEFAULT_VOICE_NAME } } },
+        },
         systemInstruction: { parts: [{ text: opts.systemInstruction }] },
         inputAudioTranscription: {},
         outputAudioTranscription: {},

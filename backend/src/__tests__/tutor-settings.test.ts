@@ -3,18 +3,18 @@ import { createSettingsStore, resolveTranslateSettings, resolveTutorSettings } f
 
 describe('resolveTutorSettings', () => {
   it('uses the admin row first, then the environment, then the defaults', () => {
-    expect(resolveTutorSettings(null, {})).toEqual({ provider: 'gemini', model: 'gemini-3.8-flash', dailyLimit: 30, enabled: true, voiceModel: 'gemini-3.8-live', voiceEnabled: true, reasoningEffort: 'low' });
+    expect(resolveTutorSettings(null, {})).toEqual({ provider: 'gemini', model: 'gemini-3.8-flash', dailyLimit: 30, enabled: true, voiceModel: 'gemini-3.8-live', voiceName: 'Charon', voiceEnabled: true, reasoningEffort: 'low' });
     expect(resolveTutorSettings(null, { AI_PROVIDER: 'openai', TUTOR_MODEL: 'env-model', TUTOR_DAILY_LIMIT: '12' })).toEqual({
-      provider: 'openai', model: 'env-model', dailyLimit: 12, enabled: true, voiceModel: 'gemini-3.8-live', voiceEnabled: true, reasoningEffort: 'low',
+      provider: 'openai', model: 'env-model', dailyLimit: 12, enabled: true, voiceModel: 'gemini-3.8-live', voiceName: 'Charon', voiceEnabled: true, reasoningEffort: 'low',
     });
     expect(
       resolveTutorSettings({ provider: 'gemini', model: 'row-model', daily_limit: 5, enabled: false }, { AI_PROVIDER: 'openai', TUTOR_MODEL: 'env-model', TUTOR_DAILY_LIMIT: '12' }),
-    ).toEqual({ provider: 'gemini', model: 'row-model', dailyLimit: 5, enabled: false, voiceModel: 'gemini-3.8-live', voiceEnabled: true, reasoningEffort: 'low' });
+    ).toEqual({ provider: 'gemini', model: 'row-model', dailyLimit: 5, enabled: false, voiceModel: 'gemini-3.8-live', voiceName: 'Charon', voiceEnabled: true, reasoningEffort: 'low' });
   });
 
   it('falls back field by field, and a provider change without a model takes that provider’s default', () => {
     expect(resolveTutorSettings({ provider: 'openai', model: null, daily_limit: null, enabled: true }, { TUTOR_MODEL: '' })).toEqual({
-      provider: 'openai', model: 'gpt-4o-mini', dailyLimit: 30, enabled: true, voiceModel: 'gemini-3.8-live', voiceEnabled: true, reasoningEffort: 'low',
+      provider: 'openai', model: 'gpt-5-mini', dailyLimit: 30, enabled: true, voiceModel: 'gemini-3.8-live', voiceName: 'Charon', voiceEnabled: true, reasoningEffort: 'low',
     });
     expect(resolveTutorSettings({ provider: null, model: '  ', daily_limit: 0, enabled: true }, { TUTOR_DAILY_LIMIT: 'abc' })).toMatchObject({ model: 'gemini-3.8-flash', dailyLimit: 30 });
   });
@@ -25,6 +25,13 @@ describe('resolveTutorSettings', () => {
       .toMatchObject({ voiceModel: 'row-live', voiceEnabled: false, reasoningEffort: 'high' });
     expect(resolveTutorSettings(row, { TUTOR_VOICE_MODEL: 'env-live' })).toMatchObject({ voiceModel: 'env-live', voiceEnabled: true });
     expect(resolveTutorSettings({ ...row, reasoning_effort: 'max' }, {}).reasoningEffort).toBe('low');
+  });
+
+  it('voice: row, then TUTOR_VOICE_NAME, then Charon; unknown names are ignored', () => {
+    const row = { provider: null, model: null, daily_limit: null, enabled: true };
+    expect(resolveTutorSettings({ ...row, voice_name: 'Orus' }, { TUTOR_VOICE_NAME: 'Fenrir' }).voiceName).toBe('Orus');
+    expect(resolveTutorSettings(row, { TUTOR_VOICE_NAME: 'fenrir' }).voiceName).toBe('Fenrir');
+    expect(resolveTutorSettings({ ...row, voice_name: 'Nobody' }, { TUTOR_VOICE_NAME: 'x' }).voiceName).toBe('Charon');
   });
 });
 

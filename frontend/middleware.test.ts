@@ -93,6 +93,17 @@ describe('guest trials', () => {
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
+  it('asks the backend for a new window once 24 hours have passed since the last one opened', async () => {
+    const until = Date.now() + 30 * 60_000;
+    fetchMock.mockReturnValue(answer(200, { allowed: true, expiresAt: new Date(until).toISOString() }));
+    const opened = Date.now() - 24 * 3_600_000 - 1000;
+    const cookie = `scipal_trial=${await signTrials({ learn: opened + 30 * 60_000 }, SECRET)}`;
+    const response = await visit('/subjects', cookie);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(response.status).toBe(200);
+    expect(await readTrials(decodeURIComponent(trialCookie(response)!), SECRET)).toEqual({ learn: until });
+  });
+
   it('asks the backend again when the cookie was edited or deleted, and follows it', async () => {
     fetchMock.mockReturnValue(answer(200, { allowed: false, expiresAt: new Date(Date.now() - 1000).toISOString() }));
     const forged = `scipal_trial=${await signTrials({ learn: Date.now() + 3_600_000 }, 'forged-secret-of-a-good-length-000000000')}`;
