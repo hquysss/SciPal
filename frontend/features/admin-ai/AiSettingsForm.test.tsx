@@ -38,6 +38,15 @@ describe('AiSettingsForm', () => {
     expect(countRawColors(html).total).toBe(0);
   });
 
+  it('lets the admin pick the Professor’s voice, male voices first, with the default named', () => {
+    const voices = [{ name: 'Charon', gender: 'male' as const }, { name: 'Orus', gender: 'male' as const }, { name: 'Kore', gender: 'female' as const }];
+    const html = renderToStaticMarkup(<AiSettingsForm initial={{ ...snapshot, voices, voiceNameDefault: 'Charon', saved: { ...snapshot.saved!, voice_name: 'Orus' } }} />);
+    expect(control(html, 'Giọng của Giáo sư')).toContain('<select');
+    expect(html).toContain('Mặc định (Charon)');
+    expect(html.indexOf('label="Giọng nam"')).toBeLessThan(html.indexOf('label="Giọng nữ"'));
+    expect(html).toMatch(/<option value="Orus" selected="">Orus<\/option>/);
+  });
+
   it('shows the automatic translation switch, its daily limit and usage', () => {
     const html = renderToStaticMarkup(<AiSettingsForm initial={snapshot} />);
     expect(html).toContain('Dịch tự động cho giáo viên');

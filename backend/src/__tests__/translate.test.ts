@@ -26,7 +26,7 @@ async function build(opts: { user?: unknown; tables?: Record<string, MockBuilder
   const app = Fastify();
   app.decorate('supabase', mockSupabase(opts.tables ?? { translation_usage: ok(null), 'rpc:add_translation_usage': ok(10) }));
   app.decorate('aiProvider', ai);
-  app.decorate('tutorSettings', { get: async () => ({ provider: 'gemini' as const, model: 'gemini-3.8-flash', dailyLimit: 30, enabled: true, voiceModel: 'gemini-3.8-live', voiceEnabled: true, reasoningEffort: 'low' as const }), translate: async () => opts.translate ?? { enabled: true, dailyChars: 200_000 }, invalidate: () => {} });
+  app.decorate('tutorSettings', { get: async () => ({ provider: 'gemini' as const, model: 'gemini-3.8-flash', dailyLimit: 30, enabled: true, voiceModel: 'gemini-3.8-live', voiceName: 'Charon', voiceEnabled: true, reasoningEffort: 'low' as const }), translate: async () => opts.translate ?? { enabled: true, dailyChars: 200_000 }, invalidate: () => {} });
   app.addHook('onRequest', async (req) => { (req as any).user = opts.user ?? teacher; });
   await app.register(translateRoutes);
   await app.ready();

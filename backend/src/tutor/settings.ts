@@ -1,5 +1,5 @@
 // The tutor's settings: the admin's row in `ai_settings` first, then the environment
-// (AI_PROVIDER, TUTOR_MODEL, TUTOR_DAILY_LIMIT, TUTOR_VOICE_MODEL), then the defaults. API keys are never settings:
+// (AI_PROVIDER, TUTOR_MODEL, TUTOR_DAILY_LIMIT, TUTOR_VOICE_MODEL, TUTOR_VOICE_NAME), then the defaults. API keys are never settings:
 // they stay in the environment (invariant 5).
 
 export type TutorProvider = 'gemini' | 'openai';
@@ -14,6 +14,8 @@ export interface TutorSettings {
   enabled: boolean;
   /** The Gemini Live model of spoken sessions (always Gemini, whatever the text provider). */
   voiceModel: string;
+  /** The prebuilt Gemini voice the Professor speaks with. */
+  voiceName: string;
   /** Spoken sessions on or off, apart from the tutor itself. */
   voiceEnabled: boolean;
   reasoningEffort: ReasoningEffort;
@@ -28,6 +30,7 @@ export interface AiSettingsRow {
   translate_enabled?: boolean | null;
   translate_daily_chars?: number | null;
   voice_model?: string | null;
+  voice_name?: string | null;
   voice_enabled?: boolean | null;
   reasoning_effort?: string | null;
 }
@@ -46,6 +49,28 @@ type Env = Record<string, string | undefined>;
 
 export const DEFAULT_MODELS: Record<TutorProvider, string> = { gemini: 'gemini-3.8-flash', openai: 'gpt-4o-mini' };
 export const DEFAULT_VOICE_MODEL = 'gemini-3.8-live';
+/**
+ * The Gemini prebuilt voices an admin may pick for the Professor. He is "thầy", so a male voice is
+ * the default (the API's own default is female).
+ */
+export const VOICES = [
+  { name: 'Charon', gender: 'male' },
+  { name: 'Orus', gender: 'male' },
+  { name: 'Fenrir', gender: 'male' },
+  { name: 'Puck', gender: 'male' },
+  { name: 'Iapetus', gender: 'male' },
+  { name: 'Algieba', gender: 'male' },
+  { name: 'Alnilam', gender: 'male' },
+  { name: 'Kore', gender: 'female' },
+  { name: 'Aoede', gender: 'female' },
+  { name: 'Leda', gender: 'female' },
+  { name: 'Zephyr', gender: 'female' },
+] as const;
+export const DEFAULT_VOICE_NAME = 'Charon';
+const asVoice = (value: string | null | undefined): string | null => {
+  const v = value?.trim().toLowerCase();
+  return VOICES.find((voice) => voice.name.toLowerCase() === v)?.name ?? null;
+};
 export const DEFAULT_DAILY_LIMIT = 30;
 export const DAILY_LIMIT_MAX = 200;
 const CACHE_MS = 60_000;
@@ -71,6 +96,7 @@ export function resolveTutorSettings(row: AiSettingsRow | null, env: Env): Tutor
     dailyLimit: asLimit(row?.daily_limit) ?? asLimit(env.TUTOR_DAILY_LIMIT) ?? DEFAULT_DAILY_LIMIT,
     enabled: row?.enabled ?? true,
     voiceModel: asText(row?.voice_model) ?? asText(env.TUTOR_VOICE_MODEL) ?? DEFAULT_VOICE_MODEL,
+    voiceName: asVoice(row?.voice_name) ?? asVoice(env.TUTOR_VOICE_NAME) ?? DEFAULT_VOICE_NAME,
     voiceEnabled: row?.voice_enabled ?? true,
     // Low keeps answers quick and cheap (it was the only setting before 03/10).
     reasoningEffort: (REASONING_EFFORTS as string[]).includes(row?.reasoning_effort ?? '') ? (row!.reasoning_effort as ReasoningEffort) : 'low',

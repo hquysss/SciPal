@@ -3,16 +3,13 @@
 // instruction; the browser opens the Live socket with it. The API key never leaves the backend.
 // https://ai.google.dev/gemini-api/docs/ephemeral-tokens
 
+import { DEFAULT_VOICE_NAME } from './settings.js';
+
 /** A conversation runs in segments of this many minutes, each paid for before its token is made. */
 export const VOICE_SEGMENT_MINUTES = 2;
 /** Room for the browser to hand over to the next segment's connection before this one is cut. */
 const HANDOFF_SECONDS = 10;
 const START_WITHIN_SECONDS = 60;
-/**
- * The Professor ("thầy") speaks with a male prebuilt voice; TUTOR_VOICE_NAME may pick another
- * (Charon, Orus, Fenrir, Puck… are male; the API default is female).
- */
-export const DEFAULT_VOICE_NAME = 'Charon';
 
 const TOKENS_URL = 'https://generativelanguage.googleapis.com/v1beta/auth_tokens';
 export const LIVE_SOCKET_URL =

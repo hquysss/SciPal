@@ -1,13 +1,13 @@
 import type { FastifyPluginAsync, FastifyReply, FastifyRequest } from 'fastify';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { vietnamDayStart } from '../tutor/limits.js';
-import { DAILY_LIMIT_MAX, DEFAULT_MODELS, DEFAULT_VOICE_MODEL, REASONING_EFFORTS, TRANSLATE_DAILY_CHARS_MAX, TRANSLATE_DAILY_CHARS_MIN, resolveTranslateSettings, resolveTutorSettings, type AiSettingsRow } from '../tutor/settings.js';
+import { DAILY_LIMIT_MAX, DEFAULT_MODELS, DEFAULT_VOICE_MODEL, DEFAULT_VOICE_NAME, REASONING_EFFORTS, VOICES, TRANSLATE_DAILY_CHARS_MAX, TRANSLATE_DAILY_CHARS_MIN, resolveTranslateSettings, resolveTutorSettings, type AiSettingsRow } from '../tutor/settings.js';
 
 // Admin settings of the SciPal Professor (/admin/ai): provider, model, daily limit, on/off, a connection
 // test and usage counts. API keys are never read from or written to the page: only whether each
 // one is set (invariant 5).
 
-const COLUMNS = 'provider, model, daily_limit, enabled, translate_enabled, translate_daily_chars, voice_model, voice_enabled, reasoning_effort, updated_at';
+const COLUMNS = 'provider, model, daily_limit, enabled, translate_enabled, translate_daily_chars, voice_model, voice_name, voice_enabled, reasoning_effort, updated_at';
 const VIETNAM_OFFSET_MS = 7 * 60 * 60 * 1000;
 /** A Vietnam day as YYYY-MM-DD, the key of translation_usage. */
 const vietnamDate = (d: Date) => new Date(vietnamDayStart(d).getTime() + VIETNAM_OFFSET_MS).toISOString().slice(0, 10);
@@ -25,7 +25,7 @@ export async function loadAiSettings(supabase: SupabaseClient | null | undefined
   return (data as AiSettingsRow | null) ?? null;
 }
 
-type Patch = { provider: 'gemini' | 'openai' | null; model: string | null; daily_limit: number | null; enabled: boolean; translate_enabled: boolean; translate_daily_chars: number | null; voice_model: string | null; voice_enabled: boolean; reasoning_effort: string };
+type Patch = { provider: 'gemini' | 'openai' | null; model: string | null; daily_limit: number | null; enabled: boolean; translate_enabled: boolean; translate_daily_chars: number | null; voice_model: string | null; voice_name: string | null; voice_enabled: boolean; reasoning_effort: string };
 
 function parsePatch(body: unknown): Patch | null {
   const b = (body ?? {}) as Record<string, unknown>;
@@ -45,6 +45,8 @@ function parsePatch(body: unknown): Patch | null {
   if (b.voice_model !== null && b.voice_model !== undefined && typeof b.voice_model !== 'string') return null;
   const voiceModel = typeof b.voice_model === 'string' && b.voice_model.trim() ? b.voice_model.trim() : null;
   if (voiceModel !== null && !MODEL.test(voiceModel)) return null;
+  // The voice may be left out (older pages): the environment's, then Charon.
+  if (b.voice_name !== null && b.voice_name !== undefined && !VOICES.some((v) => v.name === b.voice_name)) return null;
   if (b.voice_enabled !== undefined && typeof b.voice_enabled !== 'boolean') return null;
   if (b.reasoning_effort !== undefined && !(REASONING_EFFORTS as unknown[]).includes(b.reasoning_effort)) return null;
   return {
@@ -55,6 +57,7 @@ function parsePatch(body: unknown): Patch | null {
     translate_enabled: (b.translate_enabled as boolean | undefined) ?? true,
     translate_daily_chars: chars as number | null,
     voice_model: voiceModel,
+    voice_name: (b.voice_name as string | null | undefined) ?? null,
     voice_enabled: (b.voice_enabled as boolean | undefined) ?? true,
     reasoning_effort: (b.reasoning_effort as string | undefined) ?? 'low',
   };
@@ -88,6 +91,8 @@ export const aiSettingsRoutes: FastifyPluginAsync = async (app) => {
       keys: { gemini: Boolean(process.env.GEMINI_API_KEY), openai: Boolean(process.env.OPENAI_API_KEY) },
       defaults: DEFAULT_MODELS,
       voiceDefault: DEFAULT_VOICE_MODEL,
+      voices: VOICES,
+      voiceNameDefault: DEFAULT_VOICE_NAME,
       usage: {
         today: today.count ?? 0,
         week: week.count ?? 0,

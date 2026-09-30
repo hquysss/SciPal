@@ -4,13 +4,16 @@ export type AiProvider = 'gemini' | 'openai';
 export type ReasoningEffort = 'low' | 'medium' | 'high';
 
 export interface AiSettingsSnapshot {
-  saved: { provider: AiProvider | null; model: string | null; daily_limit: number | null; enabled: boolean; translate_enabled?: boolean; translate_daily_chars?: number | null; voice_model?: string | null; voice_enabled?: boolean; reasoning_effort?: ReasoningEffort; updated_at: string } | null;
-  effective: { provider: AiProvider; model: string; dailyLimit: number; enabled: boolean; voiceModel?: string; voiceEnabled?: boolean; reasoningEffort?: ReasoningEffort };
+  saved: { provider: AiProvider | null; model: string | null; daily_limit: number | null; enabled: boolean; translate_enabled?: boolean; translate_daily_chars?: number | null; voice_model?: string | null; voice_name?: string | null; voice_enabled?: boolean; reasoning_effort?: ReasoningEffort; updated_at: string } | null;
+  effective: { provider: AiProvider; model: string; dailyLimit: number; enabled: boolean; voiceModel?: string; voiceName?: string; voiceEnabled?: boolean; reasoningEffort?: ReasoningEffort };
   /** Whether each key is set on the backend; the values never leave it. */
   keys: Record<AiProvider, boolean>;
   defaults: Record<AiProvider, string>;
   /** The Live model used when none is set. */
   voiceDefault?: string;
+  /** The voices the Professor may speak with, and the one used when none is picked. */
+  voices?: Array<{ name: string; gender: 'male' | 'female' }>;
+  voiceNameDefault?: string;
   usage: { today: number; week: number; students_week: number };
   /** Automatic translation for authors: settings in force and characters translated. */
   translate: { effective: { enabled: boolean; dailyChars: number }; usage: { today: number; week: number } };
@@ -24,6 +27,7 @@ export interface AiSettingsInput {
   translate_enabled: boolean;
   translate_daily_chars: number;
   voice_model: string | null;
+  voice_name: string | null;
   voice_enabled: boolean;
   reasoning_effort: ReasoningEffort;
 }

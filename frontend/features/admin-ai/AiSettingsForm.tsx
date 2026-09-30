@@ -17,7 +17,7 @@ const PROVIDERS: Array<{ id: AiProvider; name: string; env: string }> = [
 
 type Form = {
   provider: AiProvider; model: string; limit: string; enabled: boolean; translateEnabled: boolean; translateLimit: string;
-  effort: ReasoningEffort; voiceModel: string; voiceEnabled: boolean;
+  effort: ReasoningEffort; voiceModel: string; voiceName: string; voiceEnabled: boolean;
 };
 const EFFORTS: Array<{ id: ReasoningEffort; label: Bilingual; hint: Bilingual }> = [
   { id: 'low', label: { en: 'Low', vi: 'Thấp' }, hint: { en: 'Fastest, cheapest', vi: 'Nhanh, rẻ nhất' } },
@@ -37,6 +37,7 @@ const formOf = (s: AiSettingsSnapshot): Form => ({
   translateLimit: String(s.translate.effective.dailyChars),
   effort: s.effective.reasoningEffort ?? 'low',
   voiceModel: s.saved?.voice_model ?? '',
+  voiceName: s.saved?.voice_name ?? '',
   voiceEnabled: s.effective.voiceEnabled ?? true,
 });
 
@@ -70,15 +71,17 @@ export function AiSettingsForm({ initial }: { initial?: AiSettingsSnapshot }) {
   const charsValid = Number.isInteger(chars) && chars >= CHARS_MIN && chars <= CHARS_MAX;
   const modelValid = form.model.trim() === '' || MODEL_RE.test(form.model.trim());
   const voiceModelValid = form.voiceModel.trim() === '' || MODEL_RE.test(form.voiceModel.trim());
+  const voices = snapshot.voices ?? [];
+  const voiceNameDefault = snapshot.voiceNameDefault ?? 'Charon';
   const chosen = PROVIDERS.find((p) => p.id === form.provider)!;
   const saved = formOf(snapshot);
-  const dirty = form.provider !== saved.provider || form.model.trim() !== saved.model || form.limit !== saved.limit || form.enabled !== saved.enabled || form.translateEnabled !== saved.translateEnabled || form.translateLimit !== saved.translateLimit || form.effort !== saved.effort || form.voiceModel.trim() !== saved.voiceModel || form.voiceEnabled !== saved.voiceEnabled;
+  const dirty = form.provider !== saved.provider || form.model.trim() !== saved.model || form.limit !== saved.limit || form.enabled !== saved.enabled || form.translateEnabled !== saved.translateEnabled || form.translateLimit !== saved.translateLimit || form.effort !== saved.effort || form.voiceModel.trim() !== saved.voiceModel || form.voiceName !== saved.voiceName || form.voiceEnabled !== saved.voiceEnabled;
 
   const save = async () => {
     setBusy('save');
     setMessage(null);
     setTest(null);
-    const res = await saveAiSettings({ provider: form.provider, model: form.model.trim() || null, daily_limit: limit, enabled: form.enabled, translate_enabled: form.translateEnabled, translate_daily_chars: chars, reasoning_effort: form.effort, voice_model: form.voiceModel.trim() || null, voice_enabled: form.voiceEnabled });
+    const res = await saveAiSettings({ provider: form.provider, model: form.model.trim() || null, daily_limit: limit, enabled: form.enabled, translate_enabled: form.translateEnabled, translate_daily_chars: chars, reasoning_effort: form.effort, voice_model: form.voiceModel.trim() || null, voice_name: form.voiceName || null, voice_enabled: form.voiceEnabled });
     setBusy(null);
     if (!res.ok) return setMessage({ text: res.error, tone: 'danger' });
     setSnapshot(res.data);
@@ -240,6 +243,31 @@ export function AiSettingsForm({ initial }: { initial?: AiSettingsSnapshot }) {
                     vi: `Để trống sẽ dùng ${snapshot.voiceDefault ?? 'gemini-3.8-live'}. Cần GEMINI_API_KEY. Số phút mỗi học sinh chỉnh theo gói ở trang Hạn mức & giá gói.`,
                   })
                 : t({ en: 'Letters, digits and . _ : / - only.', vi: 'Chỉ gồm chữ, số và . _ : / -' })}
+            </p>
+          </div>
+          <div className="flex flex-col gap-1">
+            <label htmlFor={`${ids}-voice-name`} className="text-sm font-semibold text-ink">{t({ en: 'Professor’s voice', vi: 'Giọng của Giáo sư' })}</label>
+            <select
+              id={`${ids}-voice-name`}
+              value={form.voiceName}
+              aria-describedby={`${ids}-voice-name-hint`}
+              onChange={(e) => setForm({ ...form, voiceName: e.target.value })}
+              className={`${FIELD} text-sm`}
+            >
+              <option value="">{t({ en: `Default (${voiceNameDefault})`, vi: `Mặc định (${voiceNameDefault})` })}</option>
+              {(['male', 'female'] as const).map((gender) => (
+                <optgroup key={gender} label={gender === 'male' ? t({ en: 'Male voices', vi: 'Giọng nam' }) : t({ en: 'Female voices', vi: 'Giọng nữ' })}>
+                  {voices.filter((v) => v.gender === gender).map((v) => (
+                    <option key={v.name} value={v.name}>{v.name}</option>
+                  ))}
+                </optgroup>
+              ))}
+            </select>
+            <p id={`${ids}-voice-name-hint`} className="text-xs text-ink-muted">
+              {t({
+                en: 'Applies to the next conversation. The Professor is “thầy”, so a male voice fits best.',
+                vi: 'Áp dụng từ cuộc nói chuyện tiếp theo. Giáo sư xưng “thầy”, nên hợp nhất là giọng nam.',
+              })}
             </p>
           </div>
         </fieldset>
