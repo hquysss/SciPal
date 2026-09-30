@@ -14,7 +14,7 @@ describe('resolveTutorSettings', () => {
 
   it('falls back field by field, and a provider change without a model takes that provider’s default', () => {
     expect(resolveTutorSettings({ provider: 'openai', model: null, daily_limit: null, enabled: true }, { TUTOR_MODEL: '' })).toEqual({
-      provider: 'openai', model: 'gpt-4o-mini', dailyLimit: 30, enabled: true, voiceModel: 'gemini-3.8-live', voiceName: 'Charon', voiceEnabled: true, reasoningEffort: 'low',
+      provider: 'openai', model: 'gpt-5-mini', dailyLimit: 30, enabled: true, voiceModel: 'gemini-3.8-live', voiceName: 'Charon', voiceEnabled: true, reasoningEffort: 'low',
     });
     expect(resolveTutorSettings({ provider: null, model: '  ', daily_limit: 0, enabled: true }, { TUTOR_DAILY_LIMIT: 'abc' })).toMatchObject({ model: 'gemini-3.8-flash', dailyLimit: 30 });
   });

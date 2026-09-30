@@ -47,7 +47,9 @@ export const TRANSLATE_DAILY_CHARS_MAX = 5_000_000;
 
 type Env = Record<string, string | undefined>;
 
-export const DEFAULT_MODELS: Record<TutorProvider, string> = { gemini: 'gemini-3.8-flash', openai: 'gpt-4o-mini' };
+// The OpenAI default is a reasoning model, so the admin's thinking level applies to it too
+// (gpt-4o-mini ignores reasoning_effort). Voice chat is Gemini Live whatever the chat provider.
+export const DEFAULT_MODELS: Record<TutorProvider, string> = { gemini: 'gemini-3.8-flash', openai: 'gpt-5-mini' };
 export const DEFAULT_VOICE_MODEL = 'gemini-3.8-live';
 /**
  * The Gemini prebuilt voices an admin may pick for the Professor. He is "thầy", so a male voice is

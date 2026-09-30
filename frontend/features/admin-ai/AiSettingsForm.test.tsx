@@ -11,7 +11,7 @@ const snapshot: AiSettingsSnapshot = {
   saved: { provider: 'gemini', model: null, daily_limit: 20, enabled: true, updated_at: '2026-09-28T08:00:00Z' },
   effective: { provider: 'gemini', model: 'gemini-3.8-flash', dailyLimit: 20, enabled: true },
   keys: { gemini: true, openai: false },
-  defaults: { gemini: 'gemini-3.8-flash', openai: 'gpt-4o-mini' },
+  defaults: { gemini: 'gemini-3.8-flash', openai: 'gpt-5-mini' },
   usage: { today: 4, week: 25, students_week: 2 },
   translate: { effective: { enabled: true, dailyChars: 200000 }, usage: { today: 1200, week: 45000 } },
 };
@@ -65,5 +65,13 @@ describe('AiSettingsForm', () => {
   it('warns when the chosen provider has no key', () => {
     const html = renderToStaticMarkup(<AiSettingsForm initial={{ ...snapshot, saved: { ...snapshot.saved!, provider: 'openai' }, effective: { ...snapshot.effective, provider: 'openai', model: 'gpt-4o-mini' } }} />);
     expect(html).toContain('OPENAI_API_KEY');
+  });
+
+  it('says when an OpenAI model ignores the thinking level, and that voice stays on Gemini', () => {
+    const openai = (model: string | null) => ({ ...snapshot, saved: { ...snapshot.saved!, provider: 'openai' as const, model }, effective: { ...snapshot.effective, provider: 'openai' as const, model: model ?? 'gpt-5-mini' } });
+    expect(renderToStaticMarkup(<AiSettingsForm initial={openai('gpt-4o-mini')} />)).toContain('không nhận mức suy nghĩ');
+    const reasoning = renderToStaticMarkup(<AiSettingsForm initial={openai(null)} />);
+    expect(reasoning).not.toContain('không nhận mức suy nghĩ');
+    expect(reasoning).toContain('Luôn chạy bằng Gemini Live');
   });
 });

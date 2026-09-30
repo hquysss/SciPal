@@ -52,10 +52,10 @@ describe('AI settings routes', () => {
     const res = await app.inject({ method: 'GET', url: '/api/admin/ai-settings' });
     expect(res.statusCode).toBe(200);
     const body = res.json();
-    expect(body.effective).toEqual({ provider: 'openai', model: 'gpt-4o-mini', dailyLimit: 12, enabled: true, voiceModel: 'gemini-3.8-live', voiceName: 'Charon', voiceEnabled: true, reasoningEffort: 'low' });
+    expect(body.effective).toEqual({ provider: 'openai', model: 'gpt-5-mini', dailyLimit: 12, enabled: true, voiceModel: 'gemini-3.8-live', voiceName: 'Charon', voiceEnabled: true, reasoningEffort: 'low' });
     expect(body.keys).toEqual({ gemini: true, openai: false });
     expect(body.usage).toEqual({ today: 4, week: 25, students_week: 2 });
-    expect(body.defaults).toEqual({ gemini: 'gemini-3.8-flash', openai: 'gpt-4o-mini' });
+    expect(body.defaults).toEqual({ gemini: 'gemini-3.8-flash', openai: 'gpt-5-mini' });
     expect(res.body).not.toContain('secret-gemini');
     expect(body.translate).toEqual({ effective: { enabled: true, dailyChars: 200_000 }, usage: { today: 0, week: 420 } });
     await app.close();

@@ -104,7 +104,7 @@ describe('provider settings', () => {
       expect(providerSettings()).toEqual({ apiKey: 'g-key', baseURL: 'https://generativelanguage.googleapis.com/v1beta/openai/', model: 'gemini-3.8-flash' });
     });
     await withEnv({ AI_PROVIDER: ' OpenAI ', TUTOR_MODEL: undefined, GEMINI_API_KEY: 'g-key', OPENAI_API_KEY: 'o-key' }, () => {
-      expect(providerSettings()).toEqual({ apiKey: 'o-key', baseURL: undefined, model: 'gpt-4o-mini' });
+      expect(providerSettings()).toEqual({ apiKey: 'o-key', baseURL: undefined, model: 'gpt-5-mini' });
     });
   });
 

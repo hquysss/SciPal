@@ -25,6 +25,8 @@ const EFFORTS: Array<{ id: ReasoningEffort; label: Bilingual; hint: Bilingual }>
   { id: 'high', label: { en: 'High', vi: 'Cao' }, hint: { en: 'Deeper, slower, costs more', vi: 'Kỹ hơn, chậm và tốn hơn' } },
 ];
 const MODEL_RE = /^[A-Za-z0-9._:/-]{1,100}$/;
+/** OpenAI models that take a thinking level (backend isOpenAiReasoningModel). */
+const OPENAI_REASONING_RE = /^(o\d|gpt-5)/i;
 const CHARS_MIN = 1000;
 const CHARS_MAX = 5_000_000;
 const number = (n: number) => n.toLocaleString('vi-VN');
@@ -74,6 +76,8 @@ export function AiSettingsForm({ initial }: { initial?: AiSettingsSnapshot }) {
   const voices = snapshot.voices ?? [];
   const voiceNameDefault = snapshot.voiceNameDefault ?? 'Charon';
   const chosen = PROVIDERS.find((p) => p.id === form.provider)!;
+  const chatModel = form.model.trim() || snapshot.defaults[form.provider];
+  const thinkingIgnored = form.provider === 'openai' && !OPENAI_REASONING_RE.test(chatModel);
   const saved = formOf(snapshot);
   const dirty = form.provider !== saved.provider || form.model.trim() !== saved.model || form.limit !== saved.limit || form.enabled !== saved.enabled || form.translateEnabled !== saved.translateEnabled || form.translateLimit !== saved.translateLimit || form.effort !== saved.effort || form.voiceModel.trim() !== saved.voiceModel || form.voiceName !== saved.voiceName || form.voiceEnabled !== saved.voiceEnabled;
 
@@ -212,14 +216,28 @@ export function AiSettingsForm({ initial }: { initial?: AiSettingsSnapshot }) {
           </div>
           <p className="text-xs text-ink-muted">
             {t({
-              en: 'Applies to the professor, translation and lesson AI. Gemini always uses it; OpenAI only on reasoning models (o1, o3, o4-mini, gpt-5…), not on gpt-4o-mini.',
-              vi: 'Áp dụng cho Giáo sư SciPal, dịch và AI soạn bài. Gemini luôn dùng; OpenAI chỉ dùng với model suy luận (o1, o3, o4-mini, gpt-5…), không dùng với gpt-4o-mini.',
+              en: 'Applies to the Professor’s chat, translation and lesson AI, with Gemini and with OpenAI reasoning models (gpt-5…, o3, o4-mini). Voice chat is not affected.',
+              vi: 'Áp dụng cho chat của Giáo sư SciPal, dịch và AI soạn bài, với Gemini và với model suy luận của OpenAI (gpt-5…, o3, o4-mini). Không ảnh hưởng nói chuyện bằng giọng nói.',
             })}
           </p>
+          {thinkingIgnored && (
+            <Alert tone="warning">
+              {t({
+                en: `${chatModel} does not take a thinking level, so this setting does nothing with it. Pick a reasoning model such as gpt-5-mini to use it.`,
+                vi: `${chatModel} không nhận mức suy nghĩ nên cài đặt này không có tác dụng. Chọn model suy luận như gpt-5-mini để dùng được.`,
+              })}
+            </Alert>
+          )}
         </fieldset>
 
         <fieldset className="flex flex-col gap-3 rounded-2xl border border-line bg-surface p-4">
           <legend className="px-1 text-sm font-semibold text-ink">{t({ en: 'Voice chat', vi: 'Nói chuyện bằng giọng nói' })}</legend>
+          <p className="text-xs text-ink-muted">
+            {t({
+              en: 'Always runs on Gemini Live, even when the chat uses OpenAI.',
+              vi: 'Luôn chạy bằng Gemini Live, kể cả khi chat dùng OpenAI.',
+            })}
+          </p>
           <label className="flex min-h-11 cursor-pointer items-center gap-3">
             <input type="checkbox" checked={form.voiceEnabled} onChange={(e) => setForm({ ...form, voiceEnabled: e.target.checked })} className="h-5 w-5 accent-[var(--action)]" />
             <span className="text-base text-ink">{t({ en: 'Voice chat on for students', vi: 'Bật nói chuyện cho học sinh' })}</span>
