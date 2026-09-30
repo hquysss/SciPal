@@ -1,6 +1,23 @@
 .header {
-  border-bottom: 1px solid color-mix(in srgb, var(--nav-ink) 22%, transparent);
-  box-shadow: 0 8px 24px -20px color-mix(in srgb, var(--ink) 42%, transparent);
+  padding: 0.625rem 0.75rem 0;
+  pointer-events: none;
+}
+
+/* A floating bar: the level's nav colour, frosted, detached from the page edges. */
+.bar {
+  pointer-events: auto;
+  border: 1px solid color-mix(in srgb, var(--nav-ink) 16%, transparent);
+  border-radius: 1.25rem;
+  background: color-mix(in srgb, var(--nav) 86%, transparent);
+  backdrop-filter: blur(14px) saturate(1.4);
+  -webkit-backdrop-filter: blur(14px) saturate(1.4);
+  box-shadow:
+    0 12px 32px -18px color-mix(in srgb, var(--ink) 55%, transparent),
+    inset 0 1px 0 color-mix(in srgb, var(--nav-ink) 14%, transparent);
+}
+
+@supports not (backdrop-filter: blur(1px)) {
+  .bar { background: var(--nav); }
 }
 
 .navLink {
@@ -38,22 +55,11 @@
   font-weight: 700;
 }
 
-/* The current section is marked by a tab edge on the bar's bottom line, not a boxed button. */
-.navLink[aria-current='page']::after,
-.navLink[data-active]::after {
-  content: '';
-  position: absolute;
-  inset-inline: 0.875rem;
-  bottom: -0.75rem;
-  height: 3px;
-  border-radius: 3px 3px 0 0;
-  background: var(--nav-ink);
-  animation: tab-mark 420ms cubic-bezier(0.16, 1, 0.3, 1) both;
-}
-
-@keyframes tab-mark {
-  from { opacity: 0; scale: 0 1; }
-  to { opacity: 1; scale: 1 1; }
+/* The current section is a filled pill. */
+.navLink[aria-current='page'],
+.navLink[data-active] {
+  background: color-mix(in srgb, var(--nav-ink) 18%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--nav-ink) 22%, transparent);
 }
 
 .divider {
@@ -136,14 +142,41 @@
   transform: translateY(0);
 }
 
+.dropdownEnd {
+  left: auto;
+  right: 0;
+  width: 15rem;
+}
+
+.menuItem {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  gap: 0.625rem;
+  border-radius: 0.5rem;
+  padding: 0.625rem 0.75rem;
+  color: var(--ink);
+  font-size: 0.875rem;
+  font-weight: 600;
+  text-align: left;
+  transition: background-color 160ms ease-out;
+}
+.menuItem:hover,
+.menuItem[aria-current='page'] { background: var(--surface-sunken); }
+.menuItem:focus-visible { outline: 2px solid var(--focus); outline-offset: -2px; }
+.menuItem:disabled { cursor: wait; opacity: 0.6; }
+.menuDanger { color: var(--danger); }
+
 .mobilePanel {
   position: absolute;
-  inset-inline: 0;
+  inset-inline: 0.75rem;
+  margin-top: 0.5rem;
+  border-radius: 1.25rem;
   top: 100%;
   z-index: 40;
   max-height: calc(100dvh - 4rem);
   overflow-y: auto;
-  border-bottom: 1px solid var(--line);
+  border: 1px solid var(--line);
   padding: 1rem;
   background: var(--surface);
   color: var(--ink);
@@ -164,7 +197,6 @@
 
 @media (prefers-reduced-motion: reduce) {
   .navLink, .ghostButton, .dropdown, .mobilePanel { transition: none; }
-  .navLink::after { animation: none; }
 }
 
 /* ---------- Katha motion: a short staggered rise on arrival, gloss on the primary pill ---------- */
@@ -298,6 +330,8 @@
   }
 }
 
-.account:hover { background: color-mix(in srgb, var(--nav-ink) 12%, transparent); }
+.account { padding: 0.25rem 0.625rem 0.25rem 0.25rem; }
+.account:hover,
+.account[aria-expanded='true'] { background: color-mix(in srgb, var(--nav-ink) 12%, transparent); }
 .account:focus-visible { outline: 2px solid var(--nav-ink); outline-offset: 2px; }
 .account[aria-current='page'] .avatar { box-shadow: 0 0 0 2px var(--nav-ink); }
