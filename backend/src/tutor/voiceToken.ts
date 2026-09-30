@@ -3,8 +3,10 @@
 // instruction; the browser opens the Live socket with it. The API key never leaves the backend.
 // https://ai.google.dev/gemini-api/docs/ephemeral-tokens
 
-/** Lengths a student may pick for a session, in minutes; the token expires a minute after. */
-export const VOICE_SESSION_MINUTES = [3, 5, 10] as const;
+/** A conversation runs in segments of this many minutes, each paid for before its token is made. */
+export const VOICE_SEGMENT_MINUTES = 2;
+/** Room for the browser to hand over to the next segment's connection before this one is cut. */
+const HANDOFF_SECONDS = 10;
 const START_WITHIN_SECONDS = 60;
 
 const TOKENS_URL = 'https://generativelanguage.googleapis.com/v1beta/auth_tokens';
@@ -21,7 +23,9 @@ export async function createVoiceToken(
 ): Promise<VoiceToken> {
   const now = opts.now ?? new Date();
   const maxSeconds = opts.minutes * 60;
-  const expiresAt = new Date(now.getTime() + (maxSeconds + 60) * 1000);
+  // An expired token closes the open socket (checked against the live API), so minutes cannot be
+  // stretched past what was paid.
+  const expiresAt = new Date(now.getTime() + (maxSeconds + HANDOFF_SECONDS) * 1000);
   const res = await fetchImpl(TOKENS_URL, {
     method: 'POST',
     headers: { 'x-goog-api-key': opts.apiKey, 'Content-Type': 'application/json' },
@@ -37,6 +41,9 @@ export async function createVoiceToken(
         systemInstruction: { parts: [{ text: opts.systemInstruction }] },
         inputAudioTranscription: {},
         outputAudioTranscription: {},
+        // Each segment is a new session: the browser replays the conversation so far as its first
+        // message, so the tutor remembers what was said before.
+        historyConfig: { initialHistoryInClientContent: true },
       },
     }),
   });

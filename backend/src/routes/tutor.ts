@@ -5,7 +5,7 @@ import type { AIProvider } from '../providers/ai.js';
 import { CONTEXT_MESSAGES, MESSAGE_MAX, PAGE_SIZE, TITLE_LENGTH, vietnamDayStart } from '../tutor/limits.js';
 import { resolveTutorSettings, type SettingsStore } from '../tutor/settings.js';
 import { buildSystemPrompt, lessonContext, type EducationLevel } from '../tutor/systemPrompt.js';
-import { createVoiceToken, VOICE_SESSION_MINUTES } from '../tutor/voiceToken.js';
+import { createVoiceToken, VOICE_SEGMENT_MINUTES } from '../tutor/voiceToken.js';
 
 declare module 'fastify' {
   interface FastifyInstance {
@@ -91,16 +91,16 @@ export const tutorRoutes: FastifyPluginAsync = async (app) => {
     return reply.code(204).send();
   });
 
-  // A spoken session (Gemini Live). The student picks 3, 5 or 10 minutes; they come off the plan's
-  // voice minutes when the session starts (fewer if fewer are left), since the browser talks to
-  // Gemini directly and the backend never sees the end. The browser gets a one-use token locked
-  // to the tutor's instruction and that length, never the key.
+  // One segment of a spoken conversation (Gemini Live). The student talks as long as they like: the
+  // browser asks for the next segment shortly before this one ends, and each segment's minutes come
+  // off the plan's voice minutes before its token is made (the last one shorter if fewer are left).
+  // The token expires with the segment, so no minute goes unpaid; the browser gets it, never the key.
   app.post('/api/tutor/voice', async (request, reply) => {
     const supabase = app.supabase!;
     const uid = userId(request)!;
-    const body = (request.body ?? {}) as { lesson_id?: unknown; language?: unknown; minutes?: unknown };
+    const body = (request.body ?? {}) as { lesson_id?: unknown; language?: unknown };
     const language = body.language === 'en' ? 'en' : 'vi';
-    const asked = (VOICE_SESSION_MINUTES as readonly unknown[]).includes(body.minutes) ? (body.minutes as number) : 5;
+    const asked = VOICE_SEGMENT_MINUTES;
     const settings = app.tutorSettings ? await app.tutorSettings.get() : resolveTutorSettings(null, process.env);
     if (!settings.enabled) {
       return reply.code(503).send(msg('Gia sư đang tạm nghỉ. Em quay lại sau nhé.', 'The tutor is taking a break. Please come back later.'));

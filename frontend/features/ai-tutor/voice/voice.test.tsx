@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from 'vitest';
 
 vi.mock('@scipal/hooks', () => ({ useLanguage: () => ({ lang: 'vi', t: (c: { vi: string }) => c.vi }) }));
 
-import { pcmToFloats, toBase64 } from './liveSession';
+import { historyTurns, pcmToFloats, toBase64 } from './liveSession';
 import { addWords, VoiceChat } from './VoiceChat';
 import { TutorChatView } from '../TutorChat';
 
@@ -37,11 +37,20 @@ describe('TutorChatView microphone', () => {
   });
 });
 
+describe('voice history', () => {
+  it('replays the conversation to a new part as Live turns, skipping empty lines', () => {
+    expect(historyTurns([{ who: 'student', text: ' Vòng lặp? ' }, { who: 'tutor', text: '' }, { who: 'tutor', text: 'Em thử nhé.' }])).toEqual([
+      { role: 'user', parts: [{ text: 'Vòng lặp?' }] },
+      { role: 'model', parts: [{ text: 'Em thử nhé.' }] },
+    ]);
+  });
+});
+
 describe('VoiceChat', () => {
-  it('asks how long to talk before starting anything', () => {
+  it('starts straight away, with no length to pick', () => {
     const html = renderToStaticMarkup(<VoiceChat onClose={() => {}} />);
-    for (const m of [3, 5, 10]) expect(html).toContain(`${m} phút`);
-    expect(html).toContain('trừ ngay khi bắt đầu');
-    expect(html).not.toContain('Đang kết nối');
+    expect(html).toContain('Đang kết nối');
+    expect(html).not.toContain('3 phút');
+    expect(html).toContain('từng 2 phút');
   });
 });

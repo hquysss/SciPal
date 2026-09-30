@@ -41,7 +41,7 @@ describe('voice token', () => {
     const fetchImpl = tokenReply();
     const now = new Date('2026-10-01T00:00:00Z');
     const voice = await createVoiceToken({ apiKey: 'k', model: 'gemini-3.8-live', systemInstruction: 'Be a tutor', language: 'vi', minutes: 10, now }, fetchImpl as never);
-    expect(voice).toEqual({ token: 'auth_tokens/abc', model: 'gemini-3.8-live', socketUrl: LIVE_SOCKET_URL, expiresAt: '2026-10-01T00:11:00.000Z', maxSeconds: 600 });
+    expect(voice).toEqual({ token: 'auth_tokens/abc', model: 'gemini-3.8-live', socketUrl: LIVE_SOCKET_URL, expiresAt: '2026-10-01T00:10:10.000Z', maxSeconds: 600 });
     const [, init] = fetchImpl.mock.calls[0] as unknown as [string, RequestInit];
     expect((init.headers as Record<string, string>)['x-goog-api-key']).toBe('k');
     const sent = JSON.parse(String(init.body));
@@ -52,6 +52,7 @@ describe('voice token', () => {
         generationConfig: { responseModalities: ['AUDIO'] },
         systemInstruction: { parts: [{ text: 'Be a tutor' }] },
         inputAudioTranscription: {},
+        historyConfig: { initialHistoryInClientContent: true },
       },
     });
   });
@@ -68,29 +69,29 @@ describe('voice token', () => {
 });
 
 describe('POST /api/tutor/voice', () => {
-  it('takes the picked minutes from the voice quota and hands back the token, never the key', async () => {
+  it('pays for one two-minute segment from the voice quota and hands back the token, never the key', async () => {
     vi.stubGlobal('fetch', tokenReply());
     const app = await build({ profiles: ok(null), 'rpc:billing_get_effective_quotas': voiceQuota(30, 10), 'rpc:billing_reserve_quota': reservation(15), 'rpc:billing_settle_quota': ok(true) });
-    const res = await app.inject({ method: 'POST', url: '/api/tutor/voice', payload: { language: 'vi', minutes: 5 } });
+    const res = await app.inject({ method: 'POST', url: '/api/tutor/voice', payload: { language: 'vi' } });
     expect(res.statusCode).toBe(200);
-    expect(res.json()).toMatchObject({ token: 'auth_tokens/abc', maxSeconds: 300, remaining: 15, period: 'month' });
+    expect(res.json()).toMatchObject({ token: 'auth_tokens/abc', maxSeconds: 120, remaining: 15, period: 'month' });
     expect(res.body).not.toContain('server-key');
-    expect(units()).toMatchObject({ p_metric: 'voice_minutes', p_units: 5 });
+    expect(units()).toMatchObject({ p_metric: 'voice_minutes', p_units: 2 });
     expect(names()).toEqual(['billing_get_effective_quotas', 'billing_reserve_quota', 'billing_settle_quota:commit']);
     await app.close();
   });
 
-  it('shortens the session to the minutes left, and refuses when none are', async () => {
+  it('makes the last segment as long as the minute left, and refuses when none are', async () => {
     vi.stubGlobal('fetch', tokenReply());
-    const app = await build({ profiles: ok(null), 'rpc:billing_get_effective_quotas': voiceQuota(10, 8), 'rpc:billing_reserve_quota': reservation(0), 'rpc:billing_settle_quota': ok(true) });
-    const res = await app.inject({ method: 'POST', url: '/api/tutor/voice', payload: { minutes: 10 } });
-    expect(res.json().maxSeconds).toBe(120);
-    expect(units()?.p_units).toBe(2);
+    const app = await build({ profiles: ok(null), 'rpc:billing_get_effective_quotas': voiceQuota(10, 9), 'rpc:billing_reserve_quota': reservation(0), 'rpc:billing_settle_quota': ok(true) });
+    const res = await app.inject({ method: 'POST', url: '/api/tutor/voice', payload: {} });
+    expect(res.json().maxSeconds).toBe(60);
+    expect(units()?.p_units).toBe(1);
     await app.close();
 
     rpcCalls.length = 0;
     const none = await build({ profiles: ok(null), 'rpc:billing_get_effective_quotas': voiceQuota(10, 10) });
-    const refused = await none.inject({ method: 'POST', url: '/api/tutor/voice', payload: { minutes: 3 } });
+    const refused = await none.inject({ method: 'POST', url: '/api/tutor/voice', payload: {} });
     expect(refused.statusCode).toBe(429);
     expect(refused.json().error).toContain('phút nói chuyện');
     await none.close();

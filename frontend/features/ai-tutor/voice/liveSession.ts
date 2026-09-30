@@ -1,15 +1,23 @@
-// A spoken session with the Gemini Live API, straight from the browser. The backend hands out a
-// one-use token already locked to the model and the tutor's instruction (routes/tutor.ts,
-// POST /api/tutor/voice); this file only moves audio: the microphone goes up as 16 kHz 16-bit PCM,
-// the tutor's voice comes back as 24 kHz PCM and is played in order. When the student talks over
-// the tutor, the server says "interrupted" and whatever is still queued is dropped.
+// A spoken conversation with the Gemini Live API, straight from the browser. It runs in short
+// segments: the backend (routes/tutor.ts, POST /api/tutor/voice) pays each one from the student's
+// voice minutes and hands out a one-use token locked to the tutor's instruction that expires with
+// the segment. Shortly before a segment ends the next one is asked for; its new connection starts
+// with the conversation so far, the microphone moves over, and the old one is let go. When no
+// minutes are left the conversation ends with the last segment.
+//
+// Audio: the microphone goes up as 16 kHz 16-bit PCM, the tutor's voice comes back as 24 kHz PCM
+// and is played in order; when the student talks over the tutor, what is still queued is dropped.
 
 export type VoiceState = 'connecting' | 'listening' | 'speaking' | 'ended';
 export type TranscriptLine = { who: 'student' | 'tutor'; text: string };
 export type VoiceGrant = { token: string; model: string; socketUrl: string; maxSeconds: number };
+/** The next segment, or why there is none (no minutes left, or another failure). */
+export type GrantResult = { ok: true; grant: VoiceGrant } | { ok: false; outOfMinutes: boolean };
 
 export type VoiceHandlers = {
   onState: (state: VoiceState) => void;
+  /** No more segments will come: the conversation ends when this one does, in about `seconds`. */
+  onLastSegment: (seconds: number) => void;
   /** The newest words of the current turn, appended as they arrive. */
   onTranscript: (who: TranscriptLine['who'], text: string) => void;
   onTurnEnd: () => void;
@@ -73,22 +81,57 @@ type ServerMessage = {
     interrupted?: boolean;
     turnComplete?: boolean;
   };
-  goAway?: unknown;
 };
 
-/** Opens the session; returns the function that ends it (idempotent). */
-export async function startLiveSession(grant: VoiceGrant, handlers: VoiceHandlers): Promise<() => void> {
+/** Ask for the next segment this long before the current one runs out. */
+const HANDOFF_LEAD_SECONDS = 15;
+/** The conversation replayed to a new segment: the latest turns only. */
+const HISTORY_TURNS = 40;
+
+/** The conversation so far as Live history turns (student → user, tutor → model). */
+export function historyTurns(lines: TranscriptLine[]) {
+  return lines
+    .filter((line) => line.text.trim())
+    .slice(-HISTORY_TURNS)
+    .map((line) => ({ role: line.who === 'tutor' ? 'model' : 'user', parts: [{ text: line.text.trim() }] }));
+}
+
+/**
+ * Starts the conversation: the first segment comes from `nextGrant`, and so does each following
+ * one. `history` returns the transcript so far, replayed to each new segment. Returns the function
+ * that ends it (idempotent).
+ */
+export async function startConversation(
+  nextGrant: () => Promise<GrantResult>,
+  history: () => TranscriptLine[],
+  handlers: VoiceHandlers,
+): Promise<() => void> {
   let ended = false;
   let stream: MediaStream | null = null;
   let input: AudioContext | null = null;
   let output: AudioContext | null = null;
-  let socket: WebSocket | null = null;
+  let current: WebSocket | null = null;
+  const sockets = new Set<WebSocket>();
+  const timers = new Set<number>();
   let playhead = 0;
   const playing = new Set<AudioBufferSourceNode>();
+  let tutorSpeaking = false;
+
+  const later = (ms: number, fn: () => void) => {
+    const id = window.setTimeout(() => {
+      timers.delete(id);
+      fn();
+    }, ms);
+    timers.add(id);
+  };
 
   const stopPlayback = () => {
     for (const source of playing) {
-      try { source.stop(); } catch { /* already stopped */ }
+      try {
+        source.stop();
+      } catch {
+        // already stopped
+      }
     }
     playing.clear();
     playhead = 0;
@@ -97,40 +140,15 @@ export async function startLiveSession(grant: VoiceGrant, handlers: VoiceHandler
   const end = () => {
     if (ended) return;
     ended = true;
+    timers.forEach((id) => window.clearTimeout(id));
     stopPlayback();
     stream?.getTracks().forEach((track) => track.stop());
     void input?.close().catch(() => {});
     void output?.close().catch(() => {});
-    if (socket && socket.readyState <= WebSocket.OPEN) socket.close();
+    sockets.forEach((ws) => {
+      if (ws.readyState <= WebSocket.OPEN) ws.close();
+    });
     handlers.onState('ended');
-  };
-
-  handlers.onState('connecting');
-  try {
-    stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true, channelCount: 1 } });
-  } catch {
-    handlers.onError('microphone');
-    end();
-    return end;
-  }
-
-  input = new AudioContext();
-  output = new AudioContext({ sampleRate: OUTPUT_RATE });
-  const moduleUrl = URL.createObjectURL(new Blob([CAPTURE_WORKLET], { type: 'text/javascript' }));
-  try {
-    await input.audioWorklet.addModule(moduleUrl);
-  } finally {
-    URL.revokeObjectURL(moduleUrl);
-  }
-  const capture = new AudioWorkletNode(input, 'scipal-capture');
-  input.createMediaStreamSource(stream).connect(capture);
-
-  socket = new WebSocket(`${grant.socketUrl}?access_token=${encodeURIComponent(grant.token)}`);
-  let ready = false;
-
-  capture.port.onmessage = (event: MessageEvent<ArrayBuffer>) => {
-    if (!ready || socket?.readyState !== WebSocket.OPEN) return;
-    socket.send(JSON.stringify({ realtimeInput: { audio: { mimeType: `audio/pcm;rate=${INPUT_RATE}`, data: toBase64(event.data) } } }));
   };
 
   const play = (base64: string) => {
@@ -152,43 +170,129 @@ export async function startLiveSession(grant: VoiceGrant, handlers: VoiceHandler
     };
   };
 
-  socket.onopen = () => {
-    // The token already fixes the model's configuration; the setup only names the model.
-    socket?.send(JSON.stringify({ setup: { model: `models/${grant.model}` } }));
-  };
-  socket.onmessage = async (event) => {
-    const text = typeof event.data === 'string' ? event.data : await (event.data as Blob).text();
-    let message: ServerMessage;
-    try {
-      message = JSON.parse(text) as ServerMessage;
-    } catch {
-      return;
-    }
-    if (message.setupComplete) {
-      ready = true;
-      handlers.onState('listening');
-    }
-    const content = message.serverContent;
-    if (content) {
-      if (content.interrupted) stopPlayback();
-      for (const part of content.modelTurn?.parts ?? []) {
-        if (part.inlineData?.data && part.inlineData.mimeType?.startsWith('audio/')) play(part.inlineData.data);
-      }
-      if (content.inputTranscription?.text) handlers.onTranscript('student', content.inputTranscription.text);
-      if (content.outputTranscription?.text) handlers.onTranscript('tutor', content.outputTranscription.text);
-      if (content.turnComplete) handlers.onTurnEnd();
-    }
-    if (message.goAway) end();
-  };
-  socket.onerror = () => {
-    if (!ended) handlers.onError('connection');
-  };
-  socket.onclose = () => end();
+  /** Opens one segment's socket; resolves once it is ready for audio (null if it failed). */
+  const open = (grant: VoiceGrant): Promise<WebSocket | null> =>
+    new Promise((resolve) => {
+      const ws = new WebSocket(`${grant.socketUrl}?access_token=${encodeURIComponent(grant.token)}`);
+      sockets.add(ws);
+      let ready = false;
+      ws.onopen = () => ws.send(JSON.stringify({ setup: { model: `models/${grant.model}` } }));
+      ws.onmessage = async (event) => {
+        const text = typeof event.data === 'string' ? event.data : await (event.data as Blob).text();
+        let message: ServerMessage;
+        try {
+          message = JSON.parse(text) as ServerMessage;
+        } catch {
+          return;
+        }
+        if (message.setupComplete && !ready) {
+          ready = true;
+          // What was said in earlier segments, so the tutor carries on rather than starting over.
+          const turns = historyTurns(history());
+          if (turns.length) ws.send(JSON.stringify({ clientContent: { turns, turnComplete: false } }));
+          resolve(ws);
+        }
+        const content = message.serverContent;
+        if (!content) return;
+        if (content.interrupted) stopPlayback();
+        for (const part of content.modelTurn?.parts ?? []) {
+          if (part.inlineData?.data && part.inlineData.mimeType?.startsWith('audio/')) {
+            tutorSpeaking = true;
+            play(part.inlineData.data);
+          }
+        }
+        if (content.inputTranscription?.text) handlers.onTranscript('student', content.inputTranscription.text);
+        if (content.outputTranscription?.text) handlers.onTranscript('tutor', content.outputTranscription.text);
+        if (content.turnComplete) {
+          tutorSpeaking = false;
+          handlers.onTurnEnd();
+        }
+      };
+      ws.onerror = () => {
+        if (!ready) resolve(null);
+      };
+      ws.onclose = () => {
+        sockets.delete(ws);
+        if (!ready) resolve(null);
+        // The live segment closing (its time is up, or the line dropped) ends the conversation;
+        // a segment already handed over just goes away.
+        if (ws === current) end();
+      };
+    });
 
-  // The token only buys this long; end cleanly before the server cuts the line.
-  const timer = window.setTimeout(end, grant.maxSeconds * 1000);
-  return () => {
-    window.clearTimeout(timer);
-    end();
+  /** Lets the old segment finish the tutor's sentence, then closes it. */
+  const retire = (ws: WebSocket, deadlineMs: number) => {
+    const started = Date.now();
+    const check = () => {
+      if (ws.readyState > WebSocket.OPEN) return;
+      if (!tutorSpeaking || Date.now() - started > deadlineMs) ws.close();
+      else later(250, check);
+    };
+    check();
   };
+
+  /** Runs a ready segment and arranges the next one before it expires. */
+  const run = (ws: WebSocket, grant: VoiceGrant) => {
+    const previous = current;
+    current = ws;
+    if (previous) retire(previous, HANDOFF_LEAD_SECONDS * 1000 - 2000);
+    const leadMs = Math.max(0, (grant.maxSeconds - HANDOFF_LEAD_SECONDS) * 1000);
+    later(leadMs, async () => {
+      if (ended) return;
+      const next = await nextGrant();
+      if (ended) return;
+      if (!next.ok) {
+        // No more minutes (or no segment): this one runs out and the conversation ends with it.
+        handlers.onLastSegment(HANDOFF_LEAD_SECONDS);
+        if (!next.outOfMinutes) handlers.onError('connection');
+        return;
+      }
+      const ready = await open(next.grant);
+      if (ended) {
+        ready?.close();
+        return;
+      }
+      if (ready) run(ready, next.grant);
+      else handlers.onError('connection');
+    });
+  };
+
+  handlers.onState('connecting');
+  const first = await nextGrant();
+  if (!first.ok) {
+    end();
+    return end;
+  }
+  try {
+    stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true, channelCount: 1 } });
+  } catch {
+    handlers.onError('microphone');
+    end();
+    return end;
+  }
+  input = new AudioContext();
+  output = new AudioContext({ sampleRate: OUTPUT_RATE });
+  const moduleUrl = URL.createObjectURL(new Blob([CAPTURE_WORKLET], { type: 'text/javascript' }));
+  try {
+    await input.audioWorklet.addModule(moduleUrl);
+  } finally {
+    URL.revokeObjectURL(moduleUrl);
+  }
+  const capture = new AudioWorkletNode(input, 'scipal-capture');
+  input.createMediaStreamSource(stream).connect(capture);
+  // The microphone always feeds the live segment.
+  capture.port.onmessage = (event: MessageEvent<ArrayBuffer>) => {
+    if (current?.readyState !== WebSocket.OPEN) return;
+    current.send(JSON.stringify({ realtimeInput: { audio: { mimeType: `audio/pcm;rate=${INPUT_RATE}`, data: toBase64(event.data) } } }));
+  };
+
+  const ws = await open(first.grant);
+  if (!ws) {
+    handlers.onError('connection');
+    end();
+    return end;
+  }
+  handlers.onState('listening');
+  run(ws, first.grant);
+  return end;
 }
