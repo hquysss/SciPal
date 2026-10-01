@@ -29,7 +29,7 @@ export function TutorSection({ href, level = 'upper_secondary' }: { href?: strin
           </a>
         )}
       </div>
-      <div className={styles.tutorStage} data-landing-reveal>
+      <div className={styles.tutorStage} data-landing-scroll>
         <TutorDemoCard level={level} />
       </div>
     </section>

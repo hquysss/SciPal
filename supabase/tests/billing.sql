@@ -155,6 +155,8 @@ begin
   update public.account_quota_overrides
      set limit_value = 500, expires_at = null
    where user_id = '00000000-0000-4000-8000-000000000001' and metric = 'tutor_requests';
+  -- billing_reserve_quota counts in the current month (it reads the clock), so the checks below read
+  -- that month's row rather than a fixed date.
   v_reservation := public.billing_reserve_quota(
     '00000000-0000-4000-8000-000000000001', 'tutor_requests', v_operation_id, repeat('b', 64), 1
   );
@@ -162,7 +164,7 @@ begin
     '00000000-0000-4000-8000-000000000001', 'tutor_requests', v_operation_id, repeat('b', 64), 1
   );
   if v_reservation ->> 'state' <> 'reserved' or v_replay ->> 'operation_id' <> v_operation_id::text
-    or (select reserved from public.quota_usage where user_id = '00000000-0000-4000-8000-000000000001' and metric = 'tutor_requests' and period_start = '2026-09-01') <> 1 then
+    or (select reserved from public.quota_usage where user_id = '00000000-0000-4000-8000-000000000001' and metric = 'tutor_requests' and period_start = pg_catalog.date_trunc('month', pg_catalog.now() at time zone 'Asia/Ho_Chi_Minh')::date) <> 1 then
     raise exception 'Reservation retry consumed quota more than once';
   end if;
   v_rejected := false;
@@ -267,7 +269,7 @@ begin
     raise exception 'Billing tables or RPCs have an unsafe grant';
   end if;
 
-  if (select used from public.quota_usage where user_id = '00000000-0000-4000-8000-000000000002' and metric = 'tutor_requests' and period_start = '2026-09-01') is not null then
+  if (select used from public.quota_usage where user_id = '00000000-0000-4000-8000-000000000002' and metric = 'tutor_requests' and period_start = pg_catalog.date_trunc('month', pg_catalog.now() at time zone 'Asia/Ho_Chi_Minh')::date) is not null then
     raise exception 'Usage leaked between accounts';
   end if;
 end;

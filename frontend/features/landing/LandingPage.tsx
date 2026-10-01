@@ -2,6 +2,7 @@
 
 import { useEffect, useRef } from 'react';
 import Image from 'next/image';
+import { DESKTOP_MOTION } from '@/lib/motion';
 import Link from 'next/link';
 import { ArrowRight, Atom, BookOpen, Braces, Dna, FlaskConical, Globe, Lightbulb, Mail, Sigma, Sparkles } from 'lucide-react';
 import { useLanguage } from '@scipal/hooks';
@@ -58,9 +59,6 @@ const HERO_TITLE: Record<EducationLevel, [Copy, Copy]> = {
     { vi: 'tiến từng bước.', en: 'Move forward step by step.' },
   ],
 };
-
-/** Where scroll effects run: a wide screen with a mouse (kept in step with landing.module.css). */
-export const DESKTOP_MOTION = '(min-width: 1024px) and (hover: hover) and (pointer: fine)';
 
 function useRevealOnScroll(pageRef: React.RefObject<HTMLDivElement | null>) {
   useEffect(() => {
@@ -213,7 +211,7 @@ export function LandingPage({ level, levelSource, catalog, onChangeLevel, pricin
                 : t({ en: 'Your level is saved in this tab.', vi: 'Cấp học được lưu trong tab này.' })}
             </p>
           </div>
-          <div className={styles.subjectGrid} data-landing-reveal>
+          <div className={styles.subjectGrid} data-landing-scroll>
             <SubjectMarquee level={level} catalog={catalog} />
           </div>
         </section>

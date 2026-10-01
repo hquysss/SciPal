@@ -124,7 +124,7 @@ export function InstallAppSection() {
 
   return (
     <section className={styles.section} id="tai-ung-dung" aria-labelledby="install-title">
-      <div className={styles.stage} data-landing-reveal>
+      <div className={styles.stage} data-landing-scroll>
         <span className={styles.glow} />
         <PhoneMock />
       </div>

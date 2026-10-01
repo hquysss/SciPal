@@ -617,26 +617,27 @@
       animation-range: exit 0% exit 100%;
     }
 
-    /* Cards rise and grow into place as they scroll in, one a beat after the other. */
+    /* Cards and stages follow the scroll the whole way through the screen: they rise and sharpen
+       until the middle, then shrink and fade as they leave at the top, one a beat after the other. */
     .page [data-landing-scroll] {
-      animation: landing-card-in linear both;
+      animation: landing-card linear both;
       animation-timeline: view();
-      animation-range: entry 0% cover 32%;
+      animation-range: entry 0% exit 100%;
     }
 
     .page [data-landing-scroll]:nth-child(2) {
-      animation-range: entry 10% cover 40%;
+      animation-name: landing-card-2;
     }
 
     .page [data-landing-scroll]:nth-child(3) {
-      animation-range: entry 20% cover 48%;
+      animation-name: landing-card-3;
     }
 
-    /* Section titles slide in from the left with the scroll. */
+    /* Section titles slide in from the left until the middle of the screen. */
     .page [data-landing-title] {
       animation: landing-title-in linear both;
       animation-timeline: view();
-      animation-range: entry 0% cover 28%;
+      animation-range: entry 0% cover 45%;
     }
   }
 }
@@ -650,13 +651,29 @@
   to { translate: 0 -4rem; opacity: 0.2; }
 }
 
-@keyframes landing-card-in {
-  from { opacity: 0; translate: 0 5rem; scale: 0.9; }
-  to { opacity: 1; translate: 0 0; scale: 1; }
+@keyframes landing-card {
+  0% { opacity: 0; translate: 0 8rem; scale: 0.84; filter: blur(10px); }
+  40% { opacity: 1; translate: 0 0; scale: 1; filter: blur(0); }
+  75% { opacity: 1; translate: 0 0; scale: 1; filter: blur(0); }
+  100% { opacity: 0.35; translate: 0 -2rem; scale: 0.94; filter: blur(2px); }
+}
+
+@keyframes landing-card-2 {
+  0%, 8% { opacity: 0; translate: 0 8rem; scale: 0.84; filter: blur(10px); }
+  46% { opacity: 1; translate: 0 0; scale: 1; filter: blur(0); }
+  75% { opacity: 1; translate: 0 0; scale: 1; filter: blur(0); }
+  100% { opacity: 0.35; translate: 0 -2rem; scale: 0.94; filter: blur(2px); }
+}
+
+@keyframes landing-card-3 {
+  0%, 16% { opacity: 0; translate: 0 8rem; scale: 0.84; filter: blur(10px); }
+  52% { opacity: 1; translate: 0 0; scale: 1; filter: blur(0); }
+  75% { opacity: 1; translate: 0 0; scale: 1; filter: blur(0); }
+  100% { opacity: 0.35; translate: 0 -2rem; scale: 0.94; filter: blur(2px); }
 }
 
 @keyframes landing-title-in {
-  from { opacity: 0; translate: -3rem 0; }
+  from { opacity: 0; translate: -6rem 0; letter-spacing: 0.04em; }
   to { opacity: 1; translate: 0 0; }
 }
 
