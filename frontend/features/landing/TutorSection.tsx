@@ -12,8 +12,8 @@ export function TutorSection({ href, level = 'upper_secondary' }: { href?: strin
 
   return (
     <section className={`${styles.section} ${styles.tutorSection}`} aria-labelledby="tutor-title">
-      <div className={styles.tutorIntro}>
-        <h2 id="tutor-title" className={styles.sectionTitle}>
+      <div className={styles.tutorIntro} data-landing-reveal>
+        <h2 id="tutor-title" className={styles.sectionTitle} data-landing-title>
           {t({ en: 'Ask anytime', vi: 'Hỏi bất cứ lúc nào' })}
         </h2>
         <p className={styles.sectionLead}>
@@ -29,7 +29,7 @@ export function TutorSection({ href, level = 'upper_secondary' }: { href?: strin
           </a>
         )}
       </div>
-      <div className={styles.tutorStage}>
+      <div className={styles.tutorStage} data-landing-scroll>
         <TutorDemoCard level={level} />
       </div>
     </section>

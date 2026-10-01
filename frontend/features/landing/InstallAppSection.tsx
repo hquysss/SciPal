@@ -124,13 +124,13 @@ export function InstallAppSection() {
 
   return (
     <section className={styles.section} id="tai-ung-dung" aria-labelledby="install-title">
-      <div className={styles.stage}>
+      <div className={styles.stage} data-landing-scroll>
         <span className={styles.glow} />
         <PhoneMock />
       </div>
-      <div className={styles.intro}>
+      <div className={styles.intro} data-landing-reveal>
         <p className={styles.eyebrow}>{t({ vi: 'Ứng dụng SciPal', en: 'The SciPal app' })}</p>
-        <h2 id="install-title" className={styles.title}>
+        <h2 id="install-title" className={styles.title} data-landing-title>
           {t({ vi: 'Mang SciPal theo bên mình', en: 'Take SciPal with you' })}
         </h2>
         <p className={styles.lead}>

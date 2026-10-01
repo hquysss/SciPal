@@ -407,6 +407,33 @@
   text-shadow: 0 0.6rem 2rem color-mix(in srgb, var(--nav) 60%, transparent);
 }
 
+/* When the panel rises into view its lines follow one after another. */
+.revealed .finalTitle,
+.revealed .finalLead,
+.revealed .finalActions,
+.revealed .poll {
+  animation: cta-line 700ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.revealed .finalLead {
+  animation-delay: 120ms;
+}
+
+.revealed .finalActions {
+  animation-delay: 220ms;
+}
+
+.revealed .poll {
+  animation-delay: 360ms;
+}
+
+@keyframes cta-line {
+  from {
+    opacity: 0;
+    translate: 0 1.25rem;
+  }
+}
+
 .finalAction {
   background: var(--nav-ink);
   color: var(--nav);
@@ -533,6 +560,127 @@
   color: var(--ink);
 }
 
+/* ---------- scroll reveal: sheets rise out of the page ---------- */
+/* translate/rotate compose with each element's own transform (cards keep their tilt). */
+
+.page .revealPending {
+  opacity: 0;
+  translate: 0 3rem;
+  scale: 0.94;
+  filter: blur(8px);
+  transition:
+    opacity 700ms var(--landing-ease) var(--reveal-delay, 0ms),
+    translate 700ms cubic-bezier(0.16, 1, 0.3, 1) var(--reveal-delay, 0ms),
+    scale 700ms cubic-bezier(0.16, 1, 0.3, 1) var(--reveal-delay, 0ms),
+    filter 500ms ease-out var(--reveal-delay, 0ms);
+}
+
+.page .revealed {
+  opacity: 1;
+  translate: 0 0;
+  scale: 1;
+  filter: none;
+}
+
+/* ---------- desktop scroll effects ---------- */
+/* Wide screens with a mouse only (same query as DESKTOP_MOTION in LandingPage.tsx); phones and
+   tablets scroll plainly. Driven by the scroll position itself, so no script runs per frame. */
+
+.scrollProgress {
+  display: none;
+}
+
+@media (min-width: 1024px) and (hover: hover) and (pointer: fine) and (prefers-reduced-motion: no-preference) {
+  @supports (animation-timeline: scroll()) {
+    .scrollProgress {
+      position: fixed;
+      z-index: 60;
+      inset: 0 0 auto;
+      display: block;
+      height: 3px;
+      background: var(--action);
+      transform-origin: 0 50%;
+      animation: landing-progress linear both;
+      animation-timeline: scroll(root block);
+    }
+
+    /* The hero drifts apart as it leaves: copy rises a little faster, the art sinks and fades. */
+    .heroCopy {
+      animation: hero-copy-out linear both;
+      animation-timeline: view();
+      animation-range: exit 0% exit 100%;
+    }
+
+    .heroArt {
+      animation: hero-art-out linear both;
+      animation-timeline: view();
+      animation-range: exit 0% exit 100%;
+    }
+
+    /* Cards and stages follow the scroll the whole way through the screen: they rise and sharpen
+       until the middle, then shrink and fade as they leave at the top, one a beat after the other. */
+    .page [data-landing-scroll] {
+      animation: landing-card linear both;
+      animation-timeline: view();
+      animation-range: entry 0% exit 100%;
+    }
+
+    .page [data-landing-scroll]:nth-child(2) {
+      animation-name: landing-card-2;
+    }
+
+    .page [data-landing-scroll]:nth-child(3) {
+      animation-name: landing-card-3;
+    }
+
+    /* Section titles slide in from the left until the middle of the screen. */
+    .page [data-landing-title] {
+      animation: landing-title-in linear both;
+      animation-timeline: view();
+      animation-range: entry 0% cover 45%;
+    }
+  }
+}
+
+@keyframes landing-progress {
+  from { transform: scaleX(0); }
+  to { transform: scaleX(1); }
+}
+
+@keyframes hero-copy-out {
+  to { translate: 0 -4rem; opacity: 0.2; }
+}
+
+@keyframes landing-card {
+  0% { opacity: 0; translate: 0 8rem; scale: 0.84; filter: blur(10px); }
+  40% { opacity: 1; translate: 0 0; scale: 1; filter: blur(0); }
+  75% { opacity: 1; translate: 0 0; scale: 1; filter: blur(0); }
+  100% { opacity: 0.35; translate: 0 -2rem; scale: 0.94; filter: blur(2px); }
+}
+
+@keyframes landing-card-2 {
+  0%, 8% { opacity: 0; translate: 0 8rem; scale: 0.84; filter: blur(10px); }
+  46% { opacity: 1; translate: 0 0; scale: 1; filter: blur(0); }
+  75% { opacity: 1; translate: 0 0; scale: 1; filter: blur(0); }
+  100% { opacity: 0.35; translate: 0 -2rem; scale: 0.94; filter: blur(2px); }
+}
+
+@keyframes landing-card-3 {
+  0%, 16% { opacity: 0; translate: 0 8rem; scale: 0.84; filter: blur(10px); }
+  52% { opacity: 1; translate: 0 0; scale: 1; filter: blur(0); }
+  75% { opacity: 1; translate: 0 0; scale: 1; filter: blur(0); }
+  100% { opacity: 0.35; translate: 0 -2rem; scale: 0.94; filter: blur(2px); }
+}
+
+@keyframes landing-title-in {
+  from { opacity: 0; translate: -6rem 0; letter-spacing: 0.04em; }
+  to { opacity: 1; translate: 0 0; }
+}
+
+@keyframes hero-art-out {
+  to { translate: 0 3rem; scale: 0.94; opacity: 0.3; }
+}
+
 /* ---------- responsive ---------- */
 
 @media (max-width: 900px) {
@@ -582,7 +730,11 @@
 
   .finalCta::before,
   .finalCta::after,
-  .finalGhost svg {
+  .finalGhost svg,
+  .revealed .finalTitle,
+  .revealed .finalLead,
+  .revealed .finalActions,
+  .revealed .poll {
     animation: none;
   }
 
