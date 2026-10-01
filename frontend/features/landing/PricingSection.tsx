@@ -56,8 +56,8 @@ export function PricingSection({
         <span className={styles.orbCoral} />
         <span className={styles.orbSky} />
       </div>
-      <div className={styles.intro} data-landing-reveal>
-        <h2 id="pricing-title" className={styles.title} data-landing-title>
+      <div className={styles.intro}>
+        <h2 id="pricing-title" className={styles.title}>
           <span className={styles.titleLine}>{t({ en: 'Learn free.', vi: 'Học miễn phí.' })}</span>{' '}
           <span className={`${styles.titleLine} ${styles.titleGlow}`}>
             {t({ en: 'Go further when you need to.', vi: 'Cần thêm thì nâng cấp.' })}
@@ -91,7 +91,7 @@ export function PricingSection({
 
       <div className={styles.plans}>
         {free && (
-          <article className={styles.free} data-landing-scroll aria-labelledby={`landing-${free.code}`}>
+          <article className={styles.free} aria-labelledby={`landing-${free.code}`}>
             <h3 id={`landing-${free.code}`} className={styles.planName}>{t(free.name)}</h3>
             <p className={styles.price}>
               <span className={styles.amount}>{formatVnd(0)}</span>
@@ -122,7 +122,7 @@ export function PricingSection({
             <span className={styles.sparkles} aria-hidden="true">
               {[0, 1, 2, 3, 4].map((n) => <span key={n} style={item(n)}>✦</span>)}
             </span>
-            <article className={styles.paid} data-landing-scroll aria-labelledby={`landing-${paid.code}`} onPointerMove={tilt} onPointerLeave={untilt}>
+            <article className={styles.paid} aria-labelledby={`landing-${paid.code}`} onPointerMove={tilt} onPointerLeave={untilt}>
               <span className={styles.badge}>{t({ en: 'Recommended', vi: 'Khuyên dùng' })}</span>
               <h3 id={`landing-${paid.code}`} className={styles.planName}>
                 <Sparkles aria-hidden="true" size={20} className={styles.spark} />
