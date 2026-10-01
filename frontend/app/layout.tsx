@@ -5,7 +5,6 @@ import './globals.css';
 import { TabTitle } from '@/components/nav/TabTitle';
 import { OfflineBanner } from '@/components/pwa/OfflineBanner';
 import { PwaRegister } from '@/components/pwa/PwaRegister';
-import { SmoothScroll } from '@/components/motion/SmoothScroll';
 import { APP_THEME_COLOR } from '@/lib/pwa/brand';
 import { NavBar } from '@/components/nav/NavBar';
 import { GuestTrialBanner } from '@/features/guest/GuestTrialBanner';
@@ -70,7 +69,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <script dangerouslySetInnerHTML={{ __html: buildBootScript({ darkMode: DARK_MODE_ENABLED }) }} />
           <TabTitle />
           <PwaRegister />
-          <SmoothScroll />
           <NavBar />
           <OfflineBanner />
           <GuestTrialBanner />
