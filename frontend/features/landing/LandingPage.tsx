@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { ArrowRight, Atom, BookOpen, Braces, Dna, FlaskConical, Globe, Lightbulb, Mail, Sigma, Sparkles } from 'lucide-react';
@@ -59,15 +59,82 @@ const HERO_TITLE: Record<EducationLevel, [Copy, Copy]> = {
   ],
 };
 
-/** A link to #landing-title puts focus on the heading, then drops the hash from the address. */
-function useFocusTitleFromHash() {
+function useRevealOnScroll(pageRef: React.RefObject<HTMLDivElement | null>) {
   useEffect(() => {
+    const page = pageRef.current;
     const title = document.getElementById('landing-title');
     if (window.location.hash === '#landing-title' && title) {
       title.focus({ preventScroll: true });
       window.history.replaceState(null, '', window.location.pathname + window.location.search);
     }
-  }, []);
+
+    if (!page) return;
+
+    const motionPreference = window.matchMedia('(prefers-reduced-motion: reduce)');
+    if (motionPreference.matches || !('IntersectionObserver' in window)) return;
+
+    const targets = Array.from(page.querySelectorAll<HTMLElement>('[data-landing-reveal]'));
+    const clearReveal = (target: Element) => target.classList.remove(styles.revealPending, styles.revealed);
+    const settling = new WeakMap<Element, () => void>();
+
+    // Once the entrance has played, drop the reveal classes: while they stay, their transition
+    // list replaces the element's own, and hover lifts and shadows would jump instead of ease.
+    const settle = (target: Element) => {
+      const onEnd = (event: Event) => {
+        if (event.target !== target || (event as TransitionEvent).propertyName !== 'opacity') return;
+        done();
+      };
+      const stop = () => {
+        target.removeEventListener('transitionend', onEnd);
+        window.clearTimeout(fallback);
+        settling.delete(target);
+      };
+      const done = () => {
+        stop();
+        clearReveal(target);
+      };
+      target.addEventListener('transitionend', onEnd);
+      const fallback = window.setTimeout(done, 1400);
+      settling.set(target, stop);
+    };
+
+    // Every time a sheet comes into view it rises again: leaving the screen (either way) puts it
+    // back under the page, so scrolling up or down replays the entrance.
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach((entry) => {
+        const target = entry.target;
+        if (!entry.isIntersecting) {
+          settling.get(target)?.();
+          target.classList.remove(styles.revealed);
+          target.classList.add(styles.revealPending);
+          return;
+        }
+        const enough = entry.intersectionRatio >= 0.12 || entry.intersectionRect.height >= window.innerHeight * 0.3;
+        if (!enough || !target.classList.contains(styles.revealPending)) return;
+        target.classList.add(styles.revealed);
+        settle(target);
+      });
+    }, { threshold: [0, 0.12, 0.3] });
+
+    targets.forEach((target, index) => {
+      target.style.setProperty('--reveal-delay', String((index % 3) * 80) + 'ms');
+      // Already on screen at load: leave it as is, fully visible, until it first leaves.
+      if (target.getBoundingClientRect().top >= window.innerHeight * 0.95) target.classList.add(styles.revealPending);
+      observer.observe(target);
+    });
+
+    const revealPending = () => {
+      if (!motionPreference.matches) return;
+      observer.disconnect();
+      targets.forEach(clearReveal);
+    };
+    motionPreference.addEventListener('change', revealPending);
+
+    return () => {
+      observer.disconnect();
+      motionPreference.removeEventListener('change', revealPending);
+    };
+  }, [pageRef]);
 }
 
 /** "Đổi cấp": a button that opens the gate in place for guests, a link for signed-in users. */
@@ -87,15 +154,16 @@ function ChangeLevel({ onChangeLevel, className }: { onChangeLevel?: () => void;
 
 export function LandingPage({ level, levelSource, catalog, onChangeLevel, pricing = null }: LandingPageProps) {
   const { t, lang } = useLanguage();
+  const pageRef = useRef<HTMLDivElement>(null);
   const [titleFirst, titleSecond] = HERO_TITLE[level];
 
   useEffect(() => {
     applyShellLevel(getShell(), level);
   }, [level]);
-  useFocusTitleFromHash();
+  useRevealOnScroll(pageRef);
 
   return (
-    <div className={styles.page} data-level={level} data-scipal-level={level} lang={lang}>
+    <div className={styles.page} data-level={level} data-scipal-level={level} lang={lang} ref={pageRef}>
       <main className={styles.shell}>
         <section className={styles.hero} aria-labelledby="landing-title">
           <div className={styles.heroCopy}>
@@ -126,7 +194,7 @@ export function LandingPage({ level, levelSource, catalog, onChangeLevel, pricin
         </section>
 
         <section className={styles.subjects} id="mon-hoc" aria-labelledby="subjects-title">
-          <div className={styles.sectionHeading}>
+          <div className={styles.sectionHeading} data-landing-reveal>
             <h2 id="subjects-title" className={styles.sectionTitle}>
               {t({ en: 'Your subjects', vi: 'Môn học của bạn' })}
             </h2>
@@ -137,7 +205,7 @@ export function LandingPage({ level, levelSource, catalog, onChangeLevel, pricin
                 : t({ en: 'Your level is saved in this tab.', vi: 'Cấp học được lưu trong tab này.' })}
             </p>
           </div>
-          <div className={styles.subjectGrid}>
+          <div className={styles.subjectGrid} data-landing-reveal>
             <SubjectMarquee level={level} catalog={catalog} />
           </div>
         </section>
@@ -147,7 +215,7 @@ export function LandingPage({ level, levelSource, catalog, onChangeLevel, pricin
         <InstallAppSection />
         {pricing && <PricingSection catalog={pricing} />}
 
-        <section className={styles.finalCta} aria-labelledby="start-title">
+        <section className={styles.finalCta} aria-labelledby="start-title" data-landing-reveal>
           <div className={styles.ctaFloats} aria-hidden="true">
             {CTA_FLOATS.map((Icon, index) => (
               <span key={index} data-cta-float="" style={{ '--i': index } as React.CSSProperties}>

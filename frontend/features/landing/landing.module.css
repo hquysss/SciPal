@@ -407,6 +407,33 @@
   text-shadow: 0 0.6rem 2rem color-mix(in srgb, var(--nav) 60%, transparent);
 }
 
+/* When the panel rises into view its lines follow one after another. */
+.revealed .finalTitle,
+.revealed .finalLead,
+.revealed .finalActions,
+.revealed .poll {
+  animation: cta-line 700ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.revealed .finalLead {
+  animation-delay: 120ms;
+}
+
+.revealed .finalActions {
+  animation-delay: 220ms;
+}
+
+.revealed .poll {
+  animation-delay: 360ms;
+}
+
+@keyframes cta-line {
+  from {
+    opacity: 0;
+    translate: 0 1.25rem;
+  }
+}
+
 .finalAction {
   background: var(--nav-ink);
   color: var(--nav);
@@ -533,6 +560,28 @@
   color: var(--ink);
 }
 
+/* ---------- scroll reveal: sheets rise out of the page ---------- */
+/* translate/rotate compose with each element's own transform (cards keep their tilt). */
+
+.page .revealPending {
+  opacity: 0;
+  translate: 0 1.75rem;
+  scale: 0.97;
+  filter: blur(6px);
+  transition:
+    opacity 700ms var(--landing-ease) var(--reveal-delay, 0ms),
+    translate 700ms cubic-bezier(0.16, 1, 0.3, 1) var(--reveal-delay, 0ms),
+    scale 700ms cubic-bezier(0.16, 1, 0.3, 1) var(--reveal-delay, 0ms),
+    filter 500ms ease-out var(--reveal-delay, 0ms);
+}
+
+.page .revealed {
+  opacity: 1;
+  translate: 0 0;
+  scale: 1;
+  filter: none;
+}
+
 /* ---------- responsive ---------- */
 
 @media (max-width: 900px) {
@@ -582,7 +631,11 @@
 
   .finalCta::before,
   .finalCta::after,
-  .finalGhost svg {
+  .finalGhost svg,
+  .revealed .finalTitle,
+  .revealed .finalLead,
+  .revealed .finalActions,
+  .revealed .poll {
     animation: none;
   }
 

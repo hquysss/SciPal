@@ -56,7 +56,7 @@ export function PricingSection({
         <span className={styles.orbCoral} />
         <span className={styles.orbSky} />
       </div>
-      <div className={styles.intro}>
+      <div className={styles.intro} data-landing-reveal>
         <h2 id="pricing-title" className={styles.title}>
           <span className={styles.titleLine}>{t({ en: 'Learn free.', vi: 'Học miễn phí.' })}</span>{' '}
           <span className={`${styles.titleLine} ${styles.titleGlow}`}>
