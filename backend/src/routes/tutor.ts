@@ -5,6 +5,7 @@ import type { AIProvider } from '../providers/ai.js';
 import { CONTEXT_MESSAGES, MESSAGE_MAX, PAGE_SIZE, TITLE_LENGTH, vietnamDayStart } from '../tutor/limits.js';
 import { resolveTutorSettings, type SettingsStore } from '../tutor/settings.js';
 import { buildSystemPrompt, lessonContext, type EducationLevel } from '../tutor/systemPrompt.js';
+import { featureAllowed, featureOff } from '../site/features.js';
 import { createVoiceToken, VOICE_SEGMENT_MINUTES } from '../tutor/voiceToken.js';
 
 declare module 'fastify' {
@@ -42,6 +43,9 @@ export const tutorRoutes: FastifyPluginAsync = async (app) => {
   app.addHook('preHandler', async (request, reply) => {
     if (!userId(request)) return reply.code(401).send(signIn);
     if (!app.supabase) return reply.code(503).send(unavailable);
+    if ((request.url.startsWith('/api/tutor/chat') || request.url.startsWith('/api/tutor/voice')) && !(await featureAllowed(app, 'tutor', (request as never as { user?: never }).user))) {
+      return reply.code(403).send(featureOff('tutor'));
+    }
   });
 
   app.get('/api/tutor/conversations', async (request, reply) => {

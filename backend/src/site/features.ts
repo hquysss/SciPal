@@ -1,7 +1,7 @@
 // Site switches (migration 20261003070000_site_settings.sql): sign-up open or closed, and which
 // features are on. A feature missing from the stored map is on, so a new feature needs no data.
 
-export const SITE_FEATURES = ['glossary', 'exam', 'pricing', 'classes', 'guest_trial'] as const;
+export const SITE_FEATURES = ['glossary', 'exam', 'pricing', 'classes', 'tutor', 'guest_trial'] as const;
 export type SiteFeature = (typeof SITE_FEATURES)[number];
 
 export interface SiteSettingsRow {

@@ -2,13 +2,13 @@
 // backend's backend/src/site/features.ts holds the same list). Everyone may read them: the web hides
 // what is off, and the backend refuses it. A feature missing from the stored map is on.
 
-export const SITE_FEATURES = ['glossary', 'exam', 'pricing', 'classes', 'guest_trial'] as const;
+export const SITE_FEATURES = ['glossary', 'exam', 'pricing', 'classes', 'tutor', 'guest_trial'] as const;
 export type SiteFeature = (typeof SITE_FEATURES)[number];
 export type SiteSettings = { signupEnabled: boolean; features: Record<SiteFeature, boolean> };
 
 export const ALL_ON: SiteSettings = {
   signupEnabled: true,
-  features: { glossary: true, exam: true, pricing: true, classes: true, guest_trial: true },
+  features: { glossary: true, exam: true, pricing: true, classes: true, tutor: true, guest_trial: true },
 };
 
 export function resolveSiteSettings(row: { signup_enabled?: unknown; features?: unknown } | null | undefined): SiteSettings {
@@ -25,6 +25,7 @@ export function featureOfPath(pathname: string): SiteFeature | null {
   if (under(pathname, '/exam')) return 'exam';
   if (under(pathname, '/pricing') || under(pathname, '/checkout')) return 'pricing';
   if (under(pathname, '/classes') || under(pathname, '/teacher/classes')) return 'classes';
+  if (under(pathname, '/tutor')) return 'tutor';
   return null;
 }
 
@@ -37,6 +38,7 @@ export const FEATURE_LABEL: Record<SiteFeature, { vi: string; en: string }> = {
   exam: { vi: 'Thi thử', en: 'Exams' },
   pricing: { vi: 'Bảng giá và thanh toán', en: 'Pricing and payments' },
   classes: { vi: 'Lớp học', en: 'Classes' },
+  tutor: { vi: 'Giáo sư SciPal', en: 'SciPal Professor' },
   guest_trial: { vi: 'Dùng thử cho khách', en: 'Guest trials' },
 };
 
