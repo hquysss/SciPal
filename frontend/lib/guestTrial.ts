@@ -32,11 +32,10 @@ const under = (pathname: string, prefix: string) => pathname === prefix || pathn
 
 export function routeAccess(pathname: string): RouteAccess {
   // /auth/callback finishes Google and e-mail confirmation sign-ins.
-  if (pathname === '/' || under(pathname, '/login') || under(pathname, '/auth') || pathname === '/tutor' || pathname === '/privacy' || pathname === '/offline' || pathname === '/feature-off') return { kind: 'public' };
+  if (pathname === '/' || under(pathname, '/login') || under(pathname, '/auth') || pathname === '/tutor' || under(pathname, '/pricing') || pathname === '/privacy' || pathname === '/offline' || pathname === '/feature-off') return { kind: 'public' };
   if (ACCOUNT_PREFIXES.some((prefix) => under(pathname, prefix)) || pathname.startsWith('/exam/')) return { kind: 'account' };
   if (under(pathname, '/glossary')) return { kind: 'trial', feature: 'glossary' };
   if (pathname === '/exam') return { kind: 'trial', feature: 'exam' };
-  if (under(pathname, '/pricing')) return { kind: 'trial', feature: 'pricing' };
   // /subjects, a subject and its lessons.
   return { kind: 'trial', feature: 'learn' };
 }
