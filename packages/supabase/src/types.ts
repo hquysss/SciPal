@@ -261,9 +261,20 @@ type BillingTables = {
   }, 'created_at' | 'settled_at'>>;
 };
 
+/** Site switches (migration 20261003070000_site_settings.sql); readable by everyone, written by the backend. */
+type SiteTables = {
+  site_settings: DbTable<{
+    id: number;
+    signup_enabled: boolean;
+    features: Record<string, boolean>;
+    updated_at: string;
+    updated_by: string | null;
+  }, never, never>;
+};
+
 export interface Database {
   public: {
-    Tables: BillingTables & {
+    Tables: BillingTables & SiteTables & {
       subjects: {
         Row: {
           id: string;

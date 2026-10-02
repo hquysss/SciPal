@@ -1,6 +1,7 @@
 import type { FastifyPluginAsync, FastifyReply, FastifyRequest } from 'fastify';
 import crypto from 'node:crypto';
 import { capacityRefusal } from '../billing/capacity.js';
+import { featureAllowed, featureOff } from '../site/features.js';
 
 interface ClassUser {
   id?: string;
@@ -110,6 +111,7 @@ export const classRoutes: FastifyPluginAsync = async (app) => {
     const supabase = app.supabase;
     if (!supabase) return reply.code(503).send(unavailable);
     const user = getUser(request)!;
+    if (!(await featureAllowed(app, 'classes', user as never))) return reply.code(403).send(featureOff('classes'));
 
     const body = (request.body ?? {}) as { name?: unknown; subject_slug?: unknown; subject_id?: unknown };
     const name = typeof body.name === 'string' ? body.name.trim() : '';
@@ -160,6 +162,7 @@ export const classRoutes: FastifyPluginAsync = async (app) => {
     const supabase = app.supabase;
     if (!supabase) return reply.code(503).send(unavailable);
     const user = getUser(request)!;
+    if (!(await featureAllowed(app, 'classes', user as never))) return reply.code(403).send(featureOff('classes'));
 
     const { invite_code } = (request.body ?? {}) as { invite_code?: unknown };
     const code = typeof invite_code === 'string' ? invite_code.trim().toUpperCase() : '';

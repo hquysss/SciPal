@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { createServerClient } from '@scipal/supabase';
+import { ALL_ON, featureOfPath, featureVisible, fetchSiteSettings, type SiteSettings } from './lib/siteSettings';
 import { TRIAL_COOKIE, TRIAL_UI_COOKIE, readTrials, routeAccess, signTrials, trialRenewable, type TrialFeature, type Trials } from './lib/guestTrial';
 
 const LEGACY_LEVEL_COOKIE = 'scipal_education_level';
@@ -98,6 +99,23 @@ async function guestTrial(request: NextRequest, feature: TrialFeature) {
   return response;
 }
 
+// The site switches, read at most every 30 seconds per server instance.
+let siteCache: { at: number; value: SiteSettings } | null = null;
+async function siteSettings(): Promise<SiteSettings> {
+  if (siteCache && Date.now() - siteCache.at < 30_000) return siteCache.value;
+  const value = await fetchSiteSettings().catch(() => ALL_ON);
+  siteCache = { at: Date.now(), value };
+  return value;
+}
+
+/** A page of a feature an admin switched off: the notice page, at the same address. */
+function featureOffPage(request: NextRequest, feature: string) {
+  const url = request.nextUrl.clone();
+  url.pathname = '/feature-off';
+  url.search = `?feature=${feature}`;
+  return NextResponse.rewrite(url);
+}
+
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const access = routeAccess(pathname);
@@ -111,10 +129,15 @@ export async function middleware(request: NextRequest) {
 
   const cookieUpdates: CookieUpdate[] = [];
   const user = hasSessionCookie(request) || access.kind === 'account' ? await signedInUser(request, cookieUpdates) : null;
+  const feature = featureOfPath(pathname);
+  const site = feature || (!user && access.kind === 'trial') ? await siteSettings() : ALL_ON;
 
   let response: NextResponse;
-  if (!user) {
-    response = access.kind === 'account' ? loginRedirect(request) : await guestTrial(request, access.feature);
+  if (!featureVisible(site, feature, user?.app_metadata?.app_role)) {
+    response = featureOffPage(request, feature!);
+  } else if (!user) {
+    // With guest trials switched off, visitors sign in first.
+    response = access.kind === 'account' || !site.features.guest_trial ? loginRedirect(request) : await guestTrial(request, access.feature);
   } else if (
     (pathname === '/teacher' || pathname.startsWith('/teacher/')) &&
     !['teacher', 'admin'].includes(user.app_metadata?.app_role)

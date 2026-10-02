@@ -2,6 +2,7 @@ import { createHash, randomInt } from 'node:crypto';
 import type { FastifyPluginAsync, FastifyReply, FastifyRequest } from 'fastify';
 import { z } from 'zod';
 import { checkoutDisabled, payosFromEnv, type PayosClient } from '../billing/providers/payos.js';
+import { featureAllowed, featureOff } from '../site/features.js';
 
 // Checkout by payOS QR and the order it pays (billing plan Task 6, spec §6–7).
 // - The order and its payment reference are saved before payOS is asked for a link.
@@ -71,6 +72,7 @@ export const billingCheckoutRoutes: FastifyPluginAsync<{ payos?: PayosClient | n
     if (!parsed.success) return reply.code(400).send(INVALID);
     if (!payos || checkoutDisabled()) return reply.code(503).send(CLOSED);
     const user = userOf(request)!;
+    if (!(await featureAllowed(app, 'pricing', user as never))) return reply.code(403).send(featureOff('pricing'));
     const supabase = app.supabase!;
     const input = parsed.data;
     const payloadHash = createHash('sha256').update(JSON.stringify([input.priceId, input.provider, input.autoRenew])).digest('hex');
