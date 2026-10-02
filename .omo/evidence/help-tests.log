@@ -1,0 +1,386 @@
+• turbo 2.11.2
+
+   • Packages in scope: @scipal/api, @scipal/hooks, @scipal/mobile, @scipal/supabase, @scipal/types, @scipal/ui, @scipal/web
+   • Running test in 7 packages
+   • Remote caching disabled
+
+@scipal/types:test: cache miss, executing 39654ea8deeaa8a7
+@scipal/web:test: cache miss, executing 517e92d4a7b000b7
+@scipal/api:test: cache miss, executing f6e96c1ec5e2a4df
+@scipal/supabase:test: cache miss, executing 02aae6d1c8d40179
+@scipal/ui:test: cache hit, replaying logs 4086b9e00eedec2a
+@scipal/hooks:test: cache hit, replaying logs f5da863d1f8a5205
+@scipal/hooks:test: 
+@scipal/hooks:test: > @scipal/hooks@0.1.0 test D:\Code\SciPal\packages\hooks
+@scipal/hooks:test: > vitest run
+@scipal/hooks:test: 
+@scipal/hooks:test: 
+@scipal/hooks:test: [1m[30m[46m RUN [49m[39m[22m [36mv5.0.1 [39m[90mD:/Code/SciPal/packages/hooks[39m
+@scipal/hooks:test: 
+@scipal/hooks:test:  [32m✓[39m src/__tests__/useLanguage.test.ts [2m([22m[2m6 tests[22m[2m)[22m[32m 148[2mms[22m[39m
+@scipal/hooks:test: 
+@scipal/hooks:test: [2m Test Files [22m [1m[32m1 passed[39m[22m[90m (1)[39m
+@scipal/hooks:test: [2m      Tests [22m [1m[32m6 passed[39m[22m[90m (6)[39m
+@scipal/hooks:test: [2m   Start at [22m 20:16:26
+@scipal/hooks:test: [2m   Duration [22m 41.69s[2m (environment 83%, import 17%)[22m
+@scipal/hooks:test: 
+@scipal/ui:test: 
+@scipal/ui:test: > @scipal/ui@0.1.0 test D:\Code\SciPal\.claude\worktrees\code-review-84f933\packages\ui
+@scipal/ui:test: > vitest run
+@scipal/ui:test: 
+@scipal/ui:test: 
+@scipal/ui:test: [1m[30m[46m RUN [49m[39m[22m [36mv5.0.1 [39m[90mD:/Code/SciPal/.claude/worktrees/code-review-84f933/packages/ui[39m
+@scipal/ui:test: 
+@scipal/ui:test:  [32m✓[39m src/__tests__/tokens.test.ts [2m([22m[2m4 tests[22m[2m)[22m[32m 11[2mms[22m[39m
+@scipal/ui:test:  [32m✓[39m src/__tests__/SubjectProvider.test.tsx [2m([22m[2m9 tests[22m[2m)[22m[32m 23[2mms[22m[39m
+@scipal/ui:test:  [32m✓[39m src/__tests__/LevelScope.test.tsx [2m([22m[2m1 test[22m[2m)[22m[32m 8[2mms[22m[39m
+@scipal/ui:test:  [32m✓[39m src/__tests__/renderThemeCss.test.ts [2m([22m[2m12 tests[22m[2m)[22m[32m 23[2mms[22m[39m
+@scipal/ui:test:  [32m✓[39m src/__tests__/palettes.test.ts [2m([22m[2m218 tests[22m[2m)[22m[32m 96[2mms[22m[39m
+@scipal/ui:test: 
+@scipal/ui:test: [2m Test Files [22m [1m[32m5 passed[39m[22m[90m (5)[39m
+@scipal/ui:test: [2m      Tests [22m [1m[32m244 passed[39m[22m[90m (244)[39m
+@scipal/ui:test: [2m   Start at [22m 15:42:01
+@scipal/ui:test: [2m   Duration [22m 2.06s[2m (transform 66%, import 28%, tests 4%, worker 2%)[22m
+@scipal/ui:test: 
+@scipal/ui:test: [2m  Transform [22m [33mtransforming modules took 2.60s[39m[2m · 66% of tracked time, re-done on every run[22m
+@scipal/ui:test: [2m            [22m [2mpersist transforms across runs with [22m[33mfsModuleCache: true[39m
+@scipal/ui:test: [2m            [22m [2mlearn more: https://vitest.dev/guide/improving-performance#caching-between-reruns[22m
+@scipal/ui:test: 
+@scipal/types:test: 
+@scipal/types:test: > @scipal/types@0.1.0 test D:\Code\SciPal\packages\types
+@scipal/types:test: > vitest run
+@scipal/types:test: 
+@scipal/web:test: 
+@scipal/web:test: > @scipal/web@0.1.0 test D:\Code\SciPal\frontend
+@scipal/web:test: > vitest run
+@scipal/web:test: 
+@scipal/api:test: 
+@scipal/api:test: > @scipal/api@0.1.0 test D:\Code\SciPal\backend
+@scipal/api:test: > vitest run
+@scipal/api:test: 
+@scipal/supabase:test: 
+@scipal/supabase:test: > @scipal/supabase@0.1.0 test D:\Code\SciPal\packages\supabase
+@scipal/supabase:test: > vitest run
+@scipal/supabase:test: 
+@scipal/types:test: 
+@scipal/types:test: [1m[30m[46m RUN [49m[39m[22m [36mv5.0.1 [39m[90mD:/Code/SciPal/packages/types[39m
+@scipal/types:test: 
+@scipal/web:test: 
+@scipal/web:test: [1m[30m[46m RUN [49m[39m[22m [36mv5.0.1 [39m[90mD:/Code/SciPal/frontend[39m
+@scipal/web:test: 
+@scipal/supabase:test: 
+@scipal/supabase:test: [1m[30m[46m RUN [49m[39m[22m [36mv5.0.1 [39m[90mD:/Code/SciPal/packages/supabase[39m
+@scipal/supabase:test: 
+@scipal/types:test:  [32m✓[39m src/__tests__/block.test.ts [2m([22m[2m6 tests[22m[2m)[22m[32m 20[2mms[22m[39m
+@scipal/types:test:  [32m✓[39m src/__tests__/question.test.ts [2m([22m[2m4 tests[22m[2m)[22m[32m 14[2mms[22m[39m
+@scipal/types:test:  [32m✓[39m src/__tests__/subject.test.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 15[2mms[22m[39m
+@scipal/types:test:  [32m✓[39m src/__tests__/questionContract.test.ts [2m([22m[2m37 tests[22m[2m)[22m[32m 35[2mms[22m[39m
+@scipal/types:test:  [32m✓[39m src/__tests__/simulations.test.ts [2m([22m[2m65 tests[22m[2m)[22m[32m 220[2mms[22m[39m
+@scipal/types:test:  [32m✓[39m src/__tests__/billing.test.ts [2m([22m[2m6 tests[22m[2m)[22m[32m 19[2mms[22m[39m
+@scipal/types:test: 
+@scipal/types:test: [2m Test Files [22m [1m[32m6 passed[39m[22m[90m (6)[39m
+@scipal/types:test: [2m      Tests [22m [1m[32m121 passed[39m[22m[90m (121)[39m
+@scipal/types:test: [2m   Start at [22m 13:15:23
+@scipal/types:test: [2m   Duration [22m 2.31s[2m (import 48%, transform 31%, tests 16%, worker 5%)[22m
+@scipal/types:test: 
+@scipal/supabase:test:  [32m✓[39m src/__tests__/client.test.ts [2m([22m[2m8 tests[22m[2m)[22m[32m 111[2mms[22m[39m
+@scipal/supabase:test: 
+@scipal/supabase:test: [2m Test Files [22m [1m[32m1 passed[39m[22m[90m (1)[39m
+@scipal/supabase:test: [2m      Tests [22m [1m[32m8 passed[39m[22m[90m (8)[39m
+@scipal/supabase:test: [2m   Start at [22m 13:15:25
+@scipal/supabase:test: [2m   Duration [22m 2.07s[2m (import 76%, transform 12%, tests 10%, worker 2%)[22m
+@scipal/supabase:test: 
+@scipal/api:test: 
+@scipal/api:test: [7m[1m[36m RUN [39m[22m[27m [36mv1.6.1[39m [90mD:/Code/SciPal/backend[39m
+@scipal/api:test: 
+@scipal/web:test:  [32m✓[39m lib/theme/rootTheme.test.ts [2m([22m[2m2 tests[22m[2m)[22m[33m 1120[2mms[22m[39m
+@scipal/web:test:    [32m✓[39m theme stays off the document root [2m(2)[22m
+@scipal/web:test:      [33m[2m✓[22m[39m no script writes theme, level or colour variables on <html>[33m 689[2mms[22m[39m
+@scipal/web:test:      [33m[2m✓[22m[39m no stylesheet keys theme rules off :root attributes[33m 427[2mms[22m[39m
+@scipal/web:test:  [32m✓[39m features/content-import/lessonDocument.test.ts [2m([22m[2m13 tests[22m[2m)[22m[33m 1831[2mms[22m[39m
+@scipal/web:test:    [32m✓[39m the Word template offered in the Studio [2m(1)[22m
+@scipal/web:test:      [33m[2m✓[22m[39m parses into a valid lesson[33m 1665[2mms[22m[39m
+@scipal/api:test:  [32m✓[39m src/__tests__/billing-payments.test.ts [2m ([22m[2m21 tests[22m[2m)[22m[33m 751[2mms[22m[39m
+@scipal/web:test:  [32m✓[39m features/profile/ProfileCard.test.tsx [2m([22m[2m5 tests[22m[2m)[22m[33m 492[2mms[22m[39m
+@scipal/api:test:  [32m✓[39m src/__tests__/exam-import.test.ts [2m ([22m[2m21 tests[22m[2m)[22m[33m 528[2mms[22m[39m
+@scipal/web:test:  [32m✓[39m features/landing/PricingSection.test.tsx [2m([22m[2m6 tests[22m[2m)[22m[33m 374[2mms[22m[39m
+@scipal/web:test:  [32m✓[39m features/content-import/examWorkbook.test.ts [2m([22m[2m10 tests[22m[2m)[22m[33m 1931[2mms[22m[39m
+@scipal/web:test:    [32m✓[39m readExamWorkbook [2m(6)[22m
+@scipal/web:test:      [33m[2m✓[22m[39m skips the template example rows, so an untouched template has nothing to import[33m 744[2mms[22m[39m
+@scipal/web:test:      [33m[2m✓[22m[39m rejects a multiple-choice question without exactly one correct option[33m 322[2mms[22m[39m
+@scipal/web:test:      [33m[2m✓[22m[39m rejects items and sections that point nowhere[33m 378[2mms[22m[39m
+@scipal/web:test:  [32m✓[39m features/admin-ai/AdminChats.test.tsx [2m([22m[2m4 tests[22m[2m)[22m[32m 280[2mms[22m[39m
+@scipal/web:test:  [32m✓[39m features/simulations/views.test.tsx [2m([22m[2m35 tests[22m[2m)[22m[33m 482[2mms[22m[39m
+@scipal/web:test:  [32m✓[39m features/landing/LandingPage.test.tsx [2m([22m[2m10 tests[22m[2m)[22m[33m 1521[2mms[22m[39m
+@scipal/web:test:    [32m✓[39m LandingPage [2m(10)[22m
+@scipal/web:test:      [33m[2m✓[22m[39m no "in preparation" copy at any level and the poll on every level[33m 470[2mms[22m[39m
+@scipal/api:test:  [32m✓[39m src/__tests__/tutor-chat.test.ts [2m ([22m[2m13 tests[22m[2m)[22m[33m 436[2mms[22m[39m
+@scipal/web:test:  [32m✓[39m features/billing/billing.test.tsx [2m([22m[2m20 tests[22m[2m)[22m[33m 582[2mms[22m[39m
+@scipal/api:test:  [32m✓[39m src/__tests__/questions.test.ts [2m ([22m[2m19 tests[22m[2m)[22m[33m 463[2mms[22m[39m
+@scipal/web:test:  [32m✓[39m middleware.test.ts [2m([22m[2m15 tests[22m[2m)[22m[32m 192[2mms[22m[39m
+@scipal/web:test:  [32m✓[39m lib/theme/noscript.test.ts [2m([22m[2m1 test[22m[2m)[22m[32m 62[2mms[22m[39m
+@scipal/api:test:  [32m✓[39m src/__tests__/exam.test.ts [2m ([22m[2m19 tests[22m[2m)[22m[33m 698[2mms[22m[39m
+@scipal/web:test:  [32m✓[39m features/admin-ai/AiSettingsForm.test.tsx [2m([22m[2m6 tests[22m[2m)[22m[33m 1552[2mms[22m[39m
+@scipal/web:test:    [32m✓[39m AiSettingsForm [2m(6)[22m
+@scipal/web:test:      [33m[2m✓[22m[39m shows the provider choice with key status, the model, the limit, the switch and usage[33m 518[2mms[22m[39m
+@scipal/web:test:      [33m[2m✓[22m[39m lets the admin pick the Professor’s voice, male voices first, with the default named[33m 589[2mms[22m[39m
+@scipal/api:test:  [32m✓[39m src/__tests__/billing-reconciliation.test.ts [2m ([22m[2m12 tests[22m[2m)[22m[90m 87[2mms[22m[39m
+@scipal/api:test:  [32m✓[39m src/__tests__/question-pools.test.ts [2m ([22m[2m12 tests[22m[2m)[22m[90m 168[2mms[22m[39m
+@scipal/web:test:  [32m✓[39m features/authoring/practice/api.test.ts [2m([22m[2m5 tests[22m[2m)[22m[32m 100[2mms[22m[39m
+@scipal/api:test:  [32m✓[39m src/__tests__/simulation-requests.test.ts [2m ([22m[2m14 tests[22m[2m)[22m[33m 315[2mms[22m[39m
+@scipal/api:test:  [32m✓[39m src/__tests__/assignments.test.ts [2m ([22m[2m12 tests[22m[2m)[22m[90m 93[2mms[22m[39m
+@scipal/web:test:  [32m✓[39m features/authoring/editor/BlockList.test.tsx [2m([22m[2m8 tests[22m[2m)[22m[33m 615[2mms[22m[39m
+@scipal/web:test:  [32m✓[39m features/glossary/staff/staff.test.tsx [2m([22m[2m4 tests[22m[2m)[22m[32m 251[2mms[22m[39m
+@scipal/api:test:  [32m✓[39m src/__tests__/practice.test.ts [2m ([22m[2m14 tests[22m[2m)[22m[90m 200[2mms[22m[39m
+@scipal/web:test:  [32m✓[39m features/lessons/PracticeSection.test.tsx [2m([22m[2m8 tests[22m[2m)[22m[32m 64[2mms[22m[39m
+@scipal/web:test:  [32m✓[39m features/ai-tutor/TutorMessage.test.tsx [2m([22m[2m3 tests[22m[2m)[22m[33m 446[2mms[22m[39m
+@scipal/web:test:    [32m✓[39m TutorMessage [2m(3)[22m
+@scipal/web:test:      [33m[2m✓[22m[39m renders markdown, a formula and a code block[33m 378[2mms[22m[39m
+@scipal/api:test:  [32m✓[39m src/__tests__/exam-attempts.test.ts [2m ([22m[2m11 tests[22m[2m)[22m[90m 142[2mms[22m[39m
+@scipal/api:test:  [32m✓[39m src/__tests__/account-quotas.test.ts [2m ([22m[2m8 tests[22m[2m)[22m[90m 112[2mms[22m[39m
+@scipal/api:test:  [32m✓[39m src/routes/accounts.test.ts [2m ([22m[2m15 tests[22m[2m)[22m[90m 88[2mms[22m[39m
+@scipal/web:test:  [32m✓[39m features/authoring/practice/QuestionEditor.test.tsx [2m([22m[2m5 tests[22m[2m)[22m[33m 458[2mms[22m[39m
+@scipal/api:test:  [32m✓[39m src/__tests__/authoring.test.ts [2m ([22m[2m11 tests[22m[2m)[22m[90m 153[2mms[22m[39m
+@scipal/web:test:  [32m✓[39m components/blocks/BlockRenderer.test.tsx [2m([22m[2m12 tests[22m[2m)[22m[33m 366[2mms[22m[39m
+@scipal/web:test:  [32m✓[39m features/ai-tutor/useTutorChat.test.ts [2m([22m[2m5 tests[22m[2m)[22m[32m 107[2mms[22m[39m
+@scipal/web:test:  [32m✓[39m features/landing/HowItWorks.test.tsx [2m([22m[2m8 tests[22m[2m)[22m[33m 408[2mms[22m[39m
+@scipal/api:test:  [32m✓[39m src/__tests__/teacher-requests.test.ts [2m ([22m[2m13 tests[22m[2m)[22m[90m 260[2mms[22m[39m
+@scipal/api:test:  [32m✓[39m src/__tests__/classes.test.ts [2m ([22m[2m13 tests[22m[2m)[22m[90m 57[2mms[22m[39m
+@scipal/api:test:  [32m✓[39m src/__tests__/quiz-references.test.ts [2m ([22m[2m16 tests[22m[2m)[22m[90m 189[2mms[22m[39m
+@scipal/web:test:  [32m✓[39m features/glossary/GlossarySearch.test.tsx [2m([22m[2m5 tests[22m[2m)[22m[33m 491[2mms[22m[39m
+@scipal/web:test:    [32m✓[39m Glossary [2m(5)[22m
+@scipal/web:test:      [33m[2m✓[22m[39m keeps the chips to one row: the five busiest subjects, the rest behind "+n more"[33m 388[2mms[22m[39m
+@scipal/api:test:  [32m✓[39m src/__tests__/translate.test.ts [2m ([22m[2m10 tests[22m[2m)[22m[90m 73[2mms[22m[39m
+@scipal/web:test:  [32m✓[39m components/blocks/InteractiveRenderer.test.tsx [2m([22m[2m6 tests[22m[2m)[22m[32m 109[2mms[22m[39m
+@scipal/api:test:  [32m✓[39m src/__tests__/term-proposals.test.ts [2m ([22m[2m12 tests[22m[2m)[22m[90m 83[2mms[22m[39m
+@scipal/api:test:  [32m✓[39m src/__tests__/exams.test.ts [2m ([22m[2m9 tests[22m[2m)[22m[90m 89[2mms[22m[39m
+@scipal/api:test:  [32m✓[39m src/__tests__/tutor-quota.test.ts [2m ([22m[2m8 tests[22m[2m)[22m[90m 63[2mms[22m[39m
+@scipal/api:test:  [32m✓[39m src/__tests__/exams-lifecycle.test.ts [2m ([22m[2m9 tests[22m[2m)[22m[90m 203[2mms[22m[39m
+@scipal/web:test:  [32m✓[39m features/authoring/editor/BlockEditor.test.tsx [2m([22m[2m7 tests[22m[2m)[22m[33m 703[2mms[22m[39m
+@scipal/web:test:  [32m✓[39m features/guest/guest.test.tsx [2m([22m[2m6 tests[22m[2m)[22m[32m 80[2mms[22m[39m
+@scipal/web:test: [90mstderr[2m | features/exam/examQueries.test.ts[2m > [22m[2mgetExamBlueprints[2m > [22m[2mreports server and network failures as errors
+@scipal/web:test: [22m[39mgetExamBlueprints failed: Error: offline
+@scipal/web:test:     at D:/Code/SciPal/frontend/features/exam/examQueries.test.ts:23:54
+@scipal/web:test:     at Mock (file:///D:/Code/SciPal/node_modules/[4m.pnpm[24m/vitest@5.0.1_@opentelemetry+api@1.9.1_@types+node@20.19.43_jsdom@30.1.1_@noble+hashes@1.8.0___3cjonjo46p22v5voeou7hfrbrm/node_modules/[4mvitest[24m/dist/chunks/spy.DQ0ZsPbi.js:320:40)
+@scipal/web:test:     at getExamBlueprints (D:/Code/SciPal/frontend/features/exam/examQueries.ts:28:23)
+@scipal/web:test:     at D:/Code/SciPal/frontend/features/exam/examQueries.test.ts:24:18
+@scipal/web:test: [90m    at processTicksAndRejections (node:internal/process/task_queues:104:5)[39m
+@scipal/web:test:     at file:///D:/Code/SciPal/node_modules/[4m.pnpm[24m/vitest@5.0.1_@opentelemetry+api@1.9.1_@types+node@20.19.43_jsdom@30.1.1_@noble+hashes@1.8.0___3cjonjo46p22v5voeou7hfrbrm/node_modules/[4mvitest[24m/dist/chunks/run.C5UmxDPh.js:2783:20
+@scipal/web:test: 
+@scipal/web:test: [90mstderr[2m | features/exam/examQueries.test.ts[2m > [22m[2mgetExamBlueprint[2m > [22m[2mmaps 404 to not_found and never invents questions
+@scipal/web:test: [22m[39mgetExamBlueprint failed: Error: offline
+@scipal/web:test:     at D:/Code/SciPal/frontend/features/exam/examQueries.test.ts:32:54
+@scipal/web:test:     at Mock (file:///D:/Code/SciPal/node_modules/[4m.pnpm[24m/vitest@5.0.1_@opentelemetry+api@1.9.1_@types+node@20.19.43_jsdom@30.1.1_@noble+hashes@1.8.0___3cjonjo46p22v5voeou7hfrbrm/node_modules/[4mvitest[24m/dist/chunks/spy.DQ0ZsPbi.js:320:40)
+@scipal/web:test:     at getExamBlueprint (D:/Code/SciPal/frontend/features/exam/examQueries.ts:42:23)
+@scipal/web:test:     at D:/Code/SciPal/frontend/features/exam/examQueries.test.ts:33:18
+@scipal/web:test: [90m    at processTicksAndRejections (node:internal/process/task_queues:104:5)[39m
+@scipal/web:test:     at file:///D:/Code/SciPal/node_modules/[4m.pnpm[24m/vitest@5.0.1_@opentelemetry+api@1.9.1_@types+node@20.19.43_jsdom@30.1.1_@noble+hashes@1.8.0___3cjonjo46p22v5voeou7hfrbrm/node_modules/[4mvitest[24m/dist/chunks/run.C5UmxDPh.js:2783:20
+@scipal/web:test: 
+@scipal/api:test:  [32m✓[39m src/__tests__/billing-routes.test.ts [2m ([22m[2m7 tests[22m[2m)[22m[90m 42[2mms[22m[39m
+@scipal/web:test:  [32m✓[39m features/exam/examQueries.test.ts [2m([22m[2m4 tests[22m[2m)[22m[32m 287[2mms[22m[39m
+@scipal/api:test:  [32m✓[39m src/__tests__/author-ai.test.ts [2m ([22m[2m8 tests[22m[2m)[22m[90m 43[2mms[22m[39m
+@scipal/web:test:  [32m✓[39m features/authoring/exams/ExamList.test.tsx [2m([22m[2m2 tests[22m[2m)[22m[32m 43[2mms[22m[39m
+@scipal/web:test:  [32m✓[39m features/authoring/exams/ExamBuilder.test.tsx [2m([22m[2m5 tests[22m[2m)[22m[32m 274[2mms[22m[39m
+@scipal/web:test:  [32m✓[39m features/ai-tutor/TutorChat.test.tsx [2m([22m[2m3 tests[22m[2m)[22m[32m 239[2mms[22m[39m
+@scipal/api:test:  [32m✓[39m src/__tests__/tutor-prompt.test.ts [2m ([22m[2m13 tests[22m[2m)[22m[33m 1276[2mms[22m[39m
+@scipal/api:test:  [32m✓[39m src/__tests__/authoring-topics.test.ts [2m ([22m[2m11 tests[22m[2m)[22m[90m 72[2mms[22m[39m
+@scipal/web:test:  [32m✓[39m features/simulations/engines/biology.test.ts [2m([22m[2m7 tests[22m[2m)[22m[32m 165[2mms[22m[39m
+@scipal/web:test:  [32m✓[39m components/pwa/pwa.test.tsx [2m([22m[2m3 tests[22m[2m)[22m[32m 50[2mms[22m[39m
+@scipal/api:test:  [32m✓[39m src/__tests__/authoring-delete.test.ts [2m ([22m[2m11 tests[22m[2m)[22m[90m 92[2mms[22m[39m
+@scipal/web:test:  [32m✓[39m features/problemReports/problemReports.test.tsx [2m([22m[2m4 tests[22m[2m)[22m[32m 216[2mms[22m[39m
+@scipal/api:test:  [32m✓[39m src/__tests__/aiSettings.test.ts [2m ([22m[2m4 tests[22m[2m)[22m[90m 41[2mms[22m[39m
+@scipal/api:test:  [32m✓[39m src/__tests__/tutor-voice.test.ts [2m ([22m[2m7 tests[22m[2m)[22m[90m 108[2mms[22m[39m
+@scipal/web:test:  [32m✓[39m app/auth/callback/route.test.ts [2m([22m[2m5 tests[22m[2m)[22m[32m 34[2mms[22m[39m
+@scipal/api:test:  [32m✓[39m src/__tests__/topicAdmin.test.ts [2m ([22m[2m7 tests[22m[2m)[22m[90m 53[2mms[22m[39m
+@scipal/api:test:  [32m✓[39m src/__tests__/adminTutor.test.ts [2m ([22m[2m7 tests[22m[2m)[22m[90m 35[2mms[22m[39m
+@scipal/web:test:  [32m✓[39m features/exam/examAttempt.test.ts [2m([22m[2m4 tests[22m[2m)[22m[32m 211[2mms[22m[39m
+@scipal/api:test:  [32m✓[39m src/__tests__/admin-plans.test.ts [2m ([22m[2m5 tests[22m[2m)[22m[90m 59[2mms[22m[39m
+@scipal/web:test:  [32m✓[39m features/admin/BillingOrdersTable.test.tsx [2m([22m[2m2 tests[22m[2m)[22m[32m 210[2mms[22m[39m
+@scipal/api:test:  [32m✓[39m src/__tests__/guest-trials.test.ts [2m ([22m[2m9 tests[22m[2m)[22m[90m 37[2mms[22m[39m
+@scipal/api:test:  [32m✓[39m src/__tests__/problem-reports.test.ts [2m ([22m[2m7 tests[22m[2m)[22m[90m 79[2mms[22m[39m
+@scipal/api:test:  [32m✓[39m src/__tests__/catalog.test.ts [2m ([22m[2m20 tests[22m[2m)[22m[90m 14[2mms[22m[39m
+@scipal/api:test:  [32m✓[39m src/__tests__/tutor-settings.test.ts [2m ([22m[2m8 tests[22m[2m)[22m[90m 4[2mms[22m[39m
+@scipal/web:test:  [32m✓[39m lib/pwa/installMode.test.ts [2m([22m[2m6 tests[22m[2m)[22m[32m 14[2mms[22m[39m
+@scipal/api:test:  [32m✓[39m src/__tests__/authoring-lesson-create.test.ts [2m ([22m[2m8 tests[22m[2m)[22m[90m 78[2mms[22m[39m
+@scipal/api:test:  [32m✓[39m src/__tests__/payos.test.ts [2m ([22m[2m7 tests[22m[2m)[22m[90m 9[2mms[22m[39m
+@scipal/web:test:  [32m✓[39m components/ui/primitives.test.tsx [2m([22m[2m15 tests[22m[2m)[22m[32m 285[2mms[22m[39m
+@scipal/api:test:  [32m✓[39m src/__tests__/import-quotas.test.ts [2m ([22m[2m4 tests[22m[2m)[22m[90m 106[2mms[22m[39m
+@scipal/api:test:  [32m✓[39m src/__tests__/exam-blueprints.test.ts [2m ([22m[2m7 tests[22m[2m)[22m[90m 34[2mms[22m[39m
+@scipal/web:test:  [32m✓[39m features/landing/TutorSection.test.tsx [2m([22m[2m7 tests[22m[2m)[22m[33m 458[2mms[22m[39m
+@scipal/web:test:  [32m✓[39m features/teacherRequests/teacherRequests.test.tsx [2m([22m[2m8 tests[22m[2m)[22m[32m 260[2mms[22m[39m
+@scipal/api:test:  [32m✓[39m src/__tests__/simulations.test.ts [2m ([22m[2m58 tests[22m[2m)[22m[90m 39[2mms[22m[39m
+@scipal/api:test:  [32m✓[39m src/__tests__/siteSettings.test.ts [2m ([22m[2m5 tests[22m[2m)[22m[90m 15[2mms[22m[39m
+@scipal/api:test:  [32m✓[39m src/__tests__/tutor-conversations.test.ts [2m ([22m[2m5 tests[22m[2m)[22m[90m 29[2mms[22m[39m
+@scipal/api:test:  [32m✓[39m src/__tests__/teacher-capacity.test.ts [2m ([22m[2m4 tests[22m[2m)[22m[90m 17[2mms[22m[39m
+@scipal/web:test:  [32m✓[39m features/lessons/LessonPartsView.test.tsx [2m([22m[2m8 tests[22m[2m)[22m[33m 311[2mms[22m[39m
+@scipal/api:test:  [32m✓[39m src/__tests__/media-upload.test.ts [2m ([22m[2m6 tests[22m[2m)[22m[90m 28[2mms[22m[39m
+@scipal/api:test:  [32m✓[39m src/__tests__/lesson-media.test.ts [2m ([22m[2m6 tests[22m[2m)[22m[90m 28[2mms[22m[39m
+@scipal/web:test:  [32m✓[39m features/landing/InstallAppSection.test.tsx [2m([22m[2m3 tests[22m[2m)[22m[32m 237[2mms[22m[39m
+@scipal/api:test:  [32m✓[39m src/__tests__/score.test.ts [2m ([22m[2m5 tests[22m[2m)[22m[90m 23[2mms[22m[39m
+@scipal/api:test:  [32m✓[39m src/__tests__/practice-postgrest.test.ts [2m ([22m[2m2 tests[22m[2m)[22m[90m 33[2mms[22m[39m
+@scipal/api:test:  [32m✓[39m src/__tests__/questions-contract.test.ts [2m ([22m[2m32 tests[22m[2m)[22m[90m 11[2mms[22m[39m
+@scipal/api:test:  [32m✓[39m src/__tests__/billing-repository.test.ts [2m ([22m[2m5 tests[22m[2m)[22m[90m 6[2mms[22m[39m
+@scipal/web:test:  [32m✓[39m components/feedback/LoadErrorNotice.test.tsx [2m([22m[2m3 tests[22m[2m)[22m[32m 64[2mms[22m[39m
+@scipal/api:test:  [32m✓[39m src/__tests__/survey.test.ts [2m ([22m[2m6 tests[22m[2m)[22m[90m 25[2mms[22m[39m
+@scipal/api:test:  [32m✓[39m src/__tests__/blockIssues.test.ts [2m ([22m[2m5 tests[22m[2m)[22m[90m 3[2mms[22m[39m
+@scipal/api:test:  [32m✓[39m src/__tests__/v19-schema-migration.test.ts [2m ([22m[2m6 tests[22m[2m)[22m[90m 2[2mms[22m[39m
+@scipal/api:test:  [32m✓[39m src/__tests__/auth.test.ts [2m ([22m[2m5 tests[22m[2m)[22m[90m 15[2mms[22m[39m
+@scipal/web:test:  [32m✓[39m features/authoring/exams/ExamReview.test.tsx [2m([22m[2m1 test[22m[2m)[22m[32m 43[2mms[22m[39m
+@scipal/api:test:  [32m✓[39m src/__tests__/exam-questions.test.ts [2m ([22m[2m3 tests[22m[2m)[22m[90m 4[2mms[22m[39m
+@scipal/api:test:  [32m✓[39m src/__tests__/exam-schema.test.ts [2m ([22m[2m4 tests[22m[2m)[22m[90m 6[2mms[22m[39m
+@scipal/web:test:  [32m✓[39m features/authoring/simulationRequests/AdminQueue.test.tsx [2m([22m[2m4 tests[22m[2m)[22m[33m 436[2mms[22m[39m
+@scipal/web:test:    [32m✓[39m AdminRequestCard [2m(2)[22m
+@scipal/web:test:      [33m[2m✓[22m[39m offers no actions once a request is done or declined[33m 320[2mms[22m[39m
+@scipal/api:test:  [32m✓[39m src/__tests__/remove-demo-content.test.ts [2m ([22m[2m3 tests[22m[2m)[22m[90m 1[2mms[22m[39m
+@scipal/api:test:  [32m✓[39m src/__tests__/rls-migration.test.ts [2m ([22m[2m5 tests[22m[2m)[22m[90m 1[2mms[22m[39m
+@scipal/web:test:  [32m✓[39m components/blocks/TheoryRenderer.test.tsx [2m([22m[2m9 tests[22m[2m)[22m[32m 254[2mms[22m[39m
+@scipal/web:test:  [32m✓[39m features/ai-tutor/AiTutorPanel.test.tsx [2m([22m[2m2 tests[22m[2m)[22m[32m 49[2mms[22m[39m
+@scipal/api:test:  [32m✓[39m src/__tests__/aiProvider.test.ts [2m ([22m[2m3 tests[22m[2m)[22m[90m 2[2mms[22m[39m
+@scipal/api:test:  [32m✓[39m src/__tests__/billing-reconciliation-reason.test.ts [2m ([22m[2m6 tests[22m[2m)[22m[90m 1[2mms[22m[39m
+@scipal/api:test:  [32m✓[39m src/__tests__/billing-periods.test.ts [2m ([22m[2m4 tests[22m[2m)[22m[90m 1[2mms[22m[39m
+@scipal/api:test:  [32m✓[39m src/__tests__/v19-drop-legacy-migration.test.ts [2m ([22m[2m3 tests[22m[2m)[22m[90m 2[2mms[22m[39m
+@scipal/api:test:  [32m✓[39m src/__tests__/handle-new-user-migration.test.ts [2m ([22m[2m3 tests[22m[2m)[22m[90m 1[2mms[22m[39m
+@scipal/api:test:  [32m✓[39m src/__tests__/authoring-bilingual.test.ts [2m ([22m[2m2 tests[22m[2m)[22m[90m 1[2mms[22m[39m
+@scipal/api:test: 
+@scipal/api:test: [2m Test Files [22m [1m[32m64 passed[39m[22m[90m (64)[39m
+@scipal/api:test: [2m      Tests [22m [1m[32m628 passed[39m[22m[90m (628)[39m
+@scipal/api:test: [2m   Start at [22m 13:15:27
+@scipal/api:test: [2m   Duration [22m 32.31s[2m (transform 12.00s, setup 1ms, collect 22.47s, tests 7.73s, environment 0ms, prepare 681ms)[22m
+@scipal/api:test: 
+@scipal/web:test:  [32m✓[39m features/classes/assignments.test.tsx [2m([22m[2m6 tests[22m[2m)[22m[32m 115[2mms[22m[39m
+@scipal/web:test:  [32m✓[39m lib/theme/accentContrast.test.ts [2m([22m[2m9 tests[22m[2m)[22m[32m 20[2mms[22m[39m
+@scipal/web:test:  [32m✓[39m features/authoring/practice/QuestionPicker.test.tsx [2m([22m[2m3 tests[22m[2m)[22m[32m 33[2mms[22m[39m
+@scipal/web:test:  [32m✓[39m app/login/signup.test.tsx [2m([22m[2m6 tests[22m[2m)[22m[32m 59[2mms[22m[39m
+@scipal/web:test:  [32m✓[39m features/authoring/simulationRequests/RequestList.test.tsx [2m([22m[2m3 tests[22m[2m)[22m[32m 102[2mms[22m[39m
+@scipal/web:test:  [32m✓[39m components/ui/new-primitives.test.tsx [2m([22m[2m10 tests[22m[2m)[22m[32m 116[2mms[22m[39m
+@scipal/web:test:  [32m✓[39m lib/theme/rawColors.test.ts [2m([22m[2m5 tests[22m[2m)[22m[33m 495[2mms[22m[39m
+@scipal/web:test:    [32m✓[39m raw color ratchet [2m(2)[22m
+@scipal/web:test:      [33m[2m✓[22m[39m never adds raw colors and locks in every reduction[33m 475[2mms[22m[39m
+@scipal/web:test: [90mstderr[2m | features/classes/classQueries.test.ts[2m > [22m[2mclass queries[2m > [22m[2mreports an error when the network fails
+@scipal/web:test: [22m[39mgetTeacherClasses failed: TypeError: fetch failed
+@scipal/web:test:     at D:/Code/SciPal/frontend/features/classes/classQueries.test.ts:28:54
+@scipal/web:test:     at file:///D:/Code/SciPal/node_modules/[4m.pnpm[24m/vitest@5.0.1_@opentelemetry+api@1.9.1_@types+node@20.19.43_jsdom@30.1.1_@noble+hashes@1.8.0___3cjonjo46p22v5voeou7hfrbrm/node_modules/[4mvitest[24m/dist/chunks/run.C5UmxDPh.js:1628:35
+@scipal/web:test:     at file:///D:/Code/SciPal/node_modules/[4m.pnpm[24m/vitest@5.0.1_@opentelemetry+api@1.9.1_@types+node@20.19.43_jsdom@30.1.1_@noble+hashes@1.8.0___3cjonjo46p22v5voeou7hfrbrm/node_modules/[4mvitest[24m/dist/chunks/run.C5UmxDPh.js:2783:26
+@scipal/web:test:     at file:///D:/Code/SciPal/node_modules/[4m.pnpm[24m/vitest@5.0.1_@opentelemetry+api@1.9.1_@types+node@20.19.43_jsdom@30.1.1_@noble+hashes@1.8.0___3cjonjo46p22v5voeou7hfrbrm/node_modules/[4mvitest[24m/dist/chunks/run.C5UmxDPh.js:3319:20
+@scipal/web:test:     at new Promise (<anonymous>)
+@scipal/web:test:     at runWithCancel (file:///D:/Code/SciPal/node_modules/[4m.pnpm[24m/vitest@5.0.1_@opentelemetry+api@1.9.1_@types+node@20.19.43_jsdom@30.1.1_@noble+hashes@1.8.0___3cjonjo46p22v5voeou7hfrbrm/node_modules/[4mvitest[24m/dist/chunks/run.C5UmxDPh.js:3314:10)
+@scipal/web:test:     at file:///D:/Code/SciPal/node_modules/[4m.pnpm[24m/vitest@5.0.1_@opentelemetry+api@1.9.1_@types+node@20.19.43_jsdom@30.1.1_@noble+hashes@1.8.0___3cjonjo46p22v5voeou7hfrbrm/node_modules/[4mvitest[24m/dist/chunks/run.C5UmxDPh.js:3299:20
+@scipal/web:test:     at new Promise (<anonymous>)
+@scipal/web:test:     at runWithTimeout (file:///D:/Code/SciPal/node_modules/[4m.pnpm[24m/vitest@5.0.1_@opentelemetry+api@1.9.1_@types+node@20.19.43_jsdom@30.1.1_@noble+hashes@1.8.0___3cjonjo46p22v5voeou7hfrbrm/node_modules/[4mvitest[24m/dist/chunks/run.C5UmxDPh.js:3257:10)
+@scipal/web:test:     at file:///D:/Code/SciPal/node_modules/[4m.pnpm[24m/vitest@5.0.1_@opentelemetry+api@1.9.1_@types+node@20.19.43_jsdom@30.1.1_@noble+hashes@1.8.0___3cjonjo46p22v5voeou7hfrbrm/node_modules/[4mvitest[24m/dist/chunks/run.C5UmxDPh.js:3876:64
+@scipal/web:test: 
+@scipal/web:test:  [32m✓[39m features/authoring/exams/api.test.ts [2m([22m[2m1 test[22m[2m)[22m[32m 87[2mms[22m[39m
+@scipal/web:test:  [32m✓[39m features/classes/classQueries.test.ts [2m([22m[2m5 tests[22m[2m)[22m[32m 229[2mms[22m[39m
+@scipal/web:test:  [32m✓[39m features/authoring/editor/autosave.test.ts [2m([22m[2m9 tests[22m[2m)[22m[32m 41[2mms[22m[39m
+@scipal/web:test:  [32m✓[39m features/simulations/SimulationEditor.test.tsx [2m([22m[2m7 tests[22m[2m)[22m[33m 323[2mms[22m[39m
+@scipal/web:test:  [32m✓[39m features/ai-tutor/voice/voice.test.tsx [2m([22m[2m7 tests[22m[2m)[22m[32m 195[2mms[22m[39m
+@scipal/web:test:  [32m✓[39m features/authoring/topics/TopicManager.test.tsx [2m([22m[2m2 tests[22m[2m)[22m[32m 74[2mms[22m[39m
+@scipal/web:test:  [32m✓[39m components/nav/ThemeToggle.test.tsx [2m([22m[2m3 tests[22m[2m)[22m[32m 60[2mms[22m[39m
+@scipal/web:test:  [32m✓[39m features/admin/billingReconciliationApi.test.ts [2m([22m[2m2 tests[22m[2m)[22m[32m 149[2mms[22m[39m
+@scipal/web:test:  [32m✓[39m features/lessons/SubjectHeader.test.tsx [2m([22m[2m2 tests[22m[2m)[22m[32m 49[2mms[22m[39m
+@scipal/web:test:  [32m✓[39m features/authoring/simulationRequests/api.test.ts [2m([22m[2m5 tests[22m[2m)[22m[32m 178[2mms[22m[39m
+@scipal/web:test:  [32m✓[39m features/lessons/LessonHeader.test.tsx [2m([22m[2m3 tests[22m[2m)[22m[32m 97[2mms[22m[39m
+@scipal/web:test:  [32m✓[39m features/authoring/simulationRequests/RequestForm.test.tsx [2m([22m[2m2 tests[22m[2m)[22m[32m 49[2mms[22m[39m
+@scipal/web:test:  [32m✓[39m components/blocks/LessonSheet.test.tsx [2m([22m[2m2 tests[22m[2m)[22m[32m 52[2mms[22m[39m
+@scipal/web:test:  [32m✓[39m features/authoring/lessonStatusBadge.test.tsx [2m([22m[2m5 tests[22m[2m)[22m[32m 47[2mms[22m[39m
+@scipal/web:test:  [32m✓[39m features/survey/DemandPollBanner.test.tsx [2m([22m[2m2 tests[22m[2m)[22m[32m 51[2mms[22m[39m
+@scipal/web:test:  [32m✓[39m features/authoring/editor/mediaApi.test.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 104[2mms[22m[39m
+@scipal/web:test:  [32m✓[39m features/authoring/LessonDeleteActions.test.tsx [2m([22m[2m4 tests[22m[2m)[22m[32m 33[2mms[22m[39m
+@scipal/web:test:  [32m✓[39m features/authoring/topicApi.test.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 82[2mms[22m[39m
+@scipal/web:test:  [32m✓[39m features/lessons/practiceApi.test.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 118[2mms[22m[39m
+@scipal/web:test:  [32m✓[39m features/authoring/editor/lessonIssues.test.ts [2m([22m[2m10 tests[22m[2m)[22m[32m 38[2mms[22m[39m
+@scipal/web:test:  [32m✓[39m features/simulations/engines/physics.test.ts [2m([22m[2m10 tests[22m[2m)[22m[32m 41[2mms[22m[39m
+@scipal/web:test:  [32m✓[39m components/blocks/FormulaRenderer.test.tsx [2m([22m[2m2 tests[22m[2m)[22m[32m 56[2mms[22m[39m
+@scipal/web:test:  [32m✓[39m components/ui/dialog.test.tsx [2m([22m[2m6 tests[22m[2m)[22m[32m 102[2mms[22m[39m
+@scipal/web:test:  [32m✓[39m features/landing/hero/HeroStage.test.tsx [2m([22m[2m2 tests[22m[2m)[22m[32m 133[2mms[22m[39m
+@scipal/web:test:  [32m✓[39m features/survey/surveySubmission.test.ts [2m([22m[2m4 tests[22m[2m)[22m[32m 157[2mms[22m[39m
+@scipal/web:test:  [32m✓[39m features/admin/adminPlans.test.tsx [2m([22m[2m5 tests[22m[2m)[22m[32m 285[2mms[22m[39m
+@scipal/web:test:  [32m✓[39m features/glossary/staff/TermBatch.test.tsx [2m([22m[2m1 test[22m[2m)[22m[32m 45[2mms[22m[39m
+@scipal/web:test:  [32m✓[39m features/landing/LevelGate.test.tsx [2m([22m[2m8 tests[22m[2m)[22m[32m 72[2mms[22m[39m
+@scipal/web:test:  [32m✓[39m features/authoring/editor/PartTabs.test.tsx [2m([22m[2m1 test[22m[2m)[22m[32m 34[2mms[22m[39m
+@scipal/web:test:  [32m✓[39m features/authoring/aiDraft/AuthorAiDialog.test.tsx [2m([22m[2m4 tests[22m[2m)[22m[32m 67[2mms[22m[39m
+@scipal/web:test:  [32m✓[39m features/subjects/SubjectsPage.test.tsx [2m([22m[2m4 tests[22m[2m)[22m[32m 57[2mms[22m[39m
+@scipal/web:test:  [32m✓[39m features/subjects/SubjectMarquee.test.tsx [2m([22m[2m5 tests[22m[2m)[22m[32m 172[2mms[22m[39m
+@scipal/web:test:  [32m✓[39m features/nav/StaffLinks.test.tsx [2m([22m[2m6 tests[22m[2m)[22m[32m 234[2mms[22m[39m
+@scipal/web:test:  [32m✓[39m features/admin/RequireAdmin.test.tsx [2m([22m[2m3 tests[22m[2m)[22m[32m 52[2mms[22m[39m
+@scipal/web:test:  [32m✓[39m app/tabTitles.test.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 111[2mms[22m[39m
+@scipal/web:test:  [32m✓[39m components/nav/TeacherAreaTabs.test.tsx [2m([22m[2m2 tests[22m[2m)[22m[32m 115[2mms[22m[39m
+@scipal/web:test:  [32m✓[39m features/authoring/translation/TranslationMark.test.tsx [2m([22m[2m5 tests[22m[2m)[22m[32m 182[2mms[22m[39m
+@scipal/web:test:  [32m✓[39m lib/pwa/pwa.test.ts [2m([22m[2m7 tests[22m[2m)[22m[32m 16[2mms[22m[39m
+@scipal/web:test:  [32m✓[39m app/api/preferences/education-level/route.test.ts [2m([22m[2m8 tests[22m[2m)[22m[32m 49[2mms[22m[39m
+@scipal/web:test:  [32m✓[39m features/authoring/exams/examDraft.test.ts [2m([22m[2m4 tests[22m[2m)[22m[32m 16[2mms[22m[39m
+@scipal/web:test:  [32m✓[39m lib/siteSettings.test.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 14[2mms[22m[39m
+@scipal/web:test:  [32m✓[39m features/authoring/translation/autoTranslate.test.ts [2m([22m[2m10 tests[22m[2m)[22m[32m 23[2mms[22m[39m
+@scipal/web:test:  [32m✓[39m features/authoring/exams/QuestionBank.test.tsx [2m([22m[2m1 test[22m[2m)[22m[32m 43[2mms[22m[39m
+@scipal/web:test:  [32m✓[39m features/authoring/practice/questionDraft.test.ts [2m([22m[2m10 tests[22m[2m)[22m[32m 31[2mms[22m[39m
+@scipal/web:test:  [32m✓[39m app/manifest.test.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 12[2mms[22m[39m
+@scipal/web:test:  [32m✓[39m features/ai-tutor/LessonPicker.test.tsx [2m([22m[2m2 tests[22m[2m)[22m[32m 33[2mms[22m[39m
+@scipal/web:test:  [32m✓[39m features/authoring/editor/IssueList.test.tsx [2m([22m[2m2 tests[22m[2m)[22m[32m 29[2mms[22m[39m
+@scipal/web:test:  [32m✓[39m components/nav/LanguageToggle.test.tsx [2m([22m[2m3 tests[22m[2m)[22m[32m 35[2mms[22m[39m
+@scipal/web:test:  [32m✓[39m components/nav/NavBar.test.tsx [2m([22m[2m9 tests[22m[2m)[22m[32m 115[2mms[22m[39m
+@scipal/web:test:  [32m✓[39m features/authoring/lessonStatus.test.ts [2m([22m[2m6 tests[22m[2m)[22m[32m 18[2mms[22m[39m
+@scipal/web:test:  [32m✓[39m features/authoring/lessonImport.test.ts [2m([22m[2m10 tests[22m[2m)[22m[32m 21[2mms[22m[39m
+@scipal/web:test:  [32m✓[39m lib/theme/shellTheme.test.ts [2m([22m[2m30 tests[22m[2m)[22m[32m 26[2mms[22m[39m
+@scipal/web:test:  [32m✓[39m lib/theme/patterns.test.ts [2m([22m[2m8 tests[22m[2m)[22m[32m 35[2mms[22m[39m
+@scipal/web:test:  [32m✓[39m features/simulations/engines/engines.test.ts [2m([22m[2m12 tests[22m[2m)[22m[32m 61[2mms[22m[39m
+@scipal/web:test:  [32m✓[39m features/landing/getLandingData.test.ts [2m([22m[2m13 tests[22m[2m)[22m[32m 29[2mms[22m[39m
+@scipal/web:test:  [32m✓[39m features/landing/educationLevel.test.ts [2m([22m[2m6 tests[22m[2m)[22m[32m 42[2mms[22m[39m
+@scipal/web:test:  [32m✓[39m features/authoring/translation/translateApi.test.ts [2m([22m[2m4 tests[22m[2m)[22m[32m 16[2mms[22m[39m
+@scipal/web:test:  [32m✓[39m features/authoring/editor/leaveGuard.test.ts [2m([22m[2m2 tests[22m[2m)[22m[32m 9[2mms[22m[39m
+@scipal/web:test:  [32m✓[39m features/lessons/LessonCompletionBar.test.tsx [2m([22m[2m2 tests[22m[2m)[22m[32m 43[2mms[22m[39m
+@scipal/web:test:  [32m✓[39m features/exam/ExamRunner.test.ts [2m([22m[2m6 tests[22m[2m)[22m[32m 16[2mms[22m[39m
+@scipal/web:test:  [32m✓[39m features/admin/AccountQuotaDialog.test.tsx [2m([22m[2m4 tests[22m[2m)[22m[32m 15[2mms[22m[39m
+@scipal/web:test:  [32m✓[39m features/admin/quotaForm.test.ts [2m([22m[2m6 tests[22m[2m)[22m[32m 15[2mms[22m[39m
+@scipal/web:test:  [32m✓[39m features/lessons/lessonParts.test.ts [2m([22m[2m4 tests[22m[2m)[22m[32m 17[2mms[22m[39m
+@scipal/web:test:  [32m✓[39m lib/authFlow.test.ts [2m([22m[2m7 tests[22m[2m)[22m[32m 17[2mms[22m[39m
+@scipal/web:test:  [32m✓[39m features/authoring/translation/useAutoTranslate.test.ts [2m([22m[2m2 tests[22m[2m)[22m[32m 11[2mms[22m[39m
+@scipal/web:test:  [32m✓[39m lib/guestTrial.test.ts [2m([22m[2m7 tests[22m[2m)[22m[32m 208[2mms[22m[39m
+@scipal/web:test:  [32m✓[39m features/lessons/subjectPageQuery.test.ts [2m([22m[2m4 tests[22m[2m)[22m[32m 15[2mms[22m[39m
+@scipal/web:test:  [32m✓[39m features/glossary/termFilter.test.ts [2m([22m[2m4 tests[22m[2m)[22m[32m 12[2mms[22m[39m
+@scipal/web:test:  [32m✓[39m features/authoring/editor/blockOps.test.ts [2m([22m[2m2 tests[22m[2m)[22m[32m 14[2mms[22m[39m
+@scipal/web:test:  [32m✓[39m features/landing/gateSelection.test.ts [2m([22m[2m7 tests[22m[2m)[22m[32m 19[2mms[22m[39m
+@scipal/web:test:  [32m✓[39m features/glossary/staff/termSheet.test.ts [2m([22m[2m5 tests[22m[2m)[22m[32m 13[2mms[22m[39m
+@scipal/web:test:  [32m✓[39m features/progress/StreakCalendar.test.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 87[2mms[22m[39m
+@scipal/web:test: [90mstderr[2m | features/progress/progressQueries.test.ts[2m > [22m[2mgetUserProgress[2m > [22m[2mflags failure with empty data instead of preview data
+@scipal/web:test: [22m[39mgetUserProgress query failed: { message: [32m'boom'[39m }
+@scipal/web:test: 
+@scipal/web:test:  [32m✓[39m features/progress/progressQueries.test.ts [2m([22m[2m2 tests[22m[2m)[22m[32m 15[2mms[22m[39m
+@scipal/web:test:  [32m✓[39m features/authoring/lessonFormOptions.test.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 19[2mms[22m[39m
+@scipal/web:test:  [32m✓[39m features/landing/pricingAura.test.ts [2m([22m[2m1 test[22m[2m)[22m[32m 11[2mms[22m[39m
+@scipal/web:test:  [32m✓[39m features/lessons/lessonDetailQuery.test.ts [2m([22m[2m2 tests[22m[2m)[22m[32m 20[2mms[22m[39m
+@scipal/web:test:  [32m✓[39m app/privacy/privacy.test.tsx [2m([22m[2m2 tests[22m[2m)[22m[32m 9[2mms[22m[39m
+@scipal/web:test:  [32m✓[39m features/authoring/editor/serverIssues.test.ts [2m([22m[2m5 tests[22m[2m)[22m[32m 12[2mms[22m[39m
+@scipal/web:test:  [32m✓[39m features/ai-tutor/streamTutor.test.ts [2m([22m[2m4 tests[22m[2m)[22m[32m 37[2mms[22m[39m
+@scipal/web:test:  [32m✓[39m features/admin/AdminHub.test.ts [2m([22m[2m1 test[22m[2m)[22m[32m 18[2mms[22m[39m
+@scipal/web:test:  [32m✓[39m features/authoring/editor/markdownToolbar.test.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 16[2mms[22m[39m
+@scipal/web:test:  [32m✓[39m lib/theme/cssTokens.test.ts [2m([22m[2m1 test[22m[2m)[22m[32m 9[2mms[22m[39m
+@scipal/web:test:  [32m✓[39m lib/theme/loginCss.test.ts [2m([22m[2m1 test[22m[2m)[22m[32m 12[2mms[22m[39m
+@scipal/web:test:  [32m✓[39m features/authoring/translation/bilingualFields.test.ts [2m([22m[2m6 tests[22m[2m)[22m[32m 28[2mms[22m[39m
+@scipal/web:test: [90mstderr[2m | features/profile/profileQueries.test.ts[2m > [22m[2mgetUserProfile[2m > [22m[2mflags failure and never invents XP
+@scipal/web:test: [22m[39mgetUserProfile query failed: { message: [32m'boom'[39m }
+@scipal/web:test: 
+@scipal/web:test:  [32m✓[39m features/profile/profileQueries.test.ts [2m([22m[2m2 tests[22m[2m)[22m[32m 14[2mms[22m[39m
+@scipal/web:test:  [32m✓[39m features/landing/countUp.test.ts [2m([22m[2m2 tests[22m[2m)[22m[32m 9[2mms[22m[39m
+@scipal/web:test:  [32m✓[39m next.config.test.ts [2m([22m[2m2 tests[22m[2m)[22m[32m 11[2mms[22m[39m
+@scipal/web:test:  [32m✓[39m lib/theme/flags.test.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 16[2mms[22m[39m
+@scipal/web:test:  [32m✓[39m features/subjects/subjectAvailability.test.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 13[2mms[22m[39m
+@scipal/web:test:  [32m✓[39m features/authoring/editor/editors/RefPicker.test.ts [2m([22m[2m1 test[22m[2m)[22m[32m 12[2mms[22m[39m
+@scipal/web:test:  [32m✓[39m features/ai-tutor/TutorPage.test.ts [2m([22m[2m2 tests[22m[2m)[22m[32m 6[2mms[22m[39m
+@scipal/web:test: 
+@scipal/web:test: [2m Test Files [22m [1m[32m144 passed[39m[22m[90m (144)[39m
+@scipal/web:test: [2m      Tests [22m [1m[32m769 passed[39m[22m[90m (769)[39m
+@scipal/web:test: [2m   Start at [22m 13:15:25
+@scipal/web:test: [2m   Duration [22m 60.90s[2m (import 63%, transform 24%, tests 12%, worker 1%)[22m
+@scipal/web:test: 
+@scipal/web:test: [2m    Isolate [22m [33m144 workers spawned[39m[2m · ~1.36s startup each (spawn + environment, per file)[22m
+@scipal/web:test: [2m            [22m [2mat least ~26.65s faster with [22m[33misolate: false[39m[2m — reuses workers across files instead of one per file[22m
+@scipal/web:test: 
+
+ Tasks:    6 successful, 6 total
+Cached:    2 cached, 6 total
+  Time:    1m6.352s 
+
+ WARNING  no output files found for task @scipal/api#test. Please check your `outputs` key in `turbo.json`
+ WARNING  no output files found for task @scipal/supabase#test. Please check your `outputs` key in `turbo.json`
+ WARNING  no output files found for task @scipal/types#test. Please check your `outputs` key in `turbo.json`
+ WARNING  no output files found for task @scipal/web#test. Please check your `outputs` key in `turbo.json`

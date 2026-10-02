@@ -1,0 +1,103 @@
+• turbo 2.11.2
+
+   • Packages in scope: @scipal/api, @scipal/hooks, @scipal/mobile, @scipal/supabase, @scipal/types, @scipal/ui, @scipal/web
+   • Running build in 7 packages
+   • Remote caching disabled
+
+@scipal/api:build: cache miss, executing f9c14cc497d23503
+@scipal/web:build: cache miss, executing abf78d159bc31bf6
+@scipal/api:build: 
+@scipal/api:build: > @scipal/api@0.1.0 build D:\Code\SciPal\backend
+@scipal/api:build: > tsc
+@scipal/api:build: 
+@scipal/web:build: 
+@scipal/web:build: > @scipal/web@0.1.0 build D:\Code\SciPal\frontend
+@scipal/web:build: > next build
+@scipal/web:build: 
+@scipal/web:build:    ▲ Next.js 15.5.25
+@scipal/web:build:    - Environments: .env.local, .env
+@scipal/web:build: 
+@scipal/web:build:    Creating an optimized production build ...
+@scipal/web:build: <w> [webpack.cache.PackFileCacheStrategy] Serializing big strings (113kiB) impacts deserialization performance (consider using Buffer instead and decode when needed)
+@scipal/web:build: <w> [webpack.cache.PackFileCacheStrategy] Serializing big strings (267kiB) impacts deserialization performance (consider using Buffer instead and decode when needed)
+@scipal/web:build:  ✓ Compiled successfully in 81s
+@scipal/web:build:    Linting and checking validity of types ...
+@scipal/web:build:    Collecting page data ...
+@scipal/web:build:    Generating static pages (0/21) ...
+@scipal/web:build:    Generating static pages (5/21) 
+@scipal/web:build:    Generating static pages (10/21) 
+@scipal/web:build:    Generating static pages (15/21) 
+@scipal/web:build:  ✓ Generating static pages (21/21)
+@scipal/web:build:    Finalizing page optimization ...
+@scipal/web:build:    Collecting build traces ...
+@scipal/web:build: 
+@scipal/web:build: Route (app)                                 Size  First Load JS  Revalidate  Expire
+@scipal/web:build: ┌ ƒ /                                    2.18 kB         122 kB
+@scipal/web:build: ├ ○ /_not-found                            142 B         104 kB
+@scipal/web:build: ├ ƒ /[subject]                           7.59 kB         142 kB
+@scipal/web:build: ├ ƒ /[subject]/[lesson]                   6.5 kB         462 kB
+@scipal/web:build: ├ ƒ /admin                               7.77 kB         201 kB
+@scipal/web:build: ├ ƒ /admin/accounts                      10.8 kB         209 kB
+@scipal/web:build: ├ ƒ /admin/ai                            5.73 kB         329 kB
+@scipal/web:build: ├ ƒ /admin/billing                       7.37 kB         200 kB
+@scipal/web:build: ├ ƒ /admin/lessons/review                  222 B         196 kB
+@scipal/web:build: ├ ƒ /admin/plans                         7.62 kB         201 kB
+@scipal/web:build: ├ ƒ /admin/simulation-requests           10.2 kB         238 kB
+@scipal/web:build: ├ ƒ /admin/site                          7.39 kB         198 kB
+@scipal/web:build: ├ ƒ /admin/terms                           185 B         203 kB
+@scipal/web:build: ├ ƒ /admin/topics                         2.9 kB         198 kB
+@scipal/web:build: ├ ƒ /api/preferences/education-level       142 B         104 kB
+@scipal/web:build: ├ ƒ /auth/callback                         142 B         104 kB
+@scipal/web:build: ├ ƒ /checkout/[orderId]                  8.02 kB         198 kB
+@scipal/web:build: ├ ƒ /classes                              2.7 kB         200 kB
+@scipal/web:build: ├ ○ /dev/landing-level-gate                168 B         107 kB
+@scipal/web:build: ├ ○ /dev/landing-showcase                  29 kB         243 kB
+@scipal/web:build: ├ ○ /dev/pricing-showcase                2.93 kB         197 kB
+@scipal/web:build: ├ ○ /dev/profile-level-showcase          3.86 kB         214 kB
+@scipal/web:build: ├ ○ /dev/profile-showcase                3.68 kB         224 kB
+@scipal/web:build: ├ ○ /dev/teacher-showcase                5.81 kB         512 kB
+@scipal/web:build: ├ ○ /dev/theme                           1.12 kB         122 kB
+@scipal/web:build: ├ ○ /dev/tutor-showcase                  1.74 kB         335 kB
+@scipal/web:build: ├ ƒ /exam                                  195 B         198 kB
+@scipal/web:build: ├ ƒ /exam/[blueprintId]                  5.92 kB         203 kB
+@scipal/web:build: ├ ƒ /exam/manage                         4.22 kB         237 kB
+@scipal/web:build: ├ ƒ /exam/manage/[id]                    2.21 kB         235 kB
+@scipal/web:build: ├ ƒ /exam/manage/new                     1.33 kB         234 kB
+@scipal/web:build: ├ ƒ /exam/manage/questions               3.72 kB         227 kB
+@scipal/web:build: ├ ƒ /feature-off                          4.4 kB         126 kB
+@scipal/web:build: ├ ○ /glossary                            6.48 kB         199 kB
+@scipal/web:build: ├ ○ /help                                12.8 kB         134 kB
+@scipal/web:build: ├ ○ /login                               17.9 kB         214 kB
+@scipal/web:build: ├ ○ /manifest.webmanifest                  142 B         104 kB
+@scipal/web:build: ├ ○ /offline                             1.88 kB         113 kB
+@scipal/web:build: ├ ○ /pricing                             2.87 kB         203 kB          5m      1y
+@scipal/web:build: ├ ○ /privacy                             3.98 kB         111 kB
+@scipal/web:build: ├ ƒ /profile                               866 B         225 kB
+@scipal/web:build: ├ ƒ /profile/plan                        8.35 kB         199 kB
+@scipal/web:build: ├ ƒ /progress                            6.54 kB         131 kB
+@scipal/web:build: ├ ƒ /subjects                             5.3 kB         211 kB
+@scipal/web:build: ├ ƒ /teacher/classes                     8.16 kB         129 kB
+@scipal/web:build: ├ ƒ /teacher/classes/[id]                4.25 kB         201 kB
+@scipal/web:build: ├ ƒ /teacher/import                      13.2 kB         215 kB
+@scipal/web:build: ├ ƒ /teacher/lessons                       929 B         196 kB
+@scipal/web:build: ├ ƒ /teacher/lessons/[id]                  979 B         479 kB
+@scipal/web:build: ├ ƒ /teacher/lessons/new-lesson          4.88 kB         212 kB
+@scipal/web:build: ├ ƒ /teacher/simulation-requests         7.04 kB         197 kB
+@scipal/web:build: ├ ƒ /teacher/terms                         889 B         204 kB
+@scipal/web:build: └ ƒ /tutor                               1.94 kB         339 kB
+@scipal/web:build: + First Load JS shared by all             104 kB
+@scipal/web:build:   ├ chunks/4471-a9d74ba9fbf25d19.js      46.8 kB
+@scipal/web:build:   ├ chunks/843d1dec-d65bead1d8b8175e.js  54.2 kB
+@scipal/web:build:   └ other shared chunks (total)          2.95 kB
+@scipal/web:build: 
+@scipal/web:build: 
+@scipal/web:build: ƒ Middleware                             94.8 kB
+@scipal/web:build: 
+@scipal/web:build: ○  (Static)   prerendered as static content
+@scipal/web:build: ƒ  (Dynamic)  server-rendered on demand
+@scipal/web:build: 
+
+ Tasks:    2 successful, 2 total
+Cached:    0 cached, 2 total
+  Time:    3m5.713s 
+
