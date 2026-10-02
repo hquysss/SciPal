@@ -1,0 +1,29 @@
+Scanning changes: [36mclaude/pricing-open-to-guests[39m → [36morigin/main[39m
+
+[90m  [39m
+[32m✔[39m Scanned 3 files in 7.0s [2m[~8 workers][22m
+[32m✔[39m Scanned 3 files in 20.4s
+
+[1mReact Doctor — @scipal/web[22m
+Score: 91 / 100 Great
+
+[1m1 issue[22m
+Maintainability: 1 warning
+
+[33m⚠ React function has high control-flow complexity[39m
+[90m  react-doctor/no-high-complexity-react-function[39m
+  components/nav/NavBar.tsx:101
+[90m  Full diagnostics written to C:\Users\LECHIA~1\AppData\Local\Temp\react-doctor-5cfff525-9196-4902-b6c1-eb0d4178055a[39m
+
+[2m  ────────────────────────────────────────────────────────────[22m
+
+  [1mShare:[22m [36mhttps://react.doctor/share?p=%40scipal%2Fweb&s=91&w=1&f=1[39m
+[2m  Tell others how you did on socials[22m
+
+  [1mDocs:[22m [36mhttps://react.doctor/docs[39m
+[2m  Learn more about fixing issues, setting up CI/CD, and[22m
+[2m  configuring rules with a config file[22m
+
+  [1mGitHub:[22m [36mhttps://github.com/millionco/react-doctor[39m
+[2m  Report issues and star the repository![22m
+

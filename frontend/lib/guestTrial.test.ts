@@ -4,6 +4,11 @@ import { TRIAL_RESET_MS, TRIAL_WINDOW_MS, readTrials, routeAccess, signTrials, t
 const SECRET = 'test-guest-secret-0123456789abcdef0123';
 
 describe('routeAccess', () => {
+  it('opens Help without an account or consuming a learning trial', () => {
+    expect(routeAccess('/help')).toEqual({ kind: 'public' });
+    expect(routeAccess('/helpful')).toEqual({ kind: 'trial', feature: 'learn' });
+  });
+
   it('keeps the landing page, sign-in and the tutor page open', () => {
     for (const path of ['/', '/login', '/tutor', '/auth/callback', '/privacy', '/offline']) expect(routeAccess(path), path).toEqual({ kind: 'public' });
   });

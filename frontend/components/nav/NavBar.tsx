@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { ArrowRight, ChevronDown, Gauge, LogOut, Menu, UserRound, X } from 'lucide-react';
+import { ArrowRight, ChevronDown, CircleHelp, Gauge, LogOut, Menu, UserRound, X } from 'lucide-react';
 import { useParams, usePathname, useRouter } from 'next/navigation';
 import { useLanguage } from '@scipal/hooks';
 import { LanguageToggle } from './LanguageToggle';
@@ -353,6 +353,9 @@ export function NavBar({ currentSubject }: NavBarProps) {
         </nav>
 
         <div className={`${navStyles.rise} ml-auto hidden shrink-0 items-center justify-end gap-3 xl:flex`} style={{ '--i': 8 } as React.CSSProperties}>
+          <Link href="/help" prefetch={false} aria-label={lang === 'en' ? 'Help' : 'Hướng dẫn'} title={lang === 'en' ? 'Help' : 'Hướng dẫn'} aria-current={pathname === '/help' ? 'page' : undefined} className={`${navStyles.navLink} min-h-11 min-w-11 justify-center`}>
+            <CircleHelp aria-hidden="true" className="h-5 w-5" />
+          </Link>
           <OnlinePill />
           <LanguageToggle />
           {!appRole && <ThemeToggle />}
@@ -481,6 +484,11 @@ export function NavBar({ currentSubject }: NavBarProps) {
                 {link.label}
               </Link>
             ))}
+            <Link href="/help" prefetch={false} onClick={() => setMobileOpen(false)} aria-current={pathname === '/help' ? 'page' : undefined}
+              className={`flex min-h-11 items-center gap-2 rounded-xl px-4 py-3 text-sm font-semibold hover:bg-surface-sunken focus-visible:outline focus-visible:outline-2 focus-visible:outline-focus ${pathname === '/help' ? 'bg-surface-sunken text-action' : 'text-ink'}`}>
+              <CircleHelp aria-hidden="true" className="h-4 w-4" />
+              {lang === 'en' ? 'Help' : 'Hướng dẫn'}
+            </Link>
             {teacherLinks.length > 0 && (
               <div data-nav-group="teacher">
                 <button
