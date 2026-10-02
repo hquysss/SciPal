@@ -20,7 +20,7 @@ describe('routeAccess', () => {
     expect(routeAccess('/informatics/vong-lap')).toEqual({ kind: 'trial', feature: 'learn' });
     expect(routeAccess('/glossary')).toEqual({ kind: 'trial', feature: 'glossary' });
     expect(routeAccess('/exam')).toEqual({ kind: 'trial', feature: 'exam' });
-    expect(routeAccess('/pricing')).toEqual({ kind: 'trial', feature: 'pricing' });
+    expect(routeAccess('/pricing')).toEqual({ kind: 'public' });
   });
 });
 
