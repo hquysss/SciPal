@@ -3,8 +3,7 @@
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import {
-  BookA, Bot, ClipboardCheck, FlaskConical, FolderTree, NotebookPen, ReceiptText, Settings2, Users, type LucideIcon,
-} from 'lucide-react';
+  BookA, Bot, ClipboardCheck, FlaskConical, FolderTree, NotebookPen, ReceiptText, Settings2, ToggleRight, Users, type LucideIcon } from 'lucide-react';
 import { useLanguage } from '@scipal/hooks';
 import { FeatureRequestBoard } from '@/features/survey/FeatureRequestBoard';
 import { countOpenSimulationRequests } from '@/features/authoring/simulationRequests/api';
@@ -44,6 +43,7 @@ export const ADMIN_GROUPS: Group[] = [
     title: { vi: 'Hệ thống', en: 'System' },
     tools: [
       { href: '/admin/ai', label: { vi: 'Cài đặt AI', en: 'AI settings' }, hint: { vi: 'Giáo sư SciPal, dịch tự động, hội thoại', en: 'Professor, translation, conversations' }, Icon: Bot },
+      { href: '/admin/site', label: { vi: 'Bật/tắt tính năng', en: 'Site switches' }, hint: { vi: 'Đăng ký, từ điển, thi thử, bảng giá…', en: 'Sign-up, glossary, exams, pricing…' }, Icon: ToggleRight },
     ],
   },
 ];

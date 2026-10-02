@@ -3,6 +3,7 @@
 import { Suspense, useEffect, useRef, useState, type FormEvent } from 'react';
 import { TrialEndedNote } from '@/features/guest/TrialEndedNote';
 import { readAuthSettings, safeRedirect, type AuthSettings, type Bilingual } from '@/lib/authFlow';
+import { fetchSiteSettings } from '@/lib/siteSettings';
 import { AuthModeTabs, type AuthMode } from './AuthModeTabs';
 import { OAuthButtons } from './OAuthButtons';
 import { SignUpForm } from './SignUpForm';
@@ -46,6 +47,7 @@ function LoginContent() {
     searchParams.get('mode') === 'signup' || searchParams.get('reason') === 'trial' ? 'signup' : 'signin',
   );
   const [authSettings, setAuthSettings] = useState<AuthSettings | null>(null);
+  const [signupSwitch, setSignupSwitch] = useState(true);
   // A failed provider sign-in is an error; a spent confirmation link usually is not: Supabase
   // confirms the e-mail before the redirect, so opening the link in another browser or a second
   // time still leaves a working account.
@@ -117,6 +119,8 @@ function LoginContent() {
       .then((res) => (res.ok ? res.json() : null))
       .then((body) => setAuthSettings(readAuthSettings(body)))
       .catch(() => {});
+    // The admin's own switch (site_settings) closes sign-up too.
+    void fetchSiteSettings().then((site) => setSignupSwitch(site.signupEnabled));
     return () => controller.abort();
   }, []);
 
@@ -453,7 +457,7 @@ function LoginContent() {
 
             <div id="auth-panel" role="tabpanel" aria-labelledby={`auth-tab-${mode}`}>
             {mode === 'signup' ? (
-              <SignUpForm redirect={targetDestination} signupOpen={authSettings?.signupOpen ?? true} />
+              <SignUpForm redirect={targetDestination} signupOpen={(authSettings?.signupOpen ?? true) && signupSwitch} />
             ) : (
             <form className="katha-login-form" onSubmit={handleSubmit} noValidate>
               <label className="katha-login-label" htmlFor="login-email">

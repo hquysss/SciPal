@@ -11,6 +11,7 @@ import {
   type BlueprintRow,
   type BlueprintSummary,
 } from '../exam/blueprintSummary.js';
+import { featureAllowed, featureOff } from '../site/features.js';
 
 interface ExamAnswer {
   question_id: string;
@@ -173,6 +174,7 @@ export const examRoutes: FastifyPluginAsync = async (app) => {
     const uid = user?.id ?? user?.sub;
     // /api/exam/ is public for reading exams; starting a graded attempt is not.
     if (!uid) return reply.code(401).send({ code: 'AUTH_REQUIRED', ...bi('Hãy đăng nhập để làm bài thi có chấm điểm.', 'Sign in to take a graded exam.') });
+    if (!(await featureAllowed(app, 'exam', user as never))) return reply.code(403).send(featureOff('exam'));
     const supabase = app.supabase;
     if (!supabase) return reply.code(503).send(bi('Dịch vụ đề thi chưa sẵn sàng.', 'The exam service is not available.'));
     const { blueprintId } = request.params as { blueprintId: string };

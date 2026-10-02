@@ -53,7 +53,8 @@ export function authErrorText(message: string, status?: number, code?: string): 
   if (code === 'weak_password' || /password should|weak password/i.test(message)) {
     return { vi: `Mật khẩu quá yếu. Dùng ít nhất ${PASSWORD_MIN} ký tự, trộn chữ và số.`, en: `Password too weak. Use at least ${PASSWORD_MIN} characters with letters and numbers.` };
   }
-  if (/signups? not allowed|signup.*disabled/i.test(message)) {
+  // SIGNUP_CLOSED: the admin closed sign-up (site_settings); the auth server reports it as a database error.
+  if (/signups? not allowed|signup.*disabled|SIGNUP_CLOSED|database error saving new user/i.test(message)) {
     return { vi: 'SciPal đang tạm đóng đăng ký mới. Bạn quay lại sau nhé.', en: 'SciPal is not taking new sign-ups right now. Please come back later.' };
   }
   if (status === 429 || /rate limit/i.test(message)) {

@@ -7,6 +7,7 @@ import { GuestLandingFlow } from '@/features/landing/GuestLandingFlow';
 import { parseEducationLevel, type EducationLevel } from '@/features/landing/educationLevel';
 import { getLandingData } from '@/features/landing/getLandingData';
 import { fetchCatalog } from '@/features/billing/billingApi';
+import { fetchSiteSettings } from '@/lib/siteSettings';
 
 export const dynamic = 'force-dynamic';
 
@@ -44,7 +45,9 @@ export default async function HomePage({ searchParams }: HomePageProps) {
     }
   })();
   const landingPromise = getLandingData(cookieStore, supabase ?? undefined);
-  const [, landingData, pricing] = await Promise.all([authPromise, landingPromise, fetchCatalog()]);
+  const [, landingData, catalog, site] = await Promise.all([authPromise, landingPromise, fetchCatalog(), fetchSiteSettings()]);
+  // Pricing switched off by an admin: the landing page leaves the plans out.
+  const pricing = site.features.pricing ? catalog : null;
 
   const isAuthenticated = verifiedUserId !== null;
   let accountLevel: EducationLevel | null = null;

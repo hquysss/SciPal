@@ -4,6 +4,7 @@ import { clientIp, guestSecret, sameSecret, visitorHash } from '../guest/visitor
 import { MESSAGE_MAX } from '../tutor/limits.js';
 import { resolveTutorSettings } from '../tutor/settings.js';
 import { buildSystemPrompt } from '../tutor/systemPrompt.js';
+import { featureAllowed } from '../site/features.js';
 
 // Guest trials (migrations 20260930000000, 20261003050000): a visitor may try each page feature for
 // 30 minutes and ask the Tutor one question, then must sign in; both come back 24 hours later.
@@ -32,6 +33,8 @@ export const guestRoutes: FastifyPluginAsync = async (app) => {
     if (!sameSecret(Array.isArray(key) ? key[0] : key, secret)) return reply.code(401).send({ code: 'UNAUTHORIZED' });
     const parsed = TrialInput.safeParse(request.body);
     if (!parsed.success) return reply.code(400).send({ code: 'INVALID_GUEST_TRIAL' });
+    // Trials turned off: the window is already over, so the web asks the visitor to sign in.
+    if (!(await featureAllowed(app, 'guest_trial'))) return { allowed: false, expiresAt: new Date().toISOString(), resetsAt: null };
     const { data, error } = await app.supabase!.rpc('guest_trial_open', {
       p_visitor: visitorHash(parsed.data.ip, secret),
       p_feature: parsed.data.feature,
@@ -52,6 +55,7 @@ export const guestRoutes: FastifyPluginAsync = async (app) => {
   app.post('/api/tutor/guest', async (request, reply) => {
     const secret = guestSecret();
     if (!secret) return reply.code(503).send(OFF);
+    if (!(await featureAllowed(app, 'guest_trial'))) return reply.code(403).send(OFF);
     const body = (request.body ?? {}) as { message?: unknown; language?: unknown };
     const message = typeof body.message === 'string' ? body.message.trim() : '';
     const language = body.language === 'en' ? 'en' : 'vi';
