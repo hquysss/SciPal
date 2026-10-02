@@ -120,8 +120,9 @@ export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const access = routeAccess(pathname);
 
-  // The landing page, sign-in (with its callback) and the tutor page (one guest question) are open to visitors.
-  if (access.kind === 'public') {
+  // The landing page, sign-in (with its callback) and the tutor page (one guest question) are open to visitors,
+  // unless an admin switched the tutor off.
+  if (access.kind === 'public' && featureOfPath(pathname) === null) {
     const response = NextResponse.next();
     clearLegacyLevelCookie(request, response);
     return response;
@@ -135,9 +136,11 @@ export async function middleware(request: NextRequest) {
   let response: NextResponse;
   if (!featureVisible(site, feature, user?.app_metadata?.app_role)) {
     response = featureOffPage(request, feature!);
+  } else if (access.kind === 'public') {
+    response = NextResponse.next();
   } else if (!user) {
     // With guest trials switched off, visitors sign in first.
-    response = access.kind === 'account' || !site.features.guest_trial ? loginRedirect(request) : await guestTrial(request, access.feature);
+    response = access.kind !== 'trial' || !site.features.guest_trial ? loginRedirect(request) : await guestTrial(request, access.feature);
   } else if (
     (pathname === '/teacher' || pathname.startsWith('/teacher/')) &&
     !['teacher', 'admin'].includes(user.app_metadata?.app_role)

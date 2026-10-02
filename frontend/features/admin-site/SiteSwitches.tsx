@@ -15,6 +15,7 @@ const FEATURE_HINT: Record<SiteFeature, Bilingual> = {
   exam: { vi: 'Trang Thi thử hiện “Đang bảo trì”; không ai bắt đầu được bài thi mới.', en: 'Exams shows “Under maintenance”; nobody can start a new exam.' },
   pricing: { vi: 'Bảng giá và thanh toán hiện “Đang bảo trì”, phần giá trên trang chủ bị ẩn; không tạo được đơn mới.', en: 'Pricing and checkout show “Under maintenance” and the home page leaves the plans out; no new orders.' },
   classes: { vi: 'Trang Lớp học hiện “Đang bảo trì”; không tạo lớp hay vào lớp mới được.', en: 'Classes shows “Under maintenance”; no new classes or joins.' },
+  tutor: { vi: 'Trang Giáo sư hiện “Đang bảo trì”; chat và giọng nói đều bị chặn.', en: 'The Professor page shows “Under maintenance”; chat and voice are blocked.' },
   guest_trial: { vi: 'Khách phải đăng nhập ngay, không còn 30 phút dùng thử hay câu hỏi thử.', en: 'Visitors must sign in straight away: no 30-minute trials or trial question.' },
 };
 
