@@ -1,7 +1,7 @@
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it, vi } from 'vitest';
 import { countRawColors } from '../../lib/theme/rawColors';
-import { AiSettingsForm } from './AiSettingsForm';
+import { AiSettingsForm, modelOnSwitch } from './AiSettingsForm';
 import type { AiSettingsSnapshot } from './api';
 
 vi.mock('@scipal/hooks', () => ({ useLanguage: () => ({ lang: 'vi', t: (o: { vi: string }) => o.vi }) }));
@@ -82,5 +82,22 @@ describe('AiSettingsForm', () => {
   it.each(['gpt-5-chat-latest', 'o1-mini', 'gpt-4.1'])('warns that %s ignores the thinking level', (model) => {
     const openai = { ...snapshot, saved: { ...snapshot.saved!, provider: 'openai' as const, model }, effective: { ...snapshot.effective, provider: 'openai' as const, model } };
     expect(renderToStaticMarkup(<AiSettingsForm initial={openai} />)).toContain('không nhận mức suy nghĩ');
+  });
+});
+
+describe('modelOnSwitch', () => {
+  const saved = { provider: 'gemini' as const, model: '' };
+  it("does not carry one provider's model over to the other", () => {
+    const toOpenAi = modelOnSwitch('gemini', '', {}, 'openai', saved);
+    expect(toOpenAi.model).toBe('');
+    const typed = modelOnSwitch('openai', 'gpt-6-luna', toOpenAi.drafts, 'gemini', saved);
+    expect(typed.model).toBe('');
+  });
+  it('gives the saved model back when returning to the saved provider', () => {
+    expect(modelOnSwitch('openai', 'gpt-6-luna', {}, 'gemini', { provider: 'gemini', model: 'gemini-3.8-pro' }).model).toBe('gemini-3.8-pro');
+  });
+  it('remembers what was typed for each provider while the form is open', () => {
+    const away = modelOnSwitch('openai', 'gpt-6-luna', {}, 'gemini', saved);
+    expect(modelOnSwitch('gemini', away.model, away.drafts, 'openai', saved).model).toBe('gpt-6-luna');
   });
 });
