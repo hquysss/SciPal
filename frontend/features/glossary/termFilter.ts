@@ -48,3 +48,12 @@ export function termSubjects(terms: TermItem[]): TermSubject[] {
   }
   return [...bySlug.values()].sort((a, b) => a.order - b.order).map(({ order: _order, ...subject }) => subject);
 }
+
+/** Terms shown at first, and added by each "show more": the whole glossary on one page was very long. */
+export const PAGE_SIZE = 20;
+
+/** How many terms to show so that the one at `index` is on screen: `shown`, or more by whole pages. */
+export function shownToReach(index: number, shown: number): number {
+  if (index < 0 || index < shown) return shown;
+  return (Math.floor(index / PAGE_SIZE) + 1) * PAGE_SIZE;
+}
