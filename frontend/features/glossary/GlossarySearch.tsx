@@ -4,7 +4,7 @@ import { Bookmark, BookmarkCheck, ChevronDown, Link2, Search, Volume2, X } from 
 import { useLanguage } from '@scipal/hooks';
 import { EmptyState } from '../../components/ui/empty-state';
 import { filterTerms, termSubjects } from './termFilter';
-import { speakTerm } from './pronunciation';
+import { speakTerm, warmSpeech } from './pronunciation';
 import type { TermItem } from './termQueries';
 
 const TERM_TONES = ['var(--sun)', 'var(--sky)', 'var(--coral)'];
@@ -69,6 +69,12 @@ export function GlossarySearch({ terms }: { terms: TermItem[] }) {
     if (result === 'unavailable') setSpeechError(language);
     if (result === 'unsupported') setSpeechError('unsupported');
   };
+
+  // Get the voices ready while the page is idle, so the first pronunciation click is quick.
+  useEffect(() => {
+    const idle = window.requestIdleCallback ?? ((run: () => void) => window.setTimeout(run, 1500));
+    idle(() => { void warmSpeech(); });
+  }, []);
 
   useEffect(() => {
     setSaved(readSaved());

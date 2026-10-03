@@ -5,7 +5,8 @@
 import type { WorkerReply, WorkerRequest } from './metaVoice.worker';
 
 type Language = 'en' | 'vi';
-type Waiting = { onLoading?: (loading: boolean) => void; resolve: (audio: { audio: Float32Array; samplingRate: number }) => void; reject: () => void };
+type Reply = { audio: Float32Array; samplingRate: number } | null;
+type Waiting = { onLoading?: (loading: boolean) => void; resolve: (reply: Reply) => void; reject: () => void };
 
 let worker: Worker | null = null;
 let nextId = 0;
@@ -22,6 +23,7 @@ function getWorker(): Worker {
     if (data.type === 'loading') return request.onLoading?.(data.loading);
     waiting.delete(data.id);
     if (data.type === 'audio') request.resolve({ audio: data.audio, samplingRate: data.samplingRate });
+    else if (data.type === 'warmed') request.resolve(null);
     else request.reject();
   };
   created.onerror = () => {
@@ -35,13 +37,17 @@ function getWorker(): Worker {
   return created;
 }
 
-function synthesize(text: string, lang: Language, onLoading?: (loading: boolean) => void) {
-  return new Promise<{ audio: Float32Array; samplingRate: number }>((resolve, reject) => {
+function ask(request: Omit<WorkerRequest, 'id'>, onLoading?: (loading: boolean) => void) {
+  return new Promise<Reply>((resolve, reject) => {
     const id = nextId++;
     waiting.set(id, { onLoading, resolve, reject });
-    const request: WorkerRequest = { id, lang, text };
-    getWorker().postMessage(request);
+    getWorker().postMessage({ id, ...request } satisfies WorkerRequest);
   });
+}
+
+/** Downloads and starts the model for `lang` ahead of the first click. Failures are ignored; a click retries. */
+export function warmMetaVoice(lang: Language) {
+  ask({ lang, text: '', warm: true }).catch(() => {});
 }
 
 export function stopMetaVoice() {
@@ -56,8 +62,10 @@ export async function speakWithMeta(
   { onLoading, isCurrent }: { onLoading?: (loading: boolean) => void; isCurrent: () => boolean },
 ): Promise<'spoken' | 'failed'> {
   try {
-    const { audio, samplingRate } = await synthesize(text, lang, onLoading);
+    const reply = await ask({ lang, text }, onLoading);
+    if (!reply) return 'failed';
     if (!isCurrent()) return 'spoken';
+    const { audio, samplingRate } = reply;
 
     context ??= new AudioContext();
     if (context.state === 'suspended') await context.resume();
