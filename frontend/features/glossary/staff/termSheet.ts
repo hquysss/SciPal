@@ -17,7 +17,7 @@ export const SHEET_COLUMNS: Array<{ key: Key; header: string }> = [
   { key: 'part_of_speech', header: 'Từ loại' },
 ];
 
-export const MAX_SHEET_ROWS = 200;
+export const MAX_SHEET_ROWS = 1000;
 export const MAX_SHEET_BYTES = 5 * 1024 * 1024;
 
 export const EMPTY_ROW: SheetRow = { term_vi: '', term_en: '', definition_vi: '', definition_en: '', example_vi: '', example_en: '', part_of_speech: '' };
