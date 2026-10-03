@@ -56,4 +56,19 @@ describe('Glossary', () => {
     expect(html).toContain('aria-label="Copy link to algorithm"');
     expect(countRawColors(html).total).toBe(0);
   });
+
+  it('shows one page of terms with a "show more" button instead of the whole list', () => {
+    const terms = Array.from({ length: 45 }, (_, i) => ({ ...TERM, id: `t${i}`, term_en: `term ${i}` }));
+    const html = renderToStaticMarkup(<GlossarySearch terms={terms} />);
+    expect(html.match(/<article /g)).toHaveLength(20);
+    expect(html).toContain('45 terms found');
+    expect(html).toContain('Showing 20 of 45');
+    expect(html).toContain('Show 20 more');
+  });
+
+  it('has no "show more" when everything fits on the first page', () => {
+    const html = renderToStaticMarkup(<GlossarySearch terms={[TERM]} />);
+    expect(html).not.toContain('Show 20 more');
+    expect(html).not.toContain('Showing');
+  });
 });

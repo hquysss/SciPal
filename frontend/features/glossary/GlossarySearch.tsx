@@ -3,7 +3,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Bookmark, BookmarkCheck, ChevronDown, Link2, Search, Volume2, X } from 'lucide-react';
 import { useLanguage } from '@scipal/hooks';
 import { EmptyState } from '../../components/ui/empty-state';
-import { filterTerms, termSubjects } from './termFilter';
+import { PAGE_SIZE, filterTerms, shownToReach, termSubjects } from './termFilter';
 import { speakTerm, warmSpeech } from './pronunciation';
 import type { TermItem } from './termQueries';
 
@@ -62,6 +62,7 @@ export function GlossarySearch({ terms }: { terms: TermItem[] }) {
   const [speechError, setSpeechError] = useState<'en' | 'vi' | 'unsupported' | null>(null);
 
   const [loadingVoice, setLoadingVoice] = useState(false);
+  const [shown, setShown] = useState(PAGE_SIZE);
 
   const listen = async (text: string, language: 'en' | 'vi') => {
     setSpeechError(null);
@@ -69,6 +70,18 @@ export function GlossarySearch({ terms }: { terms: TermItem[] }) {
     if (result === 'unavailable') setSpeechError(language);
     if (result === 'unsupported') setSpeechError('unsupported');
   };
+
+  // A new search or subject starts again from the first page.
+  useEffect(() => { setShown(PAGE_SIZE); }, [query, activeFilter]);
+
+  // A link to a term further down (#id) opens enough pages to show it, then scrolls to it.
+  useEffect(() => {
+    const id = decodeURIComponent(window.location.hash.slice(1));
+    const index = terms.findIndex((term) => term.id === id);
+    if (index < PAGE_SIZE) return;
+    setShown(shownToReach(index, PAGE_SIZE));
+    requestAnimationFrame(() => document.getElementById(id)?.scrollIntoView());
+  }, [terms]);
 
   // Get the voices ready while the page is idle, so the first pronunciation click is quick.
   useEffect(() => {
@@ -206,7 +219,7 @@ export function GlossarySearch({ terms }: { terms: TermItem[] }) {
 
       {/* Terms Cards */}
       <div className="flex flex-col gap-4">
-        {filtered.map((term, index) => {
+        {filtered.slice(0, shown).map((term, index) => {
           const main = lang === 'en' ? term.term_en : term.term_vi;
           const other = lang === 'en' ? term.term_vi : term.term_en;
           const isSaved = saved.has(term.id);
@@ -271,6 +284,16 @@ export function GlossarySearch({ terms }: { terms: TermItem[] }) {
             </article>
           );
         })}
+
+        {filtered.length > shown && (
+          <div className="flex flex-col items-center gap-2 py-2">
+            <p className="text-sm text-ink-muted">{t({ en: `Showing ${shown} of ${filtered.length}`, vi: `Đang hiện ${shown} / ${filtered.length}` })}</p>
+            <button type="button" onClick={() => setShown((n) => n + PAGE_SIZE)} className={chipClass(false)}>
+              {t({ en: `Show ${PAGE_SIZE} more`, vi: `Hiện thêm ${PAGE_SIZE}` })}
+              <ChevronDown aria-hidden="true" className="h-4 w-4" />
+            </button>
+          </div>
+        )}
 
         {filtered.length === 0 && (
           <EmptyState
