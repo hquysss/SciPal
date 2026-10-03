@@ -61,9 +61,11 @@ export function GlossarySearch({ terms }: { terms: TermItem[] }) {
   const [allSubjects, setAllSubjects] = useState(false);
   const [speechError, setSpeechError] = useState<'en' | 'vi' | 'unsupported' | null>(null);
 
+  const [loadingVoice, setLoadingVoice] = useState(false);
+
   const listen = async (text: string, language: 'en' | 'vi') => {
     setSpeechError(null);
-    const result = await speakTerm(text, language);
+    const result = await speakTerm(text, language, setLoadingVoice);
     if (result === 'unavailable') setSpeechError(language);
     if (result === 'unsupported') setSpeechError('unsupported');
   };
@@ -174,13 +176,19 @@ export function GlossarySearch({ terms }: { terms: TermItem[] }) {
         )}
       </div>
 
+      {loadingVoice && (
+        <p role="status" className="text-sm text-ink-muted">
+          {t({ en: 'Loading the voice (first time only)…', vi: 'Đang tải giọng đọc (chỉ lần đầu)…' })}
+        </p>
+      )}
+
       {speechError && (
         <p role="status" className="text-sm text-ink-muted">
           {speechError === 'unsupported'
             ? t({ en: 'This browser does not support pronunciation.', vi: 'Trình duyệt này chưa hỗ trợ phát âm.' })
             : speechError === 'vi'
-              ? t({ en: 'Your device has no Vietnamese voice. Try a browser with Vietnamese speech support.', vi: 'Thiết bị này chưa có giọng đọc tiếng Việt. Thử trình duyệt hỗ trợ giọng tiếng Việt nhé.' })
-              : t({ en: 'Your device has no English voice. Try a browser with English speech support.', vi: 'Thiết bị này chưa có giọng đọc tiếng Anh. Thử trình duyệt hỗ trợ giọng tiếng Anh nhé.' })}
+              ? t({ en: 'Could not load a Vietnamese voice. Check your connection and try again.', vi: 'Chưa tải được giọng đọc tiếng Việt. Kiểm tra kết nối rồi thử lại nhé.' })
+              : t({ en: 'Could not load an English voice. Check your connection and try again.', vi: 'Chưa tải được giọng đọc tiếng Anh. Kiểm tra kết nối rồi thử lại nhé.' })}
         </p>
       )}
 

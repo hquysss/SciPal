@@ -11,6 +11,7 @@
   },
   "dependencies": {
     "@base-ui/react": "^1.8.0",
+    "@huggingface/transformers": "^4.3.0",
     "@monaco-editor/react": "^4.7.0",
     "@scipal/hooks": "workspace:*",
     "@scipal/supabase": "workspace:*",
