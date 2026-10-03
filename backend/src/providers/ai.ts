@@ -42,8 +42,17 @@ export function providerSettings(choice?: ModelChoice): { apiKey: string | undef
 // small limit the answer stopped mid-sentence. Keep the thinking short and the limit roomy.
 const MAX_TOKENS = 8192;
 
-/** OpenAI models that accept reasoning_effort. */
-export const isOpenAiReasoningModel = (model: string) => /^(o\d|gpt-5)/i.test(model.trim());
+/**
+ * OpenAI models that accept reasoning_effort: the o-series and gpt-5 or later (gpt-5.x, gpt-6.x, their
+ * -mini/-nano/-pro/-codex/-sol/-terra/-luna/-astra variants). Not o1-mini and o1-preview, and not the
+ * non-reasoning gpt-5 chat and search variants, which refuse it. Kept in step with OPENAI_REASONING in
+ * frontend/features/admin-ai/AiSettingsForm.tsx.
+ */
+export const isOpenAiReasoningModel = (model: string) => {
+  const id = model.trim().toLowerCase();
+  if (/^o1-(mini|preview)|chat-latest|search-api/.test(id)) return false;
+  return /^(o\d|gpt-([5-9]|[1-9]\d)(?!\d))/.test(id);
+};
 
 /** The streaming request for one call. */
 export function completionRequest(settings: ReturnType<typeof providerSettings>, messages: ChatMessage[], systemPrompt: string) {
@@ -54,7 +63,8 @@ export function completionRequest(settings: ReturnType<typeof providerSettings>,
     model: settings.model,
     stream: true as const,
     ...(openAiReasoning ? { max_completion_tokens: MAX_TOKENS } : { max_tokens: MAX_TOKENS }),
-    ...(settings.baseURL || openAiReasoning ? { reasoning_effort: settings.effort ?? ('low' as const) } : {}),
+    // gpt-5-pro only takes 'high'.
+    ...(settings.baseURL || openAiReasoning ? { reasoning_effort: openAiReasoning && /^gpt-5-pro/i.test(settings.model.trim()) ? ('high' as const) : settings.effort ?? ('low' as const) } : {}),
     messages: [
       { role: 'system' as const, content: systemPrompt },
       ...messages.map((m) => ({ role: m.role, content: m.content })),

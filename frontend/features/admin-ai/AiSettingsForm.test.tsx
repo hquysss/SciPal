@@ -74,4 +74,13 @@ describe('AiSettingsForm', () => {
     expect(reasoning).not.toContain('không nhận mức suy nghĩ');
     expect(reasoning).toContain('Luôn chạy bằng Gemini Live');
   });
+
+  it.each(['gpt-6-luna', 'gpt-5.6-sol', 'gpt-6.1-sol', 'o3', 'gpt-5-pro'])('does not warn that %s ignores the thinking level', (model) => {
+    const openai = { ...snapshot, saved: { ...snapshot.saved!, provider: 'openai' as const, model }, effective: { ...snapshot.effective, provider: 'openai' as const, model } };
+    expect(renderToStaticMarkup(<AiSettingsForm initial={openai} />)).not.toContain('không nhận mức suy nghĩ');
+  });
+  it.each(['gpt-5-chat-latest', 'o1-mini', 'gpt-4.1'])('warns that %s ignores the thinking level', (model) => {
+    const openai = { ...snapshot, saved: { ...snapshot.saved!, provider: 'openai' as const, model }, effective: { ...snapshot.effective, provider: 'openai' as const, model } };
+    expect(renderToStaticMarkup(<AiSettingsForm initial={openai} />)).toContain('không nhận mức suy nghĩ');
+  });
 });

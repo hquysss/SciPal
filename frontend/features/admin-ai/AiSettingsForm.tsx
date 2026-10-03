@@ -25,8 +25,12 @@ const EFFORTS: Array<{ id: ReasoningEffort; label: Bilingual; hint: Bilingual }>
   { id: 'high', label: { en: 'High', vi: 'Cao' }, hint: { en: 'Deeper, slower, costs more', vi: 'Kỹ hơn, chậm và tốn hơn' } },
 ];
 const MODEL_RE = /^[A-Za-z0-9._:/-]{1,100}$/;
-/** OpenAI models that take a thinking level (backend isOpenAiReasoningModel). */
-const OPENAI_REASONING_RE = /^(o\d|gpt-5)/i;
+/** OpenAI models that take a thinking level; keep in step with backend isOpenAiReasoningModel. */
+const takesThinkingLevel = (model: string) => {
+  const id = model.trim().toLowerCase();
+  if (/^o1-(mini|preview)|chat-latest|search-api/.test(id)) return false;
+  return /^(o\d|gpt-([5-9]|[1-9]\d)(?!\d))/.test(id);
+};
 const CHARS_MIN = 1000;
 const CHARS_MAX = 5_000_000;
 const number = (n: number) => n.toLocaleString('vi-VN');
@@ -77,7 +81,7 @@ export function AiSettingsForm({ initial }: { initial?: AiSettingsSnapshot }) {
   const voiceNameDefault = snapshot.voiceNameDefault ?? 'Charon';
   const chosen = PROVIDERS.find((p) => p.id === form.provider)!;
   const chatModel = form.model.trim() || snapshot.defaults[form.provider];
-  const thinkingIgnored = form.provider === 'openai' && !OPENAI_REASONING_RE.test(chatModel);
+  const thinkingIgnored = form.provider === 'openai' && !takesThinkingLevel(chatModel);
   const saved = formOf(snapshot);
   const dirty = form.provider !== saved.provider || form.model.trim() !== saved.model || form.limit !== saved.limit || form.enabled !== saved.enabled || form.translateEnabled !== saved.translateEnabled || form.translateLimit !== saved.translateLimit || form.effort !== saved.effort || form.voiceModel.trim() !== saved.voiceModel || form.voiceName !== saved.voiceName || form.voiceEnabled !== saved.voiceEnabled;
 
@@ -216,8 +220,8 @@ export function AiSettingsForm({ initial }: { initial?: AiSettingsSnapshot }) {
           </div>
           <p className="text-xs text-ink-muted">
             {t({
-              en: 'Applies to the Professor’s chat, translation and lesson AI, with Gemini and with OpenAI reasoning models (gpt-5…, o3, o4-mini). Voice chat is not affected.',
-              vi: 'Áp dụng cho chat của Giáo sư SciPal, dịch và AI soạn bài, với Gemini và với model suy luận của OpenAI (gpt-5…, o3, o4-mini). Không ảnh hưởng nói chuyện bằng giọng nói.',
+              en: 'Applies to the Professor’s chat, translation and lesson AI, with Gemini and with OpenAI reasoning models (gpt-5, gpt-6, o3, o4-mini…). Voice chat is not affected.',
+              vi: 'Áp dụng cho chat của Giáo sư SciPal, dịch và AI soạn bài, với Gemini và với model suy luận của OpenAI (gpt-5, gpt-6, o3, o4-mini…). Không ảnh hưởng nói chuyện bằng giọng nói.',
             })}
           </p>
           {thinkingIgnored && (
