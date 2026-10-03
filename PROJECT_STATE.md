@@ -13,6 +13,10 @@ Triển khai toàn bộ 12 màn hình (S1–S12) theo **Đặc tả khung chung 
 
 ## Completed
 
+- **03/10 — Phát âm Glossary Anh/Việt (local, chưa deploy):** Chọn voice đúng ngôn ngữ cho từng lượt đọc; chờ danh sách voice tải, hủy lượt cũ khi đổi nhanh và báo song ngữ khi thiếu voice. QA thực tế: trình duyệt chỉ có 3 voice en-US; EN Allele chọn đúng en-US, VI Alen báo thiếu voice ở cả hai giao diện. 18 test Glossary, frontend typecheck/build đạt; hai visual QA độc lập PASS. Chưa xác minh âm thanh tiếng Việt vì trình duyệt không có voice Việt.
+
+- **03/10 — Glossary cập nhật sau nhập thuật ngữ (local, chưa deploy):** Production hiện 148 mục / 12 Sinh học dù DB có 263 mục / 127 Sinh học, đủ 120 mục từ file nhập đã published. Sửa `/glossary` thành `force-dynamic`, bỏ thuật ngữ fallback và hiện thông báo thử lại khi query lỗi. 15 test Glossary đạt, frontend typecheck/build đạt; manifest không còn snapshot `/glossary`. QA trình duyệt bản production local đã đăng nhập xác nhận 263/127 sau reload và tìm Allele/Alen có định nghĩa/ví dụ. Hai kiểm tra visual độc lập PASS. Cần deploy frontend để bản online cập nhật.
+
 Các mục Plan 0–2 dưới đây là **ghi nhận triển khai ban đầu**, không phải kết quả nghiệm thu end-to-end. Những điểm chưa đúng thực tế được ghi ở “Known Issues / Blockers”.
 
 ### 1. Plan 2: Advanced Screens & Workflows (S8–S12) (6/6 tasks — 100%):
