@@ -4,6 +4,7 @@ import { Bookmark, BookmarkCheck, ChevronDown, Link2, Search, Volume2, X } from 
 import { useLanguage } from '@scipal/hooks';
 import { EmptyState } from '../../components/ui/empty-state';
 import { filterTerms, termSubjects } from './termFilter';
+import { speakTerm } from './pronunciation';
 import type { TermItem } from './termQueries';
 
 const TERM_TONES = ['var(--sun)', 'var(--sky)', 'var(--coral)'];
@@ -39,20 +40,13 @@ function writeSaved(ids: Set<string>) {
   }
 }
 
-/** Reads a word aloud with the browser's own voice. */
-function speak(text: string, lang: 'en' | 'vi') {
-  if (typeof window === 'undefined' || !('speechSynthesis' in window)) return;
-  const utterance = new SpeechSynthesisUtterance(text);
-  utterance.lang = lang === 'en' ? 'en-US' : 'vi-VN';
-  utterance.rate = 0.9;
-  window.speechSynthesis.cancel();
-  window.speechSynthesis.speak(utterance);
-}
-
-function ListenButton({ text, lang }: { text: string; lang: 'en' | 'vi' }) {
+function ListenButton({ text, lang, onListen }: { text: string; lang: 'en' | 'vi'; onListen: (text: string, lang: 'en' | 'vi') => void }) {
   const { t } = useLanguage();
+  const label = lang === 'en'
+    ? t({ en: 'Listen in English', vi: 'Nghe tiếng Anh' })
+    : t({ en: 'Listen in Vietnamese', vi: 'Nghe tiếng Việt' });
   return (
-    <button type="button" onClick={() => speak(text, lang)} className={iconButton} aria-label={`${t({ en: 'Listen', vi: 'Nghe' })}: ${text}`}>
+    <button type="button" onClick={() => onListen(text, lang)} className={iconButton} aria-label={`${label}: ${text}`} title={`${label}: ${text}`}>
       <Volume2 aria-hidden="true" className="h-4 w-4" />
     </button>
   );
@@ -65,6 +59,14 @@ export function GlossarySearch({ terms }: { terms: TermItem[] }) {
   const [saved, setSaved] = useState<Set<string>>(() => new Set());
   const [copied, setCopied] = useState<string | null>(null);
   const [allSubjects, setAllSubjects] = useState(false);
+  const [speechError, setSpeechError] = useState<'en' | 'vi' | 'unsupported' | null>(null);
+
+  const listen = async (text: string, language: 'en' | 'vi') => {
+    setSpeechError(null);
+    const result = await speakTerm(text, language);
+    if (result === 'unavailable') setSpeechError(language);
+    if (result === 'unsupported') setSpeechError('unsupported');
+  };
 
   useEffect(() => {
     setSaved(readSaved());
@@ -172,6 +174,16 @@ export function GlossarySearch({ terms }: { terms: TermItem[] }) {
         )}
       </div>
 
+      {speechError && (
+        <p role="status" className="text-sm text-ink-muted">
+          {speechError === 'unsupported'
+            ? t({ en: 'This browser does not support pronunciation.', vi: 'Trình duyệt này chưa hỗ trợ phát âm.' })
+            : speechError === 'vi'
+              ? t({ en: 'Your device has no Vietnamese voice. Try a browser with Vietnamese speech support.', vi: 'Thiết bị này chưa có giọng đọc tiếng Việt. Thử trình duyệt hỗ trợ giọng tiếng Việt nhé.' })
+              : t({ en: 'Your device has no English voice. Try a browser with English speech support.', vi: 'Thiết bị này chưa có giọng đọc tiếng Anh. Thử trình duyệt hỗ trợ giọng tiếng Anh nhé.' })}
+        </p>
+      )}
+
       {/* Results stats */}
       <div className="flex flex-wrap items-center justify-between gap-2 text-sm text-ink-muted">
         <span>{t({ en: `${filtered.length} ${filtered.length === 1 ? 'term' : 'terms'} found`, vi: `Tìm thấy ${filtered.length} thuật ngữ` })}</span>
@@ -195,9 +207,9 @@ export function GlossarySearch({ terms }: { terms: TermItem[] }) {
               <div className="mb-3 flex items-start justify-between gap-4">
                 <div className="flex flex-wrap items-center gap-x-1 gap-y-1">
                   <h2 className="text-xl font-bold text-ink">{main}</h2>
-                  <ListenButton text={main} lang={lang === 'en' ? 'en' : 'vi'} />
+                  <ListenButton text={main} lang={lang} onListen={(text, language) => void listen(text, language)} />
                   <span className="text-sm font-medium text-ink-muted">{other}</span>
-                  <ListenButton text={other} lang={lang === 'en' ? 'vi' : 'en'} />
+                  <ListenButton text={other} lang={lang === 'en' ? 'vi' : 'en'} onListen={(text, language) => void listen(text, language)} />
                 </div>
 
                 <div className="flex shrink-0 items-center gap-1">

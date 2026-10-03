@@ -50,8 +50,8 @@ describe('Glossary', () => {
 
   it('each term can be heard in both languages, saved and linked to', () => {
     const html = renderToStaticMarkup(<GlossarySearch terms={[TERM]} />);
-    expect(html).toContain('aria-label="Listen: algorithm"');
-    expect(html).toContain('aria-label="Listen: thuật toán"');
+    expect(html).toContain('aria-label="Listen in English: algorithm"');
+    expect(html).toContain('aria-label="Listen in Vietnamese: thuật toán"');
     expect(html).toContain('aria-label="Save algorithm"');
     expect(html).toContain('aria-label="Copy link to algorithm"');
     expect(countRawColors(html).total).toBe(0);
