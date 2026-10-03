@@ -1,8 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { speakTerm } from './pronunciation';
-import { speakWithMeta, stopMetaVoice } from './metaVoice';
+import { speakTerm, warmSpeech } from './pronunciation';
+import { speakWithMeta, stopMetaVoice, warmMetaVoice } from './metaVoice';
 
-vi.mock('./metaVoice', () => ({ speakWithMeta: vi.fn(), stopMetaVoice: vi.fn() }));
+vi.mock('./metaVoice', () => ({ speakWithMeta: vi.fn(), stopMetaVoice: vi.fn(), warmMetaVoice: vi.fn() }));
 
 function voice(lang: string, isDefault = false): SpeechSynthesisVoice {
   return { lang, name: lang, voiceURI: lang, default: isDefault, localService: true };
@@ -115,5 +115,24 @@ describe('term pronunciation', () => {
     getVoices.mockReturnValue([english]);
     vi.mocked(speakWithMeta).mockImplementation(async () => { await speakTerm('Allele', 'en'); return 'spoken'; });
     expect(await speakTerm('Alen', 'vi')).toBe('superseded');
+  });
+});
+
+describe('warming the Meta voices', () => {
+  it('prepares only the languages the browser cannot speak', async () => {
+    getVoices.mockReturnValue([english]);
+    await warmSpeech();
+    expect(warmMetaVoice).toHaveBeenCalledTimes(1);
+    expect(warmMetaVoice).toHaveBeenCalledWith('vi');
+  });
+  it('prepares nothing when the browser speaks both languages', async () => {
+    await warmSpeech();
+    expect(warmMetaVoice).not.toHaveBeenCalled();
+  });
+  it('prepares nothing on a Data Saver connection', async () => {
+    getVoices.mockReturnValue([]);
+    vi.stubGlobal('navigator', { connection: { saveData: true } });
+    await warmSpeech();
+    expect(warmMetaVoice).not.toHaveBeenCalled();
   });
 });

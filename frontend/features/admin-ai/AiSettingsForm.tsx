@@ -25,8 +25,22 @@ const EFFORTS: Array<{ id: ReasoningEffort; label: Bilingual; hint: Bilingual }>
   { id: 'high', label: { en: 'High', vi: 'Cao' }, hint: { en: 'Deeper, slower, costs more', vi: 'Kỹ hơn, chậm và tốn hơn' } },
 ];
 const MODEL_RE = /^[A-Za-z0-9._:/-]{1,100}$/;
-/** OpenAI models that take a thinking level (backend isOpenAiReasoningModel). */
-const OPENAI_REASONING_RE = /^(o\d|gpt-5)/i;
+/** OpenAI models that take a thinking level; keep in step with backend isOpenAiReasoningModel. */
+const takesThinkingLevel = (model: string) => {
+  const id = model.trim().toLowerCase();
+  if (/^o1-(mini|preview)|chat-latest|search-api/.test(id)) return false;
+  return /^(o\d|gpt-([5-9]|[1-9]\d)(?!\d))/.test(id);
+};
+type ModelDrafts = Partial<Record<AiProvider, string>>;
+
+/**
+ * The model box after the provider changes. Each provider keeps its own model, so a model typed for
+ * one (gpt-6-luna) is never sent to the other (Gemini); the saved model comes back with its provider.
+ */
+export function modelOnSwitch(from: AiProvider, model: string, drafts: ModelDrafts, to: AiProvider, saved: { provider: AiProvider; model: string }) {
+  const next = { ...drafts, [from]: model };
+  return { model: next[to] ?? (saved.provider === to ? saved.model : ''), drafts: next };
+}
 const CHARS_MIN = 1000;
 const CHARS_MAX = 5_000_000;
 const number = (n: number) => n.toLocaleString('vi-VN');
@@ -52,6 +66,7 @@ export function AiSettingsForm({ initial }: { initial?: AiSettingsSnapshot }) {
   const [message, setMessage] = useState<{ text: Bilingual; tone: 'success' | 'danger' } | null>(null);
   const [busy, setBusy] = useState<'save' | 'test' | null>(null);
   const [test, setTest] = useState<AiTestResult | null>(null);
+  const [drafts, setDrafts] = useState<ModelDrafts>({});
 
   useEffect(() => {
     if (initial) return;
@@ -77,7 +92,7 @@ export function AiSettingsForm({ initial }: { initial?: AiSettingsSnapshot }) {
   const voiceNameDefault = snapshot.voiceNameDefault ?? 'Charon';
   const chosen = PROVIDERS.find((p) => p.id === form.provider)!;
   const chatModel = form.model.trim() || snapshot.defaults[form.provider];
-  const thinkingIgnored = form.provider === 'openai' && !OPENAI_REASONING_RE.test(chatModel);
+  const thinkingIgnored = form.provider === 'openai' && !takesThinkingLevel(chatModel);
   const saved = formOf(snapshot);
   const dirty = form.provider !== saved.provider || form.model.trim() !== saved.model || form.limit !== saved.limit || form.enabled !== saved.enabled || form.translateEnabled !== saved.translateEnabled || form.translateLimit !== saved.translateLimit || form.effort !== saved.effort || form.voiceModel.trim() !== saved.voiceModel || form.voiceName !== saved.voiceName || form.voiceEnabled !== saved.voiceEnabled;
 
@@ -136,7 +151,11 @@ export function AiSettingsForm({ initial }: { initial?: AiSettingsSnapshot }) {
                   key={p.id}
                   className={`flex min-h-11 cursor-pointer items-center gap-3 rounded-xl border px-4 py-3 transition-colors focus-within:outline focus-within:outline-2 focus-within:outline-offset-1 focus-within:outline-focus ${active ? 'border-action bg-surface' : 'border-line bg-surface hover:border-edge'}`}
                 >
-                  <input type="radio" name={`${ids}-provider`} value={p.id} checked={active} onChange={() => setForm({ ...form, provider: p.id })} className="h-5 w-5 accent-[var(--action)]" />
+                  <input type="radio" name={`${ids}-provider`} value={p.id} checked={active} onChange={() => {
+                    const next = modelOnSwitch(form.provider, form.model, drafts, p.id, saved);
+                    setDrafts(next.drafts);
+                    setForm({ ...form, provider: p.id, model: next.model });
+                  }} className="h-5 w-5 accent-[var(--action)]" />
                   <span className="flex-1 font-semibold text-ink">{p.name}</span>
                   <span className={`inline-flex items-center gap-1 text-xs ${hasKey ? 'text-success' : 'text-warning'}`}>
                     <KeyRound aria-hidden="true" className="h-3.5 w-3.5" />
@@ -216,8 +235,8 @@ export function AiSettingsForm({ initial }: { initial?: AiSettingsSnapshot }) {
           </div>
           <p className="text-xs text-ink-muted">
             {t({
-              en: 'Applies to the Professor’s chat, translation and lesson AI, with Gemini and with OpenAI reasoning models (gpt-5…, o3, o4-mini). Voice chat is not affected.',
-              vi: 'Áp dụng cho chat của Giáo sư SciPal, dịch và AI soạn bài, với Gemini và với model suy luận của OpenAI (gpt-5…, o3, o4-mini). Không ảnh hưởng nói chuyện bằng giọng nói.',
+              en: 'Applies to the Professor’s chat, translation and lesson AI, with Gemini and with OpenAI reasoning models (gpt-5, gpt-6, o3, o4-mini…). Voice chat is not affected.',
+              vi: 'Áp dụng cho chat của Giáo sư SciPal, dịch và AI soạn bài, với Gemini và với model suy luận của OpenAI (gpt-5, gpt-6, o3, o4-mini…). Không ảnh hưởng nói chuyện bằng giọng nói.',
             })}
           </p>
           {thinkingIgnored && (
