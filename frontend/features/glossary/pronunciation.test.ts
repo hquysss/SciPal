@@ -1,5 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { speakTerm } from './pronunciation';
+import { speakWithMeta, stopMetaVoice } from './metaVoice';
+
+vi.mock('./metaVoice', () => ({ speakWithMeta: vi.fn(), stopMetaVoice: vi.fn() }));
 
 function voice(lang: string, isDefault = false): SpeechSynthesisVoice {
   return { lang, name: lang, voiceURI: lang, default: isDefault, localService: true };
@@ -23,6 +26,7 @@ beforeEach(() => {
     constructor(public text: string) {}
   });
   getVoices.mockReturnValue([english, vietnamese]);
+  vi.mocked(speakWithMeta).mockResolvedValue('failed');
 });
 afterEach(() => { vi.useRealTimers(); vi.unstubAllGlobals(); });
 
@@ -73,5 +77,43 @@ describe('term pronunciation', () => {
     expect(await latest).toBe('spoken');
     expect(speak).toHaveBeenCalledTimes(1);
     expect(speak.mock.calls[0][0].text).toBe('Allele');
+  });
+  it("falls back to Meta's Vietnamese model when the browser has no Vietnamese voice", async () => {
+    getVoices.mockReturnValue([english]);
+    vi.mocked(speakWithMeta).mockResolvedValue('spoken');
+    const onLoading = vi.fn();
+    expect(await speakTerm('Alen', 'vi', onLoading)).toBe('spoken');
+    expect(speakWithMeta).toHaveBeenCalledWith('Alen', 'vi', { onLoading, isCurrent: expect.any(Function) });
+    expect(speak).not.toHaveBeenCalled();
+  });
+  it('prefers a browser Vietnamese voice over the Meta model', async () => {
+    await speakTerm('Alen', 'vi');
+    expect(speakWithMeta).not.toHaveBeenCalled();
+  });
+  it("falls back to Meta's English model when the browser has no English voice", async () => {
+    getVoices.mockReturnValue([vietnamese]);
+    vi.mocked(speakWithMeta).mockResolvedValue('spoken');
+    expect(await speakTerm('Allele', 'en')).toBe('spoken');
+    expect(speakWithMeta).toHaveBeenCalledWith('Allele', 'en', expect.any(Object));
+    expect(speak).not.toHaveBeenCalled();
+  });
+  it('reports unavailable when the English Meta model cannot load either', async () => {
+    getVoices.mockReturnValue([vietnamese]);
+    expect(await speakTerm('Allele', 'en')).toBe('unavailable');
+  });
+  it('stops Meta audio on every new request and lets it check it is still the latest', async () => {
+    getVoices.mockReturnValue([english]);
+    let isCurrent = () => true;
+    vi.mocked(speakWithMeta).mockImplementation(async (_text, _lang, options) => { isCurrent = options.isCurrent; return 'spoken'; });
+    await speakTerm('Alen', 'vi');
+    expect(isCurrent()).toBe(true);
+    await speakTerm('Allele', 'en');
+    expect(isCurrent()).toBe(false);
+    expect(stopMetaVoice).toHaveBeenCalledTimes(2);
+  });
+  it('reports superseded when a newer click arrives while the model loads', async () => {
+    getVoices.mockReturnValue([english]);
+    vi.mocked(speakWithMeta).mockImplementation(async () => { await speakTerm('Allele', 'en'); return 'spoken'; });
+    expect(await speakTerm('Alen', 'vi')).toBe('superseded');
   });
 });
