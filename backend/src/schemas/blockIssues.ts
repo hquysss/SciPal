@@ -1,19 +1,18 @@
 import type { z } from 'zod';
 import { imageProblemsList, simulationProblemsList } from './blocks.js';
 
-export type LessonPart = 'lesson' | 'simulation' | 'practice';
+export type LessonPart = 'lesson' | 'practice';
 export type BlockIssue = { part: LessonPart; index: number; field: string; vi: string; en: string };
 
-const PART_OF = (type: unknown): LessonPart => (type === 'interactive' ? 'simulation' : type === 'quiz' ? 'practice' : 'lesson');
+const PART_OF = (type: unknown): LessonPart => (type === 'quiz' ? 'practice' : 'lesson');
 const PART_NAME: Record<LessonPart, { vi: string; en: string }> = {
   lesson: { vi: 'Bài học', en: 'Lesson' },
-  simulation: { vi: 'Mô phỏng', en: 'Simulations' },
   practice: { vi: 'Tự luyện', en: 'Practice' },
 };
 
 /** Same numbering as the editor's splitLessonParts: position within the block's part. */
 export function partPositions(blocks: ReadonlyArray<{ type?: unknown }>) {
-  const seen: Record<LessonPart, number> = { lesson: 0, simulation: 0, practice: 0 };
+  const seen: Record<LessonPart, number> = { lesson: 0, practice: 0 };
   return blocks.map((b) => {
     const part = PART_OF(b?.type);
     return { part, index: seen[part]++ };

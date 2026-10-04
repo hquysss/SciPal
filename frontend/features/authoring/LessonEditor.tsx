@@ -113,7 +113,7 @@ export function LessonEditor({
   );
   // Questions are judged once loaded; until then the server still checks them on submit.
   const issues = useMemo(() => lessonIssues(blocks, practice.loaded ? practice.rows : undefined), [blocks, practice.loaded, practice.rows]);
-  const counts = { lesson: parts.lesson.length, simulation: parts.simulation.length, practice: parts.practice.length };
+  const counts = { lesson: parts.lesson.length, practice: parts.practice.length };
   const busy = saving || submittingForReview || reviewing;
 
   // The latest values, so the autosaver (created once) always saves what is on screen, and every
@@ -425,7 +425,6 @@ export function LessonEditor({
     } else {
       setParts((p) => ({
         lesson: [...p.lesson, ...added.lesson],
-        simulation: [...p.simulation, ...added.simulation],
         practice: [...p.practice, ...added.practice],
       }));
     }
@@ -719,11 +718,11 @@ export function LessonEditor({
               focusNonce={focus?.nonce}
             />
           </PracticeQuestionsContext.Provider>
-          {activePart === 'simulation' && (
+          {activePart === 'lesson' && (
             <LessonRequestsPanel
               lessonId={lessonId}
               readOnly={!canEditContent}
-              onInsert={(block) => setPart('simulation', (list) => [...list, block])}
+              onInsert={(block) => setPart('lesson', (list) => [...list, block])}
             />
           )}
         </div>

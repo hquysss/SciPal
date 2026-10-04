@@ -17,3 +17,10 @@ describe('applyFormat', () => {
     expect(applyFormat('ab', 1, 1, 'italic')).toEqual({ text: 'a*chữ nghiêng*b', start: 2, end: 13 });
   });
 });
+
+describe('applyColor', () => {
+  it('wraps the selection in a colour tag', async () => {
+    const { applyColor } = await import('./markdownToolbar');
+    expect(applyColor('a quan trọng b', 2, 12, 'red')).toEqual({ text: 'a {red:quan trọng} b', start: 7, end: 17 });
+  });
+});

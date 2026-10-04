@@ -1,4 +1,13 @@
+import type { TextColor } from '@/components/blocks/remarkColor';
+
 export type MarkdownFormat = 'bold' | 'italic' | 'heading' | 'list' | 'math';
+
+/** Wrap the selection in `{color:…}` (see remarkColor). */
+export function applyColor(text: string, start: number, end: number, color: TextColor) {
+  const open = `{${color}:`;
+  const inner = (start === end ? 'chữ màu' : text.slice(start, end)).replace(/[{}\n]/g, ' ');
+  return { text: text.slice(0, start) + open + inner + '}' + text.slice(end), start: start + open.length, end: start + open.length + inner.length };
+}
 
 const WRAP: Record<'bold' | 'italic' | 'math', { mark: string; placeholder: string }> = {
   bold: { mark: '**', placeholder: 'chữ đậm' },

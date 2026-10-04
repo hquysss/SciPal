@@ -6,7 +6,7 @@ import type { Block } from '@scipal/types';
 import { BlockRenderer } from '@/components/blocks/BlockRenderer';
 import { LessonSheet } from '@/components/blocks/LessonSheet';
 import { buttonVariants } from '@/components/ui/button';
-import { PART_LABEL, partOfBlock, splitLessonParts, type LessonPart } from './lessonParts';
+import { PART_LABEL, splitLessonParts, type LessonPart } from './lessonParts';
 import { PracticeSection, usePracticeState } from './PracticeSection';
 import { fetchLessonPractice, type PracticeLoad } from './practiceApi';
 
@@ -32,7 +32,7 @@ const STEPS: readonly Step[] = ['lesson', 'practice'];
 
 /**
  * A lesson read in two steps: Bài học (theory and simulations together, in the order the teacher
- * wrote them) → Tự luyện; a step without blocks is skipped. The editor previews one of its three
+ * wrote them) → Tự luyện; a step without blocks is skipped. The editor previews one of its two
  * parts at a time through `part`.
  */
 export function LessonPartsView({ blocks, completion, part, sheet, lang, practice, lessonId }: LessonPartsProps) {
@@ -43,7 +43,7 @@ export function LessonPartsView({ blocks, completion, part, sheet, lang, practic
   const practiceLoad = reloaded ?? practice;
   const parts = splitLessonParts(blocks);
   const steps: Record<Step, Block[]> = {
-    lesson: blocks.filter((block) => partOfBlock(block) !== 'practice'),
+    lesson: parts.lesson,
     practice: parts.practice,
   };
   const present = STEPS.filter((p) => steps[p].length > 0);

@@ -4,7 +4,8 @@ import { useRef, useState, type ClipboardEvent } from 'react';
 import { Bold, Heading2, Italic, List, Sigma } from 'lucide-react';
 import { useLanguage } from '@scipal/hooks';
 import type { ImageBlock, TheoryBlock } from '@scipal/types';
-import { applyFormat, type MarkdownFormat } from '../markdownToolbar';
+import { TEXT_COLORS, type TextColor } from '@/components/blocks/remarkColor';
+import { applyColor, applyFormat, type MarkdownFormat } from '../markdownToolbar';
 import { uploadLessonImage } from '../mediaApi';
 import { LangTabs } from './LangTabs';
 import { AutoTranslatedNote } from '../../translation/AutoTranslateContext';
@@ -26,6 +27,14 @@ const TOOLS: Array<{ format: MarkdownFormat; label: { en: string; vi: string }; 
   { format: 'math', label: { en: 'Formula', vi: 'Công thức' }, Icon: Sigma },
 ];
 
+const COLOR_LABEL: Record<TextColor, { en: string; vi: string }> = {
+  red: { en: 'Red text', vi: 'Chữ đỏ' },
+  green: { en: 'Green text', vi: 'Chữ xanh lá' },
+  blue: { en: 'Blue text', vi: 'Chữ xanh dương' },
+  orange: { en: 'Orange text', vi: 'Chữ cam' },
+};
+const COLOR_TEXT: Record<TextColor, string> = { red: 'text-danger', green: 'text-success', blue: 'text-action', orange: 'text-warning' };
+
 export function TheoryEditor({ block, onChange, lang, onLangChange, onInsertImage }: TheoryEditorProps) {
   const { t } = useLanguage();
   const ref = useRef<HTMLTextAreaElement>(null);
@@ -36,6 +45,17 @@ export function TheoryEditor({ block, onChange, lang, onLangChange, onInsertImag
     const area = ref.current;
     if (!area) return;
     const next = applyFormat(area.value, area.selectionStart, area.selectionEnd, kind);
+    setValue(next.text);
+    requestAnimationFrame(() => {
+      area.focus();
+      area.setSelectionRange(next.start, next.end);
+    });
+  };
+
+  const color = (c: TextColor) => {
+    const area = ref.current;
+    if (!area) return;
+    const next = applyColor(area.value, area.selectionStart, area.selectionEnd, c);
     setValue(next.text);
     requestAnimationFrame(() => {
       area.focus();
@@ -68,6 +88,13 @@ export function TheoryEditor({ block, onChange, lang, onLangChange, onInsertImag
               <Icon aria-hidden="true" className="h-4 w-4" />
             </button>
           ))}
+          <span role="group" aria-label={t({ en: 'Text colour', vi: 'Màu chữ' })} className="flex items-center gap-1 pl-1">
+            {TEXT_COLORS.map((c) => (
+              <button key={c} type="button" aria-label={t(COLOR_LABEL[c])} title={t(COLOR_LABEL[c])} onClick={() => color(c)} className={`${SMALL_BUTTON} font-bold ${COLOR_TEXT[c]}`}>
+                A
+              </button>
+            ))}
+          </span>
         </div>
       </div>
       <textarea
@@ -85,8 +112,8 @@ export function TheoryEditor({ block, onChange, lang, onLangChange, onInsertImag
       <p className="text-xs text-ink-muted" aria-live="polite">
         {status ??
           t({
-            en: 'Markdown: **bold**, - list, $x^2$ for a formula in a sentence, $$ on its own lines for a large one. Paste an image to add it.',
-            vi: 'Markdown: **đậm**, - danh sách, $x^2$ cho công thức trong câu, $$ trên dòng riêng cho công thức lớn. Dán ảnh để chèn ảnh.',
+            en: 'Markdown: **bold**, - list, $x^2$ for a formula in a sentence, $$ on its own lines for a large one, {red:text} for colour. Paste an image to add it.',
+            vi: 'Markdown: **đậm**, - danh sách, $x^2$ cho công thức trong câu, $$ trên dòng riêng cho công thức lớn, {red:chữ} để tô màu. Dán ảnh để chèn ảnh.',
           })}
       </p>
     </div>

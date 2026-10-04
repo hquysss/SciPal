@@ -72,7 +72,7 @@ describe('lesson routes refuse invalid simulations', () => {
     });
     const res = await app.inject({ method: 'PATCH', url: `/api/authoring/lessons/${LESSON_ID}`, payload: { blocks: [unsafeEmbed], expected_updated_at: STAMP } });
     expect(res.statusCode).toBe(400);
-    expect(res.json()).toMatchObject({ error: expect.stringMatching(/Mô phỏng · Khối 1/), error_en: expect.stringMatching(/Simulations · Block 1/), issues: [expect.objectContaining({ part: 'simulation', index: 0 })] });
+    expect(res.json()).toMatchObject({ error: expect.stringMatching(/Bài học · Khối 1/), error_en: expect.stringMatching(/Lesson · Block 1/), issues: [expect.objectContaining({ part: 'lesson', index: 0 })] });
     await app.close();
   });
 

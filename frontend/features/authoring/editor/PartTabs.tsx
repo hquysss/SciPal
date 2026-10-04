@@ -12,7 +12,7 @@ interface PartTabsProps {
   onSelect: (part: LessonPart) => void;
 }
 
-/** Bài học · Mô phỏng · Tự luyện, with block counts and a dot where something needs a look. */
+/** Bài học (lý thuyết + mô phỏng) · Tự luyện, with block counts and a dot where something needs a look. */
 export function PartTabs({ active, counts, issues, onSelect }: PartTabsProps) {
   const { t } = useLanguage();
   const refs = useRef<Array<HTMLButtonElement | null>>([]);
@@ -26,7 +26,7 @@ export function PartTabs({ active, counts, issues, onSelect }: PartTabsProps) {
   };
 
   return (
-    <div role="tablist" aria-label={t({ en: 'Lesson parts', vi: 'Các phần của bài' })} onKeyDown={onKeyDown} className="grid grid-cols-3 border-b border-line">
+    <div role="tablist" aria-label={t({ en: 'Lesson parts', vi: 'Các phần của bài' })} onKeyDown={onKeyDown} className="grid grid-cols-2 border-b border-line">
       {LESSON_PARTS.map((part, i) => {
         const partIssues = issues.filter((issue) => issue.part === part);
         const blocking = partIssues.some((issue) => issue.blocking);
