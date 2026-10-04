@@ -360,3 +360,142 @@
     transform: none;
   }
 }
+
+/* Phone or Windows. */
+.toggle {
+  display: inline-flex;
+  gap: 0.25rem;
+  border-radius: 999px;
+  padding: 0.25rem;
+  background: color-mix(in srgb, var(--ink) 8%, var(--surface));
+}
+
+.toggleOption {
+  display: inline-flex;
+  min-height: 2.5rem;
+  align-items: center;
+  gap: 0.45rem;
+  border: 0;
+  border-radius: 999px;
+  padding: 0 1rem;
+  background: transparent;
+  color: var(--ink-muted);
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background-color 160ms ease-out, color 160ms ease-out;
+}
+
+.toggleOption[aria-pressed='true'] {
+  background: var(--ink);
+  color: var(--surface);
+}
+
+.toggleOption:focus-visible {
+  outline: 3px solid var(--focus);
+  outline-offset: 2px;
+}
+
+/* A desktop window with SciPal in it; decoration. */
+.desktop {
+  width: min(28rem, 92%);
+  overflow: hidden;
+  border-radius: 0.9rem;
+  background: var(--surface);
+  box-shadow: 0 2.5rem 4rem -2rem color-mix(in srgb, var(--ink) 55%, transparent);
+  rotate: 2deg;
+}
+
+.titleBar {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.55rem 0.8rem;
+  background: var(--ink);
+  color: var(--surface);
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
+.winButtons {
+  display: flex;
+  gap: 0.35rem;
+  margin-left: auto;
+}
+
+.winButtons i {
+  width: 0.6rem;
+  height: 0.6rem;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--surface) 55%, transparent);
+}
+
+.winBody {
+  display: grid;
+  grid-template-columns: 7rem minmax(0, 1fr);
+  min-height: 15rem;
+  background: linear-gradient(160deg, color-mix(in srgb, var(--sky) 30%, var(--surface)), color-mix(in srgb, var(--sun) 25%, var(--surface)));
+}
+
+.side {
+  display: grid;
+  align-content: start;
+  gap: 0.6rem;
+  padding: 1rem 0.8rem;
+  background: color-mix(in srgb, var(--ink) 6%, var(--surface));
+}
+
+.sideLine {
+  height: 0.6rem;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--ink) 16%, transparent);
+}
+
+.page {
+  display: grid;
+  align-content: start;
+  gap: 0.7rem;
+  padding: 1.1rem;
+}
+
+.pageTitle,
+.pageLine,
+.pageCard {
+  border-radius: 0.5rem;
+  background: color-mix(in srgb, var(--ink) 14%, transparent);
+}
+
+.pageTitle {
+  width: 60%;
+  height: 1.1rem;
+}
+
+.pageLine {
+  height: 0.6rem;
+}
+
+.pageCard {
+  height: 3.5rem;
+  background: color-mix(in srgb, var(--surface) 80%, transparent);
+}
+
+.page .offlinePill {
+  justify-self: start;
+}
+
+@media (max-width: 56rem) {
+  .desktop {
+    width: min(22rem, 92%);
+  }
+
+  .winBody {
+    grid-template-columns: 4.5rem minmax(0, 1fr);
+    min-height: 12rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .toggleOption {
+    transition: none;
+  }
+}

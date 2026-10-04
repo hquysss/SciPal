@@ -37,4 +37,11 @@ describe('install section', () => {
     expect(renderToStaticMarkup(<InstallActionView mode="prompt" onInstall={noop} storeUrl={null} />)).not.toContain('Microsoft Store');
     expect(renderToStaticMarkup(<InstallActionView mode="installed" onInstall={noop} storeUrl={store} />)).not.toContain('Microsoft Store');
   });
+
+  it('lets visitors choose phone or Windows once the Store link exists', () => {
+    const html = renderToStaticMarkup(<InstallAppSection />);
+    expect(html).toContain('Điện thoại');
+    expect(html).toContain('Windows');
+    expect(html).toContain('aria-pressed="true"');
+  });
 });
