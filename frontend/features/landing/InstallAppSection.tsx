@@ -18,6 +18,12 @@ const PERKS: Array<{ icon: typeof Smartphone; text: Bilingual }> = [
   { icon: RefreshCw, text: { vi: 'Luôn là bản mới nhất, không cần cập nhật', en: 'Always the latest version, no updates to install' } },
 ];
 
+const DESKTOP_PERKS: Array<{ icon: typeof Smartphone; text: Bilingual }> = [
+  { icon: Monitor, text: { vi: 'Mở trong cửa sổ riêng như một phần mềm, ghim được lên thanh tác vụ', en: 'Opens in its own window like a program, pinnable to the taskbar' } },
+  { icon: WifiOff, text: { vi: 'Bài đã mở hoặc đã tải về vẫn đọc được khi mất mạng', en: 'Lessons you opened or saved still read offline' } },
+  { icon: RefreshCw, text: { vi: 'Luôn là bản mới nhất, không cần cập nhật', en: 'Always the latest version, no updates to install' } },
+];
+
 function Steps({ steps }: { steps: Array<{ icon: typeof Share; text: Bilingual }> }) {
   const { t } = useLanguage();
   return (
@@ -47,7 +53,7 @@ function StoreLink({ href }: { href: string }) {
   );
 }
 
-export function InstallActionView({ mode, onInstall, storeUrl = null }: { mode: InstallMode; onInstall: () => void; storeUrl?: string | null }) {
+export function InstallActionView({ mode, onInstall, storeUrl = null, desktop = false }: { mode: InstallMode; onInstall: () => void; storeUrl?: string | null; desktop?: boolean }) {
   const { t } = useLanguage();
   const store = storeUrl && mode !== 'installed' ? <StoreLink href={storeUrl} /> : null;
   if (mode === 'installed') {
@@ -78,6 +84,19 @@ export function InstallActionView({ mode, onInstall, storeUrl = null }: { mode: 
           { icon: Smartphone, text: { vi: 'Mở SciPal từ màn hình chính', en: 'Open SciPal from the home screen' } },
         ]}
       />
+    );
+  }
+  if (desktop) {
+    return (
+      <div className={styles.actions}>
+        {store}
+        <Steps
+          steps={[
+            { icon: Download, text: { vi: 'Bấm biểu tượng cài đặt ở thanh địa chỉ, hoặc menu ⋯ → Ứng dụng → Cài đặt SciPal', en: 'Click the install icon in the address bar, or menu ⋯ → Apps → Install SciPal' } },
+            { icon: Monitor, text: { vi: 'Mở SciPal từ menu Start hoặc thanh tác vụ', en: 'Open SciPal from the Start menu or taskbar' } },
+          ]}
+        />
+      </div>
     );
   }
   return (
@@ -201,14 +220,14 @@ export function InstallAppSection() {
               })}
         </p>
         <ul className={styles.perks}>
-          {PERKS.map(({ icon: Icon, text }) => (
+          {(device === 'windows' ? DESKTOP_PERKS : PERKS).map(({ icon: Icon, text }) => (
             <li key={text.en}>
               <span className={styles.perkIcon} aria-hidden="true"><Icon size={18} /></span>
               <span>{t(text)}</span>
             </li>
           ))}
         </ul>
-        <InstallActionView mode={mode} onInstall={() => void install()} storeUrl={device === 'windows' ? MICROSOFT_STORE_URL : null} />
+        <InstallActionView mode={mode} onInstall={() => void install()} storeUrl={device === 'windows' ? MICROSOFT_STORE_URL : null} desktop={device === 'windows'} />
       </div>
     </section>
   );

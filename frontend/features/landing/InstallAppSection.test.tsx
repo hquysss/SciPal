@@ -44,4 +44,10 @@ describe('install section', () => {
     expect(html).toContain('Windows');
     expect(html).toContain('aria-pressed="true"');
   });
+
+  it('gives Windows its own steps, not the phone ones', () => {
+    const html = renderToStaticMarkup(<InstallActionView mode="manual" onInstall={noop} desktop />);
+    expect(html).toContain('menu Start');
+    expect(html).not.toContain('màn hình chính');
+  });
 });
