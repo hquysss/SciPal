@@ -499,3 +499,14 @@
     transition: none;
   }
 }
+
+.logos {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+.logos img {
+  height: 1.1rem;
+  width: auto;
+}
