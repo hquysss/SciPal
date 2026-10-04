@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { CheckCircle2, Download, Menu, Monitor, RefreshCw, Share, Smartphone, SquarePlus, Store, WifiOff } from 'lucide-react';
+import { CheckCircle2, Download, Menu, Monitor, RefreshCw, Share, Smartphone, SquarePlus, WifiOff } from 'lucide-react';
 import { useLanguage } from '@scipal/hooks';
 import { useInstall, type InstallMode } from '@/lib/pwa/installMode';
 import { MICROSOFT_STORE_URL } from '@/lib/pwa/stores';
@@ -44,7 +44,8 @@ function StoreLink({ href }: { href: string }) {
   const { t } = useLanguage();
   return (
     <a href={href} target="_blank" rel="noopener noreferrer" aria-label={t({ vi: 'Tải từ Microsoft Store', en: 'Get it from Microsoft Store' })} className={styles.store}>
-      <Store aria-hidden="true" size={20} />
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img src="/icons/brands/microsoft-store.svg" alt="" width={26} height={26} />
       <span>
         <small>{t({ vi: 'Tải từ', en: 'Get it from' })}</small>
         Microsoft Store
@@ -173,15 +174,20 @@ type Device = 'phone' | 'windows';
 /** Which device the visitor installs on: phone or Windows. */
 function DeviceToggle({ value, onChange }: { value: Device; onChange: (device: Device) => void }) {
   const { t } = useLanguage();
-  const options: Array<{ id: Device; icon: typeof Smartphone; label: Bilingual }> = [
-    { id: 'phone', icon: Smartphone, label: { vi: 'Điện thoại', en: 'Phone' } },
-    { id: 'windows', icon: Monitor, label: { vi: 'Windows', en: 'Windows' } },
+  const options: Array<{ id: Device; logos: string[]; label: Bilingual }> = [
+    { id: 'phone', logos: ['android', 'app-store'], label: { vi: 'Điện thoại', en: 'Phone' } },
+    { id: 'windows', logos: ['windows'], label: { vi: 'Windows', en: 'Windows' } },
   ];
   return (
     <div className={styles.toggle} role="group" aria-label={t({ vi: 'Cài SciPal trên', en: 'Install SciPal on' })}>
-      {options.map(({ id, icon: Icon, label }) => (
+      {options.map(({ id, logos, label }) => (
         <button key={id} type="button" aria-pressed={value === id} onClick={() => onChange(id)} className={styles.toggleOption}>
-          <Icon aria-hidden="true" size={18} />
+          <span className={styles.logos} aria-hidden="true">
+            {logos.map((logo) => (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img key={logo} src={`/icons/brands/${logo}.svg`} alt="" height={18} />
+            ))}
+          </span>
           {t(label)}
         </button>
       ))}
