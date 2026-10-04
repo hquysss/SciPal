@@ -45,10 +45,10 @@ describe('BlockList', () => {
     expect(html).not.toContain('Xóa khối');
   });
 
-  it('lets teachers insert simulations in the simulation tab', () => {
-    const html = renderToStaticMarkup(<BlockList part="simulation" blocks={[]} onChange={() => {}} subjectId="s" readOnly={false} />);
+  it('offers simulations next to the other block types in the lesson tab', () => {
+    const html = renderToStaticMarkup(<BlockList part="lesson" blocks={[]} onChange={() => {}} subjectId="s" readOnly={false} />);
     expect(html.match(/aria-label="Chèn khối tại đây"/g)).toHaveLength(1);
-    expect(html).toContain('Chưa có mô phỏng');
+    expect(html).toContain('Bài chưa có nội dung');
     expect(html).not.toContain('bước tiếp theo');
   });
 

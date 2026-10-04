@@ -6,7 +6,7 @@ import type { LessonIssue } from './lessonIssues';
 // messages, turned into what the Studio shows.
 
 type Bilingual = { vi: string; en: string };
-const PARTS: readonly LessonPart[] = ['lesson', 'simulation', 'practice'];
+const PARTS: readonly LessonPart[] = ['lesson', 'practice'];
 
 /** The `issues` of a 400 body as blocking lesson issues; anything malformed is dropped. */
 export function parseServerIssues(body: unknown): LessonIssue[] {

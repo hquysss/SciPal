@@ -42,10 +42,6 @@ const EMPTY_TEXT: Record<LessonPart, Bilingual> = {
     en: 'The lesson has no content yet. Press ＋ to add the first block, or import a Word/PDF file.',
     vi: 'Bài chưa có nội dung. Bấm ＋ để thêm khối đầu tiên, hoặc nhập từ Word/PDF.',
   },
-  simulation: {
-    en: 'No simulations yet. Press ＋ to add one of the templates or embed a link.',
-    vi: 'Chưa có mô phỏng. Bấm ＋ để chọn một mẫu mô phỏng hoặc nhúng link.',
-  },
   practice: {
     en: 'No practice questions yet. Press ＋ to write one or reuse a published question from another lesson.',
     vi: 'Chưa có câu tự luyện. Bấm ＋ để viết câu mới hoặc lấy câu đã duyệt từ bài khác.',
@@ -180,8 +176,17 @@ export function BlockList({ part, blocks, onChange, subjectId, readOnly, focusIn
           </button>
           <span aria-hidden="true" className="h-px flex-1 bg-line" />
         </div>
-        {open && part === 'simulation' && (
-          <div role="menu" className="grid gap-1.5 sm:grid-cols-2">
+        {open && part === 'lesson' && (
+          <div role="menu" className="flex flex-col gap-2">
+            <div className="flex flex-wrap justify-center gap-1.5">
+              {LESSON_TYPES.map((type) => (
+                <button key={type} type="button" role="menuitem" onClick={() => choose(index, type)} className={SMALL_BUTTON}>
+                  {t(TYPE_LABEL[type])}
+                </button>
+              ))}
+            </div>
+            <p className="text-center text-xs font-semibold text-ink-muted">{t({ en: 'Simulations', vi: 'Mô phỏng' })}</p>
+            <div className="grid gap-1.5 sm:grid-cols-2">
             {SIMULATION_CHOICES.map((choice) => (
               <button
                 key={choice.kind}
@@ -194,6 +199,7 @@ export function BlockList({ part, blocks, onChange, subjectId, readOnly, focusIn
                 {choice.note && <span className="text-ink-muted">· {t(choice.note)}</span>}
               </button>
             ))}
+            </div>
           </div>
         )}
         {open && part === 'practice' && (
@@ -223,15 +229,6 @@ export function BlockList({ part, blocks, onChange, subjectId, readOnly, focusIn
             >
               {t({ en: 'Reuse from another lesson', vi: 'Lấy từ bài khác' })}
             </button>
-          </div>
-        )}
-        {open && part === 'lesson' && (
-          <div role="menu" className="flex flex-wrap justify-center gap-1.5">
-            {LESSON_TYPES.map((type) => (
-              <button key={type} type="button" role="menuitem" onClick={() => choose(index, type)} className={SMALL_BUTTON}>
-                {t(TYPE_LABEL[type])}
-              </button>
-            ))}
           </div>
         )}
         {pending?.index === index && (pending.kind === 'question' || pending.kind === 'pick') && (

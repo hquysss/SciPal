@@ -7,10 +7,9 @@ const quiz: Block = { type: 'quiz', question_id: '11111111-1111-4111-8111-111111
 const sim: Block = { type: 'interactive', kind: 'algorithm-sim', heading: { vi: 'S', en: 'S' }, offline: true, config: {} };
 
 describe('splitLessonParts', () => {
-  it('groups a mixed legacy lesson by type and keeps order within each part', () => {
+  it('puts theory and simulations in one lesson part, in the order written', () => {
     const parts = splitLessonParts([quiz, theory('a'), sim, theory('b')]);
-    expect(parts.lesson).toEqual([theory('a'), theory('b')]);
-    expect(parts.simulation).toEqual([sim]);
+    expect(parts.lesson).toEqual([theory('a'), sim, theory('b')]);
     expect(parts.practice).toEqual([quiz]);
   });
 
@@ -35,6 +34,6 @@ describe('updatePart', () => {
     const edited = updatePart(start, 'lesson', (list) => list.map(() => theory('a và thêm chữ')));
     const done = updatePart(edited, 'lesson', insertAfterFirst);
     expect(done.lesson).toEqual([theory('a và thêm chữ'), image]);
-    expect(done.simulation).toBe(start.simulation);
+    expect(done.practice).toBe(start.practice);
   });
 });

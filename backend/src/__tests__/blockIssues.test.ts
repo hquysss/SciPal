@@ -6,7 +6,7 @@ import { blockFailure, imageIssues, partPositions, schemaIssues, simulationIssue
 describe('partPositions', () => {
   it('numbers blocks within their part like the editor', () => {
     expect(partPositions([{ type: 'theory' }, { type: 'quiz' }, { type: 'code' }, { type: 'interactive' }, { type: 'quiz' }])).toEqual([
-      { part: 'lesson', index: 0 }, { part: 'practice', index: 0 }, { part: 'lesson', index: 1 }, { part: 'simulation', index: 0 }, { part: 'practice', index: 1 },
+      { part: 'lesson', index: 0 }, { part: 'practice', index: 0 }, { part: 'lesson', index: 1 }, { part: 'lesson', index: 2 }, { part: 'practice', index: 1 },
     ]);
   });
 });
@@ -39,7 +39,7 @@ describe('image and simulation issues', () => {
     process.env.SUPABASE_URL = 'https://p.supabase.co';
     const blocks = [{ type: 'theory', content: { vi: 'a', en: '' } }, { type: 'image', url: 'https://evil.example/x.png', alt: { vi: '', en: '' } }];
     expect(imageIssues(blocks, { requireAlt: true })[0]).toMatchObject({ part: 'lesson', index: 1, field: 'url' });
-    expect(simulationIssues([{ type: 'interactive', kind: 'nope', heading: { vi: 'x', en: '' }, offline: true, config: {} }] as never)[0]).toMatchObject({ part: 'simulation', index: 0 });
+    expect(simulationIssues([{ type: 'interactive', kind: 'nope', heading: { vi: 'x', en: '' }, offline: true, config: {} }] as never)[0]).toMatchObject({ part: 'lesson', index: 0 });
   });
 
   it('builds a bilingual 400 body', () => {

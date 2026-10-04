@@ -25,7 +25,7 @@ describe('lessonIssues', () => {
       { type: 'interactive', kind: 'algorithm-sim', heading: { vi: 'S', en: '' }, offline: true, config: {} },
       { type: 'theory', content: { vi: 'A', en: '' } },
     ]);
-    expect(issues.map((i) => [i.part, i.index])).toEqual([['lesson', 0], ['simulation', 0]]);
+    expect(issues.map((i) => [i.part, i.index])).toEqual([['lesson', 0], ['lesson', 1]]);
   });
 
   it('finds nothing wrong in a complete lesson', () => {
