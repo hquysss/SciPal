@@ -6,6 +6,14 @@ import rehypeKatex from 'rehype-katex';
 import 'katex/dist/katex.min.css';
 import type { TheoryBlock } from '@scipal/types';
 import styles from './notebook.module.css';
+import { remarkColor, type TextColor } from './remarkColor';
+
+const COLOR_CLASS: Record<TextColor, string> = {
+  red: 'text-danger',
+  green: 'text-success',
+  blue: 'text-action',
+  orange: 'text-warning',
+};
 
 const components: Components = {
   h1: ({ children }) => <h2 className="pt-7 text-2xl font-bold leading-7 text-ink">{children}</h2>,
@@ -49,12 +57,16 @@ const components: Components = {
   ),
   th: ({ children }) => <th className="border-b border-line bg-surface-sunken px-3 py-2 font-semibold text-ink">{children}</th>,
   td: ({ children }) => <td className="border-b border-line px-3 py-2">{children}</td>,
+  span: (props) => {
+    const color = (props as { 'data-color'?: TextColor })['data-color'];
+    return <span className={color ? COLOR_CLASS[color] : props.className}>{props.children}</span>;
+  },
   hr: () => <hr className="my-7 border-line" />,
 };
 
 // `$…$` inline and `$$…$$` display formulas, typeset like formula blocks. A broken formula shows
 // in red instead of failing the lesson; KaTeX's `trust` stays off, so no HTML or links get in.
-const REMARK = [remarkGfm, remarkMath];
+const REMARK = [remarkGfm, remarkMath, remarkColor];
 const REHYPE: NonNullable<Parameters<typeof ReactMarkdown>[0]['rehypePlugins']> = [[rehypeKatex, { throwOnError: false, strict: 'ignore' }]];
 
 export function TheoryRenderer({ block, lang }: { block: TheoryBlock; lang: 'en' | 'vi' }) {

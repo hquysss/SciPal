@@ -74,3 +74,17 @@ describe('TheoryRenderer', () => {
     expect(out).toContain('nhé');
   });
 });
+
+describe('TheoryRenderer colours', () => {
+  it('colours {name:text} with theme tokens and leaves code and unknown names alone', () => {
+    const html = renderToStaticMarkup(
+      <TheoryRenderer block={{ type: 'theory', content: { en: '', vi: 'Có {red:đỏ} và **{blue:xanh}**, `{red:mã}`, {pink:lạ}, $x$' } }} lang="vi" />,
+    );
+    expect(html).toContain('<span class="text-danger">đỏ</span>');
+    expect(html).toContain('<span class="text-action">xanh</span>');
+    expect(html).toContain('{red:mã}');
+    expect(html).toContain('{pink:lạ}');
+    expect(html).toContain('class="katex"');
+    expect(countRawColors(html).total).toBe(0);
+  });
+});
