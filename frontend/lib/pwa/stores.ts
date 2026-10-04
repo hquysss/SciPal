@@ -1,3 +1,3 @@
-// Where SciPal is listed. Paste the Microsoft Store link (apps.microsoft.com/detail/…) here once the
-// listing is live; until then the landing page shows no Store button.
-export const MICROSOFT_STORE_URL: string | null = null;
+// Where SciPal is listed: the Microsoft Store link (apps.microsoft.com/detail/…). With null the landing
+// page shows no Store button.
+export const MICROSOFT_STORE_URL: string | null = 'https://apps.microsoft.com/detail/9PJ189MZ6CNG';
