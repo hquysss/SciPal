@@ -39,6 +39,9 @@ export default async function TeacherExamsPage() {
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
+          <Link href="/teacher/import" className={buttonVariants({ variant: 'outline' })}>
+            <Bi en="Import exams from Excel" vi="Nhập đề từ Excel" />
+          </Link>
           <Link href="/exam/manage/questions" className={buttonVariants({ variant: 'outline' })}>
             <Bi en="Question bank" vi="Ngân hàng câu hỏi" />
           </Link>

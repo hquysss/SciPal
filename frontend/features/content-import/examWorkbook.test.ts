@@ -22,6 +22,77 @@ function useExamples(wb: ExcelJS.Workbook) {
   }
 }
 
+function setColumns(sheet: ExcelJS.Worksheet, row: number, values: Record<string, unknown>) {
+  for (const [name, value] of Object.entries(values)) {
+    let column = 0;
+    sheet.getRow(1).eachCell((cell, n) => { if (cell.value === name) column = n; });
+    if (!column) {
+      column = sheet.columnCount + 1;
+      sheet.getRow(1).getCell(column).value = name;
+    }
+    sheet.getRow(row).getCell(column).value = String(value);
+  }
+}
+
+async function structuredWorkbook(format = 'thptqg') {
+  const wb = await loadTemplate(useExamples);
+  setColumns(wb.getWorksheet('Exams')!, 2, { format });
+  const sections = wb.getWorksheet('Exam sections')!;
+  ['mc', 'truefalse', 'short'].forEach((key, i) => setColumns(sections, i + 2, {
+    section_key: key, title_vi: `Phần ${i + 1}`, title_en: `Part ${i + 1}`,
+    max_points: format === 'dgnl_hcm' ? 400 : [3, 4, 3][i],
+  }));
+  const groups = wb.getWorksheet('Exam groups') ?? wb.addWorksheet('Exam groups');
+  ['vd-nhi-phan', 'vd-dung-sai', 'vd-tra-loi-ngan'].forEach((key, i) => setColumns(groups, i + 2, {
+    exam_code: 'vd-de-on-tap', section_key: ['mc', 'truefalse', 'short'][i], group_key: `g${i}`,
+    question_keys: key, passage_vi: i === 0 ? 'Đọc đoạn dẫn' : '', passage_en: i === 0 ? 'Read the passage' : '',
+    _template_example: 'FALSE',
+  }));
+  return wb;
+}
+
+describe('structured exam workbooks', () => {
+  it.each(['generic', 'thptqg', 'dgnl_hcm'] as const)('offers a usable %s template with skipped example rows', async (format) => {
+    const wb = new ExcelJS.Workbook();
+    await wb.xlsx.load((await createExamWorkbookTemplate(format)) as never);
+    expect(() => readExamWorkbook(wb)).toThrow(/Tệp chưa có/);
+    useExamples(wb);
+    const draft = readExamWorkbook(wb);
+    expect(draft.blueprints[0]?.format ?? 'generic').toBe(format);
+    if (format !== 'generic') expect(draft.blueprints[0]?.layout).toHaveLength(3);
+  });
+
+  it.each(['thptqg', 'dgnl_hcm'])('reads %s sections, points and passage groups', async (format) => {
+    const draft = readExamWorkbook(await structuredWorkbook(format));
+    expect(draft.blueprints[0]?.format).toBe(format);
+    expect(draft.blueprints[0]?.layout?.[0]).toMatchObject({ key: 'mc', count: 1, max_points: format === 'dgnl_hcm' ? 400 : 3,
+        groups: [{ question_keys: ['vd-nhi-phan'], passage: { vi: 'Đọc đoạn dẫn', en: 'Read the passage' } }],
+    });
+  });
+
+  it('rejects unknown question references, repeated questions and wrong totals', async () => {
+    for (const change of [
+      { question_keys: 'missing' }, { question_keys: 'vd-nhi-phan,vd-nhi-phan' },
+    ]) {
+      const wb = await structuredWorkbook();
+      setColumns(wb.getWorksheet('Exam groups')!, 2, change);
+      expect(() => readExamWorkbook(wb)).toThrow(WorkbookError);
+    }
+    const wb = await structuredWorkbook();
+    setColumns(wb.getWorksheet('Exam sections')!, 2, { max_points: 30 });
+    expect(() => readExamWorkbook(wb)).toThrow(WorkbookError);
+  });
+
+  it('includes section titles and passages in missing-English review', async () => {
+    const wb = await structuredWorkbook();
+    setColumns(wb.getWorksheet('Exam sections')!, 2, { title_en: '' });
+    setColumns(wb.getWorksheet('Exam groups')!, 2, { passage_en: '' });
+    expect(missingEnglish(readExamWorkbook(wb))).toEqual([
+      'Đề vd-de-on-tap · phần mc', 'Đề vd-de-on-tap · phần mc · đoạn dẫn 1',
+    ]);
+  });
+});
+
 describe('readExamWorkbook', () => {
   it('skips the template example rows, so an untouched template has nothing to import', async () => {
     const wb = await loadTemplate();

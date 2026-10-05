@@ -8,6 +8,9 @@ import { capacityRefusal } from '../billing/capacity.js';
 import { BillingRepositoryError, createBillingRepository } from '../billing/repository.js';
 import { periodOf, periodWords, type QuotaPeriod } from '../billing/quotaPeriod.js';
 import { isSubjectArchived, SUBJECT_ARCHIVED } from '../subjects/archived.js';
+import { EXAM_FORMATS } from '../schemas/examFormat.js';
+import { ImportLayoutSchema, resolveImportLayout } from '../schemas/examImportLayout.js';
+import { examSections } from '../schemas/exams.js';
 
 // The package the import page sends after Word/PDF lessons and an Excel workbook are parsed and
 // reviewed in the browser. Keep it aligned with frontend/features/content-import/
@@ -41,6 +44,8 @@ const QuestionSchema = z.discriminatedUnion('type', [
 ]);
 
 const BlueprintSchema = z.object({
+  format: z.enum(EXAM_FORMATS).optional(),
+  layout: ImportLayoutSchema.nullable().optional(),
   code: Key,
   subject_slug: Slug,
   grade: z.number().int().min(1).max(12),
@@ -147,6 +152,10 @@ export const ExamImportSchema = z
     pkg.blueprints.forEach((b, i) => {
       if (codes.has(b.code)) ctx.addIssue({ code: 'custom', path: ['blueprints', i, 'code'], message: `Mã đề ${b.code} bị lặp.` });
       codes.add(b.code);
+      for (const section of b.layout ?? []) {
+        const texts = [section.title, ...section.groups.flatMap((g) => g.passage ? [g.passage] : [])];
+        if (texts.some((t) => !t.en.trim())) ctx.addIssue({ code: 'custom', path: ['blueprints', i, 'layout'], message: `Đề ${b.code}: tên phần và đoạn dẫn cần điền tiếng Anh trước khi lưu.` });
+      }
     });
   });
 
@@ -329,15 +338,20 @@ export const examImportRoutes: FastifyPluginAsync = async (app) => {
     const examQuestions = questions.filter((q) => !isPractice(q));
     const blueprintRows: Record<string, unknown>[] = [];
     for (const blueprint of pkg.blueprints) {
-      const pick = pickExamQuestions(blueprint, examQuestions);
+      const format = blueprint.format ?? 'generic';
+      const structured = resolveImportLayout(format, blueprint.layout, examQuestions, blueprint.subject_slug);
+      if (!structured.ok) return reply.code(400).send({ error: `Đề ${blueprint.code}: ${structured.error}` });
+      const pick = structured.layout ? { ok: true as const, ids: structured.ids } : pickExamQuestions(blueprint, examQuestions);
       if (!pick.ok) return reply.code(400).send({ error: pick.error });
       blueprintRows.push({
         name: blueprint.title.vi,
         name_en: blueprint.title.en,
         grade: blueprint.grade,
         subject_id: subjectIds.get(blueprint.subject_slug),
-        sections: blueprint.sections,
+        sections: structured.layout ? examSections(pick.ids.flatMap((id) => examQuestions.find((q) => q.id === id) ?? [])) : blueprint.sections,
         question_ids: pick.ids,
+        format,
+        layout: structured.layout,
         duration_minutes: blueprint.duration_minutes,
         status,
         import_id: importId,

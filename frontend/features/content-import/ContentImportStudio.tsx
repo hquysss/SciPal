@@ -125,11 +125,12 @@ function UploadPanel({
   busy: boolean;
   notice: Notice;
   onSelect: (selected: File[]) => void;
-  onDownload: () => void;
+  onDownload: (format?: 'generic' | 'thptqg' | 'dgnl_hcm') => void;
 }) {
   const { t } = useLanguage();
   const isLesson = kind === 'lesson';
   const [dragging, setDragging] = useState(false);
+  const [templateFormat, setTemplateFormat] = useState<'generic' | 'thptqg' | 'dgnl_hcm'>('generic');
 
   return (
     <section className="rounded-2xl border border-line bg-surface p-4">
@@ -183,9 +184,26 @@ function UploadPanel({
         </span>
       </label>
 
+      {!isLesson && (
+        <label className="mt-3 block text-sm font-semibold text-ink">
+          {t({ en: 'Excel template format', vi: 'Dạng mẫu Excel' })}
+          <select
+            value={templateFormat}
+            onChange={(e) => {
+              const value = e.currentTarget.value;
+              if (value === 'generic' || value === 'thptqg' || value === 'dgnl_hcm') setTemplateFormat(value);
+            }}
+            className="mt-1 min-h-11 w-full rounded-lg border border-edge bg-surface px-3 text-sm text-ink focus-visible:outline focus-visible:outline-2 focus-visible:outline-focus"
+          >
+            <option value="generic">{t({ en: 'Standard exam', vi: 'Đề thường' })}</option>
+            <option value="thptqg">THPTQG</option>
+            <option value="dgnl_hcm">{t({ en: 'VNU-HCM assessment', vi: 'ĐGNL ĐHQG-HCM' })}</option>
+          </select>
+        </label>
+      )}
       <button
         type="button"
-        onClick={onDownload}
+        onClick={() => onDownload(templateFormat)}
         className="mt-3 inline-flex min-h-10 items-center gap-2 rounded-lg px-2 text-sm font-semibold text-action underline underline-offset-4 hover:text-action-hover focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
       >
         <span aria-hidden="true">↓</span>
@@ -427,7 +445,7 @@ function BlueprintReviewCard({
   onRemove: () => void;
 }) {
   const { t } = useLanguage();
-  const total = blueprint.sections.reduce((sum, section) => sum + section.count, 0);
+  const total = (blueprint.layout ?? blueprint.sections).reduce((sum, section) => sum + section.count, 0);
   return (
     <article className={CARD}>
       <div className="mb-3 flex items-center justify-between gap-3">
@@ -441,7 +459,28 @@ function BlueprintReviewCard({
         <button type="button" onClick={onRemove} className={REMOVE}>{t({ en: 'Remove exam', vi: 'Bỏ đề này' })}</button>
       </div>
       <BilingualField label={t({ en: 'Exam title', vi: 'Tên đề thi' })} value={blueprint.title} path={['blueprints', index, 'title']} onEnglish={onEnglish} />
-      <ul className="mt-3 flex flex-wrap gap-2">
+      {blueprint.layout && (
+        <div className="mt-4 space-y-4">
+          <p className="text-sm font-semibold text-ink">
+            {blueprint.format === 'thptqg' ? 'THPTQG' : t({ en: 'VNU-HCM assessment', vi: 'ĐGNL ĐHQG-HCM' })}
+            {' · '}{blueprint.layout.reduce((sum, s) => sum + s.max_points, 0)} {t({ en: 'points', vi: 'điểm' })}
+          </p>
+          {blueprint.layout.map((section, j) => (
+            <section key={section.key} className="space-y-3 rounded-xl border border-line bg-surface-sunken p-3">
+              <BilingualField label={t({ en: 'Section title', vi: 'Tên phần thi' })} value={section.title} path={['blueprints', index, 'layout', j, 'title']} onEnglish={onEnglish} />
+              <p className="text-sm text-ink-muted">{section.count} {t({ en: 'questions', vi: 'câu' })} · {section.kind} · {section.max_points} {t({ en: 'points', vi: 'điểm' })}</p>
+              {shortfalls.some((s) => s.index === j) && <p role="alert" className="text-sm font-semibold text-danger">{t({ en: 'Referenced exam questions are missing.', vi: 'Thiếu câu thi được tham chiếu trong phần này.' })}</p>}
+              {section.groups.map((group, k) => (
+                <div key={k} className="space-y-2 border-t border-line pt-3">
+                  <p className="break-words text-sm text-ink-muted">{t({ en: 'Group', vi: 'Nhóm' })} {k + 1}: {group.question_keys.join(', ')}</p>
+                  {group.passage && <BilingualField label={t({ en: 'Passage', vi: 'Đoạn dẫn' })} value={group.passage} path={['blueprints', index, 'layout', j, 'groups', k, 'passage']} onEnglish={onEnglish} multiline />}
+                </div>
+              ))}
+            </section>
+          ))}
+        </div>
+      )}
+      {!blueprint.layout && <ul className="mt-3 flex flex-wrap gap-2">
         {blueprint.sections.map((section, sectionIndex) => {
           const short = shortfalls.find((s) => s.index === sectionIndex);
           return (
@@ -454,7 +493,7 @@ function BlueprintReviewCard({
             </li>
           );
         })}
-      </ul>
+      </ul>}
     </article>
   );
 }
@@ -551,13 +590,13 @@ export function ContentImportStudio({ isAdmin }: { isAdmin: boolean }) {
     }
   };
 
-  const downloadExamTemplate = async () => {
+  const downloadExamTemplate = async (format: 'generic' | 'thptqg' | 'dgnl_hcm' = 'generic') => {
     try {
-      const buffer = await createExamWorkbookTemplate();
+      const buffer = await createExamWorkbookTemplate(format);
       const url = URL.createObjectURL(new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }));
       const anchor = document.createElement('a');
       anchor.href = url;
-      anchor.download = 'scipal-mau-nhap-de-thi.xlsx';
+      anchor.download = `scipal-mau-nhap-de-thi-${format}.xlsx`;
       anchor.click();
       window.setTimeout(() => URL.revokeObjectURL(url), 1000);
     } catch {
@@ -631,7 +670,7 @@ export function ContentImportStudio({ isAdmin }: { isAdmin: boolean }) {
             onSelect={(files) => void addLessonFiles(files)}
             onDownload={() => window.open(LESSON_TEMPLATE_URL, '_blank', 'noopener,noreferrer')}
           />
-          <UploadPanel kind="exam" files={examFiles} busy={examBusy} notice={examNotice} onSelect={(files) => void addExamFile(files)} onDownload={() => void downloadExamTemplate()} />
+          <UploadPanel kind="exam" files={examFiles} busy={examBusy} notice={examNotice} onSelect={(files) => void addExamFile(files)} onDownload={(format) => void downloadExamTemplate(format)} />
           <div className="rounded-xl bg-[color-mix(in_srgb,var(--sky)_16%,var(--surface))] px-4 py-3 text-xs leading-5 text-ink">
             <p className="font-bold">{t({ en: 'Before you begin', vi: 'Trước khi bắt đầu' })}</p>
             <p className="mt-1">

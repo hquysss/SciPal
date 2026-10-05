@@ -1,5 +1,6 @@
 import type { Workbook, Worksheet } from 'exceljs';
 import type { DraftLesson } from './lessonDocument';
+import { EXAM_FORMATS, ImportLayoutSchema, resolveImportLayout, type ExamFormat, type ImportLayout } from '@scipal/types';
 
 // Questions and exams from an Excel workbook, read in the browser. The result is the package
 // POST /api/authoring/exam-import accepts (backend/src/routes/examImport.ts), except that English
@@ -32,6 +33,8 @@ export interface DraftBlueprint {
   title: Text;
   duration_minutes: number;
   sections: Array<{ type: QuestionType; difficulty: number; count: number }>;
+  format?: ExamFormat;
+  layout?: ImportLayout | null;
 }
 
 export interface ExamImportDraft {
@@ -54,6 +57,7 @@ const SHEETS = {
   items: { name: 'Question items', headers: ['subject_slug', 'question_key', 'item_id', 'text_vi', 'text_en', 'correct'] },
   exams: { name: 'Exams', headers: ['exam_code', 'subject_slug', 'grade', 'title_vi', 'title_en', 'duration_minutes'] },
   sections: { name: 'Exam sections', headers: ['exam_code', 'type', 'difficulty', 'count'] },
+  groups: { name: 'Exam groups', headers: ['exam_code', 'section_key', 'group_key', 'question_keys', 'passage_vi', 'passage_en'] },
 } as const;
 
 const EXAMPLE_COLUMN = '_template_example';
@@ -153,6 +157,7 @@ export function readExamWorkbook(workbook: Workbook): ExamImportDraft {
   const itemRows = readSheet(workbook, SHEETS.items);
   const examRows = readSheet(workbook, SHEETS.exams);
   const sectionRows = readSheet(workbook, SHEETS.sections);
+  const groupRows = workbook.getWorksheet(SHEETS.groups.name) ? readSheet(workbook, SHEETS.groups) : [];
 
   const itemsByQuestion = new Map<string, Row[]>();
   for (const row of itemRows) {
@@ -217,13 +222,48 @@ export function readExamWorkbook(workbook: Workbook): ExamImportDraft {
     seenExams.add(code);
     const sections = (sectionsByExam.get(code) ?? []).map((section) => ({
       type: questionType(section, 'type'),
-      difficulty: int(section, 'difficulty', 1, 3),
+      difficulty: str(row, 'format', false).toLowerCase() && str(row, 'format', false).toLowerCase() !== 'generic' ? 1 : int(section, 'difficulty', 1, 3),
       count: int(section, 'count', 1, 200),
     }));
     if (sections.length === 0) throw new WorkbookError(`Đề ${code} chưa có dòng nào ở sheet Exam sections.`);
+    const subject_slug = lower(str(row, 'subject_slug'));
+    const rawFormat = str(row, 'format', false).toLowerCase() || 'generic';
+    const format = EXAM_FORMATS.find((f) => f === rawFormat);
+    if (!format) throw new WorkbookError(`${at(row)}: format phải là generic, thptqg hoặc dgnl_hcm.`);
+    let layout: ImportLayout | null = null;
+    const examGroups = groupRows.filter((g) => lower(str(g, 'exam_code')) === code);
+    if (format === 'generic' && examGroups.length) throw new WorkbookError(`Đề ${code}: nhóm câu chỉ dùng cho THPTQG/ĐGNL.`);
+    if (format !== 'generic') {
+      const sectionKeys = new Set<string>();
+      const groupKeys = new Set<string>();
+      const candidate = (sectionsByExam.get(code) ?? []).map((section) => {
+        const key = lower(str(section, 'section_key'));
+        sectionKeys.add(key);
+        return {
+          key, title: { vi: str(section, 'title_vi'), en: str(section, 'title_en', false) },
+          kind: questionType(section, 'type'), count: int(section, 'count', 1, 200),
+          max_points: Number(str(section, 'max_points')),
+          groups: examGroups.filter((g) => lower(str(g, 'section_key')) === key).map((g) => {
+            const groupKey = `${key}:${lower(str(g, 'group_key'))}`;
+            if (groupKeys.has(groupKey)) throw new WorkbookError(`${at(g)}: mã nhóm bị lặp.`);
+            groupKeys.add(groupKey);
+            const passage = optionalText(g, 'passage_vi', 'passage_en');
+            return { ...(passage ? { passage } : {}), question_keys: str(g, 'question_keys').split(/[,;]/).map((k) => k.trim().toLowerCase()) };
+          }),
+        };
+      });
+      for (const g of examGroups) if (!sectionKeys.has(lower(str(g, 'section_key')))) throw new WorkbookError(`${at(g)}: không có phần thi này.`);
+      const parsed = ImportLayoutSchema.safeParse(candidate);
+      if (!parsed.success) throw new WorkbookError(`Đề ${code}: kiểm tra tên phần, điểm, số câu và nhóm câu.`);
+      layout = parsed.data;
+      const refs = questions.map((q, i) => ({ ...q, id: `00000000-0000-4000-8000-${String(i + 1).padStart(12, '0')}` }));
+      const checked = resolveImportLayout(format, layout, refs, subject_slug);
+      if (!checked.ok) throw new WorkbookError(`Đề ${code}: ${checked.error}`);
+    }
     return {
       code,
-      subject_slug: lower(str(row, 'subject_slug')),
+      subject_slug,
+      ...(format !== 'generic' ? { format, layout } : {}),
       grade: int(row, 'grade', 1, 12),
       title: { vi: str(row, 'title_vi'), en: str(row, 'title_en', false) },
       duration_minutes: int(row, 'duration_minutes', 5, 300),
@@ -235,6 +275,9 @@ export function readExamWorkbook(workbook: Workbook): ExamImportDraft {
     if (!seenExams.has(code)) throw new WorkbookError(`${at(row)}: không có đề ${code} trong sheet Exams.`);
   }
 
+  for (const row of groupRows) {
+    if (!seenExams.has(lower(str(row, 'exam_code')))) throw new WorkbookError(`${at(row)}: không có đề trong sheet Exams.`);
+  }
   if (questions.length === 0 && blueprints.length === 0) {
     throw new WorkbookError('Tệp chưa có câu hỏi hay đề thi nào (các dòng ví dụ được bỏ qua).');
   }
@@ -290,7 +333,14 @@ export function englishFields(draft: ExamImportDraft & { lessons?: DraftLesson[]
     add(q.explanation, ['questions', i, 'explanation'], `Giải thích câu ${q.key}`);
     if (q.type === 'short') add(q.rubric, ['questions', i, 'rubric'], `Hướng dẫn chấm câu ${q.key}`);
   });
-  draft.blueprints.forEach((b, i) => add(b.title, ['blueprints', i, 'title'], `Đề ${b.code}`));
+  draft.blueprints.forEach((b, i) => {
+    add(b.title, ['blueprints', i, 'title'], `Đề ${b.code}`);
+    b.layout?.forEach((s, j) => {
+      const path = ['blueprints', i, 'layout', j];
+      add(s.title, [...path, 'title'], `Đề ${b.code} · phần ${s.key}`);
+      s.groups.forEach((g, k) => add(g.passage, [...path, 'groups', k, 'passage'], `Đề ${b.code} · phần ${s.key} · đoạn dẫn ${k + 1}`));
+    });
+  });
   return fields;
 }
 
@@ -318,6 +368,14 @@ export function sectionShortfalls(draft: ExamImportDraft & { lessons?: DraftLess
   const practice = practiceKeys(draft);
   const pool = draft.questions.filter((q) => !practice.has(`${q.subject_slug}:${q.key}`));
   for (const blueprint of draft.blueprints) {
+    if (blueprint.layout) {
+      blueprint.layout.forEach((section, index) => {
+        const keys = section.groups.flatMap((g) => g.question_keys);
+        const have = keys.filter((key) => pool.some((q) => q.subject_slug === blueprint.subject_slug && q.key === key && q.type === section.kind)).length;
+        if (have < section.count) result.set(blueprint.code, [...(result.get(blueprint.code) ?? []), { index, need: section.count, have }]);
+      });
+      continue;
+    }
     const used = new Set<DraftQuestion>();
     blueprint.sections.forEach((section, index) => {
       const matches = pool.filter(
@@ -369,7 +427,7 @@ export function setEnglish<T extends ExamImportDraft>(draft: T, path: Array<stri
 }
 
 /** Build the downloadable template: four sheets with grey example rows the parser skips. */
-export async function createExamWorkbookTemplate(): Promise<ArrayBuffer> {
+export async function createExamWorkbookTemplate(format: ExamFormat = 'generic'): Promise<ArrayBuffer> {
   const { Workbook } = await import('exceljs');
   const workbook = new Workbook();
   workbook.creator = 'SciPal';
@@ -383,7 +441,7 @@ export async function createExamWorkbookTemplate(): Promise<ArrayBuffer> {
     head.font = { bold: true, color: { argb: 'FFFFFFFF' } };
     head.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF166534' } };
     for (const values of examples) {
-      const row = sheet.addRow([...values, true]);
+      const row = sheet.addRow([...headers.map((_, i) => values[i] ?? ''), true]);
       row.font = { italic: true, color: { argb: 'FF4B5563' } };
       row.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF3F4F6' } };
     }
@@ -402,24 +460,35 @@ export async function createExamWorkbookTemplate(): Promise<ArrayBuffer> {
     ['informatics', 'vd-dung-sai', 'a', 'range(5) có 5 phần tử', 'range(5) has 5 elements', true],
     ['informatics', 'vd-dung-sai', 'b', 'range(1, 5) bắt đầu từ 0', 'range(1, 5) starts at 0', false],
   ]);
-  addSheet(SHEETS.exams.name, SHEETS.exams.headers, [22, 16, 8, 36, 36, 16], [
-    ['vd-de-on-tap', 'informatics', 11, 'Ôn tập tìm kiếm và vòng lặp', 'Search and loops review', 45],
+  addSheet(SHEETS.exams.name, [...SHEETS.exams.headers, 'format'], [22, 16, 8, 36, 36, 16], [
+    ['vd-de-on-tap', 'informatics', 11, 'Ôn tập tìm kiếm và vòng lặp', 'Search and loops review', 45, format],
   ]);
-  addSheet(SHEETS.sections.name, SHEETS.sections.headers, [22, 12, 11, 8], [
-    ['vd-de-on-tap', 'mc', 1, 1],
-    ['vd-de-on-tap', 'truefalse', 2, 1],
-    ['vd-de-on-tap', 'short', 2, 1],
+  addSheet(SHEETS.sections.name, [...SHEETS.sections.headers, 'section_key', 'title_vi', 'title_en', 'max_points'], [22, 12, 11, 8], [
+    ['vd-de-on-tap', 'mc', 1, 1, ...(format === 'generic' ? [] : ['mc', 'Phần I', 'Part I', format === 'dgnl_hcm' ? 400 : 3])],
+    ['vd-de-on-tap', 'truefalse', 2, 1, ...(format === 'generic' ? [] : ['truefalse', 'Phần II', 'Part II', format === 'dgnl_hcm' ? 400 : 4])],
+    ['vd-de-on-tap', 'short', 2, 1, ...(format === 'generic' ? [] : ['short', 'Phần III', 'Part III', format === 'dgnl_hcm' ? 400 : 3])],
+  ]);
+
+  addSheet(SHEETS.groups.name, SHEETS.groups.headers, [22, 16, 16, 40, 60, 60], format === 'generic' ? [] : [
+    ['vd-de-on-tap', 'mc', 'g1', 'vd-nhi-phan', 'Đọc đoạn dẫn rồi trả lời câu hỏi.', 'Read the passage, then answer the question.'],
+    ['vd-de-on-tap', 'truefalse', 'g2', 'vd-dung-sai', '', ''],
+    ['vd-de-on-tap', 'short', 'g3', 'vd-tra-loi-ngan', '', ''],
   ]);
 
   const guide = workbook.addWorksheet('Hướng dẫn');
   guide.columns = [{ width: 24 }, { width: 100 }];
   for (const line of [
-    ['SciPal · Mẫu nhập đề thi', 'Giữ nguyên tên bốn sheet và hàng tiêu đề. Dòng ví dụ tô xám (_template_example = TRUE) được bỏ qua.'],
+    ['SciPal · Mẫu nhập đề thi', 'Giữ nguyên tên năm sheet và hàng tiêu đề. Dòng ví dụ tô xám (_template_example = TRUE) được bỏ qua.'],
     ['Câu hỏi', 'Mỗi câu một dòng ở Questions; question_key không trùng trong một môn; difficulty 1 (dễ) đến 3 (khó).'],
     ['Trắc nghiệm (mc)', 'Các lựa chọn ở Question items; đúng một lựa chọn có correct = TRUE.'],
     ['Đúng/Sai (truefalse)', 'Mỗi nhận định một dòng ở Question items; correct = TRUE nếu nhận định đúng.'],
     ['Trả lời ngắn (short)', 'Điền đáp án ở answer_key; không thêm dòng Question items.'],
     ['Đề thi', 'Exams khai báo đề (lớp, thời gian 5–300 phút); Exam sections chọn loại câu, độ khó và số câu, lấy lần lượt từ câu hỏi cùng môn trong tệp.'],
+    ['Dạng đề', 'Exams.format: generic (đề thường), thptqg hoặc dgnl_hcm. Mẫu cũ không có format vẫn là đề thường.'],
+    ['Phần thi THPTQG/ĐGNL', 'Exam sections: mỗi phần một dòng; điền section_key, title_vi/title_en, type, count, max_points. difficulty dùng cho đề thường; với đề có nhóm câu có thể để trống. Tổng điểm: THPTQG 10, ĐGNL 1200.'],
+    ['Nhóm câu và đoạn dẫn', 'Exam groups: mỗi nhóm một dòng; điền exam_code, section_key, group_key, question_keys (mã câu cách nhau bằng dấu phẩy, đúng thứ tự). passage_vi/passage_en có thể bỏ trống nếu không có đoạn dẫn.'],
+    ['Thứ tự', 'Phần theo thứ tự dòng Exam sections; nhóm theo thứ tự dòng Exam groups; một câu chỉ xuất hiện một lần trong mỗi đề.'],
+    ['Dòng minh họa', 'Các dòng xám minh họa cách điền với 3 câu, không phải cấu trúc đề thi đầy đủ. Thay bằng câu hỏi, số câu và điểm phần của đề bạn muốn nhập.'],
     ['Tiếng Anh', 'Có thể để trống cột _en; điền trong trang xem trước của SciPal trước khi lưu.'],
     ['Bảo mật', 'Tệp chứa đáp án: đừng chia sẻ công khai. SciPal chỉ dùng đáp án để chấm trên máy chủ.'],
   ]) guide.addRow(line);

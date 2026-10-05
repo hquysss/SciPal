@@ -72,6 +72,58 @@ describe('exam import helpers', () => {
 });
 
 describe('POST /api/authoring/exam-import', () => {
+  it.each(['thptqg', 'dgnl_hcm'])('persists %s layout with question keys resolved to stored ids', async (format) => {
+    const tables = baseTables();
+    const app = await buildApp(admin, tables);
+    const input = pkg();
+    const layout = [{ key: 'mc', title: bi('Phần I'), kind: 'mc', count: 2,
+      max_points: format === 'dgnl_hcm' ? 1200 : 10,
+      groups: [{ passage: bi('Đoạn dẫn'), question_keys: ['q2', 'q1'] }] }];
+    const res = await app.inject({ method: 'POST', url: '/api/authoring/content-import',
+      payload: { ...input, publish: true, blueprints: input.blueprints.map((b) => ({ ...b, format, layout })) } });
+    expect(res.statusCode).toBe(201);
+    const questions = tables.questions.inserted[0] as Array<{ id: string }>;
+    const [blueprint] = tables.exam_blueprints.inserted[0] as Array<Record<string, unknown>>;
+    expect(blueprint).toMatchObject({ format, question_ids: [questions[1]?.id, questions[0]?.id],
+      layout: [{ key: 'mc', max_points: format === 'dgnl_hcm' ? 1200 : 10,
+        groups: [{ passage: bi('Đoạn dẫn'), question_ids: [questions[1]?.id, questions[0]?.id] }] }] });
+    expect(JSON.stringify(blueprint)).not.toContain('question_keys');
+    await app.close();
+  });
+
+  it('refuses missing layouts, wrong totals, types and counts without saving', async () => {
+    const input = pkg();
+    const section = { key: 'mc', title: bi('Phần I'), kind: 'mc', count: 1, max_points: 10, groups: [{ question_keys: ['q1'] }] };
+    for (const layout of [null, [{ ...section, max_points: 9 }], [{ ...section, kind: 'short' }], [{ ...section, count: 2 }]]) {
+      const tables = baseTables();
+      const app = await buildApp(admin, tables);
+      const res = await app.inject({ method: 'POST', url: '/api/authoring/content-import', payload: {
+        ...input, blueprints: input.blueprints.map((b) => ({ ...b, format: 'thptqg', layout })),
+      } });
+      expect(res.statusCode).toBe(400);
+      expect(tables.questions.inserted).toHaveLength(0);
+      await app.close();
+    }
+  });
+
+  it('refuses invalid structured layouts before writing questions', async () => {
+    const input = pkg();
+    for (const groups of [
+      [{ question_keys: ['missing'] }], [{ question_keys: ['q1', 'q1'] }],
+      [{ question_keys: ['q1'], passage: { vi: 'Đoạn dẫn', en: '' } }],
+    ]) {
+      const tables = baseTables();
+      const app = await buildApp(admin, tables);
+      const res = await app.inject({ method: 'POST', url: '/api/authoring/content-import', payload: {
+        ...input, blueprints: input.blueprints.map((b) => ({ ...b, format: 'thptqg',
+          layout: [{ key: 'mc', title: bi('Phần I'), kind: 'mc', count: 1, max_points: 10, groups }] })),
+      } });
+      expect(res.statusCode).toBe(400);
+      expect(tables.questions.inserted).toHaveLength(0);
+      await app.close();
+    }
+  });
+
   it('imports questions and an exam that lists exactly its questions', async () => {
     const tables = baseTables();
     const app = await buildApp(admin, tables);

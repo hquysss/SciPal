@@ -12,6 +12,12 @@ describe('backend mirror of the exam format contract', () => {
     );
   });
 
+  it('keeps the workbook layout contract identical to @scipal/types', () => {
+    expect(readFileSync('src/schemas/examImportLayout.ts', 'utf8')).toBe(
+      readFileSync(`${SHARED}/examImportLayout.ts`, 'utf8'),
+    );
+  });
+
   it.each(Object.keys(EXAM_TEMPLATES) as TemplateKey[])('accepts the %s template layout', (key) => {
     expect(validateLayout(buildLayout(key)).ok).toBe(true);
   });
