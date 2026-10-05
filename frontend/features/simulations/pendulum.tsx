@@ -15,24 +15,29 @@ function PendulumView({ config: initial, lang }: SimulationViewProps<'pendulum'>
   // Learners change the main quantity; the teacher's values are the starting point.
   const [config, setConfig] = useState(initial);
   const period = pendulumPeriod(config);
-  const clock = useClock(period * 4, true);
+  const clock = useClock(period * 4, true, true);
   const position = pendulumAt(config, clock.time);
 
+  // The trace is drawn as the oscillator moves: it grows from the left, then scrolls once two
+  // periods are on screen, so the curve always ends at the moving dot.
+  const span = period * 2;
+  const windowStart = Math.max(0, clock.time - span);
+  const headX = ((clock.time - windowStart) / span) * W;
   const plot = useMemo(() => {
-    const span = period * 2;
-    return Array.from({ length: 121 }, (_, i) => {
-      const time = (span * i) / 120;
-      const x = (i / 120) * W;
+    const steps = Math.max(1, Math.ceil(((clock.time - windowStart) / span) * 120));
+    return Array.from({ length: steps + 1 }, (_, i) => {
+      const time = windowStart + ((clock.time - windowStart) * i) / steps;
+      const x = ((time - windowStart) / span) * W;
       const y = 40 - (pendulumAt(config, time) / config.amplitude) * 30;
       return `${i ? 'L' : 'M'}${x.toFixed(1)},${y.toFixed(1)}`;
     }).join(' ');
-  }, [config, period]);
+  }, [config, clock.time, windowStart, span]);
+  const headY = 40 - (position / config.amplitude) * 30;
 
   const isPendulum = config.mode === 'pendulum';
   const angle = (position * Math.PI) / 180;
   const rodPx = 110;
-  const bob = isPendulum ? { x: W / 2 + rodPx * Math.sin(angle), y: 20 + rodPx * Math.cos(angle) } : { x: W / 2 + position * 3, y: 70 };
-  const cursorX = ((clock.time % (period * 2)) / (period * 2)) * W;
+  const bob = isPendulum ? { x: W / 2 + rodPx * Math.sin(angle), y: 20 + rodPx * Math.cos(angle) } : { x: W / 2 + (position / config.amplitude) * 60, y: 70 };
 
   return (
     <div className={PANEL}>
@@ -57,7 +62,8 @@ function PendulumView({ config: initial, lang }: SimulationViewProps<'pendulum'>
         <g transform={`translate(0 ${H - 80})`}>
           <line x1={0} x2={W} y1={40} y2={40} stroke="var(--line)" />
           <path d={plot} fill="none" stroke="var(--accent, var(--action))" strokeWidth={1.5} />
-          <line x1={cursorX} x2={cursorX} y1={5} y2={75} stroke="var(--ink-muted)" strokeDasharray="3 3" />
+          <line x1={headX} x2={headX} y1={5} y2={75} stroke="var(--ink-muted)" strokeDasharray="3 3" />
+          <circle cx={headX} cy={headY} r={4} fill="var(--accent, var(--action))" />
         </g>
       </svg>
       <div className="flex items-end gap-3">

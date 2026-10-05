@@ -11,9 +11,9 @@ function prefersReducedMotion(): boolean {
  * per frame at most). It stops at `duration` unless `loop`; with reduced motion, "play" jumps to
  * the end so nothing animates, and learners scrub with the time slider instead.
  */
-export function useClock(duration: number, loop = false) {
+export function useClock(duration: number, loop = false, autoplay = false) {
   const [time, setTime] = useState(0);
-  const [playing, setPlaying] = useState(false);
+  const [playing, setPlaying] = useState(autoplay);
   const frame = useRef<number | null>(null);
 
   useEffect(() => {
