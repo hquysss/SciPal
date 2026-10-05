@@ -74,7 +74,7 @@ export function SimulationEditor({ block, onChange, lang, onLangChange }: Simula
     const Editor = simulationModules[kind].Editor as ComponentType<SimulationEditorProps<typeof kind>>;
     // The teacher's settings as stored, even mid-edit; problems are shown, never replaced by defaults.
     const config = simulationDraft(kind, block.config);
-    const check = validateSimulationBlock(block, { mediaBase: process.env.NEXT_PUBLIC_SUPABASE_URL });
+    const check = validateSimulationBlock(block, { mediaBase: process.env.NEXT_PUBLIC_MEDIA_PUBLIC_URL });
     settings = (
       <fieldset className="flex flex-col gap-3 rounded-lg border border-line p-3">
         <legend className="px-1 text-sm font-semibold text-ink">{t(simulationModules[kind].label)}</legend>

@@ -3,7 +3,6 @@ import type { FastifyPluginAsync, FastifyRequest } from 'fastify';
 
 /** Vercel rejects request bodies over 4.5 MB, so images stop at 4 MB. */
 export const MAX_MEDIA_BYTES = 4 * 1024 * 1024;
-const BUCKET = 'lesson-media';
 const MIME = { png: 'image/png', jpeg: 'image/jpeg', webp: 'image/webp' } as const;
 type ImageType = keyof typeof MIME;
 
@@ -24,7 +23,7 @@ const WRONG_TYPE = { error: 'Chỉ nhận ảnh PNG, JPG hoặc WEBP.' };
 
 /**
  * Lesson images. Registered as its own plugin so the raw-body parsers stay scoped to this route.
- * The bucket is public to read; only this route (service role) writes, after checking the uploader
+ * The R2 bucket is public to read; only this route (backend R2 key) writes, after checking the uploader
  * and the real file type.
  */
 export const mediaRoutes: FastifyPluginAsync = async (app) => {
@@ -43,19 +42,19 @@ export const mediaRoutes: FastifyPluginAsync = async (app) => {
     if (!user?.id || (role !== 'teacher' && role !== 'admin')) {
       return reply.code(403).send({ error: 'Chỉ giáo viên mới tải ảnh lên được.', error_en: 'Only teachers can upload images.' });
     }
-    if (!app.supabase) return reply.code(503).send({ error: 'Kho ảnh chưa sẵn sàng.', error_en: 'Image storage is not available yet.' });
+    if (!app.mediaStore) return reply.code(503).send({ error: 'Kho ảnh chưa sẵn sàng.', error_en: 'Image storage is not available yet.' });
     const body = request.body;
     if (!Buffer.isBuffer(body)) return reply.code(415).send(WRONG_TYPE);
     const type = sniffImageType(body);
     if (!type) return reply.code(400).send({ error: 'Tệp không phải ảnh PNG, JPG hoặc WEBP.', error_en: 'The file is not a PNG, JPG or WEBP image.' });
 
     const path = `${user.id}/${randomUUID()}.${type === 'jpeg' ? 'jpg' : type}`;
-    const bucket = app.supabase.storage.from(BUCKET);
-    const { error } = await bucket.upload(path, body, { contentType: MIME[type], upsert: false });
-    if (error) {
-      request.log.error({ err: error }, 'Lesson image upload failed');
+    try {
+      await app.mediaStore.put(path, body, MIME[type]);
+    } catch (err) {
+      request.log.error({ err }, 'Lesson image upload failed');
       return reply.code(500).send({ error: 'Không tải được ảnh lên. Thử lại sau.', error_en: 'Could not upload the image. Try again later.' });
     }
-    return reply.code(201).send({ url: bucket.getPublicUrl(path).data.publicUrl });
+    return reply.code(201).send({ url: app.mediaStore.publicUrl(path) });
   });
 };

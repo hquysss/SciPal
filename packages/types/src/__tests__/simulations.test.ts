@@ -81,13 +81,20 @@ describe('embedUrl', () => {
 });
 
 describe('isLessonMediaUrl', () => {
-  const base = 'https://proj.supabase.co';
+  const base = 'https://pub-test.r2.dev';
   it('checks the parsed origin and path, not a string prefix', () => {
-    expect(isLessonMediaUrl(`${base}/storage/v1/object/public/lesson-media/t/1.png`, base)).toBe(true);
-    expect(isLessonMediaUrl(`${base}/storage/v1/object/public/lesson-media/../avatars/1.png`, base)).toBe(false);
-    expect(isLessonMediaUrl(`${base}/storage/v1/object/public/lesson-media/%2e%2e/avatars/1.png`, base)).toBe(false);
-    expect(isLessonMediaUrl(`${base}/storage/v1/object/public/lesson-media/t/1.png?x=1`, base)).toBe(false);
-    expect(isLessonMediaUrl('https://other.supabase.co/storage/v1/object/public/lesson-media/t/1.png', base)).toBe(false);
+    expect(isLessonMediaUrl(`${base}/t/1.png`, base)).toBe(true);
+    expect(isLessonMediaUrl(`${base}/`, base)).toBe(false);
+    expect(isLessonMediaUrl(`${base}/t/1.png?x=1`, base)).toBe(false);
+    expect(isLessonMediaUrl('https://other.r2.dev/t/1.png', base)).toBe(false);
+    expect(isLessonMediaUrl('http://pub-test.r2.dev/t/1.png', base)).toBe(false);
+    expect(isLessonMediaUrl(`${base}/t/1.png`)).toBe(false);
+  });
+  it('cannot climb out of a base path', () => {
+    const scoped = 'https://cdn.example.com/media';
+    expect(isLessonMediaUrl('https://cdn.example.com/media/t/1.png', scoped)).toBe(true);
+    expect(isLessonMediaUrl('https://cdn.example.com/media/../other/1.png', scoped)).toBe(false);
+    expect(isLessonMediaUrl('https://cdn.example.com/media/%2e%2e/other/1.png', scoped)).toBe(false);
   });
 });
 

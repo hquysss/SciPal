@@ -36,7 +36,7 @@ describe('schemaIssues', () => {
 
 describe('image and simulation issues', () => {
   it('numbers them within the part', () => {
-    process.env.SUPABASE_URL = 'https://p.supabase.co';
+    process.env.MEDIA_PUBLIC_URL = 'https://pub-test.r2.dev';
     const blocks = [{ type: 'theory', content: { vi: 'a', en: '' } }, { type: 'image', url: 'https://evil.example/x.png', alt: { vi: '', en: '' } }];
     expect(imageIssues(blocks, { requireAlt: true })[0]).toMatchObject({ part: 'lesson', index: 1, field: 'url' });
     expect(simulationIssues([{ type: 'interactive', kind: 'nope', heading: { vi: 'x', en: '' }, offline: true, config: {} }] as never)[0]).toMatchObject({ part: 'lesson', index: 0 });

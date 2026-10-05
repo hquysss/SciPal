@@ -12,6 +12,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.1146.0",
     "@fastify/cors": "^9.0.0",
     "@fastify/env": "^4.3.0",
     "@supabase/supabase-js": "^2.44.0",

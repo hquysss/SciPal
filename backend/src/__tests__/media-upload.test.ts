@@ -9,23 +9,18 @@ function storageMock() {
   const uploads: Array<{ path: string; type?: string }> = [];
   return {
     uploads,
-    client: {
-      storage: {
-        from: (bucket: string) => ({
-          upload: async (path: string, _b: Buffer, o: { contentType?: string }) => {
-            uploads.push({ path: `${bucket}/${path}`, type: o.contentType });
-            return { data: { path }, error: null };
-          },
-          getPublicUrl: (path: string) => ({ data: { publicUrl: `https://p.supabase.co/storage/v1/object/public/${bucket}/${path}` } }),
-        }),
+    store: {
+      put: async (path: string, _b: Buffer, contentType: string) => {
+        uploads.push({ path, type: contentType });
       },
+      publicUrl: (path: string) => `https://pub-test.r2.dev/${path}`,
     },
   };
 }
 
 async function build(role: string, storage = storageMock()) {
   const app = Fastify();
-  app.decorate('supabase', storage.client as any);
+  app.decorate('mediaStore', storage.store);
   app.addHook('onRequest', async (req) => {
     (req as any).user = { id: 'teacher-1', app_metadata: { app_role: role } };
   });
@@ -49,7 +44,7 @@ describe('POST /api/authoring/media', () => {
     const { app, storage } = await build('teacher');
     const res = await app.inject({ method: 'POST', url: '/api/authoring/media', headers: { 'content-type': 'image/png' }, payload: PNG });
     expect(res.statusCode).toBe(201);
-    expect(res.json().url).toMatch(/lesson-media\/teacher-1\/[0-9a-f-]{36}\.png$/);
+    expect(res.json().url).toMatch(/^https:\/\/pub-test\.r2\.dev\/teacher-1\/[0-9a-f-]{36}\.png$/);
     expect(storage.uploads[0]).toMatchObject({ type: 'image/png' });
     await app.close();
   });

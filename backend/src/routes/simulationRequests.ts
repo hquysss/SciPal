@@ -99,7 +99,7 @@ export const simulationRequestRoutes: FastifyPluginAsync = async (app) => {
     if (referenceUrl && !httpsUrl(referenceUrl)) {
       return reply.code(400).send({ error: 'Link tham khảo phải là địa chỉ https.', error_en: 'The reference link must be an https address.' });
     }
-    if (sketchUrl && !isLessonMediaUrl(sketchUrl, process.env.SUPABASE_URL)) {
+    if (sketchUrl && !isLessonMediaUrl(sketchUrl, process.env.MEDIA_PUBLIC_URL)) {
       return reply.code(400).send({ error: 'Ảnh phác thảo phải được tải lên SciPal.', error_en: 'Upload the sketch to SciPal.' });
     }
 

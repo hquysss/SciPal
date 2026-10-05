@@ -4,8 +4,8 @@ import { BlockSchema, imageProblems, lessonMediaPrefix } from '../schemas/blocks
 import { authoringRoutes } from '../routes/authoring.js';
 import { mockQuery, mockSupabase } from './helpers/supabaseMock.js';
 
-const BASE = 'https://proj.supabase.co';
-const OK_URL = `${BASE}/storage/v1/object/public/lesson-media/teacher-1/a.png`;
+const BASE = 'https://pub-test.r2.dev';
+const OK_URL = `${BASE}/teacher-1/a.png`;
 const image = (url = OK_URL, vi = 'Sơ đồ') => ({ type: 'image' as const, url, alt: { vi, en: '' } });
 
 afterEach(() => {
@@ -18,14 +18,14 @@ describe('image blocks', () => {
   });
 
   it("only accept this project's lesson-media URLs", () => {
-    vi.stubEnv('SUPABASE_URL', BASE);
-    expect(lessonMediaPrefix()).toBe(`${BASE}/storage/v1/object/public/lesson-media/`);
+    vi.stubEnv('MEDIA_PUBLIC_URL', BASE);
+    expect(lessonMediaPrefix()).toBe(`${BASE}/`);
     expect(imageProblems([image()], { requireAlt: false })).toBeNull();
     expect(imageProblems([image('https://evil.example/a.png')], { requireAlt: false })).toMatch(/ảnh/i);
   });
 
   it('require a Vietnamese description only when asked', () => {
-    vi.stubEnv('SUPABASE_URL', BASE);
+    vi.stubEnv('MEDIA_PUBLIC_URL', BASE);
     expect(imageProblems([image(OK_URL, ' ')], { requireAlt: false })).toBeNull();
     expect(imageProblems([image(OK_URL, ' ')], { requireAlt: true })).toMatch(/mô tả/i);
   });
@@ -48,7 +48,7 @@ async function build(tables: Parameters<typeof mockSupabase>[0]) {
 
 describe('lesson routes and images', () => {
   it('draft save refuses an image hosted elsewhere', async () => {
-    vi.stubEnv('SUPABASE_URL', BASE);
+    vi.stubEnv('MEDIA_PUBLIC_URL', BASE);
     const app = await build({
       lessons: [mockQuery({ data: { id: LESSON_ID, created_by: 'teacher-1', status: 'draft', updated_at: STAMP }, error: null })],
     });
@@ -62,7 +62,7 @@ describe('lesson routes and images', () => {
   });
 
   it('draft save accepts an image without a description yet', async () => {
-    vi.stubEnv('SUPABASE_URL', BASE);
+    vi.stubEnv('MEDIA_PUBLIC_URL', BASE);
     const write = mockQuery({ data: { id: LESSON_ID, status: 'draft' }, error: null });
     const app = await build({
       lessons: [mockQuery({ data: { id: LESSON_ID, created_by: 'teacher-1', status: 'draft', updated_at: STAMP }, error: null }), write],
@@ -77,7 +77,7 @@ describe('lesson routes and images', () => {
   });
 
   it('submit refuses an image without a Vietnamese description', async () => {
-    vi.stubEnv('SUPABASE_URL', BASE);
+    vi.stubEnv('MEDIA_PUBLIC_URL', BASE);
     const app = await build({ lessons: [] });
     const res = await app.inject({
       method: 'POST',

@@ -217,7 +217,7 @@ function parseTemplateCore(text: string, mode: TemplateMode): { meta: Record<str
   const valid = checked.data as DraftLessonBlock[];
   for (const [i, block] of valid.entries()) {
     if (block.type !== 'interactive') continue;
-    const simulation = validateSimulationBlock(block, { mediaBase: process.env.NEXT_PUBLIC_SUPABASE_URL });
+    const simulation = validateSimulationBlock(block, { mediaBase: process.env.NEXT_PUBLIC_MEDIA_PUBLIC_URL });
     if (!simulation.ok) fail(`Khối ${i + 1}: ${simulation.message.vi}`, `Block ${i + 1}: ${simulation.message.en}`);
   }
   return { meta, blocks: valid };
