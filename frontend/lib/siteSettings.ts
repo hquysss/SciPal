@@ -4,17 +4,18 @@
 
 export const SITE_FEATURES = ['glossary', 'exam', 'pricing', 'classes', 'tutor', 'guest_trial'] as const;
 export type SiteFeature = (typeof SITE_FEATURES)[number];
-export type SiteSettings = { signupEnabled: boolean; features: Record<SiteFeature, boolean> };
+export type SiteSettings = { signupEnabled: boolean; maintenance: boolean; features: Record<SiteFeature, boolean> };
 
 export const ALL_ON: SiteSettings = {
   signupEnabled: true,
+  maintenance: false,
   features: { glossary: true, exam: true, pricing: true, classes: true, tutor: true, guest_trial: true },
 };
 
-export function resolveSiteSettings(row: { signup_enabled?: unknown; features?: unknown } | null | undefined): SiteSettings {
+export function resolveSiteSettings(row: { signup_enabled?: unknown; features?: unknown; maintenance?: unknown } | null | undefined): SiteSettings {
   const stored = row?.features && typeof row.features === 'object' ? (row.features as Record<string, unknown>) : {};
   const features = Object.fromEntries(SITE_FEATURES.map((f) => [f, stored[f] !== false])) as Record<SiteFeature, boolean>;
-  return { signupEnabled: row?.signup_enabled !== false, features };
+  return { signupEnabled: row?.signup_enabled !== false, maintenance: row?.maintenance === true, features };
 }
 
 const under = (pathname: string, prefix: string) => pathname === prefix || pathname.startsWith(`${prefix}/`);
@@ -42,7 +43,7 @@ export const FEATURE_LABEL: Record<SiteFeature, { vi: string; en: string }> = {
   guest_trial: { vi: 'Dùng thử cho khách', en: 'Guest trials' },
 };
 
-const COLUMNS = 'signup_enabled,features';
+const COLUMNS = 'signup_enabled,features,maintenance';
 
 /** The switches, read with the public key (server or edge); everything on when they cannot be read. */
 export async function fetchSiteSettings(): Promise<SiteSettings> {

@@ -267,6 +267,7 @@ type SiteTables = {
     id: number;
     signup_enabled: boolean;
     features: Record<string, boolean>;
+    maintenance: boolean;
     updated_at: string;
     updated_by: string | null;
   }, never, never>;

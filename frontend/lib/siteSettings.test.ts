@@ -6,8 +6,15 @@ describe('site switches', () => {
     expect(resolveSiteSettings(null)).toEqual(ALL_ON);
     expect(resolveSiteSettings({ signup_enabled: false, features: { exam: false, glossary: 'no' } })).toEqual({
       signupEnabled: false,
+      maintenance: false,
       features: { ...ALL_ON.features, exam: false },
     });
+  });
+
+  it('reads maintenance mode, off unless it is exactly true', () => {
+    expect(resolveSiteSettings({ maintenance: true }).maintenance).toBe(true);
+    expect(resolveSiteSettings({ maintenance: 'yes' }).maintenance).toBe(false);
+    expect(resolveSiteSettings(null).maintenance).toBe(false);
   });
 
   it('knows which feature a page belongs to', () => {

@@ -22,6 +22,7 @@ import { problemReportRoutes } from './routes/problemReports.js';
 import { termRoutes } from './routes/terms.js';
 import { lazyAIProvider } from './providers/ai.js';
 import { aiSettingsRoutes, loadAiSettings } from './routes/aiSettings.js';
+import { maintenanceHook } from './site/maintenance.js';
 import { loadSiteSettings, siteSettingsRoutes, siteSettingsStore } from './routes/siteSettings.js';
 import { translateRoutes } from './routes/translate.js';
 import { adminTutorRoutes } from './routes/adminTutor.js';
@@ -44,6 +45,7 @@ app.decorate('tutorSettings', createSettingsStore(() => loadAiSettings(app.supab
 app.decorate('siteSettings', siteSettingsStore(() => loadSiteSettings(app.supabase)));
 await app.register(supabasePlugin);
 await app.register(authPlugin);
+app.addHook('onRequest', maintenanceHook(app));
 await app.register(scoreRoutes);
 await app.register(surveyRoutes);
 await app.register(examRoutes);
