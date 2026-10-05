@@ -41,6 +41,22 @@ describe('GET /api/exam/blueprints', () => {
     await app.close();
   });
 
+  it('keeps the format but never sends the layout or a passage in the list', async () => {
+    const layoutRow = {
+      ...row, format: 'thptqg', question_ids: ['11111111-1111-4111-8111-111111111111'],
+      layout: [{
+        key: 'mc', title: { vi: 'Phần I', en: 'Part I' }, kind: 'mc', count: 1, max_points: 10,
+        groups: [{ passage: { vi: 'ĐOẠN-VĂN-BÍ-MẬT', en: 'SECRET-PASSAGE' }, question_ids: ['11111111-1111-4111-8111-111111111111'] }],
+      }],
+    };
+    const app = await buildApp({ exam_blueprints: mockQuery({ data: [layoutRow], error: null }) });
+    const res = await app.inject({ method: 'GET', url: '/api/exam/blueprints' });
+    expect(res.json().blueprints[0]).toMatchObject({ format: 'thptqg', layout: null });
+    expect(res.body).not.toContain('ĐOẠN-VĂN-BÍ-MẬT');
+    expect(res.body).not.toContain('SECRET-PASSAGE');
+    await app.close();
+  });
+
   it('returns an empty list when there are no exams', async () => {
     const app = await buildApp({ exam_blueprints: mockQuery({ data: [], error: null }) });
     const res = await app.inject({ method: 'GET', url: '/api/exam/blueprints' });

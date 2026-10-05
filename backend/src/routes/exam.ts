@@ -157,11 +157,12 @@ const attemptNotFound = { code: 'ATTEMPT_NOT_FOUND', ...bi('Không tìm thấy l
  * result is an estimate is a property of the exam's format, so it is read from the blueprint, and
  * only for an attempt that has section scores (a generic or older attempt is never an estimate).
  */
-async function storedResult(supabase: SupabaseClient, a: AttemptRow) {
+async function storedResult(supabase: SupabaseClient, log: { warn: (obj: object, msg: string) => void }, a: AttemptRow) {
   const sections = Array.isArray(a.section_scores) ? a.section_scores : [];
   let estimated = false;
   if (sections.length > 0) {
-    const { data } = await supabase.from('exam_blueprints').select('format').eq('id', a.blueprint_id).maybeSingle();
+    const { data, error } = await supabase.from('exam_blueprints').select('format').eq('id', a.blueprint_id).maybeSingle();
+    if (error) log.warn({ err: error, blueprintId: a.blueprint_id }, 'Failed to read the exam format of a stored result');
     estimated = isEstimatedFormat(blueprintFormat((data ?? {}) as { format?: string | null }));
   }
   return {
@@ -202,7 +203,7 @@ export const examRoutes: FastifyPluginAsync = async (app) => {
     const found = existing as AttemptRow | null;
     if (found) {
       if (found.user_id !== uid || found.blueprint_id !== blueprintId) return reply.code(404).send(attemptNotFound);
-      return { attempt_id: found.id, status: found.status, remaining: null, period: null, ...(found.status === 'submitted' ? { result: await storedResult(supabase, found) } : {}) };
+      return { attempt_id: found.id, status: found.status, remaining: null, period: null, ...(found.status === 'submitted' ? { result: await storedResult(supabase, app.log, found) } : {}) };
     }
 
     const bp = await loadBlueprint(supabase, blueprintId);
@@ -263,7 +264,7 @@ export const examRoutes: FastifyPluginAsync = async (app) => {
       request.log.error({ err: error }, 'Failed to list exam blueprints');
       return reply.code(500).send({ error: 'Không tải được danh sách đề thi.' });
     }
-    return reply.send({ blueprints: ((data ?? []) as BlueprintRow[]).filter(isPublishedBlueprint).map(toBlueprintSummary) });
+    return reply.send({ blueprints: ((data ?? []) as BlueprintRow[]).filter(isPublishedBlueprint).map((r) => ({ ...toBlueprintSummary(r), layout: null })) });
   });
 
   // Fetch blueprint questions without exposing answers
@@ -346,7 +347,7 @@ export const examRoutes: FastifyPluginAsync = async (app) => {
     const attempt = first.attempt;
     if (!attempt || attempt.blueprint_id !== blueprintId) return reply.status(404).send(attemptNotFound);
     // Submitting the same attempt again answers the stored result: no new score, XP or charge.
-    if (attempt.status === 'submitted') return reply.send(await storedResult(supabase, attempt));
+    if (attempt.status === 'submitted') return reply.send(await storedResult(supabase, app.log, attempt));
 
     const bp = await loadBlueprint(app.supabase, blueprintId);
     if (bp.kind === 'error') {
@@ -415,7 +416,7 @@ export const examRoutes: FastifyPluginAsync = async (app) => {
     if (!saved || (saved as unknown[]).length === 0) {
       // Another submit of this attempt stored its result first: answer that one.
       const again = await loadAttempt();
-      if (again.attempt?.status === 'submitted') return reply.send(await storedResult(supabase, again.attempt));
+      if (again.attempt?.status === 'submitted') return reply.send(await storedResult(supabase, app.log, again.attempt));
       return reply.status(500).send({ error: 'Không lưu được kết quả bài thi. Em nộp lại nhé.' });
     }
     if (attempt.metered) {
