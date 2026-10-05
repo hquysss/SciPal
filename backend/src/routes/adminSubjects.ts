@@ -106,6 +106,7 @@ export const adminSubjectRoutes: FastifyPluginAsync = async (app) => {
   const actor = (request: FastifyRequest) => (request as FastifyRequest & { user?: { id?: string; app_metadata?: { app_role?: string } } }).user;
   const requireAdmin = async (request: FastifyRequest, reply: FastifyReply) => {
     if (actor(request)?.app_metadata?.app_role !== 'admin') return reply.code(403).send(FORBIDDEN);
+    if (!app.supabase) return reply.code(503).send(UNAVAILABLE);
   };
 
   /** One shared reader for the archive/restore responses. */

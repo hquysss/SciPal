@@ -10,6 +10,10 @@ import { archiveSubject, fetchAdminSubjects, restoreSubject, type AdminSubject }
 
 type Bilingual = { vi: string; en: string };
 
+/** The server's order (published lessons first, archived last, then sort_order), kept after a local change. */
+const rank = (s: AdminSubject) => (s.archived_at ? 2 : s.counts.lessons_published > 0 ? 0 : 1);
+const inServerOrder = (list: AdminSubject[]) => [...list].sort((a, b) => rank(a) - rank(b) || a.sort_order - b.sort_order);
+
 function Counts({ subject }: { subject: AdminSubject }) {
   const { t } = useLanguage();
   const c = subject.counts;
@@ -49,7 +53,7 @@ export function AdminSubjectsPage() {
       return;
     }
     const updated = result.data.subject;
-    setState((s) => (s.status === 'ready' ? { status: 'ready', subjects: s.subjects.map((x) => (x.id === updated.id ? updated : x)) } : s));
+    setState((s) => (s.status === 'ready' ? { status: 'ready', subjects: inServerOrder(s.subjects.map((x) => (x.id === updated.id ? updated : x))) } : s));
   };
 
   const subjects = state.status === 'ready' ? state.subjects : [];
