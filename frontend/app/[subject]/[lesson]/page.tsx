@@ -20,7 +20,8 @@ const loadLesson = cache(getLessonDetail);
 export async function generateMetadata({ params }: { params: Promise<{ subject: string; lesson: string }> }): Promise<Metadata> {
   const { subject, lesson } = await params;
   const result = await loadLesson(subject, lesson);
-  return result.kind === 'ok' ? pageTitle(result.lesson.title_en, result.lesson.title_vi) : pageTitle('Lesson', 'Bài học');
+  if (result.kind === 'ok') return pageTitle(result.lesson.title_en, result.lesson.title_vi);
+  return result.kind === 'not_found' ? pageTitle('Page not found', 'Không có trang này') : pageTitle('Lesson', 'Bài học');
 }
 
 export default async function LessonPage({

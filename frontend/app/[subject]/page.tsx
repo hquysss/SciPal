@@ -18,7 +18,8 @@ const loadSubject = cache(getSubjectPage);
 
 export async function generateMetadata({ params }: { params: Promise<{ subject: string }> }): Promise<Metadata> {
   const result = await loadSubject((await params).subject);
-  return result.kind === 'ok' ? pageTitle(result.subject.name_en, result.subject.name_vi) : pageTitle('Subject', 'Môn học');
+  if (result.kind === 'ok') return pageTitle(result.subject.name_en, result.subject.name_vi);
+  return result.kind === 'not_found' ? pageTitle('Page not found', 'Không có trang này') : pageTitle('Subject', 'Môn học');
 }
 
 export default async function SubjectPage({
