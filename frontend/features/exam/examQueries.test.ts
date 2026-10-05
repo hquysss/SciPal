@@ -35,6 +35,26 @@ describe('getExamBlueprint', () => {
 
   it('returns the blueprint and questions', async () => {
     respond(200, { blueprint: summary, questions: [] });
-    await expect(getExamBlueprint('bp')).resolves.toEqual({ kind: 'ok', blueprint: summary, questions: [] });
+    await expect(getExamBlueprint('bp')).resolves.toEqual({
+      kind: 'ok', blueprint: { ...summary, format: 'generic', layout: null }, questions: [],
+    });
+  });
+
+  it('carries the exam format and section layout', async () => {
+    const layout = [{
+      key: 'mc', title: { vi: 'Phần I', en: 'Part I' }, kind: 'mc', count: 2, max_points: 3,
+      groups: [{ passage: { vi: 'Đọc', en: 'Read' }, question_ids: ['q1', 'q2'] }],
+    }];
+    respond(200, { blueprint: { ...summary, format: 'thptqg', layout }, questions: [] });
+    await expect(getExamBlueprint('bp')).resolves.toEqual({
+      kind: 'ok', blueprint: { ...summary, format: 'thptqg', layout }, questions: [],
+    });
+  });
+
+  it('reads an unknown format or a malformed layout as a generic exam', async () => {
+    respond(200, { blueprint: { ...summary, format: 'other', layout: { not: 'a list' } }, questions: [] });
+    await expect(getExamBlueprint('bp')).resolves.toMatchObject({
+      kind: 'ok', blueprint: { format: 'generic', layout: null },
+    });
   });
 });

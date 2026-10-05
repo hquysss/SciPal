@@ -1,3 +1,4 @@
+import { EXAM_FORMATS, type ExamFormat, type ExamSection } from '@scipal/types';
 import type { ExamQuestionItem } from './ExamRunner';
 
 export interface BlueprintSummary {
@@ -12,6 +13,10 @@ export interface BlueprintSummary {
   subject_name_vi: string | null;
   question_count: number;
   duration_minutes?: number | null;
+  /** THPTQG and ĐGNL exams are served in sections; `generic` (and older servers) are not. */
+  format: ExamFormat;
+  /** The exam's sections and passage groups; null for a generic exam. */
+  layout: ExamSection[] | null;
 }
 
 export type BlueprintListResult = { kind: 'ok'; blueprints: BlueprintSummary[] } | { kind: 'error' };
@@ -37,14 +42,21 @@ export async function getExamBlueprints(): Promise<BlueprintListResult> {
   }
 }
 
+/** An exam from an older server, or with an unknown format or a malformed layout, is a generic exam. */
+function withFormat(blueprint: Partial<BlueprintSummary>): BlueprintSummary {
+  const format = (EXAM_FORMATS as readonly unknown[]).includes(blueprint.format) ? (blueprint.format as ExamFormat) : 'generic';
+  const layout = Array.isArray(blueprint.layout) && blueprint.layout.length > 0 ? blueprint.layout : null;
+  return { ...blueprint, format, layout } as BlueprintSummary;
+}
+
 export async function getExamBlueprint(blueprintId: string): Promise<ExamDetailResult> {
   try {
     const res = await fetch(`${API_BASE}/api/exam/${encodeURIComponent(blueprintId)}/questions`, { cache: 'no-store' });
     if (res.status === 404) return { kind: 'not_found' };
     if (!res.ok) return { kind: 'error' };
-    const payload = (await res.json()) as { blueprint?: BlueprintSummary; questions?: unknown };
+    const payload = (await res.json()) as { blueprint?: Partial<BlueprintSummary>; questions?: unknown };
     return payload.blueprint && Array.isArray(payload.questions)
-      ? { kind: 'ok', blueprint: payload.blueprint, questions: payload.questions as ExamQuestionItem[] }
+      ? { kind: 'ok', blueprint: withFormat(payload.blueprint), questions: payload.questions as ExamQuestionItem[] }
       : { kind: 'error' };
   } catch (err) {
     console.warn('getExamBlueprint failed:', err);
