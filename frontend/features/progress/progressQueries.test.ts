@@ -32,6 +32,28 @@ describe('getUserProgress', () => {
     expect(result.totalXP).toBe(100);
   });
 
+  it('leaves out rows whose subject is archived (hidden, so embedded as null)', async () => {
+    tableResults.set('progress', {
+      data: [
+        { id: 'p1', score: 9, lessons: { title_vi: 'A', subjects: { name_vi: 'Tin học' } } },
+        { id: 'p2', score: 7, lessons: { title_vi: 'B', subjects: null } },
+      ],
+      error: null,
+    });
+    tableResults.set('streaks', {
+      data: [
+        { subject_id: 's1', current_streak: 3, last_active: null, subjects: { name_vi: 'Tin học', accent_color: '#000' } },
+        { subject_id: 's2', current_streak: 5, last_active: null, subjects: null },
+      ],
+      error: null,
+    });
+
+    const result = await getUserProgress('u1');
+
+    expect(result.completedLessons.map((r) => r.id)).toEqual(['p1']);
+    expect(result.streaks.map((r) => r.subject_id)).toEqual(['s1']);
+  });
+
   it('flags failure with empty data instead of preview data', async () => {
     tableResults.set('streaks', { data: null, error: { message: 'boom' } });
 

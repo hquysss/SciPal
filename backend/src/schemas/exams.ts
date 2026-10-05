@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { MAX_EXAM_ANSWERS } from '../routes/exam.js';
+import { EXAM_FORMATS, layoutQuestionIds, validateLayout, type ExamFormat, type ExamSection } from './examFormat.js';
 
 /** An exam as the builder sends it. English may wait until the exam is submitted or published. */
 export interface ExamInput {
@@ -9,6 +10,9 @@ export interface ExamInput {
   grade: number;
   duration_minutes: number;
   question_ids: string[];
+  /** 'generic' is the flat 0-10 exam; any other format needs a layout. */
+  format: ExamFormat;
+  layout: ExamSection[] | null;
 }
 export type ExamUpdate = Partial<ExamInput> & { expected_updated_at: string };
 
@@ -24,9 +28,13 @@ const fields = {
   duration_minutes: z.number().int().min(5).max(300),
   question_ids: z.array(z.string().regex(UUID)).max(MAX_EXAM_ANSWERS),
 };
-const CreateSchema = z.object(fields).strict();
+// The layout is checked by validateLayout below, which words its own errors.
+const formatFields = { format: z.enum(EXAM_FORMATS), layout: z.unknown() };
+const CreateSchema = z
+  .object({ ...fields, format: formatFields.format.default('generic'), layout: formatFields.layout.default(null) })
+  .strict();
 const UpdateSchema = z
-  .object({ ...fields, subject_id: fields.subject_id.optional(), expected_updated_at: z.string().datetime({ offset: true }) })
+  .object({ ...fields, ...formatFields, subject_id: fields.subject_id.optional(), expected_updated_at: z.string().datetime({ offset: true }) })
   .partial()
   .required({ expected_updated_at: true })
   .strict();
@@ -38,6 +46,7 @@ const MESSAGES: Record<string, Message> = {
   grade: { vi: 'Lớp phải từ 1 đến 12.', en: 'The grade must be 1–12.' },
   duration_minutes: { vi: 'Thời gian làm bài từ 5 đến 300 phút.', en: 'The duration must be 5–300 minutes.' },
   question_ids: { vi: `Đề có tối đa ${MAX_EXAM_ANSWERS} câu hỏi hợp lệ.`, en: `An exam has at most ${MAX_EXAM_ANSWERS} valid questions.` },
+  format: { vi: 'Dạng đề không hợp lệ.', en: 'Invalid exam format.' },
   expected_updated_at: { vi: 'Thiếu phiên bản của đề đang sửa.', en: 'The version of the exam being edited is missing.' },
 };
 
@@ -49,11 +58,78 @@ export function validateExamInput(value: unknown, mode: 'create' | 'update') {
     const field = String(parsed.error.issues[0]?.path[0] ?? '');
     return { ok: false, message: MESSAGES[field] ?? { vi: 'Dữ liệu đề thi không hợp lệ.', en: 'Invalid exam data.' } };
   }
-  const ids = (parsed.data as { question_ids?: string[] }).question_ids;
+  const data = parsed.data as { question_ids?: string[]; format?: ExamFormat; layout?: unknown };
+  let layout: ExamSection[] | null | undefined;
+  if (data.layout === null) layout = null;
+  else if (data.layout !== undefined) {
+    const checked = validateLayout(data.layout);
+    if (!checked.ok) return { ok: false, message: checked.message };
+    // The server derives question_ids from the layout, so the list cap applies to it too.
+    if (layoutQuestionIds(checked.value).length > MAX_EXAM_ANSWERS) return { ok: false, message: MESSAGES.question_ids! };
+    layout = checked.value;
+  }
+  // The layout decides the question list, so a list sent beside it is not checked for repeats.
+  const ids = layout ? undefined : data.question_ids;
   if (ids && new Set(ids).size !== ids.length) {
     return { ok: false, message: { vi: 'Đề có câu hỏi bị lặp.', en: 'The exam lists a question twice.' } };
   }
-  return { ok: true, value: parsed.data };
+  if (data.format !== undefined && layout !== undefined) {
+    const mismatch = formatLayoutMismatch(data.format, layout);
+    if (mismatch) return { ok: false, message: mismatch };
+  }
+  return { ok: true, value: layout === undefined ? parsed.data : { ...parsed.data, layout } };
+}
+
+/** A structured format needs a layout and a generic exam has none; null when they agree. */
+export function formatLayoutMismatch(format: ExamFormat, layout: ExamSection[] | null): Message | null {
+  if (format === 'generic' && layout !== null) {
+    return { vi: 'Đề thường không có bố cục các phần.', en: 'A generic exam has no section layout.' };
+  }
+  if (format !== 'generic' && layout === null) {
+    return { vi: 'Đề theo cấu trúc chuẩn cần có bố cục các phần.', en: 'A structured exam needs a section layout.' };
+  }
+  return null;
+}
+
+/** The exam's question list: the flattened layout when it has one, else the list as sent (undefined if not sent). */
+export function resolveExamQuestionIds(input: { question_ids?: string[]; layout?: ExamSection[] | null }): string[] | undefined {
+  return input.layout ? layoutQuestionIds(input.layout) : input.question_ids;
+}
+
+const KIND_LABEL: Record<ExamSection['kind'], Message> = {
+  mc: { vi: 'trắc nghiệm nhiều lựa chọn', en: 'multiple choice' },
+  truefalse: { vi: 'trắc nghiệm đúng sai', en: 'true or false' },
+  short: { vi: 'trả lời ngắn', en: 'short answer' },
+};
+
+/**
+ * What stops a layout from being submitted or published: a section with no question, or a question
+ * whose type is not its section's kind. `rows` are the questions as read from the bank.
+ */
+export function layoutReviewProblem(layout: ExamSection[], rows: Array<{ id: string; type: string }>): Message | null {
+  const typeOf = new Map(rows.map((row) => [row.id, row.type]));
+  let n = 0;
+  for (const section of layout) {
+    const ids = section.groups.flatMap((g) => g.question_ids);
+    if (ids.length === 0) {
+      return {
+        vi: `Phần "${section.title.vi}" cần ít nhất một câu hỏi.`,
+        en: `Section "${section.title.en}" needs at least one question.`,
+      };
+    }
+    for (const id of ids) {
+      n += 1;
+      const type = typeOf.get(id);
+      if (type !== undefined && type !== section.kind) {
+        const label = KIND_LABEL[section.kind];
+        return {
+          vi: `Câu ${n}: phần "${section.title.vi}" chỉ nhận câu ${label.vi}.`,
+          en: `Question ${n}: section "${section.title.en}" only takes ${label.en} questions.`,
+        };
+      }
+    }
+  }
+  return null;
 }
 
 /** The `sections` column from the question list: counts per type and difficulty, first-seen order. */

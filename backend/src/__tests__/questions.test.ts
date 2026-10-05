@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import Fastify from 'fastify';
 import { questionRoutes } from '../routes/questions.js';
+import { SUBJECT_ARCHIVED } from '../subjects/archived.js';
 import { mockQuery, mockSupabase, type MockBuilder } from './helpers/supabaseMock.js';
 
 const SUBJECT = '11111111-1111-4111-8111-111111111111';
@@ -40,7 +41,8 @@ const row = (patch: Record<string, unknown> = {}) => ({
 
 async function build(user: object, tables: Record<string, MockBuilder | MockBuilder[]>) {
   const app = Fastify();
-  app.decorate('supabase', mockSupabase(tables));
+  // Creating a question checks that its subject is not archived; tests use a live subject unless they say otherwise.
+  app.decorate('supabase', mockSupabase({ subjects: mockQuery({ data: { id: SUBJECT, archived_at: null }, error: null }), ...tables }));
   app.addHook('onRequest', async (req) => {
     (req as any).user = user;
   });
@@ -126,6 +128,24 @@ describe('creating a question', () => {
     expect((await app.inject({ method: 'POST', url: '/api/authoring/questions', payload: input })).statusCode).toBe(201);
     expect(insert.inserted[0]).toMatchObject({ status: 'draft', created_by: 'teacher-1' });
     await app.close();
+  });
+});
+
+describe('questions in an archived subject', () => {
+  const gone = { id: SUBJECT, archived_at: '2026-10-05T01:00:00.000Z' };
+
+  it('refuses a practice or an exam question with the bilingual 400', async () => {
+    for (const payload of [input, { ...input, usage: 'exam', lesson_id: undefined, grade: 10 }]) {
+      const subjects = mockQuery({ data: gone, error: null });
+      const insert = mockQuery({ data: row(), error: null });
+      const app = await build(admin, { subjects, lessons: mockQuery({ data: lesson, error: null }), questions: insert });
+      const res = await app.inject({ method: 'POST', url: '/api/authoring/questions', payload });
+      expect(res.statusCode, payload.usage).toBe(400);
+      expect(res.json(), payload.usage).toEqual(SUBJECT_ARCHIVED);
+      expect(subjects.eqCalls).toContainEqual(['id', SUBJECT]);
+      expect(insert.inserted, payload.usage).toHaveLength(0);
+      await app.close();
+    }
   });
 });
 

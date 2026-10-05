@@ -144,6 +144,40 @@ describe('GET /api/classes/:id/assignable', () => {
   });
 });
 
+describe('archived subjects in class work', () => {
+  const hidden = { archived_at: '2026-10-05T01:00:00.000Z' };
+
+  it('leaves archived-subject lessons and exams out of the assignable lists', async () => {
+    const lessons = ok([lessonRow({ subjects: { slug: 'informatics', ...hidden } })]);
+    const app = await build(teacher, { class_rooms: room(), lessons, exam_blueprints: ok([examRow({ subjects: hidden })]) });
+    const lesson = await app.inject({ method: 'GET', url: `/api/classes/${CLASS_ID}/assignable?kind=lesson` });
+    expect(lesson.json().items).toEqual([]);
+    expect(String(lessons.selectArgs?.[0]?.[0] ?? '')).toContain('archived_at');
+    const exam = await app.inject({ method: 'GET', url: `/api/classes/${CLASS_ID}/assignable?kind=exam` });
+    expect(exam.json().items).toEqual([]);
+    await app.close();
+  });
+
+  it('hides assignments whose lesson or exam subject was archived from students', async () => {
+    const app = await build(student, {
+      class_members: ok([{ class_id: CLASS_ID }]),
+      class_rooms: ok([{ id: CLASS_ID, name: '10A1', teacher_id: 'teacher-1', subjects: { name_en: 'Informatics', name_vi: 'Tin học' } }]),
+      assignments: ok([
+        { id: A1, class_id: CLASS_ID, lesson_id: LESSON, blueprint_id: null, due_at: null, created_at: '2026-09-29T01:00:00Z' },
+        { id: A2, class_id: CLASS_ID, lesson_id: null, blueprint_id: EXAM, due_at: null, created_at: '2026-09-29T00:00:00Z' },
+      ]),
+      profiles: ok([]),
+      lessons: ok([lessonRow({ subjects: { slug: 'informatics', ...hidden } })]),
+      exam_blueprints: ok([examRow({ subjects: hidden })]),
+      progress: ok([]),
+      exam_attempts: ok([]),
+    });
+    const cls = (await app.inject({ method: 'GET', url: '/api/classes/mine' })).json().classes[0];
+    expect(cls.assignments).toEqual([]);
+    await app.close();
+  });
+});
+
 describe('GET /api/classes/mine', () => {
   it('shows a student the classes they are in, with published work and what they have done', async () => {
     const app = await build(student, {

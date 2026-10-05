@@ -375,3 +375,114 @@ describe('exams waiting for review', () => {
     await legacy.close();
   });
 });
+
+describe('exam formats', () => {
+  const U = (n: number) => `00000000-0000-4000-8000-${String(n).padStart(12, '0')}`;
+  const section = (key: string, kind: 'mc' | 'truefalse' | 'short', max_points: number, ids: string[], passage?: { vi: string; en: string }) => ({
+    key, title: { vi: key, en: key }, kind, count: ids.length, max_points,
+    groups: [{ ...(passage ? { passage } : {}), question_ids: ids }],
+  });
+  const mcQ = (id: string) => ({ id, subject_id: 's', type: 'mc', difficulty: 1, data: { stem: 'x', options: [{ id: 'a', text: 'A' }], answer: 'a', answer_key: 'a', explanation: 'vì' } });
+  const tfQ = (id: string) => ({
+    id, subject_id: 's', type: 'truefalse', difficulty: 1,
+    data: { stem: 'y', items: [1, 2, 3, 4].map((n) => ({ id: `i${n}`, text: `t${n}`, correct: true })) },
+  });
+  const thptqgLayout = [
+    section('mc', 'mc', 6, [U(1), U(2)], { vi: 'Đoạn văn', en: 'Passage' }),
+    section('truefalse', 'truefalse', 4, [U(3)]),
+  ];
+  const thptqgBlueprint = {
+    id: BLUEPRINT_ID, name: 'THPTQG', sections: [], format: 'thptqg', layout: thptqgLayout,
+    question_ids: [U(1), U(2), U(3)], duration_minutes: 50, subjects: null,
+  };
+  const thptqgQuestions = [mcQ(U(1)), mcQ(U(2)), tfQ(U(3))];
+  const submitTo = (app: Awaited<ReturnType<typeof buildScoringApp>>, answers: unknown[]) =>
+    app.inject({ method: 'POST', url: '/api/score/exam', payload: { blueprint_id: BLUEPRINT_ID, attempt_id: ATTEMPT_ID, answers } });
+
+  it('serves the layout with passages and section titles but never an answer', async () => {
+    const scoringApp = await buildScoringApp({
+      exam_blueprints: mockQuery({ data: thptqgBlueprint, error: null }),
+      questions: mockQuery({ data: thptqgQuestions, error: null }),
+    });
+    const res = await scoringApp.inject({ method: 'GET', url: `/api/exam/${BLUEPRINT_ID}/questions` });
+    expect(res.statusCode).toBe(200);
+    const body = res.json();
+    expect(body.blueprint.format).toBe('thptqg');
+    expect(body.blueprint.layout).toEqual(thptqgLayout);
+    expect(body.blueprint.layout[0].groups[0].passage).toEqual({ vi: 'Đoạn văn', en: 'Passage' });
+    expect(body.questions.map((q: { id: string }) => q.id)).toEqual([U(1), U(2), U(3)]);
+    const serialized = JSON.stringify(body);
+    for (const leak of ['"answer"', 'answer_key', '"correct"', 'explanation']) expect(serialized).not.toContain(leak);
+    await scoringApp.close();
+  });
+
+  it('scores a thptqg exam by section out of 10', async () => {
+    const update = mockQuery({ data: [{ id: ATTEMPT_ID }], error: null });
+    const scoringApp = await buildScoringApp({
+      exam_attempts: [attemptFor(BLUEPRINT_ID)[0]!, update],
+      exam_blueprints: mockQuery({ data: thptqgBlueprint, error: null }),
+      questions: mockQuery({ data: thptqgQuestions, error: null }),
+      xp_log: mockQuery({ data: null, error: null }),
+    });
+    const res = await submitTo(scoringApp, [
+      { question_id: U(1), selected_option: 'a' },
+      { question_id: U(3), items: [{ id: 'i1', selected: true }, { id: 'i2', selected: true }, { id: 'i3', selected: true }, { id: 'i4', selected: false }] },
+    ]);
+    expect(res.statusCode).toBe(200);
+    // mc: 6 x 1/2 = 3; truefalse: 3 of 4 statements right = 0.5 x 4 = 2.
+    expect(res.json()).toMatchObject({ score: 5, max_score: 10, correct_count: 1, total_questions: 3, xp_earned: 15, estimated: false, already_awarded: false });
+    expect(res.json().sections).toEqual([
+      { key: 'mc', score: 3, max_score: 6, correct: 1, total: 2 },
+      { key: 'truefalse', score: 2, max_score: 4, correct: 0, total: 1 },
+    ]);
+    expect(update.updated[0]).toMatchObject({ status: 'submitted', score: 5, max_score: 10, section_scores: res.json().sections });
+    await scoringApp.close();
+  });
+
+  it('keeps a generic exam at round(correct/total*10, 2) out of 10', async () => {
+    const update = mockQuery({ data: [{ id: ATTEMPT_ID }], error: null });
+    const scoringApp = await buildScoringApp({
+      exam_attempts: [attemptFor(BLUEPRINT_ID)[0]!, update],
+      exam_blueprints: mockQuery({ data: { id: BLUEPRINT_ID }, error: null }),
+      questions: mockQuery({ data: [dbQuestion, { ...dbQuestion, id: 'q2' }, { ...dbQuestion, id: 'q3' }], error: null }),
+      xp_log: mockQuery({ data: null, error: null }),
+    });
+    const res = await submitTo(scoringApp, [{ question_id: 'q1', selected_option: 'a' }]);
+    expect(res.json()).toEqual({ score: 3.33, max_score: 10, correct_count: 1, total_questions: 3, xp_earned: 15, estimated: false, sections: [], already_awarded: false });
+    expect(update.updated[0]).toMatchObject({ score: 3.33, max_score: 10 });
+    await scoringApp.close();
+  });
+
+  it('marks a dgnl_hcm result as estimated', async () => {
+    const dgnlLayout = [section('vi', 'mc', 300, [U(1)]), section('en', 'mc', 300, [U(2)])];
+    const scoringApp = await buildScoringApp({
+      exam_blueprints: mockQuery({ data: { ...thptqgBlueprint, format: 'dgnl_hcm', layout: dgnlLayout, question_ids: [U(1), U(2)] }, error: null }),
+      questions: mockQuery({ data: [mcQ(U(1)), mcQ(U(2))], error: null }),
+      xp_log: mockQuery({ data: null, error: null }),
+    });
+    const res = await submitTo(scoringApp, [{ question_id: U(1), selected_option: 'a' }]);
+    expect(res.json()).toMatchObject({ score: 300, max_score: 600, estimated: true });
+    await scoringApp.close();
+  });
+
+  it('answers a stored dgnl_hcm result as estimated, and an old attempt with no sections', async () => {
+    const stored = { id: ATTEMPT_ID, user_id: 'student-1', blueprint_id: BLUEPRINT_ID, metered: false, status: 'submitted', score: 300, max_score: 600, correct_count: 1, total_questions: 2, xp_earned: 15 };
+    const sections = [{ key: 'vi', score: 300, max_score: 300, correct: 1, total: 1 }];
+
+    const dgnl = await buildScoringApp({
+      exam_attempts: mockQuery({ data: { ...stored, section_scores: sections }, error: null }),
+      exam_blueprints: mockQuery({ data: { format: 'dgnl_hcm' }, error: null }),
+    });
+    expect((await submitTo(dgnl, [])).json()).toEqual({
+      score: 300, max_score: 600, correct_count: 1, total_questions: 2, xp_earned: 15,
+      estimated: true, sections, already_awarded: true, already_submitted: true,
+    });
+    await dgnl.close();
+
+    const old = await buildScoringApp({
+      exam_attempts: mockQuery({ data: { ...stored, score: 8, max_score: null, section_scores: null }, error: null }),
+    });
+    expect((await submitTo(old, [])).json()).toMatchObject({ score: 8, max_score: 10, estimated: false, sections: [] });
+    await old.close();
+  });
+});

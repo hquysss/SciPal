@@ -43,13 +43,14 @@ export function expandSubjectsByLevel(
   const liveGrades = new Set(published.map((l) => `${l.subject_id}:${l.grade}`));
   const cards: LandingSubject[] = [];
   for (const level of LEVEL_ORDER) {
+    const levelCards: LandingSubject[] = [];
     for (const row of rows) {
       const grades = [...new Set(row.subject_grade_catalog.map((c) => c.grade))]
         .filter((grade) => levelOfGrade(grade) === level)
         .sort((a, b) => a - b);
       if (grades.length === 0) continue;
       const { subject_grade_catalog: _catalog, ...subject } = row;
-      cards.push({
+      levelCards.push({
         ...subject,
         education_level: level,
         status: liveLevels.has(`${row.id}:${level}`) ? 'active' : 'upcoming',
@@ -57,6 +58,8 @@ export function expandSubjectsByLevel(
         liveGrades: grades.filter((grade) => liveGrades.has(`${row.id}:${grade}`)),
       });
     }
+    // Subjects with published lessons first; `sort_order` (the input order) holds inside each group.
+    cards.push(...levelCards.filter((c) => c.status === 'active'), ...levelCards.filter((c) => c.status !== 'active'));
   }
   return cards;
 }

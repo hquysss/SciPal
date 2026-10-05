@@ -35,9 +35,25 @@ describe('GET /api/exam/blueprints', () => {
     expect(res.statusCode).toBe(200);
     expect(res.json().blueprints).toEqual([{
       id: BP, name: 'Tin học 11 — Giữa kì', grade: 11, subject_id: 's1', subject_slug: 'informatics',
-      subject_name_en: 'Informatics', subject_name_vi: 'Tin học', question_count: 15, name_en: null, duration_minutes: null,
+      subject_name_en: 'Informatics', subject_name_vi: 'Tin học', question_count: 15, name_en: null, duration_minutes: null, format: 'generic', layout: null,
     }]);
     expect(res.body).not.toContain('sections');
+    await app.close();
+  });
+
+  it('keeps the format but never sends the layout or a passage in the list', async () => {
+    const layoutRow = {
+      ...row, format: 'thptqg', question_ids: ['11111111-1111-4111-8111-111111111111'],
+      layout: [{
+        key: 'mc', title: { vi: 'Phần I', en: 'Part I' }, kind: 'mc', count: 1, max_points: 10,
+        groups: [{ passage: { vi: 'ĐOẠN-VĂN-BÍ-MẬT', en: 'SECRET-PASSAGE' }, question_ids: ['11111111-1111-4111-8111-111111111111'] }],
+      }],
+    };
+    const app = await buildApp({ exam_blueprints: mockQuery({ data: [layoutRow], error: null }) });
+    const res = await app.inject({ method: 'GET', url: '/api/exam/blueprints' });
+    expect(res.json().blueprints[0]).toMatchObject({ format: 'thptqg', layout: null });
+    expect(res.body).not.toContain('ĐOẠN-VĂN-BÍ-MẬT');
+    expect(res.body).not.toContain('SECRET-PASSAGE');
     await app.close();
   });
 
@@ -52,6 +68,41 @@ describe('GET /api/exam/blueprints', () => {
   it('reports database errors as 500', async () => {
     const app = await buildApp({ exam_blueprints: mockQuery({ data: null, error: { message: 'down' } }) });
     expect((await app.inject({ method: 'GET', url: '/api/exam/blueprints' })).statusCode).toBe(500);
+    await app.close();
+  });
+});
+
+describe('exams of an archived subject', () => {
+  const archived = { ...row, id: '33333333-3333-4333-8333-333333333333', subjects: { ...row.subjects, archived_at: '2026-10-05T01:00:00.000Z' } };
+  const live = { ...row, subjects: { ...row.subjects, archived_at: null } };
+
+  it('leaves them out of the public list, reading archived_at with the subject', async () => {
+    const list = mockQuery({ data: [archived, live], error: null });
+    const app = await buildApp({ exam_blueprints: list });
+    const res = await app.inject({ method: 'GET', url: '/api/exam/blueprints' });
+    expect(res.statusCode).toBe(200);
+    expect(res.json().blueprints.map((b: { id: string }) => b.id)).toEqual([BP]);
+    expect(res.json().blueprints[0]).not.toHaveProperty('archived_at');
+    expect(String(list.selectArgs[0]?.[0])).toContain('archived_at');
+    await app.close();
+  });
+
+  it('answers 404 for their questions, as for a missing exam', async () => {
+    const app = await buildApp({ exam_blueprints: mockQuery({ data: archived, error: null }), questions: mockQuery({ data: [], error: null }) });
+    const res = await app.inject({ method: 'GET', url: `/api/exam/${archived.id}/questions` });
+    expect(res.statusCode).toBe(404);
+    expect(res.json()).toEqual({ error: 'Không tìm thấy đề thi.' });
+    await app.close();
+  });
+
+  it('still lists every exam on a database without subjects.archived_at (42703)', async () => {
+    const missing = mockQuery({ data: null, error: { code: '42703', message: 'column subjects_1.archived_at does not exist' } });
+    const legacy = mockQuery({ data: [row], error: null });
+    const app = await buildApp({ exam_blueprints: [missing, legacy] });
+    const res = await app.inject({ method: 'GET', url: '/api/exam/blueprints' });
+    expect(res.statusCode).toBe(200);
+    expect(res.json().blueprints.map((b: { id: string }) => b.id)).toEqual([BP]);
+    expect(String(legacy.selectArgs[0]?.[0])).not.toContain('archived_at');
     await app.close();
   });
 });

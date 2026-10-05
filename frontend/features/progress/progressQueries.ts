@@ -26,6 +26,15 @@ function failed(): ProgressSummary {
   return { completedLessons: [], streaks: [], totalXP: 0, badges: [], loadFailed: true };
 }
 
+/** An archived subject is hidden by RLS, so rows that embed it arrive with `subjects: null`: leave them out. */
+export function visibleCompletedLessons(rows: ProgressSummary['completedLessons']): ProgressSummary['completedLessons'] {
+  return rows.filter((row) => !row.lessons || row.lessons.subjects);
+}
+
+export function visibleStreaks(rows: ProgressSummary['streaks']): ProgressSummary['streaks'] {
+  return rows.filter((row) => row.subjects);
+}
+
 export async function getUserProgress(userId: string): Promise<ProgressSummary> {
   try {
     const supabase = createServerClient(await cookies());
@@ -56,8 +65,8 @@ export async function getUserProgress(userId: string): Promise<ProgressSummary> 
     }
 
     return {
-      completedLessons: (progressRes.data ?? []) as unknown as ProgressSummary['completedLessons'],
-      streaks: (streaksRes.data ?? []) as unknown as ProgressSummary['streaks'],
+      completedLessons: visibleCompletedLessons((progressRes.data ?? []) as unknown as ProgressSummary['completedLessons']),
+      streaks: visibleStreaks((streaksRes.data ?? []) as unknown as ProgressSummary['streaks']),
       totalXP: (xpRes.data ?? []).reduce((sum, row) => sum + row.delta, 0),
       badges: (badgesRes.data ?? []) as unknown as ProgressSummary['badges'],
       loadFailed: false,

@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import {
-  BookA, Bot, ClipboardCheck, FlaskConical, FolderTree, NotebookPen, ReceiptText, Settings2, ToggleRight, Users, type LucideIcon } from 'lucide-react';
+  BookA, Bot, ClipboardCheck, FlaskConical, FolderTree, Library, NotebookPen, ReceiptText, Settings2, ToggleRight, Users, type LucideIcon } from 'lucide-react';
 import { useLanguage } from '@scipal/hooks';
 import { FeatureRequestBoard } from '@/features/survey/FeatureRequestBoard';
 import { countOpenSimulationRequests } from '@/features/authoring/simulationRequests/api';
@@ -27,6 +27,7 @@ export const ADMIN_GROUPS: Group[] = [
     tools: [
       { href: '/admin/lessons/review', label: { vi: 'Duyệt bài', en: 'Review lessons' }, hint: { vi: 'Bài giáo viên gửi chờ xuất bản', en: 'Lessons waiting to publish' }, Icon: ClipboardCheck },
       { href: '/teacher/lessons', label: { vi: 'Soạn bài', en: 'Lesson studio' }, hint: { vi: 'Viết và sửa bài học', en: 'Write and edit lessons' }, Icon: NotebookPen },
+      { href: '/admin/subjects', label: { vi: 'Môn học', en: 'Subjects' }, hint: { vi: 'Xóa hoặc khôi phục môn, môn có bài xếp trước', en: 'Delete or restore subjects, those with lessons first' }, Icon: Library },
       { href: '/admin/topics', label: { vi: 'Chủ đề', en: 'Topics' }, hint: { vi: 'Chủ đề theo môn và lớp', en: 'Topics by subject and grade' }, Icon: FolderTree },
       { href: '/admin/terms', label: { vi: 'Thuật ngữ', en: 'Glossary terms' }, hint: { vi: 'Thêm và duyệt từ điển', en: 'Add and review terms' }, Icon: BookA },
       { href: '/admin/simulation-requests', label: { vi: 'Đề xuất mô phỏng', en: 'Simulation requests' }, hint: { vi: 'Giáo viên đề xuất mô phỏng mới', en: 'New simulations teachers ask for' }, Icon: FlaskConical, badge: 'simulation' },

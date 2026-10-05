@@ -1,5 +1,6 @@
 import type { FastifyPluginAsync, FastifyReply, FastifyRequest } from 'fastify';
 import { z } from 'zod';
+import { isSubjectArchived } from '../subjects/archived.js';
 
 // Work a teacher gives a class (spec docs/superpowers/specs/2026-09-29-class-assignments-design.md).
 // A class gets published lessons and exams; "done" comes from progress.completed_at (lesson
@@ -28,8 +29,8 @@ const NewAssignment = z.object({
   .refine((b) => !b.dueAt || new Date(b.dueAt).getTime() > Date.now());
 
 type AssignmentRow = { id: string; class_id?: string; lesson_id: string | null; blueprint_id: string | null; due_at: string | null; created_at: string };
-type LessonRow = { id: string; slug: string; title_en: string; title_vi: string; status: string; subjects: { slug?: string } | Array<{ slug?: string }> | null };
-type ExamRow = { id: string; name: string; name_en: string | null; status: string };
+type LessonRow = { id: string; slug: string; title_en: string; title_vi: string; status: string; subjects: { slug?: string; archived_at?: string | null } | Array<{ slug?: string; archived_at?: string | null }> | null };
+type ExamRow = { id: string; name: string; name_en: string | null; status: string; subjects?: { archived_at?: string | null } | Array<{ archived_at?: string | null }> | null };
 type Content = { title: Bilingual; href: string; published: boolean };
 
 const iso = (value: string | null) => (value ? new Date(value).toISOString() : null);
@@ -69,17 +70,17 @@ export const assignmentRoutes: FastifyPluginAsync = async (app) => {
   const contents = async (lessonIds: string[], examIds: string[]) => {
     const supabase = app.supabase!;
     const [lessons, exams] = await Promise.all([
-      lessonIds.length ? supabase.from('lessons').select('id, slug, title_en, title_vi, status, subjects(slug)').in('id', lessonIds) : null,
-      examIds.length ? supabase.from('exam_blueprints').select('id, name, name_en, status').in('id', examIds) : null,
+      lessonIds.length ? supabase.from('lessons').select('id, slug, title_en, title_vi, status, subjects(slug, archived_at)').in('id', lessonIds) : null,
+      examIds.length ? supabase.from('exam_blueprints').select('id, name, name_en, status, subjects(archived_at)').in('id', examIds) : null,
     ]);
     if (lessons?.error || exams?.error) throw lessons?.error ?? exams?.error;
     const map = new Map<string, Content>();
     for (const l of (lessons?.data ?? []) as LessonRow[]) {
       const subject = one(l.subjects)?.slug;
-      map.set(l.id, { title: lessonTitle(l), href: subject ? `/${subject}/${l.slug}` : '', published: l.status === 'published' && Boolean(subject) });
+      map.set(l.id, { title: lessonTitle(l), href: subject ? `/${subject}/${l.slug}` : '', published: l.status === 'published' && Boolean(subject) && !isSubjectArchived(one(l.subjects)) });
     }
     for (const e of (exams?.data ?? []) as ExamRow[]) {
-      map.set(e.id, { title: examTitle(e), href: `/exam/${e.id}`, published: e.status === 'published' });
+      map.set(e.id, { title: examTitle(e), href: `/exam/${e.id}`, published: e.status === 'published' && !isSubjectArchived(one(e.subjects)) });
     }
     return map;
   };
@@ -193,18 +194,18 @@ export const assignmentRoutes: FastifyPluginAsync = async (app) => {
       if (!room) return reply.code(404).send(NOT_FOUND);
       const text = searchText(q);
       if (kind === 'exam') {
-        let query = supabase.from('exam_blueprints').select('id, name, name_en, status').eq('status', 'published');
+        let query = supabase.from('exam_blueprints').select('id, name, name_en, status, subjects(archived_at)').eq('status', 'published');
         if (text) query = query.or(`name.ilike.%${text}%,name_en.ilike.%${text}%`);
         const { data, error } = await query.order('updated_at', { ascending: false }).limit(20);
         if (error) throw error;
-        return { items: ((data ?? []) as ExamRow[]).map((e) => ({ id: e.id, title: examTitle(e) })) };
+        return { items: ((data ?? []) as ExamRow[]).filter((e) => !isSubjectArchived(one(e.subjects))).map((e) => ({ id: e.id, title: examTitle(e) })) };
       }
-      let query = supabase.from('lessons').select('id, slug, title_en, title_vi, status, subjects(slug)').eq('status', 'published');
+      let query = supabase.from('lessons').select('id, slug, title_en, title_vi, status, subjects(slug, archived_at)').eq('status', 'published');
       if (room.subject_id) query = query.eq('subject_id', room.subject_id);
       if (text) query = query.or(`title_vi.ilike.%${text}%,title_en.ilike.%${text}%`);
       const { data, error } = await query.order('title_vi', { ascending: true }).limit(20);
       if (error) throw error;
-      return { items: ((data ?? []) as LessonRow[]).map((l) => ({ id: l.id, title: lessonTitle(l) })) };
+      return { items: ((data ?? []) as LessonRow[]).filter((l) => !isSubjectArchived(one(l.subjects))).map((l) => ({ id: l.id, title: lessonTitle(l) })) };
     } catch (error) {
       return fail(request, reply, error);
     }

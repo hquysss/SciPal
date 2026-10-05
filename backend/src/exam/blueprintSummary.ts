@@ -1,3 +1,6 @@
+import { EXAM_FORMATS, type ExamFormat, type ExamSection } from '../schemas/examFormat.js';
+import { isSubjectArchived } from '../subjects/archived.js';
+
 export interface BlueprintSummary {
   id: string;
   name: string;
@@ -9,12 +12,17 @@ export interface BlueprintSummary {
   subject_name_vi: string | null;
   question_count: number;
   duration_minutes: number | null;
+  format: ExamFormat;
+  /** Sections and passage groups of a laid-out exam (ids only, never answers); null for a generic exam. */
+  layout: ExamSection[] | null;
 }
 
 interface SubjectRef {
   slug: string;
   name_en: string;
   name_vi: string;
+  /** Absent before the subject-archive migration: treated as not archived. */
+  archived_at?: string | null;
 }
 
 export interface BlueprintRow {
@@ -26,6 +34,9 @@ export interface BlueprintRow {
   sections: unknown;
   question_ids?: string[] | null;
   duration_minutes?: number | null;
+  /** Absent before the exam-formats migration: treated as a generic exam without a layout. */
+  format?: string | null;
+  layout?: unknown;
   /** Absent on a database that has not run the exam-import migration: treated as published. */
   status?: string | null;
   subjects: SubjectRef | SubjectRef[] | null;
@@ -37,7 +48,15 @@ export function isPublishedBlueprint(row: Pick<BlueprintRow, 'status'>): boolean
 }
 
 // `*` keeps the listing working on a database that has not run the exam-import migration yet.
-export const BLUEPRINT_COLUMNS = '*, subjects(slug, name_en, name_vi)';
+export const BLUEPRINT_COLUMNS = '*, subjects(slug, name_en, name_vi, archived_at)';
+/** The same read on a database that has not run the subject-archive migration (no subjects.archived_at). */
+export const BLUEPRINT_COLUMNS_BEFORE_ARCHIVE = '*, subjects(slug, name_en, name_vi)';
+
+/** Learners never see an exam of a subject an admin has archived. */
+export function isBlueprintSubjectArchived(row: Pick<BlueprintRow, 'subjects'>): boolean {
+  const subject = Array.isArray(row.subjects) ? row.subjects[0] : row.subjects;
+  return isSubjectArchived(subject);
+}
 
 export function countBlueprintQuestions(sections: unknown): number {
   if (!Array.isArray(sections)) return 0;
@@ -50,6 +69,10 @@ export function countBlueprintQuestions(sections: unknown): number {
 /** The exact questions of an imported exam, in order; empty when the exam draws from its subject pool. */
 export function blueprintQuestionIds(row: Pick<BlueprintRow, 'question_ids'>): string[] {
   return Array.isArray(row.question_ids) ? row.question_ids.filter((id) => typeof id === 'string') : [];
+}
+
+export function blueprintFormat(row: Pick<BlueprintRow, 'format'>): ExamFormat {
+  return (EXAM_FORMATS as readonly string[]).includes(row.format ?? '') ? (row.format as ExamFormat) : 'generic';
 }
 
 export function toBlueprintSummary(row: BlueprintRow): BlueprintSummary {
@@ -66,5 +89,7 @@ export function toBlueprintSummary(row: BlueprintRow): BlueprintSummary {
     subject_name_vi: subject?.name_vi ?? null,
     question_count: questionIds.length > 0 ? questionIds.length : countBlueprintQuestions(row.sections),
     duration_minutes: row.duration_minutes ?? null,
+    format: blueprintFormat(row),
+    layout: Array.isArray(row.layout) ? (row.layout as ExamSection[]) : null,
   };
 }

@@ -5,20 +5,17 @@ import { BillingRepositoryError, createBillingRepository } from '../billing/repo
 import { periodOf, periodWords, type QuotaPeriod } from '../billing/quotaPeriod.js';
 import {
   BLUEPRINT_COLUMNS,
+  BLUEPRINT_COLUMNS_BEFORE_ARCHIVE,
+  blueprintFormat,
   blueprintQuestionIds,
+  isBlueprintSubjectArchived,
   isPublishedBlueprint,
   toBlueprintSummary,
   type BlueprintRow,
   type BlueprintSummary,
 } from '../exam/blueprintSummary.js';
+import { isEstimatedFormat, scoreExam, type ExamAnswer, type ScoredSection } from '../exam/scoring.js';
 import { featureAllowed, featureOff } from '../site/features.js';
-
-interface ExamAnswer {
-  question_id: string;
-  selected_option?: string;
-  items?: Array<{ id: string; selected: boolean }>;
-  short_answer?: string;
-}
 
 export const MAX_EXAM_ANSWERS = 200;
 /** Question count for a blueprint whose sections do not give one. */
@@ -45,18 +42,31 @@ interface LoadedBlueprint {
 /** Fields that would give an answer away before the exam is submitted. */
 const HIDDEN_QUESTION_FIELDS = ['answer', 'answer_key', 'explanation', 'rubric'];
 
-async function loadBlueprint(supabase: SupabaseClient, blueprintId: string): Promise<Loaded<LoadedBlueprint>> {
+type BlueprintRead = PromiseLike<{ data: unknown; error: { code?: string } | null }>;
+
+/** 42703: subjects.archived_at does not exist yet (migration not run), so no subject is archived. */
+async function readBlueprints(run: (columns: string) => BlueprintRead) {
+  let result = await run(BLUEPRINT_COLUMNS);
+  if (result.error?.code === '42703') result = await run(BLUEPRINT_COLUMNS_BEFORE_ARCHIVE);
+  return result;
+}
+
+/** Learners see a published exam of a subject that is not archived. */
+const isLearnerBlueprint = (row: BlueprintRow) => isPublishedBlueprint(row) && !isBlueprintSubjectArchived(row);
+
+/** `finishing`: an attempt started before the subject was archived may still be scored (and its quota hold settled). */
+async function loadBlueprint(supabase: SupabaseClient, blueprintId: string, { finishing = false } = {}): Promise<Loaded<LoadedBlueprint>> {
   // exam_blueprints.id is a uuid: anything else can only be "not found", not a database error.
   if (!UUID_PATTERN.test(blueprintId)) return { kind: 'not_found' };
-  const { data, error } = await supabase
+  const { data, error } = await readBlueprints((columns) => supabase
     .from('exam_blueprints')
-    .select(BLUEPRINT_COLUMNS)
+    .select(columns)
     .eq('id', blueprintId)
-    .maybeSingle();
+    .maybeSingle());
   if (error) return { kind: 'error', err: error };
   if (!data) return { kind: 'not_found' };
   const row = data as BlueprintRow;
-  if (!isPublishedBlueprint(row)) return { kind: 'not_found' };
+  if (!(finishing ? isPublishedBlueprint(row) : isLearnerBlueprint(row))) return { kind: 'not_found' };
   return { kind: 'ok', value: { summary: toBlueprintSummary(row), questionIds: blueprintQuestionIds(row) } };
 }
 
@@ -145,24 +155,43 @@ type AttemptRow = {
   metered: boolean;
   status: 'started' | 'submitted';
   score: number | string | null;
+  max_score?: number | string | null;
+  section_scores?: ScoredSection[] | null;
   correct_count: number | null;
   total_questions: number | null;
   xp_earned: number | null;
 };
 type Caller = { id?: string; sub?: string; app_metadata?: { app_role?: string } };
 const bi = (error: string, error_en: string) => ({ error, error_en });
-const ATTEMPT_COLUMNS = 'id, user_id, blueprint_id, metered, status, score, correct_count, total_questions, xp_earned';
+const ATTEMPT_COLUMNS = 'id, user_id, blueprint_id, metered, status, score, max_score, section_scores, correct_count, total_questions, xp_earned';
 const attemptNotFound = { code: 'ATTEMPT_NOT_FOUND', ...bi('Không tìm thấy lượt làm bài này.', 'This exam attempt was not found.') };
 
-/** The stored result of a submitted attempt, as the scoring route answers it. */
-const storedResult = (a: AttemptRow) => ({
-  score: Number(a.score),
-  correct_count: a.correct_count ?? 0,
-  total_questions: a.total_questions ?? 0,
-  xp_earned: a.xp_earned ?? 0,
-  already_awarded: true,
-  already_submitted: true,
-});
+/**
+ * The stored result of a submitted attempt, as the scoring route answers it. An attempt from before
+ * exam formats has no max_score or section_scores: it is out of 10 with no sections. Whether the
+ * result is an estimate is a property of the exam's format, so it is read from the blueprint, and
+ * only for an attempt that has section scores (a generic or older attempt is never an estimate).
+ */
+async function storedResult(supabase: SupabaseClient, log: { warn: (obj: object, msg: string) => void }, a: AttemptRow) {
+  const sections = Array.isArray(a.section_scores) ? a.section_scores : [];
+  let estimated = false;
+  if (sections.length > 0) {
+    const { data, error } = await supabase.from('exam_blueprints').select('format').eq('id', a.blueprint_id).maybeSingle();
+    if (error) log.warn({ err: error, blueprintId: a.blueprint_id }, 'Failed to read the exam format of a stored result');
+    estimated = isEstimatedFormat(blueprintFormat((data ?? {}) as { format?: string | null }));
+  }
+  return {
+    score: Number(a.score),
+    max_score: a.max_score == null ? 10 : Number(a.max_score),
+    correct_count: a.correct_count ?? 0,
+    total_questions: a.total_questions ?? 0,
+    xp_earned: a.xp_earned ?? 0,
+    estimated,
+    sections,
+    already_awarded: true,
+    already_submitted: true,
+  };
+}
 
 export const examRoutes: FastifyPluginAsync = async (app) => {
   const caller = (request: FastifyRequest) => (request as FastifyRequest & { user?: Caller }).user;
@@ -189,7 +218,7 @@ export const examRoutes: FastifyPluginAsync = async (app) => {
     const found = existing as AttemptRow | null;
     if (found) {
       if (found.user_id !== uid || found.blueprint_id !== blueprintId) return reply.code(404).send(attemptNotFound);
-      return { attempt_id: found.id, status: found.status, remaining: null, period: null, ...(found.status === 'submitted' ? { result: storedResult(found) } : {}) };
+      return { attempt_id: found.id, status: found.status, remaining: null, period: null, ...(found.status === 'submitted' ? { result: await storedResult(supabase, app.log, found) } : {}) };
     }
 
     const bp = await loadBlueprint(supabase, blueprintId);
@@ -242,15 +271,16 @@ export const examRoutes: FastifyPluginAsync = async (app) => {
 
   app.get('/api/exam/blueprints', async (request, reply) => {
     if (!app.supabase) return reply.code(503).send({ error: 'Dịch vụ đề thi chưa sẵn sàng.' });
-    const { data, error } = await app.supabase
+    const supabase = app.supabase;
+    const { data, error } = await readBlueprints((columns) => supabase
       .from('exam_blueprints')
-      .select(BLUEPRINT_COLUMNS)
-      .order('name');
+      .select(columns)
+      .order('name'));
     if (error) {
       request.log.error({ err: error }, 'Failed to list exam blueprints');
       return reply.code(500).send({ error: 'Không tải được danh sách đề thi.' });
     }
-    return reply.send({ blueprints: ((data ?? []) as BlueprintRow[]).filter(isPublishedBlueprint).map(toBlueprintSummary) });
+    return reply.send({ blueprints: ((data ?? []) as BlueprintRow[]).filter(isLearnerBlueprint).map((r) => ({ ...toBlueprintSummary(r), layout: null })) });
   });
 
   // Fetch blueprint questions without exposing answers
@@ -333,9 +363,9 @@ export const examRoutes: FastifyPluginAsync = async (app) => {
     const attempt = first.attempt;
     if (!attempt || attempt.blueprint_id !== blueprintId) return reply.status(404).send(attemptNotFound);
     // Submitting the same attempt again answers the stored result: no new score, XP or charge.
-    if (attempt.status === 'submitted') return reply.send(storedResult(attempt));
+    if (attempt.status === 'submitted') return reply.send(await storedResult(supabase, app.log, attempt));
 
-    const bp = await loadBlueprint(app.supabase, blueprintId);
+    const bp = await loadBlueprint(app.supabase, blueprintId, { finishing: true });
     if (bp.kind === 'error') {
       request.log.error({ err: bp.err, blueprintId }, 'Failed to load exam blueprint for scoring');
       return reply.status(500).send({ error: 'Không chấm được bài thi.' });
@@ -352,14 +382,14 @@ export const examRoutes: FastifyPluginAsync = async (app) => {
     // questions outside this exam are ignored.
     const examQuestions = loaded.value;
     const answersById = new Map(dedupeAnswers(answers).map((a) => [a.question_id, a]));
-    let correctCount = 0;
-    for (const question of examQuestions) {
-      const answer = answersById.get(question.id);
-      if (answer && isCorrectAnswer(question, answer)) correctCount++;
-    }
-
-    const total = examQuestions.length;
-    const score = total > 0 ? Number(((correctCount / total) * 10).toFixed(2)) : 0;
+    const scored = scoreExam({
+      format: bp.value.summary.format,
+      layout: bp.value.summary.layout,
+      questions: examQuestions.map((q) => ({ id: q.id, type: q.type, data: q.data ?? {} })),
+      answers: answersById,
+      isCorrect: isCorrectAnswer,
+    });
+    const correctCount = scored.correct_count;
     const possibleXp = correctCount * 15;
     let xp_earned = 0;
     let already_awarded = false;
@@ -382,10 +412,16 @@ export const examRoutes: FastifyPluginAsync = async (app) => {
       }
     }
 
-    const result = { score, correct_count: correctCount, total_questions: total, xp_earned };
+    const result = {
+      score: scored.score,
+      max_score: scored.max_score,
+      correct_count: scored.correct_count,
+      total_questions: scored.total_questions,
+      xp_earned,
+    };
     const { data: saved, error: saveError } = await supabase
       .from('exam_attempts')
-      .update({ status: 'submitted', ...result, submitted_at: new Date().toISOString() })
+      .update({ status: 'submitted', ...result, section_scores: scored.sections, submitted_at: new Date().toISOString() })
       .eq('id', attemptId)
       .eq('status', 'started')
       .select('id');
@@ -396,7 +432,7 @@ export const examRoutes: FastifyPluginAsync = async (app) => {
     if (!saved || (saved as unknown[]).length === 0) {
       // Another submit of this attempt stored its result first: answer that one.
       const again = await loadAttempt();
-      if (again.attempt?.status === 'submitted') return reply.send(storedResult(again.attempt));
+      if (again.attempt?.status === 'submitted') return reply.send(await storedResult(supabase, app.log, again.attempt));
       return reply.status(500).send({ error: 'Không lưu được kết quả bài thi. Em nộp lại nhé.' });
     }
     if (attempt.metered) {
@@ -404,6 +440,6 @@ export const examRoutes: FastifyPluginAsync = async (app) => {
       await billing.settleQuota(attemptId, 'commit').catch((err) => request.log.error({ err }, 'Failed to count an exam attempt'));
     }
 
-    return reply.send({ ...result, already_awarded });
+    return reply.send({ ...result, estimated: scored.estimated, sections: scored.sections, already_awarded });
   });
 };

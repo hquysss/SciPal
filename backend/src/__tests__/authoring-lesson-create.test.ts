@@ -2,6 +2,7 @@
 import { describe, expect, it } from 'vitest';
 import Fastify from 'fastify';
 import { authoringRoutes } from '../routes/authoring.js';
+import { SUBJECT_ARCHIVED } from '../subjects/archived.js';
 import { mockQuery, mockSupabase } from './helpers/supabaseMock.js';
 
 const TOPIC_ID = '33333333-3333-4333-8333-333333333333';
@@ -71,6 +72,21 @@ describe('POST /api/authoring/lessons grade rules', () => {
     const res = await app.inject({ method: 'POST', url: '/api/authoring/lessons', payload: { ...body, track_id: TRACK_ID } });
     expect(res.statusCode).toBe(201);
     expect(insert.inserted[0]).toMatchObject({ grade: 11, status: 'draft', track_id: TRACK_ID, subject_id: SUBJECT_ID });
+    await app.close();
+  });
+});
+
+describe('POST /api/authoring/lessons in an archived subject', () => {
+  it('refuses with the bilingual 400 and creates nothing', async () => {
+    const subjects = mockQuery({ data: { id: SUBJECT_ID, archived_at: '2026-10-05T01:00:00.000Z' }, error: null });
+    const tables = baseTables({ subjects });
+    const insert = (tables.lessons as ReturnType<typeof mockQuery>[])[1]!;
+    const app = await buildApp(tables);
+    const res = await app.inject({ method: 'POST', url: '/api/authoring/lessons', payload: body });
+    expect(res.statusCode).toBe(400);
+    expect(res.json()).toEqual(SUBJECT_ARCHIVED);
+    expect(String(subjects.selectArgs[0]?.[0])).toContain('archived_at');
+    expect(insert.inserted).toHaveLength(0);
     await app.close();
   });
 });

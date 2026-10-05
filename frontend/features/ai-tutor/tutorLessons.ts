@@ -21,7 +21,10 @@ export async function getTutorLessons(supabase: ReturnType<typeof createServerCl
     console.error('Could not load lessons for the tutor picker:', error.message);
     return [];
   }
-  const rows = ((data ?? []) as Row[]).map((row) => ({ row, subject: Array.isArray(row.subjects) ? row.subjects[0] : row.subjects }));
+  // An archived subject is hidden by RLS, so its lessons arrive with no subject: leave them out.
+  const rows = ((data ?? []) as Row[])
+    .map((row) => ({ row, subject: Array.isArray(row.subjects) ? row.subjects[0] : row.subjects }))
+    .filter((entry) => entry.subject);
   rows.sort(
     (a, b) =>
       (a.subject?.sort_order ?? 0) - (b.subject?.sort_order ?? 0) ||

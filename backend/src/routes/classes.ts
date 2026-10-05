@@ -2,6 +2,7 @@ import type { FastifyPluginAsync, FastifyReply, FastifyRequest } from 'fastify';
 import crypto from 'node:crypto';
 import { capacityRefusal } from '../billing/capacity.js';
 import { featureAllowed, featureOff } from '../site/features.js';
+import { isSubjectArchived, SUBJECT_ARCHIVED } from '../subjects/archived.js';
 
 interface ClassUser {
   id?: string;
@@ -128,7 +129,7 @@ export const classRoutes: FastifyPluginAsync = async (app) => {
 
     const { data: subject, error: subjectError } = await supabase
       .from('subjects')
-      .select('id')
+      .select('id, archived_at')
       .eq(UUID_PATTERN.test(subjectKey) ? 'id' : 'slug', subjectKey)
       .maybeSingle();
     if (subjectError) {
@@ -136,6 +137,7 @@ export const classRoutes: FastifyPluginAsync = async (app) => {
       return reply.code(500).send({ error: 'Không xác minh được môn học.' });
     }
     if (!subject) return reply.code(400).send({ error: 'Môn học không tồn tại.' });
+    if (isSubjectArchived(subject)) return reply.code(400).send(SUBJECT_ARCHIVED);
 
     for (let attempt = 0; attempt < 3; attempt += 1) {
       const { data, error } = await supabase

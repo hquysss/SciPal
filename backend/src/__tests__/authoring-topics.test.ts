@@ -4,6 +4,7 @@ import Fastify from 'fastify';
 import { authPlugin } from '../plugins/auth.js';
 import { authoringRoutes } from '../routes/authoring.js';
 import { planNewTopic, toSubjectOptions, type ExistingTopic } from '../authoring/topicPlanning.js';
+import { SUBJECT_ARCHIVED } from '../subjects/archived.js';
 import { mockQuery, mockSupabase } from './helpers/supabaseMock.js';
 
 const SUBJECT_ID = '11111111-1111-4111-8111-111111111111';
@@ -86,6 +87,14 @@ describe('GET /api/authoring/options', () => {
     expect((await app.inject({ method: 'GET', url: '/api/authoring/options' })).statusCode).toBe(403);
     await app.close();
   });
+
+  it('asks only for subjects that are not archived', async () => {
+    const t = tables();
+    const app = await buildApp(teacher, t);
+    expect((await app.inject({ method: 'GET', url: '/api/authoring/options' })).statusCode).toBe(200);
+    expect(t.subjects.isCalls).toEqual([['archived_at', null]]);
+    await app.close();
+  });
 });
 
 describe('POST /api/authoring/topics', () => {
@@ -125,6 +134,22 @@ describe('POST /api/authoring/topics', () => {
     const res = await app.inject({ method: 'POST', url: '/api/authoring/topics', payload: { ...payload, name_vi: ' thực vật VÀ động vật ' } });
     expect(res.statusCode).toBe(409);
     expect(res.json().topic.id).toBe('dup');
+    await app.close();
+  });
+
+  it('refuses a topic in an archived subject with the bilingual 400', async () => {
+    const subjects = mockQuery({ data: { id: SUBJECT_ID, archived_at: '2026-10-05T01:00:00.000Z' }, error: null });
+    const insert = mockQuery({ data: null, error: null });
+    const app = await buildApp(admin, {
+      subjects,
+      subject_grade_catalog: mockQuery({ data: { id: 'c1' }, error: null }),
+      topics: [mockQuery({ data: [], error: null }), insert],
+    });
+    const res = await app.inject({ method: 'POST', url: '/api/authoring/topics', payload });
+    expect(res.statusCode).toBe(400);
+    expect(res.json()).toEqual(SUBJECT_ARCHIVED);
+    expect(String(subjects.selectArgs[0]?.[0])).toContain('archived_at');
+    expect(insert.inserted).toHaveLength(0);
     await app.close();
   });
 

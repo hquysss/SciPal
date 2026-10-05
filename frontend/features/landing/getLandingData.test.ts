@@ -229,6 +229,23 @@ describe('expandSubjectsByLevel', () => {
     expect(cards.find((c) => c.education_level === 'upper_secondary')).toMatchObject({ grades: [11], liveGrades: [11] });
   });
 
+  it('lists subjects with published lessons first inside each level, keeping sort_order within a group', () => {
+    const row = (id: string, sort_order: number) => ({ ...base, id, slug: id, sort_order, subject_grade_catalog: [{ grade: 6 }, { grade: 11 }] });
+    const rows = [row('a', 1), row('b', 2), row('c', 3), row('d', 4)];
+    const cards = expandSubjectsByLevel(rows, [{ subject_id: 'c', grade: 11 }, { subject_id: 'd', grade: 11 }, { subject_id: 'd', grade: 6 }]);
+    expect(cards.map((c) => `${c.education_level}:${c.id}`)).toEqual([
+      'lower_secondary:d', 'lower_secondary:a', 'lower_secondary:b', 'lower_secondary:c',
+      'upper_secondary:c', 'upper_secondary:d', 'upper_secondary:a', 'upper_secondary:b',
+    ]);
+  });
+
+  it('keeps sort_order when every subject of a level is active or every one is upcoming', () => {
+    const row = (id: string, sort_order: number) => ({ ...base, id, slug: id, sort_order, subject_grade_catalog: [{ grade: 11 }] });
+    const rows = [row('a', 1), row('b', 2)];
+    expect(expandSubjectsByLevel(rows, []).map((c) => c.id)).toEqual(['a', 'b']);
+    expect(expandSubjectsByLevel(rows, [{ subject_id: 'a', grade: 11 }, { subject_id: 'b', grade: 11 }]).map((c) => c.id)).toEqual(['a', 'b']);
+  });
+
   it('ignores subjects without catalog rows', () => {
     expect(expandSubjectsByLevel([{ ...math, subject_grade_catalog: [] }], [])).toEqual([]);
   });

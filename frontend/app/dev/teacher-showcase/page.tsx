@@ -35,7 +35,7 @@ const QUESTIONS = [
 const EXAM = {
   id: '00000000-0000-4000-8000-000000000200', name: 'Kiểm tra giữa kỳ I — Tin học 10', name_en: 'Midterm I — Informatics 10', subject_id: SUBJECTS[0]!.id,
   subject_name_vi: 'Tin học', grade: 10, duration_minutes: 45, question_count: 3, updated_at: '2026-09-27T00:00:00Z', created_by: 't1', imported: false, mine: true,
-  question_ids: QUESTIONS.map((x) => x.id), review_note: null,
+  question_ids: QUESTIONS.map((x) => x.id), format: 'generic' as const, layout: null, review_note: null,
 };
 
 const CHATS = [

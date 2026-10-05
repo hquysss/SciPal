@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import Fastify from 'fastify';
 import { termRoutes } from '../routes/terms.js';
+import { SUBJECT_ARCHIVED } from '../subjects/archived.js';
 import { mockQuery, mockSupabase, type MockBuilder } from './helpers/supabaseMock.js';
 
 const TERM_ID = '66666666-6666-4666-8666-666666666666';
@@ -11,7 +12,8 @@ const student = { id: 'student-1', app_metadata: { app_role: 'student' } };
 
 async function build(user: object | null, tables: Record<string, MockBuilder | MockBuilder[]>) {
   const app = Fastify();
-  app.decorate('supabase', mockSupabase(tables) as never);
+  // Writing a term checks that its subject is not archived; tests use a live subject unless they say otherwise.
+  app.decorate('supabase', mockSupabase({ subjects: mockQuery({ data: [{ id: SUBJECT_ID, archived_at: null }], error: null }), ...tables }) as never);
   app.addHook('onRequest', async (req) => {
     if (user) (req as any).user = user;
   });
@@ -133,6 +135,39 @@ describe('writing glossary terms', () => {
     expect(res.statusCode).toBe(204);
     expect(del.eqCalls).toContainEqual(['created_by', 'teacher-1']);
     expect(del.inCalls).toContainEqual(['status', ['pending', 'rejected']]);
+    await app.close();
+  });
+});
+
+describe('terms of an archived subject', () => {
+  const ARCHIVED_ID = '88888888-8888-4888-8888-888888888888';
+  const gone = { id: ARCHIVED_ID, archived_at: '2026-10-05T01:00:00.000Z' };
+
+  it('refuses a new term with the bilingual 400 and saves nothing', async () => {
+    const insert = mockQuery({ data: { id: TERM_ID }, error: null });
+    const subjects = mockQuery({ data: gone, error: null });
+    const app = await build(admin, { subjects, terms: insert });
+    const res = await app.inject({ method: 'POST', url: '/api/authoring/terms', payload: { ...valid, subject_id: ARCHIVED_ID } });
+    expect(res.statusCode).toBe(400);
+    expect(res.json()).toEqual(SUBJECT_ARCHIVED);
+    expect(subjects.eqCalls).toContainEqual(['id', ARCHIVED_ID]);
+    expect(insert.inserted).toHaveLength(0);
+    await app.close();
+  });
+
+  it('refuses only the batch rows of an archived subject', async () => {
+    const saved = mockQuery({ data: { id: TERM_ID }, error: null });
+    const subjects = mockQuery({ data: [gone, { id: SUBJECT_ID, archived_at: null }], error: null });
+    const app = await build(teacher, { subjects, terms: [saved] });
+    const res = await app.inject({
+      method: 'POST',
+      url: '/api/authoring/terms/batch',
+      payload: { terms: [{ ...valid, subject_id: ARCHIVED_ID }, valid] },
+    });
+    expect(res.statusCode).toBe(200);
+    expect(res.json()).toEqual({ saved: 1, results: [{ index: 0, ok: false, ...SUBJECT_ARCHIVED }, { index: 1, ok: true, id: TERM_ID }] });
+    expect(saved.inserted).toHaveLength(1);
+    expect(saved.inserted[0]).toMatchObject({ subject_id: SUBJECT_ID });
     await app.close();
   });
 });

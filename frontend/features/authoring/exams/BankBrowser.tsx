@@ -2,6 +2,7 @@
 
 import { useEffect, useId, useState } from 'react';
 import { useLanguage } from '@scipal/hooks';
+import type { QuestionType } from '@scipal/types';
 import { Button } from '@/components/ui/button';
 import { listQuestions, type AuthorQuestion } from '../practice/api';
 import { withPage } from '../practice/QuestionPicker';
@@ -12,11 +13,13 @@ interface BankBrowserProps {
   subjectId: string;
   /** Questions already in the exam. */
   excludeIds: string[];
+  /** Only questions of this type (a section of a structured exam takes one kind). */
+  type?: QuestionType;
   onAdd: (rows: AuthorQuestion[]) => void;
 }
 
 /** "Chọn từ ngân hàng": tick exam questions of this subject (published, or your own) to add. */
-export function BankBrowser({ subjectId, excludeIds, onAdd }: BankBrowserProps) {
+export function BankBrowser({ subjectId, excludeIds, type, onAdd }: BankBrowserProps) {
   const { t } = useLanguage();
   const id = useId();
   const [search, setSearch] = useState({ query: '', page: 1 });
@@ -28,7 +31,7 @@ export function BankBrowser({ subjectId, excludeIds, onAdd }: BankBrowserProps) 
   useEffect(() => {
     let live = true;
     const timer = setTimeout(async () => {
-      const res = await listQuestions({ usage: 'exam', subject_id: subjectId, q: search.query.trim() || undefined, page: search.page });
+      const res = await listQuestions({ usage: 'exam', subject_id: subjectId, type, q: search.query.trim() || undefined, page: search.page });
       if (!live) return;
       if (!res.ok) return setError(res.error);
       setError(null);
@@ -39,9 +42,9 @@ export function BankBrowser({ subjectId, excludeIds, onAdd }: BankBrowserProps) 
       live = false;
       clearTimeout(timer);
     };
-  }, [search, subjectId]);
+  }, [search, subjectId, type]);
 
-  const shown = rows.filter((row) => !excludeIds.includes(row.id));
+  const shown = rows.filter((row) => !excludeIds.includes(row.id) && (!type || row.type === type));
   const toggle = (rowId: string) => setPicked((old) => (old.includes(rowId) ? old.filter((x) => x !== rowId) : [...old, rowId]));
 
   return (

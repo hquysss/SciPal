@@ -1,11 +1,12 @@
 'use client';
 
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { ChevronLeft, ChevronRight, CircleCheck, CircleX, Timer } from 'lucide-react';
 import { useLanguage } from '@scipal/hooks';
-import { AnswerPalette } from './AnswerPalette';
+import type { ExamSection } from '@scipal/types';
+import { AnswerPalette, type AnswerPaletteSection } from './AnswerPalette';
 import { forgetExamAttempt, startExamAttempt } from './examAttempt';
 import { createBrowserClient } from '../../lib/supabase';
 import { Alert } from '../../components/ui/alert';
@@ -76,6 +77,133 @@ export function timerTone(secondsLeft: number): TimerTone {
   return 'normal';
 }
 
+/** Where one served question sits in a sectioned exam. */
+export interface QuestionPlace {
+  section: { key: string; title: Bilingual };
+  /** The first served question of its section. */
+  sectionStart: boolean;
+  /** The group's shared passage, or null when it has none. */
+  passage: Bilingual | null;
+  /** Indexes of the first and last served questions of the group. */
+  group: { first: number; last: number };
+}
+
+const hasText = (text: Bilingual | undefined): text is Bilingual => Boolean(text && (text.vi.trim() || text.en.trim()));
+
+/**
+ * Each question's section and group, by index. Questions are served in layout order, so indexes
+ * match; an id the server could not load is simply absent, and a question outside the layout
+ * (or every question of an exam without one) is null.
+ */
+export function questionPlaces(
+  layout: ExamSection[] | null | undefined,
+  questions: ReadonlyArray<{ id: string }>,
+): Array<QuestionPlace | null> {
+  if (!layout?.length) return questions.map(() => null);
+  const where = new Map<string, { s: number; g: number }>();
+  layout.forEach((section, s) => section.groups.forEach((group, g) => {
+    for (const id of group.question_ids) if (!where.has(id)) where.set(id, { s, g });
+  }));
+  const spots = questions.map((question) => where.get(question.id) ?? null);
+  const firstOfSection = new Map<number, number>();
+  const groupRange = new Map<string, { first: number; last: number }>();
+  spots.forEach((spot, index) => {
+    if (!spot) return;
+    if (!firstOfSection.has(spot.s)) firstOfSection.set(spot.s, index);
+    const key = `${spot.s}:${spot.g}`;
+    const range = groupRange.get(key);
+    if (range) range.last = index;
+    else groupRange.set(key, { first: index, last: index });
+  });
+  return spots.map((spot, index) => {
+    if (!spot) return null;
+    const section = layout[spot.s]!;
+    const passage = section.groups[spot.g]!.passage;
+    return {
+      section: { key: section.key, title: section.title },
+      sectionStart: firstOfSection.get(spot.s) === index,
+      passage: hasText(passage) ? passage : null,
+      group: { ...groupRange.get(`${spot.s}:${spot.g}`)! },
+    };
+  });
+}
+
+const OTHER_QUESTIONS: Bilingual = { vi: 'Câu khác', en: 'Other questions' };
+
+/** Consecutive question indexes per section for the answer palette; undefined without a layout. */
+export function sectionsForPalette(
+  layout: ExamSection[] | null | undefined,
+  questions: ReadonlyArray<{ id: string }>,
+): AnswerPaletteSection[] | undefined {
+  if (!layout?.length) return undefined;
+  const runs: AnswerPaletteSection[] = [];
+  questionPlaces(layout, questions).forEach((place, index) => {
+    const key = place?.section.key ?? 'other';
+    const last = runs.at(-1);
+    if (last && last.key === key && last.start + last.count === index) last.count += 1;
+    else runs.push({ key, title: place?.section.title ?? OTHER_QUESTIONS, start: index, count: 1 });
+  });
+  return runs;
+}
+
+export interface SectionScore {
+  key: string;
+  score: number;
+  max_score: number;
+  correct: number;
+  total: number;
+}
+
+/** What POST /api/score/exam answers, read defensively so an older server's result still shows. */
+export interface ExamResult {
+  score: number;
+  max_score: number;
+  correct_count: number;
+  total_questions: number;
+  xp_earned: number;
+  /** ĐGNL results are a reference conversion, not the official IRT-weighted score. */
+  estimated: boolean;
+  sections: SectionScore[];
+}
+
+const finite = (value: unknown): value is number => typeof value === 'number' && Number.isFinite(value);
+
+function toSectionScore(value: unknown): SectionScore | null {
+  const s = value as Partial<SectionScore> | null;
+  if (!s || typeof s.key !== 'string' || ![s.score, s.max_score, s.correct, s.total].every(finite)) return null;
+  return { key: s.key, score: s.score!, max_score: s.max_score!, correct: s.correct!, total: s.total! };
+}
+
+export function normalizeResult(data: unknown): ExamResult | null {
+  const d = data as Record<string, unknown> | null;
+  if (!d || !finite(d.score) || !finite(d.xp_earned)) return null;
+  return {
+    score: d.score,
+    max_score: finite(d.max_score) && d.max_score > 0 ? d.max_score : 10,
+    correct_count: finite(d.correct_count) ? d.correct_count : 0,
+    total_questions: finite(d.total_questions) ? d.total_questions : 0,
+    xp_earned: d.xp_earned,
+    estimated: d.estimated === true,
+    sections: Array.isArray(d.sections) ? d.sections.map(toSectionScore).filter((s): s is SectionScore => s !== null) : [],
+  };
+}
+
+export type ScoreBand = 'high' | 'medium' | 'low';
+
+/** The result message band, by the share of the maximum (8/10 and 5/10 on the old 10-point scale). */
+export function scoreBand(score: number, maxScore: number): ScoreBand {
+  const ratio = maxScore > 0 ? score / maxScore : 0;
+  if (ratio >= 0.8) return 'high';
+  if (ratio >= 0.5) return 'medium';
+  return 'low';
+}
+
+/** Scores up to two decimals, without trailing zeros (7.5, 6.25, 1000). */
+const formatScore = (value: number) => String(Math.round(value * 100) / 100);
+
+/** Teacher-written text (section titles, passages) may be filled in one language only. */
+const pickText = (text: Bilingual, lang: string) => (lang === 'en' ? text.en.trim() || text.vi : text.vi.trim() || text.en);
+
 const TIMER_CLASS: Record<TimerTone, string> = {
   normal: 'border-line bg-surface text-ink',
   warning: 'border-transparent bg-warning-surface text-warning',
@@ -94,6 +222,8 @@ interface ExamRunnerProps {
   questions: ExamQuestionItem[];
   durationMinutes?: number;
   token?: string;
+  /** Sections and passage groups of a THPTQG or ĐGNL exam; null or absent for a generic exam. */
+  layout?: ExamSection[] | null;
 }
 
 export function ExamRunner({
@@ -102,8 +232,11 @@ export function ExamRunner({
   questions,
   durationMinutes = 45,
   token,
+  layout = null,
 }: ExamRunnerProps) {
   const { lang, t } = useLanguage();
+  const places = useMemo(() => questionPlaces(layout, questions), [layout, questions]);
+  const paletteSections = useMemo(() => sectionsForPalette(layout, questions), [layout, questions]);
   const pathname = usePathname();
   const router = useRouter();
   const autoSubmitAttempted = useRef(false);
@@ -116,12 +249,7 @@ export function ExamRunner({
   const [timeLeft, setTimeLeft] = useState(durationMinutes * 60);
   const [submitting, setSubmitting] = useState(false);
   const [submissionError, setSubmissionError] = useState<string | null>(null);
-  const [result, setResult] = useState<{
-    score: number;
-    correct_count: number;
-    total_questions: number;
-    xp_earned: number;
-  } | null>(null);
+  const [result, setResult] = useState<ExamResult | null>(null);
   // The graded attempt (created before the exam for a signed-in student; guests sign in at submit).
   const [attempt, setAttempt] = useState<{ id: string; remaining: number | null; period: 'day' | 'month' | null } | null>(null);
   const [attemptProblem, setAttemptProblem] = useState<{ error: Bilingual; blocked: boolean } | null>(null);
@@ -176,16 +304,14 @@ export function ExamRunner({
       });
 
       if (!res.ok) throw new Error(`Exam scoring failed: ${res.status}`);
-      const data = await res.json();
-      if (!Number.isFinite(data.score) || !Number.isFinite(data.xp_earned)) {
-        throw new Error('Invalid exam score response');
-      }
+      const data = normalizeResult(await res.json());
+      if (!data) throw new Error('Invalid exam score response');
       setResult(data);
       forgetExamAttempt(blueprintId);
     } catch {
       setSubmissionError(t({
         en: 'Your exam could not be submitted. Answers are still here; please try again.',
-        vi: 'Chưa nộp được bài thi. Câu trả lời vẫn được giữ; vui lòng thử lại.',
+        vi: 'Chưa nộp được bài thi. Câu trả lời vẫn được giữ, bạn thử lại nhé.',
       }));
     } finally {
       setSubmitting(false);
@@ -207,73 +333,19 @@ export function ExamRunner({
   }, [timeLeft, result, handleSubmit]);
 
   const currentQ = questions[currentIndex];
+  const place = places[currentIndex] ?? null;
+  const pick = (text: Bilingual) => pickText(text, lang);
   const minutes = Math.floor(Math.max(0, timeLeft) / 60);
   const seconds = Math.max(0, timeLeft) % 60;
   const tone = timerTone(timeLeft);
 
   if (result) {
-    const isHigh = result.score >= 8;
-    const isMedium = result.score >= 5;
-    const wrongCount = Math.max(0, result.total_questions - result.correct_count);
-
-    return (
-      <section className="rounded-xl border border-line bg-surface p-8 text-center sm:p-12">
-        <h2 className="text-2xl font-bold text-ink sm:text-3xl">{t({ en: 'Exam result', vi: 'Kết quả bài thi thử' })}</h2>
-        <p className="mt-1 text-sm text-ink-muted">
-          {blueprintTitle
-            ? lang === 'en'
-              ? blueprintTitle.en
-              : blueprintTitle.vi
-            : t({ en: 'Informatics evaluation', vi: 'Khảo sát chất lượng Tin học' })}
-        </p>
-
-        <div className="my-6 flex flex-col items-center">
-          <span className="text-6xl font-bold tabular-nums text-ink">
-            {result.score}
-            <span className="text-2xl font-semibold text-ink-muted"> / 10</span>
-          </span>
-          <span className="mt-2 text-base font-semibold text-ink-muted">
-            {isHigh
-              ? t({ en: 'Very good! You know this well.', vi: 'Rất tốt! Bạn nắm chắc phần này.' })
-              : isMedium
-                ? t({ en: 'Passed. Look over the questions you missed.', vi: 'Đạt rồi. Xem lại các câu sai nhé.' })
-                : t({ en: 'Needs revision', vi: 'Cần ôn tập thêm các chủ đề' })}
-          </span>
-        </div>
-
-        <dl className="mx-auto grid max-w-md grid-cols-1 gap-3 text-left sm:grid-cols-3">
-          <div className="rounded-lg bg-surface-sunken p-3">
-            <dt className="flex items-center gap-1 text-sm font-semibold text-success">
-              <CircleCheck aria-hidden="true" className="h-4 w-4" />
-              {t({ en: 'Correct', vi: 'Câu đúng' })}
-            </dt>
-            <dd className="text-lg font-bold tabular-nums text-ink">
-              {result.correct_count} / {result.total_questions}
-            </dd>
-          </div>
-          <div className="rounded-lg bg-surface-sunken p-3">
-            <dt className="flex items-center gap-1 text-sm font-semibold text-danger">
-              <CircleX aria-hidden="true" className="h-4 w-4" />
-              {t({ en: 'Wrong or blank', vi: 'Sai hoặc bỏ trống' })}
-            </dt>
-            <dd className="text-lg font-bold tabular-nums text-ink">{wrongCount}</dd>
-          </div>
-          <div className="rounded-lg bg-surface-sunken p-3">
-            <dt className="text-sm font-semibold text-ink-muted">{t({ en: 'XP earned', vi: 'Phần thưởng XP' })}</dt>
-            <dd className="text-lg font-bold tabular-nums text-ink">+{result.xp_earned} XP</dd>
-          </div>
-        </dl>
-
-        <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
-          <Link href="/exam" className={buttonVariants({ variant: 'outline' })}>
-            {t({ en: 'Exam list', vi: 'Danh sách đề thi' })}
-          </Link>
-          <Link href="/progress" className={buttonVariants()}>
-            {t({ en: 'View learning progress', vi: 'Xem tiến trình & huy hiệu' })}
-          </Link>
-        </div>
-      </section>
-    );
+    const title = blueprintTitle
+      ? lang === 'en'
+        ? blueprintTitle.en
+        : blueprintTitle.vi
+      : t({ en: 'Informatics evaluation', vi: 'Khảo sát chất lượng Tin học' });
+    return <ExamResultView result={result} title={title} layout={layout} />;
   }
 
   if (attemptProblem?.blocked) {
@@ -335,6 +407,23 @@ export function ExamRunner({
       {/* Main question card */}
       {currentQ && (
         <section className="flex flex-col gap-6 rounded-xl border border-line bg-surface p-6 sm:p-8">
+          {place && <h2 className="text-base font-bold text-ink">{pick(place.section.title)}</h2>}
+          {place?.passage && (
+            <div className="flex flex-col gap-2 rounded-lg border border-line bg-surface-sunken p-4 sm:p-5">
+              <p className="text-sm font-semibold text-ink-muted">
+                {place.group.first === place.group.last
+                  ? t({
+                      en: `Read the passage, then answer question ${place.group.first + 1}.`,
+                      vi: `Đọc đoạn sau rồi trả lời câu ${place.group.first + 1}.`,
+                    })
+                  : t({
+                      en: `Read the passage, then answer questions ${place.group.first + 1} to ${place.group.last + 1}.`,
+                      vi: `Đọc đoạn sau rồi trả lời câu ${place.group.first + 1} đến ${place.group.last + 1}.`,
+                    })}
+              </p>
+              <p className="whitespace-pre-line text-base leading-relaxed text-ink">{pick(place.passage)}</p>
+            </div>
+          )}
           <fieldset className="flex min-w-0 flex-col gap-6">
             <legend className="flex w-full flex-col gap-6">
               <span className="flex flex-wrap items-center gap-2.5 border-b border-line pb-3">
@@ -477,7 +566,110 @@ export function ExamRunner({
         currentIndex={currentIndex}
         answers={answeredIndexes}
         onSelect={(i) => setCurrentIndex(i)}
+        {...(paletteSections ? { sections: paletteSections } : {})}
       />
     </div>
+  );
+}
+
+/** The scored result: score out of the exam's maximum, the estimate note and a per-section table. */
+export function ExamResultView({
+  result,
+  title,
+  layout = null,
+}: {
+  result: ExamResult;
+  title: string;
+  layout?: ExamSection[] | null;
+}) {
+  const { lang, t } = useLanguage();
+  const band = scoreBand(result.score, result.max_score);
+  const wrongCount = Math.max(0, result.total_questions - result.correct_count);
+  const titles = new Map((layout ?? []).map((section) => [section.key, section.title]));
+
+  return (
+    <section className="rounded-xl border border-line bg-surface p-8 text-center sm:p-12">
+      <h2 className="text-2xl font-bold text-ink sm:text-3xl">{t({ en: 'Exam result', vi: 'Kết quả bài thi thử' })}</h2>
+      <p className="mt-1 text-sm text-ink-muted">{title}</p>
+
+      <div className="my-6 flex flex-col items-center">
+        <span data-testid="exam-score" className="text-6xl font-bold tabular-nums text-ink">
+          {formatScore(result.score)}
+          <span className="text-2xl font-semibold text-ink-muted"> / {formatScore(result.max_score)}</span>
+        </span>
+        <span className="mt-2 text-base font-semibold text-ink-muted">
+          {band === 'high'
+            ? t({ en: 'Very good! You know this well.', vi: 'Rất tốt! Bạn nắm chắc phần này.' })
+            : band === 'medium'
+              ? t({ en: 'Passed. Look over the questions you missed.', vi: 'Đạt rồi. Xem lại các câu sai nhé.' })
+              : t({ en: 'Needs revision', vi: 'Cần ôn tập thêm các chủ đề' })}
+        </span>
+        {result.estimated && (
+          <p className="mt-3 max-w-md text-sm text-ink-muted">
+            {t({
+              en: 'This is an estimated score for reference. SciPal counts every question equally; the official VNU-HCM score weights each question by its difficulty.',
+              vi: 'Đây là điểm quy đổi tham khảo. SciPal tính mỗi câu ngang nhau, còn điểm chính thức của ĐHQG-HCM có trọng số theo độ khó từng câu.',
+            })}
+          </p>
+        )}
+      </div>
+
+      {result.sections.length > 0 && (
+        <table className="mx-auto mb-6 w-full max-w-xl text-left text-sm">
+          <caption className="mb-2 text-base font-bold text-ink">{t({ en: 'Score by part', vi: 'Điểm từng phần' })}</caption>
+          <thead>
+            <tr className="border-b border-line text-ink-muted">
+              <th scope="col" className="py-2 pr-3 font-semibold">{t({ en: 'Part', vi: 'Phần' })}</th>
+              <th scope="col" className="px-3 py-2 text-right font-semibold">{t({ en: 'Score', vi: 'Điểm' })}</th>
+              <th scope="col" className="py-2 pl-3 text-right font-semibold">{t({ en: 'Correct', vi: 'Câu đúng' })}</th>
+            </tr>
+          </thead>
+          <tbody>
+            {result.sections.map((section) => {
+              const sectionTitle = titles.get(section.key);
+              return (
+                <tr key={section.key} className="border-b border-line last:border-b-0">
+                  <th scope="row" className="py-2 pr-3 font-semibold text-ink">{sectionTitle ? pickText(sectionTitle, lang) : section.key}</th>
+                  <td className="px-3 py-2 text-right tabular-nums text-ink">{formatScore(section.score)} / {formatScore(section.max_score)}</td>
+                  <td className="py-2 pl-3 text-right tabular-nums text-ink">{section.correct} / {section.total}</td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      )}
+
+      <dl className="mx-auto grid max-w-md grid-cols-1 gap-3 text-left sm:grid-cols-3">
+        <div className="rounded-lg bg-surface-sunken p-3">
+          <dt className="flex items-center gap-1 text-sm font-semibold text-success">
+            <CircleCheck aria-hidden="true" className="h-4 w-4" />
+            {t({ en: 'Correct', vi: 'Câu đúng' })}
+          </dt>
+          <dd className="text-lg font-bold tabular-nums text-ink">
+            {result.correct_count} / {result.total_questions}
+          </dd>
+        </div>
+        <div className="rounded-lg bg-surface-sunken p-3">
+          <dt className="flex items-center gap-1 text-sm font-semibold text-danger">
+            <CircleX aria-hidden="true" className="h-4 w-4" />
+            {t({ en: 'Wrong or blank', vi: 'Sai hoặc bỏ trống' })}
+          </dt>
+          <dd className="text-lg font-bold tabular-nums text-ink">{wrongCount}</dd>
+        </div>
+        <div className="rounded-lg bg-surface-sunken p-3">
+          <dt className="text-sm font-semibold text-ink-muted">{t({ en: 'XP earned', vi: 'Phần thưởng XP' })}</dt>
+          <dd className="text-lg font-bold tabular-nums text-ink">+{result.xp_earned} XP</dd>
+        </div>
+      </dl>
+
+      <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
+        <Link href="/exam" className={buttonVariants({ variant: 'outline' })}>
+          {t({ en: 'Exam list', vi: 'Danh sách đề thi' })}
+        </Link>
+        <Link href="/progress" className={buttonVariants()}>
+          {t({ en: 'View learning progress', vi: 'Xem tiến trình & huy hiệu' })}
+        </Link>
+      </div>
+    </section>
   );
 }

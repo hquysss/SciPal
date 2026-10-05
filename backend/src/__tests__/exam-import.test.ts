@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import Fastify from 'fastify';
 import { examImportRoutes, groupPendingImports, pickExamQuestions, questionData, type ExamImportPackage } from '../routes/examImport.js';
+import { SUBJECT_ARCHIVED } from '../subjects/archived.js';
 import { mockQuery, mockSupabase } from './helpers/supabaseMock.js';
 
 // Teacher imports hold one file of the monthly quota; these tests are about the import itself.
@@ -113,6 +114,19 @@ describe('POST /api/authoring/exam-import', () => {
     const res = await app.inject({ method: 'POST', url: '/api/authoring/exam-import', payload: noEnglish });
     expect(res.statusCode).toBe(400);
     expect(res.json().error).toContain('tiếng Anh');
+    await app.close();
+  });
+
+  it('refuses a package naming an archived subject with the bilingual 400 and saves nothing', async () => {
+    const subjects = mockQuery({ data: [{ id: 'subject-1', slug: 'informatics', archived_at: '2026-10-05T01:00:00.000Z' }], error: null });
+    const tables = baseTables({ subjects });
+    const app = await buildApp(admin, tables);
+    const res = await app.inject({ method: 'POST', url: '/api/authoring/exam-import', payload: { ...pkg(), publish: true } });
+    expect(res.statusCode).toBe(400);
+    expect(res.json()).toEqual(SUBJECT_ARCHIVED);
+    expect(String(subjects.selectArgs[0]?.[0])).toContain('archived_at');
+    expect((tables.questions as ReturnType<typeof mockQuery>).inserted).toHaveLength(0);
+    expect((tables.exam_blueprints as ReturnType<typeof mockQuery>).inserted).toHaveLength(0);
     await app.close();
   });
 

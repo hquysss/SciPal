@@ -4,6 +4,7 @@ import { BlockSchema } from '../schemas/blocks.js';
 import { blockFailure, imageIssues, schemaIssues, simulationIssues } from '../schemas/blockIssues.js';
 import { validateQuizReferences } from '../authoring/quizReferences.js';
 import { makeSlug, planNewTopic, toSubjectOptions, type ExistingTopic, type SubjectCatalogRow } from '../authoring/topicPlanning.js';
+import { isSubjectArchived, SUBJECT_ARCHIVED } from '../subjects/archived.js';
 
 interface AuthoringUser {
   id?: string;
@@ -99,6 +100,8 @@ export const authoringRoutes: FastifyPluginAsync = async (app) => {
         supabase
           .from('subjects')
           .select('id, slug, name_en, name_vi, sort_order, subject_grade_catalog(grade, active)')
+          // An archived subject takes no new content, so pickers do not offer it.
+          .is('archived_at', null)
           .order('sort_order'),
         supabase
           .from('topics')
@@ -156,7 +159,7 @@ export const authoringRoutes: FastifyPluginAsync = async (app) => {
 
       const { data: subject, error: subjectError } = await supabase
         .from('subjects')
-        .select('id')
+        .select('id, archived_at')
         .eq('id', subjectId)
         .maybeSingle();
       if (subjectError) {
@@ -164,6 +167,7 @@ export const authoringRoutes: FastifyPluginAsync = async (app) => {
         return reply.code(500).send({ error: 'Không xác minh được môn học đã chọn.', error_en: 'Could not check the chosen subject.' });
       }
       if (!subject) return reply.code(400).send({ error: 'Môn học đã chọn không tồn tại.', error_en: 'The chosen subject does not exist.' });
+      if (isSubjectArchived(subject)) return reply.code(400).send(SUBJECT_ARCHIVED);
 
       const { data: catalogRow, error: catalogError } = await supabase
         .from('subject_grade_catalog')
@@ -345,7 +349,7 @@ export const authoringRoutes: FastifyPluginAsync = async (app) => {
 
       const { data: subject, error: subjectError } = await supabase
         .from('subjects')
-        .select('id')
+        .select('id, archived_at')
         .eq('id', topic.subject_id)
         .maybeSingle();
 
@@ -354,6 +358,7 @@ export const authoringRoutes: FastifyPluginAsync = async (app) => {
         return reply.code(500).send({ error: 'Không xác minh được môn học đã chọn.', error_en: 'Could not check the chosen subject.' });
       }
       if (!subject) return reply.code(400).send({ error: 'Môn học đã chọn không tồn tại.', error_en: 'The chosen subject does not exist.' });
+      if (isSubjectArchived(subject)) return reply.code(400).send(SUBJECT_ARCHIVED);
 
       const { data: catalogRow, error: catalogError } = await supabase
         .from('subject_grade_catalog')

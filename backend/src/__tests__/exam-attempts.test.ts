@@ -49,6 +49,21 @@ describe('starting a graded exam attempt', () => {
     await app.close();
   });
 
+  it('answers 404 for an exam whose subject is archived, without holding an attempt', async () => {
+    const insert = ok();
+    const app = await build({
+      exam_blueprints: ok({ id: BP, subjects: { slug: 'informatics', name_en: 'Informatics', name_vi: 'Tin học', archived_at: '2026-10-05T01:00:00.000Z' } }),
+      exam_attempts: [ok(null), insert],
+      'rpc:billing_reserve_quota': hold(2),
+    });
+    const res = await start(app, { attempt_id: A1 });
+    expect(res.statusCode).toBe(404);
+    expect(res.json()).toEqual({ error: 'Không tìm thấy đề thi.', error_en: 'Exam not found.' });
+    expect(rpcCalls).toHaveLength(0);
+    expect(insert.inserted).toHaveLength(0);
+    await app.close();
+  });
+
   it('resumes the same attempt after a reload without holding another', async () => {
     const app = await build({ exam_blueprints: ok({ id: BP }), exam_attempts: ok(started) });
     const res = await start(app, { attempt_id: A1 });
@@ -121,6 +136,22 @@ describe('submitting a graded exam attempt', () => {
     await app.close();
   });
 
+  it('still scores an attempt started before its subject was archived, and settles the hold', async () => {
+    const update = ok([{ id: A1 }]);
+    const app = await build({
+      exam_attempts: [ok(started), update],
+      exam_blueprints: ok({ id: BP, subjects: { slug: 'informatics', name_en: 'Informatics', name_vi: 'Tin học', archived_at: '2026-10-05T01:00:00.000Z' } }),
+      questions: ok([question]),
+      xp_log: ok(),
+      'rpc:billing_settle_quota': ok(true),
+    });
+    const res = await submit(app);
+    expect(res.statusCode).toBe(200);
+    expect(res.json()).toMatchObject({ score: 10, correct_count: 1 });
+    expect(names()).toEqual(['billing_settle_quota:commit']);
+    await app.close();
+  });
+
   it('answers the stored result for a second submit: no new score, no XP, no charge', async () => {
     const xp = ok();
     const app = await build({
@@ -129,7 +160,7 @@ describe('submitting a graded exam attempt', () => {
     });
     const res = await submit(app);
     expect(res.statusCode).toBe(200);
-    expect(res.json()).toEqual({ score: 8, correct_count: 4, total_questions: 5, xp_earned: 60, already_awarded: true, already_submitted: true });
+    expect(res.json()).toEqual({ score: 8, max_score: 10, correct_count: 4, total_questions: 5, xp_earned: 60, estimated: false, sections: [], already_awarded: true, already_submitted: true });
     expect(xp.inserted).toHaveLength(0);
     expect(rpcCalls).toHaveLength(0);
     await app.close();
