@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { buildLayout, layoutQuestionIds, validateLayout, type ExamSection } from '@scipal/types';
 import {
-  addQuestions, addToSection, applyTemplate, examProblem, examTotals, moveQuestion, removeFromLayout, removeQuestion,
-  sectionProblems, setPassage, swapQuestion,
+  addGroup, addQuestions, addToSection, applyTemplate, examBody, examProblem, examTotals, layoutHasGroupWork, moveInGroup, moveQuestion,
+  placeQuestion, removeFromLayout, removeGroup, removeQuestion, sectionProblems, setPassage, swapQuestion, switchFormat, templateKeyOf,
 } from './examDraft';
 import { examPatch } from './examDraft';
 
@@ -182,5 +182,122 @@ describe('examProblem for a sectioned exam', () => {
 
   it('keeps the generic rules when the format is generic', () => {
     expect(examProblem({ ...draft, format: 'generic', layout: null, question_ids: [] }, true)?.vi).toBe('Đề cần ít nhất một câu hỏi.');
+  });
+});
+
+describe('switchFormat', () => {
+  const flat = { format: 'generic' as const, layout: null, question_ids: ['m1', 't1', 's1', 'x'] };
+
+  it('lays a generic exam’s questions out on a template without losing any', () => {
+    const out = switchFormat(flat, [], 'thptqg:social', { m1: 'mc', t1: 'truefalse', s1: 'short' });
+    expect(out.format).toBe('thptqg');
+    expect(out.duration_minutes).toBe(50);
+    expect(idsOf(out.layout!, 'mc')).toEqual(['m1']);
+    expect(idsOf(out.layout!, 'truefalse')).toEqual(['t1']);
+    // No short section in this template, and x has no known kind.
+    expect(out.unassigned).toEqual(['s1', 'x']);
+    expect(out.question_ids).toEqual(['m1', 't1']);
+  });
+
+  it('carries the unassigned questions into the next template', () => {
+    const first = switchFormat(flat, [], 'thptqg:social', { m1: 'mc', t1: 'truefalse', s1: 'short' });
+    const next = switchFormat(first, first.unassigned, 'thptqg:math', { m1: 'mc', t1: 'truefalse', s1: 'short' });
+    expect(idsOf(next.layout!, 'short')).toEqual(['s1']);
+    expect(next.unassigned).toEqual(['x']);
+    expect(next.duration_minutes).toBe(90);
+  });
+
+  it('flattens back to a generic list, unassigned questions included', () => {
+    const laid = switchFormat(flat, [], 'thptqg:social', { m1: 'mc', t1: 'truefalse', s1: 'short' });
+    const back = switchFormat(laid, laid.unassigned, 'generic', {});
+    expect(back).toEqual({ format: 'generic', layout: null, question_ids: ['m1', 't1', 's1', 'x'], unassigned: [] });
+  });
+});
+
+describe('templateKeyOf', () => {
+  it('finds the template a layout was built from', () => {
+    expect(templateKeyOf('generic', null)).toBe('generic');
+    expect(templateKeyOf('thptqg', buildLayout('thptqg:science'))).toBe('thptqg:science');
+    expect(templateKeyOf('thptqg', buildLayout('thptqg:foreign'))).toBe('thptqg:foreign');
+    expect(templateKeyOf('dgnl_hcm', buildLayout('dgnl_hcm'))).toBe('dgnl_hcm');
+    // Social sciences and informatics share a structure; the subject decides.
+    expect(templateKeyOf('thptqg', buildLayout('thptqg:informatics'))).toBe('thptqg:social');
+    expect(templateKeyOf('thptqg', buildLayout('thptqg:informatics'), 'informatics')).toBe('thptqg:informatics');
+    // An edited count still maps to a template of the same format.
+    const edited = buildLayout('thptqg:math');
+    edited[0]!.count = 10;
+    expect(templateKeyOf('thptqg', edited)).toMatch(/^thptqg:/);
+  });
+
+  it('treats a structured format without a layout as generic', () => {
+    expect(templateKeyOf('thptqg', null)).toBe('generic');
+  });
+});
+
+describe('group edits', () => {
+  it('adds a group and never removes the last one', () => {
+    const layout = buildLayout('thptqg:foreign');
+    const two = addGroup(layout, 'mc');
+    expect(section(two, 'mc').groups).toHaveLength(2);
+    expect(removeGroup(layout, 'mc', 0)).toEqual(layout);
+  });
+
+  it('moves a removed group’s questions into the group before it', () => {
+    let layout = addGroup(buildLayout('thptqg:foreign'), 'mc');
+    layout = addToSection(layout, 'mc', 0, ['a']);
+    layout = addToSection(layout, 'mc', 1, ['b', 'c']);
+    layout = setPassage(layout, 'mc', 1, { vi: 'Đoạn', en: 'Passage' });
+    const out = removeGroup(layout, 'mc', 1);
+    expect(section(out, 'mc').groups).toEqual([{ question_ids: ['a', 'b', 'c'] }]);
+    const first = removeGroup(layout, 'mc', 0);
+    expect(section(first, 'mc').groups).toEqual([{ passage: { vi: 'Đoạn', en: 'Passage' }, question_ids: ['a', 'b', 'c'] }]);
+  });
+
+  it('moves a question inside its group', () => {
+    const layout = addToSection(buildLayout('thptqg:foreign'), 'mc', 0, ['a', 'b', 'c']);
+    expect(idsOf(moveInGroup(layout, 'mc', 0, 2, 0), 'mc')).toEqual(['c', 'a', 'b']);
+    expect(moveInGroup(layout, 'mc', 0, 0, 9)).toEqual(layout);
+  });
+
+  it('knows when re-laying out would drop passages or groups', () => {
+    const layout = buildLayout('thptqg:math');
+    expect(layoutHasGroupWork(layout)).toBe(false);
+    expect(layoutHasGroupWork(null)).toBe(false);
+    expect(layoutHasGroupWork(addGroup(layout, 'mc'))).toBe(true);
+    expect(layoutHasGroupWork(setPassage(layout, 'mc', 0, { vi: 'Đoạn', en: '' }))).toBe(true);
+  });
+});
+
+describe('placeQuestion', () => {
+  it('puts a question in the first section of its kind with room', () => {
+    let layout = buildLayout('dgnl_hcm');
+    layout = addToSection(layout, 'vi', 0, ids('m', 30));
+    expect(idsOf(placeQuestion(layout, 'z', 'mc')!, 'en')).toEqual(['z']);
+  });
+
+  it('falls back to a full section of the kind, and refuses a kind no section takes', () => {
+    const layout = addToSection(buildLayout('thptqg:foreign'), 'mc', 0, ids('m', 40));
+    expect(idsOf(placeQuestion(layout, 'z', 'mc')!, 'mc')).toHaveLength(41);
+    expect(placeQuestion(layout, 'z', 'short')).toBeNull();
+  });
+});
+
+describe('examBody', () => {
+  const base = { name: 'Đề', name_en: 'Exam', subject_id: 's', grade: 10, duration_minutes: 50 };
+
+  it('sends a sectioned exam’s layout with the list derived from it', () => {
+    const layout = addToSection(buildLayout('thptqg:social'), 'mc', 0, ['a', 'b']);
+    const body = examBody({ ...base, question_ids: ['stale'], format: 'thptqg', layout }, 'generic');
+    expect(body).toMatchObject({ format: 'thptqg', layout, question_ids: ['a', 'b'] });
+  });
+
+  it('leaves format and layout out of a generic exam that was always generic', () => {
+    const body = examBody({ ...base, question_ids: ['a'], format: 'generic', layout: null }, 'generic');
+    expect(body).toEqual({ ...base, question_ids: ['a'] });
+  });
+
+  it('clears the layout when a sectioned exam becomes generic', () => {
+    const body = examBody({ ...base, question_ids: ['a'], format: 'generic', layout: null }, 'thptqg');
+    expect(body).toEqual({ ...base, question_ids: ['a'], format: 'generic', layout: null });
   });
 });

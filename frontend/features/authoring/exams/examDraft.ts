@@ -1,4 +1,4 @@
-import { buildLayout, layoutQuestionIds } from '@scipal/types';
+import { buildLayout, EXAM_TEMPLATES, layoutQuestionIds } from '@scipal/types';
 import type { ExamFormat, ExamSection, QuestionType, SectionKind, TemplateKey } from '@scipal/types';
 
 type Bilingual = { en: string; vi: string };
@@ -79,6 +79,98 @@ export function setPassage(layout: ExamSection[], sectionKey: string, groupIndex
     const { passage: _old, ...rest } = g;
     return passage ? { ...rest, passage } : rest;
   });
+}
+
+/** Move a question inside one group. */
+export function moveInGroup(layout: ExamSection[], sectionKey: string, groupIndex: number, from: number, to: number): ExamSection[] {
+  const group = layout.find((s) => s.key === sectionKey)?.groups[groupIndex];
+  if (!group || from < 0 || from >= group.question_ids.length || to < 0 || to >= group.question_ids.length) return layout;
+  return mapGroup(layout, sectionKey, groupIndex, (g) => ({ ...g, question_ids: moveQuestion(g.question_ids, from, to) }));
+}
+
+/** Append an empty group (for questions that share a passage) to a section. */
+export function addGroup(layout: ExamSection[], sectionKey: string): ExamSection[] {
+  return layout.map((s) => (s.key === sectionKey ? { ...s, groups: [...s.groups, { question_ids: [] }] } : s));
+}
+
+/**
+ * Remove a group and its passage. Its questions join the group before it (the first group's join
+ * the next one), so none is lost. The last group of a section is never removed.
+ */
+export function removeGroup(layout: ExamSection[], sectionKey: string, groupIndex: number): ExamSection[] {
+  const target = layout.find((s) => s.key === sectionKey);
+  if (!target || target.groups.length <= 1 || groupIndex < 0 || groupIndex >= target.groups.length) return layout;
+  const moved = target.groups[groupIndex]!.question_ids;
+  const into = groupIndex === 0 ? 1 : groupIndex - 1;
+  const groups = target.groups
+    .map((g, i) => (i !== into ? g : { ...g, question_ids: groupIndex === 0 ? [...moved, ...g.question_ids] : [...g.question_ids, ...moved] }))
+    .filter((_, i) => i !== groupIndex);
+  return layout.map((s) => (s === target ? { ...s, groups } : s));
+}
+
+/** True when re-laying out would lose work that applyTemplate does not keep: a passage or extra groups. */
+export function layoutHasGroupWork(layout: ExamSection[] | null | undefined): boolean {
+  return (layout ?? []).some((s) => s.groups.length > 1 || s.groups.some((g) => g.passage !== undefined));
+}
+
+/** Put a question in the first section of its kind that has room, else the first of its kind; null when no section takes it. */
+export function placeQuestion(layout: ExamSection[], id: string, kind: SectionKind): ExamSection[] | null {
+  const ofKind = layout.filter((s) => s.kind === kind);
+  const target = ofKind.find((s) => layoutQuestionIds([s]).length < s.count) ?? ofKind[0];
+  if (!target) return null;
+  return addToSection(layout, target.key, target.groups.length - 1, [id]);
+}
+
+/**
+ * The template an exam's layout matches, or `generic` for an exam without one. Two templates can
+ * share a structure (THPTQG social and informatics); `hint` (the subject slug) breaks the tie.
+ */
+export function templateKeyOf(format: ExamFormat, layout: ExamSection[] | null, hint?: string): TemplateKey | 'generic' {
+  if (format === 'generic' || !layout) return 'generic';
+  const keys = (Object.keys(EXAM_TEMPLATES) as TemplateKey[]).filter((key) => EXAM_TEMPLATES[key].format === format);
+  const shape = (sections: Array<{ key: string; count: number }>, withCount: boolean) => sections.map((s) => (withCount ? `${s.key}:${s.count}` : s.key)).join('|');
+  for (const withCount of [true, false]) {
+    const matches = keys.filter((key) => shape(EXAM_TEMPLATES[key].sections, withCount) === shape(layout, withCount));
+    if (matches.length > 0) return matches.find((key) => hint && key.endsWith(`:${hint}`)) ?? matches[0]!;
+  }
+  return keys[0] ?? 'generic';
+}
+
+type FormatState = { format?: ExamFormat; layout?: ExamSection[] | null; question_ids: string[] };
+
+/**
+ * Change an exam's structure without losing questions. Every question the exam holds (laid out,
+ * in its flat list, or still unassigned) is laid out again on the new template; the ones no
+ * section takes come back in `unassigned`. Going back to `generic` flattens them into one list.
+ */
+export function switchFormat(
+  current: FormatState,
+  unassigned: string[],
+  next: TemplateKey | 'generic',
+  questionKinds: Record<string, SectionKind>,
+):
+  | { format: 'generic'; layout: null; question_ids: string[]; unassigned: string[] }
+  | { format: ExamFormat; layout: ExamSection[]; question_ids: string[]; unassigned: string[]; duration_minutes: number } {
+  const held = current.format && current.format !== 'generic' && current.layout ? layoutQuestionIds(current.layout) : current.question_ids;
+  const ids = [...new Set([...held, ...unassigned])];
+  if (next === 'generic') return { format: 'generic', layout: null, question_ids: ids, unassigned: [] };
+  // applyTemplate only reads the ids of `existing`, so one holding section carries them all.
+  const holding: ExamSection[] = [{ key: 'held', title: { vi: '', en: '' }, kind: 'mc', count: ids.length, max_points: 1, groups: [{ question_ids: ids }] }];
+  const out = applyTemplate(next, holding, questionKinds);
+  const template = EXAM_TEMPLATES[next];
+  return { format: template.format, layout: out.layout, question_ids: layoutQuestionIds(out.layout), unassigned: out.unassigned, duration_minutes: template.duration_minutes };
+}
+
+/**
+ * The body of a save. A sectioned exam sends its layout and the list flattened from it (the server
+ * derives the list from the layout anyway). A generic exam that was always generic sends what it
+ * did before formats existed; one that was sectioned clears its layout.
+ */
+export function examBody<F extends FormatState>(form: F, savedFormat: ExamFormat): Omit<F, 'format' | 'layout'> & { format?: ExamFormat; layout?: ExamSection[] | null } {
+  const { format = 'generic', layout = null, ...rest } = form;
+  if (format !== 'generic' && layout) return { ...rest, format, layout, question_ids: layoutQuestionIds(layout) };
+  if (savedFormat === 'generic') return rest;
+  return { ...rest, format: 'generic', layout: null };
 }
 
 /** Append questions not yet in the exam, keeping the exam's order. */
