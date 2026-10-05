@@ -41,7 +41,7 @@ export function ExamListHeader() {
       </nav>
 
       <header className="max-w-xl">
-        <h1 className="text-3xl font-bold text-ink">{t({ en: 'Practice exams', vi: 'Phòng thi thử & đánh giá năng lực' })}</h1>
+        <h1 className="text-3xl font-bold text-ink">{t({ en: 'Competency Assessment & National High School Graduation Exam Room', vi: 'Phòng thi ĐGNL & THPTQG' })}</h1>
         <p className="mt-2 text-base text-ink-muted">
           {t({
             en: 'Timed exams with a question grid. Scoring happens on the server, so answers are never sent to your browser.',

@@ -96,7 +96,7 @@ export function TutorDemoCard({ level = 'upper_secondary' }: { level?: Education
           <Sparkles size={18} strokeWidth={2.2} />
         </span>
         <h3 id="tutor-demo-title" className={styles.tutorTitle}>
-          {t({ en: 'SciPal Professor', vi: 'Giáo sư SciPal' })}
+          {t({ en: 'Professor Quys', vi: 'Giáo sư Quý' })}
         </h3>
       </header>
 

@@ -13,7 +13,7 @@ describe('AiTutorPanel', () => {
     const html = renderToStaticMarkup(<AiTutorPanel lessonId={L} lessonTitle={{ vi: "Vòng lặp", en: "Loops" }} level="upper_secondary" signedIn onClose={() => {}} />);
     expect(html).toContain('Vòng lặp');
     expect(html).toContain(`href="/tutor?lesson=${L}"`);
-    expect(html).toContain('Mở ở trang Giáo sư SciPal');
+    expect(html).toContain('Mở ở trang Giáo sư Quý');
     expect(html).toContain('Câu hỏi của em</label>');
     expect(countRawColors(html).total).toBe(0);
   });

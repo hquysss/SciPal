@@ -12,7 +12,7 @@ describe('TutorSection', () => {
   it('shows the heading and the chat demo', () => {
     const html = renderToStaticMarkup(<TutorSection />);
     expect(html).toMatch(/<h2[^>]*>Hỏi bất cứ lúc nào<\/h2>/);
-    expect(html).toContain('Giáo sư SciPal');
+    expect(html).toContain('Giáo sư Quý');
     expect(html).toContain('data-playing=');
   });
 

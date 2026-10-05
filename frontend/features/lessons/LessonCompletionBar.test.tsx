@@ -25,7 +25,7 @@ describe('LessonCompletionBar', () => {
 describe('AiTutorButton', () => {
   it('has an English label, a 44px target and tokens only', () => {
     const html = renderToStaticMarkup(<AiTutorButton lessonId="l1" subjectSlug="informatics" />);
-    expect(html).toContain('aria-label="Open SciPal Professor"');
+    expect(html).toContain('aria-label="Open Professor Quys"');
     expect(countRawColors(html).total).toBe(0);
     expect(html).not.toContain('var(--accent');
   });

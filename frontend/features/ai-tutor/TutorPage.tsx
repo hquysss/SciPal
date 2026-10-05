@@ -154,13 +154,13 @@ export function TutorChatFrame({ children }: { children: ReactNode }) {
   const { t } = useLanguage();
   return (
     <section
-      aria-label={t({ en: 'Chat with the SciPal Professor', vi: 'Trò chuyện với Giáo sư SciPal' })}
+      aria-label={t({ en: 'Chat with the Professor Quys', vi: 'Trò chuyện với Giáo sư Quý' })}
       className="flex h-[calc(100dvh-13rem)] min-h-[28rem] flex-col overflow-hidden rounded-3xl border border-line bg-surface shadow-[0_24px_50px_-34px_color-mix(in_srgb,var(--ink)_55%,transparent)] lg:h-[calc(100dvh-11rem)]"
     >
       <div className={styles.bar}>
         <TutorAvatar />
         <div className="flex min-w-0 flex-col">
-          <p className="font-bold leading-tight text-ink">{t({ en: 'SciPal Professor', vi: 'Giáo sư SciPal' })}</p>
+          <p className="font-bold leading-tight text-ink">{t({ en: 'Professor Quys', vi: 'Giáo sư Quý' })}</p>
           <span className={styles.online}>{t({ en: 'Hints step by step, never the whole answer', vi: 'Gợi ý từng bước, không giải hộ' })}</span>
         </div>
       </div>

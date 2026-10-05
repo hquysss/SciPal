@@ -54,7 +54,7 @@ function getDisplayName(user: AuthUser | null): string | null {
 
 /** "Giáo sư SciPal" in the main links, for everyone: a visitor gets a trial question, then signs in. */
 export function tutorLink(lang: 'en' | 'vi') {
-  return { href: '/tutor', label: lang === 'en' ? 'SciPal Professor' : 'Giáo sư SciPal' };
+  return { href: '/tutor', label: lang === 'en' ? 'Professor' : 'Giáo sư' };
 }
 
 /** Pricing sits right after Home, for everyone (admins keep it to check the page). */

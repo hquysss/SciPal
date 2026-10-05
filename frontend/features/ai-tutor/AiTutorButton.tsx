@@ -44,8 +44,8 @@ export function AiTutorButton({ lessonId, lessonTitle, level }: Props) {
         type="button"
         disabled={!online}
         onClick={() => setOpen(true)}
-        title={online ? t({ en: 'SciPal Professor', vi: 'Giáo sư SciPal' }) : t({ en: 'Needs an internet connection', vi: 'Cần kết nối mạng' })}
-        aria-label={t({ en: 'Open SciPal Professor', vi: 'Mở Giáo sư SciPal' })}
+        title={online ? t({ en: 'Professor Quys', vi: 'Giáo sư Quý' }) : t({ en: 'Needs an internet connection', vi: 'Cần kết nối mạng' })}
+        aria-label={t({ en: 'Open Professor Quys', vi: 'Mở Giáo sư Quý' })}
         className="fixed bottom-6 right-6 z-40 flex h-14 w-14 items-center justify-center rounded-full bg-action text-action-ink shadow-[0_12px_28px_-12px_color-mix(in_srgb,var(--ink)_60%,transparent)] transition-colors hover:bg-action-hover focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus disabled:cursor-not-allowed disabled:opacity-40"
       >
         <GraduationCap aria-hidden="true" className="h-6 w-6" />

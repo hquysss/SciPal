@@ -101,7 +101,7 @@ export function VoiceChat({ lessonId, onClose }: { lessonId?: string; onClose: (
         setError(
           reason === 'microphone'
             ? { vi: 'Không dùng được micro. Hãy cho phép trình duyệt dùng micro rồi thử lại.', en: 'The microphone is not available. Allow the browser to use it, then try again.' }
-            : { vi: 'Mất kết nối với Giáo sư SciPal. Em thử lại sau nhé.', en: 'Lost the connection to the Professor. Please try again.' },
+            : { vi: 'Mất kết nối với Giáo sư Quý. Em thử lại sau nhé.', en: 'Lost the connection to the Professor. Please try again.' },
         ),
     }).then((stop) => {
       if (cancelled) stop();
@@ -161,7 +161,7 @@ export function VoiceChat({ lessonId, onClose }: { lessonId?: string; onClose: (
           <TutorAvatar size="2.5rem" />
           <div className="min-w-0">
             <h2 id="voice-title" className="text-base font-bold leading-tight">{t({ vi: 'Nói chuyện với thầy', en: 'Talk with the Professor' })}</h2>
-            <p className="text-xs text-ink-muted">{t({ vi: 'Giáo sư SciPal', en: 'SciPal Professor' })}</p>
+            <p className="text-xs text-ink-muted">{t({ vi: 'Giáo sư Quý', en: 'Professor Quys' })}</p>
           </div>
         </header>
 
