@@ -4,7 +4,7 @@ import Fastify from 'fastify';
 import { simulationRequestRoutes } from '../routes/simulationRequests.js';
 import { mockQuery, mockSupabase, type MockBuilder } from './helpers/supabaseMock.js';
 
-const BASE = 'https://proj.supabase.co';
+const BASE = 'https://pub-test.r2.dev';
 const LESSON_ID = '22222222-2222-4222-8222-222222222222';
 const REQUEST_ID = '33333333-3333-4333-8333-333333333333';
 const teacher = { id: 'teacher-1', app_metadata: { app_role: 'teacher' } };
@@ -15,7 +15,7 @@ const lesson = { id: LESSON_ID, created_by: 'teacher-1', title_vi: 'Khúc xạ',
 const validResult = { type: 'interactive', kind: 'embed', heading: { vi: 'Khúc xạ', en: 'Refraction' }, offline: false, embed_url: 'https://phet.colorado.edu/sims/html/bending-light/latest/bending-light_all.html', config: {} };
 
 beforeEach(() => {
-  vi.stubEnv('SUPABASE_URL', BASE);
+  vi.stubEnv('MEDIA_PUBLIC_URL', BASE);
 });
 afterEach(() => {
   vi.unstubAllEnvs();
@@ -42,7 +42,7 @@ describe('creating a request', () => {
     const res = await post(app, {
       description: '  Kéo góc tới, thấy tia khúc xạ  ',
       reference_url: 'https://phet.colorado.edu/en/simulations/bending-light',
-      sketch_url: `${BASE}/storage/v1/object/public/lesson-media/teacher-1/s.png`,
+      sketch_url: `${BASE}/teacher-1/s.png`,
     });
     expect(res.statusCode).toBe(201);
     expect(insert.inserted[0]).toMatchObject({ lesson_id: LESSON_ID, requested_by: 'teacher-1', description: 'Kéo góc tới, thấy tia khúc xạ', status: 'open' });
@@ -63,7 +63,7 @@ describe('creating a request', () => {
       { description: 'x'.repeat(1001) },
       { description: 'x', reference_url: 'http://phet.colorado.edu/x' },
       { description: 'x', reference_url: 'javascript:alert(1)' },
-      { description: 'x', sketch_url: `${BASE}/storage/v1/object/public/avatars/1.png` },
+      { description: 'x', sketch_url: "https://evil.example.com/1.png" },
       { description: 'x', sketch_url: 'https://evil.example/lesson-media/1.png' },
     ]) {
       const app = await build(teacher, { lessons: mockQuery({ data: lesson, error: null }), simulation_requests: mockQuery({ data: null, error: null }) });

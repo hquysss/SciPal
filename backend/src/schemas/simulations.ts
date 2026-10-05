@@ -215,22 +215,25 @@ export function embedUrl(value: string): URL | null {
   return url;
 }
 
-export const LESSON_MEDIA_PATH = '/storage/v1/object/public/lesson-media/';
-
 /**
- * Whether `value` is an image in this project's lesson-media bucket. The URL is parsed, so `..`
- * (plain or encoded) cannot climb into another bucket. Without `mediaBase` only the path is checked.
+ * Whether `value` is an image in the lesson-media bucket, whose public base URL is `mediaBase`.
+ * The URL is parsed, so `..` (plain or encoded) cannot climb out of the base path. With no
+ * `mediaBase` nothing can be checked, so nothing passes.
  */
 export function isLessonMediaUrl(value: string, mediaBase?: string): boolean {
+  if (!mediaBase) return false;
   let url: URL;
+  let base: URL;
   try {
     url = new URL(value);
+    base = new URL(mediaBase);
   } catch {
     return false;
   }
   if (url.protocol !== 'https:' || url.username || url.password || url.search || url.hash) return false;
-  if (mediaBase && url.origin !== new URL(mediaBase).origin) return false;
-  return url.pathname.startsWith(LESSON_MEDIA_PATH) && url.pathname.length > LESSON_MEDIA_PATH.length;
+  if (url.origin !== base.origin) return false;
+  const prefix = `${base.pathname.replace(/\/+$/, '')}/`;
+  return url.pathname.startsWith(prefix) && url.pathname.length > prefix.length;
 }
 
 type Message = { en: string; vi: string };

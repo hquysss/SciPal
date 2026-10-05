@@ -71,17 +71,17 @@ export const BlockSchema = z.discriminatedUnion('type', [
 
 export type Block = z.infer<typeof BlockSchema>;
 
-/** Public URL prefix of the lesson-media bucket, or null when Supabase is not configured. */
+/** Public URL prefix of the lesson-media bucket, or null when R2 is not configured. */
 export function lessonMediaPrefix(): string | null {
-  const base = process.env.SUPABASE_URL?.replace(/\/+$/, '');
-  return base ? `${base}/storage/v1/object/public/lesson-media/` : null;
+  const base = process.env.MEDIA_PUBLIC_URL?.replace(/\/+$/, '');
+  return base ? `${base}/` : null;
 }
 
 export type BlockProblem = { at: number; field: string; message: { vi: string; en: string } };
 
 /** Every image block that cannot be saved, with the field at fault. */
 export function imageProblemsList(blocks: ReadonlyArray<{ type: string }>, opts: { requireAlt: boolean }): BlockProblem[] {
-  const base = process.env.SUPABASE_URL;
+  const base = process.env.MEDIA_PUBLIC_URL;
   const out: BlockProblem[] = [];
   for (const [i, block] of blocks.entries()) {
     if (block.type !== 'image') continue;
@@ -95,7 +95,7 @@ export function imageProblemsList(blocks: ReadonlyArray<{ type: string }>, opts:
 
 /** Every simulation block that cannot be saved. */
 export function simulationProblemsList(blocks: ReadonlyArray<{ type: string }>): BlockProblem[] {
-  const mediaBase = process.env.SUPABASE_URL;
+  const mediaBase = process.env.MEDIA_PUBLIC_URL;
   const out: BlockProblem[] = [];
   for (const [i, block] of blocks.entries()) {
     if (block.type !== 'interactive') continue;

@@ -39,7 +39,7 @@ describe('backend mirror of the simulation contract', () => {
   });
 
   it('names the block and explains in both languages', () => {
-    vi.stubEnv('SUPABASE_URL', fixtures.mediaBase);
+    vi.stubEnv('MEDIA_PUBLIC_URL', fixtures.mediaBase);
     const theory = { type: 'theory' as const, content: { vi: 'a', en: 'a' } };
     const bad = fixtures.blocks.find((row) => row.name === 'motion with an absurd speed')!.block;
     const problem = simulationProblem([theory, BlockSchema.parse(bad)]);

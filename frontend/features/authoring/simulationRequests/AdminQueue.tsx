@@ -26,7 +26,7 @@ type Bilingual = { en: string; vi: string };
 /** Why a result block cannot be sent to the teacher, or null: the Studio's own rules. */
 export function completionProblem(block: InteractiveBlock): Bilingual | null {
   if (!block.heading.vi.trim()) return { en: 'Give the simulation a Vietnamese heading.', vi: 'Hãy đặt tiêu đề tiếng Việt cho mô phỏng.' };
-  const check = validateSimulationBlock(block, { mediaBase: process.env.NEXT_PUBLIC_SUPABASE_URL });
+  const check = validateSimulationBlock(block, { mediaBase: process.env.NEXT_PUBLIC_MEDIA_PUBLIC_URL });
   return check.ok ? null : check.message;
 }
 

@@ -78,7 +78,7 @@ function issuesOf(block: Block, questionById?: Readonly<Record<string, QuestionF
       return block.alt.en.trim() ? [] : [missingEn('alt.en')];
     case 'interactive': {
       if (!block.heading.vi.trim()) return [{ blocking: true, field: 'heading.vi', message: { en: 'The simulation needs a Vietnamese heading.', vi: 'Mô phỏng cần tiêu đề tiếng Việt.' } }];
-      const check = validateSimulationBlock(block, { mediaBase: process.env.NEXT_PUBLIC_SUPABASE_URL });
+      const check = validateSimulationBlock(block, { mediaBase: process.env.NEXT_PUBLIC_MEDIA_PUBLIC_URL });
       if (!check.ok) return [{ blocking: true, field: 'config', message: check.message }];
       return block.heading.en.trim() ? [] : [missingEn('heading.en')];
     }
