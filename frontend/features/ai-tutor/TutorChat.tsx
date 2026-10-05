@@ -101,7 +101,7 @@ export function TutorChatView({
               {compact ? (
                 <TutorAvatar size="3.25rem" />
               ) : (
-                <Mascot directions="/mascots/owl-directions-324.webp" reactions="/mascots/owl-reactions-324.webp" size={112} label={t({ en: 'SciPal owl', vi: 'Cú SciPal' })} />
+                <Mascot directions="/mascots/kamran-directions.webp" reactions="/mascots/kamran-reactions.webp" size={112} ariaLabel={t({ en: 'Say hello to Professor Quys', vi: 'Chào Giáo sư Quý' })} />
               )}
               <p className={styles.greeting}>
                 {t({ en: 'Where are you ', vi: 'Em đang ' })}

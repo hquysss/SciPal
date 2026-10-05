@@ -1,7 +1,7 @@
-/* The tutor studio: the owl is the tutor's face, warm light sits behind the greeting, the
+/* The tutor studio: the mascot is the tutor's face, warm light sits behind the greeting, the
    composer floats. Colour comes from the level tokens only (sun, coral, sky, action). */
 
-/* ---------- the owl, as a still avatar (the centre cell of the direction sheet) ---------- */
+/* ---------- the mascot, as a still avatar (the centre cell of the direction sheet) ---------- */
 
 .avatar {
   position: relative;
@@ -20,7 +20,7 @@
   content: '';
   position: absolute;
   inset: 6%;
-  background: url('/mascots/owl-directions-324.webp') 50% 50% / 300% 300% no-repeat;
+  background: url('/mascots/kamran-directions.webp') 50% 50% / 300% 300% no-repeat;
 }
 
 /* ---------- chat header ---------- */
@@ -51,7 +51,7 @@
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--action) 22%, transparent);
 }
 
-/* ---------- empty chat: the owl greets ---------- */
+/* ---------- empty chat: the mascot greets ---------- */
 
 .hello {
   position: relative;
