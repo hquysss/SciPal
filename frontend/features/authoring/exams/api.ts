@@ -1,4 +1,4 @@
-import type { QuestionType } from '@scipal/types';
+import type { ExamFormat, ExamSection, QuestionType } from '@scipal/types';
 import { authoringCall } from '../apiClient';
 
 export type ExamStatus = 'draft' | 'pending_review' | 'published';
@@ -22,6 +22,9 @@ export interface ExamSummary {
 
 export interface ExamDetail extends ExamSummary {
   question_ids: string[];
+  /** `generic` exams keep a flat list; others carry their sections in `layout`. */
+  format: ExamFormat;
+  layout: ExamSection[] | null;
   review_note: string | null;
   editable: boolean;
 }
@@ -33,6 +36,9 @@ export interface ExamInput {
   grade: number;
   duration_minutes: number;
   question_ids: string[];
+  /** Omitted means `generic` with no layout. For a layout exam the server derives `question_ids` from it. */
+  format?: ExamFormat;
+  layout?: ExamSection[] | null;
 }
 
 export interface DrawRequest {
