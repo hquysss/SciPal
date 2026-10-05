@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { createServerClient } from '@scipal/supabase';
+import { fetchSubjectSlugs } from './lib/subjectSlugs';
 import { ALL_ON, featureOfPath, featureVisible, fetchSiteSettings, type SiteSettings } from './lib/siteSettings';
 import { TRIAL_COOKIE, TRIAL_UI_COOKIE, readTrials, routeAccess, signTrials, trialRenewable, type TrialFeature, type Trials } from './lib/guestTrial';
 
@@ -108,6 +109,17 @@ async function siteSettings(): Promise<SiteSettings> {
   return value;
 }
 
+// The subject slugs, read at most every minute per server instance.
+let subjectCache: { at: number; value: Set<string> } | null = null;
+async function subjectExists(slug: string): Promise<boolean> {
+  if (!subjectCache || Date.now() - subjectCache.at > 60_000) {
+    const value = await fetchSubjectSlugs();
+    if (!value) return true; // cannot tell: treat the address as real, as before
+    subjectCache = { at: Date.now(), value };
+  }
+  return subjectCache.value.has(slug);
+}
+
 /** A page of a feature an admin switched off: the notice page, at the same address. */
 function featureOffPage(request: NextRequest, feature: string) {
   const url = request.nextUrl.clone();
@@ -137,6 +149,9 @@ export async function middleware(request: NextRequest) {
   if (!featureVisible(site, feature, user?.app_metadata?.app_role)) {
     response = featureOffPage(request, feature!);
   } else if (access.kind === 'public') {
+    response = NextResponse.next();
+  } else if (!user && access.kind === 'trial' && access.feature === 'learn' && pathname !== '/subjects' && !(await subjectExists(pathname.split('/')[1]))) {
+    // Not a subject: the 404 page, which must not open a trial window.
     response = NextResponse.next();
   } else if (!user) {
     // With guest trials switched off, visitors sign in first.

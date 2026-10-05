@@ -127,6 +127,18 @@ describe('guest trials', () => {
     expect(trialCookie(response)).toBeUndefined();
   });
 
+  it('does not open a trial window for an address that is not a subject', async () => {
+    vi.stubEnv('NEXT_PUBLIC_SUPABASE_URL', 'https://db.example.test');
+    vi.stubEnv('NEXT_PUBLIC_SUPABASE_ANON_KEY', 'anon');
+    fetchMock.mockImplementation((url: string) => (String(url).includes('/rest/v1/subjects') ? answer(200, [{ slug: 'informatics' }]) : answer(200, { allowed: true, expiresAt: new Date(Date.now() + 60_000).toISOString() })));
+    const lost = await visit('/khong-co-trang');
+    expect(lost.status).toBe(200);
+    expect(trialCookie(lost)).toBeUndefined();
+    expect(fetchMock.mock.calls.some(([url]) => String(url).includes('/api/guest/trial'))).toBe(false);
+    expect(trialCookie(await visit('/informatics/vong-lap'))).toBeDefined();
+    vi.unstubAllEnvs();
+  });
+
   it('asks to sign in when trials are not configured', async () => {
     delete process.env.GUEST_TRIAL_SECRET;
     const response = await visit('/glossary');
