@@ -5,7 +5,8 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import { checkExamQuestions } from '../authoring/examQuestions.js';
 import { countBlueprintQuestions } from '../exam/blueprintSummary.js';
 import { MAX_EXAM_ANSWERS } from './exam.js';
-import { examSections, validateExamInput } from '../schemas/exams.js';
+import { examSections, formatLayoutMismatch, layoutReviewProblem, resolveExamQuestionIds, validateExamInput } from '../schemas/exams.js';
+import type { ExamFormat, ExamSection } from '../schemas/examFormat.js';
 import { capacityRefusal } from '../billing/capacity.js';
 
 // The exam builder (authoring Part 4). Exams are exam_blueprints rows with an ordered question
@@ -25,6 +26,8 @@ interface ExamRow {
   status: string;
   question_ids: string[] | null;
   sections: unknown;
+  format?: ExamFormat | null;
+  layout?: ExamSection[] | null;
   review_note: string | null;
   updated_at: string;
   created_by: string | null;
@@ -33,7 +36,7 @@ interface ExamRow {
 }
 
 const COLUMNS =
-  'id, name, name_en, subject_id, grade, duration_minutes, status, question_ids, sections, review_note, updated_at, created_by, import_id, subjects(name_vi)';
+  'id, name, name_en, subject_id, grade, duration_minutes, status, question_ids, sections, format, layout, review_note, updated_at, created_by, import_id, subjects(name_vi)';
 const STATUSES = ['draft', 'pending_review', 'published'];
 const ID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -42,6 +45,16 @@ const unavailable = msg('Dịch vụ đề thi chưa sẵn sàng.', 'The exam se
 const notFound = msg('Không tìm thấy đề thi.', 'Exam not found.');
 const duplicateName = msg('Đã có đề thi tên này.', 'An exam with this name already exists.');
 const needEnglish = msg('Cần tên đề tiếng Anh trước khi gửi duyệt hoặc xuất bản.', 'The exam needs an English name before review or publishing.');
+
+/** Why a structured exam may not be submitted or published, in the {error, error_en} shape routes reply with. */
+function layoutRefusal(format: ExamFormat | null | undefined, layout: ExamSection[] | null | undefined, rows: Array<{ id: string; type: string }>) {
+  const mismatch = formatLayoutMismatch(format ?? 'generic', layout ?? null);
+  const problem = mismatch ?? (layout ? layoutReviewProblem(layout, rows) : null);
+  return problem ? { status: 400 as const, body: msg(problem.vi, problem.en) } : null;
+}
+/** Before the questions are read: a section with none stops review without a database call. */
+const emptySection = (layout: ExamSection[] | null | undefined) =>
+  layout ? layoutReviewProblem(layout, []) : null;
 
 const getUser = (request: FastifyRequest) => (request as FastifyRequest & { user?: ExamUser }).user;
 export const isAdmin = (user: ExamUser) => user.app_metadata?.app_role === 'admin';
@@ -68,6 +81,8 @@ export function present(row: ExamRow, user: ExamUser) {
     imported: row.import_id !== null,
     mine: row.created_by === user.id,
     question_ids: ids,
+    format: row.format ?? 'generic',
+    layout: row.layout ?? null,
     review_note: row.review_note,
     editable: mayEdit(user, row),
   };
@@ -178,8 +193,18 @@ export const examRoutesAuthoring: FastifyPluginAsync = async (app) => {
       // An admin may publish on creation ("Xuất bản ngay"); a teacher's exam starts as a draft.
       const publishNow = isAdmin(user) && publish === true;
       if (publishNow && !input.name_en) return reply.code(400).send(needEnglish);
-      const questions = await checkExamQuestions(supabase, input.question_ids, { subject_id: input.subject_id, created_by: user.id }, publishNow ? 'review' : 'draft');
+      // A layout decides the question list; a list sent beside it is ignored.
+      const questionIds = resolveExamQuestionIds(input) ?? [];
+      if (publishNow) {
+        const empty = emptySection(input.layout);
+        if (empty) return reply.code(400).send(msg(empty.vi, empty.en));
+      }
+      const questions = await checkExamQuestions(supabase, questionIds, { subject_id: input.subject_id, created_by: user.id }, publishNow ? 'review' : 'draft');
       if (!questions.ok) return reply.code(questions.status).send(questions.body);
+      if (publishNow) {
+        const refused = layoutRefusal(input.format, input.layout, questions.rows);
+        if (refused) return reply.code(refused.status).send(refused.body);
+      }
 
       const { data, error } = await supabase
         .from('exam_blueprints')
@@ -189,7 +214,9 @@ export const examRoutesAuthoring: FastifyPluginAsync = async (app) => {
           subject_id: input.subject_id,
           grade: input.grade,
           duration_minutes: input.duration_minutes,
-          question_ids: input.question_ids,
+          question_ids: questionIds,
+          format: input.format,
+          layout: input.layout,
           sections: examSections(questions.rows),
           status: publishNow ? 'published' : 'draft',
           created_by: user.id,
@@ -222,20 +249,38 @@ export const examRoutesAuthoring: FastifyPluginAsync = async (app) => {
 
       const update: Record<string, unknown> = { ...patch };
       delete update.subject_id;
+      // Format and layout must agree once the patch is applied. A layout decides the question
+      // list, whether it arrives now or is already stored; a list sent beside it is ignored.
+      const format = patch.format ?? row.format ?? 'generic';
+      const layout = patch.layout !== undefined ? patch.layout : (row.layout ?? null);
+      const mismatch = formatLayoutMismatch(format, layout);
+      if (mismatch) return reply.code(400).send(msg(mismatch.vi, mismatch.en));
+      const layoutTouched = patch.layout !== undefined || patch.question_ids !== undefined;
+      const newIds = layoutTouched ? resolveExamQuestionIds({ question_ids: patch.question_ids, layout }) : undefined;
+      if (newIds !== undefined) update.question_ids = newIds;
+      else delete update.question_ids;
       if (patch.name_en !== undefined) update.name_en = patch.name_en || null;
       // A published exam stays complete: English name, and every question published and complete.
       const live = row.status === 'published';
       if (live && !(patch.name_en ?? row.name_en)) return reply.code(400).send(needEnglish);
       // An older exam without a list draws from the subject pool: editing its details leaves that alone.
-      const poolExam = patch.question_ids === undefined && (row.question_ids ?? []).length === 0;
-      if (patch.question_ids !== undefined || (live && !poolExam)) {
-        const ids = patch.question_ids ?? row.question_ids ?? [];
+      const poolExam = newIds === undefined && (row.question_ids ?? []).length === 0;
+      if (newIds !== undefined || (live && !poolExam)) {
+        const ids = newIds ?? row.question_ids ?? [];
+        if (live) {
+          const empty = emptySection(layout);
+          if (empty) return reply.code(400).send(msg(empty.vi, empty.en));
+        }
         const questions = await checkExamQuestions(supabase, ids, { subject_id: row.subject_id, created_by: row.created_by }, live ? 'review' : 'draft');
         if (!questions.ok) return reply.code(questions.status).send(questions.body);
         if (live && questions.rows.some((q) => q.status !== 'published')) {
           return reply.code(400).send(msg('Đề đã xuất bản chỉ dùng câu hỏi đã duyệt.', 'A published exam may only use published questions.'));
         }
-        if (patch.question_ids !== undefined) update.sections = examSections(questions.rows);
+        if (live) {
+          const refused = layoutRefusal(format, layout, questions.rows);
+          if (refused) return reply.code(refused.status).send(refused.body);
+        }
+        if (newIds !== undefined) update.sections = examSections(questions.rows);
       }
 
       const { data, error } = await supabase
@@ -338,8 +383,12 @@ export const examRoutesAuthoring: FastifyPluginAsync = async (app) => {
     if (!from.includes(row.status)) return reply.code(409).send(msg('Trạng thái đề không cho phép thao tác này.', 'The exam’s status does not allow this.'));
     if (review) {
       if (!row.name_en) return reply.code(400).send(needEnglish);
+      const empty = emptySection(row.layout);
+      if (empty) return reply.code(400).send(msg(empty.vi, empty.en));
       const questions = await checkExamQuestions(supabase, row.question_ids ?? [], { subject_id: row.subject_id, created_by: row.created_by }, 'review');
       if (!questions.ok) return reply.code(questions.status).send(questions.body);
+      const refused = layoutRefusal(row.format, row.layout, questions.rows);
+      if (refused) return reply.code(refused.status).send(refused.body);
     }
     const { data, error } = await supabase
       .from('exam_blueprints')
