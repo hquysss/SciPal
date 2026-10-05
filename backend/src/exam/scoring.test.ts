@@ -80,6 +80,13 @@ describe('scoreExam: generic', () => {
     expect(dgnl.estimated).toBe(false);
     expect(dgnl.max_score).toBe(10);
   });
+
+  it('scores as generic when the layout is empty or not an array', () => {
+    const answers = answersFor(questions.slice(0, 3));
+    const expected = { score: 7.5, max_score: 10, correct_count: 3, total_questions: 4, estimated: false, sections: [] };
+    expect(scoreExam({ format: 'thptqg', layout: [], questions, answers, isCorrect })).toEqual(expected);
+    expect(scoreExam({ format: 'dgnl_hcm', layout: {} as never, questions, answers, isCorrect })).toEqual(expected);
+  });
 });
 
 describe('scoreExam: thptqg', () => {

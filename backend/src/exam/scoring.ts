@@ -69,7 +69,7 @@ export function scoreExam(input: {
   const { format, layout, questions, answers, isCorrect } = input;
   const byId = new Map(questions.map((q) => [q.id, q]));
 
-  if (format === 'generic' || !layout) {
+  if (format === 'generic' || !Array.isArray(layout) || layout.length === 0) {
     let correct = 0;
     for (const q of questions) {
       const a = answers.get(q.id);

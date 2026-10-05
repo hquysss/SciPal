@@ -98,10 +98,10 @@ export const EXAM_TEMPLATES: Record<TemplateKey, ExamTemplate> = {
     label: { vi: 'Đánh giá năng lực ĐHQG-HCM', en: 'VNU-HCM Competency Assessment' },
     duration_minutes: 150,
     sections: [
-      dgnlSection('vi', { vi: 'Sử dụng ngôn ngữ: Tiếng Việt', en: 'Language use: Vietnamese' }),
-      dgnlSection('en', { vi: 'Sử dụng ngôn ngữ: Tiếng Anh', en: 'Language use: English' }),
-      dgnlSection('math', { vi: 'Toán học, tư duy logic, phân tích số liệu', en: 'Mathematics, logic and data analysis' }),
-      dgnlSection('science', { vi: 'Giải quyết vấn đề', en: 'Problem solving' }),
+      dgnlSection('vi', { vi: 'Tiếng Việt', en: 'Vietnamese' }),
+      dgnlSection('en', { vi: 'Tiếng Anh', en: 'English' }),
+      dgnlSection('math', { vi: 'Toán học', en: 'Mathematics' }),
+      dgnlSection('science', { vi: 'Tư duy khoa học', en: 'Scientific thinking' }),
     ],
   },
 };
@@ -127,7 +127,7 @@ const Bilingual = (max: number) => z.object({ vi: z.string().max(max), en: z.str
 const GroupSchema = z
   .object({
     passage: Bilingual(MAX_PASSAGE_TEXT).optional(),
-    question_ids: z.array(z.string().regex(UUID)).max(MAX_QUESTIONS_PER_GROUP),
+    question_ids: z.array(z.string().regex(UUID).transform((id) => id.toLowerCase())).max(MAX_QUESTIONS_PER_GROUP),
   })
   .strict();
 
@@ -170,6 +170,9 @@ export function validateLayout(
     return { ok: false, message: { vi: `Kiểm tra lại ${name.vi}.`, en: `Check the ${name.en}.` } };
   }
   const layout = parsed.data as ExamSection[];
+  if (new Set(layout.map((s) => s.key)).size !== layout.length) {
+    return { ok: false, message: { vi: 'Hai phần của đề trùng mã.', en: 'Two sections of the exam share a key.' } };
+  }
   const ids = layoutQuestionIds(layout);
   if (new Set(ids).size !== ids.length) {
     return { ok: false, message: { vi: 'Một câu hỏi bị lặp trong đề.', en: 'A question is used more than once in the exam.' } };

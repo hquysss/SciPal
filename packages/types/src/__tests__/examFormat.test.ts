@@ -45,6 +45,12 @@ describe('EXAM_TEMPLATES', () => {
     expect(t.format).toBe('dgnl_hcm');
     expect(t.duration_minutes).toBe(150);
     expect(t.sections.map((s) => s.key)).toEqual(['vi', 'en', 'math', 'science']);
+    expect(t.sections.map((s) => [s.title.vi, s.title.en])).toEqual([
+      ['Tiếng Việt', 'Vietnamese'],
+      ['Tiếng Anh', 'English'],
+      ['Toán học', 'Mathematics'],
+      ['Tư duy khoa học', 'Scientific thinking'],
+    ]);
     expect(t.sections.every((s) => s.kind === 'mc' && s.count === 30 && s.max_points === 300)).toBe(true);
     expect(sum(t.sections.map((s) => s.max_points))).toBe(1200);
   });
@@ -125,6 +131,28 @@ describe('validateLayout', () => {
   it('rejects max_points of zero or less', () => {
     expect(validateLayout([section({ max_points: 0 })]).ok).toBe(false);
     expect(validateLayout([section({ max_points: -1 })]).ok).toBe(false);
+  });
+
+  it('lower-cases ids and treats a case-differing repeat as a duplicate', () => {
+    const upper = id(10).replace(/-8/, '-A').toUpperCase();
+    const ok = validateLayout([section({ groups: [{ question_ids: [upper] }] })]);
+    expect(ok.ok).toBe(true);
+    if (ok.ok) expect(ok.value[0]!.groups[0]!.question_ids).toEqual([upper.toLowerCase()]);
+    const dup = validateLayout([section({ groups: [{ question_ids: [upper, upper.toLowerCase()] }] })]);
+    expect(dup.ok).toBe(false);
+    if (!dup.ok) expect(dup.message.vi).toContain('lặp');
+  });
+
+  it('rejects two sections with the same key', () => {
+    const result = validateLayout([
+      section({ groups: [{ question_ids: [id(1)] }] }),
+      section({ groups: [{ question_ids: [id(2)] }] }),
+    ]);
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.message.vi).not.toBe('');
+      expect(result.message.en).not.toBe('');
+    }
   });
 
   it('rejects unknown keys and a bad kind', () => {

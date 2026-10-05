@@ -91,6 +91,7 @@ describe('questionPlaces', () => {
   it('places nothing for an exam without a layout', () => {
     expect(questionPlaces(null, served)).toEqual([null, null, null, null]);
     expect(questionPlaces(undefined, served)).toEqual([null, null, null, null]);
+    expect(questionPlaces([], served)).toEqual([null, null, null, null]);
   });
 
   it('gives each question its section, and its group passage with the questions that share it', () => {
