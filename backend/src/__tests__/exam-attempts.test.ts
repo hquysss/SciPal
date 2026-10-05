@@ -136,6 +136,22 @@ describe('submitting a graded exam attempt', () => {
     await app.close();
   });
 
+  it('still scores an attempt started before its subject was archived, and settles the hold', async () => {
+    const update = ok([{ id: A1 }]);
+    const app = await build({
+      exam_attempts: [ok(started), update],
+      exam_blueprints: ok({ id: BP, subjects: { slug: 'informatics', name_en: 'Informatics', name_vi: 'Tin học', archived_at: '2026-10-05T01:00:00.000Z' } }),
+      questions: ok([question]),
+      xp_log: ok(),
+      'rpc:billing_settle_quota': ok(true),
+    });
+    const res = await submit(app);
+    expect(res.statusCode).toBe(200);
+    expect(res.json()).toMatchObject({ score: 10, correct_count: 1 });
+    expect(names()).toEqual(['billing_settle_quota:commit']);
+    await app.close();
+  });
+
   it('answers the stored result for a second submit: no new score, no XP, no charge', async () => {
     const xp = ok();
     const app = await build({

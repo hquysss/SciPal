@@ -54,7 +54,8 @@ async function readBlueprints(run: (columns: string) => BlueprintRead) {
 /** Learners see a published exam of a subject that is not archived. */
 const isLearnerBlueprint = (row: BlueprintRow) => isPublishedBlueprint(row) && !isBlueprintSubjectArchived(row);
 
-async function loadBlueprint(supabase: SupabaseClient, blueprintId: string): Promise<Loaded<LoadedBlueprint>> {
+/** `finishing`: an attempt started before the subject was archived may still be scored (and its quota hold settled). */
+async function loadBlueprint(supabase: SupabaseClient, blueprintId: string, { finishing = false } = {}): Promise<Loaded<LoadedBlueprint>> {
   // exam_blueprints.id is a uuid: anything else can only be "not found", not a database error.
   if (!UUID_PATTERN.test(blueprintId)) return { kind: 'not_found' };
   const { data, error } = await readBlueprints((columns) => supabase
@@ -65,7 +66,7 @@ async function loadBlueprint(supabase: SupabaseClient, blueprintId: string): Pro
   if (error) return { kind: 'error', err: error };
   if (!data) return { kind: 'not_found' };
   const row = data as BlueprintRow;
-  if (!isLearnerBlueprint(row)) return { kind: 'not_found' };
+  if (!(finishing ? isPublishedBlueprint(row) : isLearnerBlueprint(row))) return { kind: 'not_found' };
   return { kind: 'ok', value: { summary: toBlueprintSummary(row), questionIds: blueprintQuestionIds(row) } };
 }
 
@@ -364,7 +365,7 @@ export const examRoutes: FastifyPluginAsync = async (app) => {
     // Submitting the same attempt again answers the stored result: no new score, XP or charge.
     if (attempt.status === 'submitted') return reply.send(await storedResult(supabase, app.log, attempt));
 
-    const bp = await loadBlueprint(app.supabase, blueprintId);
+    const bp = await loadBlueprint(app.supabase, blueprintId, { finishing: true });
     if (bp.kind === 'error') {
       request.log.error({ err: bp.err, blueprintId }, 'Failed to load exam blueprint for scoring');
       return reply.status(500).send({ error: 'Không chấm được bài thi.' });
