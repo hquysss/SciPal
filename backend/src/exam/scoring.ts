@@ -36,6 +36,9 @@ export function trueFalseCredit(correctStatements: number, statements: number): 
   return statements > 0 ? correctStatements / statements : 0;
 }
 
+/** A format whose score is an estimate, not an official mark. */
+export const isEstimatedFormat = (format: ExamFormat) => format === 'dgnl_hcm';
+
 const round2 = (n: number) => Number(n.toFixed(2));
 
 /** Credit (0..1) one answer earns on one question. A missing answer earns nothing. */
@@ -112,7 +115,7 @@ export function scoreExam(input: {
     max_score: round2(maxScore),
     correct_count: correctCount,
     total_questions: totalQuestions,
-    estimated: format === 'dgnl_hcm',
+    estimated: isEstimatedFormat(format),
     sections,
   };
 }

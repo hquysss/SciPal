@@ -129,7 +129,7 @@ describe('submitting a graded exam attempt', () => {
     });
     const res = await submit(app);
     expect(res.statusCode).toBe(200);
-    expect(res.json()).toEqual({ score: 8, correct_count: 4, total_questions: 5, xp_earned: 60, already_awarded: true, already_submitted: true });
+    expect(res.json()).toEqual({ score: 8, max_score: 10, correct_count: 4, total_questions: 5, xp_earned: 60, estimated: false, sections: [], already_awarded: true, already_submitted: true });
     expect(xp.inserted).toHaveLength(0);
     expect(rpcCalls).toHaveLength(0);
     await app.close();

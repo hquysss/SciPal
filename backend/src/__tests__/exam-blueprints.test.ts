@@ -35,7 +35,7 @@ describe('GET /api/exam/blueprints', () => {
     expect(res.statusCode).toBe(200);
     expect(res.json().blueprints).toEqual([{
       id: BP, name: 'Tin học 11 — Giữa kì', grade: 11, subject_id: 's1', subject_slug: 'informatics',
-      subject_name_en: 'Informatics', subject_name_vi: 'Tin học', question_count: 15, name_en: null, duration_minutes: null,
+      subject_name_en: 'Informatics', subject_name_vi: 'Tin học', question_count: 15, name_en: null, duration_minutes: null, format: 'generic', layout: null,
     }]);
     expect(res.body).not.toContain('sections');
     await app.close();

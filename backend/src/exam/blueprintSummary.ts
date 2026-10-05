@@ -1,3 +1,5 @@
+import { EXAM_FORMATS, type ExamFormat, type ExamSection } from '../schemas/examFormat.js';
+
 export interface BlueprintSummary {
   id: string;
   name: string;
@@ -9,6 +11,9 @@ export interface BlueprintSummary {
   subject_name_vi: string | null;
   question_count: number;
   duration_minutes: number | null;
+  format: ExamFormat;
+  /** Sections and passage groups of a laid-out exam (ids only, never answers); null for a generic exam. */
+  layout: ExamSection[] | null;
 }
 
 interface SubjectRef {
@@ -26,6 +31,9 @@ export interface BlueprintRow {
   sections: unknown;
   question_ids?: string[] | null;
   duration_minutes?: number | null;
+  /** Absent before the exam-formats migration: treated as a generic exam without a layout. */
+  format?: string | null;
+  layout?: unknown;
   /** Absent on a database that has not run the exam-import migration: treated as published. */
   status?: string | null;
   subjects: SubjectRef | SubjectRef[] | null;
@@ -52,6 +60,10 @@ export function blueprintQuestionIds(row: Pick<BlueprintRow, 'question_ids'>): s
   return Array.isArray(row.question_ids) ? row.question_ids.filter((id) => typeof id === 'string') : [];
 }
 
+export function blueprintFormat(row: Pick<BlueprintRow, 'format'>): ExamFormat {
+  return (EXAM_FORMATS as readonly string[]).includes(row.format ?? '') ? (row.format as ExamFormat) : 'generic';
+}
+
 export function toBlueprintSummary(row: BlueprintRow): BlueprintSummary {
   const subject = Array.isArray(row.subjects) ? row.subjects[0] : row.subjects;
   const questionIds = blueprintQuestionIds(row);
@@ -66,5 +78,7 @@ export function toBlueprintSummary(row: BlueprintRow): BlueprintSummary {
     subject_name_vi: subject?.name_vi ?? null,
     question_count: questionIds.length > 0 ? questionIds.length : countBlueprintQuestions(row.sections),
     duration_minutes: row.duration_minutes ?? null,
+    format: blueprintFormat(row),
+    layout: Array.isArray(row.layout) ? (row.layout as ExamSection[]) : null,
   };
 }
