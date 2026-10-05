@@ -64,6 +64,8 @@ export function validateExamInput(value: unknown, mode: 'create' | 'update') {
   else if (data.layout !== undefined) {
     const checked = validateLayout(data.layout);
     if (!checked.ok) return { ok: false, message: checked.message };
+    // The server derives question_ids from the layout, so the list cap applies to it too.
+    if (layoutQuestionIds(checked.value).length > MAX_EXAM_ANSWERS) return { ok: false, message: MESSAGES.question_ids! };
     layout = checked.value;
   }
   // The layout decides the question list, so a list sent beside it is not checked for repeats.

@@ -84,6 +84,30 @@ describe('exam format and layout', () => {
   });
 });
 
+describe('layout size cap', () => {
+  const when = '2026-09-27T00:00:00Z';
+  const withCount = (n: number): ExamSection[] => {
+    const layout = buildLayout('thptqg:foreign');
+    const ids = Array.from({ length: n }, (_, i) => id(i + 1));
+    layout[0]!.groups = [{ question_ids: ids.slice(0, 150) }, { question_ids: ids.slice(150) }];
+    return layout;
+  };
+
+  it('accepts exactly 200 questions in a layout, on create and update', () => {
+    expect(validateExamInput({ ...base, format: 'thptqg', layout: withCount(200) }, 'create').ok).toBe(true);
+    expect(validateExamInput({ layout: withCount(200), expected_updated_at: when }, 'update').ok).toBe(true);
+  });
+
+  it('refuses 201 distinct questions in a layout, on create and update', () => {
+    const create = validateExamInput({ ...base, format: 'thptqg', layout: withCount(201) }, 'create');
+    expect(create.ok).toBe(false);
+    if (!create.ok) expect(create.message.vi).toMatch(/tối đa 200/);
+    const update = validateExamInput({ layout: withCount(201), expected_updated_at: when }, 'update');
+    expect(update.ok).toBe(false);
+    if (!update.ok) expect(update.message.en).toMatch(/at most 200/);
+  });
+});
+
 describe('resolveExamQuestionIds', () => {
   it('takes the flattened layout and ignores a client question list', () => {
     const layout = buildLayout('thptqg:math');
