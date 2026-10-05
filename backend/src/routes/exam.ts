@@ -11,14 +11,8 @@ import {
   type BlueprintRow,
   type BlueprintSummary,
 } from '../exam/blueprintSummary.js';
+import type { ExamAnswer } from '../exam/scoring.js';
 import { featureAllowed, featureOff } from '../site/features.js';
-
-interface ExamAnswer {
-  question_id: string;
-  selected_option?: string;
-  items?: Array<{ id: string; selected: boolean }>;
-  short_answer?: string;
-}
 
 export const MAX_EXAM_ANSWERS = 200;
 /** Question count for a blueprint whose sections do not give one. */
