@@ -55,7 +55,7 @@ describe('capacity in the routes', () => {
       id: Q, usage: 'exam', subject_id: SUBJECT, status: 'published', created_by: 'teacher-2', type: 'mc', difficulty: 1,
       data: { stem: { vi: 'Câu?', en: 'Q?' }, options: [{ id: 'a', text: { vi: 'A', en: 'A' } }, { id: 'b', text: { vi: 'B', en: 'B' } }], answer: 'a' },
     };
-    const app = await build(examRoutesAuthoring, teacher, { questions: ok([question]), exam_blueprints: full('active_authored_exams', 5) });
+    const app = await build(examRoutesAuthoring, teacher, { subjects: ok({ id: SUBJECT, archived_at: null }), questions: ok([question]), exam_blueprints: full('active_authored_exams', 5) });
     const res = await app.inject({
       method: 'POST',
       url: '/api/authoring/exams',

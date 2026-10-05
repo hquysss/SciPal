@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import Fastify from 'fastify';
 import { examRoutesAuthoring } from '../routes/exams.js';
+import { SUBJECT_ARCHIVED } from '../subjects/archived.js';
 import { mockQuery, mockSupabase, type MockBuilder } from './helpers/supabaseMock.js';
 
 const SUBJECT = '11111111-1111-4111-8111-111111111111';
@@ -26,7 +27,8 @@ const createBody = { name: 'Đề 1', name_en: '', subject_id: SUBJECT, grade: 1
 
 async function build(user: object, tables: Record<string, MockBuilder | MockBuilder[]>) {
   const app = Fastify();
-  app.decorate('supabase', mockSupabase(tables));
+  // Creating an exam checks that its subject is not archived; tests use a live subject unless they say otherwise.
+  app.decorate('supabase', mockSupabase({ subjects: mockQuery({ data: { id: SUBJECT, archived_at: null }, error: null }), ...tables }));
   app.addHook('onRequest', async (req) => { (req as any).user = user; });
   await app.register(examRoutesAuthoring);
   await app.ready();
@@ -126,6 +128,34 @@ describe('exam authoring routes', () => {
     const app = await build(admin, { exam_blueprints: [mockQuery({ data: exam({ status: 'published' }), error: null }), del] });
     expect((await app.inject({ method: 'DELETE', url: `/api/authoring/exams/${EXAM}` })).statusCode).toBe(204);
     expect(del.deleteCalls).toBe(1);
+    await app.close();
+  });
+});
+
+describe('exams in an archived subject', () => {
+  const GONE = '2026-10-05T01:00:00.000Z';
+
+  it('refuses to create one with the bilingual 400', async () => {
+    const subjects = mockQuery({ data: { id: SUBJECT, archived_at: GONE }, error: null });
+    const insert = mockQuery({ data: exam(), error: null });
+    const app = await build(admin, { subjects, questions: mockQuery({ data: [question()], error: null }), exam_blueprints: insert });
+    const res = await app.inject({ method: 'POST', url: '/api/authoring/exams', payload: { ...createBody, name_en: 'Exam 1', publish: true } });
+    expect(res.statusCode).toBe(400);
+    expect(res.json()).toEqual(SUBJECT_ARCHIVED);
+    expect(subjects.eqCalls).toContainEqual(['id', SUBJECT]);
+    expect(insert.inserted).toHaveLength(0);
+    await app.close();
+  });
+
+  it('refuses to edit one with the bilingual 400, reading archived_at with the exam', async () => {
+    const read = mockQuery({ data: exam({ subjects: { name_vi: 'Tin học', archived_at: GONE } }), error: null });
+    const update = mockQuery({ data: exam(), error: null });
+    const app = await build(teacher, { exam_blueprints: [read, update] });
+    const res = await app.inject({ method: 'PATCH', url: `/api/authoring/exams/${EXAM}`, payload: { duration_minutes: 60, expected_updated_at: STAMP } });
+    expect(res.statusCode).toBe(400);
+    expect(res.json()).toEqual(SUBJECT_ARCHIVED);
+    expect(String(read.selectArgs[0]?.[0])).toContain('archived_at');
+    expect(update.updated).toHaveLength(0);
     await app.close();
   });
 });

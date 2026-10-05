@@ -1,4 +1,5 @@
 import type { FastifyPluginAsync, FastifyReply, FastifyRequest } from 'fastify';
+import { readSubjectArchived, SUBJECT_ARCHIVED } from '../subjects/archived.js';
 import {
   QUESTION_STATUSES,
   QUESTION_TYPES,
@@ -180,6 +181,13 @@ export const questionRoutes: FastifyPluginAsync = async (app) => {
       const checked = validateQuestionInput(request.body);
       if (!checked.ok) return reply.code(400).send(msg(checked.message.vi, checked.message.en));
       const input = checked.value;
+      // A practice question shares its lesson's subject (checked below), so this covers both pools.
+      const subject = await readSubjectArchived(supabase, input.subject_id);
+      if (subject.error) {
+        request.log.error({ err: subject.error }, 'Failed to check the question subject');
+        return reply.code(500).send(msg('Không lưu được câu hỏi.', 'Could not save the question.'));
+      }
+      if (subject.archived) return reply.code(400).send(SUBJECT_ARCHIVED);
 
       let status = 'draft';
       let owner = user.id;

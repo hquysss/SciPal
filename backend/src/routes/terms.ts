@@ -1,4 +1,5 @@
 import type { FastifyPluginAsync, FastifyReply, FastifyRequest } from 'fastify';
+import { isSubjectArchived, readSubjectArchived, SUBJECT_ARCHIVED } from '../subjects/archived.js';
 
 // Glossary terms written by staff. An admin's term is published at once; a teacher's is 'pending'
 // until an admin approves it or turns it down with a reason. A review only changes a term that is
@@ -101,6 +102,12 @@ export const termRoutes: FastifyPluginAsync = async (app) => {
     const user = getUser(request)!;
     const read = readTerm((request.body ?? {}) as Record<string, unknown>);
     if ('error' in read) return reply.code(400).send(read);
+    const subject = await readSubjectArchived(supabase, read.term.subject_id);
+    if (subject.error) {
+      request.log.error({ err: subject.error }, 'Term subject check failed');
+      return reply.code(500).send({ error: 'Chưa lưu được thuật ngữ.', error_en: 'The term could not be saved.' });
+    }
+    if (subject.archived) return reply.code(400).send(SUBJECT_ARCHIVED);
 
     const isAdmin = user.app_metadata?.app_role === 'admin';
     const now = new Date().toISOString();
@@ -137,12 +144,27 @@ export const termRoutes: FastifyPluginAsync = async (app) => {
     }
     const isAdmin = user.app_metadata?.app_role === 'admin';
     const now = new Date().toISOString();
+    const reads = rows.map((row) => readTerm((row ?? {}) as Record<string, unknown>));
+    // Rows of an archived subject are refused one by one, like any other bad row.
+    const subjectIds = [...new Set(reads.flatMap((read) => ('term' in read ? [read.term.subject_id] : [])))];
+    const archived = new Set<string>();
+    if (subjectIds.length > 0) {
+      const { data, error } = await supabase.from('subjects').select('id, archived_at').in('id', subjectIds);
+      if (error) {
+        request.log.error({ err: error }, 'Term batch subject check failed');
+        return reply.code(500).send({ error: 'Chưa lưu được thuật ngữ.', error_en: 'The term could not be saved.' });
+      }
+      for (const s of (data ?? []) as Array<{ id: string; archived_at?: string | null }>) if (isSubjectArchived(s)) archived.add(s.id);
+    }
     const seen = new Set<string>();
     const results: Array<{ index: number; ok: true; id: string } | { index: number; ok: false; error: string; error_en: string }> = [];
-    for (const [index, row] of rows.entries()) {
-      const read = readTerm((row ?? {}) as Record<string, unknown>);
+    for (const [index, read] of reads.entries()) {
       if ('error' in read) {
         results.push({ index, ok: false, ...read });
+        continue;
+      }
+      if (archived.has(read.term.subject_id)) {
+        results.push({ index, ok: false, ...SUBJECT_ARCHIVED });
         continue;
       }
       const key = `${read.term.subject_id}:${read.term.term_en.toLowerCase()}`;

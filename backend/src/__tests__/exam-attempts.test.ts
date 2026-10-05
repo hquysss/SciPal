@@ -49,6 +49,21 @@ describe('starting a graded exam attempt', () => {
     await app.close();
   });
 
+  it('answers 404 for an exam whose subject is archived, without holding an attempt', async () => {
+    const insert = ok();
+    const app = await build({
+      exam_blueprints: ok({ id: BP, subjects: { slug: 'informatics', name_en: 'Informatics', name_vi: 'Tin học', archived_at: '2026-10-05T01:00:00.000Z' } }),
+      exam_attempts: [ok(null), insert],
+      'rpc:billing_reserve_quota': hold(2),
+    });
+    const res = await start(app, { attempt_id: A1 });
+    expect(res.statusCode).toBe(404);
+    expect(res.json()).toEqual({ error: 'Không tìm thấy đề thi.', error_en: 'Exam not found.' });
+    expect(rpcCalls).toHaveLength(0);
+    expect(insert.inserted).toHaveLength(0);
+    await app.close();
+  });
+
   it('resumes the same attempt after a reload without holding another', async () => {
     const app = await build({ exam_blueprints: ok({ id: BP }), exam_attempts: ok(started) });
     const res = await start(app, { attempt_id: A1 });

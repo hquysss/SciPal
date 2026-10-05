@@ -1,4 +1,5 @@
 import { EXAM_FORMATS, type ExamFormat, type ExamSection } from '../schemas/examFormat.js';
+import { isSubjectArchived } from '../subjects/archived.js';
 
 export interface BlueprintSummary {
   id: string;
@@ -20,6 +21,8 @@ interface SubjectRef {
   slug: string;
   name_en: string;
   name_vi: string;
+  /** Absent before the subject-archive migration: treated as not archived. */
+  archived_at?: string | null;
 }
 
 export interface BlueprintRow {
@@ -45,7 +48,15 @@ export function isPublishedBlueprint(row: Pick<BlueprintRow, 'status'>): boolean
 }
 
 // `*` keeps the listing working on a database that has not run the exam-import migration yet.
-export const BLUEPRINT_COLUMNS = '*, subjects(slug, name_en, name_vi)';
+export const BLUEPRINT_COLUMNS = '*, subjects(slug, name_en, name_vi, archived_at)';
+/** The same read on a database that has not run the subject-archive migration (no subjects.archived_at). */
+export const BLUEPRINT_COLUMNS_BEFORE_ARCHIVE = '*, subjects(slug, name_en, name_vi)';
+
+/** Learners never see an exam of a subject an admin has archived. */
+export function isBlueprintSubjectArchived(row: Pick<BlueprintRow, 'subjects'>): boolean {
+  const subject = Array.isArray(row.subjects) ? row.subjects[0] : row.subjects;
+  return isSubjectArchived(subject);
+}
 
 export function countBlueprintQuestions(sections: unknown): number {
   if (!Array.isArray(sections)) return 0;

@@ -72,6 +72,41 @@ describe('GET /api/exam/blueprints', () => {
   });
 });
 
+describe('exams of an archived subject', () => {
+  const archived = { ...row, id: '33333333-3333-4333-8333-333333333333', subjects: { ...row.subjects, archived_at: '2026-10-05T01:00:00.000Z' } };
+  const live = { ...row, subjects: { ...row.subjects, archived_at: null } };
+
+  it('leaves them out of the public list, reading archived_at with the subject', async () => {
+    const list = mockQuery({ data: [archived, live], error: null });
+    const app = await buildApp({ exam_blueprints: list });
+    const res = await app.inject({ method: 'GET', url: '/api/exam/blueprints' });
+    expect(res.statusCode).toBe(200);
+    expect(res.json().blueprints.map((b: { id: string }) => b.id)).toEqual([BP]);
+    expect(res.json().blueprints[0]).not.toHaveProperty('archived_at');
+    expect(String(list.selectArgs[0]?.[0])).toContain('archived_at');
+    await app.close();
+  });
+
+  it('answers 404 for their questions, as for a missing exam', async () => {
+    const app = await buildApp({ exam_blueprints: mockQuery({ data: archived, error: null }), questions: mockQuery({ data: [], error: null }) });
+    const res = await app.inject({ method: 'GET', url: `/api/exam/${archived.id}/questions` });
+    expect(res.statusCode).toBe(404);
+    expect(res.json()).toEqual({ error: 'Không tìm thấy đề thi.' });
+    await app.close();
+  });
+
+  it('still lists every exam on a database without subjects.archived_at (42703)', async () => {
+    const missing = mockQuery({ data: null, error: { code: '42703', message: 'column subjects_1.archived_at does not exist' } });
+    const legacy = mockQuery({ data: [row], error: null });
+    const app = await buildApp({ exam_blueprints: [missing, legacy] });
+    const res = await app.inject({ method: 'GET', url: '/api/exam/blueprints' });
+    expect(res.statusCode).toBe(200);
+    expect(res.json().blueprints.map((b: { id: string }) => b.id)).toEqual([BP]);
+    expect(String(legacy.selectArgs[0]?.[0])).not.toContain('archived_at');
+    await app.close();
+  });
+});
+
 describe('exam routes without demo content', () => {
   it('404s for an unknown blueprint and never serves demo questions', async () => {
     const app = await buildApp({

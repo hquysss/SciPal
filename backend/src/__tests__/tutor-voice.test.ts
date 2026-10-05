@@ -106,6 +106,26 @@ describe('POST /api/tutor/voice', () => {
     await app.close();
   });
 
+  it('leaves out the text of a lesson whose subject is archived, and keeps it otherwise', async () => {
+    const LESSON = 'b0000000-0000-4000-8000-000000000001';
+    const lesson = (archived_at: string | null) => ok({
+      title_vi: 'Vòng lặp', title_en: 'Loops', status: 'published',
+      subjects: { name_vi: 'Tin học', name_en: 'Informatics', archived_at },
+      blocks: [{ type: 'theory', content: { vi: 'NỘI-DUNG-BÀI-HỌC', en: 'x' } }],
+    });
+    for (const [archivedAt, sent] of [['2026-10-05T01:00:00.000Z', false], [null, true]] as const) {
+      rpcCalls.length = 0;
+      const fetchImpl = tokenReply();
+      vi.stubGlobal('fetch', fetchImpl);
+      const app = await build({ lessons: lesson(archivedAt), profiles: ok(null), 'rpc:billing_get_effective_quotas': voiceQuota(30, 0), 'rpc:billing_reserve_quota': reservation(25), 'rpc:billing_settle_quota': ok(true) });
+      const res = await app.inject({ method: 'POST', url: '/api/tutor/voice', payload: { lesson_id: LESSON, language: 'vi' } });
+      expect(res.statusCode).toBe(200);
+      const [, init] = fetchImpl.mock.calls[0] as unknown as [string, RequestInit];
+      expect(String(init.body).includes('NỘI-DUNG-BÀI-HỌC'), String(archivedAt)).toBe(sent);
+      await app.close();
+    }
+  });
+
   it('says voice is not set up without a Gemini key', async () => {
     delete process.env.GEMINI_API_KEY;
     const app = await build({ profiles: ok(null) });

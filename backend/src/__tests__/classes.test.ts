@@ -3,6 +3,7 @@ import Fastify from 'fastify';
 import crypto from 'crypto';
 import { authPlugin } from '../plugins/auth.js';
 import { classRoutes } from '../routes/classes.js';
+import { SUBJECT_ARCHIVED } from '../subjects/archived.js';
 import { mockQuery, mockSupabase } from './helpers/supabaseMock.js';
 
 describe('Class Routes & Invite Code Generation', () => {
@@ -109,6 +110,18 @@ describe('class route authorization', () => {
       payload: { name: '10A1', subject_slug: 'alchemy' },
     });
     expect(res.statusCode).toBe(400);
+    await app.close();
+  });
+
+  it('refuses a class in an archived subject with the bilingual 400', async () => {
+    const subjects = mockQuery({ data: { id: 'subject-uuid', archived_at: '2026-10-05T01:00:00.000Z' }, error: null });
+    const insert = mockQuery({ data: null, error: null });
+    const app = await buildClassApp(teacher, { subjects, class_rooms: insert });
+    const res = await app.inject({ method: 'POST', url: '/api/classes', payload: { name: '10A1', subject_slug: 'informatics' } });
+    expect(res.statusCode).toBe(400);
+    expect(res.json()).toEqual(SUBJECT_ARCHIVED);
+    expect(String(subjects.selectArgs[0]?.[0])).toContain('archived_at');
+    expect(insert.inserted).toHaveLength(0);
     await app.close();
   });
 

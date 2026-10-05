@@ -120,6 +120,21 @@ describe('POST /api/tutor/chat', () => {
     await app.close();
   });
 
+  it('treats a published lesson of an archived subject as not found, reading archived_at with the subject', async () => {
+    const lessons = ok({
+      title_vi: 'Vòng lặp', title_en: 'Loops', status: 'published',
+      subjects: { name_vi: 'Tin học', name_en: 'Informatics', archived_at: '2026-10-05T01:00:00.000Z' },
+      blocks: [{ type: 'theory', content: { vi: 'NỘI DUNG MÔN ĐÃ XÓA', en: 'x' } }],
+    });
+    const { app, ai } = await build({ tutor_messages: mockQuery({ data: null, error: null, count: 0 }), lessons });
+    const res = await app.inject({ method: 'POST', url: '/api/tutor/chat', payload: { lesson_id: L1, message: 'Hỏi', language: 'vi' } });
+    expect(res.statusCode).toBe(404);
+    expect(res.json()).toEqual({ error: 'Không tìm thấy bài học.', error_en: 'Lesson not found.' });
+    expect(String(lessons.selectArgs[0]?.[0])).toContain('archived_at');
+    expect(ai.calls).toHaveLength(0);
+    await app.close();
+  });
+
   it('stores the partial answer and sends an error event when the provider fails after some text', async () => {
     const assistantInsert = ok();
     const { app } = await build(

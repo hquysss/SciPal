@@ -8,6 +8,7 @@ import { MAX_EXAM_ANSWERS } from './exam.js';
 import { examSections, formatLayoutMismatch, layoutReviewProblem, resolveExamQuestionIds, validateExamInput } from '../schemas/exams.js';
 import type { ExamFormat, ExamSection } from '../schemas/examFormat.js';
 import { capacityRefusal } from '../billing/capacity.js';
+import { isSubjectArchived, readSubjectArchived, SUBJECT_ARCHIVED } from '../subjects/archived.js';
 
 // The exam builder (authoring Part 4). Exams are exam_blueprints rows with an ordered question
 // list. Imported exams (import_id) are listed and editable here once published, but go through
@@ -32,11 +33,11 @@ interface ExamRow {
   updated_at: string;
   created_by: string | null;
   import_id: string | null;
-  subjects: { name_vi: string } | Array<{ name_vi: string }> | null;
+  subjects: { name_vi: string; archived_at?: string | null } | Array<{ name_vi: string; archived_at?: string | null }> | null;
 }
 
 const COLUMNS =
-  'id, name, name_en, subject_id, grade, duration_minutes, status, question_ids, sections, format, layout, review_note, updated_at, created_by, import_id, subjects(name_vi)';
+  'id, name, name_en, subject_id, grade, duration_minutes, status, question_ids, sections, format, layout, review_note, updated_at, created_by, import_id, subjects(name_vi, archived_at)';
 const STATUSES = ['draft', 'pending_review', 'published'];
 const ID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -193,6 +194,12 @@ export const examRoutesAuthoring: FastifyPluginAsync = async (app) => {
       // An admin may publish on creation ("Xuất bản ngay"); a teacher's exam starts as a draft.
       const publishNow = isAdmin(user) && publish === true;
       if (publishNow && !input.name_en) return reply.code(400).send(needEnglish);
+      const subject = await readSubjectArchived(supabase, input.subject_id);
+      if (subject.error) {
+        request.log.error({ err: subject.error }, 'Failed to check the exam subject');
+        return reply.code(500).send(msg('Không lưu được đề thi.', 'Could not save the exam.'));
+      }
+      if (subject.archived) return reply.code(400).send(SUBJECT_ARCHIVED);
       // A layout decides the question list; a list sent beside it is ignored.
       const questionIds = resolveExamQuestionIds(input) ?? [];
       if (publishNow) {
@@ -240,6 +247,7 @@ export const examRoutesAuthoring: FastifyPluginAsync = async (app) => {
       if (!mayEdit(user, row)) {
         return reply.code(409).send(msg('Đề đang chờ duyệt hoặc đã xuất bản nên không sửa được.', 'The exam is under review or published, so it cannot be edited.'));
       }
+      if (isSubjectArchived(Array.isArray(row.subjects) ? row.subjects[0] : row.subjects)) return reply.code(400).send(SUBJECT_ARCHIVED);
       const checked = validateExamInput(request.body ?? {}, 'update');
       if (!checked.ok) return reply.code(400).send(msg(checked.message.vi, checked.message.en));
       const { expected_updated_at: expected, ...patch } = checked.value;

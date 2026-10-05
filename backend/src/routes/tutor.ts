@@ -7,6 +7,12 @@ import { resolveTutorSettings, type SettingsStore } from '../tutor/settings.js';
 import { buildSystemPrompt, lessonContext, type EducationLevel } from '../tutor/systemPrompt.js';
 import { featureAllowed, featureOff } from '../site/features.js';
 import { createVoiceToken, VOICE_SEGMENT_MINUTES } from '../tutor/voiceToken.js';
+import { isSubjectArchived } from '../subjects/archived.js';
+
+/** A lesson the Professor may read: published, in a subject that is not archived. */
+type TutorLesson = { title_vi: string; title_en: string; blocks: unknown[]; status: string; subjects: { name_vi: string; name_en: string; archived_at?: string | null } | null };
+const TUTOR_LESSON_COLUMNS = 'title_vi, title_en, blocks, status, subjects(name_vi, name_en, archived_at)';
+const isTutorLesson = (row: TutorLesson | null): row is TutorLesson => row?.status === 'published' && !isSubjectArchived(row.subjects);
 
 declare module 'fastify' {
   interface FastifyInstance {
@@ -116,9 +122,9 @@ export const tutorRoutes: FastifyPluginAsync = async (app) => {
     let lessonText: string | undefined;
     if (typeof body.lesson_id === 'string' && UUID.test(body.lesson_id)) {
       const { data: lesson } = await supabase
-        .from('lessons').select('title_vi, title_en, blocks, status, subjects(name_vi, name_en)').eq('id', body.lesson_id).maybeSingle();
-      const row = lesson as { title_vi: string; title_en: string; blocks: unknown[]; status: string; subjects: { name_vi: string; name_en: string } | null } | null;
-      if (row?.status === 'published') {
+        .from('lessons').select(TUTOR_LESSON_COLUMNS).eq('id', body.lesson_id).maybeSingle();
+      const row = lesson as TutorLesson | null;
+      if (isTutorLesson(row)) {
         lessonText = lessonContext(
           { title_vi: row.title_vi, title_en: row.title_en, blocks: Array.isArray(row.blocks) ? row.blocks : [], subject_name: (language === 'vi' ? row.subjects?.name_vi : row.subjects?.name_en) ?? '' },
           language,
@@ -233,11 +239,12 @@ export const tutorRoutes: FastifyPluginAsync = async (app) => {
     let lessonText: string | undefined;
     if (lessonId) {
       const { data: lesson } = await supabase
-        .from('lessons').select('title_vi, title_en, blocks, status, subjects(name_vi, name_en)').eq('id', lessonId).maybeSingle();
-      const row = lesson as { title_vi: string; title_en: string; blocks: unknown[]; status: string; subjects: { name_vi: string; name_en: string } | null } | null;
-      if (!row || row.status !== 'published') {
-        // A new question about a lesson needs it published; an older conversation carries on
-        // without the lesson's text once the lesson is unpublished (e.g. back in review).
+        .from('lessons').select(TUTOR_LESSON_COLUMNS).eq('id', lessonId).maybeSingle();
+      const row = lesson as TutorLesson | null;
+      if (!isTutorLesson(row)) {
+        // A new question about a lesson needs it published (and its subject not archived); an older
+        // conversation carries on without the lesson's text once the lesson is unpublished (e.g. back
+        // in review) or its subject archived.
         if (!lessonFromConversation) return reply.code(404).send(msg('Không tìm thấy bài học.', 'Lesson not found.'));
       } else lessonText = lessonContext(
         { title_vi: row.title_vi, title_en: row.title_en, blocks: Array.isArray(row.blocks) ? row.blocks : [], subject_name: (language === 'vi' ? row.subjects?.name_vi : row.subjects?.name_en) ?? '' },

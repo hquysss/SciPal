@@ -7,6 +7,7 @@ import { storedQuestionData, validateQuestionInput } from '../schemas/questions.
 import { capacityRefusal } from '../billing/capacity.js';
 import { BillingRepositoryError, createBillingRepository } from '../billing/repository.js';
 import { periodOf, periodWords, type QuotaPeriod } from '../billing/quotaPeriod.js';
+import { isSubjectArchived, SUBJECT_ARCHIVED } from '../subjects/archived.js';
 
 // The package the import page sends after Word/PDF lessons and an Excel workbook are parsed and
 // reviewed in the browser. Keep it aligned with frontend/features/content-import/
@@ -286,14 +287,16 @@ export const examImportRoutes: FastifyPluginAsync = async (app) => {
     const now = new Date().toISOString();
 
     const slugs = [...new Set([...pkg.lessons, ...pkg.questions, ...pkg.blueprints].map((item) => item.subject_slug))];
-    const { data: subjectRows, error: subjectError } = await supabase.from('subjects').select('id, slug').in('slug', slugs);
+    const { data: subjectRows, error: subjectError } = await supabase.from('subjects').select('id, slug, archived_at').in('slug', slugs);
     if (subjectError) {
       request.log.error({ err: subjectError }, 'Failed to resolve import subjects');
       return reply.code(500).send({ error: 'Không xác minh được môn học.' });
     }
-    const subjectIds = new Map(((subjectRows ?? []) as Array<{ id: string; slug: string }>).map((s) => [s.slug, s.id]));
+    const resolved = (subjectRows ?? []) as Array<{ id: string; slug: string; archived_at?: string | null }>;
+    const subjectIds = new Map(resolved.map((s) => [s.slug, s.id]));
     const unknown = slugs.filter((slug) => !subjectIds.has(slug));
     if (unknown.length > 0) return reply.code(400).send({ error: `Môn học không tồn tại: ${unknown.join(', ')}.` });
+    if (resolved.some(isSubjectArchived)) return reply.code(400).send(SUBJECT_ARCHIVED);
 
     if (pkg.blueprints.length > 0 || pkg.lessons.length > 0) {
       const { data: catalogRows, error: catalogError } = await supabase

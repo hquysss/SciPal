@@ -5,8 +5,10 @@ import { BillingRepositoryError, createBillingRepository } from '../billing/repo
 import { periodOf, periodWords, type QuotaPeriod } from '../billing/quotaPeriod.js';
 import {
   BLUEPRINT_COLUMNS,
+  BLUEPRINT_COLUMNS_BEFORE_ARCHIVE,
   blueprintFormat,
   blueprintQuestionIds,
+  isBlueprintSubjectArchived,
   isPublishedBlueprint,
   toBlueprintSummary,
   type BlueprintRow,
@@ -40,18 +42,30 @@ interface LoadedBlueprint {
 /** Fields that would give an answer away before the exam is submitted. */
 const HIDDEN_QUESTION_FIELDS = ['answer', 'answer_key', 'explanation', 'rubric'];
 
+type BlueprintRead = PromiseLike<{ data: unknown; error: { code?: string } | null }>;
+
+/** 42703: subjects.archived_at does not exist yet (migration not run), so no subject is archived. */
+async function readBlueprints(run: (columns: string) => BlueprintRead) {
+  let result = await run(BLUEPRINT_COLUMNS);
+  if (result.error?.code === '42703') result = await run(BLUEPRINT_COLUMNS_BEFORE_ARCHIVE);
+  return result;
+}
+
+/** Learners see a published exam of a subject that is not archived. */
+const isLearnerBlueprint = (row: BlueprintRow) => isPublishedBlueprint(row) && !isBlueprintSubjectArchived(row);
+
 async function loadBlueprint(supabase: SupabaseClient, blueprintId: string): Promise<Loaded<LoadedBlueprint>> {
   // exam_blueprints.id is a uuid: anything else can only be "not found", not a database error.
   if (!UUID_PATTERN.test(blueprintId)) return { kind: 'not_found' };
-  const { data, error } = await supabase
+  const { data, error } = await readBlueprints((columns) => supabase
     .from('exam_blueprints')
-    .select(BLUEPRINT_COLUMNS)
+    .select(columns)
     .eq('id', blueprintId)
-    .maybeSingle();
+    .maybeSingle());
   if (error) return { kind: 'error', err: error };
   if (!data) return { kind: 'not_found' };
   const row = data as BlueprintRow;
-  if (!isPublishedBlueprint(row)) return { kind: 'not_found' };
+  if (!isLearnerBlueprint(row)) return { kind: 'not_found' };
   return { kind: 'ok', value: { summary: toBlueprintSummary(row), questionIds: blueprintQuestionIds(row) } };
 }
 
@@ -256,15 +270,16 @@ export const examRoutes: FastifyPluginAsync = async (app) => {
 
   app.get('/api/exam/blueprints', async (request, reply) => {
     if (!app.supabase) return reply.code(503).send({ error: 'Dịch vụ đề thi chưa sẵn sàng.' });
-    const { data, error } = await app.supabase
+    const supabase = app.supabase;
+    const { data, error } = await readBlueprints((columns) => supabase
       .from('exam_blueprints')
-      .select(BLUEPRINT_COLUMNS)
-      .order('name');
+      .select(columns)
+      .order('name'));
     if (error) {
       request.log.error({ err: error }, 'Failed to list exam blueprints');
       return reply.code(500).send({ error: 'Không tải được danh sách đề thi.' });
     }
-    return reply.send({ blueprints: ((data ?? []) as BlueprintRow[]).filter(isPublishedBlueprint).map((r) => ({ ...toBlueprintSummary(r), layout: null })) });
+    return reply.send({ blueprints: ((data ?? []) as BlueprintRow[]).filter(isLearnerBlueprint).map((r) => ({ ...toBlueprintSummary(r), layout: null })) });
   });
 
   // Fetch blueprint questions without exposing answers
