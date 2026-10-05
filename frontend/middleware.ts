@@ -128,9 +128,28 @@ function featureOffPage(request: NextRequest, feature: string) {
   return NextResponse.rewrite(url);
 }
 
+const under = (pathname: string, prefix: string) => pathname === prefix || pathname.startsWith(`${prefix}/`);
+
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const access = routeAccess(pathname);
+
+  // Maintenance mode: only the sign-in pages stay open, and admins use the site as normal.
+  if (!under(pathname, '/login') && !under(pathname, '/auth')) {
+    const site = await siteSettings();
+    if (site.maintenance) {
+      const updates: CookieUpdate[] = [];
+      const who = hasSessionCookie(request) ? await signedInUser(request, updates) : null;
+      if (who?.app_metadata?.app_role !== 'admin') {
+        const url = request.nextUrl.clone();
+        url.pathname = '/maintenance';
+        url.search = '';
+        const closed = NextResponse.rewrite(url, { status: 503 });
+        for (const { name, value, options } of updates) closed.cookies.set(name, value, options);
+        return closed;
+      }
+    }
+  }
 
   // The landing page, sign-in (with its callback) and the tutor page (one guest question) are open to visitors,
   // unless an admin switched the tutor off.

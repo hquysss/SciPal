@@ -59,11 +59,11 @@ export function SiteSwitches({ initial }: { initial?: SiteSettings }) {
     return message ? <Alert tone="danger">{t(message.text)}</Alert> : <p className="text-sm text-ink-muted">{t({ vi: 'Đang tải…', en: 'Loading…' })}</p>;
   }
 
-  const dirty = form.signupEnabled !== saved.signupEnabled || SITE_FEATURES.some((f) => form.features[f] !== saved.features[f]);
+  const dirty = form.signupEnabled !== saved.signupEnabled || form.maintenance !== saved.maintenance || SITE_FEATURES.some((f) => form.features[f] !== saved.features[f]);
   const save = async () => {
     setBusy(true);
     setMessage(null);
-    const res = await saveSiteSettings({ signup_enabled: form.signupEnabled, features: form.features });
+    const res = await saveSiteSettings({ signup_enabled: form.signupEnabled, maintenance: form.maintenance, features: form.features });
     setBusy(false);
     if (res.ok) {
       setSaved(res.data);
@@ -80,6 +80,19 @@ export function SiteSwitches({ initial }: { initial?: SiteSettings }) {
         if (dirty && !busy) void save();
       }}
     >
+      <fieldset className="rounded-2xl border border-line bg-surface px-4 py-1">
+        <legend className="px-1 text-sm font-semibold text-ink">{t({ vi: 'Bảo trì', en: 'Maintenance' })}</legend>
+        <Switch
+          checked={form.maintenance}
+          onChange={(on) => setForm({ ...form, maintenance: on })}
+          label={t({ vi: 'Bật chế độ bảo trì cả web', en: 'Put the whole site under maintenance' })}
+          hint={t({
+            vi: 'Bật thì mọi người chỉ vào được trang đăng nhập, các trang còn lại hiện “đang bảo trì” và backend trả lỗi 503. Admin vẫn dùng bình thường (đăng nhập rồi vào lại).',
+            en: 'On: everyone can only open the sign-in page; every other page shows “under maintenance” and the backend answers 503. Admins still use the site as normal (sign in, then come back).',
+          })}
+        />
+      </fieldset>
+
       <fieldset className="rounded-2xl border border-line bg-surface px-4 py-1">
         <legend className="px-1 text-sm font-semibold text-ink">{t({ vi: 'Tài khoản', en: 'Accounts' })}</legend>
         <Switch

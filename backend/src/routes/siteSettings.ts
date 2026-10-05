@@ -5,7 +5,7 @@ import { SITE_FEATURES, resolveSiteSettings, type SiteSettings, type SiteSetting
 // Admin site switches (/admin/site): sign-up open or closed and features on or off. The web reads the
 // row directly (everyone may); routes that a switch guards ask `siteSettings` here.
 
-const COLUMNS = 'signup_enabled, features, updated_at';
+const COLUMNS = 'signup_enabled, features, maintenance, updated_at';
 const CACHE_MS = 30_000;
 const msg = (error: string, error_en: string) => ({ error, error_en });
 const unavailable = msg('Dịch vụ lưu trữ chưa sẵn sàng.', 'Storage is not available.');
@@ -47,7 +47,7 @@ export function siteSettingsStore(load: () => Promise<SiteSettingsRow | null>) {
   };
 }
 
-type Patch = { signup_enabled: boolean; features: Record<string, boolean> };
+type Patch = { signup_enabled: boolean; features: Record<string, boolean>; maintenance?: boolean };
 
 function parsePatch(body: unknown): Patch | null {
   const b = (body ?? {}) as Record<string, unknown>;
@@ -59,7 +59,8 @@ function parsePatch(body: unknown): Patch | null {
     if (!(SITE_FEATURES as readonly string[]).includes(key) || typeof on !== 'boolean') return null;
     features[key] = on;
   }
-  return { signup_enabled: b.signup_enabled, features };
+  if (b.maintenance !== undefined && typeof b.maintenance !== 'boolean') return null;
+  return { signup_enabled: b.signup_enabled, features, ...(b.maintenance === undefined ? {} : { maintenance: b.maintenance }) };
 }
 
 export const siteSettingsRoutes: FastifyPluginAsync = async (app) => {

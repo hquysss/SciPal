@@ -158,3 +158,26 @@ describe('guest trials', () => {
     expect(fetchMock).not.toHaveBeenCalled();
   });
 });
+
+describe('maintenance mode', () => {
+  const settings = (maintenance: boolean) => Promise.resolve(new Response(JSON.stringify([{ signup_enabled: true, features: {}, maintenance }]), { status: 200 }));
+  const visit = (path: string) => middleware(new NextRequest(`http://localhost${path}`));
+  afterEach(() => {
+    vi.useRealTimers();
+    vi.unstubAllGlobals();
+    vi.unstubAllEnvs();
+  });
+
+  it('shows the maintenance page everywhere but the sign-in pages', async () => {
+    vi.useFakeTimers({ toFake: ['Date'], now: Date.now() + 120_000 }); // past the 30 s settings cache
+    vi.stubEnv('NEXT_PUBLIC_SUPABASE_URL', 'https://db-maintenance.example.test');
+    vi.stubEnv('NEXT_PUBLIC_SUPABASE_ANON_KEY', 'anon');
+    vi.stubGlobal('fetch', vi.fn(() => settings(true)));
+    for (const path of ['/', '/subjects', '/pricing', '/informatics/vong-lap']) {
+      const res = await visit(path);
+      expect(res.status, path).toBe(503);
+      expect(res.headers.get('x-middleware-rewrite'), path).toContain('/maintenance');
+    }
+    for (const path of ['/login', '/auth/callback']) expect((await visit(path)).status, path).toBe(200);
+  });
+});
