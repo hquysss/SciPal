@@ -1,14 +1,30 @@
+'use client';
+
+import { useState } from 'react';
 import { Media } from '@/components/media/Media';
+import { Dialog } from '@/components/ui/dialog';
 
 type Bilingual = { en: string; vi: string };
 
-/** The figure under a question (graph, table of variations…), as large as it needs up to the card width. */
+/** The figure under a question (graph, table of variations…), as large as it needs up to the card width; a click enlarges it. */
 export function QuestionFigure({ image, lang }: { image: { url: string; alt?: Bilingual } | undefined; lang: 'vi' | 'en' }) {
+  const [zoomed, setZoomed] = useState(false);
   if (!image?.url) return null;
   const alt = image.alt ? (lang === 'en' ? image.alt.en.trim() || image.alt.vi : image.alt.vi.trim() || image.alt.en) : '';
+  const en = lang === 'en';
   return (
     <figure className="m-0 flex justify-center">
-      <Media url={image.url} alt={alt} className="h-auto max-h-[28rem] w-auto max-w-full rounded-lg border border-line bg-surface object-contain" />
+      <button
+        type="button"
+        onClick={() => setZoomed(true)}
+        aria-label={en ? 'Enlarge the figure' : 'Phóng to hình'}
+        className="max-w-full cursor-zoom-in rounded-lg focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
+      >
+        <Media url={image.url} alt={alt} className="h-auto max-h-[28rem] w-auto max-w-full rounded-lg border border-line bg-surface object-contain" />
+      </button>
+      <Dialog open={zoomed} onClose={() => setZoomed(false)} title={alt || (en ? 'Figure' : 'Hình')} closeLabel={en ? 'Close' : 'Đóng'} className="max-w-[min(96vw,64rem)]">
+        <Media url={image.url} alt={alt} className="mx-auto h-auto max-h-[78dvh] w-auto max-w-full object-contain" />
+      </Dialog>
     </figure>
   );
 }

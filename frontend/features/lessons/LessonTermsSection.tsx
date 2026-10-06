@@ -1,16 +1,26 @@
 'use client';
 
 import { useId } from 'react';
+import type { Block } from '@scipal/types';
+import { noteKeysOfBlocks } from '@/components/blocks/remarkTerm';
+import { noteAsTerm } from '@/components/blocks/terms/NoteMark';
 import { useLessonTerms } from '@/components/blocks/terms/LessonTermsContext';
 import { TermCard } from '@/components/blocks/terms/TermCard';
 
 const HEADING = { en: 'Vocabulary in this lesson', vi: 'Từ vựng trong bài' };
 
-/** The terms the lesson tags, in the order they first appear; nothing when none is published. */
-export function LessonTermsSection({ ids }: { ids: string[] }) {
+/** The terms the lesson tags (glossary, then the teacher's own popovers), in order of first appearance; nothing when none. */
+export function LessonTermsSection({ ids, blocks = [] }: { ids: string[]; blocks?: Block[] }) {
   const lesson = useLessonTerms();
   const headingId = useId();
-  const terms = lesson ? ids.flatMap((id) => lesson.terms.get(id) ?? []) : [];
+  const own = lesson ? noteKeysOfBlocks(blocks, lesson.lang).map(({ block, key }) => noteAsTerm(key, block.notes![key])) : [];
+  const seen = new Set<string>();
+  const terms = lesson
+    ? [...ids.flatMap((id) => lesson.terms.get(id) ?? []), ...own].filter((t) => {
+        const k = t.term_vi.trim().toLowerCase();
+        return !seen.has(k) && !!seen.add(k);
+      })
+    : [];
   if (!lesson || terms.length === 0) return null;
 
   return (

@@ -58,9 +58,9 @@ describe('exam authoring routes', () => {
   it('creates a draft with sections from its questions; only an admin may publish at once', async () => {
     const insert = mockQuery({ data: exam(), error: null });
     const app = await build(teacher, { questions: mockQuery({ data: [question()], error: null }), exam_blueprints: insert });
-    const res = await app.inject({ method: 'POST', url: '/api/authoring/exams', payload: { ...createBody, publish: true } });
+    const res = await app.inject({ method: 'POST', url: '/api/authoring/exams', payload: { ...createBody, source: ' Bộ GD&ĐT 2026 ', publish: true } });
     expect(res.statusCode).toBe(201);
-    expect(insert.inserted[0]).toMatchObject({ status: 'draft', created_by: 'teacher-1', sections: [{ type: 'mc', difficulty: 1, count: 1 }], question_ids: [Q] });
+    expect(insert.inserted[0]).toMatchObject({ status: 'draft', created_by: 'teacher-1', source: 'Bộ GD&ĐT 2026', sections: [{ type: 'mc', difficulty: 1, count: 1 }], question_ids: [Q] });
     await app.close();
 
     const adminInsert = mockQuery({ data: exam({ status: 'published' }), error: null });

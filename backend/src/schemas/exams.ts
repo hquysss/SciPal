@@ -6,6 +6,8 @@ import { EXAM_FORMATS, layoutQuestionIds, validateLayout, type ExamFormat, type 
 export interface ExamInput {
   name: string;
   name_en: string;
+  /** Where the exam comes from, shown on its card. */
+  source?: string;
   subject_id: string;
   grade: number;
   duration_minutes: number;
@@ -23,6 +25,7 @@ const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const fields = {
   name: z.string().trim().min(1).max(200),
   name_en: z.string().trim().max(200),
+  source: z.string().trim().max(300).optional(),
   subject_id: z.string().regex(UUID),
   grade: z.number().int().min(1).max(12),
   duration_minutes: z.number().int().min(5).max(300),
@@ -42,6 +45,7 @@ const UpdateSchema = z
 const MESSAGES: Record<string, Message> = {
   name: { vi: 'Tên đề cần từ 1 đến 200 ký tự.', en: 'The exam name needs 1–200 characters.' },
   name_en: { vi: 'Tên tiếng Anh tối đa 200 ký tự.', en: 'The English name is at most 200 characters.' },
+  source: { vi: 'Nguồn đề tối đa 300 ký tự.', en: 'The source is at most 300 characters.' },
   subject_id: { vi: 'Môn học không hợp lệ.', en: 'Invalid subject.' },
   grade: { vi: 'Lớp phải từ 1 đến 12.', en: 'The grade must be 1–12.' },
   duration_minutes: { vi: 'Thời gian làm bài từ 5 đến 300 phút.', en: 'The duration must be 5–300 minutes.' },

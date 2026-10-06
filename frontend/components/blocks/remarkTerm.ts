@@ -60,6 +60,22 @@ export function termIdsOf(text: string): string[] {
   return [...ids];
 }
 
+/** The block's own popovers (`{note:key:…}`) used in one language, as [block, key] in order of appearance. */
+export function noteKeysOfBlocks(blocks: Block[], lang: 'en' | 'vi'): Array<{ block: Extract<Block, { type: 'theory' }>; key: string }> {
+  const out: Array<{ block: Extract<Block, { type: 'theory' }>; key: string }> = [];
+  for (const block of blocks) {
+    if (block.type !== 'theory' || !block.notes) continue;
+    const seen = new Set<string>();
+    for (const m of (block.content[lang] ?? '').replace(LITERAL, ' ').matchAll(pattern())) {
+      if (m[2] && block.notes[m[2]] && !seen.has(m[2])) {
+        seen.add(m[2]);
+        out.push({ block, key: m[2] });
+      }
+    }
+  }
+  return out;
+}
+
 /** The tagged term ids of a lesson's theory blocks in one language. */
 export function termIdsOfBlocks(blocks: Block[], lang: 'en' | 'vi'): string[] {
   const ids = new Set<string>();

@@ -42,6 +42,11 @@ export function ExamTable({ exams }: { exams: ExamSummary[] }) {
                   .filter(Boolean)
                   .join(' · ')}
               </span>
+              {exam.source && (
+                <span className="mt-1 block truncate text-xs italic text-ink-muted">
+                  {t({ en: 'Source', vi: 'Nguồn' })}: {exam.source}
+                </span>
+              )}
             </span>
             <span className="flex flex-wrap items-center gap-2">
               {exam.imported && <span className="text-xs text-ink-muted">{t({ en: 'Imported from Excel', vi: 'Nhập từ Excel' })}</span>}
