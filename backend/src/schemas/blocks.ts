@@ -6,9 +6,18 @@ import { SIMULATION_KINDS, isLessonMediaUrl, validateSimulationBlock } from './s
 // Keep this validation contract aligned with packages/types/src/block.ts.
 const BilingualText = z.object({ en: z.string(), vi: z.string() });
 
+/** A popover the teacher wrote for a few words of the text, `{note:<key>:words}`: the word's translation, what it means, and a picture. */
+const TheoryNoteSchema = z.object({
+  term: BilingualText,
+  definition: BilingualText,
+  image: z.object({ url: z.string().url().max(1000), alt: BilingualText }).optional(),
+});
+const NOTE_KEY = /^[a-z0-9]{4,12}$/;
+
 const TheoryBlockSchema = z.object({
   type: z.literal('theory'),
   content: BilingualText,
+  notes: z.record(z.string().regex(NOTE_KEY), TheoryNoteSchema).optional(),
 });
 
 const CodeBlockSchema = z.object({
@@ -84,6 +93,13 @@ export function imageProblemsList(blocks: ReadonlyArray<{ type: string }>, opts:
   const base = process.env.MEDIA_PUBLIC_URL;
   const out: BlockProblem[] = [];
   for (const [i, block] of blocks.entries()) {
+    if (block.type === 'theory') {
+      // A popover's picture must be one of ours too.
+      for (const [key, note] of Object.entries((block as z.infer<typeof TheoryBlockSchema>).notes ?? {})) {
+        if (note.image && (!base || !isLessonMediaUrl(note.image.url, base))) out.push({ at: i, field: `notes.${key}.image.url`, message: { vi: 'ảnh phải được tải lên SciPal.', en: 'the image must be uploaded to SciPal.' } });
+      }
+      continue;
+    }
     if (block.type !== 'image') continue;
     const image = block as z.infer<typeof ImageBlockSchema>;
     // Parsed, not a string prefix: `lesson-media/../other-bucket` must not pass.

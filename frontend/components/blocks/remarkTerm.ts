@@ -1,12 +1,13 @@
 import type { Block } from '@scipal/types';
 
+// `{note:<key>:chữ}` is the same with a popover the teacher wrote in the block (block.notes).
 // `{term:<uuid>:chữ}` tags a glossary term in lesson text: the words stay as written and become a
 // TermMark (popover) in TheoryRenderer, and the lesson lists every tagged term at its end. `:` and
 // not `|` separates the parts, because GFM splits table cells on `|` before reading inline text.
 
 export const TERM_ID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-const pattern = () => /\{term:([0-9a-f-]{36}):([^{}\n]+)\}/gi;
+const pattern = () => /\{(?:term:([0-9a-f-]{36})|note:([a-z0-9]{4,12})):([^{}\n]+)\}/gi;
 
 type MdNode = { type: string; value?: string; children?: MdNode[]; data?: Record<string, unknown> };
 
@@ -14,12 +15,12 @@ function split(value: string): MdNode[] | null {
   const out: MdNode[] = [];
   let last = 0;
   for (const match of value.matchAll(pattern())) {
-    if (!TERM_ID.test(match[1]!)) continue;
+    if (match[1] && !TERM_ID.test(match[1])) continue;
     if (match.index > last) out.push({ type: 'text', value: value.slice(last, match.index) });
     out.push({
       type: 'termTag',
-      data: { hName: 'span', hProperties: { 'data-term-id': match[1]!.toLowerCase() } },
-      children: [{ type: 'text', value: match[2] }],
+      data: { hName: 'span', hProperties: match[1] ? { 'data-term-id': match[1].toLowerCase() } : { 'data-note-id': match[2] } },
+      children: [{ type: 'text', value: match[3] }],
     });
     last = match.index + match[0].length;
   }
@@ -54,7 +55,7 @@ const LITERAL = /```[\s\S]*?(?:```|$)|~~~[\s\S]*?(?:~~~|$)|`[^`\n]*`|\$\$[\s\S]*
 export function termIdsOf(text: string): string[] {
   const ids = new Set<string>();
   for (const match of text.replace(LITERAL, ' ').matchAll(pattern())) {
-    if (TERM_ID.test(match[1]!)) ids.add(match[1]!.toLowerCase());
+    if (match[1] && TERM_ID.test(match[1])) ids.add(match[1].toLowerCase());
   }
   return [...ids];
 }

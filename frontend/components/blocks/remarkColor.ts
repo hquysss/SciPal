@@ -3,7 +3,8 @@
 export const TEXT_COLORS = ['red', 'green', 'blue', 'orange'] as const;
 export type TextColor = (typeof TEXT_COLORS)[number];
 
-const PATTERN = new RegExp(`\{(${TEXT_COLORS.join('|')}):([^{}\n]+)\}`, 'g');
+// The words may hold one nested tag (`{blue:a {term:…:b} c}`), which remarkTerm then reads inside the colour.
+const PATTERN = new RegExp(`\\{(${TEXT_COLORS.join('|')}):((?:[^{}\\n]|\\{[a-z]+:[^{}\\n]*\\})+)\\}`, 'g');
 
 type MdNode = { type: string; value?: string; children?: MdNode[]; data?: Record<string, unknown> };
 

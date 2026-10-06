@@ -9,6 +9,7 @@ import styles from './notebook.module.css';
 import { remarkColor, type TextColor } from './remarkColor';
 import { remarkTerm } from './remarkTerm';
 import { TermMark } from './terms/TermMark';
+import { NoteMark, NotesContext } from './terms/NoteMark';
 
 const COLOR_CLASS: Record<TextColor, string> = {
   red: 'text-danger',
@@ -62,6 +63,8 @@ const components: Components = {
   span: (props) => {
     const termId = (props as { 'data-term-id'?: string })['data-term-id'];
     if (termId) return <TermMark termId={termId}>{props.children}</TermMark>;
+    const noteKey = (props as { 'data-note-id'?: string })['data-note-id'];
+    if (noteKey) return <NoteMark noteKey={noteKey}>{props.children}</NoteMark>;
     const color = (props as { 'data-color'?: TextColor })['data-color'];
     // KaTeX positions fractions, roots and scripts with inline `style`, and marks its visual copy `aria-hidden`
     // (the MathML copy is the one read aloud or copied); dropping either breaks the formula.
@@ -83,9 +86,11 @@ export function TheoryRenderer({ block, lang }: { block: TheoryBlock; lang: 'en'
   const text = lang === 'en' ? block.content.en : block.content.vi;
   return (
     <div className={`${styles.rules} text-base text-ink [overflow-wrap:anywhere]`}>
-      <ReactMarkdown remarkPlugins={REMARK} rehypePlugins={REHYPE} components={components}>
-        {text}
-      </ReactMarkdown>
+      <NotesContext.Provider value={{ notes: block.notes, lang }}>
+        <ReactMarkdown remarkPlugins={REMARK} rehypePlugins={REHYPE} components={components}>
+          {text}
+        </ReactMarkdown>
+      </NotesContext.Provider>
     </div>
   );
 }

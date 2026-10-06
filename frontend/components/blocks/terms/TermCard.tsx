@@ -7,7 +7,7 @@ import type { LessonTerm } from './LessonTermsContext';
 type Bilingual = { en: string; vi: string };
 
 /** A term's content: the popover body, and one entry of the end-of-lesson list (`compact`). */
-export function TermCard({ term, lang, compact = false }: { term: LessonTerm; lang: 'en' | 'vi'; compact?: boolean }) {
+export function TermCard({ term, lang, compact = false, glossaryLink = true }: { term: LessonTerm; lang: 'en' | 'vi'; compact?: boolean; glossaryLink?: boolean }) {
   const t = (text: Bilingual) => text[lang];
   const name = lang === 'en' ? term.term_en : term.term_vi;
   const other = lang === 'en' ? term.term_vi : term.term_en;
@@ -57,12 +57,14 @@ export function TermCard({ term, lang, compact = false }: { term: LessonTerm; la
             {t({ en: 'Example', vi: 'Ví dụ' })}: {example}
           </p>
         )}
+        {glossaryLink && (
         <Link
           href={`/glossary#${term.id}`}
           className="self-start text-sm font-medium text-action underline underline-offset-4 hover:text-action-hover focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
         >
           {t({ en: 'Open in the glossary', vi: 'Xem trong từ điển' })}
         </Link>
+        )}
       </div>
     </div>
   );
