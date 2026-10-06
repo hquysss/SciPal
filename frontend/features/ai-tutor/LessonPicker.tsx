@@ -1,11 +1,10 @@
 'use client';
 
+import { INPUT_CLASS as FIELD } from '@/components/ui/input';
 import { useId, useState } from 'react';
 import { useLanguage } from '@scipal/hooks';
 import type { TutorLesson } from './tutorLessonTypes';
 
-const FIELD =
-  'min-h-11 w-full rounded-lg border border-edge bg-surface px-3 text-base text-ink focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-focus';
 
 /**
  * "Hỏi về bài": pick a subject, then one of its published lessons. The chosen lesson's theory goes

@@ -69,6 +69,16 @@ describe('TheoryRenderer', () => {
     expect(out).not.toContain('$S = a^2$');
   });
 
+  it('keeps the inline style and aria-hidden KaTeX needs to lay out and announce a formula', () => {
+    const vi = String.raw`Chu kì $T = 2\pi\sqrt{\frac{l}{g}}$.`;
+    const out = renderToStaticMarkup(<TheoryRenderer block={{ type: 'theory', content: { vi, en: '' } }} lang="vi" />);
+    // Fractions and roots are stacked with `top`/`height` set inline; without them the parts overlap.
+    expect(out).toMatch(/class="vlist"[^>]*style="[^"]*height:/);
+    expect(out).toMatch(/style="[^"]*top:/);
+    // The drawn copy is hidden from assistive tech so the formula is not read twice.
+    expect(out).toContain('class="katex-html" aria-hidden="true"');
+  });
+
   it('shows a broken formula instead of failing', () => {
     const out = renderToStaticMarkup(<TheoryRenderer block={{ type: 'theory', content: { vi: 'Sai: $\\frac{1}{$ nhé', en: '' } }} lang="vi" />);
     expect(out).toContain('nhé');

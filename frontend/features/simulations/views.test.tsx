@@ -137,6 +137,7 @@ describe('biology views', () => {
     expect(empty).toContain('Kéo ảnh vào đây');
     const filled = renderToStaticMarkup(<Editor config={{ ...defaultSimulationConfig('labeled-diagram'), image_url: image, labels }} onChange={() => {}} lang="vi" />);
     expect(filled).toContain('value="Nhân"');
-    expect(filled).toContain('Bấm lên ảnh để thêm nhãn');
+    expect(filled).toContain('Chạm lên ảnh để thêm nhãn');
+    expect(filled).toContain('Thêm nhãn');
   });
 });

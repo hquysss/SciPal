@@ -55,7 +55,7 @@ export default function Loading() {
             aria-valuemax={100}
             aria-valuenow={Math.round(progress)}
           >
-            <div className={styles.progressFill} style={{ width: `${progress}%` }} />
+            <div className={styles.progressFill} style={{ transform: `translateX(${progress - 100}%)` }} />
           </div>
           <div className={styles.progressMeta}>
             <span>{t({ en: 'Loading', vi: 'Đang tải' })}</span>

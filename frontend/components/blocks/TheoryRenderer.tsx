@@ -63,7 +63,13 @@ const components: Components = {
     const termId = (props as { 'data-term-id'?: string })['data-term-id'];
     if (termId) return <TermMark termId={termId}>{props.children}</TermMark>;
     const color = (props as { 'data-color'?: TextColor })['data-color'];
-    return <span className={color ? COLOR_CLASS[color] : props.className}>{props.children}</span>;
+    // KaTeX positions fractions, roots and scripts with inline `style`, and marks its visual copy `aria-hidden`
+    // (the MathML copy is the one read aloud or copied); dropping either breaks the formula.
+    return (
+      <span className={color ? COLOR_CLASS[color] : props.className} style={props.style} aria-hidden={props['aria-hidden']}>
+        {props.children}
+      </span>
+    );
   },
   hr: () => <hr className="my-7 border-line" />,
 };

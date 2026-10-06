@@ -1,5 +1,6 @@
 'use client';
 
+import { INPUT_CLASS as FIELD } from '@/components/ui/input';
 import { useEffect, useId, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { ArrowDown, ArrowUp, Shuffle, Trash2 } from 'lucide-react';
@@ -28,7 +29,6 @@ type Bilingual = { en: string; vi: string };
 type Panel = 'write' | 'bank' | 'draw' | null;
 type Message = { text: Bilingual; tone: 'success' | 'danger' };
 
-const FIELD = 'min-h-11 w-full rounded-lg border border-edge bg-surface px-3 text-base text-ink disabled:opacity-60';
 const LABEL = 'text-sm font-semibold text-ink';
 
 interface ExamBuilderProps {

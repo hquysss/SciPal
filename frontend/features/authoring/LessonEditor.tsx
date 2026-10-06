@@ -490,7 +490,7 @@ export function LessonEditor({
                 className="flex min-h-11 items-center gap-2 rounded-lg px-2 text-sm font-semibold text-ink focus-visible:outline focus-visible:outline-2 focus-visible:outline-focus"
               >
                 <span aria-hidden="true" className={`relative inline-flex h-5 w-9 shrink-0 rounded-full transition-colors ${autoTranslate ? 'bg-action' : 'bg-line'}`}>
-                  <span className={`absolute top-0.5 h-4 w-4 rounded-full bg-surface shadow-sm transition-transform ${autoTranslate ? 'translate-x-4' : 'translate-x-0.5'}`} />
+                  <span className={`absolute top-0.5 h-4 w-4 rounded-full bg-surface shadow-sm transition-transform motion-reduce:transition-none ${autoTranslate ? 'translate-x-4' : 'translate-x-0.5'}`} />
                 </span>
                 {t({ en: 'Translate to English automatically', vi: 'Tự dịch sang tiếng Anh' })}
               </button>

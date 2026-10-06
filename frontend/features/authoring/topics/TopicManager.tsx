@@ -1,5 +1,6 @@
 'use client';
 
+import { INPUT_CLASS as FIELD } from '@/components/ui/input';
 import { useCallback, useEffect, useId, useRef, useState } from 'react';
 import { ArrowDown, ArrowUp, Pencil, Trash2 } from 'lucide-react';
 import { useLanguage } from '@scipal/hooks';
@@ -11,7 +12,6 @@ import { createTopic, deleteTopic, listTopics, moveTopic, renameTopic, type Mana
 type Bilingual = { en: string; vi: string };
 type Names = { name_vi: string; name_en: string };
 
-const FIELD = 'min-h-11 w-full rounded-lg border border-edge bg-surface px-3 text-base text-ink disabled:opacity-60';
 const LABEL = 'text-sm font-semibold text-ink';
 
 /** Two name fields (Vietnamese, English) with a submit button. */

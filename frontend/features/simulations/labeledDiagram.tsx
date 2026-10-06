@@ -1,9 +1,9 @@
 'use client';
 
 import { useState, type MouseEvent } from 'react';
-import { Check, Eye, EyeOff, X } from 'lucide-react';
+import { Check, Eye, EyeOff, Plus, X } from 'lucide-react';
 import { ImageDropZone } from '@/features/authoring/editor/editors/ImageEditor';
-import { BUTTON, Field, FIELD, PANEL, SelectField } from './controls';
+import { BUTTON, Field, FIELD, NumberField, PANEL, SelectField } from './controls';
 import { labelStyle, nearestLabel, type DiagramLabel } from './engines/diagram';
 import { pick, type Lang, type SimulationEditorProps, type SimulationModule, type SimulationViewProps } from './types';
 
@@ -168,52 +168,71 @@ function DiagramEditor({ config, onChange, lang }: SimulationEditorProps<'labele
     return <ImageDropZone onImage={(image) => onChange({ ...config, image_url: image.url })} />;
   }
 
+  const addLabel = (x: number, y: number) => {
+    if (config.labels.length >= MAX_LABELS) return;
+    const id = `l${Date.now().toString(36)}${config.labels.length}`;
+    onChange({ ...config, labels: [...config.labels, { id, x, y, text: { vi: '', en: '' } }] });
+  };
+
   const place = (e: MouseEvent<HTMLDivElement>) => {
     const { x, y } = fractionOf(e);
     if (moving) {
       setLabel(moving, { x, y });
       setMoving(null);
-    } else if (config.labels.length < MAX_LABELS) {
-      const id = `l${Date.now().toString(36)}${config.labels.length}`;
-      onChange({ ...config, labels: [...config.labels, { id, x, y, text: { vi: '', en: '' } }] });
+    } else {
+      addLabel(x, y);
     }
   };
 
   return (
     <div className="flex flex-col gap-4">
-      <p className="text-sm text-ink-muted">
-        {moving
-          ? t({ en: 'Click the new place for the label.', vi: 'Bấm vào vị trí mới của nhãn.' })
-          : t({ en: `Click the image to add a label (up to ${MAX_LABELS}).`, vi: `Bấm lên ảnh để thêm nhãn (tối đa ${MAX_LABELS}).` })}
-      </p>
+      <div className="flex flex-wrap items-center gap-3">
+        <p className="min-w-0 flex-1 basis-60 text-sm text-ink-muted">
+          {moving
+            ? t({ en: 'Tap the new place for the label.', vi: 'Chạm vào vị trí mới của nhãn.' })
+            : t({ en: `Tap the image to add a label (up to ${MAX_LABELS}), or use the button and the position fields below.`, vi: `Chạm lên ảnh để thêm nhãn (tối đa ${MAX_LABELS}), hoặc dùng nút và ô vị trí bên dưới.` })}
+        </p>
+        <button type="button" className={BUTTON} disabled={config.labels.length >= MAX_LABELS} onClick={() => addLabel(0.5, 0.5)}>
+          <Plus aria-hidden="true" className="h-4 w-4" />
+          {t({ en: 'Add label', vi: 'Thêm nhãn' })}
+        </button>
+      </div>
       <DiagramImage url={config.image_url} alt={t(config.alt)} lang={lang} onClick={place}>
         {config.labels.map((label, i) => (
           <span key={label.id} className={`${MARKER} pointer-events-none`} style={labelStyle(label)} aria-hidden="true">
-            <span className={`${DOT} flex h-5 w-5 items-center justify-center text-[10px] font-bold text-action-ink ${moving === label.id ? 'bg-warning' : ''}`}>{i + 1}</span>
+            <span className={`${DOT} flex h-6 w-6 items-center justify-center text-xs font-bold text-action-ink ${moving === label.id ? 'bg-warning' : ''}`}>{i + 1}</span>
           </span>
         ))}
       </DiagramImage>
-      <ol className="flex flex-col gap-2">
+      <ol className="flex flex-col gap-3">
         {config.labels.map((label, i) => (
-          <li key={label.id} className="grid grid-cols-[auto_1fr_1fr_auto_auto] items-end gap-2">
-            <span className="pb-3 text-sm font-bold tabular-nums text-ink-muted">{i + 1}</span>
-            <Field label={t({ en: 'Label (VI)', vi: 'Nhãn (VI)' })}>
-              {(id) => <input id={id} value={label.text.vi} maxLength={200} onChange={(e) => setLabel(label.id, { text: { ...label.text, vi: e.target.value } })} className={FIELD} />}
-            </Field>
-            <Field label={t({ en: 'Label (EN)', vi: 'Nhãn (EN)' })}>
-              {(id) => <input id={id} value={label.text.en} maxLength={200} onChange={(e) => setLabel(label.id, { text: { ...label.text, en: e.target.value } })} className={FIELD} />}
-            </Field>
-            <button type="button" className={BUTTON} aria-pressed={moving === label.id} onClick={() => setMoving(moving === label.id ? null : label.id)}>
-              {moving === label.id ? <Check aria-hidden="true" className="h-4 w-4" /> : t({ en: 'Move', vi: 'Dời' })}
-            </button>
-            <button
-              type="button"
-              className={BUTTON}
-              aria-label={t({ en: `Remove label ${i + 1}`, vi: `Xóa nhãn ${i + 1}` })}
-              onClick={() => onChange({ ...config, labels: config.labels.filter((l) => l.id !== label.id) })}
-            >
-              <X aria-hidden="true" className="h-4 w-4" />
-            </button>
+          <li key={label.id} className="grid grid-cols-2 items-end gap-2 rounded-lg border border-line p-3 sm:grid-cols-[auto_1fr_1fr_5rem_5rem_auto] sm:border-0 sm:p-0">
+            <span className="col-span-2 text-sm font-bold tabular-nums text-ink-muted sm:col-span-1 sm:pb-3">{i + 1}</span>
+            <div className="col-span-2 sm:col-span-1">
+              <Field label={t({ en: 'Label (VI)', vi: 'Nhãn (VI)' })}>
+                {(id) => <input id={id} value={label.text.vi} maxLength={200} onChange={(e) => setLabel(label.id, { text: { ...label.text, vi: e.target.value } })} className={FIELD} />}
+              </Field>
+            </div>
+            <div className="col-span-2 sm:col-span-1">
+              <Field label={t({ en: 'Label (EN)', vi: 'Nhãn (EN)' })}>
+                {(id) => <input id={id} value={label.text.en} maxLength={200} onChange={(e) => setLabel(label.id, { text: { ...label.text, en: e.target.value } })} className={FIELD} />}
+              </Field>
+            </div>
+            <NumberField label="X" unit="%" value={Math.round(label.x * 100)} min={0} max={100} onChange={(v) => setLabel(label.id, { x: v / 100 })} />
+            <NumberField label="Y" unit="%" value={Math.round(label.y * 100)} min={0} max={100} onChange={(v) => setLabel(label.id, { y: v / 100 })} />
+            <div className="col-span-2 flex gap-2 sm:col-span-1">
+              <button type="button" className={`${BUTTON} flex-1 sm:flex-none`} aria-pressed={moving === label.id} onClick={() => setMoving(moving === label.id ? null : label.id)}>
+                {moving === label.id ? <Check aria-hidden="true" className="h-4 w-4" /> : t({ en: 'Move', vi: 'Dời' })}
+              </button>
+              <button
+                type="button"
+                className={BUTTON}
+                aria-label={t({ en: `Remove label ${i + 1}`, vi: `Xóa nhãn ${i + 1}` })}
+                onClick={() => onChange({ ...config, labels: config.labels.filter((l) => l.id !== label.id) })}
+              >
+                <X aria-hidden="true" className="h-4 w-4" />
+              </button>
+            </div>
           </li>
         ))}
       </ol>

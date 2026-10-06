@@ -1,5 +1,6 @@
 'use client';
 
+import { INPUT_CLASS as FIELD } from '@/components/ui/input';
 import { useEffect, useId, useState } from 'react';
 import { AlertTriangle } from 'lucide-react';
 import type { QuotaMetric } from '@scipal/types';
@@ -13,7 +14,6 @@ import { getAccountQuotas, getQuotaAudit, saveAccountQuotas, type AccountQuotaSn
 type Bilingual = { vi: string; en: string };
 type Audit = { entries: QuotaAuditEntry[]; next: string | null };
 
-const FIELD = 'min-h-11 w-full rounded-lg border border-edge bg-surface px-3 text-base text-ink focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-focus';
 const when = (iso: string) => new Date(iso).toLocaleString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Ho_Chi_Minh' });
 
 /** "Lượt Tutor mỗi tháng: 30; Lượt thi…: theo gói" for the metrics an audit entry changed. */

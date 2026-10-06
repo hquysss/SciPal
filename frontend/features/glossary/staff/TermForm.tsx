@@ -1,5 +1,6 @@
 'use client';
 
+import { INPUT_CLASS as INPUT } from '@/components/ui/input';
 import { useState } from 'react';
 import { useLanguage } from '@scipal/hooks';
 import { Alert } from '@/components/ui/alert';
@@ -12,8 +13,6 @@ const KIND_LABEL: Record<TermKind, Bilingual> = { word: { en: 'Word', vi: 'Từ 
 
 type Bilingual = { en: string; vi: string };
 
-const INPUT =
-  'min-h-11 w-full rounded-lg border border-edge bg-surface px-3 text-base font-normal text-ink focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus';
 
 /** What must be filled in before the term can be sent, or null. */
 export function termFormProblem(draft: TermDraft): Bilingual | null {

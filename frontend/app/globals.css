@@ -23,6 +23,19 @@
   }
 }
 
+/* Mascot sheets: the plain url everywhere, a density-matched image-set where the browser has one. */
+.scipal-mascot-directions-layer,
+.scipal-mascot-reactions-layer { background-image: var(--sheet); }
+
+@supports (background-image: image-set(url('/a.webp') 1x)) {
+  .scipal-mascot-directions-layer,
+  .scipal-mascot-reactions-layer { background-image: var(--sheet-set); }
+}
+
+/* KaTeX sizes `.base` with width: min-content. Inherited `overflow-wrap: anywhere` (lesson text) lets that shrink to
+   one character, which collapses every formula into overlapping fragments. */
+.katex { overflow-wrap: normal; }
+
 /* Soft glows of the level's supporting colors, fixed behind every page. */
 [data-app-shell]::after {
   content: '';
@@ -68,6 +81,14 @@ main[class*='mx-auto'] > :nth-child(n + 5) { animation-delay: 240ms; }
 @media (prefers-contrast: more), print {
   [data-app-shell]::after { display: none; }
 }
+
+/* Windows High Contrast drops box-shadow and background tints: keep controls and focus visible. */
+@media (forced-colors: active) {
+  :focus-visible { outline: 2px solid Highlight; outline-offset: 2px; }
+}
+
+/* The skip link parks focus on <main> so the next Tab starts in the content; it is not a control, so no ring. */
+main[tabindex='-1']:focus { outline: none; }
 
 /* High-craft science lab textures & atmospheric lighting */
 .bg-science-grid {

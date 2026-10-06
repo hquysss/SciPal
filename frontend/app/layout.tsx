@@ -7,6 +7,7 @@ import { OfflineBanner } from '@/components/pwa/OfflineBanner';
 import { PwaRegister } from '@/components/pwa/PwaRegister';
 import { APP_THEME_COLOR } from '@/lib/pwa/brand';
 import { NavBar } from '@/components/nav/NavBar';
+import { SkipLink } from '@/components/nav/SkipLink';
 import { GuestTrialBanner } from '@/features/guest/GuestTrialBanner';
 import { renderThemeCss } from '@scipal/ui';
 import { buildBootScript, DARK_MODE_ENABLED } from '@/lib/theme/shellTheme';
@@ -67,6 +68,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body className={`${jetbrainsMono.variable} ${beVietnamPro.variable} font-sans antialiased`}>
         <div data-app-shell="" data-level="neutral" suppressHydrationWarning className="flex min-h-screen flex-col">
           <script dangerouslySetInnerHTML={{ __html: buildBootScript({ darkMode: DARK_MODE_ENABLED }) }} />
+          <SkipLink />
           <TabTitle />
           <PwaRegister />
           <NavBar />
