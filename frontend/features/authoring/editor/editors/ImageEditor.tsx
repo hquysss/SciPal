@@ -1,11 +1,12 @@
 'use client';
 
+import { Media } from '@/components/media/Media';
 import { useId, useRef, useState, type DragEvent } from 'react';
 import { ImagePlus } from 'lucide-react';
 import { useLanguage } from '@scipal/hooks';
 import type { ImageBlock } from '@scipal/types';
 import { Input } from '@/components/ui/input';
-import { IMAGE_TYPES, uploadLessonImage } from '../mediaApi';
+import { MEDIA_ACCEPT, uploadLessonMedia } from '../mediaApi';
 import { LangTabs } from './LangTabs';
 import { AutoTranslatedNote } from '../../translation/AutoTranslateContext';
 import { LABEL, SMALL_BUTTON } from './styles';
@@ -20,7 +21,7 @@ export function useImageUpload(onUploaded: (url: string) => void) {
     if (!file) return;
     setBusy(true);
     setError(null);
-    const result = await uploadLessonImage(file);
+    const result = await uploadLessonMedia(file);
     setBusy(false);
     if (result.ok) onUploaded(result.url);
     else setError(result.error);
@@ -64,7 +65,7 @@ export function ImageDropZone({ onImage }: { onImage: (block: ImageBlock) => voi
       <input
         id={id}
         type="file"
-        accept={IMAGE_TYPES.join(',')}
+        accept={MEDIA_ACCEPT}
         className="sr-only"
         disabled={busy}
         onChange={(e) => {
@@ -102,15 +103,14 @@ export function ImageEditor({ block, onChange, lang, onLangChange }: ImageEditor
   return (
     <div className="flex flex-col gap-3">
       <div className="flex flex-col items-center gap-2 rounded-lg border border-line bg-surface-sunken p-3">
-        {/* eslint-disable-next-line @next/next/no-img-element -- Storage images of unknown size */}
-        <img src={block.url} alt={block.alt[lang] || block.alt.vi} className="max-h-72 w-auto max-w-full rounded-md" />
+        <Media url={block.url} alt={block.alt[lang] || block.alt.vi} className="max-h-72 w-auto max-w-full rounded-md" />
         <button type="button" data-field="url" onClick={() => fileRef.current?.click()} disabled={busy} className={SMALL_BUTTON}>
           {busy ? t({ en: 'Uploading…', vi: 'Đang tải…' }) : t({ en: 'Replace image', vi: 'Thay ảnh' })}
         </button>
         <input
           ref={fileRef}
           type="file"
-          accept={IMAGE_TYPES.join(',')}
+          accept={MEDIA_ACCEPT}
           className="sr-only"
           tabIndex={-1}
           aria-hidden="true"

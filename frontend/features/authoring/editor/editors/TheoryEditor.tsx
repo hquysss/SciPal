@@ -6,7 +6,7 @@ import { useLanguage } from '@scipal/hooks';
 import type { ImageBlock, TheoryBlock } from '@scipal/types';
 import { TEXT_COLORS, type TextColor } from '@/components/blocks/remarkColor';
 import { applyColor, applyFormat, applyTerm, newNoteKey, pruneNotes, type MarkdownFormat } from '../markdownToolbar';
-import { uploadLessonImage } from '../mediaApi';
+import { uploadLessonMedia } from '../mediaApi';
 import { LangTabs } from './LangTabs';
 import { NoteForm } from './NoteForm';
 import { RefPicker } from './RefPicker';
@@ -114,7 +114,7 @@ export function TheoryEditor({ block, onChange, lang, onLangChange, onInsertImag
     if (!file || !file.type.startsWith('image/') || !onInsertImage) return;
     event.preventDefault();
     setStatus(t({ en: 'Uploading image…', vi: 'Đang tải ảnh lên…' }));
-    const result = await uploadLessonImage(file);
+    const result = await uploadLessonMedia(file);
     if (result.ok) {
       onInsertImage({ type: 'image', url: result.url, alt: { vi: '', en: '' } });
       setStatus(t({ en: 'Image added below this block.', vi: 'Đã thêm ảnh ngay dưới khối này.' }));

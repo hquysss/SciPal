@@ -24,7 +24,7 @@ import { PartTabs } from './editor/PartTabs';
 import { LessonRequestsPanel } from './simulationRequests/LessonRequestsPanel';
 import { PracticeQuestionsContext, usePracticeQuestionRows } from './practice/PracticeQuestionsContext';
 import { leavingHref } from './editor/leaveGuard';
-import { uploadLessonImage } from './editor/mediaApi';
+import { uploadLessonMedia } from './editor/mediaApi';
 import { nextNotice, translateBeforeSave, type Mark } from './translation/autoTranslate';
 import { AutoTranslateContext, AutoTranslatedNote, type AutoTranslateValue } from './translation/AutoTranslateContext';
 import { lessonFields, setLessonField, type LessonDoc } from './translation/bilingualFields';
@@ -402,7 +402,7 @@ export function LessonEditor({
     setMessage(null);
     let result: LessonImportResult;
     try {
-      result = documentKind(file.name) ? await importLessonDocument(file, { uploadImage: uploadLessonImage }) : parseLessonImport(await file.text(), file.size);
+      result = documentKind(file.name) ? await importLessonDocument(file, { uploadImage: uploadLessonMedia }) : parseLessonImport(await file.text(), file.size);
     } catch {
       result = { ok: false, error: { en: 'Could not read the file.', vi: 'Không đọc được tệp.' } };
     } finally {

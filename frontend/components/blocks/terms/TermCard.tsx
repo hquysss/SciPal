@@ -1,5 +1,6 @@
 'use client';
 
+import { Media } from '@/components/media/Media';
 import Link from 'next/link';
 import { Volume2 } from 'lucide-react';
 import type { LessonTerm } from './LessonTermsContext';
@@ -20,14 +21,7 @@ export function TermCard({ term, lang, compact = false, glossaryLink = true }: {
     <div className={`flex gap-3 ${compact ? 'flex-row items-start' : 'flex-col'}`}>
       {term.image_url && (
         <figure className={compact ? 'w-20 shrink-0' : 'flex flex-col gap-1'}>
-          {/* eslint-disable-next-line @next/next/no-img-element -- media store images of unknown size */}
-          <img
-            src={term.image_url}
-            alt={alt}
-            loading="lazy"
-            decoding="async"
-            className={`w-full rounded-lg border border-line bg-surface-sunken object-cover ${compact ? 'aspect-square' : 'aspect-video'}`}
-          />
+          <Media url={term.image_url} alt={alt} className={`w-full rounded-lg border border-line bg-surface-sunken object-cover ${compact ? 'aspect-square' : 'aspect-video'}`} />
           {!compact && term.image_credit && <figcaption className="text-xs text-ink-muted">{term.image_credit}</figcaption>}
         </figure>
       )}

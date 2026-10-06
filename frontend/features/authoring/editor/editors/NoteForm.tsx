@@ -1,11 +1,12 @@
 'use client';
 
+import { Media } from '@/components/media/Media';
 import { useId, useState } from 'react';
 import { ImagePlus, Trash2 } from 'lucide-react';
 import { useLanguage } from '@scipal/hooks';
 import type { TheoryBlock } from '@scipal/types';
 import { Input } from '@/components/ui/input';
-import { IMAGE_TYPES } from '../mediaApi';
+import { MEDIA_ACCEPT } from '../mediaApi';
 import { useImageUpload } from './ImageEditor';
 import { LABEL, SMALL_BUTTON, TEXTAREA } from './styles';
 
@@ -58,8 +59,7 @@ export function NoteForm({ words, lang, onSubmit, onCancel }: { words: string; l
         <span className={LABEL}>{t({ en: 'Picture (optional, shown when the word is pressed)', vi: 'Hình (không bắt buộc, hiện khi bấm vào chữ)' })}</span>
         {image ? (
           <div className="flex flex-col gap-2 sm:flex-row sm:items-start">
-            {/* eslint-disable-next-line @next/next/no-img-element -- lesson media from SciPal's own storage */}
-            <img src={image.url} alt={image.alt[lang] || image.alt.vi} className="max-h-32 w-auto max-w-full rounded-md border border-line bg-surface object-contain" />
+            <Media url={image.url} alt={image.alt[lang] || image.alt.vi} className="max-h-32 w-auto max-w-full rounded-md border border-line bg-surface object-contain" />
             <div className="flex min-w-0 flex-1 flex-col gap-1">
               <label htmlFor={`${id}-alt`} className={LABEL}>{t({ en: 'Describe the picture', vi: 'Mô tả hình' })}</label>
               <Input id={`${id}-alt`} value={image.alt[lang]} onChange={(e) => setImage({ ...image, alt: { ...image.alt, [lang]: e.target.value } })} />
@@ -78,7 +78,7 @@ export function NoteForm({ words, lang, onSubmit, onCancel }: { words: string; l
             <input
               id={`${id}-img`}
               type="file"
-              accept={IMAGE_TYPES.join(',')}
+              accept={MEDIA_ACCEPT}
               className="sr-only"
               disabled={busy}
               onChange={(e) => {
