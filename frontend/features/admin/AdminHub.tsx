@@ -5,7 +5,6 @@ import { useEffect, useState } from 'react';
 import {
   BookA, Bot, ClipboardCheck, FlaskConical, FolderTree, Library, NotebookPen, ReceiptText, Settings2, ToggleRight, Users, type LucideIcon } from 'lucide-react';
 import { useLanguage } from '@scipal/hooks';
-import { FeatureRequestBoard } from '@/features/survey/FeatureRequestBoard';
 import { countOpenSimulationRequests } from '@/features/authoring/simulationRequests/api';
 
 // Every admin tool in one place. The navbar and the profile link here instead of listing each tool;
@@ -107,7 +106,6 @@ export function AdminHub() {
         </section>
       ))}
 
-      <FeatureRequestBoard />
     </main>
   );
 }
