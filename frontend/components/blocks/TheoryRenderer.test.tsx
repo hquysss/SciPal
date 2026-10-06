@@ -88,3 +88,26 @@ describe('TheoryRenderer colours', () => {
     expect(countRawColors(html).total).toBe(0);
   });
 });
+
+describe('TheoryRenderer term tags', () => {
+  const ID = '11111111-1111-4111-8111-111111111111';
+  const render = (vi: string) => renderToStaticMarkup(<TheoryRenderer block={{ type: 'theory', content: { en: '', vi } }} lang="vi" />);
+
+  it('shows the display text of a tag, never the marker', () => {
+    const html = render(`Một {term:${ID}:thuật toán} đơn giản.`);
+    expect(html).toContain('thuật toán');
+    expect(html).not.toContain('{term:');
+  });
+
+  it('works inside a table cell', () => {
+    const html = render(`| Từ | Ghi chú |\n|---|---|\n| {term:${ID}:biến} | x |`);
+    expect(html).toMatch(/<td[^>]*>biến<\/td>|<td[^>]*>.*biến.*<\/td>/);
+    expect(html).not.toContain('{term:');
+  });
+
+  it('leaves a tag in inline code as typed, next to colours', () => {
+    const html = render(`\`{term:${ID}:x}\` và {red:đỏ}`);
+    expect(html).toContain(`{term:${ID}:x}`);
+    expect(html).toContain('<span class="text-danger">đỏ</span>');
+  });
+});
