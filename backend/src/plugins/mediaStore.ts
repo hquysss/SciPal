@@ -1,8 +1,10 @@
 import fp from 'fastify-plugin';
-import { PutObjectCommand, S3Client } from '@aws-sdk/client-s3';
+import { DeleteObjectCommand, PutObjectCommand, S3Client } from '@aws-sdk/client-s3';
 
 export interface MediaStore {
   put(key: string, body: Buffer, contentType: string): Promise<void>;
+  /** Deletes one object (a replaced profile picture). */
+  remove(key: string): Promise<void>;
   publicUrl(key: string): string;
 }
 
@@ -29,6 +31,9 @@ export const mediaStorePlugin = fp(async (app) => {
   app.decorate('mediaStore', {
     async put(key, body, contentType) {
       await s3.send(new PutObjectCommand({ Bucket: bucket, Key: key, Body: body, ContentType: contentType, CacheControl: 'public, max-age=31536000, immutable' }));
+    },
+    async remove(key) {
+      await s3.send(new DeleteObjectCommand({ Bucket: bucket, Key: key }));
     },
     publicUrl: (key) => `${publicBase}/${key}`,
   } satisfies MediaStore);
