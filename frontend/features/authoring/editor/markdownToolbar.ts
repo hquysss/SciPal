@@ -10,12 +10,27 @@ export function applyColor(text: string, start: number, end: number, color: Text
 }
 
 /** Tag the selection as a glossary term, `{term:<id>:…}` (see remarkTerm); no selection, no change. */
-export function applyTerm(text: string, start: number, end: number, termId: string) {
+export function applyTerm(text: string, start: number, end: number, termId: string, kind: 'term' | 'note' = 'term') {
   if (start === end) return { text, start, end };
-  const open = `{term:${termId}:`;
+  const open = `{${kind}:${termId}:`;
   // Inline Markdown would split the tag's text node and show the raw marker, so only plain words go in.
   const inner = text.slice(start, end).replace(/[{}\n]/g, ' ').replace(/[*_`$~[\]]/g, '');
   return { text: text.slice(0, start) + open + inner + '}' + text.slice(end), start: start + open.length, end: start + open.length + inner.length };
+}
+
+/** A new key for a note: short, lowercase, and not already used in the block. */
+export function newNoteKey(used: readonly string[]): string {
+  let key = '';
+  do key = Math.random().toString(36).slice(2, 8).padEnd(6, '0');
+  while (used.includes(key));
+  return key;
+}
+
+/** The notes still tagged in either language's text; a removed tag takes its note with it. */
+export function pruneNotes<N>(notes: Record<string, N> | undefined, ...texts: string[]): Record<string, N> | undefined {
+  if (!notes) return notes;
+  const kept = Object.entries(notes).filter(([key]) => texts.some((text) => text.includes(`{note:${key}:`)));
+  return kept.length ? Object.fromEntries(kept) : undefined;
 }
 
 const WRAP: Record<'bold' | 'italic' | 'math', { mark: string; placeholder: string }> = {

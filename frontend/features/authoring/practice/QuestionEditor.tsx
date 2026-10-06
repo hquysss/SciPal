@@ -1,5 +1,6 @@
 'use client';
 
+import { Media } from '@/components/media/Media';
 import { useContext, useId, useRef, useState } from 'react';
 import { Plus, Trash2 } from 'lucide-react';
 import { useLanguage } from '@scipal/hooks';
@@ -393,7 +394,7 @@ export function QuestionView({ question }: { question: AuthorQuestion }) {
       <MathText text={data.stem ? t(data.stem) : ''} className="font-semibold text-ink" />
       {data.image?.url && (
         // eslint-disable-next-line @next/next/no-img-element -- lesson media from SciPal's own storage
-        <img src={data.image.url} alt={data.image.alt ? t(data.image.alt) : ''} className="max-h-48 w-auto max-w-full self-start rounded-md border border-line" />
+        <Media url={data.image.url} alt={data.image.alt ? t(data.image.alt) : ''} className="max-h-48 w-auto max-w-full self-start rounded-md border border-line" />
       )}
       {(data.options ?? data.items ?? []).length > 0 && (
         <ul className="list-inside list-disc text-ink">

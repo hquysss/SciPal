@@ -1,5 +1,6 @@
 'use client';
 
+import { Media } from '@/components/media/Media';
 import { useLanguage } from '@scipal/hooks';
 import { Badge } from '@/components/ui/badge';
 import type { StaffTerm, TermStatus } from './api';
@@ -41,8 +42,7 @@ export function TermRow({ term, actions }: { term: StaffTerm; actions?: React.Re
       {/* Shown in full so an admin approves the photo learners will see, not just the text. */}
       {term.image_url && (
         <div className="flex items-start gap-3">
-          {/* eslint-disable-next-line @next/next/no-img-element -- media store image */}
-          <img src={term.image_url} alt={term.image_alt_vi ?? ''} loading="lazy" className="h-24 w-36 shrink-0 rounded-lg border border-line bg-surface-sunken object-cover" />
+          <Media url={term.image_url} alt={term.image_alt_vi ?? ''} className="h-24 w-36 shrink-0 rounded-lg border border-line bg-surface-sunken object-cover" />
           <div className="flex flex-col gap-0.5 text-sm">
             <span className="text-ink">{term.image_alt_vi}</span>
             <span className="text-ink-muted" lang="en">

@@ -3,9 +3,18 @@ import { SIMULATION_KINDS } from './simulations.js';
 
 const BilingualText = z.object({ en: z.string(), vi: z.string() });
 
+/** A popover the teacher wrote for a few words of the text, `{note:<key>:words}`: the word's translation, what it means, and a picture. */
+export const TheoryNoteSchema = z.object({
+  term: BilingualText,
+  definition: BilingualText,
+  image: z.object({ url: z.string().url().max(1000), alt: BilingualText }).optional(),
+});
+export const NOTE_KEY = /^[a-z0-9]{4,12}$/;
+
 export const TheoryBlockSchema = z.object({
   type: z.literal('theory'),
   content: BilingualText,
+  notes: z.record(z.string().regex(NOTE_KEY), TheoryNoteSchema).optional(),
 });
 
 export const CodeBlockSchema = z.object({

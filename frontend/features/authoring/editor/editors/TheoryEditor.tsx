@@ -5,9 +5,10 @@ import { BookMarked, Bold, Heading2, Italic, List, Sigma } from 'lucide-react';
 import { useLanguage } from '@scipal/hooks';
 import type { ImageBlock, TheoryBlock } from '@scipal/types';
 import { TEXT_COLORS, type TextColor } from '@/components/blocks/remarkColor';
-import { applyColor, applyFormat, applyTerm, type MarkdownFormat } from '../markdownToolbar';
-import { uploadLessonImage } from '../mediaApi';
+import { applyColor, applyFormat, applyTerm, newNoteKey, pruneNotes, type MarkdownFormat } from '../markdownToolbar';
+import { uploadLessonMedia } from '../mediaApi';
 import { LangTabs } from './LangTabs';
+import { NoteForm } from './NoteForm';
 import { RefPicker } from './RefPicker';
 import { AutoTranslatedNote } from '../../translation/AutoTranslateContext';
 import { SMALL_BUTTON, TEXTAREA } from './styles';
@@ -45,7 +46,13 @@ export function TheoryEditor({ block, onChange, lang, onLangChange, onInsertImag
   const [hasSelection, setHasSelection] = useState(false);
   // The words being tagged, kept while the teacher searches (the textarea loses its selection then).
   const [tagging, setTagging] = useState<{ start: number; end: number } | null>(null);
-  const setValue = (text: string) => onChange({ ...block, content: { ...block.content, [lang]: text } });
+  const setValue = (text: string) => {
+    const content = { ...block.content, [lang]: text };
+    const notes = pruneNotes(block.notes, content.vi, content.en);
+    // `notes` stays out of the block when none is left, so an untouched block saves as before.
+    const { notes: _old, ...rest } = block;
+    onChange({ ...rest, content, ...(notes ? { notes } : {}) });
+  };
 
   const format = (kind: MarkdownFormat) => {
     const area = ref.current;
@@ -87,13 +94,27 @@ export function TheoryEditor({ block, onChange, lang, onLangChange, onInsertImag
     });
   };
 
+  const tagNote = (note: NonNullable<TheoryBlock['notes']>[string]) => {
+    const area = ref.current;
+    if (!area || !tagging) return;
+    const key = newNoteKey(Object.keys(block.notes ?? {}));
+    const next = applyTerm(area.value, tagging.start, tagging.end, key, 'note');
+    // One change carrying both the tag and its note, so neither can be lost to the other.
+    onChange({ ...block, content: { ...block.content, [lang]: next.text }, notes: { ...block.notes, [key]: note } });
+    setTagging(null);
+    requestAnimationFrame(() => {
+      area.focus();
+      area.setSelectionRange(next.start, next.end);
+    });
+  };
+
   // A pasted image becomes its own image block right after this one.
   const onPaste = async (event: ClipboardEvent<HTMLTextAreaElement>) => {
     const file = event.clipboardData.files[0];
     if (!file || !file.type.startsWith('image/') || !onInsertImage) return;
     event.preventDefault();
     setStatus(t({ en: 'Uploading image…', vi: 'Đang tải ảnh lên…' }));
-    const result = await uploadLessonImage(file);
+    const result = await uploadLessonMedia(file);
     if (result.ok) {
       onInsertImage({ type: 'image', url: result.url, alt: { vi: '', en: '' } });
       setStatus(t({ en: 'Image added below this block.', vi: 'Đã thêm ảnh ngay dưới khối này.' }));
@@ -119,28 +140,35 @@ export function TheoryEditor({ block, onChange, lang, onLangChange, onInsertImag
               </button>
             ))}
           </span>
-          {subjectId && (
-            <button
-              type="button"
-              aria-label={t({ en: 'Tag a glossary term', vi: 'Gắn thuật ngữ' })}
-              title={hasSelection ? t({ en: 'Tag a glossary term', vi: 'Gắn thuật ngữ' }) : t({ en: 'Select the words first', vi: 'Bôi đen chữ cần gắn trước' })}
-              aria-pressed={tagging !== null}
-              disabled={!hasSelection && tagging === null}
-              onMouseDown={(e) => e.preventDefault()}
-              onClick={() => (tagging ? setTagging(null) : startTag())}
-              className={SMALL_BUTTON}
-            >
-              <BookMarked aria-hidden="true" className="h-4 w-4" />
-            </button>
-          )}
+          <button
+            type="button"
+            aria-label={t({ en: 'Add a popover to the words', vi: 'Gắn chú thích / thuật ngữ' })}
+            title={hasSelection ? t({ en: 'Add a popover to the words', vi: 'Gắn chú thích / thuật ngữ' }) : t({ en: 'Select the words first', vi: 'Bôi đen chữ cần gắn trước' })}
+            aria-pressed={tagging !== null}
+            disabled={!hasSelection && tagging === null}
+            onMouseDown={(e) => e.preventDefault()}
+            onClick={() => (tagging ? setTagging(null) : startTag())}
+            className={SMALL_BUTTON}
+          >
+            <BookMarked aria-hidden="true" className="h-4 w-4" />
+          </button>
         </div>
       </div>
-      {tagging && subjectId && (
-        <div className="rounded-lg border border-line bg-surface-sunken p-3">
-          <p className="mb-2 text-sm text-ink">
-            {t({ en: 'Tag', vi: 'Gắn' })} “{block.content[lang].slice(tagging.start, tagging.end)}” {t({ en: 'with a term of this subject:', vi: 'với thuật ngữ của môn:' })}
+      {tagging && (
+        <div className="flex flex-col gap-3 rounded-lg border border-line bg-surface-sunken p-3">
+          <p className="text-sm font-semibold text-ink">
+            {t({ en: 'Tag', vi: 'Gắn' })} “{block.content[lang].slice(tagging.start, tagging.end)}”
           </p>
-          <RefPicker kind="term" subjectId={subjectId} onPick={(id) => tag(id)} />
+          <div className="flex flex-col gap-2">
+            <p className="text-sm text-ink">{t({ en: 'Write its popover here (translation, meaning, picture):', vi: 'Tự nhập chú thích tại đây (bản dịch, giải nghĩa, hình):' })}</p>
+            <NoteForm words={block.content[lang].slice(tagging.start, tagging.end)} lang={lang} onSubmit={tagNote} onCancel={() => setTagging(null)} />
+          </div>
+          {subjectId && (
+            <div className="flex flex-col gap-2 border-t border-line pt-3">
+              <p className="text-sm text-ink">{t({ en: 'Or use a term of this subject’s glossary:', vi: 'Hoặc dùng thuật ngữ có sẵn trong từ điển của môn:' })}</p>
+              <RefPicker kind="term" subjectId={subjectId} onPick={(id) => tag(id)} />
+            </div>
+          )}
         </div>
       )}
       <textarea
@@ -159,8 +187,8 @@ export function TheoryEditor({ block, onChange, lang, onLangChange, onInsertImag
       <p className="text-xs text-ink-muted" aria-live="polite">
         {status ??
           t({
-            en: 'Markdown: **bold**, - list, $x^2$ for a formula in a sentence, $$ on its own lines for a large one, {red:text} for colour. Select words and press the book button to tag a glossary term. Paste an image to add it.',
-            vi: 'Markdown: **đậm**, - danh sách, $x^2$ cho công thức trong câu, $$ trên dòng riêng cho công thức lớn, {red:chữ} để tô màu. Bôi đen chữ rồi bấm nút quyển sách để gắn thuật ngữ. Dán ảnh để chèn ảnh.',
+            en: 'Markdown: **bold**, - list, $x^2$ for a formula in a sentence, $$ on its own lines for a large one, {red:text} for colour. Select words and press the book button to add a popover (translation, meaning, picture) or tag a glossary term. Paste an image to add it.',
+            vi: 'Markdown: **đậm**, - danh sách, $x^2$ cho công thức trong câu, $$ trên dòng riêng cho công thức lớn, {red:chữ} để tô màu. Bôi đen chữ rồi bấm nút quyển sách để nhập chú thích (bản dịch, giải nghĩa, hình) hoặc gắn thuật ngữ. Dán ảnh để chèn ảnh.',
           })}
       </p>
     </div>

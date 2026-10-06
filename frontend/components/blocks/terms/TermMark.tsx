@@ -4,6 +4,7 @@ import { useCallback, useEffect, useId, useLayoutEffect, useRef, useState, type 
 import { createPortal } from 'react-dom';
 import { useLessonTerms } from './LessonTermsContext';
 import { TermCard } from './TermCard';
+import type { LessonTerm } from './LessonTermsContext';
 
 const OPEN_DELAY = 150;
 const CLOSE_DELAY = 200;
@@ -18,9 +19,11 @@ let closeOpen: (() => void) | null = null;
  * the focused word opens it too; Esc or a press outside closes it. Without its term (no provider,
  * or the term is unpublished or gone) the words read as plain text.
  */
-export function TermMark({ termId, children }: { termId: string; children: ReactNode }) {
+export function TermMark({ termId, note, children }: { termId: string; note?: { term: LessonTerm; lang: 'en' | 'vi' }; children: ReactNode }) {
   const lesson = useLessonTerms();
-  const term = lesson?.terms.get(termId);
+  // A note carries its own words (written in the lesson); a term comes from the glossary.
+  const term = note?.term ?? lesson?.terms.get(termId);
+  const lang = note?.lang ?? lesson?.lang;
   const popoverId = useId();
   const buttonRef = useRef<HTMLButtonElement>(null);
   const popoverRef = useRef<HTMLDivElement>(null);
@@ -98,7 +101,7 @@ export function TermMark({ termId, children }: { termId: string; children: React
     };
   }, [open]);
 
-  if (!lesson || !term) return <>{children}</>;
+  if (!lang || !term) return <>{children}</>;
 
   const hoverIn = (e: React.PointerEvent) => {
     if (e.pointerType !== 'mouse') return;
@@ -143,13 +146,13 @@ export function TermMark({ termId, children }: { termId: string; children: React
             role="dialog"
             tabIndex={-1}
             onBlur={focusOut}
-            aria-label={lesson.lang === 'en' ? term.term_en : term.term_vi}
+            aria-label={lang === 'en' ? term.term_en : term.term_vi}
             style={style}
             onPointerEnter={hoverIn}
             onPointerLeave={hoverOut}
             className="z-50 max-h-[70vh] overflow-y-auto rounded-xl border border-line bg-surface p-4 text-left shadow-lg focus:outline-none"
           >
-            <TermCard term={term} lang={lesson.lang} />
+            <TermCard term={term} lang={lang} glossaryLink={!note} />
           </div>,
           host,
         )}

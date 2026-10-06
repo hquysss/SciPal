@@ -1,3 +1,5 @@
+import { Media } from '@/components/media/Media';
+
 type Bilingual = { en: string; vi: string };
 
 /** The figure under a question (graph, table of variations…), as large as it needs up to the card width. */
@@ -6,8 +8,7 @@ export function QuestionFigure({ image, lang }: { image: { url: string; alt?: Bi
   const alt = image.alt ? (lang === 'en' ? image.alt.en.trim() || image.alt.vi : image.alt.vi.trim() || image.alt.en) : '';
   return (
     <figure className="m-0 flex justify-center">
-      {/* eslint-disable-next-line @next/next/no-img-element -- lesson media from SciPal's own storage, any size */}
-      <img src={image.url} alt={alt} loading="lazy" className="h-auto max-h-[28rem] w-auto max-w-full rounded-lg border border-line bg-surface object-contain" />
+      <Media url={image.url} alt={alt} className="h-auto max-h-[28rem] w-auto max-w-full rounded-lg border border-line bg-surface object-contain" />
     </figure>
   );
 }

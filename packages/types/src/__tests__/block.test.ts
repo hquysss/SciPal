@@ -52,4 +52,12 @@ describe('BlockSchema', () => {
     const input = { type: 'theory', content: { en: 'Hello' } };
     expect(() => BlockSchema.parse(input)).toThrow();
   });
+
+  it('accepts popover notes with a short key, and rejects a key that is not', () => {
+    const note = { term: { vi: 'Dao động cơ', en: 'Oscillation' }, definition: { vi: 'x', en: '' } };
+    const block = { type: 'theory', content: { vi: '{note:abc123:Dao động cơ}', en: '' } };
+    expect(BlockSchema.parse({ ...block, notes: { abc123: note } })).toMatchObject({ notes: { abc123: note } });
+    expect(() => BlockSchema.parse({ ...block, notes: { 'x y': note } })).toThrow();
+    expect(BlockSchema.parse(block)).not.toHaveProperty('notes');
+  });
 });
