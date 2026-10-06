@@ -257,3 +257,12 @@ Strategy: mixed paper layers with restrained, tinted shadows. The page canvas is
 | Item | Location | Why accepted | Owner / Exit |
 |---|---|---|---|
 | Legacy global `--accent` is assigned at the root | `frontend/app/globals.css` | Existing app-wide issue is outside this landing/Profile scope; new level and subject styles do not depend on it. | Project design-system follow-up; remove only in a separately scoped theme task. |
+
+### Cinematic 404 (Katha port, 06/10/2026)
+
+- `frontend/features/not-found/`: reuse Katha's WebGL black hole, warped 404, particle disk and Endurance spacecraft. SciPal's navbar remains available for EN/VI and theme controls; the scene fills the viewport below its 4.625rem header (4rem bar plus 0.625rem top padding).
+- The scene uses a local cinematic palette, independent of subject and education-level colors: void `#03040a`, text `#f3f3f5`, muted `rgba(222,225,240,.67)`, violet `#a6a0ff`, orange `#ea6c2a`, recovery button `#efb272` to `#f4d0a6`. Text variables use `--nf-*` and never override app tokens. Shader light colors and text-texture gradients retain the source rendering.
+- Be Vietnam Pro, 760px compact breakpoint, DPR caps 1 compact / 1.25 desktop. Buttons have at least 44px touch targets and visible keyboard focus. Short landscape screens may scroll to reach the recovery actions.
+- Lazy-load Three.js only on missing pages. Render a static CSS scene if WebGL fails or loses its context; stop the frame loop in hidden tabs and freeze the scene for reduced motion. Soundtrack is loaded and played only after the user taps its control; never autoplay on page entry.
+
+- The complete 404 UI color palette is centralized as named `--nf-*` properties at the top of `NotFoundExperience.module.css`: atmosphere/vignette, fallback, audio, recovery actions, focus and status. All consuming CSS rules reference these tokens; resolving them yields the exact original colors. Procedural shader illumination remains source-identical artwork.
