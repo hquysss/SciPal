@@ -43,6 +43,7 @@ export default async function ExamDetailPage({
           blueprintTitle={{ en: blueprint.name_en || blueprint.name, vi: blueprint.name }}
           questions={questions}
           layout={blueprint.layout}
+          showIntro
           {...(blueprint.duration_minutes ? { durationMinutes: blueprint.duration_minutes } : {})}
         />
       </main>

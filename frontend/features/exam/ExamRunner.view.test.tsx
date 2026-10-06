@@ -40,6 +40,24 @@ const next = () => fireEvent.click(screen.getByRole('button', { name: /Câu ti�
 const sectionHeading = () => screen.queryByRole('heading', { level: 2, name: /^Phần/ })?.textContent ?? null;
 
 describe('ExamRunner exam room', () => {
+  it('opens on the start page with the clock stopped, and runs only after Start', () => {
+    vi.useFakeTimers();
+    try {
+      const { container } = render(<ExamRunner blueprintId="bp" blueprintTitle={{ vi: 'Đề thử', en: 'Mock' }} questions={questions} layout={layout} durationMinutes={50} showIntro />);
+      expect(screen.getByRole('heading', { name: 'Đề thử' })).toBeTruthy();
+      expect(screen.getByText('50 phút')).toBeTruthy();
+      expect(screen.getByText(PART_I.vi)).toBeTruthy();
+      expect(screen.queryByText('Nộp bài thi')).toBeNull();
+      vi.advanceTimersByTime(5000);
+      fireEvent.click(screen.getByRole('button', { name: 'Bắt đầu làm bài' }));
+      expect(screen.getByText('50:00')).toBeTruthy();
+      expect(screen.getByText('Nộp bài thi')).toBeTruthy();
+      expect(container.querySelector('fieldset')).toBeTruthy();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it('typesets formulas in the question and options, with its figure and source', () => {
     const maths: ExamQuestionItem = {
       id: 'm',

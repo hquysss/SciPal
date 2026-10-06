@@ -1,11 +1,11 @@
 'use client';
 
 import { useEffect, useState, type FormEvent } from 'react';
-import { Plus, Trash2 } from 'lucide-react';
+import Link from 'next/link';
+import { ArrowRight, Globe, Plus, Trash2 } from 'lucide-react';
 import { useLanguage } from '@scipal/hooks';
 import { embedUrl } from '@scipal/types';
-import { BUTTON, FIELD, Field, PRIMARY_BUTTON, SelectField } from '@/features/simulations/controls';
-import { EmbedRenderer } from '@/features/simulations/EmbedRenderer';
+import { FIELD, Field, PRIMARY_BUTTON, SelectField } from '@/features/simulations/controls';
 import { LAB_SUBJECTS, type LabSubject } from './catalog';
 
 const KEY = 'scipal-lab-embeds';
@@ -106,8 +106,8 @@ export function AddEmbedForm({ onAdd, defaultSubject }: { onAdd: (link: string, 
       </summary>
       <p className="mt-2 max-w-prose text-sm text-ink-muted">
         {t({
-          en: 'Paste the link of a PhET, GeoGebra or Desmos simulation. It appears with that subject’s other simulations and stays in this browser.',
-          vi: 'Dán link mô phỏng PhET, GeoGebra hoặc Desmos. Nó hiện cùng các mô phỏng khác của môn đã chọn và được lưu trong trình duyệt này.',
+          en: 'Paste the link of a PhET, GeoGebra or Desmos simulation. It becomes a card with that subject’s other simulations and stays in this browser.',
+          vi: 'Dán link mô phỏng PhET, GeoGebra hoặc Desmos. Nó thành một thẻ cùng các mô phỏng khác của môn đã chọn và được lưu trong trình duyệt này.',
         })}
       </p>
       <form onSubmit={submit} className="mt-3 grid gap-3 sm:grid-cols-[minmax(0,12rem)_minmax(0,1fr)_auto] sm:items-end">
@@ -141,26 +141,46 @@ export function AddEmbedForm({ onAdd, defaultSubject }: { onAdd: (link: string, 
   );
 }
 
-/** The outside simulations of one subject, shown under its own. */
-export function SubjectEmbeds({ embeds, onRemove }: { embeds: LabEmbed[]; onRemove: (url: string) => void }) {
-  const { t, lang } = useLanguage();
-  if (embeds.length === 0) return null;
+/** The address that opens an outside simulation on its own page. */
+export const embedHref = (embed: LabEmbed) => `/lab/embed?u=${encodeURIComponent(embed.url)}&s=${embed.subject}`;
+
+/** One card per outside simulation, shaped like the Lab's own cards so it sits in the same grid. */
+export function EmbedCards({ embeds, onRemove }: { embeds: LabEmbed[]; onRemove: (url: string) => void }) {
+  const { t } = useLanguage();
   return (
-    <ul className="mt-6 grid gap-6 lg:grid-cols-2">
-      {embeds.map(({ url }) => {
-        const title = embedTitle(new URL(url));
+    <>
+      {embeds.map((embed) => {
+        const url = new URL(embed.url);
+        const title = embedTitle(url);
         return (
-          <li key={url} className="flex flex-col gap-2">
-            <div className="flex items-center justify-between gap-2">
-              <h3 className="min-w-0 truncate font-semibold text-ink">{title}</h3>
-              <button type="button" className={BUTTON} onClick={() => onRemove(url)} aria-label={`${t({ en: 'Remove', vi: 'Bỏ' })}: ${title}`}>
-                <Trash2 aria-hidden="true" className="h-4 w-4" />
-              </button>
-            </div>
-            <EmbedRenderer url={url} title={title} lang={lang === 'en' ? 'en' : 'vi'} />
+          <li key={embed.url} className="relative">
+            <Link
+              href={embedHref(embed)}
+              className="group flex h-full flex-col gap-3 rounded-lg border border-line bg-surface p-4 transition-colors hover:border-[var(--accent)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
+            >
+              <span aria-hidden="true" className="grid h-11 w-11 shrink-0 place-items-center rounded-md bg-[color-mix(in_oklch,var(--accent)_14%,transparent)] text-[var(--accent)]">
+                <Globe className="h-6 w-6" />
+              </span>
+              <div className="flex-1 pr-8">
+                <h3 className="break-words font-semibold text-ink">{title}</h3>
+                <p className="mt-1 text-sm text-ink-muted">{t({ en: 'Outside simulation you added', vi: 'Mô phỏng ngoài bạn đã thêm' })}</p>
+              </div>
+              <span className="inline-flex items-center gap-1 self-end text-sm font-semibold text-[var(--accent)]">
+                {t({ en: 'Try it', vi: 'Thử ngay' })}
+                <ArrowRight aria-hidden="true" className="h-4 w-4 transition-transform motion-safe:group-hover:translate-x-0.5" />
+              </span>
+            </Link>
+            <button
+              type="button"
+              onClick={() => onRemove(embed.url)}
+              aria-label={`${t({ en: 'Remove', vi: 'Bỏ' })}: ${title}`}
+              className="absolute right-2 top-2 inline-flex h-11 w-11 items-center justify-center rounded-md text-ink-muted hover:bg-surface-sunken hover:text-danger focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
+            >
+              <Trash2 aria-hidden="true" className="h-4 w-4" />
+            </button>
           </li>
         );
       })}
-    </ul>
+    </>
   );
 }

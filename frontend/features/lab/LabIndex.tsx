@@ -6,7 +6,7 @@ import { ArrowDownUp, ArrowRight, Axis3d, Box, ChartSpline, CircleDot, Dices, Fl
 import { useLanguage } from '@scipal/hooks';
 import { SubjectProvider } from '@scipal/ui';
 import type { BuiltInSimulationKind } from '@scipal/types';
-import { AddEmbedForm, SubjectEmbeds, useLabEmbeds } from './LabEmbeds';
+import { AddEmbedForm, EmbedCards, useLabEmbeds } from './LabEmbeds';
 import { LAB_ITEMS, LAB_SUBJECTS, type LabSubject } from './catalog';
 
 export const LAB_ICONS: Partial<Record<BuiltInSimulationKind, LucideIcon>> = {
@@ -120,8 +120,8 @@ export function LabIndex({ counts }: { counts: Record<string, number> | null }) 
                       </li>
                     );
                   })}
+                  <EmbedCards embeds={outside.embeds.filter((e) => e.subject === subject.slug)} onRemove={outside.remove} />
                 </ul>
-                <SubjectEmbeds embeds={outside.embeds.filter((e) => e.subject === subject.slug)} onRemove={outside.remove} />
               </section>
             </SubjectProvider>
           );

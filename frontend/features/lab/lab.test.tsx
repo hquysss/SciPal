@@ -4,7 +4,8 @@ import { BUILT_IN_SIMULATION_KINDS } from '@scipal/types';
 import { LAB_ITEMS, LAB_SUBJECTS, labItem } from './catalog';
 import { usagesOf } from './labQuery';
 import { LabIndex } from './LabIndex';
-import { embedTitle, readEmbeds } from './LabEmbeds';
+import { embedHref, embedTitle, readEmbeds } from './LabEmbeds';
+import { LabEmbedView } from './LabEmbedView';
 
 vi.mock('next/headers', () => ({ cookies: async () => ({ getAll: () => [] }) }));
 
@@ -87,5 +88,16 @@ describe('LabEmbeds', () => {
     const html = renderToStaticMarkup(<LabIndex counts={null} />);
     expect(html).toContain('Thêm mô phỏng ngoài vào một môn');
     expect(html).toContain('type="url"');
+  });
+
+  it('opens a card on its own page, and never frames a link that is not approved', () => {
+    const href = embedHref({ url: phet, subject: 'physics' });
+    expect(href).toBe(`/lab/embed?u=${encodeURIComponent(phet)}&s=physics`);
+    const ok = renderToStaticMarkup(<LabEmbedView link={phet} subject="physics" />);
+    expect(ok).toContain('<iframe');
+    expect(ok).toContain('Vật lí');
+    const bad = renderToStaticMarkup(<LabEmbedView link="https://evil.test/x" subject="math" />);
+    expect(bad).not.toContain('<iframe');
+    expect(bad).toContain('không được phép nhúng');
   });
 });
