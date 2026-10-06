@@ -169,7 +169,7 @@ export async function middleware(request: NextRequest) {
     response = featureOffPage(request, feature!);
   } else if (access.kind === 'public') {
     response = NextResponse.next();
-  } else if (!user && access.kind === 'trial' && access.feature === 'learn' && pathname !== '/subjects' && !(await subjectExists(pathname.split('/')[1]))) {
+  } else if (!user && access.kind === 'trial' && access.feature === 'learn' && pathname !== '/subjects' && !under(pathname, '/lab') && !(await subjectExists(pathname.split('/')[1]))) {
     // Not a subject: the 404 page, which must not open a trial window.
     response = NextResponse.next();
   } else if (!user) {

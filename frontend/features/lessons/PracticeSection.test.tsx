@@ -34,8 +34,24 @@ describe('PracticeSection', () => {
     for (const attrs of groups) {
       expect(attrs).not.toContain('aria-label=');
       const target = /aria-labelledby="([^"]+)"/.exec(attrs)![1]!;
-      expect(html).toMatch(new RegExp(`id="${target}"[^>]*>(<[^>]+>[^<]*</span>)?Ý (một|hai)`));
+      expect(html).toMatch(new RegExp(`id="${target}"[^>]*>(<[^>]+>[^<]*</span>)?(<span[^>]*>)*Ý (một|hai)`));
     }
+  });
+
+  it('typesets formulas and shows the figure and the source', () => {
+    const html = renderToStaticMarkup(
+      <PracticeSection
+        load={{ ok: true, questions: [{ id: 'q9', type: 'mc', difficulty: 1, data: { stem: { vi: 'Tiệm cận ngang của $y=\\frac{2x+1}{x-1}$', en: '' }, options: [{ id: 'a', text: { vi: '$y=2$', en: '' } }, { id: 'b', text: { vi: '$x=1$', en: '' } }], image: { url: 'https://x.test/lesson-media/bbt.png', alt: { vi: 'Bảng biến thiên', en: '' } }, source: 'Đề minh họa 2025' } }] }}
+        state={{ answers: {}, results: {} }}
+        onAnswer={() => {}}
+        onResult={() => {}}
+        lang="vi"
+      />,
+    );
+    expect(html).toContain('class="katex"');
+    expect(html).not.toContain('$y=2$');
+    expect(html).toContain('alt="Bảng biến thiên"');
+    expect(html).toContain('Đề minh họa 2025');
   });
 
   it('reads in the language chosen for the preview', () => {

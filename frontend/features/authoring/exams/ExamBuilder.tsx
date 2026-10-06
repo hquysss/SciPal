@@ -1,5 +1,6 @@
 'use client';
 
+import { MathText } from '@/components/math/MathText';
 import { INPUT_CLASS as FIELD } from '@/components/ui/input';
 import { useEffect, useId, useState } from 'react';
 import { useRouter } from 'next/navigation';
@@ -372,7 +373,7 @@ export function ExamBuilder({ exam, subjects, isAdmin, initialQuestions = [] }: 
                         <div className="min-w-0 flex-1">
                           {row ? (
                             <>
-                              <p className="line-clamp-2 text-sm text-ink">{questionStem(row, t)}</p>
+                              <p className="line-clamp-2 text-sm text-ink"><MathText text={questionStem(row, t)} /></p>
                               <p className="mt-1 text-xs text-ink-muted">
                                 {t(QUESTION_TYPE_LABEL[row.type])}
                                 {!fits && ` · ${t({ en: 'no section of this structure takes this type', vi: 'cấu trúc này không có phần nhận dạng câu này' })}`}
@@ -465,7 +466,7 @@ export function ExamBuilder({ exam, subjects, isAdmin, initialQuestions = [] }: 
                   <div className="min-w-0 flex-1">
                     {row ? (
                       <>
-                        <p className="line-clamp-2 text-sm text-ink">{questionStem(row, t)}</p>
+                        <p className="line-clamp-2 text-sm text-ink"><MathText text={questionStem(row, t)} /></p>
                         <p className="mt-1 flex flex-wrap items-center gap-2 text-xs text-ink-muted">
                           <span>{t(QUESTION_TYPE_LABEL[row.type])}</span>
                           <span>· {t(DIFFICULTY_LABEL[row.difficulty] ?? DIFFICULTY_LABEL[1]!)}</span>

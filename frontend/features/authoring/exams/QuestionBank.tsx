@@ -1,5 +1,6 @@
 'use client';
 
+import { MathText } from '@/components/math/MathText';
 import { useEffect, useId, useState } from 'react';
 import { useLanguage } from '@scipal/hooks';
 import { QUESTION_TYPES, type QuestionStatus, type QuestionType } from '@scipal/types';
@@ -130,7 +131,7 @@ export function QuestionBank({ subjects }: { subjects: AuthoringSubjectOption[] 
               {rows.map((row) => (
                 <li key={row.id} className="flex flex-col gap-2 rounded-lg border border-line bg-surface p-3 sm:flex-row sm:items-center">
                   <div className="min-w-0 flex-1">
-                    <p className="line-clamp-2 text-sm text-ink">{questionStem(row, t)}</p>
+                    <p className="line-clamp-2 text-sm text-ink"><MathText text={questionStem(row, t)} /></p>
                     <p className="mt-1 flex flex-wrap items-center gap-2 text-xs text-ink-muted">
                       <span>{t(QUESTION_TYPE_LABEL[row.type])}</span>
                       <span>· {t(DIFFICULTY_LABEL[row.difficulty] ?? DIFFICULTY_LABEL[1]!)}</span>

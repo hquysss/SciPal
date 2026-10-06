@@ -31,6 +31,7 @@ const QuestionBase = {
   difficulty: Difficulty,
   stem: Bilingual,
   explanation: Bilingual.optional(),
+  source: z.string().trim().max(300).optional(),
 };
 
 const QuestionSchema = z.discriminatedUnion('type', [
@@ -165,7 +166,7 @@ type ImportBlueprint = ExamImportPackage['blueprints'][number];
 
 /** Stored question data: the same contracts the exam route serves and scores. */
 export function questionData(q: ImportQuestion): Record<string, unknown> {
-  const extra = q.explanation ? { explanation: q.explanation } : {};
+  const extra = { ...(q.explanation ? { explanation: q.explanation } : {}), ...(q.source ? { source: q.source } : {}) };
   if (q.type === 'mc') return { stem: q.stem, options: q.options, answer: q.answer, ...extra };
   if (q.type === 'truefalse') return { stem: q.stem, items: q.items, ...extra };
   return { stem: q.stem, answer: q.answer, ...(q.rubric ? { rubric: q.rubric } : {}), ...extra };

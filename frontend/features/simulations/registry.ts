@@ -9,6 +9,7 @@ import { pendulumModule } from './pendulum';
 import { probabilityModule } from './probability';
 import { punnettModule } from './punnett';
 import { solid3dModule } from './solid3d';
+import { titrationModule } from './titration';
 import { unitCircleModule } from './unitCircle';
 import type { SimulationModule } from './types';
 
@@ -20,6 +21,7 @@ export const simulationModules: { [K in BuiltInSimulationKind]: SimulationModule
   'unit-circle': unitCircleModule,
   'solid-3d': solid3dModule,
   'graph-3d': graph3dModule,
+  titration: titrationModule,
   motion: motionModule,
   pendulum: pendulumModule,
   'ohm-circuit': ohmCircuitModule,

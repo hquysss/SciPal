@@ -56,6 +56,13 @@ describe('validateQuestionInput', () => {
     expect(result.value.data).not.toHaveProperty('options');
   });
 
+  it('on the server, takes only images uploaded to SciPal', () => {
+    const input = fixtures.inputs.find((row) => row.name === 'exam MC with a figure and a source')!.input;
+    expect(validateQuestionInput(input, { mediaBase: 'https://example.supabase.co/storage/v1/object/public/lesson-media' }).ok).toBe(true);
+    expect(validateQuestionInput(input, { mediaBase: 'https://other.test/media' }).ok).toBe(false);
+    expect(validateQuestionInput(input, { mediaBase: undefined }).ok).toBe(false);
+  });
+
   it('names the question part that is missing English', () => {
     const result = validateQuestionInput(fixtures.inputs.find((row) => row.name === 'draft with English still missing')!.input);
     if (!result.ok) throw new Error('fixture should be valid');
