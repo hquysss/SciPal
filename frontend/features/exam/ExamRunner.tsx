@@ -8,6 +8,7 @@ import { useLanguage } from '@scipal/hooks';
 import type { ExamSection } from '@scipal/types';
 import { AnswerPalette, type AnswerPaletteSection } from './AnswerPalette';
 import { forgetExamAttempt, startExamAttempt } from './examAttempt';
+import { ExamStart } from './ExamStart';
 import { createBrowserClient } from '../../lib/supabase';
 import { Alert } from '../../components/ui/alert';
 import { buttonVariants } from '../../components/ui/button';
@@ -228,6 +229,8 @@ interface ExamRunnerProps {
   token?: string;
   /** Sections and passage groups of a THPTQG or ĐGNL exam; null or absent for a generic exam. */
   layout?: ExamSection[] | null;
+  /** Open on the page before the exam; the clock and the graded attempt begin at its button. */
+  showIntro?: boolean;
 }
 
 export function ExamRunner({
@@ -237,6 +240,7 @@ export function ExamRunner({
   durationMinutes = 45,
   token,
   layout = null,
+  showIntro = false,
 }: ExamRunnerProps) {
   const { lang, t } = useLanguage();
   const places = useMemo(() => questionPlaces(layout, questions), [layout, questions]);
@@ -244,6 +248,7 @@ export function ExamRunner({
   const pathname = usePathname();
   const router = useRouter();
   const autoSubmitAttempted = useRef(false);
+  const [started, setStarted] = useState(!showIntro);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [answers, setAnswers] = useState<Record<number, DraftAnswer>>({});
   const answeredIndexes = Object.fromEntries(
@@ -270,6 +275,7 @@ export function ExamRunner({
   }, [blueprintId]);
 
   useEffect(() => {
+    if (!started) return;
     let active = true;
     void (async () => {
       const authToken = token ?? (await createBrowserClient().auth.getSession()).data.session?.access_token;
@@ -278,7 +284,7 @@ export function ExamRunner({
     return () => {
       active = false;
     };
-  }, [begin, token]);
+  }, [begin, started, token]);
 
   const handleSubmit = useCallback(async () => {
     if (submitting) return;
@@ -324,7 +330,7 @@ export function ExamRunner({
 
   // Countdown timer with auto-submit
   useEffect(() => {
-    if (result) return;
+    if (result || !started) return;
     if (timeLeft <= 0) {
       if (!autoSubmitAttempted.current) {
         autoSubmitAttempted.current = true;
@@ -334,7 +340,7 @@ export function ExamRunner({
     }
     const timer = setInterval(() => setTimeLeft((prev) => prev - 1), 1000);
     return () => clearInterval(timer);
-  }, [timeLeft, result, handleSubmit]);
+  }, [timeLeft, result, started, handleSubmit]);
 
   const currentQ = questions[currentIndex];
   const place = places[currentIndex] ?? null;
@@ -350,6 +356,10 @@ export function ExamRunner({
         : blueprintTitle.vi
       : t({ en: 'Informatics evaluation', vi: 'Khảo sát chất lượng Tin học' });
     return <ExamResultView result={result} title={title} layout={layout} />;
+  }
+
+  if (!started) {
+    return <ExamStart title={blueprintTitle} questionCount={questions.length} durationMinutes={durationMinutes} layout={layout} onStart={() => setStarted(true)} />;
   }
 
   if (attemptProblem?.blocked) {

@@ -686,3 +686,14 @@
   .copy { width: min(28rem, 62vw); }
   .copy h1 { font-size: clamp(1.45rem, 3vw, 2rem); }
 }
+
+/* The page's own paper, pattern and glows would show beside the nav bar above this dark scene: paint the whole shell dark while it is on screen. */
+:global([data-app-shell]):has(.root) {
+  /* Same value as --nf-void, which lives on .root and is not visible from the shell. */
+  background-color: #03040a;
+}
+
+:global([data-app-shell]):has(.root)::before,
+:global([data-app-shell]):has(.root)::after {
+  display: none;
+}
