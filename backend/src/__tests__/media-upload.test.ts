@@ -13,6 +13,7 @@ function storageMock() {
       put: async (path: string, _b: Buffer, contentType: string) => {
         uploads.push({ path, type: contentType });
       },
+      remove: async () => {},
       publicUrl: (path: string) => `https://pub-test.r2.dev/${path}`,
     },
   };

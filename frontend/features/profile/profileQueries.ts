@@ -7,6 +7,7 @@ export interface UserProfileData {
     display_name?: string | null;
     role?: 'student' | 'teacher' | string;
     avatar_url?: string | null;
+    cover_url?: string | null;
   } | null;
   stats: {
     totalXP: number;
@@ -24,7 +25,7 @@ export async function getUserProfile(userId: string): Promise<UserProfileData> {
     const supabase = createServerClient(await cookies());
 
     const [profileRes, xpRes, progressRes, streakRes] = await Promise.all([
-      supabase.from('profiles').select('id, display_name, role, avatar_url').eq('id', userId).maybeSingle(),
+      supabase.from('profiles').select('id, display_name, role, avatar_url, cover_url').eq('id', userId).maybeSingle(),
       supabase.from('xp_log').select('delta').eq('user_id', userId),
       supabase.from('progress').select('id').eq('user_id', userId),
       supabase.from('streaks').select('longest_streak').eq('user_id', userId),

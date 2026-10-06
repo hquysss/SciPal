@@ -734,6 +734,7 @@ export interface Database {
           display_name: string | null;
           role: 'student' | 'teacher';
           avatar_url: string | null;
+          cover_url: string | null;
           preferred_education_level: EducationLevel | null;
           preferred_code_language: CodeLanguage | null;
           created_at: string;
@@ -743,6 +744,7 @@ export interface Database {
           display_name?: string | null;
           role?: 'student' | 'teacher';
           avatar_url?: string | null;
+          cover_url?: string | null;
           preferred_education_level?: EducationLevel | null;
           preferred_code_language?: CodeLanguage | null;
           created_at?: string;
@@ -752,6 +754,7 @@ export interface Database {
           display_name?: string | null;
           role?: 'student' | 'teacher';
           avatar_url?: string | null;
+          cover_url?: string | null;
           preferred_education_level?: EducationLevel | null;
           preferred_code_language?: CodeLanguage | null;
           created_at?: string;

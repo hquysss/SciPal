@@ -52,6 +52,12 @@ function getDisplayName(user: AuthUser | null): string | null {
   return user.email?.split('@')[0]?.trim() || null;
 }
 
+/** The account's own avatar (set on the profile page), or null for the initial. */
+export function getAvatarUrl(user: AuthUser | null): string | null {
+  const url = user?.user_metadata?.avatar_url;
+  return typeof url === 'string' && url.startsWith('https://') ? url : null;
+}
+
 /** "Giáo sư SciPal" in the main links, for everyone: a visitor gets a trial question, then signs in. */
 export function tutorLink(lang: 'en' | 'vi') {
   return { href: '/tutor', label: lang === 'en' ? 'Professor' : 'Giáo sư' };
@@ -107,6 +113,7 @@ export function NavBar({ currentSubject }: NavBarProps) {
   const [openNavGroup, setOpenNavGroup] = useState<'admin' | 'teacher' | 'account' | null>(null);
   const [appRole, setAppRole] = useState<AppRole | null>(null);
   const [displayName, setDisplayName] = useState<string | null>(null);
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [signingOut, setSigningOut] = useState(false);
   const [openRequests, setOpenRequests] = useState(0);
   const mobileMenuButtonRef = useRef<HTMLButtonElement>(null);
@@ -171,6 +178,7 @@ export function NavBar({ currentSubject }: NavBarProps) {
           const user = error ? null : data.user;
           setAppRole(getAppRole(user));
           setDisplayName(getDisplayName(user));
+          setAvatarUrl(getAvatarUrl(user));
           if (user?.id) {
             void supabase
               .from('profiles')
@@ -187,6 +195,7 @@ export function NavBar({ currentSubject }: NavBarProps) {
         if (mounted) {
           setAppRole(null);
           setDisplayName(null);
+          setAvatarUrl(null);
         }
       });
       const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
@@ -194,6 +203,7 @@ export function NavBar({ currentSubject }: NavBarProps) {
           const user = session?.user ?? null;
           setAppRole(getAppRole(user));
           setDisplayName(getDisplayName(user));
+          setAvatarUrl(getAvatarUrl(user));
           setSigningOut(false);
         }
       });
@@ -204,6 +214,7 @@ export function NavBar({ currentSubject }: NavBarProps) {
     } catch {
       setAppRole(null);
       setDisplayName(null);
+          setAvatarUrl(null);
     }
   }, [pathname]);
 
@@ -224,6 +235,7 @@ export function NavBar({ currentSubject }: NavBarProps) {
       forgetAccountLevel(safeSessionStorage(), getShell());
       setAppRole(null);
       setDisplayName(null);
+          setAvatarUrl(null);
       setSigningOut(false);
       setMobileOpen(false);
       setOpenNavGroup(null);
@@ -370,7 +382,14 @@ export function NavBar({ currentSubject }: NavBarProps) {
                 onClick={(event) => toggleNavGroup('account', event.currentTarget)}
                 className={navStyles.account}
               >
-                <span aria-hidden="true" className={navStyles.avatar}>{accountName.trim().charAt(0).toUpperCase()}</span>
+                <span aria-hidden="true" className={navStyles.avatar}>
+                  {avatarUrl ? (
+                    // eslint-disable-next-line @next/next/no-img-element -- media store image
+                    <img src={avatarUrl} alt="" className="h-full w-full rounded-full object-cover" />
+                  ) : (
+                    accountName.trim().charAt(0).toUpperCase()
+                  )}
+                </span>
                 <span aria-hidden="true" className="max-w-32 truncate max-2xl:hidden">{accountName}</span>
                 <ChevronDown aria-hidden="true" className={`h-4 w-4 transition-transform duration-150 motion-reduce:transition-none ${accountMenuOpen ? 'rotate-180' : ''}`} />
               </button>

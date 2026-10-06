@@ -37,6 +37,7 @@ import { authorAiRoutes } from './routes/authorAi.js';
 import { createSettingsStore } from './tutor/settings.js';
 import { questionRoutes } from './routes/questions.js';
 import { practiceRoutes } from './routes/practice.js';
+import { profileRoutes } from './routes/profile.js';
 
 const app = Fastify({ logger: true });
 
@@ -54,6 +55,7 @@ await app.register(surveyRoutes);
 await app.register(examRoutes);
 await app.register(authoringRoutes);
 await app.register(mediaRoutes);
+await app.register(profileRoutes);
 await app.register(simulationRequestRoutes);
 await app.register(classRoutes);
 await app.register(assignmentRoutes);
