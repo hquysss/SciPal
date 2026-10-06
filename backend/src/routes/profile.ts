@@ -59,6 +59,12 @@ export const profileRoutes: FastifyPluginAsync = async (app) => {
     }
   };
 
+  /** The menu bar reads the avatar from the account, like the name. */
+  const mirrorAvatar = async (request: FastifyRequest, id: string, url: string | null) => {
+    const { error } = await app.supabase!.auth.admin.updateUserById(id, { user_metadata: { avatar_url: url } });
+    if (error) request.log.warn({ err: error }, 'Account avatar was not updated');
+  };
+
   app.patch('/api/profile', async (request, reply) => {
     const id = userId(request);
     if (!id) return reply.code(401).send(unauthorized);
@@ -115,6 +121,7 @@ export const profileRoutes: FastifyPluginAsync = async (app) => {
     }
     const old = (current as Record<string, string | null> | null)?.[COLUMN[kind]];
     await removeQuietly(request, ownKey(old, id));
+    if (kind === 'avatar') await mirrorAvatar(request, id, url);
     return reply.code(201).send({ url });
   });
 
@@ -130,6 +137,7 @@ export const profileRoutes: FastifyPluginAsync = async (app) => {
     const { error } = await supabase.from('profiles').update({ [COLUMN[kind]]: null }).eq('id', id).select('id').maybeSingle();
     if (error) return reply.code(500).send(notSaved);
     await removeQuietly(request, ownKey((current as Record<string, string | null> | null)?.[COLUMN[kind]], id));
+    if (kind === 'avatar') await mirrorAvatar(request, id, null);
     return reply.code(204).send();
   });
 };

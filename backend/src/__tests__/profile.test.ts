@@ -138,6 +138,25 @@ describe('POST /api/profile/image', () => {
   });
 });
 
+describe('avatar in the account metadata (menu bar)', () => {
+  it('mirrors a new avatar, and its removal', async () => {
+    let built = await build(student, [mockQuery({ data: { avatar_url: null, cover_url: null }, error: null }), mockQuery({ data: { id: 'student-1' }, error: null })]);
+    const res = await built.app.inject(png('/api/profile/image?kind=avatar'));
+    expect(built.updateUserById).toHaveBeenCalledWith('student-1', { user_metadata: { avatar_url: res.json().url } });
+    await built.app.close();
+
+    built = await build(student, [mockQuery({ data: { avatar_url: null, cover_url: null }, error: null }), mockQuery({ data: { id: 'student-1' }, error: null })]);
+    await built.app.inject(png('/api/profile/image?kind=cover'));
+    expect(built.updateUserById).not.toHaveBeenCalled();
+    await built.app.close();
+
+    built = await build(student, [mockQuery({ data: { avatar_url: null, cover_url: null }, error: null }), mockQuery({ data: { id: 'student-1' }, error: null })]);
+    await built.app.inject({ method: 'DELETE', url: '/api/profile/image?kind=avatar' });
+    expect(built.updateUserById).toHaveBeenCalledWith('student-1', { user_metadata: { avatar_url: null } });
+    await built.app.close();
+  });
+});
+
 describe('DELETE /api/profile/image', () => {
   it('clears the picture and removes its file', async () => {
     const read = mockQuery({ data: { avatar_url: `${BASE}profiles/student-1/avatar-a.webp`, cover_url: null }, error: null });
