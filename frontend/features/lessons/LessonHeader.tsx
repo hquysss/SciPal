@@ -6,7 +6,7 @@ import Link from 'next/link';
 import { useLanguage } from '@scipal/hooks';
 import type { LessonDetail } from './lessonDetailQuery';
 
-type HeaderLesson = Pick<LessonDetail, 'title_en' | 'title_vi' | 'grade' | 'topics' | 'subjects'>;
+type HeaderLesson = Pick<LessonDetail, 'title_en' | 'title_vi' | 'source' | 'grade' | 'topics' | 'subjects'>;
 
 export function LessonHeader({ lesson }: { lesson: HeaderLesson }) {
   const { lang, t } = useLanguage();
@@ -44,6 +44,11 @@ export function LessonHeader({ lesson }: { lesson: HeaderLesson }) {
 
       <h1 className="mt-4 text-3xl font-bold leading-tight text-ink sm:text-4xl">{title}</h1>
       <p className="mt-2 text-base text-ink-muted">{otherTitle}</p>
+      {lesson.source && (
+        <p className="mt-1 text-sm text-ink-muted">
+          {t({ en: 'Source', vi: 'Nguồn' })}: <cite className="not-italic">{lesson.source}</cite>
+        </p>
+      )}
     </header>
   );
 }

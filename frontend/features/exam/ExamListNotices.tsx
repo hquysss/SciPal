@@ -85,6 +85,11 @@ export function ExamBlueprintList({ blueprints }: { blueprints: BlueprintSummary
                   </span>
                 </span>
                 <span className="text-base font-bold text-ink">{bp.name}</span>
+                {bp.source && (
+                  <span className="text-sm text-ink-muted">
+                    {t({ en: 'Source', vi: 'Nguồn' })}: {bp.source}
+                  </span>
+                )}
                 <span className="text-sm font-semibold text-action">{t({ en: 'Start exam', vi: 'Vào thi' })}</span>
               </Link>
             </li>

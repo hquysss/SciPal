@@ -57,6 +57,7 @@ export default async function LessonAuthoringStudioPage({
         subjectId={lesson.subject_id}
         initialTitleVi={lesson.title_vi}
         initialTitleEn={lesson.title_en}
+        initialSource={lesson.source}
         initialBlocks={lesson.blocks}
         initialUpdatedAt={lesson.updated_at}
         initialStatus={lesson.status}

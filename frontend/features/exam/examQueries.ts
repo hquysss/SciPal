@@ -6,6 +6,8 @@ export interface BlueprintSummary {
   name: string;
   /** English exam title; null for exams made before titles were bilingual. */
   name_en?: string | null;
+  /** Where the exam comes from, when its author wrote it. */
+  source?: string | null;
   grade: number | null;
   subject_id: string | null;
   subject_slug: string | null;
