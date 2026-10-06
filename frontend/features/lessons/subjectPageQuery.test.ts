@@ -29,8 +29,8 @@ describe('groupTopicsByGrade', () => {
     ];
     expect(groupTopicsByGrade(topics)).toEqual([
       { grade: 10, topics: [{ id: 't1', name_en: 'A', name_vi: 'A', sort_order: 1, lessons: [
-        { id: 'a', slug: 'a', title_en: 'a', title_vi: 'a', sort_order: 1 },
-        { id: 'b', slug: 'b', title_en: 'b', title_vi: 'b', sort_order: 2 },
+        { id: 'a', slug: 'a', title_en: 'a', title_vi: 'a', source: null, sort_order: 1 },
+        { id: 'b', slug: 'b', title_en: 'b', title_vi: 'b', source: null, sort_order: 2 },
       ] }] },
     ]);
   });

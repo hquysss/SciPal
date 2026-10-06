@@ -16,6 +16,7 @@ export interface AuthoringLessonData {
   slug: string;
   title_vi: string;
   title_en: string;
+  source?: string | null;
   grade: number;
   status: LessonStatus;
   review_note: string | null;

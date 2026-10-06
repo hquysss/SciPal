@@ -48,6 +48,13 @@ function asText(value: unknown, maxLength: number): string | undefined {
   return text.length > 0 && text.length <= maxLength ? text : undefined;
 }
 
+/** The source line of a lesson: text up to 300 characters, empty clears it; undefined when not valid. */
+function asSource(value: unknown): string | null | undefined {
+  if (typeof value !== 'string') return undefined;
+  const text = value.trim();
+  return text.length <= 300 ? text || null : undefined;
+}
+
 function withRelations(row: Record<string, any>) {
   const subject = relation(row.subjects as { slug: string; name_en: string; name_vi: string } | null);
   const topic = relation(row.topics as { name_en: string; name_vi: string } | null);
@@ -506,6 +513,7 @@ export const authoringRoutes: FastifyPluginAsync = async (app) => {
         .update({
           title_en: titleEn,
           title_vi: titleVi,
+          ...(asSource(body.source) !== undefined ? { source: asSource(body.source) } : {}),
           blocks: parsedBlocks.data,
           status: 'pending_review',
           review_note: null,
@@ -661,6 +669,11 @@ export const authoringRoutes: FastifyPluginAsync = async (app) => {
         const titleVi = asText(body.title_vi, 200);
         if (!titleVi) return reply.code(400).send({ error: 'Tiêu đề tiếng Việt không hợp lệ.', error_en: 'The Vietnamese title is not valid.' });
         updateData.title_vi = titleVi;
+      }
+      if (body.source !== undefined) {
+        const source = asSource(body.source);
+        if (source === undefined) return reply.code(400).send({ error: 'Nguồn tối đa 300 ký tự.', error_en: 'The source is at most 300 characters.' });
+        updateData.source = source;
       }
       if (body.blocks !== undefined) {
         const parsedBlocks = BlockSchema.array().safeParse(body.blocks);
