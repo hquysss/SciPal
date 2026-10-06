@@ -1,5 +1,6 @@
 'use client';
 
+import { Media } from '@/components/media/Media';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useLanguage } from '@scipal/hooks';
 import { BUILT_IN_SIMULATION_KINDS, validateSimulationBlock, type InteractiveBlock } from '@scipal/types';
@@ -124,8 +125,7 @@ export function AdminRequestCard({ request, onChanged }: { request: SimulationRe
       )}
       {request.sketch_url && (
         <a href={request.sketch_url} target="_blank" rel="noopener noreferrer" className="self-start">
-          {/* eslint-disable-next-line @next/next/no-img-element -- uploaded sketch */}
-          <img src={request.sketch_url} alt={t({ en: 'Sketch from the teacher', vi: 'Ảnh phác thảo của giáo viên' })} className="h-24 w-auto rounded border border-line" />
+          <Media url={request.sketch_url} alt={t({ en: 'Sketch from the teacher', vi: 'Ảnh phác thảo của giáo viên' })} className="h-24 w-auto rounded border border-line" />
         </a>
       )}
       {request.admin_note && <p className="rounded-md bg-surface-sunken p-2 text-sm text-ink">{request.admin_note}</p>}

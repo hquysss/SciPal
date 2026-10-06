@@ -2,7 +2,7 @@
 
 import { MathText } from '@/components/math/MathText';
 import { useId, useState, type KeyboardEvent } from 'react';
-import { ArrowDown, ArrowUp, Trash2 } from 'lucide-react';
+import { ArrowDown, ArrowUp, Pencil, Trash2 } from 'lucide-react';
 import { useLanguage } from '@scipal/hooks';
 import { layoutQuestionIds, MAX_PASSAGE_TEXT, type ExamSection } from '@scipal/types';
 import { cn } from 'cn';
@@ -32,6 +32,8 @@ interface SectionEditorProps {
   onChange: (layout: ExamSection[]) => void;
   /** Questions picked from the bank, so the builder can show them. */
   onKnown: (rows: AuthorQuestion[]) => void;
+  /** Open a question of the section in the editor (figure, source, English text…). */
+  onEdit?: (row: AuthorQuestion) => void;
 }
 
 /**
@@ -39,7 +41,7 @@ interface SectionEditorProps {
  * counter, the questions of each group with an optional shared passage, and the bank filtered to
  * the section's question type.
  */
-export function SectionEditor({ layout, rows, problems, subjectId, readOnly = false, missingLabel, onChange, onKnown }: SectionEditorProps) {
+export function SectionEditor({ layout, rows, problems, subjectId, readOnly = false, missingLabel, onChange, onKnown, onEdit }: SectionEditorProps) {
   const { t } = useLanguage();
   const ids = useId();
   const [activeKey, setActiveKey] = useState(layout[0]?.key ?? '');
@@ -206,6 +208,12 @@ export function SectionEditor({ layout, rows, problems, subjectId, readOnly = fa
                             <p className="text-sm text-ink-muted">{t(missingLabel ?? { en: 'Loading…', vi: 'Đang tải…' })}</p>
                           )}
                         </div>
+                        {row?.editable && onEdit && (
+                          <Button type="button" variant="outline" aria-label={t({ en: `Edit question ${n}`, vi: `Sửa câu ${n}` })} onClick={() => onEdit(row)}>
+                            <Pencil aria-hidden="true" />
+                            {t({ en: 'Edit', vi: 'Sửa' })}
+                          </Button>
+                        )}
                         {!readOnly && (
                           <div className="flex shrink-0 flex-wrap items-center gap-1">
                             <Button type="button" variant="ghost" size="icon" aria-label={t({ en: `Move question ${n} up`, vi: `Đưa câu ${n} lên` })} disabled={qi === 0} onClick={() => onChange(moveInGroup(layout, active.key, gi, qi, qi - 1))}>

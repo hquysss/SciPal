@@ -1,9 +1,10 @@
 'use client';
 
+import { Media } from '@/components/media/Media';
 import { useId, useState, type ClipboardEvent, type DragEvent } from 'react';
 import { ImagePlus, Trash2 } from 'lucide-react';
 import { useLanguage } from '@scipal/hooks';
-import { IMAGE_TYPES } from '../editor/mediaApi';
+import { MEDIA_ACCEPT } from '../editor/mediaApi';
 import { useImageUpload } from '../editor/editors/ImageEditor';
 import { LABEL, SMALL_BUTTON, TEXTAREA } from '../editor/editors/styles';
 
@@ -35,7 +36,7 @@ export function QuestionImageField({ image, lang, onChange }: { image: QuestionI
     <input
       id={id}
       type="file"
-      accept={IMAGE_TYPES.join(',')}
+      accept={MEDIA_ACCEPT}
       className="sr-only"
       disabled={busy}
       onChange={(e) => {
@@ -92,8 +93,7 @@ export function QuestionImageField({ image, lang, onChange }: { image: QuestionI
     <div className="flex flex-col gap-2">
       <span className={LABEL}>{t({ en: 'Figure', vi: 'Hình minh hoạ' })}</span>
       <div className="flex flex-col gap-3 rounded-lg border border-line p-3 sm:flex-row sm:items-start">
-        {/* eslint-disable-next-line @next/next/no-img-element -- lesson media from SciPal's own storage, any size */}
-        <img src={image.url} alt={alt[lang] || alt.vi} className="max-h-48 w-auto max-w-full self-start rounded-md border border-line bg-surface object-contain" />
+        <Media url={image.url} alt={alt[lang] || alt.vi} className="max-h-48 w-auto max-w-full self-start rounded-md border border-line bg-surface object-contain" />
         <div className="flex min-w-0 flex-1 flex-col gap-2">
           <label htmlFor={`${id}-alt`} className={LABEL}>
             {t({ en: 'Describe the figure (read aloud to blind learners)', vi: 'Mô tả hình (đọc cho người khiếm thị)' })}

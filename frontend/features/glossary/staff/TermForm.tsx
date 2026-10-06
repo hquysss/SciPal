@@ -1,12 +1,13 @@
 'use client';
 
+import { Media } from '@/components/media/Media';
 import { INPUT_CLASS as INPUT } from '@/components/ui/input';
 import { useState } from 'react';
 import { useLanguage } from '@scipal/hooks';
 import { Alert } from '@/components/ui/alert';
 import { buttonVariants } from '@/components/ui/button';
 import { TEXTAREA } from '@/features/authoring/editor/editors/styles';
-import { IMAGE_TYPES, uploadLessonImage } from '@/features/authoring/editor/mediaApi';
+import { MEDIA_ACCEPT, uploadLessonMedia } from '@/features/authoring/editor/mediaApi';
 import { createTerm, EMPTY_DRAFT, type StaffTerm, type SubjectOption, type TermDraft, type TermKind } from './api';
 
 const KIND_LABEL: Record<TermKind, Bilingual> = { word: { en: 'Word', vi: 'Từ vựng' }, place: { en: 'Place', vi: 'Địa danh' } };
@@ -57,7 +58,7 @@ export function TermForm({ subjects, isAdmin, onSaved }: { subjects: SubjectOpti
     if (!file) return;
     setUploading(true);
     setUploadError(null);
-    const result = await uploadLessonImage(file);
+    const result = await uploadLessonMedia(file);
     setUploading(false);
     if (result.ok) setDraft((d) => ({ ...d, image_url: result.url }));
     else setUploadError(result.error);
@@ -145,15 +146,14 @@ export function TermForm({ subjects, isAdmin, onSaved }: { subjects: SubjectOpti
         </legend>
         {draft.image_url && (
           <div className="flex items-start gap-3">
-            {/* eslint-disable-next-line @next/next/no-img-element -- uploaded preview */}
-            <img src={draft.image_url} alt="" className="h-20 w-28 rounded-lg border border-line bg-surface-sunken object-cover" />
+            <Media url={draft.image_url} alt="" className="h-20 w-28 rounded-lg border border-line bg-surface-sunken object-cover" />
             <button type="button" onClick={() => setDraft((d) => ({ ...d, image_url: '', image_alt_en: '', image_alt_vi: '', image_credit: '' }))} className={buttonVariants({ variant: 'outline' })}>
               {t({ en: 'Remove picture', vi: 'Bỏ ảnh' })}
             </button>
           </div>
         )}
         <Field id="term-image" label={{ en: 'Choose a PNG, JPG or WEBP up to 4 MB', vi: 'Chọn ảnh PNG, JPG hoặc WEBP, tối đa 4 MB' }}>
-          {(id) => <input id={id} type="file" accept={IMAGE_TYPES.join(',')} onChange={pickImage} disabled={uploading} className="text-sm text-ink" />}
+          {(id) => <input id={id} type="file" accept={MEDIA_ACCEPT} onChange={pickImage} disabled={uploading} className="text-sm text-ink" />}
         </Field>
         {uploading && <p className="text-sm text-ink-muted">{t({ en: 'Uploading…', vi: 'Đang tải ảnh lên…' })}</p>}
         {uploadError && <Alert tone="danger">{t(uploadError)}</Alert>}

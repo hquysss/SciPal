@@ -1,5 +1,6 @@
 'use client';
 
+import { SubjectIcon } from '@/components/subject/SubjectIcon';
 import { useEffect, useState } from 'react';
 import { StaffLinks } from '@/features/nav/StaffLinks';
 import Link from 'next/link';
@@ -50,7 +51,7 @@ function GradeSubjectCard({ subject, grade }: { subject: LandingSubject; grade: 
         </span>
       </div>
       <div className={styles.subjectInfo}>
-        <span className={styles.subjectIcon} aria-hidden="true">{subject.icon}</span>
+        <span className={styles.subjectIcon} aria-hidden="true"><SubjectIcon slug={subject.slug} glyph={subject.icon} level={levelOfGrade(grade)} /></span>
         <h3>{lang === 'en' ? subject.name_en : subject.name_vi}</h3>
         <p lang={lang === 'en' ? 'vi' : 'en'}>{lang === 'en' ? subject.name_vi : subject.name_en}</p>
       </div>

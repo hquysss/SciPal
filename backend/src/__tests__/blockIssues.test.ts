@@ -42,6 +42,16 @@ describe('image and simulation issues', () => {
     expect(simulationIssues([{ type: 'interactive', kind: 'nope', heading: { vi: 'x', en: '' }, offline: true, config: {} }] as never)[0]).toMatchObject({ part: 'lesson', index: 0 });
   });
 
+  it('takes a theory popover picture only when SciPal stores it', () => {
+    process.env.MEDIA_PUBLIC_URL = 'https://pub-test.r2.dev';
+    const note = (url: string) => ({ term: { vi: 'a', en: '' }, definition: { vi: 'b', en: '' }, image: { url, alt: { vi: '', en: '' } } });
+    const theory = (url: string) => ({ type: 'theory', content: { vi: '{note:abc123:a}', en: '' }, notes: { abc123: note(url) } });
+    expect(BlockSchema.safeParse(theory('https://pub-test.r2.dev/x.png')).success).toBe(true);
+    expect(BlockSchema.safeParse({ ...theory('https://pub-test.r2.dev/x.png'), notes: { 'BAD KEY': note('https://pub-test.r2.dev/x.png') } }).success).toBe(false);
+    expect(imageIssues([theory('https://pub-test.r2.dev/lesson-media/x.png')], { requireAlt: true })).toEqual([]);
+    expect(imageIssues([theory('https://evil.example/x.png')], { requireAlt: true })[0]).toMatchObject({ index: 0, field: 'notes.abc123.image.url' });
+  });
+
   it('builds a bilingual 400 body', () => {
     const body = blockFailure([{ part: 'lesson', index: 2, field: 'katex', vi: 'Khối 3: công thức sai.', en: 'Block 3: invalid formula.' }]);
     expect(body).toMatchObject({ error: 'Có 1 chỗ cần sửa: Khối 3: công thức sai.', error_en: '1 thing to fix: Block 3: invalid formula.' });

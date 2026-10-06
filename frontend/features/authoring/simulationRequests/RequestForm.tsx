@@ -1,10 +1,11 @@
 'use client';
 
+import { Media } from '@/components/media/Media';
 import { useId, useState, type FormEvent } from 'react';
 import { useLanguage } from '@scipal/hooks';
 import { Alert } from '@/components/ui/alert';
 import { buttonVariants } from '@/components/ui/button';
-import { IMAGE_TYPES, uploadLessonImage } from '../editor/mediaApi';
+import { MEDIA_ACCEPT, uploadLessonMedia } from '../editor/mediaApi';
 import { TEXTAREA } from '../editor/editors/styles';
 import { createSimulationRequest, type SimulationRequest } from './api';
 
@@ -83,8 +84,7 @@ export function RequestForm({ lessonId, onSent, onCancel }: { lessonId: string; 
         </label>
         {sketch ? (
           <div className="flex items-center gap-3">
-            {/* eslint-disable-next-line @next/next/no-img-element -- uploaded sketch preview */}
-            <img src={sketch} alt="" className="h-16 w-auto rounded border border-line" />
+            <Media url={sketch} alt="" className="h-16 w-auto rounded border border-line" />
             <button type="button" onClick={() => setSketch(null)} className={buttonVariants({ variant: 'ghost' })}>
               {t({ en: 'Remove', vi: 'Bỏ ảnh' })}
             </button>
@@ -93,7 +93,7 @@ export function RequestForm({ lessonId, onSent, onCancel }: { lessonId: string; 
           <input
             id={`${id}-s`}
             type="file"
-            accept={IMAGE_TYPES.join(',')}
+            accept={MEDIA_ACCEPT}
             disabled={uploading}
             onChange={async (e) => {
               const file = e.target.files?.[0];
@@ -101,7 +101,7 @@ export function RequestForm({ lessonId, onSent, onCancel }: { lessonId: string; 
               if (!file) return;
               setUploading(true);
               setError(null);
-              const result = await uploadLessonImage(file);
+              const result = await uploadLessonMedia(file);
               setUploading(false);
               if (result.ok) setSketch(result.url);
               else setError(result.error);

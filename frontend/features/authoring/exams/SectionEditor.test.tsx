@@ -36,6 +36,16 @@ function setup(layout: ExamSection[], rows: Record<string, AuthorQuestion> = {})
 }
 
 describe('SectionEditor', () => {
+  it('offers Edit on a question the teacher may change, and not on a locked one', () => {
+    const layout = addToSection(buildLayout('thptqg:math'), 'mc', 0, ['a', 'b']);
+    const rows = rowsOf([question('a', 'mc'), { ...question('b', 'mc'), editable: false }]);
+    const onEdit = vi.fn();
+    render(<SectionEditor layout={layout} rows={rows} problems={[]} subjectId="s1" onChange={vi.fn()} onKnown={vi.fn()} onEdit={onEdit} />);
+    expect(screen.queryByRole('button', { name: 'Sửa câu 2' })).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: 'Sửa câu 1' }));
+    expect(onEdit).toHaveBeenCalledWith(rows.a);
+  });
+
   it('shows a tab per section with an "x / count" counter', () => {
     const layout = addToSection(buildLayout('thptqg:math'), 'mc', 0, ['a', 'b']);
     setup(layout);
