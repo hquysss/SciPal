@@ -78,7 +78,7 @@ export function LessonPartsView({ blocks, completion, part, sheet, lang, practic
       ) : (
         shownBlocks.map((block, i) => <BlockRenderer key={i} block={block} lang={lang} />)
       )}
-      {shown === 'lesson' && <LessonTermsSection ids={termIdsOfBlocks(parts.lesson, lang ?? readerLang)} />}
+      {shown === 'lesson' && <LessonTermsSection ids={termIdsOfBlocks(parts.lesson, lang ?? readerLang)} blocks={parts.lesson} />}
     </div>
   );
   const body = sheet ? <LessonSheet squared={sheet.squared}>{content}</LessonSheet> : content;

@@ -8,6 +8,8 @@ export interface ExamSummary {
   id: string;
   name: string;
   name_en: string | null;
+  /** Where the exam comes from, when its author wrote it. */
+  source?: string | null;
   subject_id: string;
   subject_name_vi: string | null;
   grade: number | null;
@@ -32,6 +34,7 @@ export interface ExamDetail extends ExamSummary {
 export interface ExamInput {
   name: string;
   name_en: string;
+  source?: string;
   subject_id: string;
   grade: number;
   duration_minutes: number;

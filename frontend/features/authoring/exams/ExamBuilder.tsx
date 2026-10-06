@@ -53,6 +53,7 @@ export function ExamBuilder({ exam, subjects, isAdmin, initialQuestions = [] }: 
   const [form, setForm] = useState<ExamInput>(() => ({
     name: exam?.name ?? '',
     name_en: exam?.name_en ?? '',
+    source: exam?.source ?? '',
     subject_id: exam?.subject_id ?? '',
     grade: exam?.grade ?? subjects[0]?.grades[0] ?? 10,
     duration_minutes: exam?.duration_minutes ?? 45,
@@ -282,6 +283,18 @@ export function ExamBuilder({ exam, subjects, isAdmin, initialQuestions = [] }: 
         <div className="flex flex-col gap-1">
           <label htmlFor={`${ids}-name-en`} className={LABEL}>{t({ en: 'Name (English)', vi: 'Tên đề (tiếng Anh)' })}</label>
           <input id={`${ids}-name-en`} value={form.name_en} maxLength={200} disabled={readOnly} onChange={(e) => change({ name_en: e.target.value })} className={FIELD} />
+        </div>
+        <div className="flex flex-col gap-1">
+          <label htmlFor={`${ids}-source`} className={LABEL}>{t({ en: 'Source', vi: 'Nguồn đề' })}</label>
+          <input
+            id={`${ids}-source`}
+            value={form.source ?? ''}
+            maxLength={300}
+            disabled={readOnly}
+            placeholder={t({ en: 'e.g. Ministry of Education, 2026 national exam', vi: 'VD: Bộ GD&ĐT, kỳ thi tốt nghiệp THPT 2026' })}
+            onChange={(e) => change({ source: e.target.value })}
+            className={FIELD}
+          />
         </div>
         <div className="flex flex-col gap-1">
           <label htmlFor={`${ids}-subject`} className={LABEL}>{t({ en: 'Subject', vi: 'Môn học' })}</label>

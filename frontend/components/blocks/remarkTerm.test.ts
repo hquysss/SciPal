@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { Block } from '@scipal/types';
-import { termIdsOf, termIdsOfBlocks } from './remarkTerm';
+import { noteKeysOfBlocks, termIdsOf, termIdsOfBlocks } from './remarkTerm';
 
 const ID_A = '11111111-1111-4111-8111-111111111111';
 const ID_B = '22222222-2222-4222-8222-222222222222';
@@ -29,5 +29,14 @@ describe('termIdsOfBlocks', () => {
     ];
     expect(termIdsOfBlocks(blocks, 'vi')).toEqual([ID_A, ID_B]);
     expect(termIdsOfBlocks(blocks, 'en')).toEqual([ID_B]);
+  });
+});
+
+describe('noteKeysOfBlocks', () => {
+  it('lists each note used once, skipping keys with no note', () => {
+    const note = { term: { vi: 'a', en: 'a' }, definition: { vi: 'x', en: 'x' } };
+    const blocks = [{ type: 'theory', content: { vi: '{note:abcd:a} {note:abcd:a} {note:zzzz:b}', en: '' }, notes: { abcd: note } }] as Block[];
+    expect(noteKeysOfBlocks(blocks, 'vi').map((n) => n.key)).toEqual(['abcd']);
+    expect(noteKeysOfBlocks(blocks, 'en')).toEqual([]);
   });
 });
