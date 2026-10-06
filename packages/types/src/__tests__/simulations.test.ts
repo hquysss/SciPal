@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { BlockSchema } from '../block';
-import { evaluateGraph, graphNames, parseGraphExpression, undeclaredNames } from '../graphExpression';
+import { evaluateGraph, evaluateGraphAt, graphNames, parseGraphExpression, undeclaredNames } from '../graphExpression';
 import {
   BUILT_IN_SIMULATION_KINDS,
   defaultSimulationConfig,
@@ -148,5 +148,33 @@ describe('undeclaredNames', () => {
     expect(undeclaredNames('m*x + k', [])).toEqual(['m', 'k']);
     expect(undeclaredNames('a sin(b x) + pi + e', ['a'])).toEqual(['b']);
     expect(undeclaredNames('exp(x)', [])).toEqual([]);
+  });
+});
+
+describe('expressions in more than one variable (3D graphs)', () => {
+  it('accepts the variables it is given and still refuses everything else', () => {
+    expect(parseGraphExpression('sin(x) cos(y)', [], ['x', 'y']).ok).toBe(true);
+    expect(parseGraphExpression('cos(t)', [], ['t']).ok).toBe(true);
+    expect(parseGraphExpression('x + y', [], ['x']).ok).toBe(false);
+    expect(parseGraphExpression('2', [], []).ok).toBe(true);
+    expect(parseGraphExpression('x', [], []).ok).toBe(false);
+  });
+
+  it('keeps one variable, x, by default so 2D graphs read as before', () => {
+    expect(parseGraphExpression('x^2').ok).toBe(true);
+    expect(parseGraphExpression('y').ok).toBe(false);
+  });
+
+  it('evaluates with a value for each variable', () => {
+    const r = parseGraphExpression('a x y + t', ['a'], ['x', 'y', 't']);
+    if (!r.ok) throw new Error(r.error.message.en);
+    expect(evaluateGraphAt(r.ast, { x: 2, y: 3, t: 1, a: 2 })).toBe(13);
+    expect(evaluateGraphAt(r.ast, { x: 2, y: 3, t: 1 })).toBeNull();
+  });
+
+  it('names parameters apart from the variables', () => {
+    const r = parseGraphExpression('a x + b y', ['a', 'b'], ['x', 'y']);
+    expect(r.ok && graphNames(r.ast, ['x', 'y'])).toEqual(['a', 'b']);
+    expect(undeclaredNames('k x + m y', [], ['x', 'y'])).toEqual(['k', 'm']);
   });
 });

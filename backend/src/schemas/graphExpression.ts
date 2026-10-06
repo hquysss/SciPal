@@ -5,7 +5,8 @@
 //   unary  := ('+' | '-') unary | power
 //   power  := atom ('^' unary)?            right-associative: 2^3^2 = 2^9
 //   atom   := number | name | fn '(' expr ')' | '(' expr ')'
-// Names: `x`, the constants `pi` and `e`, and single-letter parameters declared by the teacher.
+// Names: the variables (`x` by default; `x`, `y`, `t` in 3D), the constants `pi` and `e`, and
+// single-letter parameters declared by the teacher.
 // Keep backend/src/schemas/graphExpression.ts in sync (the backend cannot import this package).
 
 export type GraphNode =
@@ -73,8 +74,8 @@ function tokenize(source: string): Token[] {
   return tokens;
 }
 
-/** Split a run of letters like `ax` into known names: functions, constants, x and parameters. */
-function expandNames(tokens: Token[], parameters: ReadonlySet<string>): Token[] {
+/** Split a run of letters like `ax` into known names: functions, constants, variables and parameters. */
+function expandNames(tokens: Token[], parameters: ReadonlySet<string>, variables: ReadonlySet<string>): Token[] {
   const out: Token[] = [];
   for (const token of tokens) {
     if (token.kind !== 'name') {
@@ -86,7 +87,7 @@ function expandNames(tokens: Token[], parameters: ReadonlySet<string>): Token[] 
     while (rest) {
       const fn = GRAPH_FUNCTIONS.find((f) => rest.startsWith(f));
       const word = fn ?? (rest.startsWith('pi') ? 'pi' : rest[0]!);
-      if (!fn && word !== 'pi' && word !== 'x' && word !== 'e' && !parameters.has(word)) {
+      if (!fn && word !== 'pi' && word !== 'e' && !variables.has(word) && !parameters.has(word)) {
         fail(at, `Unknown name "${token.value}". Declare it as a parameter.`, `Tên "${token.value}" chưa được khai báo làm tham số.`);
       }
       out.push({ kind: 'name', value: word, at });
@@ -97,11 +98,11 @@ function expandNames(tokens: Token[], parameters: ReadonlySet<string>): Token[] 
   return out;
 }
 
-export function parseGraphExpression(source: string, parameters: readonly string[] = []): GraphParse {
+export function parseGraphExpression(source: string, parameters: readonly string[] = [], variables: readonly string[] = ['x']): GraphParse {
   try {
     if (!source.trim()) fail(0, 'Enter an expression.', 'Hãy nhập biểu thức.');
     if (source.length > MAX_GRAPH_EXPRESSION) fail(MAX_GRAPH_EXPRESSION, 'The expression is too long.', 'Biểu thức quá dài.');
-    const tokens = expandNames(tokenize(source), new Set(parameters));
+    const tokens = expandNames(tokenize(source), new Set(parameters), new Set(variables));
     let pos = 0;
     const peek = () => tokens[pos]!;
     const next = () => tokens[pos++]!;
@@ -184,24 +185,24 @@ export function parseGraphExpression(source: string, parameters: readonly string
 }
 
 /** Single-letter names in the text that still need declaring as parameters, in order of use. */
-export function undeclaredNames(source: string, parameters: readonly string[]): string[] {
+export function undeclaredNames(source: string, parameters: readonly string[], variables: readonly string[] = ['x']): string[] {
   const found: string[] = [];
   for (const match of source.toLowerCase().matchAll(/[a-z]+/g)) {
     let rest = match[0];
     while (rest) {
       const word = GRAPH_FUNCTIONS.find((f) => rest.startsWith(f)) ?? (rest.startsWith('pi') ? 'pi' : rest[0]!);
-      if (word.length === 1 && word !== 'x' && word !== 'e' && !parameters.includes(word) && !found.includes(word)) found.push(word);
+      if (word.length === 1 && word !== 'e' && !variables.includes(word) && !parameters.includes(word) && !found.includes(word)) found.push(word);
       rest = rest.slice(word.length);
     }
   }
   return found;
 }
 
-/** Parameter names an expression uses, in first-use order (x excluded). */
-export function graphNames(ast: GraphNode): string[] {
+/** Parameter names an expression uses, in first-use order (the variables excluded). */
+export function graphNames(ast: GraphNode, variables: readonly string[] = ['x']): string[] {
   const names: string[] = [];
   const walk = (node: GraphNode) => {
-    if (node.type === 'var' && node.name !== 'x' && !names.includes(node.name)) names.push(node.name);
+    if (node.type === 'var' && !variables.includes(node.name) && !names.includes(node.name)) names.push(node.name);
     if (node.type === 'neg' || node.type === 'call') walk(node.arg);
     if (node.type === 'bin') {
       walk(node.left);
@@ -225,12 +226,17 @@ const FUNCTIONS: Record<GraphFunction, (v: number) => number> = {
 
 /** f(x) with the given parameter values; null where f is undefined (a gap in the plot). */
 export function evaluateGraph(ast: GraphNode, x: number, parameters: Readonly<Record<string, number>> = {}): number | null {
+  return evaluateGraphAt(ast, { ...parameters, x });
+}
+
+/** The value with every variable and parameter taken from `scope`; null where undefined or a name is missing. */
+export function evaluateGraphAt(ast: GraphNode, scope: Readonly<Record<string, number>>): number | null {
   const run = (node: GraphNode): number => {
     switch (node.type) {
       case 'num':
         return node.value;
       case 'var':
-        return node.name === 'x' ? x : (parameters[node.name] ?? Number.NaN);
+        return scope[node.name] ?? Number.NaN;
       case 'neg':
         return -run(node.arg);
       case 'call':

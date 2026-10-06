@@ -1,5 +1,6 @@
 'use client';
 
+import { INPUT_CLASS as FIELD } from '@/components/ui/input';
 import { useCallback, useEffect, useId, useState } from 'react';
 import { ArrowLeft, BookOpen, MessageSquare, Search } from 'lucide-react';
 import { useLanguage } from '@scipal/hooks';
@@ -13,7 +14,6 @@ import { getAdminConversation, listAdminConversations, type AdminConversation, t
 type Bilingual = { vi: string; en: string };
 type Filters = { q: string; from: string; to: string };
 
-const FIELD = 'min-h-11 w-full rounded-lg border border-edge bg-surface px-3 text-base text-ink focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-focus';
 const when = (iso: string) => new Date(iso).toLocaleString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Ho_Chi_Minh' });
 
 /** `?q=…&from=…&to=…&before=…` from the filters that are set. */

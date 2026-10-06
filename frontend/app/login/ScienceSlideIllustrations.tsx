@@ -10,7 +10,7 @@ export function InformaticsSlideGraphic() {
         viewBox="0 0 600 360"
         fill="none"
         xmlns="http://www.w3.org/2000/svg"
-        className="w-full h-full object-cover opacity-90 transition-transform duration-700 hover:scale-105"
+        className="w-full h-full object-cover opacity-90 transition-transform duration-700 hover:scale-105 motion-reduce:transition-none motion-reduce:hover:scale-100"
         aria-hidden="true"
       >
         <defs>
@@ -95,7 +95,7 @@ export function PhysicsSlideGraphic() {
         viewBox="0 0 600 360"
         fill="none"
         xmlns="http://www.w3.org/2000/svg"
-        className="w-full h-full object-cover opacity-90 transition-transform duration-700 hover:scale-105"
+        className="w-full h-full object-cover opacity-90 transition-transform duration-700 hover:scale-105 motion-reduce:transition-none motion-reduce:hover:scale-100"
         aria-hidden="true"
       >
         <defs>
@@ -161,7 +161,7 @@ export function ChemistrySlideGraphic() {
         viewBox="0 0 600 360"
         fill="none"
         xmlns="http://www.w3.org/2000/svg"
-        className="w-full h-full object-cover opacity-90 transition-transform duration-700 hover:scale-105"
+        className="w-full h-full object-cover opacity-90 transition-transform duration-700 hover:scale-105 motion-reduce:transition-none motion-reduce:hover:scale-100"
         aria-hidden="true"
       >
         {/* Hexagonal Lattice */}

@@ -69,6 +69,18 @@ function wrap(angle: number) {
   return Math.atan2(Math.sin(angle), Math.cos(angle));
 }
 
+/**
+ * A sheet is shown ~92px a frame, so serving the 1080px master to everyone wastes ~400 KB.
+ * Sheets under /mascots/ have -324 and -648 siblings; the stylesheet picks one by pixel density.
+ * The plain url stays as the fallback for browsers without image-set().
+ */
+function sheetVars(src: string): CSSProperties {
+  const plain = `url(${src})`;
+  const match = /^(\/mascots\/[\w-]+)\.webp$/.exec(src);
+  const set = match ? `image-set(url(${match[1]}-324.webp) 1x, url(${match[1]}-648.webp) 2x, url(${src}) 3x)` : plain;
+  return { '--sheet': plain, '--sheet-set': set } as CSSProperties;
+}
+
 const layer: CSSProperties = {
   position: 'absolute',
   inset: 0,
@@ -241,7 +253,7 @@ export function Mascot(props: MascotProps) {
           className="scipal-mascot-directions-layer"
           style={{
             ...layer,
-            backgroundImage: `url(${directions})`,
+            ...sheetVars(directions),
             ...cell(DIRECTIONS.indexOf(direction)),
             opacity: reaction ? 0 : 1,
             transition: 'opacity 80ms ease',
@@ -253,7 +265,7 @@ export function Mascot(props: MascotProps) {
           className="scipal-mascot-reactions-layer"
           style={{
             ...layer,
-            backgroundImage: `url(${reactions})`,
+            ...sheetVars(reactions),
             ...cell(REACTIONS.indexOf(reaction ?? 'blink')),
             opacity: reaction ? 1 : 0,
             transition: 'opacity 80ms ease',

@@ -58,6 +58,82 @@ const FunctionGraphConfig = z
     if (!parsed.ok) ctx.addIssue({ code: 'custom', path: ['expression'], message: parsed.error.message.en, params: { graph: parsed.error } });
   });
 
+/** 3D graph parameters: one lowercase letter other than e, t and the axes x, y, z. */
+export const GRAPH3D_PARAMETER_NAME = /^[a-df-su-w]$/;
+const Expr = z.string().max(MAX_GRAPH_EXPRESSION);
+
+const Graph3dObject = z.discriminatedUnion('type', [
+  /** z = f(x, y) over the window. */
+  z.object({ type: z.literal('surface'), z: Expr }),
+  /** (x(t), y(t), z(t)) for t from tMin to tMax. */
+  z.object({ type: z.literal('curve'), x: Expr, y: Expr, z: Expr, tMin: finite(-1000, 1000).default(0), tMax: finite(-1000, 1000).default(6.28) }),
+  z.object({ type: z.literal('point'), x: Expr, y: Expr, z: Expr, label: z.string().max(12).default('') }),
+  /** The vector (x, y, z) drawn from the origin. */
+  z.object({ type: z.literal('vector'), x: Expr, y: Expr, z: Expr, label: z.string().max(12).default('') }),
+  /** a·x + b·y + c·z + d = 0 */
+  z.object({ type: z.literal('plane'), a: Expr, b: Expr, c: Expr, d: Expr }),
+  /** Centre (x, y, z), radius r. */
+  z.object({ type: z.literal('sphere'), x: Expr, y: Expr, z: Expr, r: Expr }),
+]);
+export type Graph3dObject = z.infer<typeof Graph3dObject>;
+
+/** The expressions of an object, each with the variables it may use. */
+export function graph3dExpressions(object: Graph3dObject): Array<{ field: string; source: string; variables: string[] }> {
+  switch (object.type) {
+    case 'surface':
+      return [{ field: 'z', source: object.z, variables: ['x', 'y'] }];
+    case 'curve':
+      return (['x', 'y', 'z'] as const).map((f) => ({ field: f, source: object[f], variables: ['t'] }));
+    case 'point':
+    case 'vector':
+      return (['x', 'y', 'z'] as const).map((f) => ({ field: f, source: object[f], variables: [] }));
+    case 'plane':
+      return (['a', 'b', 'c', 'd'] as const).map((f) => ({ field: f, source: object[f], variables: [] }));
+    case 'sphere':
+      return (['x', 'y', 'z', 'r'] as const).map((f) => ({ field: f, source: object[f], variables: [] }));
+  }
+}
+
+const Graph3dConfig = z
+  .object({
+    objects: z
+      .array(Graph3dObject)
+      .min(1)
+      .max(8)
+      .default([{ type: 'surface', z: 'a*sin(x)*cos(y)' }]),
+    parameters: z
+      .array(GraphParameter.extend({ name: z.string().regex(GRAPH3D_PARAMETER_NAME) }))
+      .max(4)
+      .default([{ name: 'a', min: -3, max: 3, step: 0.1, value: 1.5 }]),
+    xMin: finite(-100, 100).default(-5),
+    xMax: finite(-100, 100).default(5),
+    yMin: finite(-100, 100).default(-5),
+    yMax: finite(-100, 100).default(5),
+    zMin: finite(-100, 100).default(-5),
+    zMax: finite(-100, 100).default(5),
+    /** Grid lines per side of a surface. */
+    samples: z.number().int().min(10).max(80).default(48),
+    /** Learners may retype the expressions to try their own (never saved). */
+    editable: z.boolean().default(true),
+    question: Bilingual.default({ vi: '', en: '' }),
+    answer: Bilingual.default({ vi: '', en: '' }),
+  })
+  .superRefine((c, ctx) => {
+    if (c.xMin >= c.xMax || c.yMin >= c.yMax || c.zMin >= c.zMax) ctx.addIssue({ code: 'custom', path: ['xMax'], message: 'window' });
+    const names = c.parameters.map((p) => p.name);
+    if (new Set(names).size !== names.length) ctx.addIssue({ code: 'custom', path: ['parameters'], message: 'duplicate' });
+    for (const [i, p] of c.parameters.entries()) {
+      if (p.min >= p.max || p.value < p.min || p.value > p.max) ctx.addIssue({ code: 'custom', path: ['parameters', i], message: 'range' });
+    }
+    for (const [i, object] of c.objects.entries()) {
+      if (object.type === 'curve' && object.tMin >= object.tMax) ctx.addIssue({ code: 'custom', path: ['objects', i, 'tMax'], message: 'range' });
+      for (const e of graph3dExpressions(object)) {
+        const parsed = parseGraphExpression(e.source, names, e.variables);
+        if (!parsed.ok) ctx.addIssue({ code: 'custom', path: ['objects', i, e.field], message: parsed.error.message.en, params: { graph: parsed.error } });
+      }
+    }
+  });
+
 const MotionConfig = z.object({
   mode: z.enum(['uniform', 'accelerated', 'projectile']).default('projectile'),
   /** Initial speed, m/s. */
@@ -97,6 +173,50 @@ const ProbabilityConfig = z.object({
   /** Faces of the die; a coin always has two. */
   faces: z.number().int().min(2).max(20).default(6),
   defaultTrials: z.union([z.literal(1), z.literal(10), z.literal(100), z.literal(1000)]).default(10),
+});
+
+const UnitCircleConfig = z.object({
+  /** Where the point M starts, degrees. */
+  angle: finite(0, 360).default(30),
+  /** How angles are written first; learners can switch. */
+  unit: z.enum(['deg', 'rad']).default('deg'),
+  /** Dragging and arrow keys settle on multiples of this many degrees (1 = free). */
+  snap: z.union([z.literal(1), z.literal(5), z.literal(15), z.literal(30), z.literal(45)]).default(15),
+  show: z
+    .object({ sin: z.boolean().default(true), cos: z.boolean().default(true), tan: z.boolean().default(false), cot: z.boolean().default(false) })
+    .default({}),
+  /** The sine and cosine curves beside the circle, with α marked on them. */
+  wave: z.boolean().default(true),
+  /** An optional self-check: not graded, the answer is shown when the learner asks. */
+  question: Bilingual.default({ vi: '', en: '' }),
+  answer: Bilingual.default({ vi: '', en: '' }),
+});
+
+export const SOLIDS = ['cube', 'cuboid', 'tetrahedron', 'pyramid', 'prism', 'cylinder', 'cone', 'sphere'] as const;
+const Length = finite(0.5, 10);
+/** A point of the solid as the textbook writes it: A, S, O or a primed copy such as C'. */
+const PointName = z.string().regex(/^[A-Z]'?$/);
+
+const Solid3dConfig = z.object({
+  solid: z.enum(SOLIDS).default('cube'),
+  a: Length.default(2),
+  b: Length.default(3),
+  c: Length.default(2),
+  h: Length.default(3),
+  r: Length.default(1.5),
+  /** Learners may change the lengths with sliders. */
+  adjustable: z.boolean().default(true),
+  labels: z.boolean().default(true),
+  /** Oxyz axes with A at the origin, and the coordinates of every point. */
+  coordinates: z.boolean().default(false),
+  /** Segments to highlight (a diagonal AC', a height SO…); names the solid lacks are skipped when drawn. */
+  segments: z
+    .array(z.object({ from: PointName, to: PointName }).refine((s) => s.from !== s.to, { message: 'same point' }))
+    .max(12)
+    .default([]),
+  /** An optional self-check: not graded, the answer is shown when the learner asks. */
+  question: Bilingual.default({ vi: '', en: '' }),
+  answer: Bilingual.default({ vi: '', en: '' }),
 });
 
 const Gene = z
@@ -145,6 +265,9 @@ export const SIMULATION_CONFIGS = {
   pendulum: PendulumConfig,
   'ohm-circuit': OhmCircuitConfig,
   probability: ProbabilityConfig,
+  'unit-circle': UnitCircleConfig,
+  'solid-3d': Solid3dConfig,
+  'graph-3d': Graph3dConfig,
   punnett: PunnettConfig,
   'labeled-diagram': LabeledDiagramConfig,
 } as const;
@@ -161,6 +284,9 @@ export const SIMULATION_KINDS = [
   'pendulum',
   'ohm-circuit',
   'probability',
+  'unit-circle',
+  'solid-3d',
+  'graph-3d',
   'punnett',
   'labeled-diagram',
   'embed',
@@ -253,6 +379,9 @@ const MESSAGES: Record<string, Message> = {
   pendulum: { en: 'Length 0.1–10 m, mass 0.1–10 kg, k 1–1000 N/m, amplitude 1–30.', vi: 'Chiều dài 0,1–10 m, khối lượng 0,1–10 kg, k 1–1000 N/m, biên độ 1–30.' },
   'ohm-circuit': { en: 'Voltage 0–240 V and 1–6 resistors of 0.1–10000 Ω.', vi: 'Hiệu điện thế 0–240 V và 1–6 điện trở từ 0,1–10000 Ω.' },
   probability: { en: 'A coin or a die with 2–20 faces; up to 1000 throws at once.', vi: 'Đồng xu hoặc xúc xắc 2–20 mặt; tung tối đa 1000 lần mỗi đợt.' },
+  'unit-circle': { en: 'Start angle 0–360°, snap 1, 5, 15, 30 or 45°.', vi: 'Góc ban đầu 0–360°, bước bắt 1, 5, 15, 30 hoặc 45°.' },
+  'solid-3d': { en: 'Lengths 0.5–10; up to 12 highlighted segments between two different points (AC′, SO…).', vi: 'Độ dài 0,5–10; tối đa 12 đoạn tô nổi giữa hai điểm khác nhau (AC′, SO…).' },
+  'graph-3d': { en: 'Check every expression, the parameters and the x, y, z window; 1–8 objects.', vi: 'Kiểm tra từng biểu thức, tham số và khoảng x, y, z; 1–8 đối tượng.' },
   punnett: { en: 'One or two genes; each parent needs two letters of the gene (for example Aa).', vi: 'Một hoặc hai gen; kiểu gen bố mẹ gồm hai chữ của gen đó (ví dụ Aa).' },
   'labeled-diagram': { en: 'Upload the image to SciPal; up to 24 labels placed on the image.', vi: 'Ảnh phải tải lên SciPal; tối đa 24 nhãn nằm trên ảnh.' },
 };

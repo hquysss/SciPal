@@ -17,7 +17,8 @@
   --color-katha-primary-light: var(--action-hover);
   --color-katha-heritage: var(--action-hover);
   --color-katha-field: var(--input, #ffffff);
-  --color-katha-on-solid: #ffffff;
+  /* Caption text sits on the photo's dark gradient, so it stays light in both themes. */
+  --login-photo-ink: #ffffff;
   --color-katha-error: var(--destructive, #dc2626);
 
   --lg-page: var(--background, #fafaf9);
@@ -315,7 +316,7 @@
   align-items: baseline;
   gap: 0.6rem;
   padding: clamp(0.8rem, 1.6vw, 1.15rem) clamp(0.95rem, 1.8vw, 1.3rem);
-  color: var(--color-katha-on-solid, #f5efdf);
+  color: var(--login-photo-ink);
 }
 
 .katha-login-photo-caption-rule {
@@ -395,7 +396,7 @@
 .katha-login-photo-caption-title {
   font-size: 0.92rem;
   font-weight: 700;
-  color: #ffffff;
+  color: var(--login-photo-ink);
   letter-spacing: 0.015em;
   text-shadow: 0 1px 8px rgba(0, 0, 0, 0.8);
 }
@@ -598,24 +599,6 @@
   filter: drop-shadow(0 6px 14px color-mix(in srgb, var(--lg-ink) 14%, transparent));
   transition: transform 220ms cubic-bezier(0.34, 1.56, 0.64, 1);
   will-change: transform;
-}
-
-@supports (background-image: image-set(url('/mascots/owl-directions.webp') 1x)) {
-  .katha-login-mascot .katha-mascot-directions-layer {
-    background-image: image-set(
-      url('/mascots/owl-directions-324.webp') 1x,
-      url('/mascots/owl-directions-648.webp') 2x,
-      url('/mascots/owl-directions.webp') 3x
-    ) !important;
-  }
-
-  .katha-login-mascot .katha-mascot-reactions-layer {
-    background-image: image-set(
-      url('/mascots/owl-reactions-324.webp') 1x,
-      url('/mascots/owl-reactions-648.webp') 2x,
-      url('/mascots/owl-reactions.webp') 3x
-    ) !important;
-  }
 }
 
 [data-app-shell][data-theme='dark'] .katha-mascot-interactive {
@@ -833,14 +816,16 @@
   border-color: color-mix(in srgb, var(--lg-ink) 35%, transparent);
 }
 
-.katha-login-input-wrap input:focus {
-  outline: none;
+.katha-login-input-wrap input:focus-visible {
+  /* Transparent, not none: Windows forced-colors repaints it as a real outline. */
+  outline: 2px solid transparent;
+  outline-offset: 2px;
   border-color: var(--lg-field-focus-line);
   background: var(--lg-field);
   box-shadow: 0 0 0 3.5px var(--lg-field-focus-ring);
 }
 
-[data-app-shell][data-theme='dark'] .katha-login-input-wrap input:focus {
+[data-app-shell][data-theme='dark'] .katha-login-input-wrap input:focus-visible {
   background: var(--lg-field);
   border-color: var(--lg-gold);
   box-shadow: 0 0 0 3.5px color-mix(in srgb, var(--lg-gold) 24%, transparent);
@@ -1098,18 +1083,9 @@
   height: 0.65rem;
   color: var(--lg-gold);
   flex-shrink: 0;
-}
+}/* ---- accessible focus ---- */
 
-/* ---- accessible focus ---- */
-.katha-login-submit:focus-visible,
-.katha-login-password-toggle:focus-visible,
-.katha-login-help-trigger:focus-visible,
-.katha-login-remember:focus-within .katha-login-checkbox-box,
-.katha-login-language-option:focus-visible,
-.login-theme-toggle:focus-visible {
-  outline: 2px solid color-mix(in srgb, var(--lg-ink) 60%, transparent);
-  outline-offset: 3px;
-}
+
 
 /* ============================================================
    Floating controls
@@ -1120,83 +1096,6 @@
   top: clamp(1rem, 2.2vw, 1.75rem);
   right: clamp(1.2rem, 2.5vw, 2rem);
   z-index: 20;
-}
-
-/* Compact sun/moon switch in the shared emerald palette. */
-.login-theme-toggle {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 44px;
-  min-width: 44px;
-  padding: 0.25rem;
-  border: 0;
-  border-radius: 999px;
-  background: transparent;
-  cursor: pointer;
-}
-
-.login-theme-toggle-track {
-  position: relative;
-  display: block;
-  width: 3.6rem;
-  height: 2rem;
-  border: 1px solid var(--lg-line);
-  border-radius: 999px;
-  background: var(--lg-shell);
-  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.08);
-  transition: background 200ms ease, border-color 200ms ease;
-}
-
-[data-app-shell][data-theme='dark'] .login-theme-toggle-track {
-  border-color: color-mix(in srgb, var(--lg-gold) 28%, transparent);
-  background: var(--lg-field);
-}
-
-.login-theme-toggle-knob {
-  position: absolute;
-  top: 50%;
-  left: 0.22rem;
-  display: grid;
-  place-items: center;
-  width: 1.5rem;
-  height: 1.5rem;
-  border-radius: 999px;
-  background: var(--lg-primary);
-  color: var(--action-ink);
-  box-shadow: 0 3px 8px -2px rgba(0, 0, 0, 0.35);
-  transform: translateY(-50%);
-  transition: left 200ms cubic-bezier(0.22, 1, 0.36, 1), background 200ms ease;
-}
-
-.login-theme-toggle-knob.is-dark {
-  left: calc(100% - 1.72rem);
-  background: linear-gradient(180deg, var(--lg-gold-soft), var(--lg-gold));
-  color: var(--action-ink);
-}
-
-.login-theme-toggle-knob svg {
-  width: 0.95rem;
-  height: 0.95rem;
-  flex-shrink: 0;
-}
-
-.login-theme-toggle-track::after {
-  position: absolute;
-  top: 50%;
-  right: 0.55rem;
-  width: 0.28rem;
-  height: 0.28rem;
-  border-radius: 999px;
-  background: var(--lg-gold-soft);
-  content: '';
-  opacity: 0.9;
-  transform: translateY(-50%);
-  transition: opacity 200ms ease;
-}
-
-.login-theme-toggle-track:has(.login-theme-toggle-knob.is-dark)::after {
-  opacity: 0;
 }
 
 /* Language plaque — segmented KH/VI, anchored to the seam's foot. */
@@ -1544,6 +1443,16 @@
   to { transform: rotate(360deg); }
 }
 
+@keyframes katha-login-fade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes katha-login-spinner-pulse {
+  0%, 100% { opacity: 0.35; }
+  50% { opacity: 0.95; }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .katha-login-hero-head,
   .katha-login-hero-body,
@@ -1555,7 +1464,6 @@
   .katha-login-footnote,
   .katha-login-language-control,
   .katha-login-error,
-  .katha-login-spinner,
   .katha-login-modal-backdrop,
   .katha-login-modal-dialog {
     animation: none;
@@ -1565,9 +1473,26 @@
   .katha-login-submit,
   .katha-login-submit-arrow,
   .katha-login-password-toggle,
-  .katha-login-theme-toggle-knob,
   .login-language-option {
     transition: none;
+  }
+}
+
+/* Reduced motion keeps the meaning: a waiting spinner still pulses, new messages still fade in, nothing travels. */
+@media (prefers-reduced-motion: reduce) {
+  .katha-login-spinner {
+    animation: katha-login-spinner-pulse 1.4s ease-in-out infinite;
+    border-top-color: currentColor;
+  }
+
+  .katha-login-field-error,
+  .katha-auth-notice {
+    animation: katha-login-fade 160ms ease-out backwards;
+  }
+
+  .katha-login-header-row,
+  .katha-mascot-bubble {
+    animation: none;
   }
 }
 
@@ -2064,11 +1989,6 @@
     0 18px 32px -12px color-mix(in srgb, var(--lg-primary) 50%, transparent);
 }
 
-.login-theme-toggle:hover .login-theme-toggle-track {
-  border-color: color-mix(in srgb, var(--lg-gold) 50%, var(--lg-line));
-  box-shadow: 0 0 0 4px color-mix(in srgb, var(--lg-gold) 10%, transparent), inset 0 1px 3px rgb(0 0 0 / 8%);
-}
-
 @keyframes katha-login-button-gloss {
   from { transform: translateX(-125%); }
   to { transform: translateX(125%); }
@@ -2085,12 +2005,22 @@
  * Input and button effects from Uiverse.io by Smit-Prajapati.
  * Keep the light-theme surfaces and the open login layout.
  */
+[data-app-shell][data-theme='dark'] .katha-login-page {
+  /* The raised-well effect on fields and the submit button: one set of greys, used in five places. */
+  --login-well: #23272f;
+  --login-well-deep: #14161a;
+  --login-well-rim: #1b1f26;
+  --login-well-shade: #0e1013;
+  --login-well-lift: #383e4b;
+  --login-well-drop: 7px 7px 16px rgb(14 16 19 / 28%), -5px -5px 14px rgb(56 62 75 / 16%);
+}
+
 [data-app-shell][data-theme='dark'] .katha-login-page .katha-login-input-wrap {
-  --lg-field: #23272f;
+  --lg-field: var(--login-well);
   padding: 0.3rem;
   border-radius: 1rem;
-  background: linear-gradient(135deg, #23272f 0%, #14161a 100%);
-  box-shadow: 7px 7px 16px rgb(14 16 19 / 28%), -5px -5px 14px rgb(56 62 75 / 16%);
+  background: linear-gradient(135deg, var(--login-well) 0%, var(--login-well-deep) 100%);
+  box-shadow: var(--login-well-drop);
 }
 
 [data-app-shell][data-theme='dark'] .katha-login-page .katha-login-input-icon {
@@ -2109,14 +2039,14 @@
 }
 
 [data-app-shell][data-theme='dark'] .katha-login-input-wrap input {
-  --login-inset: inset 5px 5px 10px #0e1013, inset -5px -5px 10px #383e4b, 0 0 100px transparent, 0 0 100px transparent;
+  --login-inset: inset 5px 5px 10px var(--login-well-shade), inset -5px -5px 10px var(--login-well-lift), 0 0 100px transparent, 0 0 100px transparent;
   background: var(--lg-field);
   box-shadow: var(--login-inset);
 }
 
-:root .katha-login-page .katha-login-input-wrap input:focus {
+:root .katha-login-page .katha-login-input-wrap input:focus-visible {
   border-color: var(--lg-field-focus-line);
-  outline: none;
+  outline: 2px solid transparent;
   box-shadow: var(--login-glow);
 }
 
@@ -2142,11 +2072,11 @@
 }
 
 [data-app-shell][data-theme='dark'] .katha-login-page .katha-login-submit {
-  border: 0.3rem solid #1b1f26;
+  border: 0.3rem solid var(--login-well-rim);
 }
 
 [data-app-shell][data-theme='dark'] .katha-login-page .katha-login-submit:not(:hover):not(:focus-visible) {
-  box-shadow: 7px 7px 16px rgb(14 16 19 / 28%), -5px -5px 14px rgb(56 62 75 / 16%);
+  box-shadow: var(--login-well-drop);
 }
 
 :root .katha-login-page .katha-login-submit:hover:not(:disabled),

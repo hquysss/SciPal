@@ -1,3 +1,5 @@
-// The installed app's colours: the neutral level's nav green and paper (packages/ui palettes).
-export const APP_THEME_COLOR = '#15803D';
-export const APP_BACKGROUND_COLOR = '#F7F7F3';
+import { THEME_PALETTES } from '@scipal/ui';
+
+// The installed app's colours: the neutral level's nav green and paper, read from the palette so they cannot drift.
+export const APP_THEME_COLOR = THEME_PALETTES.neutral.light.nav;
+export const APP_BACKGROUND_COLOR = THEME_PALETTES.neutral.light.paper;

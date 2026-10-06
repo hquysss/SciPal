@@ -1,5 +1,6 @@
 'use client';
 
+import { INPUT_CLASS as FIELD_CLASS } from '@/components/ui/input';
 import { useMemo, useState, type FormEvent } from 'react';
 import { useRouter } from 'next/navigation';
 import { createBrowserClient } from '@scipal/supabase';
@@ -21,8 +22,6 @@ interface LessonCreateFormProps {
 
 const NEW_TOPIC = '__new__';
 
-const FIELD_CLASS =
-  'min-h-11 w-full rounded-lg border border-edge bg-surface px-3 text-base font-normal text-ink placeholder:text-ink-muted focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus disabled:cursor-not-allowed disabled:opacity-50';
 const LABEL_CLASS = 'flex flex-col gap-1.5 text-sm font-semibold text-ink';
 
 async function getAccessToken(): Promise<string | null> {

@@ -1,5 +1,6 @@
 'use client';
 
+import { INPUT_CLASS as FIELD } from '@/components/ui/input';
 import { useId, useRef, useState } from 'react';
 import { Sparkles } from 'lucide-react';
 import type { TheoryBlock } from '@scipal/types';
@@ -16,7 +17,6 @@ type Bilingual = { vi: string; en: string };
 type DraftInput = { topic: string; grade: number; request: string };
 type Draft = { blocks: TheoryBlock[]; remaining: number | null; period?: 'day' | 'month' | null };
 
-const FIELD = 'min-h-11 w-full rounded-lg border border-edge bg-surface px-3 text-base text-ink focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-focus';
 
 export function AiDraftForm({ initialTopic, busy, error, blocked = false, onSubmit }: { initialTopic: string; busy: boolean; error: Bilingual | null; /** No AI drafts left on the plan (429). */ blocked?: boolean; onSubmit: (input: DraftInput) => void }) {
   const { t } = useLanguage();

@@ -1,5 +1,6 @@
 'use client';
 
+import { INPUT_CLASS as INPUT } from '@/components/ui/input';
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useLanguage } from '@scipal/hooks';
@@ -10,8 +11,6 @@ import { NAME_MAX, profileNameProblem, removeProfileImage, saveDisplayName, uplo
 
 type Bilingual = { en: string; vi: string };
 
-const INPUT =
-  'min-h-11 w-full rounded-lg border border-edge bg-surface px-3 text-base text-ink focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus';
 
 const PICTURE: Record<ProfileImageKind, { title: Bilingual; change: Bilingual; remove: Bilingual; hint: Bilingual }> = {
   avatar: {

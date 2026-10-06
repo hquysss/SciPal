@@ -1,5 +1,6 @@
 'use client';
 
+import { INPUT_CLASS as FIELD } from '@/components/ui/input';
 import { useEffect, useId, useState } from 'react';
 import { KeyRound, PlugZap } from 'lucide-react';
 import { useLanguage } from '@scipal/hooks';
@@ -9,7 +10,6 @@ import { getAiSettings, saveAiSettings, testAiSettings, type AiProvider, type Ai
 
 type Bilingual = { vi: string; en: string };
 
-const FIELD = 'min-h-11 w-full rounded-lg border border-edge bg-surface px-3 text-base text-ink focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-focus';
 const PROVIDERS: Array<{ id: AiProvider; name: string; env: string }> = [
   { id: 'gemini', name: 'Gemini', env: 'GEMINI_API_KEY' },
   { id: 'openai', name: 'OpenAI', env: 'OPENAI_API_KEY' },

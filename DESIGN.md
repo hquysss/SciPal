@@ -246,7 +246,10 @@ Strategy: mixed paper layers with restrained, tinted shadows. The page canvas is
 - WCAG 2.2 AA target: at least 4.5:1 for body text and 3:1 for large text and interactive boundaries.
 - Visible keyboard focus on all controls, logical reading and tab order, 44×44px touch targets, and 200% zoom support.
 - Language attributes follow the active language; bilingual excerpts label their own language.
-- Reduced motion retains all content; errors name the problem and the next action.
+- Reduced motion retains all content; errors name the problem and the next action. Feedback keeps a non-spatial form: a waiting spinner pulses in opacity instead of rotating, new messages fade in instead of sliding.
+- First tab stop on every page is the skip link (`components/nav/SkipLink.tsx`) to `<main>`. Focus rings use `:focus-visible` with a transparent outline plus the ring, so Windows forced-colors repaints a real outline (`globals.css`).
+- Text fields share one recipe, `INPUT_CLASS` in `components/ui/input.tsx`; do not redeclare it per feature. The smallest text size is `text-xs` (12px).
+- Mascot sprite sheets under `/mascots/` ship `-324` and `-648` siblings next to the 1080px master; `Mascot` picks one by pixel density. Generate both when adding a character.
 - No account preference leaks between users; no level is inferred when neither account nor device has a valid choice.
 
 ### Accepted Debt
