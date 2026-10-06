@@ -5,8 +5,11 @@ import { useLanguage } from '@scipal/hooks';
 import type { Block } from '@scipal/types';
 import { BlockRenderer } from '@/components/blocks/BlockRenderer';
 import { LessonSheet } from '@/components/blocks/LessonSheet';
+import { termIdsOfBlocks } from '@/components/blocks/remarkTerm';
+import { LessonTermsProvider } from '@/components/blocks/terms/LessonTermsContext';
 import { buttonVariants } from '@/components/ui/button';
 import { PART_LABEL, splitLessonParts, type LessonPart } from './lessonParts';
+import { LessonTermsSection } from './LessonTermsSection';
 import { PracticeSection, usePracticeState } from './PracticeSection';
 import { fetchLessonPractice, type PracticeLoad } from './practiceApi';
 
@@ -36,7 +39,7 @@ const STEPS: readonly Step[] = ['lesson', 'practice'];
  * parts at a time through `part`.
  */
 export function LessonPartsView({ blocks, completion, part, sheet, lang, practice, lessonId }: LessonPartsProps) {
-  const { t } = useLanguage();
+  const { t, lang: readerLang } = useLanguage();
   // Owned here, above the tabs, so answers and verdicts survive switching parts during the visit.
   const practiceState = usePracticeState();
   const [reloaded, setReloaded] = useState<PracticeLoad | null>(null);
@@ -53,6 +56,13 @@ export function LessonPartsView({ blocks, completion, part, sheet, lang, practic
   const showPractice = part ? part === 'practice' : step === 'practice';
   const shown = part ?? step;
   const tabbed = !part && present.length > 1;
+  // Every term either language tags, loaded once; the list at the end of Bài học shows the reading language's.
+  const termIds = [...new Set([...termIdsOfBlocks(blocks, 'vi'), ...termIdsOfBlocks(blocks, 'en')])];
+  const wrap = (node: ReactNode) => (
+    <LessonTermsProvider ids={termIds} lang={lang}>
+      {node}
+    </LessonTermsProvider>
+  );
 
   const content = (
     <div className="flex flex-col gap-7" role={tabbed ? 'tabpanel' : undefined} id={tabbed ? `part-${shown}` : undefined}>
@@ -68,11 +78,12 @@ export function LessonPartsView({ blocks, completion, part, sheet, lang, practic
       ) : (
         shownBlocks.map((block, i) => <BlockRenderer key={i} block={block} lang={lang} />)
       )}
+      {shown === 'lesson' && <LessonTermsSection ids={termIdsOfBlocks(parts.lesson, lang ?? readerLang)} />}
     </div>
   );
   const body = sheet ? <LessonSheet squared={sheet.squared}>{content}</LessonSheet> : content;
-  if (part) return <>{body}</>;
-  if (!tabbed) return <>{body}{completion}</>;
+  if (part) return wrap(body);
+  if (!tabbed) return wrap(<>{body}{completion}</>);
 
   const position = present.indexOf(step);
   const next = present[position + 1];
@@ -81,7 +92,7 @@ export function LessonPartsView({ blocks, completion, part, sheet, lang, practic
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  return (
+  return wrap(
     <div className="flex flex-col gap-6">
       <div role="tablist" aria-label={t({ en: 'Lesson parts', vi: 'Các phần của bài' })} className="flex gap-1 overflow-x-auto border-b border-line">
         {present.map((p, i) => (
