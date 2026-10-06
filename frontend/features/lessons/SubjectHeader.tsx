@@ -1,5 +1,6 @@
 'use client';
 
+import { SubjectIcon } from '@/components/subject/SubjectIcon';
 import Link from 'next/link';
 import { useLanguage } from '@scipal/hooks';
 import type { EducationLevel } from '../landing/educationLevel';
@@ -32,9 +33,9 @@ export function SubjectHeader({ subject, topicCount, lessonCount }: SubjectHeade
       <div className="flex items-center gap-4">
         <span
           aria-hidden="true"
-          className="flex h-14 w-14 shrink-0 items-center justify-center rounded-xl bg-[color-mix(in_srgb,var(--accent)_12%,var(--surface))] text-2xl text-accent-ink"
+          className="flex h-14 w-14 shrink-0 items-center justify-center rounded-xl [--subject-icon:2.9rem] bg-[color-mix(in_srgb,var(--accent)_12%,var(--surface))] text-2xl text-accent-ink"
         >
-          {subject.icon}
+          <SubjectIcon slug={subject.slug} glyph={subject.icon} level={subject.levels[subject.levels.length - 1] ?? 'upper_secondary'} />
         </span>
         <div>
           <h1 className="text-3xl font-bold text-ink">{name}</h1>

@@ -1,5 +1,6 @@
 'use client';
 
+import { SubjectIcon } from '@/components/subject/SubjectIcon';
 import type { CSSProperties } from 'react';
 import Link from 'next/link';
 import { useLanguage } from '@scipal/hooks';
@@ -26,7 +27,7 @@ export function marqueeOrder(subjects: LandingSubject[]): LandingSubject[] {
   return [...live, ...rest];
 }
 
-function MarqueeCard({ subject, copy }: { subject: LandingSubject; copy: boolean }) {
+function MarqueeCard({ subject, copy, level }: { subject: LandingSubject; copy: boolean; level: EducationLevel }) {
   const { lang, t } = useLanguage();
   const href = getSubjectAction(subject);
   const name = lang === 'en' ? subject.name_en : subject.name_vi;
@@ -35,7 +36,7 @@ function MarqueeCard({ subject, copy }: { subject: LandingSubject; copy: boolean
   if (!href) {
     return (
       <article className={styles.card}>
-        <span className={styles.icon} aria-hidden="true">{subject.icon}</span>
+        <span className={styles.icon} aria-hidden="true"><SubjectIcon slug={subject.slug} glyph={subject.icon} level={level} /></span>
         <span className={styles.names}>
           <h3>{name}</h3>
           <span lang={lang === 'en' ? 'vi' : 'en'}>{other}</span>
@@ -47,7 +48,7 @@ function MarqueeCard({ subject, copy }: { subject: LandingSubject; copy: boolean
 
   return (
     <article className={`${styles.card} ${styles.live}`}>
-      <span className={styles.icon} aria-hidden="true">{subject.icon}</span>
+      <span className={styles.icon} aria-hidden="true"><SubjectIcon slug={subject.slug} glyph={subject.icon} level={level} /></span>
       <span className={styles.names}>
         <h3>{name}</h3>
         <span lang={lang === 'en' ? 'vi' : 'en'}>{other}</span>
@@ -114,7 +115,7 @@ export function SubjectMarquee({ level, catalog }: { level: EducationLevel; cata
           const copy = index >= subjects.length;
           return (
             <li key={`${subject.slug}-${index}`} aria-hidden={copy || undefined} data-copy={copy || undefined}>
-              <MarqueeCard subject={subject} copy={copy} />
+              <MarqueeCard subject={subject} copy={copy} level={level} />
             </li>
           );
         })}

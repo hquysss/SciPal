@@ -1,5 +1,7 @@
 'use client';
 
+import { SubjectIcon } from '@/components/subject/SubjectIcon';
+import { levelOfGrade } from '@/features/landing/educationLevel';
 import Link from 'next/link';
 import { useLanguage } from '@scipal/hooks';
 import type { LessonDetail } from './lessonDetailQuery';
@@ -36,7 +38,7 @@ export function LessonHeader({ lesson }: { lesson: HeaderLesson }) {
       </nav>
 
       <p className="inline-flex items-center gap-2 rounded-md bg-[color-mix(in_srgb,var(--accent)_12%,var(--surface))] px-2.5 py-1 text-sm font-semibold text-accent-ink">
-        <span aria-hidden="true">{lesson.subjects.icon}</span>
+        <span aria-hidden="true" className="[--subject-icon:1.6rem]"><SubjectIcon slug={lesson.subjects.slug} glyph={lesson.subjects.icon} level={levelOfGrade(lesson.grade)} /></span>
         <span>{t({ en: `${lesson.subjects.name_en}, grade ${lesson.grade}`, vi: `${lesson.subjects.name_vi}, lớp ${lesson.grade}` })}</span>
       </p>
 

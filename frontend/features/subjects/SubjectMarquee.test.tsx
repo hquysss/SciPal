@@ -45,9 +45,9 @@ describe('SubjectMarquee', () => {
 
   it('fills the loop with copies hidden from readers and keys, but a pointer can still click them', () => {
     const html = render([subject('informatics', 0, true)]);
-    const copies = html.match(/<li[^>]*aria-hidden="true"/g) ?? [];
+    const copies = html.match(/<li\b[^>]*aria-hidden="true"/g) ?? [];
     expect(copies.length).toBeGreaterThanOrEqual(7);
-    expect(html.match(/<li(?![^>]*aria-hidden)/g)).toHaveLength(1);
+    expect(html.match(/<li\b(?![^>]*aria-hidden)/g)).toHaveLength(1);
     expect(html).not.toContain('inert');
     // Every copy's link is out of the tab order; the real one stays in it.
     expect(html.match(/<a [^>]*tabindex="-1"/gi)?.length).toBe(copies.length);
