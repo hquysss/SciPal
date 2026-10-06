@@ -4,6 +4,7 @@ import { BUILT_IN_SIMULATION_KINDS } from '@scipal/types';
 import { LAB_ITEMS, LAB_SUBJECTS, labItem } from './catalog';
 import { usagesOf } from './labQuery';
 import { LabIndex } from './LabIndex';
+import { embedTitle, readEmbeds } from './LabEmbeds';
 
 vi.mock('next/headers', () => ({ cookies: async () => ({ getAll: () => [] }) }));
 
@@ -55,5 +56,24 @@ describe('LabIndex', () => {
     const html = renderToStaticMarkup(<LabIndex counts={null} />);
     expect(html).not.toContain('bài học</span>');
     expect(html).not.toContain('Chưa có trong bài học');
+  });
+});
+
+describe('LabEmbeds', () => {
+  it('keeps only approved links from storage', () => {
+    const ok = 'https://phet.colorado.edu/sims/html/projectile-motion/latest/projectile-motion_all.html';
+    expect(readEmbeds(JSON.stringify([ok, 'https://evil.test/x', 'https://www.geogebra.org/m/abc123', 5, 'not a url']))).toEqual([ok, 'https://www.geogebra.org/m/abc123']);
+    expect(readEmbeds('{broken')).toEqual([]);
+    expect(readEmbeds(null)).toEqual([]);
+  });
+
+  it('titles a link by its site and sim name', () => {
+    expect(embedTitle(new URL('https://phet.colorado.edu/sims/html/projectile-motion/latest/projectile-motion_all.html'))).toBe('phet.colorado.edu · projectile motion all');
+  });
+
+  it('is on the Lab page with its link field', () => {
+    const html = renderToStaticMarkup(<LabIndex counts={null} />);
+    expect(html).toContain('Nhúng mô phỏng ngoài');
+    expect(html).toContain('type="url"');
   });
 });
