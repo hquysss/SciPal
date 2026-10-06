@@ -4,7 +4,8 @@ import type { TermDraft } from './api';
 // file or a .xlsx file. A header row names the columns (Vietnamese or English names); without one,
 // columns are read in the order of SHEET_COLUMNS.
 
-export type SheetRow = Omit<TermDraft, 'subject_id'>;
+// Sheets carry words only: kind and photo are set in the form.
+export type SheetRow = Omit<TermDraft, 'subject_id' | 'kind' | 'image_url' | 'image_alt_en' | 'image_alt_vi' | 'image_credit'>;
 type Key = keyof SheetRow;
 
 export const SHEET_COLUMNS: Array<{ key: Key; header: string }> = [

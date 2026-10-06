@@ -5,7 +5,10 @@ import { useLanguage } from '@scipal/hooks';
 import { Alert } from '@/components/ui/alert';
 import { buttonVariants } from '@/components/ui/button';
 import { TEXTAREA } from '@/features/authoring/editor/editors/styles';
-import { createTerm, EMPTY_DRAFT, type StaffTerm, type SubjectOption, type TermDraft } from './api';
+import { IMAGE_TYPES, uploadLessonImage } from '@/features/authoring/editor/mediaApi';
+import { createTerm, EMPTY_DRAFT, type StaffTerm, type SubjectOption, type TermDraft, type TermKind } from './api';
+
+const KIND_LABEL: Record<TermKind, Bilingual> = { word: { en: 'Word', vi: 'Từ vựng' }, place: { en: 'Place', vi: 'Địa danh' } };
 
 type Bilingual = { en: string; vi: string };
 
@@ -17,6 +20,9 @@ export function termFormProblem(draft: TermDraft): Bilingual | null {
   if (!draft.subject_id) return { en: 'Choose a subject.', vi: 'Hãy chọn môn học.' };
   if (!draft.term_en.trim() || !draft.term_vi.trim()) return { en: 'Enter the term in English and Vietnamese.', vi: 'Hãy nhập thuật ngữ bằng cả tiếng Anh và tiếng Việt.' };
   if (!draft.definition_en.trim() || !draft.definition_vi.trim()) return { en: 'Enter the definition in both languages.', vi: 'Hãy nhập định nghĩa bằng cả hai thứ tiếng.' };
+  if (draft.image_url && (!draft.image_alt_en?.trim() || !draft.image_alt_vi?.trim())) {
+    return { en: 'Describe the picture in both languages.', vi: 'Hãy mô tả ảnh bằng cả hai thứ tiếng.' };
+  }
   return null;
 }
 
@@ -39,9 +45,24 @@ export function TermForm({ subjects, isAdmin, onSaved }: { subjects: SubjectOpti
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<Bilingual | null>(null);
   const [done, setDone] = useState<Bilingual | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const [uploadError, setUploadError] = useState<Bilingual | null>(null);
+  const place = draft.kind === 'place';
   const problem = termFormProblem(draft);
   const set = (key: keyof TermDraft) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) =>
     setDraft((d) => ({ ...d, [key]: e.target.value }));
+
+  const pickImage = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+    setUploading(true);
+    setUploadError(null);
+    const result = await uploadLessonImage(file);
+    setUploading(false);
+    if (result.ok) setDraft((d) => ({ ...d, image_url: result.url }));
+    else setUploadError(result.error);
+  };
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -58,7 +79,7 @@ export function TermForm({ subjects, isAdmin, onSaved }: { subjects: SubjectOpti
     setError(null);
     setTried(false);
     // Keep the subject: staff usually add several terms to one subject in a row.
-    setDraft({ ...EMPTY_DRAFT, subject_id: draft.subject_id });
+    setDraft({ ...EMPTY_DRAFT, subject_id: draft.subject_id, kind: draft.kind });
     setDone(
       isAdmin
         ? { en: `“${result.data.term.term_en}” is now in the glossary.`, vi: `Đã thêm “${result.data.term.term_vi}” vào từ điển.` }
@@ -81,6 +102,20 @@ export function TermForm({ subjects, isAdmin, onSaved }: { subjects: SubjectOpti
           </select>
         )}
       </Field>
+      <fieldset className="flex flex-col gap-1.5">
+        <legend className="text-sm font-semibold text-ink">{t({ en: 'Kind', vi: 'Loại' })}</legend>
+        <div className="flex flex-wrap gap-2">
+          {(['word', 'place'] as const).map((kind) => (
+            <label
+              key={kind}
+              className={`inline-flex min-h-11 cursor-pointer items-center gap-2 rounded-lg border px-3 text-sm font-semibold ${draft.kind === kind ? 'border-accent text-accent-ink' : 'border-edge text-ink'}`}
+            >
+              <input type="radio" name="term-kind" value={kind} checked={draft.kind === kind} onChange={() => setDraft((d) => ({ ...d, kind }))} />
+              {t(KIND_LABEL[kind])}
+            </label>
+          ))}
+        </div>
+      </fieldset>
       <div className="grid gap-4 sm:grid-cols-2">
         <Field id="term-vi" label={{ en: 'Term (Vietnamese)', vi: 'Thuật ngữ (tiếng Việt)' }}>
           {(id) => <input id={id} value={draft.term_vi} onChange={set('term_vi')} maxLength={120} className={INPUT} />}
@@ -88,10 +123,10 @@ export function TermForm({ subjects, isAdmin, onSaved }: { subjects: SubjectOpti
         <Field id="term-en" label={{ en: 'Term (English)', vi: 'Thuật ngữ (tiếng Anh)' }}>
           {(id) => <input id={id} value={draft.term_en} onChange={set('term_en')} maxLength={120} lang="en" className={INPUT} />}
         </Field>
-        <Field id="term-def-vi" label={{ en: 'Definition (Vietnamese)', vi: 'Định nghĩa (tiếng Việt)' }}>
+        <Field id="term-def-vi" label={place ? { en: 'About the place (Vietnamese)', vi: 'Giới thiệu địa danh (tiếng Việt)' } : { en: 'Definition (Vietnamese)', vi: 'Định nghĩa (tiếng Việt)' }}>
           {(id) => <textarea id={id} rows={3} value={draft.definition_vi} onChange={set('definition_vi')} maxLength={1000} className={`${TEXTAREA} font-normal`} />}
         </Field>
-        <Field id="term-def-en" label={{ en: 'Definition (English)', vi: 'Định nghĩa (tiếng Anh)' }}>
+        <Field id="term-def-en" label={place ? { en: 'About the place (English)', vi: 'Giới thiệu địa danh (tiếng Anh)' } : { en: 'Definition (English)', vi: 'Định nghĩa (tiếng Anh)' }}>
           {(id) => <textarea id={id} rows={3} value={draft.definition_en} onChange={set('definition_en')} maxLength={1000} lang="en" className={`${TEXTAREA} font-normal`} />}
         </Field>
         <Field id="term-ex-vi" label={{ en: 'Example (Vietnamese, optional)', vi: 'Ví dụ (tiếng Việt, không bắt buộc)' }}>
@@ -105,6 +140,39 @@ export function TermForm({ subjects, isAdmin, onSaved }: { subjects: SubjectOpti
         </Field>
       </div>
 
+      <fieldset className="flex flex-col gap-3 rounded-lg border border-line p-3">
+        <legend className="px-1 text-sm font-semibold text-ink">
+          {place ? t({ en: 'Photo of the place', vi: 'Ảnh địa danh' }) : t({ en: 'Picture (optional)', vi: 'Hình minh hoạ (không bắt buộc)' })}
+        </legend>
+        {draft.image_url && (
+          <div className="flex items-start gap-3">
+            {/* eslint-disable-next-line @next/next/no-img-element -- uploaded preview */}
+            <img src={draft.image_url} alt="" className="h-20 w-28 rounded-lg border border-line bg-surface-sunken object-cover" />
+            <button type="button" onClick={() => setDraft((d) => ({ ...d, image_url: '', image_alt_en: '', image_alt_vi: '', image_credit: '' }))} className={buttonVariants({ variant: 'outline' })}>
+              {t({ en: 'Remove picture', vi: 'Bỏ ảnh' })}
+            </button>
+          </div>
+        )}
+        <Field id="term-image" label={{ en: 'Choose a PNG, JPG or WEBP up to 4 MB', vi: 'Chọn ảnh PNG, JPG hoặc WEBP, tối đa 4 MB' }}>
+          {(id) => <input id={id} type="file" accept={IMAGE_TYPES.join(',')} onChange={pickImage} disabled={uploading} className="text-sm text-ink" />}
+        </Field>
+        {uploading && <p className="text-sm text-ink-muted">{t({ en: 'Uploading…', vi: 'Đang tải ảnh lên…' })}</p>}
+        {uploadError && <Alert tone="danger">{t(uploadError)}</Alert>}
+        {draft.image_url && (
+          <div className="grid gap-4 sm:grid-cols-2">
+            <Field id="term-alt-vi" label={{ en: 'What the picture shows (Vietnamese)', vi: 'Ảnh có gì (tiếng Việt)' }}>
+              {(id) => <input id={id} value={draft.image_alt_vi} onChange={set('image_alt_vi')} maxLength={1000} className={INPUT} />}
+            </Field>
+            <Field id="term-alt-en" label={{ en: 'What the picture shows (English)', vi: 'Ảnh có gì (tiếng Anh)' }}>
+              {(id) => <input id={id} value={draft.image_alt_en} onChange={set('image_alt_en')} maxLength={1000} lang="en" className={INPUT} />}
+            </Field>
+            <Field id="term-credit" label={{ en: 'Credit (optional)', vi: 'Nguồn ảnh (không bắt buộc)' }}>
+              {(id) => <input id={id} value={draft.image_credit} onChange={set('image_credit')} maxLength={200} placeholder="Ảnh: …" className={INPUT} />}
+            </Field>
+          </div>
+        )}
+      </fieldset>
+
       {tried && problem && <Alert tone="danger">{t(problem)}</Alert>}
       {error && <Alert tone="danger">{t(error)}</Alert>}
       {done && (
@@ -114,7 +182,7 @@ export function TermForm({ subjects, isAdmin, onSaved }: { subjects: SubjectOpti
       )}
 
       <div className="flex flex-wrap items-center gap-3">
-        <button type="submit" disabled={sending} className={buttonVariants()}>
+        <button type="submit" disabled={sending || uploading} className={buttonVariants()}>
           {isAdmin ? t({ en: 'Add to the glossary', vi: 'Thêm vào từ điển' }) : t({ en: 'Send for admin review', vi: 'Gửi admin duyệt' })}
         </button>
         {!isAdmin && <span className="text-sm text-ink-muted">{t({ en: 'The term appears in the glossary once an admin approves it.', vi: 'Thuật ngữ hiện trong từ điển sau khi admin duyệt.' })}</span>}

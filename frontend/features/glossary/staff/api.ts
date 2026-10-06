@@ -16,11 +16,19 @@ export interface StaffTerm {
   definition_vi: string;
   example_en: string | null;
   example_vi: string | null;
+  kind: TermKind;
+  image_url: string | null;
+  image_alt_en: string | null;
+  image_alt_vi: string | null;
+  image_credit: string | null;
   status: TermStatus;
   review_note: string | null;
   created_at: string;
 }
 
+export type TermKind = 'word' | 'place';
+
+/** A term to send. The kind and photo fields are optional, so sheet rows (words, no photo) stay as they are. */
 export type TermDraft = {
   subject_id: string;
   term_en: string;
@@ -30,11 +38,16 @@ export type TermDraft = {
   definition_vi: string;
   example_en: string;
   example_vi: string;
+  kind?: TermKind;
+  image_url?: string;
+  image_alt_en?: string;
+  image_alt_vi?: string;
+  image_credit?: string;
 };
 
 export type SubjectOption = { id: string; name_en: string; name_vi: string };
 
-export const EMPTY_DRAFT: TermDraft = { subject_id: '', term_en: '', term_vi: '', part_of_speech: '', definition_en: '', definition_vi: '', example_en: '', example_vi: '' };
+export const EMPTY_DRAFT: TermDraft = { subject_id: '', term_en: '', term_vi: '', part_of_speech: '', definition_en: '', definition_vi: '', example_en: '', example_vi: '', kind: 'word', image_url: '', image_alt_en: '', image_alt_vi: '', image_credit: '' };
 
 export const createTerm = (draft: TermDraft) => authoringCall<{ term: StaffTerm }>('/api/authoring/terms', 'POST', draft);
 export type BatchResult = { index: number; ok: true; id: string } | { index: number; ok: false; error: string; error_en: string };

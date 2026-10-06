@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { applyFormat } from './markdownToolbar';
+import { applyFormat, applyTerm } from './markdownToolbar';
 
 describe('applyFormat', () => {
   it('wraps the selection and keeps it selected', () => {
@@ -22,5 +22,23 @@ describe('applyColor', () => {
   it('wraps the selection in a colour tag', async () => {
     const { applyColor } = await import('./markdownToolbar');
     expect(applyColor('a quan trọng b', 2, 12, 'red')).toEqual({ text: 'a {red:quan trọng} b', start: 7, end: 17 });
+  });
+});
+
+describe('applyTerm', () => {
+  const ID = '11111111-1111-4111-8111-111111111111';
+
+  it('tags the selection and keeps its words selected', () => {
+    const out = applyTerm('Thuật toán là…', 0, 10, ID);
+    expect(out.text).toBe(`{term:${ID}:Thuật toán} là…`);
+    expect(out.text.slice(out.start, out.end)).toBe('Thuật toán');
+  });
+
+  it('changes nothing without a selection', () => {
+    expect(applyTerm('abc', 1, 1, ID)).toEqual({ text: 'abc', start: 1, end: 1 });
+  });
+
+  it('cleans braces and line breaks out of the selection', () => {
+    expect(applyTerm('a{b}\nc', 0, 6, ID).text).toBe(`{term:${ID}:a b  c}`);
   });
 });
