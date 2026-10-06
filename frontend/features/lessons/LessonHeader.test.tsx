@@ -27,6 +27,12 @@ describe('LessonHeader', () => {
     expect(html).toContain('Tin học, lớp 10');
   });
 
+  it('shows the source under the titles when the lesson has one', () => {
+    lang = 'vi';
+    expect(renderToStaticMarkup(<LessonHeader lesson={{ ...lesson, source: 'SGK Vật lí 11' }} />)).toContain('Nguồn: <cite class="not-italic">SGK Vật lí 11</cite>');
+    expect(renderToStaticMarkup(<LessonHeader lesson={lesson} />)).not.toContain('Nguồn');
+  });
+
   it('switches every label to English', () => {
     lang = 'en';
     const html = renderToStaticMarkup(<LessonHeader lesson={lesson} />);

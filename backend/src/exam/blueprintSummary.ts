@@ -5,6 +5,8 @@ export interface BlueprintSummary {
   id: string;
   name: string;
   name_en: string | null;
+  /** Where the exam comes from, written by its author. */
+  source: string | null;
   grade: number | null;
   subject_id: string | null;
   subject_slug: string | null;
@@ -29,6 +31,7 @@ export interface BlueprintRow {
   id: string;
   name: string;
   name_en?: string | null;
+  source?: string | null;
   grade: number | null;
   subject_id: string | null;
   sections: unknown;
@@ -82,6 +85,7 @@ export function toBlueprintSummary(row: BlueprintRow): BlueprintSummary {
     id: row.id,
     name: row.name,
     name_en: row.name_en ?? null,
+    source: row.source?.trim() || null,
     grade: row.grade ?? null,
     subject_id: row.subject_id ?? null,
     subject_slug: subject?.slug ?? null,

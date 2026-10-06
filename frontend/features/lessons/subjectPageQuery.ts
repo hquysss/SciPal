@@ -21,7 +21,7 @@ export interface TopicRow {
   name_vi: string;
   sort_order: number;
   grade: number | null;
-  lessons: Array<{ id: string; slug: string; title_en: string; title_vi: string; sort_order: number; grade: number }>;
+  lessons: Array<{ id: string; slug: string; title_en: string; title_vi: string; source?: string | null; sort_order: number; grade: number }>;
 }
 
 export interface GradeGroup {
@@ -31,7 +31,7 @@ export interface GradeGroup {
     name_en: string;
     name_vi: string;
     sort_order: number;
-    lessons: Array<{ id: string; slug: string; title_en: string; title_vi: string; sort_order: number }>;
+    lessons: Array<{ id: string; slug: string; title_en: string; title_vi: string; source?: string | null; sort_order: number }>;
   }>;
 }
 
@@ -65,6 +65,7 @@ export function groupTopicsByGrade(topics: TopicRow[]): GradeGroup[] {
         slug: lesson.slug,
         title_en: lesson.title_en,
         title_vi: lesson.title_vi,
+        source: lesson.source ?? null,
         sort_order: lesson.sort_order,
       });
     }
@@ -112,7 +113,7 @@ export async function getSubjectPage(slug: string): Promise<SubjectPageResult> {
 
     const topics = await supabase
       .from('topics')
-      .select('id, name_en, name_vi, sort_order, grade, lessons(id, slug, title_en, title_vi, sort_order, grade, status)')
+      .select('id, name_en, name_vi, sort_order, grade, lessons(id, slug, title_en, title_vi, source, sort_order, grade, status)')
       .eq('subject_id', subject.data.id)
       .eq('lessons.status', 'published')
       .order('sort_order');

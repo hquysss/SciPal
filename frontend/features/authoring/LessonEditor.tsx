@@ -47,6 +47,7 @@ interface LessonEditorProps {
   subjectId: string;
   initialTitleVi: string;
   initialTitleEn?: string;
+  initialSource?: string | null;
   initialBlocks: Block[];
   initialUpdatedAt: string;
   initialStatus: LessonStatus;
@@ -65,6 +66,7 @@ export function LessonEditor({
   subjectId,
   initialTitleVi,
   initialTitleEn = '',
+  initialSource = '',
   initialBlocks,
   initialUpdatedAt,
   initialStatus,
@@ -75,6 +77,7 @@ export function LessonEditor({
   const router = useRouter();
   const [titleVi, setTitleVi] = useState(initialTitleVi);
   const [titleEn, setTitleEn] = useState(initialTitleEn);
+  const [source, setSource] = useState(initialSource ?? '');
   const [parts, setParts] = useState(() => splitLessonParts(initialBlocks));
   const blocks = useMemo(() => joinLessonParts(parts), [parts]);
   const [activePart, setActivePart] = useState<LessonPart>('lesson');
@@ -118,8 +121,8 @@ export function LessonEditor({
 
   // The latest values, so the autosaver (created once) always saves what is on screen, and every
   // request sends the lesson version the previous save returned.
-  const latest = useRef({ titleVi, titleEn, blocks, updatedAt, status });
-  latest.current = { ...latest.current, titleVi, titleEn, blocks };
+  const latest = useRef({ titleVi, titleEn, source, blocks, updatedAt, status });
+  latest.current = { ...latest.current, titleVi, titleEn, source, blocks };
 
   // ── Automatic translation ─────────────────────────────────────────────────────────────────
   const autoRef = useRef(autoTranslate);
@@ -210,7 +213,7 @@ export function LessonEditor({
   const saveDraft = useCallback(async (): Promise<SaveOutcome> => {
     await translateLesson('autosave');
     const { titleVi: vi, titleEn: en, blocks: content, updatedAt: version } = latest.current;
-    const body: Record<string, unknown> = { blocks: content, expected_updated_at: version };
+    const body: Record<string, unknown> = { blocks: content, expected_updated_at: version, source: latest.current.source };
     // The API refuses empty titles; keep saving the blocks while a title is being typed.
     if (vi.trim()) body.title_vi = vi;
     if (en.trim()) body.title_en = en;
@@ -298,6 +301,7 @@ export function LessonEditor({
         const res = await callApi(`/api/authoring/lessons/${lessonId}`, 'PATCH', {
           title_vi: latest.current.titleVi,
           title_en: latest.current.titleEn,
+          source: latest.current.source,
           blocks: latest.current.blocks,
           expected_updated_at: latest.current.updatedAt,
           ...(canReview ? { status: publishChecked ? 'published' : 'draft' } : {}),
@@ -349,6 +353,7 @@ export function LessonEditor({
         const res = await callApi(`/api/authoring/lessons/${lessonId}/submit`, 'POST', {
           title_vi: latest.current.titleVi,
           title_en: latest.current.titleEn,
+          source: latest.current.source,
           blocks: latest.current.blocks,
           expected_updated_at: latest.current.updatedAt,
         });
@@ -549,6 +554,19 @@ export function LessonEditor({
                 setTitleEn(en);
                 changed();
               }}
+            />
+          </label>
+          <label className="flex flex-col gap-1.5 text-sm font-semibold text-ink sm:col-span-2">
+            {t({ en: 'Source', vi: 'Nguồn' })}
+            <Input
+              value={source}
+              onChange={(e) => {
+                setSource(e.target.value);
+                changed();
+              }}
+              disabled={!canEditContent}
+              maxLength={300}
+              placeholder={t({ en: 'e.g. Physics 11 textbook, Kết nối tri thức', vi: 'Ví dụ: SGK Vật lí 11 – Kết nối tri thức' })}
             />
           </label>
         </div>

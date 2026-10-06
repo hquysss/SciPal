@@ -130,6 +130,24 @@ describe('authoring lesson status', () => {
     await app.close();
   });
 
+  it('saves a lesson source trimmed, clears it when empty, and refuses over 300 characters', async () => {
+    const write = mockQuery({ data: { id: LESSON_ID, status: 'draft' }, error: null });
+    const app = await buildAuthoringApp(admin, {
+      lessons: [
+        mockQuery({ data: { id: LESSON_ID, created_by: teacher.id, status: 'draft', updated_at: STAMP }, error: null }),
+        write,
+        mockQuery({ data: { id: LESSON_ID, created_by: teacher.id, status: 'draft', updated_at: STAMP }, error: null }),
+      ],
+    });
+    const url = `/api/authoring/lessons/${LESSON_ID}`;
+    const ok = await app.inject({ method: 'PATCH', url, payload: { expected_updated_at: STAMP, source: '  SGK Vật lí 11  ' } });
+    expect(ok.statusCode).toBe(200);
+    expect(write.updated[0]).toMatchObject({ source: 'SGK Vật lí 11' });
+    const long = await app.inject({ method: 'PATCH', url, payload: { expected_updated_at: STAMP, source: 'x'.repeat(301) } });
+    expect(long.statusCode).toBe(400);
+    await app.close();
+  });
+
   it('admins can unpublish and republish; republishing records the approver', async () => {
     const unpublishWrite = mockQuery({ data: { id: LESSON_ID, status: 'draft' }, error: null });
     const republishWrite = mockQuery({ data: { id: LESSON_ID, status: 'published' }, error: null });
