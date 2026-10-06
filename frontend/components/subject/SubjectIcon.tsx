@@ -1,6 +1,6 @@
 import type { EducationLevel } from '@/features/landing/educationLevel';
 
-const HAVE = ['math', 'physics', 'chemistry', 'biology', 'informatics'];
+const HAVE = ['math', 'physics', 'chemistry', 'biology', 'informatics', 'history'];
 const STYLE: Record<EducationLevel, string> = { primary: 'primary', lower_secondary: 'middle', upper_secondary: 'high' };
 
 /**
