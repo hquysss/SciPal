@@ -44,6 +44,7 @@ export const ADMIN_GROUPS: Group[] = [
     title: { vi: 'Hệ thống', en: 'System' },
     tools: [
       { href: '/admin/ai', label: { vi: 'Cài đặt AI', en: 'AI settings' }, hint: { vi: 'Giáo sư SciPal, dịch tự động, hội thoại', en: 'Professor, translation, conversations' }, Icon: Bot },
+      { href: '/admin/feedback', label: { vi: 'Đánh giá website', en: 'Website reviews' }, hint: { vi: 'Sao trung bình, góp ý và tài khoản gửi', en: 'Average stars, comments and sending accounts' }, Icon: ClipboardCheck },
       { href: '/admin/site', label: { vi: 'Bật/tắt tính năng', en: 'Site switches' }, hint: { vi: 'Đăng ký, từ điển, thi thử, bảng giá…', en: 'Sign-up, glossary, exams, pricing…' }, Icon: ToggleRight },
     ],
   },

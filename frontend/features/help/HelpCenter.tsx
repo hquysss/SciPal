@@ -143,6 +143,7 @@ export function HelpCenter() {
               <p className="mt-1 text-sm text-ink-muted">{t({ en: 'Choose a lesson and learn at your own pace.', vi: 'Chọn một bài học và học theo nhịp của bạn.' })}</p></div>
             <Link href="/subjects" prefetch={false} className={buttonVariants({ variant: 'outline' })}>{t({ en: 'Explore subjects', vi: 'Khám phá môn học' })}<ArrowRight aria-hidden="true" /></Link>
           </section>
+          <Link href="/feedback" className="mt-6 inline-flex min-h-11 items-center font-semibold text-action underline underline-offset-4">{t({ vi: 'Góp ý để SciPal tốt hơn', en: 'Help make SciPal better' })}</Link>
         </div>
       </div>
     </main>

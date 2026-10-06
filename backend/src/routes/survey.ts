@@ -1,12 +1,17 @@
 import type { FastifyPluginAsync, FastifyRequest } from 'fastify';
 
+import { saveWebsiteFeedback, websiteFeedbackRoutes } from './websiteFeedback.js';
+
 const SURVEY_TYPES = new Set(['post_lesson', 'demand', 'feature_request']);
 const MAX_PAYLOAD_CHARS = 4000;
 const unavailable = { error: 'Survey could not be saved. Please try again.' };
 
 export const surveyRoutes: FastifyPluginAsync = async (app) => {
+  await app.register(websiteFeedbackRoutes);
   app.post('/api/survey', async (request, reply) => {
     const { type, payload } = (request.body ?? {}) as { type?: unknown; payload?: unknown };
+
+    if (type === 'website_feedback') return saveWebsiteFeedback(app, request, reply, payload);
 
     if (typeof type !== 'string' || !SURVEY_TYPES.has(type)) {
       return reply.status(400).send({ error: 'Missing or invalid survey type' });

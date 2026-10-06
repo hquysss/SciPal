@@ -32,3 +32,7 @@ describe('backend mirror of the exam format contract', () => {
     if (!result.ok) expect(result.message.vi).toContain('lặp');
   });
 });
+
+it('keeps the deployed website feedback contract identical to the shared contract', () => {
+  expect(readFileSync(new URL('../schemas/websiteFeedback.ts', import.meta.url), 'utf8')).toBe(readFileSync(new URL('../../../packages/types/src/websiteFeedback.ts', import.meta.url), 'utf8'));
+});

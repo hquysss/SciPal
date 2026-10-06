@@ -276,6 +276,8 @@ export function LandingPage({ level, levelSource, catalog, onChangeLevel, pricin
             </Link>
             <span aria-hidden="true"> · </span>
             <ReportProblemButton className={styles.footerPolicy} />
+            <span aria-hidden="true"> · </span>
+            <Link href="/feedback" className={styles.footerPolicy}>{t({ en: 'Review SciPal', vi: 'Đánh giá SciPal' })}</Link>
             <span aria-hidden="true"> · </span>© SciPal
           </p>
         </div>

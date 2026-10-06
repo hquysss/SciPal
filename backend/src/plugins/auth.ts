@@ -3,7 +3,7 @@ import fp from 'fastify-plugin';
 import { createClient, type SupabaseClient, type User } from '@supabase/supabase-js';
 
 const isPublicPath = (path: string): boolean => {
-  if (path === '/health' || path === '/api/survey') return true;
+  if (path === '/health' || path === '/api/survey' || path === '/api/survey/website') return true;
   // The plan catalog only; the rest of /api/billing needs a session.
   if (path === '/api/billing/plans') return true;
   // payOS calls this; the handler checks its signature.
