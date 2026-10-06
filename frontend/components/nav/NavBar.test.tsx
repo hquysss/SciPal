@@ -1,6 +1,6 @@
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it, vi } from 'vitest';
-import { NavBar, primaryLinks, roleLinks, tutorLink } from './NavBar';
+import { getAvatarUrl, NavBar, primaryLinks, roleLinks, tutorLink } from './NavBar';
 
 vi.mock('next/link', () => ({
   default: ({ href, children, prefetch: _prefetch, ...props }: { href: string; children: React.ReactNode; prefetch?: boolean }) =>
@@ -14,6 +14,16 @@ vi.mock('next/navigation', () => ({
 }));
 vi.mock('@scipal/hooks', () => ({ useLanguage: () => ({ lang: 'vi', setLang: () => {}, t: (copy: { en: string; vi: string }) => copy.vi }) }));
 vi.mock('@/lib/supabase', () => ({ createBrowserClient: vi.fn() }));
+
+describe('getAvatarUrl', () => {
+  it('reads an https avatar from the account, and nothing else', () => {
+    const user = (avatar_url: unknown) => ({ id: 'u', user_metadata: { avatar_url } }) as never;
+    expect(getAvatarUrl(user('https://m.test/profiles/u/avatar-1.webp'))).toBe('https://m.test/profiles/u/avatar-1.webp');
+    expect(getAvatarUrl(user('javascript:alert(1)'))).toBeNull();
+    expect(getAvatarUrl(user(null))).toBeNull();
+    expect(getAvatarUrl(null)).toBeNull();
+  });
+});
 
 describe('NavBar', () => {
   it('marks the current route and uses drawn icons for the compact menu', () => {

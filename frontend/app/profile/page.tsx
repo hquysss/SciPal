@@ -76,6 +76,7 @@ export default async function ProfilePage() {
             email={user.email ?? null}
             joinedAt={user.created_at ?? null}
             avatarUrl={profile?.avatar_url}
+            coverUrl={profile?.cover_url}
             stats={stats}
           />
         </div>

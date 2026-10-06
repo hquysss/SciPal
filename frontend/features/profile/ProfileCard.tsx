@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import type { ComponentType, CSSProperties } from 'react';
+import { useState, type ComponentType, type CSSProperties } from 'react';
 import {
   BookCheck,
   ChevronRight,
@@ -11,12 +11,15 @@ import {
   LineChart,
   MessageCircleQuestion,
   NotebookPen,
+  Pencil,
   PlayCircle,
   School,
   Sparkles,
 } from 'lucide-react';
 import { useLanguage } from '@scipal/hooks';
 import { Badge } from '../../components/ui/badge';
+import { buttonVariants } from '../../components/ui/button';
+import { ProfileEditor } from './ProfileEditor';
 
 interface ProfileCardProps {
   displayName: string;
@@ -25,6 +28,7 @@ interface ProfileCardProps {
   /** ISO date the account was created. */
   joinedAt?: string | null;
   avatarUrl?: string | null;
+  coverUrl?: string | null;
   stats: { totalXP: number; completedLessons: number; longestStreak: number };
 }
 
@@ -74,8 +78,9 @@ function ShortcutGrid({ items }: { items: Shortcut[] }) {
 }
 
 /** The profile's summary: who, since when, the learning numbers and where to go next. */
-export function ProfileCard({ displayName, role, email, joinedAt, avatarUrl, stats }: ProfileCardProps) {
+export function ProfileCard({ displayName, role, email, joinedAt, avatarUrl, coverUrl, stats }: ProfileCardProps) {
   const { t, lang } = useLanguage();
+  const [editing, setEditing] = useState(false);
 
   const initials =
     displayName
@@ -106,7 +111,11 @@ export function ProfileCard({ displayName, role, email, joinedAt, avatarUrl, sta
 
   return (
     <section aria-labelledby="profile-name" className="overflow-hidden rounded-2xl border border-line bg-surface">
-      {/* Banner in the level's supporting colours; decoration only. */}
+      {/* The owner's cover photo, or a banner in the level's supporting colours; decoration only. */}
+      {coverUrl ? (
+        // eslint-disable-next-line @next/next/no-img-element -- media store image
+        <img src={coverUrl} alt="" aria-hidden="true" className="h-24 w-full bg-surface-sunken object-cover sm:h-28" />
+      ) : (
       <div
         aria-hidden="true"
         className="relative h-24 sm:h-28"
@@ -115,6 +124,7 @@ export function ProfileCard({ displayName, role, email, joinedAt, avatarUrl, sta
             'radial-gradient(120% 140% at 0% 0%, color-mix(in srgb, var(--sun) 55%, transparent), transparent 60%), radial-gradient(120% 140% at 100% 0%, color-mix(in srgb, var(--sky) 55%, transparent), transparent 60%), linear-gradient(120deg, color-mix(in srgb, var(--action) 30%, var(--surface)), color-mix(in srgb, var(--coral) 35%, var(--surface)))',
         }}
       />
+      )}
 
       <div className="flex flex-col gap-6 px-5 pb-6 sm:px-7">
         <div className="-mt-10 flex flex-col gap-3 sm:-mt-12">
@@ -131,7 +141,15 @@ export function ProfileCard({ displayName, role, email, joinedAt, avatarUrl, sta
               {joinedText && <span>{joinedText}</span>}
             </p>
           </div>
+          {!editing && (
+            <button type="button" onClick={() => setEditing(true)} className={`${buttonVariants({ variant: 'outline' })} self-start`}>
+              <Pencil aria-hidden="true" className="h-4 w-4" />
+              {t({ en: 'Edit profile', vi: 'Sửa hồ sơ' })}
+            </button>
+          )}
         </div>
+
+        {editing && <ProfileEditor displayName={displayName} avatarUrl={avatarUrl ?? null} coverUrl={coverUrl ?? null} onClose={() => setEditing(false)} />}
 
         <dl className="grid grid-cols-3 gap-2 sm:gap-3">
           {numbers.map(({ value, label, Icon, tone }) => (
