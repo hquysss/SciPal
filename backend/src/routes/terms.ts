@@ -17,7 +17,9 @@ const TEXT_MAX = 1000;
 const BATCH_MAX = 200;
 
 const COLUMNS =
-  'id, subject_id, term_en, term_vi, part_of_speech, definition_en, definition_vi, example_en, example_vi, status, created_by, review_note, reviewed_at, created_at, subjects(slug, name_en, name_vi)';
+  'id, subject_id, term_en, term_vi, part_of_speech, definition_en, definition_vi, example_en, example_vi, kind, image_url, image_alt_en, image_alt_vi, image_credit, status, created_by, review_note, reviewed_at, created_at, subjects(slug, name_en, name_vi)';
+const KINDS = ['word', 'place'] as const;
+const CREDIT_MAX = 200;
 
 const notFound = { error: 'Không tìm thấy thuật ngữ.', error_en: 'Term not found.' };
 const conflict = { error: 'Thuật ngữ vừa được xử lý. Tải lại danh sách.', error_en: 'The term was already handled. Reload the list.' };
@@ -45,10 +47,18 @@ type TermInput = {
   definition_vi: string;
   example_en: string | null;
   example_vi: string | null;
+  kind: (typeof KINDS)[number];
+  image_url: string | null;
+  image_alt_en: string | null;
+  image_alt_vi: string | null;
+  image_credit: string | null;
 };
 
-/** The term from a request body, or the bilingual reason it is refused. */
-function readTerm(body: Record<string, unknown>): { term: TermInput } | { error: string; error_en: string } {
+/**
+ * The term from a request body, or the bilingual reason it is refused. `imageBase` is the media
+ * store's public prefix; a photo must live there (null: no store, so no photo is accepted).
+ */
+function readTerm(body: Record<string, unknown>, imageBase: string | null): { term: TermInput } | { error: string; error_en: string } {
   const subjectId = text(body.subject_id);
   if (!ID.test(subjectId)) return { error: 'Hãy chọn môn học.', error_en: 'Choose a subject.' };
   const termEn = text(body.term_en);
@@ -67,6 +77,21 @@ function readTerm(body: Record<string, unknown>): { term: TermInput } | { error:
   if (exEn.length > TEXT_MAX || exVi.length > TEXT_MAX || pos.length > 40) {
     return { error: 'Ví dụ tối đa 1000 ký tự, từ loại tối đa 40 ký tự.', error_en: 'Examples are up to 1000 characters, part of speech up to 40.' };
   }
+  const kind = text(body.kind) || 'word';
+  if (!(KINDS as readonly string[]).includes(kind)) return { error: 'Loại thuật ngữ không hợp lệ.', error_en: 'Unknown term kind.' };
+  const imageUrl = text(body.image_url);
+  const altEn = text(body.image_alt_en);
+  const altVi = text(body.image_alt_vi);
+  const credit = text(body.image_credit);
+  if (imageUrl) {
+    if (!imageBase || !imageUrl.startsWith(imageBase)) {
+      return { error: 'Ảnh phải được tải lên SciPal.', error_en: 'Upload the image to SciPal.' };
+    }
+    if (!altEn || !altVi || altEn.length > TEXT_MAX || altVi.length > TEXT_MAX) {
+      return { error: 'Hãy mô tả ảnh bằng cả hai thứ tiếng.', error_en: 'Describe the image in both languages.' };
+    }
+  }
+  if (credit.length > CREDIT_MAX) return { error: 'Nguồn ảnh tối đa 200 ký tự.', error_en: 'The image credit is up to 200 characters.' };
   return {
     term: {
       subject_id: subjectId,
@@ -77,11 +102,17 @@ function readTerm(body: Record<string, unknown>): { term: TermInput } | { error:
       definition_vi: defVi,
       example_en: exEn || null,
       example_vi: exVi || null,
+      kind: kind as TermInput['kind'],
+      image_url: imageUrl || null,
+      image_alt_en: imageUrl ? altEn : null,
+      image_alt_vi: imageUrl ? altVi : null,
+      image_credit: imageUrl && credit ? credit : null,
     },
   };
 }
 
 export const termRoutes: FastifyPluginAsync = async (app) => {
+  const imageBase = () => app.mediaStore?.publicUrl('') ?? null;
   const requireStaff = async (request: FastifyRequest, reply: FastifyReply) => {
     const user = getUser(request);
     const role = user?.app_metadata?.app_role;
@@ -100,7 +131,7 @@ export const termRoutes: FastifyPluginAsync = async (app) => {
     const supabase = app.supabase;
     if (!supabase) return reply.code(503).send(unavailable);
     const user = getUser(request)!;
-    const read = readTerm((request.body ?? {}) as Record<string, unknown>);
+    const read = readTerm((request.body ?? {}) as Record<string, unknown>, imageBase());
     if ('error' in read) return reply.code(400).send(read);
     const subject = await readSubjectArchived(supabase, read.term.subject_id);
     if (subject.error) {
@@ -144,7 +175,8 @@ export const termRoutes: FastifyPluginAsync = async (app) => {
     }
     const isAdmin = user.app_metadata?.app_role === 'admin';
     const now = new Date().toISOString();
-    const reads = rows.map((row) => readTerm((row ?? {}) as Record<string, unknown>));
+    const base = imageBase();
+    const reads = rows.map((row) => readTerm((row ?? {}) as Record<string, unknown>, base));
     // Rows of an archived subject are refused one by one, like any other bad row.
     const subjectIds = [...new Set(reads.flatMap((read) => ('term' in read ? [read.term.subject_id] : [])))];
     const archived = new Set<string>();
