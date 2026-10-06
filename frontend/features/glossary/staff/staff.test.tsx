@@ -27,6 +27,11 @@ const term = (status: StaffTerm['status'], note: string | null = null): StaffTer
   example_vi: null,
   status,
   review_note: note,
+  kind: 'word',
+  image_url: null,
+  image_alt_en: null,
+  image_alt_vi: null,
+  image_credit: null,
   created_at: '2026-10-03T00:00:00Z',
 });
 
@@ -45,10 +50,35 @@ describe('staff glossary', () => {
     expect(countRawColors(html).total).toBe(0);
   });
 
+  it('a photo needs a description in both languages', () => {
+    const ready = { ...EMPTY, subject_id: 's1', term_en: 'Ha Long Bay', term_vi: 'Vịnh Hạ Long', definition_en: 'Bay', definition_vi: 'Vịnh' };
+    expect(termFormProblem({ ...ready, image_url: 'https://m/a.jpg' })?.vi).toContain('mô tả ảnh');
+    expect(termFormProblem({ ...ready, image_url: 'https://m/a.jpg', image_alt_en: 'Bay', image_alt_vi: 'Vịnh' })).toBeNull();
+  });
+
+  it('the form offers word or place and a photo', () => {
+    const html = renderToStaticMarkup(<TermForm subjects={SUBJECTS} isAdmin={false} onSaved={() => {}} />);
+    expect(html).toContain('Địa danh');
+    expect(html).toContain('type="file"');
+    expect(countRawColors(html).total).toBe(0);
+  });
+
   it('an admin publishes straight away', () => {
     const html = renderToStaticMarkup(<TermForm subjects={SUBJECTS} isAdmin onSaved={() => {}} />);
     expect(html).toContain('Thêm vào từ điển');
     expect(html).not.toContain('Gửi admin duyệt');
+  });
+
+  it('a row shows the photo, its descriptions, credit and kind for review', () => {
+    const html = renderToStaticMarkup(
+      <TermRow term={{ ...term('pending'), kind: 'place', image_url: 'https://m/h.jpg', image_alt_vi: 'Đảo đá vôi', image_alt_en: 'Limestone islands', image_credit: 'Ảnh: A' }} />,
+    );
+    expect(html).toContain('src="https://m/h.jpg"');
+    expect(html).toContain('alt="Đảo đá vôi"');
+    expect(html).toContain('Limestone islands');
+    expect(html).toContain('Ảnh: A');
+    expect(html).toContain('Địa danh');
+    expect(countRawColors(html).total).toBe(0);
   });
 
   it('a row shows the status and the admin’s reason', () => {

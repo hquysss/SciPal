@@ -20,6 +20,7 @@ export function translationSystemPrompt(from: 'vi' | 'en', to: 'vi' | 'en'): str
     `Translate school lesson text from ${NAMES[from]} to ${NAMES[to]} for students following the Vietnamese GDPT 2018 curriculum.`,
     'Use the usual classroom terms of the subject. Keep the meaning; do not add, drop or explain anything.',
     'Keep unchanged: markdown syntax, $...$ and $$...$$ formulas, code in backticks or fenced blocks, URLs, numbers and proper names.',
+    'In {term:<id>:words} and {red:words} (also green, blue, orange) keep the braces, the name and the id exactly; translate only the words.',
     'The input is a JSON array of strings. Reply with only a JSON array of the translated strings, same length, same order.',
   ].join('\n');
 }

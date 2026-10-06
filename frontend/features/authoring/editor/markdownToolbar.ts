@@ -9,6 +9,15 @@ export function applyColor(text: string, start: number, end: number, color: Text
   return { text: text.slice(0, start) + open + inner + '}' + text.slice(end), start: start + open.length, end: start + open.length + inner.length };
 }
 
+/** Tag the selection as a glossary term, `{term:<id>:…}` (see remarkTerm); no selection, no change. */
+export function applyTerm(text: string, start: number, end: number, termId: string) {
+  if (start === end) return { text, start, end };
+  const open = `{term:${termId}:`;
+  // Inline Markdown would split the tag's text node and show the raw marker, so only plain words go in.
+  const inner = text.slice(start, end).replace(/[{}\n]/g, ' ').replace(/[*_`$~[\]]/g, '');
+  return { text: text.slice(0, start) + open + inner + '}' + text.slice(end), start: start + open.length, end: start + open.length + inner.length };
+}
+
 const WRAP: Record<'bold' | 'italic' | 'math', { mark: string; placeholder: string }> = {
   bold: { mark: '**', placeholder: 'chữ đậm' },
   italic: { mark: '*', placeholder: 'chữ nghiêng' },

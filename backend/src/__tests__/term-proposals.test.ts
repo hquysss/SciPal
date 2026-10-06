@@ -14,6 +14,7 @@ async function build(user: object | null, tables: Record<string, MockBuilder | M
   const app = Fastify();
   // Writing a term checks that its subject is not archived; tests use a live subject unless they say otherwise.
   app.decorate('supabase', mockSupabase({ subjects: mockQuery({ data: [{ id: SUBJECT_ID, archived_at: null }], error: null }), ...tables }) as never);
+  app.decorate('mediaStore', { publicUrl: (key: string) => `https://media.test/${key}`, put: async () => {} } as never);
   app.addHook('onRequest', async (req) => {
     if (user) (req as any).user = user;
   });
@@ -200,5 +201,68 @@ describe('adding many glossary terms at once', () => {
     const other = await build(student, { terms: mockQuery({ data: null, error: null }) });
     expect((await other.inject({ method: 'POST', url: '/api/authoring/terms/batch', payload: { terms: [valid] } })).statusCode).toBe(403);
     await other.close();
+  });
+});
+
+describe('term kind and image', () => {
+  const image = { image_url: 'https://media.test/u/a.jpg', image_alt_en: 'Ha Long Bay', image_alt_vi: 'Vịnh Hạ Long' };
+
+  it('stores kind and a media-store image with both alts', async () => {
+    const insert = mockQuery({ data: { id: TERM_ID }, error: null });
+    const app = await build(teacher, { terms: insert });
+    const res = await app.inject({ method: 'POST', url: '/api/authoring/terms', payload: { ...valid, kind: 'place', ...image, image_credit: 'Ảnh: A' } });
+    expect(res.statusCode).toBe(201);
+    expect(insert.inserted[0]).toMatchObject({ kind: 'place', ...image, image_credit: 'Ảnh: A' });
+    await app.close();
+  });
+
+  it('defaults kind to word and image fields to null', async () => {
+    const insert = mockQuery({ data: { id: TERM_ID }, error: null });
+    const app = await build(teacher, { terms: insert });
+    expect((await app.inject({ method: 'POST', url: '/api/authoring/terms', payload: valid })).statusCode).toBe(201);
+    expect(insert.inserted[0]).toMatchObject({ kind: 'word', image_url: null, image_alt_en: null, image_alt_vi: null, image_credit: null });
+    await app.close();
+  });
+
+  it('refuses an image outside the media store', async () => {
+    const insert = mockQuery({ data: { id: TERM_ID }, error: null });
+    const app = await build(teacher, { terms: insert });
+    const res = await app.inject({ method: 'POST', url: '/api/authoring/terms', payload: { ...valid, ...image, image_url: 'https://evil.test/a.jpg' } });
+    expect(res.statusCode).toBe(400);
+    expect(insert.inserted).toHaveLength(0);
+    await app.close();
+  });
+
+  it('refuses an image without both alts', async () => {
+    const app = await build(teacher, { terms: mockQuery({ data: { id: TERM_ID }, error: null }) });
+    const res = await app.inject({ method: 'POST', url: '/api/authoring/terms', payload: { ...valid, ...image, image_alt_en: ' ' } });
+    expect(res.statusCode).toBe(400);
+    await app.close();
+  });
+
+  it('refuses an unknown kind', async () => {
+    const app = await build(teacher, { terms: mockQuery({ data: { id: TERM_ID }, error: null }) });
+    expect((await app.inject({ method: 'POST', url: '/api/authoring/terms', payload: { ...valid, kind: 'city' } })).statusCode).toBe(400);
+    await app.close();
+  });
+
+  it('refuses a credit over 200 characters', async () => {
+    const app = await build(teacher, { terms: mockQuery({ data: { id: TERM_ID }, error: null }) });
+    expect((await app.inject({ method: 'POST', url: '/api/authoring/terms', payload: { ...valid, ...image, image_credit: 'x'.repeat(201) } })).statusCode).toBe(400);
+    await app.close();
+  });
+
+  it('a batch row with a bad image fails alone', async () => {
+    const saved = mockQuery({ data: { id: TERM_ID }, error: null });
+    const app = await build(teacher, { terms: [saved] });
+    const res = await app.inject({
+      method: 'POST',
+      url: '/api/authoring/terms/batch',
+      payload: { terms: [valid, { ...valid, term_en: 'osmosis', ...image, image_url: 'https://evil.test/b.jpg' }] },
+    });
+    expect(res.statusCode).toBe(200);
+    expect(res.json().saved).toBe(1);
+    expect(res.json().results[1].ok).toBe(false);
+    await app.close();
   });
 });

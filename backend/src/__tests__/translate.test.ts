@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import Fastify from 'fastify';
 import { translateRoutes } from '../routes/translate.js';
-import { isCopyThrough, parseTranslations } from '../translate/translatePrompt.js';
+import { isCopyThrough, parseTranslations, translationSystemPrompt } from '../translate/translatePrompt.js';
 import { mockQuery, mockSupabase, rpcCalls, type MockBuilder } from './helpers/supabaseMock.js';
 
 const teacher = { id: 'teacher-1', app_metadata: { app_role: 'teacher' } };
@@ -39,6 +39,12 @@ const post = (app: Awaited<ReturnType<typeof build>>['app'], payload: object) =>
 beforeEach(() => { rpcCalls.length = 0; });
 
 describe('translatePrompt', () => {
+  it('tells the model to keep term tags and colour marks, translating only their words', () => {
+    const prompt = translationSystemPrompt('vi', 'en');
+    expect(prompt).toContain('{term:<id>:words}');
+    expect(prompt).toContain('{red:words}');
+  });
+
   it('copies numbers, formulas, code and blanks', () => {
     for (const t of ['42', ' 3,5 ', '12%', '$x^2$', '$$\\int x$$', '```py\nprint(1)\n```', '  ']) expect(isCopyThrough(t)).toBe(true);
     for (const t of ['Vòng lặp', 'Giá trị $x$ là 2']) expect(isCopyThrough(t)).toBe(false);

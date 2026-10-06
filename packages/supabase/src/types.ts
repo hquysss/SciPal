@@ -525,6 +525,11 @@ export interface Database {
           example_vi: string | null;
           audio_url: string | null;
           tags: string[];
+          kind: 'word' | 'place';
+          image_url: string | null;
+          image_alt_en: string | null;
+          image_alt_vi: string | null;
+          image_credit: string | null;
         };
         Insert: {
           id?: string;
@@ -538,6 +543,11 @@ export interface Database {
           example_vi?: string | null;
           audio_url?: string | null;
           tags?: string[];
+          kind?: 'word' | 'place';
+          image_url?: string | null;
+          image_alt_en?: string | null;
+          image_alt_vi?: string | null;
+          image_credit?: string | null;
         };
         Update: {
           id?: string;
@@ -551,6 +561,11 @@ export interface Database {
           example_vi?: string | null;
           audio_url?: string | null;
           tags?: string[];
+          kind?: 'word' | 'place';
+          image_url?: string | null;
+          image_alt_en?: string | null;
+          image_alt_vi?: string | null;
+          image_credit?: string | null;
         };
         Relationships: [
           {

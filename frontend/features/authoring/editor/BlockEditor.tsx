@@ -28,7 +28,7 @@ export function BlockEditor({ block, onChange, subjectId, lang, onLangChange, on
   const langProps = { lang, onLangChange };
   switch (block.type) {
     case 'theory':
-      return <TheoryEditor block={block} onChange={onChange} onInsertImage={onInsertImage} {...langProps} />;
+      return <TheoryEditor block={block} onChange={onChange} onInsertImage={onInsertImage} subjectId={subjectId} {...langProps} />;
     case 'code':
       return <CodeEditor block={block} onChange={onChange} />;
     case 'formula':

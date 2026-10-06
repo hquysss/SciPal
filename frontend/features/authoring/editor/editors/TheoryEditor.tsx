@@ -1,13 +1,14 @@
 'use client';
 
 import { useRef, useState, type ClipboardEvent } from 'react';
-import { Bold, Heading2, Italic, List, Sigma } from 'lucide-react';
+import { BookMarked, Bold, Heading2, Italic, List, Sigma } from 'lucide-react';
 import { useLanguage } from '@scipal/hooks';
 import type { ImageBlock, TheoryBlock } from '@scipal/types';
 import { TEXT_COLORS, type TextColor } from '@/components/blocks/remarkColor';
-import { applyColor, applyFormat, type MarkdownFormat } from '../markdownToolbar';
+import { applyColor, applyFormat, applyTerm, type MarkdownFormat } from '../markdownToolbar';
 import { uploadLessonImage } from '../mediaApi';
 import { LangTabs } from './LangTabs';
+import { RefPicker } from './RefPicker';
 import { AutoTranslatedNote } from '../../translation/AutoTranslateContext';
 import { SMALL_BUTTON, TEXTAREA } from './styles';
 
@@ -17,6 +18,8 @@ interface TheoryEditorProps {
   lang: 'vi' | 'en';
   onLangChange: (lang: 'vi' | 'en') => void;
   onInsertImage?: (image: ImageBlock) => void;
+  /** The lesson's subject: "Gắn thuật ngữ" searches its glossary. */
+  subjectId?: string;
 }
 
 const TOOLS: Array<{ format: MarkdownFormat; label: { en: string; vi: string }; Icon: typeof Bold }> = [
@@ -35,10 +38,13 @@ const COLOR_LABEL: Record<TextColor, { en: string; vi: string }> = {
 };
 const COLOR_TEXT: Record<TextColor, string> = { red: 'text-danger', green: 'text-success', blue: 'text-action', orange: 'text-warning' };
 
-export function TheoryEditor({ block, onChange, lang, onLangChange, onInsertImage }: TheoryEditorProps) {
+export function TheoryEditor({ block, onChange, lang, onLangChange, onInsertImage, subjectId }: TheoryEditorProps) {
   const { t } = useLanguage();
   const ref = useRef<HTMLTextAreaElement>(null);
   const [status, setStatus] = useState<string | null>(null);
+  const [hasSelection, setHasSelection] = useState(false);
+  // The words being tagged, kept while the teacher searches (the textarea loses its selection then).
+  const [tagging, setTagging] = useState<{ start: number; end: number } | null>(null);
   const setValue = (text: string) => onChange({ ...block, content: { ...block.content, [lang]: text } });
 
   const format = (kind: MarkdownFormat) => {
@@ -57,6 +63,24 @@ export function TheoryEditor({ block, onChange, lang, onLangChange, onInsertImag
     if (!area) return;
     const next = applyColor(area.value, area.selectionStart, area.selectionEnd, c);
     setValue(next.text);
+    requestAnimationFrame(() => {
+      area.focus();
+      area.setSelectionRange(next.start, next.end);
+    });
+  };
+
+  const startTag = () => {
+    const area = ref.current;
+    if (!area || area.selectionStart === area.selectionEnd) return;
+    setTagging({ start: area.selectionStart, end: area.selectionEnd });
+  };
+
+  const tag = (termId: string) => {
+    const area = ref.current;
+    if (!area || !tagging) return;
+    const next = applyTerm(area.value, tagging.start, tagging.end, termId);
+    setValue(next.text);
+    setTagging(null);
     requestAnimationFrame(() => {
       area.focus();
       area.setSelectionRange(next.start, next.end);
@@ -95,8 +119,30 @@ export function TheoryEditor({ block, onChange, lang, onLangChange, onInsertImag
               </button>
             ))}
           </span>
+          {subjectId && (
+            <button
+              type="button"
+              aria-label={t({ en: 'Tag a glossary term', vi: 'Gắn thuật ngữ' })}
+              title={hasSelection ? t({ en: 'Tag a glossary term', vi: 'Gắn thuật ngữ' }) : t({ en: 'Select the words first', vi: 'Bôi đen chữ cần gắn trước' })}
+              aria-pressed={tagging !== null}
+              disabled={!hasSelection && tagging === null}
+              onMouseDown={(e) => e.preventDefault()}
+              onClick={() => (tagging ? setTagging(null) : startTag())}
+              className={SMALL_BUTTON}
+            >
+              <BookMarked aria-hidden="true" className="h-4 w-4" />
+            </button>
+          )}
         </div>
       </div>
+      {tagging && subjectId && (
+        <div className="rounded-lg border border-line bg-surface-sunken p-3">
+          <p className="mb-2 text-sm text-ink">
+            {t({ en: 'Tag', vi: 'Gắn' })} “{block.content[lang].slice(tagging.start, tagging.end)}” {t({ en: 'with a term of this subject:', vi: 'với thuật ngữ của môn:' })}
+          </p>
+          <RefPicker kind="term" subjectId={subjectId} onPick={(id) => tag(id)} />
+        </div>
+      )}
       <textarea
         ref={ref}
         data-field="content"
@@ -104,6 +150,7 @@ export function TheoryEditor({ block, onChange, lang, onLangChange, onInsertImag
         value={block.content[lang]}
         onChange={(e) => setValue(e.target.value)}
         onPaste={onPaste}
+        onSelect={(e) => setHasSelection(e.currentTarget.selectionStart !== e.currentTarget.selectionEnd)}
         aria-label={t({ en: 'Theory text (Markdown)', vi: 'Nội dung lý thuyết (Markdown)' })}
         placeholder={lang === 'vi' ? 'Viết nội dung bằng tiếng Việt…' : 'Write the English text…'}
         className={TEXTAREA}
@@ -112,8 +159,8 @@ export function TheoryEditor({ block, onChange, lang, onLangChange, onInsertImag
       <p className="text-xs text-ink-muted" aria-live="polite">
         {status ??
           t({
-            en: 'Markdown: **bold**, - list, $x^2$ for a formula in a sentence, $$ on its own lines for a large one, {red:text} for colour. Paste an image to add it.',
-            vi: 'Markdown: **đậm**, - danh sách, $x^2$ cho công thức trong câu, $$ trên dòng riêng cho công thức lớn, {red:chữ} để tô màu. Dán ảnh để chèn ảnh.',
+            en: 'Markdown: **bold**, - list, $x^2$ for a formula in a sentence, $$ on its own lines for a large one, {red:text} for colour. Select words and press the book button to tag a glossary term. Paste an image to add it.',
+            vi: 'Markdown: **đậm**, - danh sách, $x^2$ cho công thức trong câu, $$ trên dòng riêng cho công thức lớn, {red:chữ} để tô màu. Bôi đen chữ rồi bấm nút quyển sách để gắn thuật ngữ. Dán ảnh để chèn ảnh.',
           })}
       </p>
     </div>
