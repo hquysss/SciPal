@@ -21,6 +21,8 @@ describe('routeAccess', () => {
 
   it('gives each feature its own trial; subjects and lessons are one feature', () => {
     expect(routeAccess('/subjects')).toEqual({ kind: 'trial', feature: 'learn' });
+    expect(routeAccess('/lab')).toEqual({ kind: 'public' });
+    expect(routeAccess('/lab/titration')).toEqual({ kind: 'public' });
     expect(routeAccess('/informatics')).toEqual({ kind: 'trial', feature: 'learn' });
     expect(routeAccess('/informatics/vong-lap')).toEqual({ kind: 'trial', feature: 'learn' });
     expect(routeAccess('/glossary')).toEqual({ kind: 'trial', feature: 'glossary' });

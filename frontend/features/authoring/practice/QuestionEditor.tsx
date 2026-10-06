@@ -5,6 +5,9 @@ import { Plus, Trash2 } from 'lucide-react';
 import { useLanguage } from '@scipal/hooks';
 import { QUESTION_TYPES, questionIncomplete, validateQuestionInput, type QuestionType } from '@scipal/types';
 import { buttonVariants } from '@/components/ui/button';
+import { MathText } from '@/components/math/MathText';
+import { hasMath } from '@/lib/mathText';
+import { QuestionImageField } from './QuestionImageField';
 import { LangTabs } from '../editor/editors/LangTabs';
 import { LABEL, SMALL_BUTTON, TEXTAREA } from '../editor/editors/styles';
 import { createQuestion, updateQuestion, type AuthorQuestion } from './api';
@@ -142,6 +145,10 @@ export function QuestionEditor({ context, question, initial, onSaved, onCancel }
       </div>
 
       {textField({ en: 'Question', vi: 'Câu hỏi' }, data.stem, (v) => setData({ stem: setText(data.stem, v) }), 3)}
+      <p className="-mt-2 text-xs text-ink-muted">
+        {t({ en: 'Write formulas between dollar signs, e.g. $\\frac{a}{b}$ or $x \\to +\\infty$, in the question and the options.', vi: 'Viết công thức giữa hai dấu đô la, ví dụ $\\frac{a}{b}$ hay $x \\to +\\infty$, ở cả câu hỏi và phương án.' })}
+      </p>
+      <QuestionImageField image={data.image} lang={lang} onChange={(image) => setData({ image })} />
 
       {draft.type === 'mc' && data.options && (
         <fieldset className="flex flex-col gap-2">
@@ -251,6 +258,8 @@ export function QuestionEditor({ context, question, initial, onSaved, onCancel }
         </>
       )}
 
+      <MathPreview draft={draft} lang={lang} />
+
       {textField({ en: 'Explanation shown after checking (optional)', vi: 'Lời giải thích hiện sau khi kiểm tra (không bắt buộc)' }, data.explanation, (v) =>
         setData({ explanation: setText(data.explanation, v) }),
       )}
@@ -298,6 +307,20 @@ export function QuestionEditor({ context, question, initial, onSaved, onCancel }
         )}
       </div>
 
+      <div className="flex flex-col gap-1">
+        <label htmlFor={`${ids}-source`} className={LABEL}>
+          {t({ en: 'Source (optional, shown to learners)', vi: 'Nguồn (không bắt buộc, học sinh thấy)' })}
+        </label>
+        <input
+          id={`${ids}-source`}
+          value={data.source ?? ''}
+          maxLength={300}
+          placeholder={t({ en: 'e.g. Ministry sample exam 2025, question 3', vi: 'Ví dụ: Đề minh họa BGD 2025, câu 3' })}
+          onChange={(e) => setData({ source: e.target.value })}
+          className={INPUT}
+        />
+      </div>
+
       {(problem || saveError) && (
         <p role="alert" className="text-sm font-medium text-danger">
           {t(saveError ?? problem!)}
@@ -323,10 +346,41 @@ export function QuestionEditor({ context, question, initial, onSaved, onCancel }
   );
 }
 
+/** How the question will look to learners, shown once it has a formula to check. */
+function MathPreview({ draft, lang }: { draft: QuestionDraft; lang: 'vi' | 'en' }) {
+  const { t } = useLanguage();
+  const { data } = draft;
+  const choices = draft.type === 'mc' ? data.options ?? [] : draft.type === 'truefalse' ? data.items ?? [] : [];
+  const texts = [data.stem[lang], ...choices.map((c) => c.text[lang])];
+  if (!texts.some(hasMath)) return null;
+  return (
+    <section aria-label={t({ en: 'Preview', vi: 'Xem trước' })} className="flex flex-col gap-2 rounded-lg border border-line bg-surface-sunken p-3">
+      <p className="text-xs font-bold uppercase tracking-wide text-ink-muted">{t({ en: 'Preview', vi: 'Xem trước' })}</p>
+      <MathText text={data.stem[lang]} className="font-semibold text-ink" />
+      {choices.length > 0 && (
+        <ol className="flex flex-col gap-1 text-ink">
+          {choices.map((c, i) => (
+            <li key={c.id} className="flex gap-2">
+              <span className="font-bold text-ink-muted">{draft.type === 'mc' ? String.fromCharCode(65 + i) : String.fromCharCode(97 + i)}.</span>
+              <MathText text={c.text[lang]} />
+            </li>
+          ))}
+        </ol>
+      )}
+    </section>
+  );
+}
+
 /** A question the teacher may not edit (published, or shared from another lesson): shown as learners see it. */
 export function QuestionView({ question }: { question: AuthorQuestion }) {
   const { t } = useLanguage();
-  const data = question.data as { stem?: Bilingual; options?: Array<{ id: string; text: Bilingual }>; items?: Array<{ id: string; text: Bilingual }> };
+  const data = question.data as {
+    stem?: Bilingual;
+    options?: Array<{ id: string; text: Bilingual }>;
+    items?: Array<{ id: string; text: Bilingual }>;
+    image?: { url: string; alt?: Bilingual };
+    source?: string;
+  };
   const note =
     question.status === 'published'
       ? question.mine
@@ -336,14 +390,21 @@ export function QuestionView({ question }: { question: AuthorQuestion }) {
   return (
     <div className="flex flex-col gap-2 text-sm">
       <p className="rounded-md bg-surface-sunken px-3 py-2 text-ink-muted">{t(note)}</p>
-      <p className="font-semibold text-ink">{data.stem ? t(data.stem) : ''}</p>
+      <MathText text={data.stem ? t(data.stem) : ''} className="font-semibold text-ink" />
+      {data.image?.url && (
+        // eslint-disable-next-line @next/next/no-img-element -- lesson media from SciPal's own storage
+        <img src={data.image.url} alt={data.image.alt ? t(data.image.alt) : ''} className="max-h-48 w-auto max-w-full self-start rounded-md border border-line" />
+      )}
       {(data.options ?? data.items ?? []).length > 0 && (
         <ul className="list-inside list-disc text-ink">
           {(data.options ?? data.items ?? []).map((choice) => (
-            <li key={choice.id}>{t(choice.text)}</li>
+            <li key={choice.id}>
+              <MathText text={t(choice.text)} />
+            </li>
           ))}
         </ul>
       )}
+      {data.source && <p className="text-xs text-ink-muted">{t({ en: 'Source', vi: 'Nguồn' })}: {data.source}</p>}
     </div>
   );
 }

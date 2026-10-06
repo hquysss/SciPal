@@ -40,6 +40,24 @@ const next = () => fireEvent.click(screen.getByRole('button', { name: /Câu ti�
 const sectionHeading = () => screen.queryByRole('heading', { level: 2, name: /^Phần/ })?.textContent ?? null;
 
 describe('ExamRunner exam room', () => {
+  it('typesets formulas in the question and options, with its figure and source', () => {
+    const maths: ExamQuestionItem = {
+      id: 'm',
+      type: 'mc',
+      data: {
+        stem: { vi: 'Đường tiệm cận ngang của $y=\\frac{ax+b}{cx+d}$ là', en: '' },
+        options: [{ id: 'A', text: { vi: '$y = -2$', en: '' } }, { id: 'B', text: { vi: '$x = 1$', en: '' } }],
+        image: { url: 'https://x.test/lesson-media/bbt.png', alt: { vi: 'Bảng biến thiên', en: '' } },
+        source: 'Đề minh họa BGD 2025',
+      },
+    };
+    const { container } = render(<ExamRunner blueprintId="bp" questions={[maths]} />);
+    expect(container.querySelectorAll('.katex').length).toBe(3);
+    expect(container.textContent).not.toContain('$');
+    expect(screen.getByRole('img', { name: 'Bảng biến thiên' })).toBeTruthy();
+    expect(screen.getByText('Đề minh họa BGD 2025')).toBeTruthy();
+  });
+
   it('shows the section title, and the passage on every question of its group', () => {
     render(<ExamRunner blueprintId="bp" questions={questions} layout={layout} />);
     expect(sectionHeading()).toBe(PART_I.vi);

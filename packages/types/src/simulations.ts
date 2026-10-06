@@ -192,6 +192,27 @@ const UnitCircleConfig = z.object({
   answer: Bilingual.default({ vi: '', en: '' }),
 });
 
+export const TITRATION_ACIDS = ['HCl', 'CH3COOH'] as const;
+export const INDICATORS = ['phenolphthalein', 'methyl-orange', 'bromothymol-blue'] as const;
+
+/** A base from a burette into an acid in a flask, with an indicator and the pH curve. */
+const TitrationConfig = z.object({
+  acid: z.enum(TITRATION_ACIDS).default('HCl'),
+  /** mol/L */
+  acidConc: finite(0.01, 2).default(0.1),
+  /** mL in the flask */
+  acidVolume: finite(5, 50).default(20),
+  /** NaOH, mol/L */
+  baseConc: finite(0.01, 2).default(0.1),
+  /** mL the burette holds */
+  burette: finite(10, 100).default(50),
+  indicator: z.enum(INDICATORS).default('phenolphthalein'),
+  /** Learners may switch the acid and the indicator. */
+  adjustable: z.boolean().default(true),
+  question: Bilingual.default({ vi: '', en: '' }),
+  answer: Bilingual.default({ vi: '', en: '' }),
+});
+
 export const SOLIDS = ['cube', 'cuboid', 'tetrahedron', 'pyramid', 'prism', 'cylinder', 'cone', 'sphere'] as const;
 const Length = finite(0.5, 10);
 /** A point of the solid as the textbook writes it: A, S, O or a primed copy such as C'. */
@@ -268,6 +289,7 @@ export const SIMULATION_CONFIGS = {
   'unit-circle': UnitCircleConfig,
   'solid-3d': Solid3dConfig,
   'graph-3d': Graph3dConfig,
+  titration: TitrationConfig,
   punnett: PunnettConfig,
   'labeled-diagram': LabeledDiagramConfig,
 } as const;
@@ -287,6 +309,7 @@ export const SIMULATION_KINDS = [
   'unit-circle',
   'solid-3d',
   'graph-3d',
+  'titration',
   'punnett',
   'labeled-diagram',
   'embed',
@@ -382,6 +405,7 @@ const MESSAGES: Record<string, Message> = {
   'unit-circle': { en: 'Start angle 0–360°, snap 1, 5, 15, 30 or 45°.', vi: 'Góc ban đầu 0–360°, bước bắt 1, 5, 15, 30 hoặc 45°.' },
   'solid-3d': { en: 'Lengths 0.5–10; up to 12 highlighted segments between two different points (AC′, SO…).', vi: 'Độ dài 0,5–10; tối đa 12 đoạn tô nổi giữa hai điểm khác nhau (AC′, SO…).' },
   'graph-3d': { en: 'Check every expression, the parameters and the x, y, z window; 1–8 objects.', vi: 'Kiểm tra từng biểu thức, tham số và khoảng x, y, z; 1–8 đối tượng.' },
+  titration: { en: 'Concentrations 0.01–2 mol/L, acid 5–50 mL, burette 10–100 mL.', vi: 'Nồng độ 0,01–2 mol/L, axit 5–50 mL, buret 10–100 mL.' },
   punnett: { en: 'One or two genes; each parent needs two letters of the gene (for example Aa).', vi: 'Một hoặc hai gen; kiểu gen bố mẹ gồm hai chữ của gen đó (ví dụ Aa).' },
   'labeled-diagram': { en: 'Upload the image to SciPal; up to 24 labels placed on the image.', vi: 'Ảnh phải tải lên SciPal; tối đa 24 nhãn nằm trên ảnh.' },
 };

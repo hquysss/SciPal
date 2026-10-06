@@ -1,5 +1,6 @@
 'use client';
 
+import { MathText } from '@/components/math/MathText';
 import { useEffect, useId, useState } from 'react';
 import { useLanguage } from '@scipal/hooks';
 import type { QuestionType } from '@scipal/types';
@@ -71,7 +72,7 @@ export function BankBrowser({ subjectId, excludeIds, type, onAdd }: BankBrowserP
             <label className="flex min-h-11 cursor-pointer items-start gap-2 rounded-md border border-line p-2 text-sm text-ink">
               <input type="checkbox" checked={picked.includes(row.id)} onChange={() => toggle(row.id)} className="mt-0.5 h-5 w-5 accent-[var(--action)]" />
               <span className="min-w-0 flex-1">
-                <span className="line-clamp-2">{questionStem(row, t)}</span>
+                <span className="line-clamp-2"><MathText text={questionStem(row, t)} /></span>
                 <span className="text-xs text-ink-muted">
                   {t(QUESTION_TYPE_LABEL[row.type])} · {t(DIFFICULTY_LABEL[row.difficulty] ?? DIFFICULTY_LABEL[1]!)}
                   {row.status !== 'published' && ` · ${t({ en: 'your draft', vi: 'nháp của bạn' })}`}

@@ -13,7 +13,7 @@ import { LABEL, SMALL_BUTTON } from './styles';
 type Bilingual = { en: string; vi: string };
 
 /** Upload one image from a file input or a drop; reports progress and errors. */
-function useImageUpload(onUploaded: (url: string) => void) {
+export function useImageUpload(onUploaded: (url: string) => void) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<Bilingual | null>(null);
   const upload = async (file: File | undefined) => {

@@ -19,6 +19,8 @@ interface QuestionBase {
   difficulty: number;
   stem: Text;
   explanation?: Text;
+  /** Where the question comes from, shown to learners. */
+  source?: string;
 }
 
 export type DraftQuestion =
@@ -179,6 +181,8 @@ export function readExamWorkbook(workbook: Workbook): ExamImportDraft {
       difficulty: int(row, 'difficulty', 1, 3),
       stem: { vi: str(row, 'stem_vi'), en: str(row, 'stem_en', false) },
       ...(optionalText(row, 'explanation_vi', 'explanation_en') ? { explanation: optionalText(row, 'explanation_vi', 'explanation_en')! } : {}),
+      // An optional column: older workbooks without it still import.
+      ...(str(row, 'source', false) ? { source: str(row, 'source', false).slice(0, 300) } : {}),
     };
     const items = (itemsByQuestion.get(id) ?? []).map((item) => ({
       id: str(item, 'item_id'),
@@ -447,10 +451,10 @@ export async function createExamWorkbookTemplate(format: ExamFormat = 'generic')
     }
   };
 
-  addSheet(SHEETS.questions.name, SHEETS.questions.headers, [20, 16, 12, 11, 48, 48, 22, 36, 36, 30, 30], [
-    ['vd-nhi-phan', 'informatics', 'mc', 1, 'Tìm kiếm nhị phân cần danh sách…', 'Binary search needs the list to be…', '', 'Chỉ danh sách đã sắp xếp mới chia đôi được.', 'Only a sorted list can be halved.', '', ''],
-    ['vd-dung-sai', 'informatics', 'truefalse', 2, 'Xét các nhận định về vòng lặp for:', 'Consider these statements about for loops:', '', '', '', '', ''],
-    ['vd-tra-loi-ngan', 'informatics', 'short', 2, 'range(2, 10, 3) có bao nhiêu phần tử?', 'How many elements does range(2, 10, 3) have?', '3', '', '', '', ''],
+  addSheet(SHEETS.questions.name, [...SHEETS.questions.headers, 'source'], [20, 16, 12, 11, 48, 48, 22, 36, 36, 30, 30, 30], [
+    ['vd-nhi-phan', 'informatics', 'mc', 1, 'Tìm kiếm nhị phân cần danh sách…', 'Binary search needs the list to be…', '', 'Chỉ danh sách đã sắp xếp mới chia đôi được.', 'Only a sorted list can be halved.', '', '', 'SGK Tin học 10'],
+    ['vd-dung-sai', 'informatics', 'truefalse', 2, 'Xét các nhận định về vòng lặp for:', 'Consider these statements about for loops:', '', '', '', '', '', ''],
+    ['vd-tra-loi-ngan', 'informatics', 'short', 2, 'range(2, 10, 3) có bao nhiêu phần tử?', 'How many elements does range(2, 10, 3) have?', '3', '', '', '', '', ''],
   ]);
   addSheet(SHEETS.items.name, SHEETS.items.headers, [16, 20, 10, 42, 42, 10], [
     ['informatics', 'vd-nhi-phan', 'A', 'Đã sắp xếp', 'Sorted', true],

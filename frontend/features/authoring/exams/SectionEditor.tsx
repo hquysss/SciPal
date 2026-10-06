@@ -1,5 +1,6 @@
 'use client';
 
+import { MathText } from '@/components/math/MathText';
 import { useId, useState, type KeyboardEvent } from 'react';
 import { ArrowDown, ArrowUp, Trash2 } from 'lucide-react';
 import { useLanguage } from '@scipal/hooks';
@@ -191,7 +192,7 @@ export function SectionEditor({ layout, rows, problems, subjectId, readOnly = fa
                         <div className="min-w-0 flex-1">
                           {row ? (
                             <>
-                              <p className="line-clamp-2 text-sm text-ink">{questionStem(row, t)}</p>
+                              <p className="line-clamp-2 text-sm text-ink"><MathText text={questionStem(row, t)} /></p>
                               <p className="mt-1 flex flex-wrap items-center gap-2 text-xs text-ink-muted">
                                 <span>{t(QUESTION_TYPE_LABEL[row.type])}</span>
                                 <span>· {t(DIFFICULTY_LABEL[row.difficulty] ?? DIFFICULTY_LABEL[1]!)}</span>

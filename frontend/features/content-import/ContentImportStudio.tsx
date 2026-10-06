@@ -426,6 +426,11 @@ function QuestionReviewCard({
         {question.explanation && (
           <BilingualField label={t({ en: 'Explanation', vi: 'Giải thích' })} value={question.explanation} multiline path={at('explanation')} onEnglish={onEnglish} />
         )}
+        {question.source && (
+          <p className="text-xs text-ink-muted">
+            {t({ en: 'Source', vi: 'Nguồn' })}: {question.source}
+          </p>
+        )}
       </div>
     </article>
   );

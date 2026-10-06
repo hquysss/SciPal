@@ -15,6 +15,9 @@ export interface QuestionDraft {
     answer_key?: string;
     rubric?: Bilingual;
     explanation?: Bilingual;
+    /** A figure under the question, uploaded to SciPal. */
+    image?: { url: string; alt?: Bilingual };
+    source?: string;
   };
 }
 
@@ -37,10 +40,14 @@ export function emptyQuestion(type: QuestionType): QuestionDraft {
   return { type, difficulty: 1, data: { stem: blank(), ...answerFields(type) } };
 }
 
-/** Another type keeps the question text, difficulty and explanation; the old answer goes. */
+/** Another type keeps the question text, difficulty, explanation, figure and source; the old answer goes. */
 export function switchQuestionType(draft: QuestionDraft, type: QuestionType): QuestionDraft {
-  const { stem, explanation } = draft.data;
-  return { type, difficulty: draft.difficulty, data: { stem, ...(explanation ? { explanation } : {}), ...answerFields(type) } };
+  const { stem, explanation, image, source } = draft.data;
+  return {
+    type,
+    difficulty: draft.difficulty,
+    data: { stem, ...(explanation ? { explanation } : {}), ...(image ? { image } : {}), ...(source ? { source } : {}), ...answerFields(type) },
+  };
 }
 
 /** A saved question, reopened for editing. */
@@ -62,8 +69,12 @@ export type QuestionContext = { subjectId: string } & ({ usage: 'practice'; less
 
 /** What the API receives: only this type's fields; an unwritten explanation or note is left out. */
 export function questionInput(draft: QuestionDraft, ctx: QuestionContext): QuestionPayload {
-  const { stem, options, answer, items, answer_key, rubric, explanation } = draft.data;
-  const extra = { ...(written(explanation) ? { explanation } : {}) };
+  const { stem, options, answer, items, answer_key, rubric, explanation, image, source } = draft.data;
+  const extra = {
+    ...(written(explanation) ? { explanation } : {}),
+    ...(image?.url ? { image } : {}),
+    ...(source?.trim() ? { source: source.trim() } : {}),
+  };
   const data =
     draft.type === 'mc'
       ? { stem, options, answer, ...extra }

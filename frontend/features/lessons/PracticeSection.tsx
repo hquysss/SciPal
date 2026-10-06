@@ -5,6 +5,8 @@ import { CircleCheck, CircleX } from 'lucide-react';
 import { useLanguage } from '@scipal/hooks';
 import type { PracticeCheckResult, PracticeResponse, PublicPracticeQuestion } from '@scipal/types';
 import { buttonVariants } from '@/components/ui/button';
+import { MathText } from '@/components/math/MathText';
+import { QuestionFigure, QuestionSource } from '@/components/math/QuestionFigure';
 import { checkPractice, type PracticeLoad } from './practiceApi';
 
 type Bilingual = { en: string; vi: string };
@@ -67,8 +69,9 @@ const CARD = 'rounded-xl border border-line bg-surface p-4 sm:p-5';
 
 /** The Tự luyện part: every question with its own check, then this visit's score. */
 export function PracticeSection({ load, state, onAnswer, onResult, onRetry, lang }: PracticeSectionProps) {
-  const { t: readerT } = useLanguage();
+  const { t: readerT, lang: readerLang } = useLanguage();
   const t = lang ? (text: Bilingual) => text[lang] || text.vi : readerT;
+  const shownLang = lang ?? (readerLang === 'en' ? 'en' : 'vi');
 
   if (!load.ok) {
     return (
@@ -103,6 +106,7 @@ export function PracticeSection({ load, state, onAnswer, onResult, onRetry, lang
           onAnswer={(answer) => onAnswer(question.id, answer)}
           onResult={(result, checked) => onResult(question.id, result, checked)}
           t={t}
+          lang={shownLang}
         />
       ))}
       <p aria-live="polite" className="text-center text-lg font-bold text-ink">
@@ -120,9 +124,10 @@ interface QuestionCardProps {
   onAnswer: (answer: PracticeResponse) => void;
   onResult: (result: PracticeCheckResult, checked: PracticeResponse | undefined) => void;
   t: (text: Bilingual) => string;
+  lang: 'vi' | 'en';
 }
 
-function QuestionCard({ number, question, answer, result, onAnswer, onResult, t }: QuestionCardProps) {
+function QuestionCard({ number, question, answer, result, onAnswer, onResult, t, lang }: QuestionCardProps) {
   const id = useId();
   const [checking, setChecking] = useState(false);
   const [error, setError] = useState<Bilingual | null>(null);
@@ -150,9 +155,14 @@ function QuestionCard({ number, question, answer, result, onAnswer, onResult, t 
   return (
     <section aria-labelledby={stemId} className={CARD}>
       <p className="text-xs font-bold uppercase tracking-wide text-ink-muted">{t({ en: `Question ${number}`, vi: `Câu ${number}` })}</p>
-      <h3 id={stemId} className="mt-1 whitespace-pre-line text-base font-semibold text-ink">
-        {t(data.stem)}
+      <h3 id={stemId} className="mt-1 text-base font-semibold text-ink">
+        <MathText text={t(data.stem)} />
       </h3>
+      {data.image && (
+        <div className="mt-3">
+          <QuestionFigure image={data.image} lang={lang} />
+        </div>
+      )}
 
       {'options' in data && (
         <fieldset className="mt-3 flex flex-col gap-2">
@@ -169,7 +179,7 @@ function QuestionCard({ number, question, answer, result, onAnswer, onResult, t 
                 onChange={() => answerWith({ selected_option: option.id })}
                 className="h-5 w-5 shrink-0 accent-[var(--accent,var(--action))]"
               />
-              <span>{t(option.text)}</span>
+              <MathText text={t(option.text)} className="min-w-0" />
             </label>
           ))}
         </fieldset>
@@ -186,7 +196,7 @@ function QuestionCard({ number, question, answer, result, onAnswer, onResult, t 
               <li key={item.id} className="flex flex-col gap-2 rounded-lg border border-line px-3 py-2 sm:flex-row sm:items-center">
                 <span id={`${id}-tf-${item.id}-text`} className="flex-1 text-ink">
                   <span aria-hidden="true" className="mr-2 font-bold text-ink-muted">{String.fromCharCode(97 + i)}</span>
-                  {t(item.text)}
+                  <MathText text={t(item.text)} />
                 </span>
                 <span role="radiogroup" aria-labelledby={`${id}-tf-${item.id}-text`} className="flex items-center gap-3">
                   {[true, false].map((value) => (
@@ -258,7 +268,14 @@ function QuestionCard({ number, question, answer, result, onAnswer, onResult, t 
         </div>
       </div>
       {result?.explanation && (
-        <p className="mt-3 whitespace-pre-line rounded-lg bg-surface-sunken px-3 py-2 text-sm text-ink">{t(result.explanation)}</p>
+        <p className="mt-3 rounded-lg bg-surface-sunken px-3 py-2 text-sm text-ink">
+          <MathText text={t(result.explanation)} />
+        </p>
+      )}
+      {data.source && (
+        <div className="mt-3">
+          <QuestionSource source={data.source} lang={lang} />
+        </div>
       )}
     </section>
   );

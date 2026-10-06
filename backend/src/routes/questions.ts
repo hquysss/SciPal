@@ -178,7 +178,7 @@ export const questionRoutes: FastifyPluginAsync = async (app) => {
       const supabase = app.supabase;
       const user = getUser(request)!;
       if (!supabase) return reply.code(503).send(unavailable);
-      const checked = validateQuestionInput(request.body);
+      const checked = validateQuestionInput(request.body, { mediaBase: process.env.MEDIA_PUBLIC_URL });
       if (!checked.ok) return reply.code(400).send(msg(checked.message.vi, checked.message.en));
       const input = checked.value;
       // A practice question shares its lesson's subject (checked below), so this covers both pools.
@@ -262,7 +262,7 @@ export const questionRoutes: FastifyPluginAsync = async (app) => {
       if ('status' in found) return reply.code(found.status).send(found.body);
       const { row } = found;
 
-      const checked = validateQuestionInput(request.body);
+      const checked = validateQuestionInput(request.body, { mediaBase: process.env.MEDIA_PUBLIC_URL });
       if (!checked.ok) return reply.code(400).send(msg(checked.message.vi, checked.message.en));
       const input = checked.value;
       if (input.usage !== row.usage || input.subject_id !== row.subject_id || (input.lesson_id ?? null) !== row.lesson_id) {

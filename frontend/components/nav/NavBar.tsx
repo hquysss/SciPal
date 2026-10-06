@@ -77,6 +77,7 @@ export function primaryLinks(lang: 'en' | 'vi', signedIn: boolean, place: 'deskt
   // Teachers and admins reach classes from their own menu.
   const isStudent = role !== null && role !== 'teacher' && role !== 'admin';
   return [
+    { href: '/lab', label: label('Lab', 'Thí nghiệm') },
     { href: '/glossary', label: label('Glossary', 'Từ điển') },
     { href: '/exam', label: label('Exams', 'Thi thử') },
     tutorLink(lang),

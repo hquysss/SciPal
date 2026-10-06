@@ -11,6 +11,8 @@ import { forgetExamAttempt, startExamAttempt } from './examAttempt';
 import { createBrowserClient } from '../../lib/supabase';
 import { Alert } from '../../components/ui/alert';
 import { buttonVariants } from '../../components/ui/button';
+import { MathText } from '../../components/math/MathText';
+import { QuestionFigure, QuestionSource } from '../../components/math/QuestionFigure';
 
 type Bilingual = { en: string; vi: string };
 
@@ -24,6 +26,8 @@ export interface ExamQuestionItem {
     stem: Bilingual;
     options?: Array<{ id: string; text: Bilingual }>;
     items?: Array<{ id: string; text: Bilingual }>;
+    image?: { url: string; alt?: Bilingual };
+    source?: string;
   };
 }
 
@@ -421,7 +425,7 @@ export function ExamRunner({
                       vi: `Đọc đoạn sau rồi trả lời câu ${place.group.first + 1} đến ${place.group.last + 1}.`,
                     })}
               </p>
-              <p className="whitespace-pre-line text-base leading-relaxed text-ink">{pick(place.passage)}</p>
+              <MathText text={pick(place.passage)} className="block text-base leading-relaxed text-ink" />
             </div>
           )}
           <fieldset className="flex min-w-0 flex-col gap-6">
@@ -434,10 +438,14 @@ export function ExamRunner({
                   {t(DIFFICULTY_LABEL[difficultyKey(currentQ.difficulty)])}
                 </span>
               </span>
-              <span className="text-lg font-bold leading-relaxed text-ink sm:text-xl">
-                {lang === 'en' ? currentQ.data.stem.en : currentQ.data.stem.vi}
-              </span>
+              <MathText text={lang === 'en' ? currentQ.data.stem.en : currentQ.data.stem.vi} className="block text-lg font-bold leading-relaxed text-ink sm:text-xl" />
             </legend>
+            {/* A legend takes no part in the fieldset's gap, so the figure keeps its own distance from it. */}
+            {currentQ.data.image && (
+              <div className="mt-5">
+                <QuestionFigure image={currentQ.data.image} lang={lang === 'en' ? 'en' : 'vi'} />
+              </div>
+            )}
 
             {currentQ.type === 'truefalse' && (
               <div className="flex flex-col gap-3">
@@ -454,7 +462,7 @@ export function ExamRunner({
                       className="flex flex-col gap-3 rounded-lg border border-edge bg-surface p-4 sm:flex-row sm:items-center sm:justify-between"
                     >
                       <span className="text-base font-semibold leading-normal text-ink">
-                        {String.fromCharCode(97 + itemIndex)}) {lang === 'en' ? item.text.en : item.text.vi}
+                        {String.fromCharCode(97 + itemIndex)}) <MathText text={lang === 'en' ? item.text.en : item.text.vi} />
                       </span>
                       <span className="flex shrink-0 gap-2">
                         {([true, false] as const).map((value) => (
@@ -529,12 +537,13 @@ export function ExamRunner({
                     >
                       {letter}
                     </span>
-                    <span className="flex-1 leading-normal">{lang === 'en' ? opt.text.en : opt.text.vi}</span>
+                    <MathText text={lang === 'en' ? opt.text.en : opt.text.vi} className="min-w-0 flex-1 leading-normal" />
                   </label>
                 );
               })}
             </div>
           </fieldset>
+          <QuestionSource source={currentQ.data.source} lang={lang === 'en' ? 'en' : 'vi'} />
 
           {/* Bottom question step buttons */}
           <div className="flex items-center justify-between gap-3 border-t border-line pt-4">
