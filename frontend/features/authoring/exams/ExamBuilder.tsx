@@ -4,7 +4,7 @@ import { MathText } from '@/components/math/MathText';
 import { INPUT_CLASS as FIELD } from '@/components/ui/input';
 import { useEffect, useId, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { ArrowDown, ArrowUp, Shuffle, Trash2 } from 'lucide-react';
+import { ArrowDown, ArrowUp, Pencil, Shuffle, Trash2 } from 'lucide-react';
 import { useLanguage } from '@scipal/hooks';
 import { layoutQuestionIds, type ExamSection, type SectionKind } from '@scipal/types';
 import { Alert } from '@/components/ui/alert';
@@ -73,6 +73,7 @@ export function ExamBuilder({ exam, subjects, isAdmin, initialQuestions = [] }: 
   const [loadingRows, setLoadingRows] = useState(false);
   const [rowsFailed, setRowsFailed] = useState(false);
   const [panel, setPanel] = useState<Panel>(null);
+  const [editing, setEditing] = useState<AuthorQuestion | null>(null);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<Message | null>(null);
 
@@ -407,6 +408,7 @@ export function ExamBuilder({ exam, subjects, isAdmin, initialQuestions = [] }: 
               readOnly={readOnly}
               missingLabel={missingLabel}
               onKnown={known}
+              onEdit={setEditing}
               onChange={(next) => change({ layout: next })}
             />
           </>
@@ -483,6 +485,12 @@ export function ExamBuilder({ exam, subjects, isAdmin, initialQuestions = [] }: 
                       </p>
                     )}
                   </div>
+                  {row?.editable && (
+                    <Button type="button" variant="outline" aria-label={t({ en: `Edit question ${i + 1}`, vi: `Sửa câu ${i + 1}` })} onClick={() => setEditing(row)}>
+                      <Pencil aria-hidden="true" />
+                      {t({ en: 'Edit', vi: 'Sửa' })}
+                    </Button>
+                  )}
                   {!readOnly && (
                     <div className="flex shrink-0 flex-wrap items-center gap-1">
                       <Button type="button" variant="ghost" size="icon" aria-label={t({ en: `Move question ${i + 1} up`, vi: `Đưa câu ${i + 1} lên` })} disabled={i === 0} onClick={() => change({ question_ids: moveQuestion(form.question_ids, i, i - 1) })}>
@@ -546,7 +554,7 @@ export function ExamBuilder({ exam, subjects, isAdmin, initialQuestions = [] }: 
             </Button>
           )}
           {problem && <p className="text-sm text-danger">{t(problem)}</p>}
-          {!problem && reviewBlocked && saved?.status === 'draft' && <p className="text-sm text-ink-muted">{t(reviewProblem!)}</p>}
+          {!problem && reviewBlocked && <p className="text-sm text-ink-muted">{t(reviewProblem!)}</p>}
           {saved && !dirty && !problem && <span className="text-sm text-ink-muted">{t({ en: 'All changes saved', vi: 'Đã lưu mọi thay đổi' })}</span>}
         </div>
       )}
@@ -568,6 +576,20 @@ export function ExamBuilder({ exam, subjects, isAdmin, initialQuestions = [] }: 
               setPanel(null);
             }}
             onCancel={() => setPanel(null)}
+          />
+        )}
+      </Dialog>
+
+      <Dialog open={editing !== null} onClose={() => setEditing(null)} title={t({ en: 'Edit question', vi: 'Sửa câu hỏi' })} closeLabel={t({ en: 'Close', vi: 'Đóng' })} className="max-w-2xl">
+        {editing && form.subject_id && (
+          <QuestionEditor
+            context={{ usage: 'exam', subjectId: form.subject_id, grade: form.grade }}
+            question={editing}
+            onSaved={(row) => {
+              known([row]);
+              setEditing(null);
+            }}
+            onCancel={() => setEditing(null)}
           />
         )}
       </Dialog>
