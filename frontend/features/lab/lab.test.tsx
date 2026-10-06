@@ -60,20 +60,32 @@ describe('LabIndex', () => {
 });
 
 describe('LabEmbeds', () => {
-  it('keeps only approved links from storage', () => {
-    const ok = 'https://phet.colorado.edu/sims/html/projectile-motion/latest/projectile-motion_all.html';
-    expect(readEmbeds(JSON.stringify([ok, 'https://evil.test/x', 'https://www.geogebra.org/m/abc123', 5, 'not a url']))).toEqual([ok, 'https://www.geogebra.org/m/abc123']);
+  const phet = 'https://phet.colorado.edu/sims/html/projectile-motion/latest/projectile-motion_all.html';
+
+  it('keeps only approved embeds from storage, each in its subject', () => {
+    const stored = [{ url: phet, subject: 'physics' }, { url: 'https://evil.test/x', subject: 'math' }, { url: 'https://www.geogebra.org/m/abc123', subject: 'nonsense' }, 5, 'not a url'];
+    expect(readEmbeds(JSON.stringify(stored))).toEqual([
+      { url: phet, subject: 'physics' },
+      { url: 'https://www.geogebra.org/m/abc123', subject: 'math' },
+    ]);
     expect(readEmbeds('{broken')).toEqual([]);
     expect(readEmbeds(null)).toEqual([]);
   });
 
-  it('titles a link by its site and sim name', () => {
-    expect(embedTitle(new URL('https://phet.colorado.edu/sims/html/projectile-motion/latest/projectile-motion_all.html'))).toBe('phet.colorado.edu · projectile motion all');
+  it('files links saved as plain strings by their site, and drops repeats', () => {
+    expect(readEmbeds(JSON.stringify([phet, 'https://www.desmos.com/calculator/abc', phet]))).toEqual([
+      { url: phet, subject: 'physics' },
+      { url: 'https://www.desmos.com/calculator/abc', subject: 'math' },
+    ]);
   });
 
-  it('is on the Lab page with its link field', () => {
+  it('titles a link by its site and sim name', () => {
+    expect(embedTitle(new URL(phet))).toBe('phet.colorado.edu · projectile motion all');
+  });
+
+  it('puts the add form on the Lab page with a subject choice', () => {
     const html = renderToStaticMarkup(<LabIndex counts={null} />);
-    expect(html).toContain('Nhúng mô phỏng ngoài');
+    expect(html).toContain('Thêm mô phỏng ngoài vào một môn');
     expect(html).toContain('type="url"');
   });
 });

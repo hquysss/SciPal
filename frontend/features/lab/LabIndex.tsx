@@ -6,7 +6,7 @@ import { ArrowDownUp, ArrowRight, Axis3d, Box, ChartSpline, CircleDot, Dices, Fl
 import { useLanguage } from '@scipal/hooks';
 import { SubjectProvider } from '@scipal/ui';
 import type { BuiltInSimulationKind } from '@scipal/types';
-import { LabEmbeds } from './LabEmbeds';
+import { AddEmbedForm, SubjectEmbeds, useLabEmbeds } from './LabEmbeds';
 import { LAB_ITEMS, LAB_SUBJECTS, type LabSubject } from './catalog';
 
 export const LAB_ICONS: Partial<Record<BuiltInSimulationKind, LucideIcon>> = {
@@ -29,6 +29,7 @@ export function LabIndex({ counts }: { counts: Record<string, number> | null }) 
   const { t } = useLanguage();
   const [filter, setFilter] = useState<LabSubject | 'all'>('all');
   const subjects = LAB_SUBJECTS.filter((s) => filter === 'all' || s.slug === filter);
+  const outside = useLabEmbeds();
 
   return (
     <main className="mx-auto w-full max-w-5xl px-4 pb-20 pt-8 sm:px-6 sm:pt-12">
@@ -50,7 +51,9 @@ export function LabIndex({ counts }: { counts: Record<string, number> | null }) 
       <div role="group" aria-label={t({ en: 'Subject', vi: 'Môn học' })} className="mb-8 flex flex-wrap gap-2">
         {[{ slug: 'all' as const, name: { en: 'All', vi: 'Tất cả' } }, ...LAB_SUBJECTS].map((s) => {
           const active = filter === s.slug;
-          const size = s.slug === 'all' ? LAB_ITEMS.length : LAB_ITEMS.filter((i) => i.subject === s.slug).length;
+          const size =
+            (s.slug === 'all' ? LAB_ITEMS.length : LAB_ITEMS.filter((i) => i.subject === s.slug).length) +
+            (s.slug === 'all' ? outside.embeds.length : outside.embeds.filter((e) => e.subject === s.slug).length);
           return (
             <button
               key={s.slug}
@@ -67,6 +70,8 @@ export function LabIndex({ counts }: { counts: Record<string, number> | null }) 
           );
         })}
       </div>
+
+      <AddEmbedForm onAdd={outside.add} defaultSubject={filter === 'all' ? 'math' : filter} />
 
       <div className="flex flex-col gap-10">
         {subjects.map((subject) => {
@@ -116,13 +121,12 @@ export function LabIndex({ counts }: { counts: Record<string, number> | null }) 
                     );
                   })}
                 </ul>
+                <SubjectEmbeds embeds={outside.embeds.filter((e) => e.subject === subject.slug)} onRemove={outside.remove} />
               </section>
             </SubjectProvider>
           );
         })}
       </div>
-
-      <LabEmbeds />
     </main>
   );
 }
