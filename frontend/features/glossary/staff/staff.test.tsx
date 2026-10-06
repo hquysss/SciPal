@@ -27,6 +27,11 @@ const term = (status: StaffTerm['status'], note: string | null = null): StaffTer
   example_vi: null,
   status,
   review_note: note,
+  kind: 'word',
+  image_url: null,
+  image_alt_en: null,
+  image_alt_vi: null,
+  image_credit: null,
   created_at: '2026-10-03T00:00:00Z',
 });
 
@@ -62,6 +67,18 @@ describe('staff glossary', () => {
     const html = renderToStaticMarkup(<TermForm subjects={SUBJECTS} isAdmin onSaved={() => {}} />);
     expect(html).toContain('Thêm vào từ điển');
     expect(html).not.toContain('Gửi admin duyệt');
+  });
+
+  it('a row shows the photo, its descriptions, credit and kind for review', () => {
+    const html = renderToStaticMarkup(
+      <TermRow term={{ ...term('pending'), kind: 'place', image_url: 'https://m/h.jpg', image_alt_vi: 'Đảo đá vôi', image_alt_en: 'Limestone islands', image_credit: 'Ảnh: A' }} />,
+    );
+    expect(html).toContain('src="https://m/h.jpg"');
+    expect(html).toContain('alt="Đảo đá vôi"');
+    expect(html).toContain('Limestone islands');
+    expect(html).toContain('Ảnh: A');
+    expect(html).toContain('Địa danh');
+    expect(countRawColors(html).total).toBe(0);
   });
 
   it('a row shows the status and the admin’s reason', () => {

@@ -22,7 +22,10 @@ export function TermRow({ term, actions }: { term: StaffTerm; actions?: React.Re
         <span className="text-sm text-ink-muted" lang="en">
           {term.term_en}
         </span>
-        <span className="text-xs text-ink-muted">· {lang === 'en' ? term.subject_name_en : term.subject_name_vi}</span>
+        <span className="text-xs text-ink-muted">
+          · {term.kind === 'place' ? `${t({ en: 'Place', vi: 'Địa danh' })} · ` : ''}
+          {lang === 'en' ? term.subject_name_en : term.subject_name_vi}
+        </span>
         <span className="ml-auto text-xs text-ink-muted">{new Date(term.created_at).toLocaleDateString(lang === 'en' ? 'en-GB' : 'vi-VN')}</span>
       </div>
       <p className="text-sm text-ink">{term.definition_vi}</p>
@@ -34,6 +37,20 @@ export function TermRow({ term, actions }: { term: StaffTerm; actions?: React.Re
           <span className="font-semibold text-ink">{t({ en: 'Example: ', vi: 'Ví dụ: ' })}</span>
           {term.example_vi || term.example_en}
         </p>
+      )}
+      {/* Shown in full so an admin approves the photo learners will see, not just the text. */}
+      {term.image_url && (
+        <div className="flex items-start gap-3">
+          {/* eslint-disable-next-line @next/next/no-img-element -- media store image */}
+          <img src={term.image_url} alt={term.image_alt_vi ?? ''} loading="lazy" className="h-24 w-36 shrink-0 rounded-lg border border-line bg-surface-sunken object-cover" />
+          <div className="flex flex-col gap-0.5 text-sm">
+            <span className="text-ink">{term.image_alt_vi}</span>
+            <span className="text-ink-muted" lang="en">
+              {term.image_alt_en}
+            </span>
+            {term.image_credit && <span className="text-xs text-ink-muted">{term.image_credit}</span>}
+          </div>
+        </div>
       )}
       {term.status === 'rejected' && term.review_note && (
         <p className="rounded-md bg-surface-sunken p-2 text-sm text-ink">

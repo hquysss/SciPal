@@ -64,12 +64,14 @@ export function TermMark({ termId, children }: { termId: string; children: React
     };
     document.addEventListener('keydown', onKey);
     document.addEventListener('pointerdown', onPointer);
+    // Opened on purpose (click, tap, Enter): its links and audio button come next for the keyboard.
+    if (pinned) popoverRef.current?.focus();
     return () => {
       document.removeEventListener('keydown', onKey);
       document.removeEventListener('pointerdown', onPointer);
       if (closeOpen === close) closeOpen = null;
     };
-  }, [open, close]);
+  }, [open, pinned, close]);
 
   useEffect(() => clearTimer, []);
 
@@ -108,6 +110,12 @@ export function TermMark({ termId, children }: { termId: string; children: React
     clearTimer();
     timer.current = setTimeout(close, CLOSE_DELAY);
   };
+  // Tabbing past the word and its popover closes it; moving between the two keeps it open.
+  const focusOut = (e: React.FocusEvent) => {
+    const next = e.relatedTarget as Node | null;
+    if (next && (buttonRef.current?.contains(next) || popoverRef.current?.contains(next))) return;
+    if (next) close();
+  };
   const host = typeof document !== 'undefined' ? (document.querySelector('[data-app-shell]') ?? document.body) : null;
 
   return (
@@ -121,6 +129,7 @@ export function TermMark({ termId, children }: { termId: string; children: React
         onPointerEnter={hoverIn}
         onPointerLeave={hoverOut}
         onClick={() => (open && pinned ? close() : show(true))}
+        onBlur={focusOut}
         className="inline cursor-help rounded-sm p-0 font-[inherit] text-accent-ink underline decoration-accent decoration-dotted decoration-2 underline-offset-4 hover:bg-[color-mix(in_srgb,var(--accent)_12%,transparent)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
       >
         {children}
@@ -132,11 +141,13 @@ export function TermMark({ termId, children }: { termId: string; children: React
             ref={popoverRef}
             id={popoverId}
             role="dialog"
+            tabIndex={-1}
+            onBlur={focusOut}
             aria-label={lesson.lang === 'en' ? term.term_en : term.term_vi}
             style={style}
             onPointerEnter={hoverIn}
             onPointerLeave={hoverOut}
-            className="z-50 max-h-[70vh] overflow-y-auto rounded-xl border border-line bg-surface p-4 text-left shadow-lg"
+            className="z-50 max-h-[70vh] overflow-y-auto rounded-xl border border-line bg-surface p-4 text-left shadow-lg focus:outline-none"
           >
             <TermCard term={term} lang={lesson.lang} />
           </div>,

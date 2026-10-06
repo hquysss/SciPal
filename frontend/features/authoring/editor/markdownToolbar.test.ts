@@ -34,6 +34,11 @@ describe('applyTerm', () => {
     expect(out.text.slice(out.start, out.end)).toBe('Thuật toán');
   });
 
+  it('drops inline formatting so the tag stays one piece of text', () => {
+    expect(applyTerm('**thuật toán** ở `x` $y$', 0, 14, ID).text).toBe(`{term:${ID}:thuật toán} ở \`x\` $y$`);
+    expect(applyTerm('a $x$ _b_ ~c~ [d]', 0, 17, ID).text).toBe(`{term:${ID}:a x b c d}`);
+  });
+
   it('changes nothing without a selection', () => {
     expect(applyTerm('abc', 1, 1, ID)).toEqual({ text: 'abc', start: 1, end: 1 });
   });

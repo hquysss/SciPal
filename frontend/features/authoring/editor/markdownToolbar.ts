@@ -13,7 +13,8 @@ export function applyColor(text: string, start: number, end: number, color: Text
 export function applyTerm(text: string, start: number, end: number, termId: string) {
   if (start === end) return { text, start, end };
   const open = `{term:${termId}:`;
-  const inner = text.slice(start, end).replace(/[{}\n]/g, ' ');
+  // Inline Markdown would split the tag's text node and show the raw marker, so only plain words go in.
+  const inner = text.slice(start, end).replace(/[{}\n]/g, ' ').replace(/[*_`$~[\]]/g, '');
   return { text: text.slice(0, start) + open + inner + '}' + text.slice(end), start: start + open.length, end: start + open.length + inner.length };
 }
 

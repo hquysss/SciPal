@@ -140,6 +140,26 @@ describe('TermMark', () => {
     expect(screen.getByRole('dialog').querySelector('img')).toBeNull();
   });
 
+  it('moves focus into the popover when opened, and back to the word on Escape', async () => {
+    lesson([WORD_ID, PLACE_ID]);
+    const button = await screen.findByRole('button', { name: 'thuật toán' });
+    button.focus();
+    fireEvent.click(button);
+    const dialog = screen.getByRole('dialog');
+    expect(dialog.contains(document.activeElement)).toBe(true);
+    fireEvent.keyDown(document, { key: 'Escape' });
+    expect(document.activeElement).toBe(button);
+  });
+
+  it('closes when focus leaves the word and the popover', async () => {
+    lesson([WORD_ID, PLACE_ID]);
+    const button = await screen.findByRole('button', { name: 'thuật toán' });
+    fireEvent.click(button);
+    const other = screen.getByRole('button', { name: 'Hạ Long' });
+    fireEvent.focusOut(screen.getByRole('dialog'), { relatedTarget: other });
+    expect(screen.queryByRole('dialog')).toBeNull();
+  });
+
   it('is keyboard operable', async () => {
     lesson([WORD_ID, PLACE_ID]);
     const button = await screen.findByRole('button', { name: 'thuật toán' });
