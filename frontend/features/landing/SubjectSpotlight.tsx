@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { ArrowRight } from 'lucide-react';
 import { useLanguage } from '@scipal/hooks';
 import { SubjectProvider } from '@scipal/ui';
@@ -32,7 +32,7 @@ const SHORT_NAME: Record<string, { en: string; vi: string }> = {
 
 function GhostWord({ word, i, ink }: { word: string; i: number; ink?: boolean }) {
   return (
-    <span className={styles.ghostWord} data-ink={ink ? '' : undefined}>
+    <span className={styles.ghostWord} data-par="" data-ink={ink ? '' : undefined}>
       <span className={styles.clipLine} style={{ '--i': i } as React.CSSProperties}>
         <span>{word}</span>
       </span>
@@ -55,6 +55,11 @@ export function SubjectSpotlight({ level, catalog }: { level: EducationLevel; ca
   const headline = subject && SHORT_NAME[subject.slug] ? t(SHORT_NAME[subject.slug]) : name;
   const other = subject ? (lang === 'en' ? subject.name_vi : subject.name_en) : '';
   const [bi1, bi2] = BI.map((word) => t(word));
+
+  // The words are new elements after a change: have the page write their scroll progress again.
+  useEffect(() => {
+    window.dispatchEvent(new Event('scroll'));
+  }, [index]);
 
   const go = (next: number) => {
     setIndex((next + subjects.length) % subjects.length);

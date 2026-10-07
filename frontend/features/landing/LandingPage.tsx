@@ -173,7 +173,11 @@ function useClipReveal(pageRef: React.RefObject<HTMLDivElement | null>) {
   }, [pageRef]);
 }
 
-/** Writes each [data-scroll-progress] section's scroll progress (0 entering, 1 leaving) into --p for parallax. */
+/**
+ * Writes each [data-scroll-progress] section's scroll progress (0 entering, 1 leaving) into --p on the
+ * section and on its [data-par] words. --p is registered as non-inherited, so a frame only restyles those
+ * few elements, not the whole subtree. Sections off screen are skipped.
+ */
 function useScrollProgress(pageRef: React.RefObject<HTMLDivElement | null>) {
   useEffect(() => {
     const page = pageRef.current;
@@ -184,8 +188,10 @@ function useScrollProgress(pageRef: React.RefObject<HTMLDivElement | null>) {
       frame = 0;
       for (const section of sections) {
         const box = section.getBoundingClientRect();
-        const progress = (window.innerHeight - box.top) / (window.innerHeight + box.height);
-        section.style.setProperty('--p', Math.min(1, Math.max(0, progress)).toFixed(3));
+        if (box.bottom < 0 || box.top > window.innerHeight) continue;
+        const value = Math.min(1, Math.max(0, (window.innerHeight - box.top) / (window.innerHeight + box.height))).toFixed(3);
+        section.style.setProperty('--p', value);
+        section.querySelectorAll<HTMLElement>('[data-par]').forEach((node) => node.style.setProperty('--p', value));
       }
     };
     const schedule = () => {
@@ -210,7 +216,7 @@ function useSmoothScroll(ready: boolean) {
   const lenisRef = useRef<Lenis | null>(null);
   useEffect(() => {
     if (!window.matchMedia('(min-width: 769px) and (pointer: fine)').matches || reducedMotion()) return;
-    const lenis = new Lenis({ autoRaf: true, anchors: { offset: -80 } });
+    const lenis = new Lenis({ autoRaf: true, lerp: 0.2, anchors: { offset: -80 } });
     lenisRef.current = lenis;
     return () => {
       lenis.destroy();
