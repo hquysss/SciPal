@@ -27,7 +27,7 @@ export const FEATURE_NAME: Record<TrialFeature, { vi: string; en: string }> = {
   pricing: { vi: 'Bảng giá', en: 'Pricing' },
 };
 
-const ACCOUNT_PREFIXES = ['/profile', '/progress', '/teacher', '/admin', '/checkout', '/classes', '/dev'];
+const ACCOUNT_PREFIXES = ['/profile', '/progress', '/teacher', '/admin', '/checkout', '/classes', '/games', '/dev'];
 const under = (pathname: string, prefix: string) => pathname === prefix || pathname.startsWith(`${prefix}/`);
 
 export function routeAccess(pathname: string): RouteAccess {
