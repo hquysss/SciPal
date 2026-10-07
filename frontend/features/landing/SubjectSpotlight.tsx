@@ -17,6 +17,14 @@ const LEAD: [{ en: string; vi: string }, { en: string; vi: string }] = [
   { en: 'Bilingual', vi: 'Song ngữ' },
 ];
 
+/** Short forms for names too long to sit in the ghost heading; the card caption keeps the full name. */
+const SHORT_NAME: Record<string, { en: string; vi: string }> = {
+  'experiential-career': { en: 'Career Activities', vi: 'HĐTNHN' },
+  'experiential-activities': { en: 'Experiences', vi: 'HĐTN' },
+  'national-defence': { en: 'Defence Ed.', vi: 'GDQP&AN' },
+  'economic-law-education': { en: 'Economics & Law', vi: 'GDKTPL' },
+};
+
 /**
  * The oversized ghost heading as a subject carousel: the second row is the active subject's name,
  * and the tilted card shows its picture on the subject's --accent. Changing subject replays the
@@ -29,6 +37,7 @@ export function SubjectSpotlight({ level, catalog }: { level: EducationLevel; ca
   const [moved, setMoved] = useState(false);
   const subject = subjects.length ? subjects[index % subjects.length] : null;
   const name = subject ? (lang === 'en' ? subject.name_en : subject.name_vi) : t({ en: 'Every subject', vi: 'Mọi môn học' });
+  const headline = subject && SHORT_NAME[subject.slug] ? t(SHORT_NAME[subject.slug]) : name;
   const other = subject ? (lang === 'en' ? subject.name_vi : subject.name_en) : '';
   const lead = LEAD.map((word) => t(word));
 
@@ -57,7 +66,7 @@ export function SubjectSpotlight({ level, catalog }: { level: EducationLevel; ca
         <span className={styles.ghostRow} aria-hidden="true" key={`b-${index}`}>
           <span className={styles.ghostWord} data-ink="">
             <span className={styles.clipLine} style={{ '--i': 2 } as React.CSSProperties}>
-              <span>{name}</span>
+              <span>{headline}</span>
             </span>
           </span>
         </span>
