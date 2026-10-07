@@ -30,7 +30,9 @@
         "BILLING_CHECKOUT_DISABLED",
         "PAYOS_CLIENT_ID",
         "PAYOS_API_KEY",
-        "PAYOS_CHECKSUM_KEY"
+        "PAYOS_CHECKSUM_KEY",
+        "RESEND_API_KEY",
+        "EMAIL_FROM"
       ],
       "outputs": [
         ".next/**",

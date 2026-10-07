@@ -4,7 +4,7 @@ import { createServerClient } from '@scipal/supabase';
 import { DeferredLandingPage } from '@/features/landing/DeferredLandingPage';
 import { LevelGate } from '@/features/landing/LevelGate';
 import { GuestLandingFlow } from '@/features/landing/GuestLandingFlow';
-import { parseEducationLevel, type EducationLevel } from '@/features/landing/educationLevel';
+import { INTRO_COOKIE, parseEducationLevel, type EducationLevel } from '@/features/landing/educationLevel';
 import { getLandingData } from '@/features/landing/getLandingData';
 import { fetchCatalog } from '@/features/billing/billingApi';
 import { fetchSiteSettings } from '@/lib/siteSettings';
@@ -50,6 +50,7 @@ export default async function HomePage({ searchParams }: HomePageProps) {
   const pricing = site.features.pricing ? catalog : null;
 
   const isAuthenticated = verifiedUserId !== null;
+  const showIntro = cookieStore.get(INTRO_COOKIE)?.value !== '1';
   let accountLevel: EducationLevel | null = null;
   if (isAuthenticated && supabase && verifiedUserId) {
     const { data, error } = await supabase
@@ -71,6 +72,7 @@ export default async function HomePage({ searchParams }: HomePageProps) {
         informatics={landingData.informatics}
         pricing={pricing}
         saveError={saveError}
+        showIntro={showIntro}
       />
     );
   }
@@ -92,6 +94,7 @@ export default async function HomePage({ searchParams }: HomePageProps) {
       catalog={landingData.catalog}
       informatics={landingData.informatics}
       pricing={pricing}
+      showIntro={showIntro}
     />
   );
 }

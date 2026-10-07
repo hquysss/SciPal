@@ -17,6 +17,9 @@ export function levelOfGrade(grade: number): EducationLevel {
   return 'upper_secondary';
 }
 
+/** Session cookie set once the landing intro has played; the home page reads it on the server. */
+export const INTRO_COOKIE = 'scipal_intro';
+
 export const LEVEL_SESSION_KEY = 'scipal_education_level_tab';
 
 type SessionStorageReader = Pick<Storage, 'getItem'>;

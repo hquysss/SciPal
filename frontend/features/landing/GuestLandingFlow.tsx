@@ -17,6 +17,7 @@ interface GuestLandingFlowProps {
   informatics: InformaticsAvailability;
   pricing?: Catalog | null;
   saveError: boolean;
+  showIntro?: boolean;
 }
 
 export function GuestLandingFlow({
@@ -25,6 +26,7 @@ export function GuestLandingFlow({
   informatics,
   pricing = null,
   saveError,
+  showIntro = false,
 }: GuestLandingFlowProps) {
   const [sessionLevel, setSessionLevel] = useState<EducationLevel | null>(null);
   const [sessionReady, setSessionReady] = useState(false);
@@ -77,6 +79,7 @@ export function GuestLandingFlow({
       catalog={catalog}
       informatics={informatics}
       pricing={pricing}
+      showIntro={showIntro}
       onChangeLevel={() => {
         setForceGate(true);
         window.scrollTo({ top: 0 });
