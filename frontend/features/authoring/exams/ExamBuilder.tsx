@@ -15,7 +15,7 @@ import type { AuthoringSubjectOption } from '../authoringQueries';
 import { fetchQuestionsByIds, type AuthorQuestion } from '../practice/api';
 import { QuestionEditor } from '../practice/QuestionEditor';
 import { emptyQuestion, QUESTION_TYPE_LABEL } from '../practice/questionDraft';
-import { approveExam, createExam, deleteExam, drawExamQuestions, submitExam, updateExam, type ExamDetail, type ExamInput } from './api';
+import { approveExam, createExam, deleteExam, drawExamQuestions, shareExamWithClasses, submitExam, updateExam, withdrawExam, type ExamDetail, type ExamInput } from './api';
 import { BankBrowser } from './BankBrowser';
 import { DrawPanel } from './DrawPanel';
 import {
@@ -193,9 +193,9 @@ export function ExamBuilder({ exam, subjects, isAdmin, initialQuestions = [] }: 
     return res.data.exam;
   };
 
-  const run = async (action: 'save' | 'submit' | 'publish') => {
+  const run = async (action: 'save' | 'submit' | 'publish' | 'classOnly' | 'withdraw') => {
     if (busy) return;
-    if (action !== 'save') {
+    if (action !== 'save' && action !== 'withdraw') {
       const why = reviewProblem;
       if (why) return setMessage({ text: why, tone: 'danger' });
     }
@@ -203,12 +203,19 @@ export function ExamBuilder({ exam, subjects, isAdmin, initialQuestions = [] }: 
     setMessage(null);
     const current = dirty || !saved ? await save() : saved;
     if (current && action !== 'save') {
-      const res = action === 'submit' ? await submitExam(current.id) : await approveExam(current.id);
+      const call = { submit: submitExam, publish: approveExam, classOnly: shareExamWithClasses, withdraw: withdrawExam }[action];
+      const res = await call(current.id);
       if (res.ok) setSaved(res.data.exam);
+      const done: Record<typeof action, Bilingual> = {
+        submit: { en: 'Sent to an admin for review.', vi: 'Đã gửi đề cho admin duyệt.' },
+        publish: { en: 'The exam is published.', vi: 'Đề đã được xuất bản.' },
+        classOnly: { en: 'Ready for your classes. Give it to a class from the class page.', vi: 'Đề đã sẵn sàng cho lớp của bạn. Hãy giao đề ở trang lớp học.' },
+        withdraw: { en: 'The exam is a draft again.', vi: 'Đề đã về bản nháp.' },
+      };
       setMessage(
         res.ok
           ? {
-              text: action === 'submit' ? { en: 'Sent to an admin for review.', vi: 'Đã gửi đề cho admin duyệt.' } : { en: 'The exam is published.', vi: 'Đề đã được xuất bản.' },
+              text: done[action],
               tone: 'success',
             }
           : { text: res.error, tone: 'danger' },
@@ -249,7 +256,9 @@ export function ExamBuilder({ exam, subjects, isAdmin, initialQuestions = [] }: 
     ? null
     : saved?.status === 'pending_review'
       ? { en: 'This exam is waiting for review and cannot be edited.', vi: 'Đề đang chờ duyệt nên không sửa được.' }
-      : { en: 'This exam is published; only an admin can change it.', vi: 'Đề đã xuất bản nên không sửa được; chỉ admin mới sửa.' };
+      : saved?.status === 'class_only'
+        ? { en: 'This exam is for your classes. Take it back to a draft to edit.', vi: 'Đề đang dùng cho lớp. Đưa về bản nháp để sửa.' }
+        : { en: 'This exam is published; only an admin can change it.', vi: 'Đề đã xuất bản nên không sửa được; chỉ admin mới sửa.' };
 
   const panelButton = (id: Exclude<Panel, null>, label: Bilingual) => (
     <Button type="button" variant={panel === id ? 'secondary' : 'outline'} aria-expanded={panel === id} onClick={() => setPanel(panel === id ? null : id)}>
@@ -540,6 +549,14 @@ export function ExamBuilder({ exam, subjects, isAdmin, initialQuestions = [] }: 
 
       {message && <Alert tone={message.tone}>{t(message.text)}</Alert>}
 
+      {readOnly && saved?.status === 'class_only' && saved.mine && (
+        <div>
+          <Button type="button" variant="outline" disabled={busy} onClick={() => void run('withdraw')}>
+            {t({ en: 'Back to draft to edit', vi: 'Đưa về bản nháp để sửa' })}
+          </Button>
+        </div>
+      )}
+
       {!readOnly && (
         <div className="flex flex-wrap items-center gap-3">
           {isAdmin && !saved && (
@@ -554,6 +571,11 @@ export function ExamBuilder({ exam, subjects, isAdmin, initialQuestions = [] }: 
           {saved?.status === 'draft' && !isAdmin && (
             <Button type="button" variant="outline" disabled={busy || reviewBlocked} onClick={() => void run('submit')}>
               {t({ en: 'Send for review', vi: 'Gửi duyệt' })}
+            </Button>
+          )}
+          {saved?.status === 'draft' && (
+            <Button type="button" variant="outline" disabled={busy || reviewBlocked} onClick={() => void run('classOnly')}>
+              {t({ en: 'Use in my classes', vi: 'Dùng cho lớp của tôi' })}
             </Button>
           )}
           {saved?.status === 'draft' && isAdmin && saved.mine && (

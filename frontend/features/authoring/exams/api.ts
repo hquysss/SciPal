@@ -1,7 +1,7 @@
 import type { ExamFormat, ExamSection, QuestionType } from '@scipal/types';
 import { authoringCall } from '../apiClient';
 
-export type ExamStatus = 'draft' | 'pending_review' | 'published';
+export type ExamStatus = 'draft' | 'pending_review' | 'published' | 'class_only';
 
 /** An exam as `GET /api/authoring/exams` lists it. */
 export interface ExamSummary {
@@ -68,5 +68,7 @@ export const updateExam = (id: string, input: Partial<ExamInput> & { expected_up
 export const deleteExam = (id: string) => authoringCall<Record<string, never>>(path(id), 'DELETE');
 export const drawExamQuestions = (body: DrawRequest) => authoringCall<DrawResult>('/api/authoring/exams/draw', 'POST', body);
 export const submitExam = (id: string) => authoringCall<{ exam: ExamDetail }>(path(id, '/submit'), 'POST');
+export const shareExamWithClasses = (id: string) => authoringCall<{ exam: ExamDetail }>(path(id, '/class-only'), 'POST');
+export const withdrawExam = (id: string) => authoringCall<{ exam: ExamDetail }>(path(id, '/withdraw'), 'POST');
 export const approveExam = (id: string) => authoringCall<{ exam: ExamDetail }>(path(id, '/approve'), 'POST');
 export const rejectExam = (id: string, note: string) => authoringCall<{ exam: ExamDetail }>(path(id, '/reject'), 'POST', { note });

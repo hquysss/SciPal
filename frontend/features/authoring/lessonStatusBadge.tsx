@@ -13,9 +13,11 @@ const VARIANT = {
 } as const;
 
 const KNOWN = new Set<string>(['draft', 'pending_review', 'published', 'rejected']);
+const CLASS_ONLY = { en: 'For classes', vi: 'Dùng cho lớp' };
 
 export function LessonStatusBadge({ status }: { status: string }) {
   const { t } = useLanguage();
+  if (status === 'class_only') return <Badge variant="success">{t(CLASS_ONLY)}</Badge>;
   if (!KNOWN.has(status)) return <Badge variant="secondary">{status}</Badge>;
   const known = status as LessonStatus;
   return <Badge variant={VARIANT[lessonStatusTone(known)]}>{t(lessonStatusLabel(known))}</Badge>;

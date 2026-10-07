@@ -134,12 +134,13 @@ describe('GET /api/classes/:id/assignable', () => {
     await app.close();
   });
 
-  it('finds published exams', async () => {
+  it('finds published exams, and the teacher’s own class-only exams', async () => {
     const exams = ok([examRow()]);
     const app = await build(teacher, { class_rooms: room({ subject_id: null }), exam_blueprints: exams });
     const res = await app.inject({ method: 'GET', url: `/api/classes/${CLASS_ID}/assignable?kind=exam` });
     expect(res.json().items).toEqual([{ id: EXAM, title: { vi: 'Đề giữa kỳ', en: 'Midterm' } }]);
-    expect(exams.eqCalls).toEqual([['status', 'published']]);
+    expect(exams.orCalls[0]).toContain('status.eq.published');
+    expect(exams.orCalls[0]).toContain('and(status.eq.class_only,created_by.eq.');
     await app.close();
   });
 });

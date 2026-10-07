@@ -51,9 +51,13 @@ function withFormat(blueprint: Partial<BlueprintSummary>): BlueprintSummary {
   return { ...blueprint, format, layout } as BlueprintSummary;
 }
 
-export async function getExamBlueprint(blueprintId: string): Promise<ExamDetailResult> {
+/** `token`: the viewer's session, needed to open an exam a teacher gave only to their classes. */
+export async function getExamBlueprint(blueprintId: string, token?: string): Promise<ExamDetailResult> {
   try {
-    const res = await fetch(`${API_BASE}/api/exam/${encodeURIComponent(blueprintId)}/questions`, { cache: 'no-store' });
+    const res = await fetch(`${API_BASE}/api/exam/${encodeURIComponent(blueprintId)}/questions`, {
+      cache: 'no-store',
+      ...(token ? { headers: { Authorization: `Bearer ${token}` } } : {}),
+    });
     if (res.status === 404) return { kind: 'not_found' };
     if (!res.ok) return { kind: 'error' };
     const payload = (await res.json()) as { blueprint?: Partial<BlueprintSummary>; questions?: unknown };
