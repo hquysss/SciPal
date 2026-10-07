@@ -1,13 +1,12 @@
 'use client';
 
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { ArrowRight, Atom, BookOpen, Braces, Dna, FlaskConical, Globe, Lightbulb, Mail, Sigma, Sparkles } from 'lucide-react';
 import { useLanguage } from '@scipal/hooks';
 import { DemandPollBanner } from '@/features/survey/DemandPollBanner';
 import { SubjectMarquee } from '@/features/subjects/SubjectMarquee';
-import { Mascot } from '@/components/mascot/Mascot';
 import { applyShellLevel, getShell } from '@/lib/theme/shellTheme';
 import type { EducationLevel } from './educationLevel';
 import type { InformaticsAvailability, LandingCatalog } from './getLandingData';
@@ -16,6 +15,8 @@ import { HowItWorks } from './HowItWorks';
 import { TutorSection } from './TutorSection';
 import { PricingSection } from './PricingSection';
 import { InstallAppSection } from './InstallAppSection';
+import { IntroCurtain, introPlayed } from './IntroCurtain';
+import { SubjectSpotlight } from './SubjectSpotlight';
 import type { Catalog } from '@/features/billing/billingApi';
 import { ReportProblemButton } from '@/features/problemReports/ReportProblem';
 import styles from './landing.module.css';
@@ -32,6 +33,8 @@ export interface LandingPageProps {
   informatics: InformaticsAvailability;
   /** The plan catalog; the pricing section is left out when it could not be read. */
   pricing?: Catalog | null;
+  /** Play the intro curtain (first visit of the browser session). */
+  showIntro?: boolean;
 }
 
 type Copy = { en: string; vi: string };
@@ -61,14 +64,6 @@ const HERO_TITLE: Record<EducationLevel, [Copy, Copy]> = {
     { vi: 'tiến từng bước.', en: 'Move forward step by step.' },
   ],
 };
-
-/** The oversized ghost heading: two rows of two words, the third word in ink. */
-const GHOST_WORDS: [Copy, Copy, Copy, Copy] = [
-  { en: 'Learn', vi: 'Học' },
-  { en: 'Deeper', vi: 'Hiểu' },
-  { en: 'In two', vi: 'Song' },
-  { en: 'Languages', vi: 'Ngữ' },
-];
 
 const reducedMotion = () => window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
@@ -228,9 +223,11 @@ function ChangeLevel({ onChangeLevel, className }: { onChangeLevel?: () => void;
   );
 }
 
-export function LandingPage({ level, levelSource, catalog, onChangeLevel, pricing = null }: LandingPageProps) {
+export function LandingPage({ level, levelSource, catalog, onChangeLevel, pricing = null, showIntro = false }: LandingPageProps) {
   const { t, lang } = useLanguage();
   const pageRef = useRef<HTMLDivElement>(null);
+  const [intro] = useState(() => showIntro && !introPlayed());
+  const [ready, setReady] = useState(!intro);
   const [titleFirst, titleSecond] = HERO_TITLE[level];
   const liveSubjects = catalog?.kind === 'ready'
     ? catalog.subjects.filter((subject) => subject.education_level === level && subject.status === 'active').length
@@ -251,218 +248,195 @@ export function LandingPage({ level, levelSource, catalog, onChangeLevel, pricin
   ];
 
   return (
-    <div className={styles.page} data-level={level} data-scipal-level={level} lang={lang} ref={pageRef}>
-      <main className={styles.shell}>
-        {/* ---------- hero ---------- */}
-        <section className={styles.hero} aria-labelledby="landing-title" data-scroll-progress>
-          <div className={styles.heroTop}>
-            <p className={styles.eyebrowLight}>{t(LEVEL_LABEL[level])}</p>
-            <h1 id="landing-title" tabIndex={-1} className={styles.heroTitle}>
-              <ClipLines lines={[t(titleFirst), t(titleSecond)]} />
-            </h1>
-          </div>
-          <div className={styles.heroBottom}>
-            <div className={styles.heroCopy}>
-              <p className={styles.heroSubline}>
-                {t({
-                  en: 'Learn in Vietnamese and English with Vietnam’s 2018 national curriculum.',
-                  vi: 'Học song ngữ Anh–Việt theo Chương trình GDPT 2018.',
-                })}
-              </p>
-              <div className={styles.heroActions}>
-                <a href="#mon-hoc" className={styles.pillLight}>
-                  {t({ en: 'Explore subjects', vi: 'Xem môn học' })}
-                  <ArrowRight size={16} aria-hidden="true" />
-                </a>
-                <ChangeLevel onChangeLevel={onChangeLevel} className={styles.pillGhost} />
+    <>
+      {intro && <IntroCurtain level={level} onReady={() => setReady(true)} />}
+      <div className={styles.page} data-level={level} data-scipal-level={level} data-ready={ready ? '' : undefined} lang={lang} ref={pageRef}>
+        <main className={styles.shell}>
+          {/* ---------- hero ---------- */}
+          <section className={styles.hero} aria-labelledby="landing-title" data-scroll-progress>
+            <div className={styles.heroTop}>
+              <p className={styles.eyebrowLight}>{t(LEVEL_LABEL[level])}</p>
+              <h1 id="landing-title" tabIndex={-1} className={styles.heroTitle}>
+                <ClipLines lines={[t(titleFirst), t(titleSecond)]} />
+              </h1>
+            </div>
+            <div className={styles.heroBottom}>
+              <div className={styles.heroCopy}>
+                <p className={styles.heroSubline}>
+                  {t({
+                    en: 'Learn in Vietnamese and English with Vietnam’s 2018 national curriculum.',
+                    vi: 'Học song ngữ Anh–Việt theo Chương trình GDPT 2018.',
+                  })}
+                </p>
+                <div className={styles.heroActions}>
+                  <a href="#mon-hoc" className={styles.pillLight}>
+                    {t({ en: 'Explore subjects', vi: 'Xem môn học' })}
+                    <ArrowRight size={16} aria-hidden="true" />
+                  </a>
+                  <ChangeLevel onChangeLevel={onChangeLevel} className={styles.pillGhost} />
+                </div>
+              </div>
+              <div className={styles.heroArt}>
+                <HeroStage level={level} />
               </div>
             </div>
-            <div className={styles.heroArt}>
-              <HeroStage level={level} />
-            </div>
-          </div>
-        </section>
+          </section>
 
-        {/* ---------- ghost heading ---------- */}
-        <section className={styles.trust} aria-labelledby="trust-title" data-scroll-progress>
-          <div className={styles.trustTop}>
-            <div className={styles.pct} data-landing-reveal>
-              <strong>100%</strong>
-              <small>{t({ en: 'Lessons free to learn', vi: 'Bài học miễn phí' })}</small>
+          {/* ---------- ghost heading ---------- */}
+          <section className={styles.trust} aria-labelledby="trust-title" data-scroll-progress>
+            <div className={styles.trustTop}>
+              <div className={styles.pct} data-landing-reveal>
+                <strong>100%</strong>
+                <small>{t({ en: 'Lessons free to learn', vi: 'Bài học miễn phí' })}</small>
+              </div>
+              <article className={styles.badge} data-landing-reveal>
+                <span className={styles.badgeIndex}>#2018</span>
+                <div>
+                  <h3>{t({ en: 'Built on the national curriculum', vi: 'Theo Chương trình GDPT 2018' })}</h3>
+                  <p>
+                    {t({
+                      en: 'Every lesson follows Vietnam’s 2018 curriculum, with each term and explanation in both Vietnamese and English.',
+                      vi: 'Mỗi bài bám sát Chương trình GDPT 2018, kèm thuật ngữ và lời giải thích bằng cả tiếng Việt lẫn tiếng Anh.',
+                    })}
+                  </p>
+                </div>
+              </article>
             </div>
-            <article className={styles.badge} data-landing-reveal>
-              <span className={styles.badgeIndex}>#2018</span>
+            <SubjectSpotlight level={level} catalog={catalog} />
+          </section>
+
+          {/* ---------- subjects ---------- */}
+          <section className={styles.subjects} id="mon-hoc" aria-labelledby="subjects-title">
+            <div className={styles.sectionHeading} data-landing-reveal>
               <div>
-                <h3>{t({ en: 'Built on the national curriculum', vi: 'Theo Chương trình GDPT 2018' })}</h3>
-                <p>
+                <p className={styles.eyebrow}>{t(LEVEL_LABEL[level])}</p>
+                <h2 id="subjects-title" className={styles.sectionTitle} data-clip>
+                  <ClipLines lines={[t({ en: 'Your subjects', vi: 'Môn học của bạn' })]} />
+                </h2>
+              </div>
+              <ChangeLevel onChangeLevel={onChangeLevel} className={styles.inlineLink} />
+              <p className={styles.srOnly}>
+                {levelSource === 'account'
+                  ? t({ en: 'Your level is saved to your account.', vi: 'Cấp học đã lưu vào tài khoản.' })
+                  : t({ en: 'Your level is saved in this tab.', vi: 'Cấp học được lưu trong tab này.' })}
+              </p>
+            </div>
+            <div className={styles.subjectGrid} data-landing-reveal>
+              <SubjectMarquee level={level} catalog={catalog} />
+            </div>
+          </section>
+
+          {/* ---------- existing feature sections on a lifted sheet ---------- */}
+          <div className={styles.sheet}>
+            <HowItWorks level={level} />
+            <TutorSection href="/tutor" level={level} />
+            <InstallAppSection />
+            {pricing && <PricingSection catalog={pricing} />}
+          </div>
+
+          {/* ---------- stats ---------- */}
+          <section className={styles.stats} aria-labelledby="stats-title">
+            <p className={styles.eyebrowLight}>{t({ en: 'By the numbers', vi: 'Những con số' })}</p>
+            <h2 id="stats-title" className={styles.sectionTitle} data-clip>
+              <ClipLines lines={[t({ en: 'Learning that', vi: 'Học tập' }), t({ en: 'adds up', vi: 'có số liệu' })]} />
+            </h2>
+            <dl className={styles.statGrid}>
+              {stats.map((stat) => (
+                <div key={stat.label.en} className={styles.stat} data-landing-reveal>
+                  <dt className={styles.srOnly}>{t(stat.label)}</dt>
+                  <dd>
+                    <span className={styles.statValue}>{stat.value}</span>
+                    <span className={styles.statLabel} aria-hidden="true">{t(stat.label)}</span>
+                  </dd>
+                </div>
+              ))}
+            </dl>
+          </section>
+
+          {/* ---------- final call to action ---------- */}
+          <section className={styles.finalCta} aria-labelledby="start-title" data-landing-reveal>
+            <div className={styles.ctaFloats} aria-hidden="true">
+              {CTA_FLOATS.map((Icon, index) => (
+                <span key={index} data-cta-float="" style={{ '--i': index } as React.CSSProperties}>
+                  <Icon size={26} strokeWidth={1.6} />
+                </span>
+              ))}
+            </div>
+            <div className={styles.finalBody}>
+              <div>
+                <p className={styles.eyebrowLight}>{t({ en: 'Get started', vi: 'Bắt đầu' })}</p>
+                <h2 id="start-title" className={styles.finalTitle}>{t({ en: 'Ready?', vi: 'Sẵn sàng chưa?' })}</h2>
+                <p className={styles.finalLead}>
                   {t({
-                    en: 'Every lesson follows Vietnam’s 2018 curriculum, with each term and explanation in both Vietnamese and English.',
-                    vi: 'Mỗi bài bám sát Chương trình GDPT 2018, kèm thuật ngữ và lời giải thích bằng cả tiếng Việt lẫn tiếng Anh.',
+                    en: 'Every lesson is free. Pick a subject and start today.',
+                    vi: 'Mọi bài học đều miễn phí. Chọn một môn và bắt đầu ngay hôm nay.',
                   })}
                 </p>
               </div>
-            </article>
-          </div>
-          <h2 id="trust-title" className={styles.ghost} aria-label={GHOST_WORDS.map((word) => t(word)).join(' ')} data-clip>
-            {[0, 2].map((row) => (
-              <span key={row} className={styles.ghostRow} aria-hidden="true">
-                {GHOST_WORDS.slice(row, row + 2).map((word, index) => (
-                  <span key={index} className={styles.ghostWord} data-ink={row + index === 2 ? '' : undefined}>
-                    <span className={styles.clipLine} style={{ '--i': row + index } as React.CSSProperties}>
-                      <span>{t(word)}</span>
-                    </span>
-                  </span>
-                ))}
-              </span>
-            ))}
-          </h2>
-          <figure className={styles.coachCard} data-landing-reveal>
-            <div className={styles.coachTilt}>
-              <Mascot
-                directions="/mascots/kamran-directions.webp"
-                reactions="/mascots/kamran-reactions.webp"
-                size={180}
-                ariaLabel={t({ en: 'Say hello to Professor Quys', vi: 'Chào Giáo sư Quý' })}
-              />
-              <figcaption className={styles.glassCaption}>
-                <strong>{t({ en: 'Professor Quys', vi: 'Giáo sư Quý' })}</strong>
-                <span>{t({ en: 'Your AI tutor', vi: 'Gia sư AI của bạn' })}</span>
-              </figcaption>
+              <div className={styles.finalActions}>
+                <a href="#mon-hoc" className={styles.pillLight}>
+                  {t({ en: 'Start learning', vi: 'Bắt đầu học' })}
+                  <ArrowRight size={16} aria-hidden="true" />
+                </a>
+                <Link href="/tutor" className={styles.pillGhost}>
+                  <Sparkles size={16} aria-hidden="true" />
+                  {t({ en: 'Ask the SciPal Professor', vi: 'Hỏi Giáo sư SciPal' })}
+                </Link>
+              </div>
             </div>
-          </figure>
-        </section>
+            <div className={styles.poll}>
+              <DemandPollBanner />
+            </div>
+          </section>
+        </main>
 
-        {/* ---------- subjects ---------- */}
-        <section className={styles.subjects} id="mon-hoc" aria-labelledby="subjects-title">
-          <div className={styles.sectionHeading} data-landing-reveal>
-            <div>
-              <p className={styles.eyebrow}>{t(LEVEL_LABEL[level])}</p>
-              <h2 id="subjects-title" className={styles.sectionTitle} data-clip>
-                <ClipLines lines={[t({ en: 'Your subjects', vi: 'Môn học của bạn' })]} />
-              </h2>
+        <footer className={styles.footer}>
+          <div className={styles.footerCols}>
+            <div className={styles.footerBrandCol}>
+              <Link href="/" className={styles.footerBrand}>
+                <Image src="/logo.svg" width={32} height={32} alt="" aria-hidden="true" />
+                <strong>SciPal</strong>
+              </Link>
+              <p>{t({ en: 'Bilingual lessons for Vietnam’s 2018 curriculum.', vi: 'Học song ngữ theo Chương trình GDPT 2018.' })}</p>
             </div>
-            <ChangeLevel onChangeLevel={onChangeLevel} className={styles.inlineLink} />
-            <p className={styles.srOnly}>
-              {levelSource === 'account'
-                ? t({ en: 'Your level is saved to your account.', vi: 'Cấp học đã lưu vào tài khoản.' })
-                : t({ en: 'Your level is saved in this tab.', vi: 'Cấp học được lưu trong tab này.' })}
+            <nav className={styles.footerCol} aria-label={t({ en: 'Learn', vi: 'Học tập' })}>
+              <h3>{t({ en: 'Learn', vi: 'Học tập' })}</h3>
+              <ul>
+                <li><a href="#mon-hoc">{t({ en: 'Subjects', vi: 'Môn học' })}</a></li>
+                <li><Link href="/glossary">{t({ en: 'Glossary', vi: 'Từ điển thuật ngữ' })}</Link></li>
+                <li><Link href="/tutor">{t({ en: 'SciPal Professor', vi: 'Giáo sư SciPal' })}</Link></li>
+              </ul>
+            </nav>
+            <nav className={styles.footerCol} aria-label={t({ en: 'Contact SciPal', vi: 'Liên hệ SciPal' })}>
+              <h3>{t({ en: 'Contact us', vi: 'Liên hệ' })}</h3>
+              <ul>
+                <li>
+                  <a href={CONTACT_FACEBOOK_URL} target="_blank" rel="noopener noreferrer">
+                    <Image src="/facebook-icon.svg" width={16} height={16} alt="" aria-hidden="true" />
+                    Facebook
+                  </a>
+                </li>
+                <li>
+                  <a href={'mailto:' + CONTACT_EMAIL}>
+                    <Mail size={16} aria-hidden="true" />
+                    Email
+                  </a>
+                </li>
+              </ul>
+            </nav>
+          </div>
+          <div className={styles.footerBar}>
+            <p>© SciPal</p>
+            <p className={styles.footerLegal}>
+              <Link href="/privacy" className={styles.footerPolicy}>
+                {t({ en: 'Privacy', vi: 'Quyền riêng tư' })}
+              </Link>
+              <ReportProblemButton className={styles.footerPolicy} />
+              <Link href="/feedback" className={styles.footerPolicy}>{t({ en: 'Review SciPal', vi: 'Đánh giá SciPal' })}</Link>
             </p>
           </div>
-          <div className={styles.subjectGrid} data-landing-reveal>
-            <SubjectMarquee level={level} catalog={catalog} />
-          </div>
-        </section>
-
-        {/* ---------- existing feature sections on a lifted sheet ---------- */}
-        <div className={styles.sheet}>
-          <HowItWorks level={level} />
-          <TutorSection href="/tutor" level={level} />
-          <InstallAppSection />
-          {pricing && <PricingSection catalog={pricing} />}
-        </div>
-
-        {/* ---------- stats ---------- */}
-        <section className={styles.stats} aria-labelledby="stats-title">
-          <p className={styles.eyebrowLight}>{t({ en: 'By the numbers', vi: 'Những con số' })}</p>
-          <h2 id="stats-title" className={styles.sectionTitle} data-clip>
-            <ClipLines lines={[t({ en: 'Learning that', vi: 'Học tập' }), t({ en: 'adds up', vi: 'có số liệu' })]} />
-          </h2>
-          <dl className={styles.statGrid}>
-            {stats.map((stat) => (
-              <div key={stat.label.en} className={styles.stat} data-landing-reveal>
-                <dt className={styles.srOnly}>{t(stat.label)}</dt>
-                <dd>
-                  <span className={styles.statValue}>{stat.value}</span>
-                  <span className={styles.statLabel} aria-hidden="true">{t(stat.label)}</span>
-                </dd>
-              </div>
-            ))}
-          </dl>
-        </section>
-
-        {/* ---------- final call to action ---------- */}
-        <section className={styles.finalCta} aria-labelledby="start-title" data-landing-reveal>
-          <div className={styles.ctaFloats} aria-hidden="true">
-            {CTA_FLOATS.map((Icon, index) => (
-              <span key={index} data-cta-float="" style={{ '--i': index } as React.CSSProperties}>
-                <Icon size={26} strokeWidth={1.6} />
-              </span>
-            ))}
-          </div>
-          <div className={styles.finalBody}>
-            <div>
-              <p className={styles.eyebrowLight}>{t({ en: 'Get started', vi: 'Bắt đầu' })}</p>
-              <h2 id="start-title" className={styles.finalTitle}>{t({ en: 'Ready?', vi: 'Sẵn sàng chưa?' })}</h2>
-              <p className={styles.finalLead}>
-                {t({
-                  en: 'Every lesson is free. Pick a subject and start today.',
-                  vi: 'Mọi bài học đều miễn phí. Chọn một môn và bắt đầu ngay hôm nay.',
-                })}
-              </p>
-            </div>
-            <div className={styles.finalActions}>
-              <a href="#mon-hoc" className={styles.pillLight}>
-                {t({ en: 'Start learning', vi: 'Bắt đầu học' })}
-                <ArrowRight size={16} aria-hidden="true" />
-              </a>
-              <Link href="/tutor" className={styles.pillGhost}>
-                <Sparkles size={16} aria-hidden="true" />
-                {t({ en: 'Ask the SciPal Professor', vi: 'Hỏi Giáo sư SciPal' })}
-              </Link>
-            </div>
-          </div>
-          <div className={styles.poll}>
-            <DemandPollBanner />
-          </div>
-        </section>
-      </main>
-
-      <footer className={styles.footer}>
-        <div className={styles.footerCols}>
-          <div className={styles.footerBrandCol}>
-            <Link href="/" className={styles.footerBrand}>
-              <Image src="/logo.svg" width={32} height={32} alt="" aria-hidden="true" />
-              <strong>SciPal</strong>
-            </Link>
-            <p>{t({ en: 'Bilingual lessons for Vietnam’s 2018 curriculum.', vi: 'Học song ngữ theo Chương trình GDPT 2018.' })}</p>
-          </div>
-          <nav className={styles.footerCol} aria-label={t({ en: 'Learn', vi: 'Học tập' })}>
-            <h3>{t({ en: 'Learn', vi: 'Học tập' })}</h3>
-            <ul>
-              <li><a href="#mon-hoc">{t({ en: 'Subjects', vi: 'Môn học' })}</a></li>
-              <li><Link href="/glossary">{t({ en: 'Glossary', vi: 'Từ điển thuật ngữ' })}</Link></li>
-              <li><Link href="/tutor">{t({ en: 'SciPal Professor', vi: 'Giáo sư SciPal' })}</Link></li>
-            </ul>
-          </nav>
-          <nav className={styles.footerCol} aria-label={t({ en: 'Contact SciPal', vi: 'Liên hệ SciPal' })}>
-            <h3>{t({ en: 'Contact us', vi: 'Liên hệ' })}</h3>
-            <ul>
-              <li>
-                <a href={CONTACT_FACEBOOK_URL} target="_blank" rel="noopener noreferrer">
-                  <Image src="/facebook-icon.svg" width={16} height={16} alt="" aria-hidden="true" />
-                  Facebook
-                </a>
-              </li>
-              <li>
-                <a href={'mailto:' + CONTACT_EMAIL}>
-                  <Mail size={16} aria-hidden="true" />
-                  Email
-                </a>
-              </li>
-            </ul>
-          </nav>
-        </div>
-        <div className={styles.footerBar}>
-          <p>© SciPal</p>
-          <p className={styles.footerLegal}>
-            <Link href="/privacy" className={styles.footerPolicy}>
-              {t({ en: 'Privacy', vi: 'Quyền riêng tư' })}
-            </Link>
-            <ReportProblemButton className={styles.footerPolicy} />
-            <Link href="/feedback" className={styles.footerPolicy}>{t({ en: 'Review SciPal', vi: 'Đánh giá SciPal' })}</Link>
-          </p>
-        </div>
-      </footer>
-    </div>
+        </footer>
+      </div>
+    </>
   );
 }
