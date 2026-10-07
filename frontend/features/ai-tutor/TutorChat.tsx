@@ -39,6 +39,8 @@ export interface TutorChatViewProps {
   picker?: ReactNode;
   /** The lesson panel: shorter greeting, two examples. */
   compact?: boolean;
+  /** Replaces the level's example questions (the lesson panel asks about its lesson). */
+  suggestions?: Bilingual[];
   /** Opens a spoken session; without it there is no microphone button. */
   onVoice?: () => void;
 }
@@ -58,6 +60,7 @@ export function TutorChatView({
   lessonTitle,
   picker,
   compact = false,
+  suggestions,
   onVoice,
 }: TutorChatViewProps) {
   const { t } = useLanguage();
@@ -65,7 +68,7 @@ export function TutorChatView({
   const [draft, setDraft] = useState('');
   const logRef = useRef<HTMLDivElement>(null);
   const empty = messages.length === 0;
-  const examples = EXAMPLE_QUESTIONS[level].slice(0, compact ? 2 : 4);
+  const examples = (suggestions ?? EXAMPLE_QUESTIONS[level]).slice(0, compact ? 2 : 4);
   const lastIndex = messages.length - 1;
 
   // Follow the newest message; an empty chat stays at the top so the greeting shows.
@@ -253,6 +256,7 @@ export function TutorChat({
   lessonTitle,
   picker,
   compact,
+  suggestions,
   onConversation,
 }: {
   conversationId?: string;
@@ -262,6 +266,7 @@ export function TutorChat({
   lessonTitle?: string;
   picker?: ReactNode;
   compact?: boolean;
+  suggestions?: Bilingual[];
   onConversation?: (id: string) => void;
 }) {
   const chat = useTutorChat({ conversationId, lessonId, initialMessages });
@@ -291,6 +296,7 @@ export function TutorChat({
       lessonTitle={lessonTitle}
       picker={picker}
       compact={compact}
+      suggestions={suggestions}
       onVoice={() => setTalking(true)}
     />
     {talking && <VoiceChat lessonId={lessonId} onClose={() => setTalking(false)} />}

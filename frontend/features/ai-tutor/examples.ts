@@ -23,3 +23,31 @@ export const EXAMPLE_QUESTIONS: Record<EducationLevel, Bilingual[]> = {
     { vi: 'Kiểm tra giúp em ý tưởng sắp xếp nổi bọt.', en: 'Check my idea for bubble sort.' },
   ],
 };
+
+/** Questions about the lesson on screen, so the Professor's suggestions follow what the student is reading. */
+export function lessonQuestions(title: Bilingual): Bilingual[] {
+  const vi = `«${title.vi}»`;
+  const en = `“${title.en || title.vi}”`;
+  return [
+    { vi: `Giải thích ${vi} bằng một ví dụ đơn giản.`, en: `Explain ${en} with a simple example.` },
+    { vi: `Em hay nhầm điều gì khi học ${vi}?`, en: `What do students often get wrong in ${en}?` },
+    { vi: `Cho em một bài tập nhỏ về ${vi} để luyện.`, en: `Give me a small exercise on ${en}.` },
+    { vi: `Tóm tắt các ý chính của ${vi} giúp em.`, en: `Summarise the key ideas of ${en}.` },
+  ];
+}
+
+/** On the landing page the Professor is asked about getting started, not about one lesson. */
+export const LANDING_QUESTIONS: Record<EducationLevel, Bilingual[]> = {
+  primary: [
+    { vi: 'Em mới học, nên bắt đầu từ bài nào ạ?', en: 'I am new here. Which lesson should I start with?' },
+    { vi: 'SciPal có gì để em học và chơi?', en: 'What can I learn and play on SciPal?' },
+  ],
+  lower_secondary: [
+    { vi: 'Em nên bắt đầu học trên SciPal từ đâu?', en: 'Where should I start learning on SciPal?' },
+    { vi: 'SciPal giúp em ôn bài trên lớp thế nào?', en: 'How does SciPal help me revise class lessons?' },
+  ],
+  upper_secondary: [
+    { vi: 'SciPal giúp em ôn thi tốt nghiệp THPT thế nào?', en: 'How does SciPal help me prepare for the national exam?' },
+    { vi: 'Em muốn học Tin học 10, nên bắt đầu từ bài nào?', en: 'I want to study Informatics 10. Where do I start?' },
+  ],
+};
