@@ -30,8 +30,9 @@ const NewAssignment = z.object({
 
 type AssignmentRow = { id: string; class_id?: string; lesson_id: string | null; blueprint_id: string | null; due_at: string | null; created_at: string };
 type LessonRow = { id: string; slug: string; title_en: string; title_vi: string; status: string; subjects: { slug?: string; archived_at?: string | null } | Array<{ slug?: string; archived_at?: string | null }> | null };
-type ExamRow = { id: string; name: string; name_en: string | null; status: string; subjects?: { archived_at?: string | null } | Array<{ archived_at?: string | null }> | null };
-type Content = { title: Bilingual; href: string; published: boolean };
+type ExamRow = { id: string; name: string; name_en: string | null; status: string; created_by?: string | null; subjects?: { archived_at?: string | null } | Array<{ archived_at?: string | null }> | null };
+/** `owner`: who made an exam that only their classes may use (status class_only). */
+type Content = { title: Bilingual; href: string; published: boolean; owner?: string | null; classOnly?: boolean };
 
 const iso = (value: string | null) => (value ? new Date(value).toISOString() : null);
 const one = <T>(value: T | T[] | null | undefined) => (Array.isArray(value) ? value[0] : value) ?? null;
@@ -71,7 +72,7 @@ export const assignmentRoutes: FastifyPluginAsync = async (app) => {
     const supabase = app.supabase!;
     const [lessons, exams] = await Promise.all([
       lessonIds.length ? supabase.from('lessons').select('id, slug, title_en, title_vi, status, subjects(slug, archived_at)').in('id', lessonIds) : null,
-      examIds.length ? supabase.from('exam_blueprints').select('id, name, name_en, status, subjects(archived_at)').in('id', examIds) : null,
+      examIds.length ? supabase.from('exam_blueprints').select('id, name, name_en, status, created_by, subjects(archived_at)').in('id', examIds) : null,
     ]);
     if (lessons?.error || exams?.error) throw lessons?.error ?? exams?.error;
     const map = new Map<string, Content>();
@@ -80,7 +81,7 @@ export const assignmentRoutes: FastifyPluginAsync = async (app) => {
       map.set(l.id, { title: lessonTitle(l), href: subject ? `/${subject}/${l.slug}` : '', published: l.status === 'published' && Boolean(subject) && !isSubjectArchived(one(l.subjects)) });
     }
     for (const e of (exams?.data ?? []) as ExamRow[]) {
-      map.set(e.id, { title: examTitle(e), href: `/exam/${e.id}`, published: e.status === 'published' && !isSubjectArchived(one(e.subjects)) });
+      map.set(e.id, { title: examTitle(e), href: `/exam/${e.id}`, published: (e.status === 'published' || e.status === 'class_only') && !isSubjectArchived(one(e.subjects)), classOnly: e.status === 'class_only', owner: e.created_by ?? null });
     }
     return map;
   };
@@ -153,7 +154,10 @@ export const assignmentRoutes: FastifyPluginAsync = async (app) => {
       if (!parsed.success) return reply.code(400).send(INVALID);
       const { lessonId, blueprintId, dueAt } = parsed.data;
       const info = await contents(lessonId ? [lessonId] : [], blueprintId ? [blueprintId] : []);
-      if (!info.get((lessonId ?? blueprintId)!)?.published) return reply.code(400).send(NOT_PUBLISHED);
+      const content = info.get((lessonId ?? blueprintId)!);
+      if (!content?.published) return reply.code(400).send(NOT_PUBLISHED);
+      // A class-only exam can be given only by its author (or an admin).
+      if (content.classOnly && content.owner !== user.id && user.app_metadata?.app_role !== 'admin') return reply.code(400).send(NOT_PUBLISHED);
 
       const { data, error } = await supabase
         .from('assignments')
@@ -194,7 +198,8 @@ export const assignmentRoutes: FastifyPluginAsync = async (app) => {
       if (!room) return reply.code(404).send(NOT_FOUND);
       const text = searchText(q);
       if (kind === 'exam') {
-        let query = supabase.from('exam_blueprints').select('id, name, name_en, status, subjects(archived_at)').eq('status', 'published');
+        const me = userOf(request)!.id!;
+        let query = supabase.from('exam_blueprints').select('id, name, name_en, status, subjects(archived_at)').or(`status.eq.published,and(status.eq.class_only,created_by.eq.${me})`);
         if (text) query = query.or(`name.ilike.%${text}%,name_en.ilike.%${text}%`);
         const { data, error } = await query.order('updated_at', { ascending: false }).limit(20);
         if (error) throw error;

@@ -39,7 +39,7 @@ interface ExamRow {
 
 const COLUMNS =
   'id, name, name_en, source, subject_id, grade, duration_minutes, status, question_ids, sections, format, layout, review_note, updated_at, created_by, import_id, subjects(name_vi, archived_at)';
-const STATUSES = ['draft', 'pending_review', 'published'];
+const STATUSES = ['draft', 'pending_review', 'published', 'class_only'];
 const ID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 const msg = (error: string, error_en: string) => ({ error, error_en });
@@ -430,6 +430,19 @@ export const examRoutesAuthoring: FastifyPluginAsync = async (app) => {
         { status: 'pending_review', review_note: null },
         true,
       ),
+  });
+
+  // A teacher's own exam for their classes: no review, not listed publicly (see assignments).
+  const authorOnly = (user: ExamUser, row: ExamRow): Failure | null =>
+    row.created_by === user.id ? null : { status: 403, body: msg('Chỉ tác giả mới đổi được trạng thái đề.', 'Only the author changes the exam’s status.') };
+  app.post('/api/authoring/exams/:id/class-only', {
+    preHandler: [requireAuthor],
+    handler: (request, reply) => transition(request, reply, authorOnly, ['draft'], { status: 'class_only', review_note: null }, true),
+  });
+  // Take it back to a draft to edit it; classes it was given to stop seeing it until it is shared again.
+  app.post('/api/authoring/exams/:id/withdraw', {
+    preHandler: [requireAuthor],
+    handler: (request, reply) => transition(request, reply, authorOnly, ['class_only'], { status: 'draft', review_note: null }, false),
   });
 
   // Approve also publishes an admin's own draft ("Xuất bản"); another author's draft is submitted first.

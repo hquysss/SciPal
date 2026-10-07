@@ -9,6 +9,7 @@ import {
   blueprintFormat,
   blueprintQuestionIds,
   isBlueprintSubjectArchived,
+  isClassOnlyBlueprint,
   isPublishedBlueprint,
   toBlueprintSummary,
   type BlueprintRow,
@@ -54,8 +55,31 @@ async function readBlueprints(run: (columns: string) => BlueprintRead) {
 /** Learners see a published exam of a subject that is not archived. */
 const isLearnerBlueprint = (row: BlueprintRow) => isPublishedBlueprint(row) && !isBlueprintSubjectArchived(row);
 
-/** `finishing`: an attempt started before the subject was archived may still be scored (and its quota hold settled). */
-async function loadBlueprint(supabase: SupabaseClient, blueprintId: string, { finishing = false } = {}): Promise<Loaded<LoadedBlueprint>> {
+/** Who may open a class-only exam: its author, an admin, a student of a class it was given to, or that class's teacher. */
+async function mayOpenClassExam(supabase: SupabaseClient, row: BlueprintRow, viewer: { id?: string; role?: string }): Promise<boolean> {
+  if (!viewer.id) return false;
+  if (viewer.role === 'admin' || row.created_by === viewer.id) return true;
+  const { data: given, error } = await supabase.from('assignments').select('class_id').eq('blueprint_id', row.id);
+  if (error) throw error;
+  const classIds = ((given ?? []) as Array<{ class_id: string }>).map((a) => a.class_id);
+  if (classIds.length === 0) return false;
+  const [members, rooms] = await Promise.all([
+    supabase.from('class_members').select('class_id').eq('student_id', viewer.id).in('class_id', classIds).limit(1),
+    supabase.from('class_rooms').select('id').eq('teacher_id', viewer.id).in('id', classIds).limit(1),
+  ]);
+  if (members.error || rooms.error) throw members.error ?? rooms.error;
+  return (members.data?.length ?? 0) > 0 || (rooms.data?.length ?? 0) > 0;
+}
+
+/**
+ * `finishing`: an attempt started before the subject was archived may still be scored (and its quota hold settled).
+ * `viewer` is needed to open a class-only exam; scoring an attempt that already exists needs none.
+ */
+async function loadBlueprint(
+  supabase: SupabaseClient,
+  blueprintId: string,
+  { finishing = false, viewer = {} }: { finishing?: boolean; viewer?: { id?: string; role?: string } } = {},
+): Promise<Loaded<LoadedBlueprint>> {
   // exam_blueprints.id is a uuid: anything else can only be "not found", not a database error.
   if (!UUID_PATTERN.test(blueprintId)) return { kind: 'not_found' };
   const { data, error } = await readBlueprints((columns) => supabase
@@ -66,7 +90,14 @@ async function loadBlueprint(supabase: SupabaseClient, blueprintId: string, { fi
   if (error) return { kind: 'error', err: error };
   if (!data) return { kind: 'not_found' };
   const row = data as BlueprintRow;
-  if (!(finishing ? isPublishedBlueprint(row) : isLearnerBlueprint(row))) return { kind: 'not_found' };
+  if (isClassOnlyBlueprint(row)) {
+    if (isBlueprintSubjectArchived(row)) return { kind: 'not_found' };
+    try {
+      if (!finishing && !(await mayOpenClassExam(supabase, row, viewer))) return { kind: 'not_found' };
+    } catch (err) {
+      return { kind: 'error', err };
+    }
+  } else if (!(finishing ? isPublishedBlueprint(row) : isLearnerBlueprint(row))) return { kind: 'not_found' };
   return { kind: 'ok', value: { summary: toBlueprintSummary(row), questionIds: blueprintQuestionIds(row) } };
 }
 
@@ -221,7 +252,7 @@ export const examRoutes: FastifyPluginAsync = async (app) => {
       return { attempt_id: found.id, status: found.status, remaining: null, period: null, ...(found.status === 'submitted' ? { result: await storedResult(supabase, app.log, found) } : {}) };
     }
 
-    const bp = await loadBlueprint(supabase, blueprintId);
+    const bp = await loadBlueprint(supabase, blueprintId, { viewer: { id: uid, role: user?.app_metadata?.app_role } });
     if (bp.kind === 'error') {
       request.log.error({ err: bp.err, blueprintId }, 'Failed to load exam blueprint for an attempt');
       return reply.code(500).send(bi('Chưa bắt đầu được bài thi.', 'Could not start the exam.'));
@@ -288,7 +319,8 @@ export const examRoutes: FastifyPluginAsync = async (app) => {
     const { blueprintId } = request.params as { blueprintId: string };
     if (!app.supabase) return reply.code(503).send({ error: 'Dịch vụ đề thi chưa sẵn sàng.' });
 
-    const bp = await loadBlueprint(app.supabase, blueprintId);
+    const viewer = caller(request);
+    const bp = await loadBlueprint(app.supabase, blueprintId, { viewer: { id: viewer?.id ?? viewer?.sub, role: viewer?.app_metadata?.app_role } });
     if (bp.kind === 'error') {
       request.log.error({ err: bp.err, blueprintId }, 'Failed to load exam blueprint');
       return reply.code(500).send({ error: 'Không tải được đề thi.' });

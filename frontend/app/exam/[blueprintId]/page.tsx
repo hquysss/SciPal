@@ -1,5 +1,7 @@
 import type { Metadata } from 'next';
+import { cookies } from 'next/headers';
 import { notFound } from 'next/navigation';
+import { createServerClient } from '@scipal/supabase';
 import { LoadErrorNotice } from '@/components/feedback/LoadErrorNotice';
 import { ExamRunner } from '@/features/exam/ExamRunner';
 import { ExamRoomHeader } from '@/features/exam/ExamListNotices';
@@ -16,7 +18,9 @@ export default async function ExamDetailPage({
   params: Promise<{ blueprintId: string }>;
 }) {
   const { blueprintId } = await params;
-  const result = await getExamBlueprint(blueprintId);
+  const supabase = createServerClient(await cookies());
+  const token = (await supabase.auth.getSession()).data.session?.access_token;
+  const result = await getExamBlueprint(blueprintId, token);
   if (result.kind === 'not_found') notFound();
   if (result.kind === 'error') {
     return (

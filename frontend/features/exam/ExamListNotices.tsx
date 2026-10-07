@@ -58,14 +58,26 @@ export function ExamListHeader() {
 
 export function ExamBlueprintList({ blueprints }: { blueprints: BlueprintSummary[] }) {
   const { lang, t } = useLanguage();
+  const nameOf = (bp: BlueprintSummary) =>
+    lang === 'en' ? (bp.subject_name_en ?? bp.subject_name_vi) : bp.subject_name_vi;
+  const sections = [
+    { format: 'thptqg', title: t({ en: 'National High School Graduation Exam (THPTQG)', vi: 'Kỳ thi tốt nghiệp THPT (THPTQG)' }) },
+    { format: 'dgnl_hcm', title: t({ en: 'Competency Assessment (ĐGNL)', vi: 'Kỳ thi Đánh giá năng lực (ĐGNL)' }) },
+    { format: 'generic', title: t({ en: 'Other practice exams', vi: 'Đề luyện tập khác' }) },
+  ]
+    .map((s) => ({ ...s, items: blueprints.filter((bp) => (bp.format ?? 'generic') === s.format) }))
+    .filter((s) => s.items.length > 0);
   return (
-    <>
-      <h2 className="text-lg font-bold text-ink">
-        {t({ en: `Available exams (${blueprints.length})`, vi: `Đề thi có sẵn (${blueprints.length})` })}
-      </h2>
-      <ul className="grid grid-cols-1 gap-4 md:grid-cols-2">
-        {blueprints.map((bp) => {
-          const subjectName = lang === 'en' ? (bp.subject_name_en ?? bp.subject_name_vi) : bp.subject_name_vi;
+    <div className="flex flex-col gap-8">
+      {sections.map(({ format, title: group, items }) => (
+        <section key={format} aria-label={group} className="flex flex-col gap-4">
+          <h2 className="text-lg font-bold text-ink">
+            {group} ({items.length})
+          </h2>
+          <ul className="grid grid-cols-1 gap-4 md:grid-cols-2">
+        {items.map((bp) => {
+          const subjectName = nameOf(bp);
+          // Subject is no longer the grouping, so it stays on the card.
           return (
             <li key={bp.id}>
               <Link
@@ -95,8 +107,10 @@ export function ExamBlueprintList({ blueprints }: { blueprints: BlueprintSummary
             </li>
           );
         })}
-      </ul>
-    </>
+          </ul>
+        </section>
+      ))}
+    </div>
   );
 }
 

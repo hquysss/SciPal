@@ -42,6 +42,7 @@ export interface BlueprintRow {
   layout?: unknown;
   /** Absent on a database that has not run the exam-import migration: treated as published. */
   status?: string | null;
+  created_by?: string | null;
   subjects: SubjectRef | SubjectRef[] | null;
 }
 
@@ -49,6 +50,9 @@ export interface BlueprintRow {
 export function isPublishedBlueprint(row: Pick<BlueprintRow, 'status'>): boolean {
   return (row.status ?? 'published') === 'published';
 }
+
+/** A teacher's exam for their own classes: not listed publicly, opened only by the author and the classes it is given to. */
+export const isClassOnlyBlueprint = (row: Pick<BlueprintRow, 'status'>): boolean => row.status === 'class_only';
 
 // `*` keeps the listing working on a database that has not run the exam-import migration yet.
 export const BLUEPRINT_COLUMNS = '*, subjects(slug, name_en, name_vi, archived_at)';
