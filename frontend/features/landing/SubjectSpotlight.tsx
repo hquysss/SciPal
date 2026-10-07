@@ -31,7 +31,7 @@ const SHORT_NAME: Record<string, { en: string; vi: string }> = {
 
 function GhostWord({ word, i, ink }: { word: string; i: number; ink?: boolean }) {
   return (
-    <span className={styles.ghostWord} data-ink={ink ? '' : undefined}>
+    <span className={styles.ghostWord} data-ink={ink ? '' : undefined} data-short={word.length <= 10 ? '' : undefined}>
       <span className={styles.clipLine} style={{ '--i': i } as React.CSSProperties}>
         <span>{word}</span>
       </span>
