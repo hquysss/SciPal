@@ -38,6 +38,7 @@ import { createSettingsStore } from './tutor/settings.js';
 import { questionRoutes } from './routes/questions.js';
 import { practiceRoutes } from './routes/practice.js';
 import { profileRoutes } from './routes/profile.js';
+import { gameRoutes } from './routes/games.js';
 
 const app = Fastify({ logger: true });
 
@@ -81,6 +82,7 @@ await app.register(billingCheckoutRoutes);
 await app.register(billingReconciliationRoutes);
 await app.register(authorAiRoutes);
 await app.register(practiceRoutes);
+await app.register(gameRoutes);
 
 app.get('/health', async () => ({ status: 'ok' }));
 

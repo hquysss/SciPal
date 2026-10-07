@@ -14,7 +14,7 @@ describe('routeAccess', () => {
   });
 
   it('needs an account for personal and paying pages', () => {
-    for (const path of ['/profile', '/profile/plan', '/progress', '/teacher/classes', '/admin/plans', '/exam/abc', '/checkout/abc', '/classes', '/dev/blocks']) {
+    for (const path of ['/profile', '/profile/plan', '/progress', '/teacher/classes', '/admin/plans', '/exam/abc', '/checkout/abc', '/classes', '/games', '/games/abc', '/dev/blocks']) {
       expect(routeAccess(path), path).toEqual({ kind: 'account' });
     }
   });

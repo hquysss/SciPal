@@ -7,6 +7,7 @@ import { ArrowRight, ChevronDown, CircleHelp, Gauge, LogOut, Menu, UserRound, X 
 import { useParams, usePathname, useRouter } from 'next/navigation';
 import { useLanguage } from '@scipal/hooks';
 import { LanguageToggle } from './LanguageToggle';
+import { NotificationBell } from '@/features/games/NotificationBell';
 import { ThemeToggle } from './ThemeToggle';
 import { OnlinePill } from './OnlinePill';
 import navStyles from './navbar.module.css';
@@ -84,6 +85,7 @@ export function primaryLinks(lang: 'en' | 'vi', signedIn: boolean, place: 'deskt
     ...(signedIn
       ? [
           { href: '/progress', label: label('Progress', 'Tiến trình') },
+          { href: '/games', label: label('Games', 'Game') },
           ...(isStudent ? [{ href: '/classes', label: label('My classes', 'Lớp của em') }] : []),
           ...(place === 'mobile' ? [{ href: '/profile', label: label('Profile', 'Hồ sơ') }] : []),
         ]
@@ -370,6 +372,7 @@ export function NavBar({ currentSubject }: NavBarProps) {
             <CircleHelp aria-hidden="true" className="h-5 w-5" />
           </Link>
           <OnlinePill />
+          {appRole && <NotificationBell className={navStyles.navLink} />}
           <LanguageToggle />
           {!appRole && <ThemeToggle />}
           {appRole ? (
@@ -440,6 +443,7 @@ export function NavBar({ currentSubject }: NavBarProps) {
         </div>
 
         <div className={`${navStyles.rise} flex shrink-0 items-center gap-2 xl:hidden`} style={{ '--i': 1 } as React.CSSProperties}>
+          {appRole && <NotificationBell />}
           <LanguageToggle />
           <button
             type="button"

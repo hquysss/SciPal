@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { StudentRoster } from '@/features/classes/StudentRoster';
 import { ClassAssignments } from '@/features/classes/ClassAssignments';
+import { ClassGames } from '@/features/games/ClassGames';
 import { getClassRoster } from '@/features/classes/classQueries';
 import { getAuthoringSession } from '@/features/authoring/serverAuth';
 import { LoadErrorNotice } from '@/components/feedback/LoadErrorNotice';
@@ -55,6 +56,8 @@ export default async function ClassDetailPage({
       />
 
       <ClassAssignments classId={id} />
+
+      <ClassGames classId={id} />
     </main>
   );
 }
