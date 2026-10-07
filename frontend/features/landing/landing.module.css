@@ -196,6 +196,10 @@
   translate: 0 calc(var(--p, 0.5) * 12%);
 }
 
+:global(body:has(header[data-bar-hidden])) .hero {
+  min-height: max(34rem, calc(100svh - 1rem));
+}
+
 .heroTop {
   display: grid;
   justify-items: start;
