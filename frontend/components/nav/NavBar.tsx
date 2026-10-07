@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { ArrowRight, ChevronDown, CircleHelp, Gamepad2, Gauge, LogOut, Menu, UserRound, X } from 'lucide-react';
+import { ArrowRight, ChevronDown, CircleHelp, Gauge, LogOut, Menu, UserRound, X } from 'lucide-react';
 import { useParams, usePathname, useRouter } from 'next/navigation';
 import { useLanguage } from '@scipal/hooks';
 import { LanguageToggle } from './LanguageToggle';
@@ -85,8 +85,7 @@ export function primaryLinks(lang: 'en' | 'vi', signedIn: boolean, place: 'deskt
     ...(signedIn
       ? [
           { href: '/progress', label: label('Progress', 'Tiến trình') },
-          // On the desktop bar Games sits in the account menu: a full admin bar already fills 1280px.
-          ...(place === 'mobile' ? [{ href: '/games', label: label('Games', 'Game') }] : []),
+          { href: '/games', label: label('Games', 'Game') },
           ...(isStudent ? [{ href: '/classes', label: label('My classes', 'Lớp của em') }] : []),
           ...(place === 'mobile' ? [{ href: '/profile', label: label('Profile', 'Hồ sơ') }] : []),
         ]
@@ -271,7 +270,7 @@ export function NavBar({ currentSubject }: NavBarProps) {
 
   return (
     <header className={`${navStyles.header} sticky top-0 z-40 w-full text-nav-ink`}>
-      <div className={`${navStyles.bar} relative z-10 mx-auto flex h-16 max-w-7xl items-center justify-between gap-3 px-3 sm:px-4`}>
+      <div className={`${navStyles.bar} relative z-10 mx-auto flex h-16 max-w-7xl min-[1400px]:max-w-[90rem] 2xl:max-w-[100rem] items-center justify-between gap-3 px-3 sm:px-4`}>
         <Link href="/" prefetch={pathname !== '/'} className={`${navStyles.rise} group flex shrink-0 items-center gap-3 font-bold text-nav-ink`}>
           <Image
             src="/logo.svg"
@@ -369,7 +368,7 @@ export function NavBar({ currentSubject }: NavBarProps) {
         </nav>
 
         <div className={`${navStyles.rise} ml-auto hidden shrink-0 items-center justify-end gap-2 2xl:gap-3 xl:flex`} style={{ '--i': 8 } as React.CSSProperties}>
-          {/* Signed in, Help moves into the account menu so a full admin bar fits. */}
+            {/* Signed in, Help is in the account menu. */}
           {!appRole && (
             <Link href="/help" prefetch={false} aria-label={lang === 'en' ? 'Help' : 'Hướng dẫn'} title={lang === 'en' ? 'Help' : 'Hướng dẫn'} aria-current={pathname === '/help' ? 'page' : undefined} className={`${navStyles.navLink} min-h-11 min-w-11 justify-center`}>
             <CircleHelp aria-hidden="true" className="h-5 w-5" />
@@ -415,10 +414,6 @@ export function NavBar({ currentSubject }: NavBarProps) {
                 >
                   <UserRound aria-hidden="true" size={16} />
                   {lang === 'en' ? 'Profile' : 'Hồ sơ'}
-                </Link>
-                <Link href="/games" onClick={() => setOpenNavGroup(null)} aria-current={pathname === '/games' ? 'page' : undefined} className={navStyles.menuItem}>
-                  <Gamepad2 aria-hidden="true" size={16} />
-                  {lang === 'en' ? 'Games' : 'Game'}
                 </Link>
                 <Link href="/help" prefetch={false} onClick={() => setOpenNavGroup(null)} aria-current={pathname === '/help' ? 'page' : undefined} className={navStyles.menuItem}>
                   <CircleHelp aria-hidden="true" size={16} />
