@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { ArrowRight, ChevronDown, CircleHelp, Gauge, LogOut, Menu, UserRound, X } from 'lucide-react';
+import { ArrowRight, ChevronDown, CircleHelp, Gamepad2, Gauge, LogOut, Menu, UserRound, X } from 'lucide-react';
 import { useParams, usePathname, useRouter } from 'next/navigation';
 import { useLanguage } from '@scipal/hooks';
 import { LanguageToggle } from './LanguageToggle';
@@ -85,7 +85,8 @@ export function primaryLinks(lang: 'en' | 'vi', signedIn: boolean, place: 'deskt
     ...(signedIn
       ? [
           { href: '/progress', label: label('Progress', 'Tiến trình') },
-          { href: '/games', label: label('Games', 'Game') },
+          // On the desktop bar Games sits in the account menu: a full admin bar already fills 1280px.
+          ...(place === 'mobile' ? [{ href: '/games', label: label('Games', 'Game') }] : []),
           ...(isStudent ? [{ href: '/classes', label: label('My classes', 'Lớp của em') }] : []),
           ...(place === 'mobile' ? [{ href: '/profile', label: label('Profile', 'Hồ sơ') }] : []),
         ]
@@ -367,7 +368,7 @@ export function NavBar({ currentSubject }: NavBarProps) {
           ))}
         </nav>
 
-        <div className={`${navStyles.rise} ml-auto hidden shrink-0 items-center justify-end gap-3 xl:flex`} style={{ '--i': 8 } as React.CSSProperties}>
+        <div className={`${navStyles.rise} ml-auto hidden shrink-0 items-center justify-end gap-2 2xl:gap-3 xl:flex`} style={{ '--i': 8 } as React.CSSProperties}>
           <Link href="/help" prefetch={false} aria-label={lang === 'en' ? 'Help' : 'Hướng dẫn'} title={lang === 'en' ? 'Help' : 'Hướng dẫn'} aria-current={pathname === '/help' ? 'page' : undefined} className={`${navStyles.navLink} min-h-11 min-w-11 justify-center`}>
             <CircleHelp aria-hidden="true" className="h-5 w-5" />
           </Link>
@@ -411,6 +412,10 @@ export function NavBar({ currentSubject }: NavBarProps) {
                 >
                   <UserRound aria-hidden="true" size={16} />
                   {lang === 'en' ? 'Profile' : 'Hồ sơ'}
+                </Link>
+                <Link href="/games" onClick={() => setOpenNavGroup(null)} aria-current={pathname === '/games' ? 'page' : undefined} className={navStyles.menuItem}>
+                  <Gamepad2 aria-hidden="true" size={16} />
+                  {lang === 'en' ? 'Games' : 'Game'}
                 </Link>
                 {appRole === 'student' && (
                   <Link href="/profile/plan" onClick={() => setOpenNavGroup(null)} aria-current={pathname === '/profile/plan' ? 'page' : undefined} className={navStyles.menuItem}>
