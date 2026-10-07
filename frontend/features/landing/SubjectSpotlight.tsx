@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { ArrowRight } from 'lucide-react';
 import { useLanguage } from '@scipal/hooks';
 import { SubjectProvider } from '@scipal/ui';
@@ -8,6 +8,7 @@ import { Mascot } from '@/components/mascot/Mascot';
 import { SubjectIcon } from '@/components/subject/SubjectIcon';
 import { marqueeOrder } from '@/features/subjects/SubjectMarquee';
 import { getSubjectAction } from '@/features/subjects/subjectAvailability';
+import { useInView } from './countUp';
 import type { EducationLevel } from './educationLevel';
 import type { LandingCatalog } from './getLandingData';
 import styles from './landing.module.css';
@@ -30,6 +31,9 @@ const SHORT_NAME: Record<string, { en: string; vi: string }> = {
   'economic-law-education': { en: 'Economics & Law', vi: 'GDKTPL' },
 };
 
+/** Time each subject stays up before the next one takes over. */
+const AUTOPLAY_MS = 3800;
+
 function GhostWord({ word, i, ink }: { word: string; i: number; ink?: boolean }) {
   return (
     <span className={styles.ghostWord} data-par="" data-ink={ink ? '' : undefined}>
@@ -50,6 +54,9 @@ export function SubjectSpotlight({ level, catalog }: { level: EducationLevel; ca
   const subjects = catalog?.kind === 'ready' ? marqueeOrder(catalog.subjects.filter((s) => s.education_level === level)) : [];
   const [index, setIndex] = useState(0);
   const [moved, setMoved] = useState(false);
+  const [paused, setPaused] = useState(false);
+  const stageRef = useRef<HTMLDivElement>(null);
+  const inView = useInView(stageRef, 0.3);
   const subject = subjects.length ? subjects[index % subjects.length] : null;
   const name = subject ? (lang === 'en' ? subject.name_en : subject.name_vi) : t({ en: 'Every subject', vi: 'Mọi môn học' });
   const headline = subject && SHORT_NAME[subject.slug] ? t(SHORT_NAME[subject.slug]) : name;
@@ -61,6 +68,25 @@ export function SubjectSpotlight({ level, catalog }: { level: EducationLevel; ca
     window.dispatchEvent(new Event('scroll'));
   }, [index]);
 
+  const hold = {
+    onPointerEnter: () => setPaused(true),
+    onPointerLeave: () => setPaused(false),
+    onFocus: () => setPaused(true),
+    onBlur: () => setPaused(false),
+  };
+
+  // Moves on by itself while the carousel is on screen. Hover or focus holds it, and a manual
+  // change restarts the count (the effect re-runs when index changes). Reduced motion: no autoplay.
+  useEffect(() => {
+    if (subjects.length < 2 || paused || !inView) return;
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    const timer = window.setTimeout(() => {
+      setIndex((current) => (current + 1) % subjects.length);
+      setMoved(true);
+    }, AUTOPLAY_MS);
+    return () => window.clearTimeout(timer);
+  }, [index, paused, inView, subjects.length]);
+
   const go = (next: number) => {
     setIndex((next + subjects.length) % subjects.length);
     setMoved(true);
@@ -68,7 +94,7 @@ export function SubjectSpotlight({ level, catalog }: { level: EducationLevel; ca
 
   return (
     <>
-      <div className={styles.spotStage}>
+      <div ref={stageRef} className={styles.spotStage} {...hold}>
         <h2
           id="trust-title"
           className={`${styles.ghost} ${moved ? styles.clipIn : ''}`}
@@ -120,7 +146,7 @@ export function SubjectSpotlight({ level, catalog }: { level: EducationLevel; ca
       </div>
 
       {subjects.length > 1 && (
-        <div className={styles.controls}>
+        <div className={styles.controls} {...hold}>
           <button type="button" className={styles.arrowOutline} onClick={() => go(index - 1)} aria-label={t({ en: 'Previous subject', vi: 'Môn trước' })}>
             <ArrowRight size={20} aria-hidden="true" className={styles.flipX} />
           </button>
