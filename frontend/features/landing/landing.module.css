@@ -1,3 +1,9 @@
+@property --p {
+  syntax: '<number>';
+  inherits: false;
+  initial-value: 0.5;
+}
+
 /*
  * Landing page, editorial layout: dark rounded hero, oversized ghost heading, stacked light/dark bands.
  * Every color is a level token from packages/ui/src/theme/palettes.ts; --nav is the dark band color.
@@ -196,6 +202,10 @@
   translate: 0 calc(var(--p, 0.5) * 12%);
 }
 
+:global(body:has(header[data-bar-hidden])) .hero {
+  min-height: max(34rem, calc(100svh - 1rem));
+}
+
 .heroTop {
   display: grid;
   justify-items: start;
@@ -355,13 +365,25 @@
   line-height: 1.6;
 }
 
+/* Ghost words pushed to both edges; the subject card sits centered over the middle, like the Baseline template. */
+.spotStage {
+  --card-w: clamp(11rem, 16vw, 15rem);
+
+  position: relative;
+  max-width: 88rem;
+  margin: 3rem auto 0;
+}
+
+.spotStage .ghostWord + .ghostWord {
+  text-align: right;
+}
+
 .ghost {
   position: relative;
   z-index: 0;
-  max-width: 88rem;
-  margin: 3rem auto 0;
+  margin: 0;
   color: var(--line);
-  font-size: clamp(3.25rem, 9vw, 9.5rem);
+  font-size: clamp(3rem, 7vw, 8.5rem);
   font-weight: 800;
   line-height: 1.02;
   letter-spacing: -0.04em;
@@ -410,11 +432,11 @@
 .coachCard {
   position: absolute;
   z-index: 1;
-  top: 55%;
+  top: 50%;
   left: 50%;
-  width: clamp(12rem, 17vw, 16rem);
+  width: var(--card-w);
   margin: 0;
-  translate: -50% -50%;
+  transform: translate(-50%, -50%);
 }
 
 .coachTilt {
@@ -459,17 +481,13 @@
   opacity: 0.85;
 }
 
-/* The subject name row: one word block that may wrap, replayed each time the subject changes. */
-.ghostRow:only-child,
-.ghostRow + .ghostRow:last-child {
-  justify-content: flex-start;
+/* A long subject name may wrap within its half; the row keeps its words on the baseline. */
+.ghostWord {
+  white-space: nowrap;
 }
 
-.ghostRow + .ghostRow .ghostWord[data-ink] {
-  --from: -2;
-  --to: 4;
-  max-width: 100%;
-  text-wrap: balance;
+.ghostRow {
+  align-items: flex-end;
 }
 
 .ghost.clipIn .clipLine > span {
@@ -974,15 +992,6 @@
   filter: none;
 }
 
-/* The mascot card is centered with translate, so its entrance rises with scale only. */
-.page .coachCard.revealPending {
-  translate: -50% -45%;
-}
-
-.page .coachCard.revealed {
-  translate: -50% -50%;
-}
-
 /* ---------- responsive ---------- */
 
 @media (min-width: 640px) {
@@ -1005,15 +1014,17 @@
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
-  /* No room to float the card over the words: it sits under them. */
-  .coachCard,
-  .page .coachCard.revealPending,
-  .page .coachCard.revealed {
+  /* No room between the words: the card sits under them. */
+  .ghost {
+    font-size: clamp(2.75rem, 11vw, 5rem);
+  }
+
+  .coachCard {
     position: relative;
     top: auto;
     left: auto;
     margin: 2.5rem auto 0;
-    translate: none;
+    transform: none;
   }
 }
 

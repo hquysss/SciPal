@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { ArrowRight, ChevronDown, CircleHelp, Gauge, LogOut, Menu, UserRound, X } from 'lucide-react';
+import { ArrowRight, ChevronDown, CircleHelp, Gauge, LogOut, Menu, PanelTopClose, PanelTopOpen, UserRound, X } from 'lucide-react';
 import { useParams, usePathname, useRouter } from 'next/navigation';
 import { useLanguage } from '@scipal/hooks';
 import { LanguageToggle } from './LanguageToggle';
@@ -107,12 +107,16 @@ export function roleLinks(role: string | null, lang: 'en' | 'vi', openRequests: 
   return { teacherLinks, adminLinks };
 }
 
+/** Remembers that the reader folded the bar away, for a full-bleed page like the landing hero. */
+const NAV_HIDDEN_KEY = 'scipal_nav_hidden';
+
 export function NavBar({ currentSubject }: NavBarProps) {
   const { lang } = useLanguage();
   const pathname = usePathname();
   const params = useParams();
   const router = useRouter();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [barHidden, setBarHidden] = useState(false);
   const [openNavGroup, setOpenNavGroup] = useState<'admin' | 'teacher' | 'account' | null>(null);
   const [appRole, setAppRole] = useState<AppRole | null>(null);
   const [displayName, setDisplayName] = useState<string | null>(null);
@@ -121,6 +125,22 @@ export function NavBar({ currentSubject }: NavBarProps) {
   const [openRequests, setOpenRequests] = useState(0);
   const mobileMenuButtonRef = useRef<HTMLButtonElement>(null);
   const openNavTriggerRef = useRef<HTMLButtonElement>(null);
+
+  useEffect(() => {
+    try {
+      setBarHidden(window.localStorage.getItem(NAV_HIDDEN_KEY) === '1');
+    } catch {}
+  }, []);
+
+  const toggleBar = () => {
+    setBarHidden((hidden) => {
+      try {
+        window.localStorage.setItem(NAV_HIDDEN_KEY, hidden ? '0' : '1');
+      } catch {}
+      return !hidden;
+    });
+    setMobileOpen(false);
+  };
 
   useEffect(() => {
     setMobileOpen(false);
@@ -269,8 +289,18 @@ export function NavBar({ currentSubject }: NavBarProps) {
   };
 
   return (
-    <header className={`${navStyles.header} sticky top-0 z-40 w-full text-nav-ink`}>
-      <div className={`${navStyles.bar} relative z-10 mx-auto flex h-16 max-w-7xl min-[1400px]:max-w-[90rem] 2xl:max-w-[100rem] items-center justify-between gap-3 px-3 sm:px-4`}>
+    <header className={`${navStyles.header} sticky top-0 z-40 w-full text-nav-ink`} data-bar-hidden={barHidden ? '' : undefined}>
+      <button
+        type="button"
+        className={navStyles.barToggle}
+        onClick={toggleBar}
+        aria-pressed={barHidden}
+        aria-label={barHidden ? (lang === 'en' ? 'Show navigation bar' : 'Hiện thanh điều hướng') : (lang === 'en' ? 'Hide navigation bar' : 'Ẩn thanh điều hướng')}
+        title={barHidden ? (lang === 'en' ? 'Show navigation bar' : 'Hiện thanh điều hướng') : (lang === 'en' ? 'Hide navigation bar' : 'Ẩn thanh điều hướng')}
+      >
+        {barHidden ? <PanelTopOpen size={18} aria-hidden="true" /> : <PanelTopClose size={18} aria-hidden="true" />}
+      </button>
+      <div inert={barHidden} className={`${navStyles.bar} relative z-10 mx-auto flex h-16 max-w-7xl min-[1400px]:max-w-[90rem] 2xl:max-w-[100rem] items-center justify-between gap-3 px-3 sm:px-4`}>
         <Link href="/" prefetch={pathname !== '/'} className={`${navStyles.rise} group flex shrink-0 items-center gap-3 font-bold text-nav-ink`}>
           <Image
             src="/logo.svg"

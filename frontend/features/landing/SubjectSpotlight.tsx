@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { ArrowRight } from 'lucide-react';
 import { useLanguage } from '@scipal/hooks';
 import { SubjectProvider } from '@scipal/ui';
@@ -12,10 +12,33 @@ import type { EducationLevel } from './educationLevel';
 import type { LandingCatalog } from './getLandingData';
 import styles from './landing.module.css';
 
-const LEAD: [{ en: string; vi: string }, { en: string; vi: string }] = [
-  { en: 'Learn', vi: 'Học' },
-  { en: 'Bilingual', vi: 'Song ngữ' },
+type Copy = { en: string; vi: string };
+
+/** The fixed ghost words: top row "Học … Song", the right end of the bottom row "Ngữ". */
+const LEARN: Copy = { en: 'Learn', vi: 'Học' };
+const BI: [Copy, Copy] = [
+  { en: 'In two', vi: 'Song' },
+  { en: 'Languages', vi: 'Ngữ' },
 ];
+
+/** Short forms for names too long to sit in the ghost heading; the card caption keeps the full name. */
+const SHORT_NAME: Record<string, { en: string; vi: string }> = {
+  'experiential-career': { en: 'Career Activities', vi: 'HĐTNHN' },
+  'experiential-activities': { en: 'Experiences', vi: 'HĐTN' },
+  'national-defence': { en: 'Defence Ed.', vi: 'GDQP&AN' },
+  'physical-education': { en: 'Phys. Ed.', vi: 'GDTC' },
+  'economic-law-education': { en: 'Economics & Law', vi: 'GDKTPL' },
+};
+
+function GhostWord({ word, i, ink }: { word: string; i: number; ink?: boolean }) {
+  return (
+    <span className={styles.ghostWord} data-par="" data-ink={ink ? '' : undefined}>
+      <span className={styles.clipLine} style={{ '--i': i } as React.CSSProperties}>
+        <span>{word}</span>
+      </span>
+    </span>
+  );
+}
 
 /**
  * The oversized ghost heading as a subject carousel: the second row is the active subject's name,
@@ -29,8 +52,14 @@ export function SubjectSpotlight({ level, catalog }: { level: EducationLevel; ca
   const [moved, setMoved] = useState(false);
   const subject = subjects.length ? subjects[index % subjects.length] : null;
   const name = subject ? (lang === 'en' ? subject.name_en : subject.name_vi) : t({ en: 'Every subject', vi: 'Mọi môn học' });
+  const headline = subject && SHORT_NAME[subject.slug] ? t(SHORT_NAME[subject.slug]) : name;
   const other = subject ? (lang === 'en' ? subject.name_vi : subject.name_en) : '';
-  const lead = LEAD.map((word) => t(word));
+  const [bi1, bi2] = BI.map((word) => t(word));
+
+  // The words are new elements after a change: have the page write their scroll progress again.
+  useEffect(() => {
+    window.dispatchEvent(new Event('scroll'));
+  }, [index]);
 
   const go = (next: number) => {
     setIndex((next + subjects.length) % subjects.length);
@@ -39,62 +68,56 @@ export function SubjectSpotlight({ level, catalog }: { level: EducationLevel; ca
 
   return (
     <>
-      <h2
-        id="trust-title"
-        className={`${styles.ghost} ${moved ? styles.clipIn : ''}`}
-        aria-label={`${lead.join(' ')} ${name}`}
-        data-clip
-      >
-        <span className={styles.ghostRow} aria-hidden="true" key={`a-${index}`}>
-          {lead.map((word, i) => (
-            <span key={i} className={styles.ghostWord}>
-              <span className={styles.clipLine} style={{ '--i': i } as React.CSSProperties}>
-                <span>{word}</span>
-              </span>
-            </span>
-          ))}
-        </span>
-        <span className={styles.ghostRow} aria-hidden="true" key={`b-${index}`}>
-          <span className={styles.ghostWord} data-ink="">
-            <span className={styles.clipLine} style={{ '--i': 2 } as React.CSSProperties}>
-              <span>{name}</span>
-            </span>
+      <div className={styles.spotStage}>
+        <h2
+          id="trust-title"
+          className={`${styles.ghost} ${moved ? styles.clipIn : ''}`}
+          aria-label={`${t(LEARN)} ${name} ${bi1} ${bi2}`}
+          data-clip
+        >
+          <span className={styles.ghostRow} aria-hidden="true" key={`a-${index}`}>
+            <GhostWord word={t(LEARN)} i={0} />
+            <GhostWord word={bi1} i={1} />
           </span>
-        </span>
-      </h2>
+          <span className={styles.ghostRow} aria-hidden="true" key={`b-${index}`}>
+            <GhostWord word={headline} i={2} ink />
+            <GhostWord word={bi2} i={3} />
+          </span>
+        </h2>
 
-      <figure className={styles.coachCard} data-landing-reveal>
-        {subject ? (
-          <SubjectProvider slug={subject.slug} accentColor={subject.accent_color}>
-            <div className={`${styles.coachTilt} ${styles.spotCard}`} key={subject.slug}>
-              <span className={styles.spotIcon} aria-hidden="true">
-                <SubjectIcon slug={subject.slug} glyph={subject.icon} level={level} />
-              </span>
-              <figcaption className={styles.glassCaption}>
-                <strong>{name}</strong>
-                <span>
-                  <span lang={lang === 'en' ? 'vi' : 'en'}>{other}</span>
-                  {' · '}
-                  {getSubjectAction(subject) ? t({ en: 'Open now', vi: 'Đang mở' }) : t({ en: 'In development', vi: 'Đang biên soạn' })}
+        <figure className={styles.coachCard} data-landing-reveal>
+          {subject ? (
+            <SubjectProvider slug={subject.slug} accentColor={subject.accent_color}>
+              <div className={`${styles.coachTilt} ${styles.spotCard}`} key={subject.slug}>
+                <span className={styles.spotIcon} aria-hidden="true">
+                  <SubjectIcon slug={subject.slug} glyph={subject.icon} level={level} />
                 </span>
+                <figcaption className={styles.glassCaption}>
+                  <strong>{name}</strong>
+                  <span>
+                    <span lang={lang === 'en' ? 'vi' : 'en'}>{other}</span>
+                    {' · '}
+                    {getSubjectAction(subject) ? t({ en: 'Open now', vi: 'Đang mở' }) : t({ en: 'In development', vi: 'Đang biên soạn' })}
+                  </span>
+                </figcaption>
+              </div>
+            </SubjectProvider>
+          ) : (
+            <div className={styles.coachTilt}>
+              <Mascot
+                directions="/mascots/kamran-directions.webp"
+                reactions="/mascots/kamran-reactions.webp"
+                size={180}
+                ariaLabel={t({ en: 'Say hello to Professor Quys', vi: 'Chào Giáo sư Quý' })}
+              />
+              <figcaption className={styles.glassCaption}>
+                <strong>{t({ en: 'Professor Quys', vi: 'Giáo sư Quý' })}</strong>
+                <span>{t({ en: 'Your AI tutor', vi: 'Gia sư AI của bạn' })}</span>
               </figcaption>
             </div>
-          </SubjectProvider>
-        ) : (
-          <div className={styles.coachTilt}>
-            <Mascot
-              directions="/mascots/kamran-directions.webp"
-              reactions="/mascots/kamran-reactions.webp"
-              size={180}
-              ariaLabel={t({ en: 'Say hello to Professor Quys', vi: 'Chào Giáo sư Quý' })}
-            />
-            <figcaption className={styles.glassCaption}>
-              <strong>{t({ en: 'Professor Quys', vi: 'Giáo sư Quý' })}</strong>
-              <span>{t({ en: 'Your AI tutor', vi: 'Gia sư AI của bạn' })}</span>
-            </figcaption>
-          </div>
-        )}
-      </figure>
+          )}
+        </figure>
+      </div>
 
       {subjects.length > 1 && (
         <div className={styles.controls}>

@@ -4,6 +4,8 @@ import { useEffect, useRef, useState } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { ArrowRight, Atom, BookOpen, Braces, Dna, FlaskConical, Globe, Lightbulb, Mail, Sigma, Sparkles } from 'lucide-react';
+import Lenis from 'lenis';
+import 'lenis/dist/lenis.css';
 import { useLanguage } from '@scipal/hooks';
 import { DemandPollBanner } from '@/features/survey/DemandPollBanner';
 import { SubjectMarquee } from '@/features/subjects/SubjectMarquee';
@@ -15,6 +17,7 @@ import { HowItWorks } from './HowItWorks';
 import { TutorSection } from './TutorSection';
 import { PricingSection } from './PricingSection';
 import { InstallAppSection } from './InstallAppSection';
+import { useCountUp, useInView } from './countUp';
 import { IntroCurtain, introPlayed } from './IntroCurtain';
 import { SubjectSpotlight } from './SubjectSpotlight';
 import type { Catalog } from '@/features/billing/billingApi';
@@ -170,7 +173,11 @@ function useClipReveal(pageRef: React.RefObject<HTMLDivElement | null>) {
   }, [pageRef]);
 }
 
-/** Writes each [data-scroll-progress] section's scroll progress (0 entering, 1 leaving) into --p for parallax. */
+/**
+ * Writes each [data-scroll-progress] section's scroll progress (0 entering, 1 leaving) into --p on the
+ * section and on its [data-par] words. --p is registered as non-inherited, so a frame only restyles those
+ * few elements, not the whole subtree. Sections off screen are skipped.
+ */
 function useScrollProgress(pageRef: React.RefObject<HTMLDivElement | null>) {
   useEffect(() => {
     const page = pageRef.current;
@@ -181,8 +188,10 @@ function useScrollProgress(pageRef: React.RefObject<HTMLDivElement | null>) {
       frame = 0;
       for (const section of sections) {
         const box = section.getBoundingClientRect();
-        const progress = (window.innerHeight - box.top) / (window.innerHeight + box.height);
-        section.style.setProperty('--p', Math.min(1, Math.max(0, progress)).toFixed(3));
+        if (box.bottom < 0 || box.top > window.innerHeight) continue;
+        const value = Math.min(1, Math.max(0, (window.innerHeight - box.top) / (window.innerHeight + box.height))).toFixed(3);
+        section.style.setProperty('--p', value);
+        section.querySelectorAll<HTMLElement>('[data-par]').forEach((node) => node.style.setProperty('--p', value));
       }
     };
     const schedule = () => {
@@ -197,6 +206,39 @@ function useScrollProgress(pageRef: React.RefObject<HTMLDivElement | null>) {
       window.removeEventListener('resize', schedule);
     };
   }, [pageRef]);
+}
+
+/**
+ * Lenis smooth scroll for the landing page, desktop only: phones and touch screens keep their
+ * native scroll, as does reduced motion. Held still while the intro curtain covers the page.
+ */
+function useSmoothScroll(ready: boolean) {
+  const lenisRef = useRef<Lenis | null>(null);
+  useEffect(() => {
+    if (!window.matchMedia('(min-width: 769px) and (pointer: fine)').matches || reducedMotion()) return;
+    const lenis = new Lenis({ autoRaf: true, lerp: 0.2, anchors: { offset: -80 } });
+    lenisRef.current = lenis;
+    return () => {
+      lenis.destroy();
+      lenisRef.current = null;
+    };
+  }, []);
+  useEffect(() => {
+    if (ready) lenisRef.current?.start();
+    else lenisRef.current?.stop();
+  }, [ready]);
+}
+
+/** A stat that counts up from zero each time it scrolls into view; the final value is what readers get. */
+function StatValue({ value, suffix = '' }: { value: number; suffix?: string }) {
+  const ref = useRef<HTMLSpanElement>(null);
+  const shown = useCountUp(value, useInView(ref));
+  return (
+    <>
+      <span className={styles.srOnly}>{value + suffix}</span>
+      <span ref={ref} className={styles.statValue} aria-hidden="true">{shown + suffix}</span>
+    </>
+  );
 }
 
 /** Lines that slide up out of a mask, one after another. */
@@ -239,12 +281,13 @@ export function LandingPage({ level, levelSource, catalog, onChangeLevel, pricin
   useRevealOnScroll(pageRef);
   useClipReveal(pageRef);
   useScrollProgress(pageRef);
+  useSmoothScroll(ready);
 
-  const stats: Array<{ value: string; label: Copy }> = [
-    ...(liveSubjects ? [{ value: String(liveSubjects), label: { en: 'Subjects open now', vi: 'Môn đang mở' } }] : []),
-    { value: String(LEVEL_GRADES[level]), label: { en: 'Grades at this level', vi: 'Khối lớp trong cấp' } },
-    { value: '2', label: { en: 'Languages in every lesson', vi: 'Ngôn ngữ trong mỗi bài' } },
-    { value: '100%', label: { en: 'Free lessons', vi: 'Bài học miễn phí' } },
+  const stats: Array<{ value: number; suffix?: string; label: Copy }> = [
+    ...(liveSubjects ? [{ value: liveSubjects, label: { en: 'Subjects open now', vi: 'Môn đang mở' } }] : []),
+    { value: LEVEL_GRADES[level], label: { en: 'Grades at this level', vi: 'Khối lớp trong cấp' } },
+    { value: 2, label: { en: 'Languages in every lesson', vi: 'Ngôn ngữ trong mỗi bài' } },
+    { value: 100, suffix: '%', label: { en: 'Free lessons', vi: 'Bài học miễn phí' } },
   ];
 
   return (
@@ -345,7 +388,7 @@ export function LandingPage({ level, levelSource, catalog, onChangeLevel, pricin
                 <div key={stat.label.en} className={styles.stat} data-landing-reveal>
                   <dt className={styles.srOnly}>{t(stat.label)}</dt>
                   <dd>
-                    <span className={styles.statValue}>{stat.value}</span>
+                    <StatValue value={stat.value} suffix={stat.suffix} />
                     <span className={styles.statLabel} aria-hidden="true">{t(stat.label)}</span>
                   </dd>
                 </div>
