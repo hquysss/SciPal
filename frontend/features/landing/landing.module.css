@@ -359,13 +359,22 @@
   line-height: 1.6;
 }
 
+/* Ghost words on the left, the subject card beside them: nothing covers the words. */
+.spotStage {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: clamp(2rem, 4vw, 4rem);
+  max-width: 88rem;
+  margin: 3rem auto 0;
+}
+
 .ghost {
   position: relative;
   z-index: 0;
-  max-width: 88rem;
-  margin: 3rem auto 0;
+  margin: 0;
   color: var(--line);
-  font-size: clamp(3.25rem, 9vw, 9.5rem);
+  font-size: clamp(3rem, 6.6vw, 8rem);
   font-weight: 800;
   line-height: 1.02;
   letter-spacing: -0.04em;
@@ -412,13 +421,10 @@
 }
 
 .coachCard {
-  position: absolute;
+  position: relative;
   z-index: 1;
-  top: 55%;
-  left: 50%;
-  width: clamp(12rem, 17vw, 16rem);
+  width: clamp(11rem, 16vw, 15rem);
   margin: 0;
-  translate: -50% -50%;
 }
 
 .coachTilt {
@@ -978,15 +984,6 @@
   filter: none;
 }
 
-/* The mascot card is centered with translate, so its entrance rises with scale only. */
-.page .coachCard.revealPending {
-  translate: -50% -45%;
-}
-
-.page .coachCard.revealed {
-  translate: -50% -50%;
-}
-
 /* ---------- responsive ---------- */
 
 @media (min-width: 640px) {
@@ -1009,15 +1006,17 @@
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
-  /* No room to float the card over the words: it sits under them. */
-  .coachCard,
-  .page .coachCard.revealPending,
-  .page .coachCard.revealed {
-    position: relative;
-    top: auto;
-    left: auto;
-    margin: 2.5rem auto 0;
-    translate: none;
+  /* No room beside the words: the card sits under them. */
+  .spotStage {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .ghost {
+    font-size: clamp(2.75rem, 11vw, 5rem);
+  }
+
+  .coachCard {
+    margin-inline: auto;
   }
 }
 

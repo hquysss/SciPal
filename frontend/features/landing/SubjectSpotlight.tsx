@@ -48,62 +48,64 @@ export function SubjectSpotlight({ level, catalog }: { level: EducationLevel; ca
 
   return (
     <>
-      <h2
-        id="trust-title"
-        className={`${styles.ghost} ${moved ? styles.clipIn : ''}`}
-        aria-label={`${lead.join(' ')} ${name}`}
-        data-clip
-      >
-        <span className={styles.ghostRow} aria-hidden="true" key={`a-${index}`}>
-          {lead.map((word, i) => (
-            <span key={i} className={styles.ghostWord}>
-              <span className={styles.clipLine} style={{ '--i': i } as React.CSSProperties}>
-                <span>{word}</span>
+      <div className={styles.spotStage}>
+        <h2
+          id="trust-title"
+          className={`${styles.ghost} ${moved ? styles.clipIn : ''}`}
+          aria-label={`${lead.join(' ')} ${name}`}
+          data-clip
+        >
+          <span className={styles.ghostRow} aria-hidden="true" key={`a-${index}`}>
+            {lead.map((word, i) => (
+              <span key={i} className={styles.ghostWord}>
+                <span className={styles.clipLine} style={{ '--i': i } as React.CSSProperties}>
+                  <span>{word}</span>
+                </span>
               </span>
-            </span>
-          ))}
-        </span>
-        <span className={styles.ghostRow} aria-hidden="true" key={`b-${index}`}>
-          <span className={styles.ghostWord} data-ink="">
-            <span className={styles.clipLine} style={{ '--i': 2 } as React.CSSProperties}>
-              <span>{headline}</span>
+            ))}
+          </span>
+          <span className={styles.ghostRow} aria-hidden="true" key={`b-${index}`}>
+            <span className={styles.ghostWord} data-ink="">
+              <span className={styles.clipLine} style={{ '--i': 2 } as React.CSSProperties}>
+                <span>{headline}</span>
+              </span>
             </span>
           </span>
-        </span>
-      </h2>
+        </h2>
 
-      <figure className={styles.coachCard} data-landing-reveal>
-        {subject ? (
-          <SubjectProvider slug={subject.slug} accentColor={subject.accent_color}>
-            <div className={`${styles.coachTilt} ${styles.spotCard}`} key={subject.slug}>
-              <span className={styles.spotIcon} aria-hidden="true">
-                <SubjectIcon slug={subject.slug} glyph={subject.icon} level={level} />
-              </span>
-              <figcaption className={styles.glassCaption}>
-                <strong>{name}</strong>
-                <span>
-                  <span lang={lang === 'en' ? 'vi' : 'en'}>{other}</span>
-                  {' · '}
-                  {getSubjectAction(subject) ? t({ en: 'Open now', vi: 'Đang mở' }) : t({ en: 'In development', vi: 'Đang biên soạn' })}
+        <figure className={styles.coachCard} data-landing-reveal>
+          {subject ? (
+            <SubjectProvider slug={subject.slug} accentColor={subject.accent_color}>
+              <div className={`${styles.coachTilt} ${styles.spotCard}`} key={subject.slug}>
+                <span className={styles.spotIcon} aria-hidden="true">
+                  <SubjectIcon slug={subject.slug} glyph={subject.icon} level={level} />
                 </span>
+                <figcaption className={styles.glassCaption}>
+                  <strong>{name}</strong>
+                  <span>
+                    <span lang={lang === 'en' ? 'vi' : 'en'}>{other}</span>
+                    {' · '}
+                    {getSubjectAction(subject) ? t({ en: 'Open now', vi: 'Đang mở' }) : t({ en: 'In development', vi: 'Đang biên soạn' })}
+                  </span>
+                </figcaption>
+              </div>
+            </SubjectProvider>
+          ) : (
+            <div className={styles.coachTilt}>
+              <Mascot
+                directions="/mascots/kamran-directions.webp"
+                reactions="/mascots/kamran-reactions.webp"
+                size={180}
+                ariaLabel={t({ en: 'Say hello to Professor Quys', vi: 'Chào Giáo sư Quý' })}
+              />
+              <figcaption className={styles.glassCaption}>
+                <strong>{t({ en: 'Professor Quys', vi: 'Giáo sư Quý' })}</strong>
+                <span>{t({ en: 'Your AI tutor', vi: 'Gia sư AI của bạn' })}</span>
               </figcaption>
             </div>
-          </SubjectProvider>
-        ) : (
-          <div className={styles.coachTilt}>
-            <Mascot
-              directions="/mascots/kamran-directions.webp"
-              reactions="/mascots/kamran-reactions.webp"
-              size={180}
-              ariaLabel={t({ en: 'Say hello to Professor Quys', vi: 'Chào Giáo sư Quý' })}
-            />
-            <figcaption className={styles.glassCaption}>
-              <strong>{t({ en: 'Professor Quys', vi: 'Giáo sư Quý' })}</strong>
-              <span>{t({ en: 'Your AI tutor', vi: 'Gia sư AI của bạn' })}</span>
-            </figcaption>
-          </div>
-        )}
-      </figure>
+          )}
+        </figure>
+      </div>
 
       {subjects.length > 1 && (
         <div className={styles.controls}>
