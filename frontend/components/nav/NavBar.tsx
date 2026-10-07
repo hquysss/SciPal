@@ -117,6 +117,7 @@ export function NavBar({ currentSubject }: NavBarProps) {
   const router = useRouter();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [barHidden, setBarHidden] = useState(false);
+  const [wideBar, setWideBar] = useState(false);
   const [openNavGroup, setOpenNavGroup] = useState<'admin' | 'teacher' | 'account' | null>(null);
   const [appRole, setAppRole] = useState<AppRole | null>(null);
   const [displayName, setDisplayName] = useState<string | null>(null);
@@ -125,6 +126,15 @@ export function NavBar({ currentSubject }: NavBarProps) {
   const [openRequests, setOpenRequests] = useState(0);
   const mobileMenuButtonRef = useRef<HTMLButtonElement>(null);
   const openNavTriggerRef = useRef<HTMLButtonElement>(null);
+
+  // The fold-away toggle exists only where the full bar shows (matches the 1280px rule in the stylesheet).
+  useEffect(() => {
+    const wide = window.matchMedia('(min-width: 1280px)');
+    const sync = () => setWideBar(wide.matches);
+    sync();
+    wide.addEventListener('change', sync);
+    return () => wide.removeEventListener('change', sync);
+  }, []);
 
   useEffect(() => {
     try {
@@ -289,7 +299,7 @@ export function NavBar({ currentSubject }: NavBarProps) {
   };
 
   return (
-    <header className={`${navStyles.header} sticky top-0 z-40 w-full text-nav-ink`} data-bar-hidden={barHidden ? '' : undefined}>
+    <header className={`${navStyles.header} sticky top-0 z-40 w-full text-nav-ink`} data-bar-hidden={barHidden && wideBar ? '' : undefined}>
       <button
         type="button"
         className={navStyles.barToggle}
@@ -300,7 +310,7 @@ export function NavBar({ currentSubject }: NavBarProps) {
       >
         {barHidden ? <PanelTopOpen size={18} aria-hidden="true" /> : <PanelTopClose size={18} aria-hidden="true" />}
       </button>
-      <div inert={barHidden} className={`${navStyles.bar} relative z-10 mx-auto flex h-16 max-w-7xl min-[1400px]:max-w-[90rem] 2xl:max-w-[100rem] items-center justify-between gap-3 px-3 sm:px-4`}>
+      <div inert={barHidden && wideBar} className={`${navStyles.bar} relative z-10 mx-auto flex h-16 max-w-7xl min-[1400px]:max-w-[90rem] 2xl:max-w-[100rem] items-center justify-between gap-3 px-3 sm:px-4`}>
         <Link href="/" prefetch={pathname !== '/'} className={`${navStyles.rise} group flex shrink-0 items-center gap-3 font-bold text-nav-ink`}>
           <Image
             src="/logo.svg"

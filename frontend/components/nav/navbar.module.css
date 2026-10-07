@@ -1,57 +1,65 @@
 .header {
-  padding: 0.625rem 3.75rem 0;
+  padding: 0.625rem 0.75rem 0;
   pointer-events: none;
-}
-
-/* Folds the bar up out of the way; the toggle stays in the top-right corner to bring it back. */
-.barToggle {
-  position: fixed;
-  z-index: 60;
-  top: 0.875rem;
-  right: 0.75rem;
-  display: grid;
-  width: 2.5rem;
-  height: 2.5rem;
-  place-items: center;
-  pointer-events: auto;
-  border: 1px solid color-mix(in srgb, var(--nav-ink) 16%, transparent);
-  border-radius: 999px;
-  background: color-mix(in srgb, var(--nav) 86%, transparent);
-  color: var(--nav-ink);
-  backdrop-filter: blur(14px);
-  -webkit-backdrop-filter: blur(14px);
-  box-shadow: 0 8px 20px -12px color-mix(in srgb, var(--ink) 55%, transparent);
-  cursor: pointer;
-  transition: background-color 160ms ease-out, scale 200ms ease-out;
-}
-
-.barToggle:hover {
-  background: var(--nav);
-  scale: 1.06;
-}
-
-.barToggle:focus-visible {
-  outline: 3px solid var(--focus);
-  outline-offset: 3px;
-}
-
-.header[data-bar-hidden] {
-  height: 0;
-  padding: 0;
-}
-
-.header[data-bar-hidden] .bar {
-  visibility: hidden;
-  opacity: 0;
-  translate: 0 -130%;
 }
 
 .header .bar {
   transition: translate 420ms cubic-bezier(0.16, 1, 0.3, 1), opacity 300ms ease, visibility 0s linear 0s;
 }
 
-.header[data-bar-hidden] .bar {
-  transition: translate 420ms cubic-bezier(0.16, 1, 0.3, 1), opacity 300ms ease, visibility 0s linear 420ms;
+/* The fold-away toggle is for the full desktop bar only; phones keep the bar and its menu button. */
+.barToggle {
+  display: none;
+}
+
+@media (min-width: 1280px) {
+  .header {
+    padding-inline: 3.75rem;
+  }
+
+  /* Folds the bar up out of the way; the toggle stays in the top-right corner to bring it back. */
+  .barToggle {
+    position: fixed;
+    z-index: 60;
+    top: 0.875rem;
+    right: 0.75rem;
+    display: grid;
+    width: 2.5rem;
+    height: 2.5rem;
+    place-items: center;
+    pointer-events: auto;
+    border: 1px solid color-mix(in srgb, var(--nav-ink) 16%, transparent);
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--nav) 86%, transparent);
+    color: var(--nav-ink);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+    box-shadow: 0 8px 20px -12px color-mix(in srgb, var(--ink) 55%, transparent);
+    cursor: pointer;
+    transition: background-color 160ms ease-out, scale 200ms ease-out;
+  }
+
+  .barToggle:hover {
+    background: var(--nav);
+    scale: 1.06;
+  }
+
+  .barToggle:focus-visible {
+    outline: 3px solid var(--focus);
+    outline-offset: 3px;
+  }
+
+  .header[data-bar-hidden] {
+    height: 0;
+    padding: 0;
+  }
+
+  .header[data-bar-hidden] .bar {
+    visibility: hidden;
+    opacity: 0;
+    translate: 0 -130%;
+    transition: translate 420ms cubic-bezier(0.16, 1, 0.3, 1), opacity 300ms ease, visibility 0s linear 420ms;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
