@@ -9,7 +9,7 @@ import type { LessonTerm } from './LessonTermsContext';
 const OPEN_DELAY = 150;
 const CLOSE_DELAY = 200;
 const GUTTER = 16;
-const WIDTH = 320;
+const WIDTH = 448;
 
 /** Closes whichever popover is open, so only one shows at a time. */
 let closeOpen: (() => void) | null = null;

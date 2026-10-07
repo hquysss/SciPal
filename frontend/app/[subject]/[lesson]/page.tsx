@@ -34,7 +34,7 @@ export default async function LessonPage({
   if (result.kind === 'not_found') notFound();
   if (result.kind === 'error') {
     return (
-      <main className="mx-auto w-full max-w-3xl px-4 py-8 sm:px-6 sm:py-12">
+      <main className="mx-auto w-full max-w-5xl px-4 py-8 sm:px-6 sm:py-12">
         <LoadErrorNotice
           message={{ en: 'Could not load this lesson.', vi: 'Chưa tải được bài học.' }}
           retryHref={`/${subjectSlug}/${lessonSlug}`}
@@ -52,7 +52,7 @@ export default async function LessonPage({
   return (
     <LevelScope level={level} className="flex-1">
       <SubjectProvider slug={subject.slug} accentColor={subject.accent_color}>
-        <main className="mx-auto w-full max-w-3xl px-4 pb-28 pt-8 sm:px-6 sm:pt-12">
+        <main className="mx-auto w-full max-w-5xl px-4 pb-28 pt-8 sm:px-6 sm:pt-12">
           <LessonHeader lesson={lesson} />
 
           <LessonPartsView
