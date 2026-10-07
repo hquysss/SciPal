@@ -11,6 +11,7 @@ import { applyShellLevel, getShell } from '@/lib/theme/shellTheme';
 import type { EducationLevel } from './educationLevel';
 import type { InformaticsAvailability, LandingCatalog } from './getLandingData';
 import { HeroStage } from './hero/HeroStage';
+import { LandingTutor } from './LandingTutor';
 import { HowItWorks } from './HowItWorks';
 import { TutorSection } from './TutorSection';
 import { PricingSection } from './PricingSection';
@@ -408,6 +409,7 @@ export function LandingPage({ level, levelSource, catalog, onChangeLevel, pricin
             </div>
           </section>
         </main>
+        <LandingTutor level={level} signedIn={levelSource === 'account'} hidden={!ready} />
 
         <footer className={styles.footer}>
           <div className={styles.footerCols}>

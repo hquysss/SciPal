@@ -22,7 +22,7 @@ export type GuestTutorState =
   | { status: 'used'; message: Bilingual }
   | { status: 'error'; message: Bilingual };
 
-export function GuestTutorView({ state, question, onQuestion, onAsk }: { state: GuestTutorState; question: string; onQuestion: (value: string) => void; onAsk: () => void }) {
+export function GuestTutorView({ state, question, onQuestion, onAsk, suggestions = [] }: { state: GuestTutorState; question: string; onQuestion: (value: string) => void; onAsk: () => void; suggestions?: Bilingual[] }) {
   const { t } = useLanguage();
   const signIn = (
     <Link href={LOGIN} className={buttonVariants({ className: 'self-start' })}>
@@ -68,6 +68,17 @@ export function GuestTutorView({ state, question, onQuestion, onAsk }: { state: 
           }}
         >
           {state.status === 'error' && <Alert tone="danger">{t(state.message)}</Alert>}
+          {suggestions.length > 0 && (
+            <ul className="flex flex-wrap gap-2" aria-label={t({ vi: 'Câu hỏi gợi ý', en: 'Example questions' })}>
+              {suggestions.map((s) => (
+                <li key={s.vi}>
+                  <button type="button" onClick={() => onQuestion(t(s))} className="rounded-full border border-line bg-surface-sunken px-3 py-1.5 text-left text-sm text-ink transition hover:border-action focus-visible:outline focus-visible:outline-2 focus-visible:outline-focus">
+                    {t(s)}
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
           <label htmlFor="guest-tutor-question" className="text-sm font-semibold text-ink">{t({ vi: 'Câu hỏi của em', en: 'Your question' })}</label>
           <textarea
             id="guest-tutor-question"
@@ -87,7 +98,7 @@ export function GuestTutorView({ state, question, onQuestion, onAsk }: { state: 
   );
 }
 
-export function GuestTutor() {
+export function GuestTutor({ suggestions }: { suggestions?: Bilingual[] } = {}) {
   const { lang } = useLanguage();
   const [question, setQuestion] = useState('');
   const [state, setState] = useState<GuestTutorState>({ status: 'idle' });
@@ -112,5 +123,5 @@ export function GuestTutor() {
     }
   };
 
-  return <GuestTutorView state={state} question={question} onQuestion={setQuestion} onAsk={() => void ask()} />;
+  return <GuestTutorView state={state} question={question} onQuestion={setQuestion} onAsk={() => void ask()} suggestions={suggestions} />;
 }
