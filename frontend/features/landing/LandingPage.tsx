@@ -17,6 +17,7 @@ import { HowItWorks } from './HowItWorks';
 import { TutorSection } from './TutorSection';
 import { PricingSection } from './PricingSection';
 import { InstallAppSection } from './InstallAppSection';
+import { useCountUp, useInView } from './countUp';
 import { IntroCurtain, introPlayed } from './IntroCurtain';
 import { SubjectSpotlight } from './SubjectSpotlight';
 import type { Catalog } from '@/features/billing/billingApi';
@@ -222,6 +223,18 @@ function useSmoothScroll(ready: boolean) {
   }, [ready]);
 }
 
+/** A stat that counts up from zero each time it scrolls into view; the final value is what readers get. */
+function StatValue({ value, suffix = '' }: { value: number; suffix?: string }) {
+  const ref = useRef<HTMLSpanElement>(null);
+  const shown = useCountUp(value, useInView(ref));
+  return (
+    <>
+      <span className={styles.srOnly}>{value + suffix}</span>
+      <span ref={ref} className={styles.statValue} aria-hidden="true">{shown + suffix}</span>
+    </>
+  );
+}
+
 /** Lines that slide up out of a mask, one after another. */
 function ClipLines({ lines }: { lines: string[] }) {
   return lines.map((line, index) => (
@@ -264,11 +277,11 @@ export function LandingPage({ level, levelSource, catalog, onChangeLevel, pricin
   useScrollProgress(pageRef);
   useSmoothScroll(ready);
 
-  const stats: Array<{ value: string; label: Copy }> = [
-    ...(liveSubjects ? [{ value: String(liveSubjects), label: { en: 'Subjects open now', vi: 'Môn đang mở' } }] : []),
-    { value: String(LEVEL_GRADES[level]), label: { en: 'Grades at this level', vi: 'Khối lớp trong cấp' } },
-    { value: '2', label: { en: 'Languages in every lesson', vi: 'Ngôn ngữ trong mỗi bài' } },
-    { value: '100%', label: { en: 'Free lessons', vi: 'Bài học miễn phí' } },
+  const stats: Array<{ value: number; suffix?: string; label: Copy }> = [
+    ...(liveSubjects ? [{ value: liveSubjects, label: { en: 'Subjects open now', vi: 'Môn đang mở' } }] : []),
+    { value: LEVEL_GRADES[level], label: { en: 'Grades at this level', vi: 'Khối lớp trong cấp' } },
+    { value: 2, label: { en: 'Languages in every lesson', vi: 'Ngôn ngữ trong mỗi bài' } },
+    { value: 100, suffix: '%', label: { en: 'Free lessons', vi: 'Bài học miễn phí' } },
   ];
 
   return (
@@ -369,7 +382,7 @@ export function LandingPage({ level, levelSource, catalog, onChangeLevel, pricin
                 <div key={stat.label.en} className={styles.stat} data-landing-reveal>
                   <dt className={styles.srOnly}>{t(stat.label)}</dt>
                   <dd>
-                    <span className={styles.statValue}>{stat.value}</span>
+                    <StatValue value={stat.value} suffix={stat.suffix} />
                     <span className={styles.statLabel} aria-hidden="true">{t(stat.label)}</span>
                   </dd>
                 </div>
