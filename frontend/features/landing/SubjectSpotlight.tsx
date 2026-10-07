@@ -26,12 +26,13 @@ const SHORT_NAME: Record<string, { en: string; vi: string }> = {
   'experiential-career': { en: 'Career Activities', vi: 'HĐTNHN' },
   'experiential-activities': { en: 'Experiences', vi: 'HĐTN' },
   'national-defence': { en: 'Defence Ed.', vi: 'GDQP&AN' },
+  'physical-education': { en: 'Phys. Ed.', vi: 'GDTC' },
   'economic-law-education': { en: 'Economics & Law', vi: 'GDKTPL' },
 };
 
 function GhostWord({ word, i, ink }: { word: string; i: number; ink?: boolean }) {
   return (
-    <span className={styles.ghostWord} data-ink={ink ? '' : undefined} data-short={word.length <= 10 ? '' : undefined}>
+    <span className={styles.ghostWord} data-ink={ink ? '' : undefined}>
       <span className={styles.clipLine} style={{ '--i': i } as React.CSSProperties}>
         <span>{word}</span>
       </span>
