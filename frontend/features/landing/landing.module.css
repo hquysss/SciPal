@@ -359,14 +359,24 @@
   line-height: 1.6;
 }
 
-/* Ghost words on the left, the subject card beside them: nothing covers the words. */
+/*
+ * Ghost words pushed to both edges, the subject card in the middle gap between them.
+ * Each word is held to its half minus the card, so a long name wraps instead of running under the card.
+ */
 .spotStage {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  align-items: center;
-  gap: clamp(2rem, 4vw, 4rem);
+  --card-w: clamp(11rem, 16vw, 15rem);
+
+  position: relative;
   max-width: 88rem;
   margin: 3rem auto 0;
+}
+
+.spotStage .ghostWord {
+  max-width: calc(50% - var(--card-w) / 2 - 1.5rem);
+}
+
+.spotStage .ghostWord + .ghostWord {
+  text-align: right;
 }
 
 .ghost {
@@ -421,10 +431,13 @@
 }
 
 .coachCard {
-  position: relative;
+  position: absolute;
   z-index: 1;
-  width: clamp(11rem, 16vw, 15rem);
+  top: 50%;
+  left: 50%;
+  width: var(--card-w);
   margin: 0;
+  transform: translate(-50%, -50%);
 }
 
 .coachTilt {
@@ -469,17 +482,13 @@
   opacity: 0.85;
 }
 
-/* The subject name row: one word block that may wrap, replayed each time the subject changes. */
-.ghostRow:only-child,
-.ghostRow + .ghostRow:last-child {
-  justify-content: flex-start;
+/* A long subject name may wrap within its half; the row keeps its words on the baseline. */
+.ghostWord[data-ink] {
+  text-wrap: balance;
 }
 
-.ghostRow + .ghostRow .ghostWord[data-ink] {
-  --from: -2;
-  --to: 4;
-  max-width: 100%;
-  text-wrap: balance;
+.ghostRow {
+  align-items: flex-end;
 }
 
 .ghost.clipIn .clipLine > span {
@@ -1006,17 +1015,21 @@
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
-  /* No room beside the words: the card sits under them. */
-  .spotStage {
-    grid-template-columns: minmax(0, 1fr);
-  }
-
+  /* No room between the words: the card sits under them. */
   .ghost {
     font-size: clamp(2.75rem, 11vw, 5rem);
   }
 
+  .spotStage .ghostWord {
+    max-width: none;
+  }
+
   .coachCard {
-    margin-inline: auto;
+    position: relative;
+    top: auto;
+    left: auto;
+    margin: 2.5rem auto 0;
+    transform: none;
   }
 }
 

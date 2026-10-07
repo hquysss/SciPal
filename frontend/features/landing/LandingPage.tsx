@@ -4,6 +4,8 @@ import { useEffect, useRef, useState } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { ArrowRight, Atom, BookOpen, Braces, Dna, FlaskConical, Globe, Lightbulb, Mail, Sigma, Sparkles } from 'lucide-react';
+import Lenis from 'lenis';
+import 'lenis/dist/lenis.css';
 import { useLanguage } from '@scipal/hooks';
 import { DemandPollBanner } from '@/features/survey/DemandPollBanner';
 import { SubjectMarquee } from '@/features/subjects/SubjectMarquee';
@@ -199,6 +201,27 @@ function useScrollProgress(pageRef: React.RefObject<HTMLDivElement | null>) {
   }, [pageRef]);
 }
 
+/**
+ * Lenis smooth scroll for the landing page, desktop only: phones and touch screens keep their
+ * native scroll, as does reduced motion. Held still while the intro curtain covers the page.
+ */
+function useSmoothScroll(ready: boolean) {
+  const lenisRef = useRef<Lenis | null>(null);
+  useEffect(() => {
+    if (!window.matchMedia('(min-width: 769px) and (pointer: fine)').matches || reducedMotion()) return;
+    const lenis = new Lenis({ autoRaf: true, anchors: { offset: -80 } });
+    lenisRef.current = lenis;
+    return () => {
+      lenis.destroy();
+      lenisRef.current = null;
+    };
+  }, []);
+  useEffect(() => {
+    if (ready) lenisRef.current?.start();
+    else lenisRef.current?.stop();
+  }, [ready]);
+}
+
 /** Lines that slide up out of a mask, one after another. */
 function ClipLines({ lines }: { lines: string[] }) {
   return lines.map((line, index) => (
@@ -239,6 +262,7 @@ export function LandingPage({ level, levelSource, catalog, onChangeLevel, pricin
   useRevealOnScroll(pageRef);
   useClipReveal(pageRef);
   useScrollProgress(pageRef);
+  useSmoothScroll(ready);
 
   const stats: Array<{ value: string; label: Copy }> = [
     ...(liveSubjects ? [{ value: String(liveSubjects), label: { en: 'Subjects open now', vi: 'Môn đang mở' } }] : []),

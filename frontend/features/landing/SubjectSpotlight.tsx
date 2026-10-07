@@ -12,9 +12,13 @@ import type { EducationLevel } from './educationLevel';
 import type { LandingCatalog } from './getLandingData';
 import styles from './landing.module.css';
 
-const LEAD: [{ en: string; vi: string }, { en: string; vi: string }] = [
-  { en: 'Learn', vi: 'Học' },
-  { en: 'Bilingual', vi: 'Song ngữ' },
+type Copy = { en: string; vi: string };
+
+/** The fixed ghost words: top row "Học … Song", the right end of the bottom row "Ngữ". */
+const LEARN: Copy = { en: 'Learn', vi: 'Học' };
+const BI: [Copy, Copy] = [
+  { en: 'In two', vi: 'Song' },
+  { en: 'Languages', vi: 'Ngữ' },
 ];
 
 /** Short forms for names too long to sit in the ghost heading; the card caption keeps the full name. */
@@ -24,6 +28,16 @@ const SHORT_NAME: Record<string, { en: string; vi: string }> = {
   'national-defence': { en: 'Defence Ed.', vi: 'GDQP&AN' },
   'economic-law-education': { en: 'Economics & Law', vi: 'GDKTPL' },
 };
+
+function GhostWord({ word, i, ink }: { word: string; i: number; ink?: boolean }) {
+  return (
+    <span className={styles.ghostWord} data-ink={ink ? '' : undefined}>
+      <span className={styles.clipLine} style={{ '--i': i } as React.CSSProperties}>
+        <span>{word}</span>
+      </span>
+    </span>
+  );
+}
 
 /**
  * The oversized ghost heading as a subject carousel: the second row is the active subject's name,
@@ -39,7 +53,7 @@ export function SubjectSpotlight({ level, catalog }: { level: EducationLevel; ca
   const name = subject ? (lang === 'en' ? subject.name_en : subject.name_vi) : t({ en: 'Every subject', vi: 'Mọi môn học' });
   const headline = subject && SHORT_NAME[subject.slug] ? t(SHORT_NAME[subject.slug]) : name;
   const other = subject ? (lang === 'en' ? subject.name_vi : subject.name_en) : '';
-  const lead = LEAD.map((word) => t(word));
+  const [bi1, bi2] = BI.map((word) => t(word));
 
   const go = (next: number) => {
     setIndex((next + subjects.length) % subjects.length);
@@ -52,24 +66,16 @@ export function SubjectSpotlight({ level, catalog }: { level: EducationLevel; ca
         <h2
           id="trust-title"
           className={`${styles.ghost} ${moved ? styles.clipIn : ''}`}
-          aria-label={`${lead.join(' ')} ${name}`}
+          aria-label={`${t(LEARN)} ${name} ${bi1} ${bi2}`}
           data-clip
         >
           <span className={styles.ghostRow} aria-hidden="true" key={`a-${index}`}>
-            {lead.map((word, i) => (
-              <span key={i} className={styles.ghostWord}>
-                <span className={styles.clipLine} style={{ '--i': i } as React.CSSProperties}>
-                  <span>{word}</span>
-                </span>
-              </span>
-            ))}
+            <GhostWord word={t(LEARN)} i={0} />
+            <GhostWord word={bi1} i={1} />
           </span>
           <span className={styles.ghostRow} aria-hidden="true" key={`b-${index}`}>
-            <span className={styles.ghostWord} data-ink="">
-              <span className={styles.clipLine} style={{ '--i': 2 } as React.CSSProperties}>
-                <span>{headline}</span>
-              </span>
-            </span>
+            <GhostWord word={headline} i={2} ink />
+            <GhostWord word={bi2} i={3} />
           </span>
         </h2>
 
