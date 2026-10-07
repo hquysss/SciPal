@@ -369,9 +369,12 @@ export function NavBar({ currentSubject }: NavBarProps) {
         </nav>
 
         <div className={`${navStyles.rise} ml-auto hidden shrink-0 items-center justify-end gap-2 2xl:gap-3 xl:flex`} style={{ '--i': 8 } as React.CSSProperties}>
-          <Link href="/help" prefetch={false} aria-label={lang === 'en' ? 'Help' : 'Hướng dẫn'} title={lang === 'en' ? 'Help' : 'Hướng dẫn'} aria-current={pathname === '/help' ? 'page' : undefined} className={`${navStyles.navLink} min-h-11 min-w-11 justify-center`}>
+          {/* Signed in, Help moves into the account menu so a full admin bar fits. */}
+          {!appRole && (
+            <Link href="/help" prefetch={false} aria-label={lang === 'en' ? 'Help' : 'Hướng dẫn'} title={lang === 'en' ? 'Help' : 'Hướng dẫn'} aria-current={pathname === '/help' ? 'page' : undefined} className={`${navStyles.navLink} min-h-11 min-w-11 justify-center`}>
             <CircleHelp aria-hidden="true" className="h-5 w-5" />
           </Link>
+          )}
           <OnlinePill />
           {appRole && <NotificationBell className={navStyles.navLink} />}
           <LanguageToggle />
@@ -416,6 +419,10 @@ export function NavBar({ currentSubject }: NavBarProps) {
                 <Link href="/games" onClick={() => setOpenNavGroup(null)} aria-current={pathname === '/games' ? 'page' : undefined} className={navStyles.menuItem}>
                   <Gamepad2 aria-hidden="true" size={16} />
                   {lang === 'en' ? 'Games' : 'Game'}
+                </Link>
+                <Link href="/help" prefetch={false} onClick={() => setOpenNavGroup(null)} aria-current={pathname === '/help' ? 'page' : undefined} className={navStyles.menuItem}>
+                  <CircleHelp aria-hidden="true" size={16} />
+                  {lang === 'en' ? 'Help' : 'Hướng dẫn'}
                 </Link>
                 {appRole === 'student' && (
                   <Link href="/profile/plan" onClick={() => setOpenNavGroup(null)} aria-current={pathname === '/profile/plan' ? 'page' : undefined} className={navStyles.menuItem}>
