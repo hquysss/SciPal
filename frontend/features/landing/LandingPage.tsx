@@ -4,8 +4,6 @@ import { useEffect, useRef, useState } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { ArrowRight, Atom, BookOpen, Braces, Dna, FlaskConical, Globe, Lightbulb, Mail, Sigma, Sparkles } from 'lucide-react';
-import Lenis from 'lenis';
-import 'lenis/dist/lenis.css';
 import { useLanguage } from '@scipal/hooks';
 import { DemandPollBanner } from '@/features/survey/DemandPollBanner';
 import { SubjectMarquee } from '@/features/subjects/SubjectMarquee';
@@ -208,27 +206,6 @@ function useScrollProgress(pageRef: React.RefObject<HTMLDivElement | null>) {
   }, [pageRef]);
 }
 
-/**
- * Lenis smooth scroll for the landing page, desktop only: phones and touch screens keep their
- * native scroll, as does reduced motion. Held still while the intro curtain covers the page.
- */
-function useSmoothScroll(ready: boolean) {
-  const lenisRef = useRef<Lenis | null>(null);
-  useEffect(() => {
-    if (!window.matchMedia('(min-width: 769px) and (pointer: fine)').matches || reducedMotion()) return;
-    const lenis = new Lenis({ autoRaf: true, lerp: 0.2, anchors: { offset: -80 } });
-    lenisRef.current = lenis;
-    return () => {
-      lenis.destroy();
-      lenisRef.current = null;
-    };
-  }, []);
-  useEffect(() => {
-    if (ready) lenisRef.current?.start();
-    else lenisRef.current?.stop();
-  }, [ready]);
-}
-
 /** A stat that counts up from zero each time it scrolls into view; the final value is what readers get. */
 function StatValue({ value, suffix = '' }: { value: number; suffix?: string }) {
   const ref = useRef<HTMLSpanElement>(null);
@@ -281,7 +258,6 @@ export function LandingPage({ level, levelSource, catalog, onChangeLevel, pricin
   useRevealOnScroll(pageRef);
   useClipReveal(pageRef);
   useScrollProgress(pageRef);
-  useSmoothScroll(ready);
 
   const stats: Array<{ value: number; suffix?: string; label: Copy }> = [
     ...(liveSubjects ? [{ value: liveSubjects, label: { en: 'Subjects open now', vi: 'Môn đang mở' } }] : []),
