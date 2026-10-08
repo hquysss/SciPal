@@ -40,7 +40,9 @@ describe('TopicAccordion', () => {
     lang = 'vi';
     const html = renderToStaticMarkup(<TopicAccordion topics={topics} subjectSlug="informatics" />);
     expect(html).toContain('href="/informatics/tim-kiem"');
-    expect(html).toContain('aria-expanded="true"');
+    // Chapters start closed; the links stay in the page, inert, so the list can unfold smoothly.
+    expect(html).toContain('aria-expanded="false"');
+    expect(html).toContain('Chủ đề 1');
     expect(html).toContain('1 bài học');
     expect(html).not.toContain('Học ngay');
     expect(html).not.toContain('→');
