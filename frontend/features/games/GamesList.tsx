@@ -1,5 +1,7 @@
 'use client';
 
+import Link from 'next/link';
+
 import { useCallback, useEffect, useState } from 'react';
 import { Gamepad2 } from 'lucide-react';
 import { useLanguage } from '@scipal/hooks';
@@ -19,7 +21,7 @@ function GameGrid({ games }: { games: Array<GameCard & { className?: string }> }
     <ul className="grid gap-3 sm:grid-cols-2">
       {games.map((g) => (
         <li key={g.id}>
-          <a href={`/games/${g.id}`} className="flex min-h-24 gap-3 rounded-xl border border-line bg-surface p-4 transition hover:border-action focus-visible:outline focus-visible:outline-2 focus-visible:outline-focus">
+          <Link prefetch={false} href={`/games/${g.id}`} className="flex min-h-24 gap-3 rounded-xl border border-line bg-surface p-4 transition hover:border-action focus-visible:outline focus-visible:outline-2 focus-visible:outline-focus">
             <Gamepad2 aria-hidden="true" className="mt-0.5 h-6 w-6 shrink-0 text-action" />
             <span className="flex min-w-0 flex-col gap-1">
               <span className="break-words font-semibold text-ink">{t(g.title)}</span>
@@ -29,7 +31,7 @@ function GameGrid({ games }: { games: Array<GameCard & { className?: string }> }
                 {g.timeLimitS && <span>{t({ en: `${Math.ceil(g.timeLimitS / 60)} min`, vi: `${Math.ceil(g.timeLimitS / 60)} phút` })}</span>}
               </span>
             </span>
-          </a>
+          </Link>
         </li>
       ))}
     </ul>

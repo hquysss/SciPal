@@ -47,3 +47,19 @@ describe('a failed answer', () => {
   });
 });
 
+
+describe('shared quota state', () => {
+  it('disables questions at zero and restores the refunded request after an error', () => {
+    let state = tutorReducer(initialTutorState([]), { type: 'send', text: 'Hỏi' });
+    state = tutorReducer(state, { type: 'event', event: { event: 'meta', conversation_id: 'c1', remaining: 0, period: 'month' } });
+    expect(state.limitReached).toBe(true);
+    state = tutorReducer(state, { type: 'event', event: { event: 'error', error: { vi: 'Bận', en: 'Busy' }, remaining: 1 } });
+    expect(state.limitReached).toBe(false);
+    expect(state.remaining).toBe(1);
+  });
+});
+
+it('keeps the monthly quota period when the server refuses the first question', () => {
+  const state = tutorReducer(initialTutorState([]), { type: 'failed', status: 429, remaining: 0, period: 'month', error: { vi: 'Hết lượt tháng này', en: 'Monthly limit' } });
+  expect(state.period).toBe('month');
+});

@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
 import { MessagesSquare } from 'lucide-react';
 import { useLanguage } from '@scipal/hooks';
@@ -13,6 +13,9 @@ import { LessonPicker } from './LessonPicker';
 import { TutorChat } from './TutorChat';
 import { TutorAvatar } from './TutorAvatar';
 import styles from './tutor.module.css';
+import { useTutorSession } from './TutorSession';
+import { lessonQuestions } from './examples';
+import { levelOfGrade } from '@/features/landing/educationLevel';
 import type { TutorLesson } from './tutorLessonTypes';
 
 type Bilingual = { vi: string; en: string };
@@ -26,118 +29,106 @@ export function chatLessonId(open: Pick<Open, 'id' | 'messages' | 'lessonId'>, p
   return open.messages.length === 0 ? picked : open.lessonId;
 }
 
-const fresh = (lessonId: string | null = null): Open => ({ key: `new-${Date.now()}`, id: null, messages: [], lessonId });
-
-/** The tutor page: conversations on the left (a drawer on phones), the chat on the right. */
-export function TutorPage({
-  level,
-  lessons,
-  initialConversationId,
-  lessonId,
-}: {
-  level: EducationLevel;
-  lessons: TutorLesson[];
-  initialConversationId?: string;
-  lessonId?: string;
+/** The full page shares the root session with the floating panel. */
+export function TutorPage({ level, lessons, initialConversationId, lessonId }: {
+  level: EducationLevel; lessons: TutorLesson[]; initialConversationId?: string; lessonId?: string;
 }) {
   const { t } = useLanguage();
   const router = useRouter();
-  const [conversations, setConversations] = useState<TutorConversation[] | null>(null);
-  const [open, setOpen] = useState<Open | null>(initialConversationId ? null : fresh(lessonId ?? null));
+  const session = useTutorSession();
+  const [conversationList, setConversationList] = useState<{ owner: string | null; items: TutorConversation[] } | null>(null);
   const [notice, setNotice] = useState<Bilingual | null>(null);
   const [drawer, setDrawer] = useState(false);
-
+  const [loading, setLoading] = useState(false);
+  const request = useRef(0);
+  const mounted = useRef(true);
+  const activeConversation = useRef(session?.chat.conversationId);
+  const initialized = useRef<string | null>(null);
+  const handledRoute = useRef<string | null>(null);
+  const account = useRef(session?.accountId);
+  useLayoutEffect(() => {
+    account.current = session?.accountId;
+    activeConversation.current = session?.chat.conversationId;
+  }, [session?.accountId, session?.chat.conversationId]);
+  const isCurrentAccount = session?.isCurrentAccount;
+  const replace = session?.chat.replace;
+  const setDraft = session?.setDraft;
+  const setPickedLesson = session?.setPickedLesson;
+  const selectedLesson = useCallback((id: string | null) => {
+    const row = lessons.find((lesson) => lesson.id === id);
+    return row ? { id: row.id, title: { vi: row.title_vi, en: row.title_en }, level: levelOfGrade(row.grade) } : null;
+  }, [lessons]);
   const refreshList = useCallback(async () => {
+    const owner = account.current;
     const res = await listConversations();
-    if (res.ok) setConversations(res.data.conversations);
-    else setConversations((old) => old ?? []);
-  }, []);
-
-  const openConversation = useCallback(
-    async (id: string) => {
-      setDrawer(false);
-      setNotice(null);
+    if (!mounted.current || !isCurrentAccount?.(owner)) return;
+    if (res.ok) setConversationList({ owner: owner ?? null, items: res.data.conversations });
+    else setConversationList((old) => old?.owner === owner ? old : { owner: owner ?? null, items: [] });
+  }, [isCurrentAccount]);
+  const openConversation = useCallback(async (id: string) => {
+    const version = ++request.current;
+    const owner = account.current;
+    setDrawer(false); setNotice(null); setLoading(true);
+    try {
       const res = await getConversation(id);
-      if (!res.ok) {
-        setNotice(res.status === 404 ? { en: 'This conversation was not found.', vi: 'Không tìm thấy hội thoại này.' } : res.error);
-        setOpen(fresh());
-        router.replace('/tutor');
-        return;
-      }
-      setOpen({ key: id, id, messages: res.data.messages, lessonId: res.data.conversation.lesson_id });
-      router.replace(`/tutor?conversation=${id}`);
-    },
-    [router],
-  );
-
+      if (version !== request.current || !isCurrentAccount?.(owner)) return;
+      if (!res.ok) { setNotice(res.error); return; }
+      replace?.(res.data.messages, id); setDraft?.('');
+      setPickedLesson?.(selectedLesson(res.data.conversation.lesson_id));
+      router.replace('/tutor?conversation=' + id);
+    } finally {
+      if (mounted.current && version === request.current && isCurrentAccount?.(owner)) setLoading(false);
+    }
+  }, [replace, setDraft, setPickedLesson, selectedLesson, router, isCurrentAccount]);
   useEffect(() => {
-    void refreshList();
-    if (initialConversationId) void openConversation(initialConversationId);
-    // Runs once for the page's first conversation; later ones open from the list.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  const startNew = () => {
-    setDrawer(false);
-    setNotice(null);
-    setOpen(fresh());
-    router.replace('/tutor');
-  };
-
-  const remove = async (id: string) => {
-    const res = await deleteConversation(id);
-    if (!res.ok) return setNotice(res.error);
-    setConversations((old) => (old ?? []).filter((c) => c.id !== id));
-    if (open?.id === id) startNew();
-  };
-
-  const onConversation = useCallback(
-    (id: string) => {
-      setOpen((old) => (old ? { ...old, id } : old));
-      router.replace(`/tutor?conversation=${id}`);
+    if (!session?.signedIn || !session.accountId) { initialized.current = null; handledRoute.current = null; return; }
+    if (initialized.current !== session.accountId) {
+      initialized.current = session.accountId;
+      setNotice(null);
       void refreshList();
-    },
-    [router, refreshList],
-  );
-
-  const lessonTitle = (id: string | null) => {
-    const lesson = id ? lessons.find((l) => l.id === id) : undefined;
-    return lesson ? t({ en: lesson.title_en, vi: lesson.title_vi }) : undefined;
+    }
+    const target = [session.accountId, initialConversationId ?? '', lessonId ?? ''].join(':');
+    if (handledRoute.current === target) return;
+    handledRoute.current = target;
+    request.current += 1;
+    setLoading(false);
+    if (initialConversationId && initialConversationId !== session.chat.conversationId) void openConversation(initialConversationId);
+    else if (lessonId) setPickedLesson?.(selectedLesson(lessonId));
+  }, [session?.signedIn, session?.accountId, initialConversationId, lessonId, openConversation, refreshList, selectedLesson, setPickedLesson, session?.chat.conversationId]);
+  useEffect(() => { mounted.current = true; return () => { mounted.current = false; request.current += 1; }; }, []);
+  const startNew = () => {
+    request.current += 1; setLoading(false); setDrawer(false); setNotice(null);
+    replace?.(); setDraft?.(''); setPickedLesson?.(null); router.replace('/tutor');
   };
-
-  const list = <ConversationList conversations={conversations} activeId={open?.id ?? null} onOpen={(id) => void openConversation(id)} onNew={startNew} onDelete={(id) => void remove(id)} />;
-
-  return (
-    <div className="grid min-h-0 gap-4 lg:grid-cols-[17rem_minmax(0,1fr)] lg:gap-6">
-      <TutorListFrame>{list}</TutorListFrame>
-
-      <div className="flex min-h-0 flex-col gap-3">
-        <div className="flex items-center justify-between gap-3 lg:hidden">
-          <button
-            type="button"
-            onClick={() => setDrawer(true)}
-            className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-edge bg-surface px-4 text-sm font-semibold text-ink hover:bg-surface-sunken focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
-          >
-            <MessagesSquare aria-hidden="true" className="h-4 w-4 text-action" />
-            {t({ en: 'Conversations', vi: 'Hội thoại' })}
-          </button>
-        </div>
-        {notice && <Alert tone="danger">{t(notice)}</Alert>}
-
-        <TutorChatFrame>
-          {open ? (
-            <OpenChat key={open.key} open={open} level={level} lessons={lessons} lessonTitle={lessonTitle} onConversation={onConversation} />
-          ) : (
-            <p className="p-6 text-sm text-ink-muted">{t({ en: 'Loading…', vi: 'Đang tải…' })}</p>
-          )}
-        </TutorChatFrame>
+  const remove = async (id: string) => {
+    const owner = account.current;
+    const res = await deleteConversation(id);
+    if (!mounted.current || !isCurrentAccount?.(owner)) return;
+    if (!res.ok) return setNotice(res.error);
+    setConversationList((old) => old ? { ...old, items: old.items.filter((c) => c.id !== id) } : null);
+    if (activeConversation.current === id) startNew();
+  };
+  const onConversation = useCallback((id: string) => { router.replace('/tutor?conversation=' + id); void refreshList(); }, [router, refreshList]);
+  const conversations = conversationList && conversationList.owner === session?.accountId ? conversationList.items : null;
+  const list = <ConversationList conversations={conversations} activeId={session?.chat.conversationId ?? null} onOpen={(id) => void openConversation(id)} onNew={startNew} onDelete={(id) => void remove(id)} />;
+  const currentLesson = session?.lesson;
+  return <div className="grid min-h-0 gap-4 lg:grid-cols-[17rem_minmax(0,1fr)] lg:gap-6">
+    <TutorListFrame>{list}</TutorListFrame>
+    <div className="flex min-h-0 flex-col gap-3">
+      <div className="flex items-center justify-between gap-3 lg:hidden">
+        <button type="button" onClick={() => setDrawer(true)} className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-edge bg-surface px-4 text-sm font-semibold text-ink hover:bg-surface-sunken focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"><MessagesSquare aria-hidden="true" className="h-4 w-4 text-action" />{t({ en: 'Conversations', vi: 'Hội thoại' })}</button>
       </div>
-
-      <Dialog open={drawer} onClose={() => setDrawer(false)} title={t({ en: 'Conversations', vi: 'Hội thoại' })} closeLabel={t({ en: 'Close', vi: 'Đóng' })} className="max-w-md">
-        {list}
-      </Dialog>
+      {notice && <Alert tone="danger">{t(notice)}</Alert>}
+      <TutorChatFrame>
+        {loading ? <p role="status" className="p-6 text-sm text-ink-muted">{t({ en: 'Loading…', vi: 'Đang tải…' })}</p> : <TutorChat
+          conversationId={session?.chat.conversationId ?? undefined} level={currentLesson?.level ?? level} lessonId={currentLesson?.id}
+          lessonTitle={currentLesson ? t(currentLesson.title) : undefined} suggestions={currentLesson ? lessonQuestions(currentLesson.title) : undefined}
+          picker={session?.chat.messages.length === 0 ? <LessonPicker lessons={lessons} value={currentLesson?.id ?? null} onChange={(id) => setPickedLesson?.(selectedLesson(id))} /> : undefined}
+          onConversation={onConversation} />}
+      </TutorChatFrame>
     </div>
-  );
+    <Dialog open={drawer} onClose={() => setDrawer(false)} title={t({ en: 'Conversations', vi: 'Hội thoại' })} closeLabel={t({ en: 'Close', vi: 'Đóng' })} className="max-w-md">{list}</Dialog>
+  </div>;
 }
 
 /** The conversations column (desktop only; phones open it as a drawer). */
@@ -166,34 +157,5 @@ export function TutorChatFrame({ children }: { children: ReactNode }) {
       </div>
       <div className="min-h-0 flex-1">{children}</div>
     </section>
-  );
-}
-
-/** One chat; a new, empty one offers the lesson picker until the first question is sent. */
-function OpenChat({
-  open,
-  level,
-  lessons,
-  lessonTitle,
-  onConversation,
-}: {
-  open: Open;
-  level: EducationLevel;
-  lessons: TutorLesson[];
-  lessonTitle: (id: string | null) => string | undefined;
-  onConversation: (id: string) => void;
-}) {
-  const [picked, setPicked] = useState<string | null>(open.lessonId);
-  const lessonId = chatLessonId(open, picked);
-  return (
-    <TutorChat
-      conversationId={open.id ?? undefined}
-      lessonId={lessonId ?? undefined}
-      initialMessages={open.messages}
-      level={level}
-      lessonTitle={lessonTitle(lessonId)}
-      picker={open.messages.length > 0 ? undefined : <LessonPicker lessons={lessons} value={picked} onChange={setPicked} />}
-      onConversation={onConversation}
-    />
   );
 }

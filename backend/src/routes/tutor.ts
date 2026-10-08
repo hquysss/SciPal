@@ -33,6 +33,9 @@ export const userId = (request: FastifyRequest) => (request as FastifyRequest & 
 const isAdmin = (request: FastifyRequest) => (request as FastifyRequest & { user?: { app_metadata?: { app_role?: string } } }).user?.app_metadata?.app_role === 'admin';
 
 type Period = 'day' | 'month';
+/** Both the first render and SSE updates show the same tighter limit. */
+const visibleQuota = (daily: number, remaining: number, period: Period) =>
+  daily <= remaining ? { remaining: daily, period: 'day' as const } : { remaining, period };
 const quotaRefused = (limit: number, period: Period, resetsAt: string | null) => ({
   code: 'QUOTA_EXCEEDED',
   ...(period === 'day'
@@ -51,6 +54,29 @@ export const tutorRoutes: FastifyPluginAsync = async (app) => {
     if (!app.supabase) return reply.code(503).send(unavailable);
     if ((request.url.startsWith('/api/tutor/chat') || request.url.startsWith('/api/tutor/voice')) && !(await featureAllowed(app, 'tutor', (request as never as { user?: never }).user))) {
       return reply.code(403).send(featureOff('tutor'));
+    }
+  });
+
+  app.get('/api/tutor/quota', async (request, reply) => {
+    reply.header('Cache-Control', 'no-store');
+    if (isAdmin(request)) return { remaining: null, period: 'day' };
+    const uid = userId(request);
+    if (!uid || !app.supabase) return reply.code(401).send(signIn);
+    const supabase = app.supabase;
+    const settings = app.tutorSettings ? await app.tutorSettings.get() : resolveTutorSettings(null, process.env);
+    const billing = createBillingRepository((name, args) => supabase.rpc(name, args));
+    try {
+      const [{ count, error }, quotas] = await Promise.all([
+        supabase.from('tutor_messages').select('id', { count: 'exact', head: true })
+          .eq('user_id', uid).eq('role', 'user').gte('created_at', vietnamDayStart(new Date()).toISOString()),
+        billing.getEffectiveQuotas(uid, new Date()),
+      ]);
+      const quota = quotas.find((q) => q.metric === 'tutor_requests');
+      if (error || !quota) return reply.code(503).send(quotaUnavailable);
+      return visibleQuota(Math.max(0, settings.dailyLimit - (count ?? 0)), Math.max(0, quota.limit - quota.used - quota.reserved), quota.kind === 'monthly' ? 'month' : 'day');
+    } catch (err) {
+      request.log.error({ err }, 'Failed to read tutor quota');
+      return reply.code(503).send(quotaUnavailable);
     }
   });
 
@@ -232,7 +258,7 @@ export const tutorRoutes: FastifyPluginAsync = async (app) => {
     const limit = settings.dailyLimit;
     const used = count ?? 0;
     if (!admin && !resend && used >= limit) {
-      return reply.code(429).send({ ...msg('Em đã hết lượt hỏi hôm nay. Lượt mới có lúc 0 giờ.', 'You have used today’s questions. New ones arrive at midnight (Vietnam time).'), remaining: 0 });
+      return reply.code(429).send({ ...msg('Em đã hết lượt hỏi hôm nay. Lượt mới có lúc 0 giờ.', 'You have used today’s questions. New ones arrive at midnight (Vietnam time).'), remaining: 0, period: 'day' });
     }
     const capRemaining = Math.max(0, limit - used - (resend ? 0 : 1));
 
@@ -287,9 +313,7 @@ export const tutorRoutes: FastifyPluginAsync = async (app) => {
     // What the student sees: the tighter of the plan quota and the daily cap.
     const shown = (extra: number) => {
       if (!hold) return { remaining: null, period: null };
-      return capRemaining + extra <= hold.remaining + extra
-        ? { remaining: capRemaining + extra, period: 'day' as Period }
-        : { remaining: hold.remaining + extra, period: hold.period };
+      return visibleQuota(capRemaining + extra, hold.remaining + extra, hold.period);
     };
 
     let id = conversationId;

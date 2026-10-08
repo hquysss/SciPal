@@ -22,7 +22,9 @@ SciPal should feel like a warm, modern field notebook for curious Vietnamese lea
 
 ### Navbar
 
-Navbar tô màu chính của cấp: Tiểu học nâu nhạt `#96693F` (chữ trắng), THCS xanh dương `#2563EB`, THPT xanh lá `#15803D`, chưa chọn cấp `#15803D`. Nút đăng nhập và công tắc đang chọn đảo màu (`bg-nav-ink text-nav`). Mục đang ở được đánh dấu bằng vạch 3px ở mép dưới thanh (`navLink` trong `navbar.module.css`), hover là nền mờ bo tròn. Công tắc ngôn ngữ là nhóm viên thuốc cao 32px, vùng bấm mở rộng tới 44px. Nhãn "Ngoại tuyến" chỉ hiện khi mất mạng. Tài khoản: ô chữ cái đầu + tên là link tới Hồ sơ (tên ẩn dưới 1536px; mục "Hồ sơ" không nằm trên thanh desktop, chỉ trong menu mobile) và nút "Đăng xuất" dạng viền; dưới 1536px các mục sát nhau hơn để thanh admin vừa 1280–1366px.
+- Glass shell (07/10): preserve the level's nav/ink tokens; use a nav tint at 83% opacity (45% nav, 55% dark shade), a restrained 4% nav-ink reflection. The local nav-glass-shade token uses light-dark(ink, paper) with the inherited color-scheme; browsers without it use solid nav. Use 18px backdrop blur and 140% saturation. Double shadow: soft outside elevation plus a thin inset highlight. Dropdown/mobile menus use 94% surface, the same blur and a fine edge. Solid token surfaces replace glass with increased contrast or no backdrop-filter. Active links remain filled pills; no new scroll-linked animation. Use the compact menu below 1536px so all student navigation and account controls fit. Both notification instances have distinct channel/list identifiers.
+
+Navbar tô màu chính của cấp: Tiểu học nâu nhạt `#96693F` (chữ trắng), THCS xanh dương `#2563EB`, THPT xanh lá `#15803D`, chưa chọn cấp `#15803D`. Nút đăng nhập và công tắc đang chọn đảo màu (`bg-nav-ink text-nav`). Mục đang ở được đánh dấu bằng viên thuốc đậm và viền sáng mảnh (`navLink` trong `navbar.module.css`); hover dùng nền kính tối hơn để chữ luôn rõ. Công tắc ngôn ngữ là nhóm viên thuốc cao 32px, vùng bấm mở rộng tới 44px. Nhãn "Ngoại tuyến" chỉ hiện khi mất mạng. Tài khoản: ô chữ cái đầu + tên là link tới Hồ sơ (tên ẩn dưới 1536px; mục "Hồ sơ" không nằm trên thanh desktop, chỉ trong menu mobile) và nút "Đăng xuất" dạng viền; dưới 1536px các mục sát nhau hơn để thanh admin vừa 1280–1366px.
 
 ### Trang Môn học
 
@@ -221,6 +223,14 @@ All spacing intent derives from 4px.
 - **Accessibility**: Each choice exposes selected state and a concise error with recovery guidance.
 - **Motion**: No optimistic state transition; use a brief status change only after persistence resolves.
 - **Layout**: Single-column in Profile and responsive at 200% text zoom.
+
+### Shared Professor widget (07/10)
+- One root-layout session serves the floating panel, lesson entries and /tutor. Route navigation and minimising preserve messages, draft, current conversation and in-flight text. Authentication changes reset local private state; saved server conversations remain intact. Guest trial state also survives navigation.
+- The trigger reuses the landing Professor avatar in a 60px circular surface, with a visible focus ring and a soft tinted shadow. Only hover/press and actual answering states animate. A single panel has a 26rem desktop width and fits within the mobile viewport above safe-area insets; it owns its message scroll.
+- Lesson registration supplies bilingual title/level. Suggested questions use lessonQuestions(title) and update even after earlier messages exist. Outside lessons use landing questions; /tutor uses the selected lesson. Switching suggestions never creates a new conversation.
+- Panel header shows the current reading context, minimise and expand controls. Expand uses Next client navigation to preserve the root session. Escape closes and returns focus to the trigger; this is a non-modal dialog, so the page remains usable.
+- Quota is fetched from /api/tutor/quota before a question; floating/full views share loading, unavailable, unlimited, daily/monthly, exhausted and refunded states. No speculative number or client deduction.
+- Motion reference: beui.dev feedback-widget, adapted to CSS only: bottom-right origin, 240ms opacity/translate/scale reveal, 160ms close, retargetable transitions. Reduced motion removes transforms and transitions; high contrast uses solid surfaces.
 
 ## 6. Motion & Interaction
 

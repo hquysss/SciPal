@@ -24,6 +24,12 @@ describe('TutorChatView', () => {
     expect(html).not.toContain('data-example');
   });
 
+  it('keeps lesson suggestions available beside an existing conversation', () => {
+    const html = renderToStaticMarkup(<TutorChatView {...base} messages={[{ role: 'user', content: 'Câu trước' }]} suggestions={[{ vi: 'Giải thích bài mới', en: 'Explain the new lesson' }]} />);
+    expect(html).toContain('Giải thích bài mới');
+    expect(html).toContain('Câu trước');
+  });
+
   it('shows the error with "Thử lại", and disables the composer at the limit', () => {
     const err = renderToStaticMarkup(<TutorChatView {...base} error={{ vi: 'Gia sư đang bận.', en: 'Busy' }} messages={[{ role: 'user', content: 'Hỏi' }]} />);
     expect(err).toContain('Gia sư đang bận.');
