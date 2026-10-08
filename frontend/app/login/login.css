@@ -9,7 +9,7 @@
   position: relative;
   isolation: isolate;
   min-height: 100dvh;
-  padding: 28px 32px 20px;
+  padding: clamp(12px, 2.5vh, 28px) clamp(12px, 3vw, 32px) clamp(10px, 2vh, 20px);
   color: var(--ink);
   background: var(--paper);
   overflow-x: clip;
@@ -53,16 +53,16 @@
   -webkit-backdrop-filter: blur(24px) saturate(130%);
   box-shadow: 0 32px 80px -24px color-mix(in srgb, var(--ink) 16%, transparent), 0 8px 24px -12px color-mix(in srgb, var(--ink) 10%, transparent), inset 0 1px 0 var(--login-reflection);
 }
-.login-stage { position: relative; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); min-height: 680px; }
-.login-form-panel { grid-row: 1; display: flex; align-items: center; justify-content: center; padding: 32px; min-width: 0; opacity: 1; transform: translateX(0); transition: opacity 220ms ease-out, transform var(--login-slide-duration) var(--login-slide-ease), visibility 0s; }
+.login-stage { position: relative; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); min-height: clamp(520px, calc(100dvh - 220px), 760px); }
+.login-form-panel { grid-row: 1; display: flex; align-items: center; justify-content: center; padding: clamp(16px, 3vw, 32px); min-width: 0; opacity: 1; transform: translateX(0); transition: opacity 220ms ease-out, transform var(--login-slide-duration) var(--login-slide-ease), visibility 0s; }
 .login-signin-panel { grid-column: 1; }
 .login-signup-panel { grid-column: 2; }
 .login-signin-panel[aria-hidden='true'] { opacity: 0; transform: translateX(32px); visibility: hidden; transition: opacity 160ms ease-out, transform var(--login-slide-duration) var(--login-slide-ease), visibility 0s 160ms; }
 .login-signup-panel[aria-hidden='true'] { opacity: 0; transform: translateX(-32px); visibility: hidden; transition: opacity 160ms ease-out, transform var(--login-slide-duration) var(--login-slide-ease), visibility 0s 160ms; }
 .login-form-panel[aria-hidden='false'] { transition-delay: 160ms, 80ms, 0s; }
-.katha-login-card { width: 100%; max-width: 380px; }
+.katha-login-card { width: 100%; max-width: clamp(300px, 34vw, 400px); }
 .katha-login-heading { margin-bottom: 24px; }
-.katha-login-heading h1 { font-size: 30px; line-height: 1.25; letter-spacing: -.055em; font-weight: 750; margin: 8px 0 12px; text-wrap: balance; }
+.katha-login-heading h1 { font-size: clamp(24px, 2.4vw, 30px); line-height: 1.25; letter-spacing: -.055em; font-weight: 750; margin: 8px 0 12px; text-wrap: balance; }
 .katha-login-heading p { font-size: 13px; line-height: 1.65; color: var(--ink-muted); margin: 0; }
 .katha-login-heading .login-form-eyebrow { font-size: 10px; letter-spacing: .12em; font-weight: 650; color: var(--action); }
 .katha-login-form { display: flex; flex-direction: column; gap: 12px; }
@@ -117,10 +117,10 @@
 }
 .katha-login-shell[data-mode='signup'] .login-welcome { transform: translateX(-100%); }
 .login-welcome::before { content: ''; position: absolute; inset: 0; pointer-events: none; background: radial-gradient(ellipse at 90% 0%, color-mix(in srgb, var(--nav-ink) 14%, transparent), transparent 55%), radial-gradient(ellipse at 5% 95%, color-mix(in srgb, var(--sky) 18%, transparent), transparent 60%); }
-.login-welcome-content { position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; padding: 40px; text-align: center; }
+.login-welcome-content { position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; padding: clamp(20px, 3vw, 40px); text-align: center; }
 .login-welcome-eyebrow { display: flex; align-items: center; justify-content: center; gap: 8px; margin: 0; font-size: 9px; font-weight: 550; letter-spacing: .12em; line-height: 1.6; }
 .login-welcome-eyebrow svg { width: 18px; height: 18px; flex-shrink: 0; }
-.login-professor-scene { position: relative; display: grid; place-items: center; width: min(100%, 340px); height: 250px; margin: 20px 0 12px; }
+.login-professor-scene { position: relative; display: grid; place-items: center; width: min(100%, 340px); height: clamp(180px, 26vh, 250px); margin: 20px 0 12px; }
 .login-professor-scene::before { content: ''; position: absolute; width: 200px; height: 200px; border-radius: 50%; background: radial-gradient(circle at 40% 25%, color-mix(in srgb, var(--sun) 32%, transparent), color-mix(in srgb, var(--nav-ink) 9%, transparent) 55%, transparent 72%); box-shadow: inset 0 1px 0 color-mix(in srgb, var(--nav-ink) 15%, transparent); }
 .login-orbit { position: absolute; width: 300px; height: 150px; border: 1px solid color-mix(in srgb, var(--nav-ink) 18%, transparent); border-radius: 50%; pointer-events: none; }
 .login-orbit-one { transform: rotate(-32deg); }
@@ -138,7 +138,7 @@
 .katha-mascot-bubble-tail { position: absolute; bottom: -5px; left: calc(50% - 5px); width: 10px; height: 10px; background: var(--surface); transform: rotate(45deg); }
 .katha-mascot-bubble-close { position: absolute; top: -12px; right: -12px; width: 44px; height: 44px; border-radius: 50%; border: 1px solid var(--edge); color: var(--ink); background: var(--surface); font-size: 20px; cursor: pointer; }
 .login-welcome-copy { animation: login-copy-in 300ms var(--login-slide-ease) both; }
-.login-welcome-copy h2 { white-space: pre-line; font-size: 40px; font-weight: 700; line-height: 1.2; letter-spacing: -.055em; margin: 0 0 16px; text-wrap: balance; }
+.login-welcome-copy h2 { white-space: pre-line; font-size: clamp(26px, 3vw, 40px); font-weight: 700; line-height: 1.2; letter-spacing: -.055em; margin: 0 0 16px; text-wrap: balance; }
 .login-welcome-copy > p { max-width: 330px; font-size: 13px; line-height: 1.8; margin: 0 auto; }
 .login-welcome-switch { display: inline-flex; justify-content: center; align-items: center; gap: 24px; min-height: 48px; min-width: 190px; margin: 24px 0 32px; padding: 12px 20px; border: 1px solid color-mix(in srgb, var(--nav-ink) 70%, transparent); border-radius: 999px; background: color-mix(in srgb, var(--nav-ink) 10%, transparent); color: var(--nav-ink); box-shadow: inset 0 1px 0 color-mix(in srgb, var(--nav-ink) 10%, transparent); font: inherit; font-size: 12px; font-weight: 650; cursor: pointer; transition: transform 160ms var(--login-slide-ease), background 160ms ease-out; }
 .login-welcome-switch:hover { background: color-mix(in srgb, var(--nav-ink) 20%, transparent); }
@@ -273,3 +273,5 @@
 .login-form-panel[aria-hidden='false'] .katha-login-form > :nth-child(6) { animation-delay: 200ms; }
 .login-form-panel[aria-hidden='false'] .katha-login-form > :nth-child(7) { animation-delay: 240ms; }
 @keyframes login-form-enter { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+
+.katha-login-input-wrap input:-webkit-autofill { -webkit-text-fill-color: var(--ink); box-shadow: 0 0 0 100px var(--surface) inset; border-radius: inherit; caret-color: var(--ink); }
