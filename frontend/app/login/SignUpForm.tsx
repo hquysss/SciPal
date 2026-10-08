@@ -73,7 +73,15 @@ export function SignUpSent({ email, resend, onResend }: { email: string; resend:
   );
 }
 
-export function SignUpForm({ redirect, signupOpen }: { redirect: string; signupOpen: boolean }) {
+export function SignUpForm({
+  redirect,
+  signupOpen,
+  onSwitchToSignIn,
+}: {
+  redirect: string;
+  signupOpen: boolean;
+  onSwitchToSignIn?: () => void;
+}) {
   const { t } = useLanguage();
   const router = useRouter();
   const [fields, setFields] = useState<SignUpFields>({ name: '', email: '', password: '', confirm: '' });
@@ -202,6 +210,19 @@ export function SignUpForm({ redirect, signupOpen }: { redirect: string; signupO
       <p className="katha-signup-fineprint">
         {t({ vi: 'Tài khoản mới là tài khoản học sinh, gói Free. Giáo viên cần tài khoản giáo viên xin cấp từ quản trị viên.', en: 'New accounts are student accounts on the Free plan. Teachers get a teacher account from an administrator.' })}
       </p>
+
+      {onSwitchToSignIn && (
+        <div className="katha-auth-toggle-prompt">
+          <span>{t({ vi: 'Đã có tài khoản?', en: 'Already have an account?' })}</span>
+          <button
+            type="button"
+            onClick={onSwitchToSignIn}
+            className="katha-auth-toggle-btn"
+          >
+            {t({ vi: 'Đăng nhập ngay', en: 'Sign in now' })}
+          </button>
+        </div>
+      )}
     </form>
   );
 }

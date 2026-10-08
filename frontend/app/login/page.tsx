@@ -408,11 +408,11 @@ function LoginContent() {
               <SciPalMascot size={68} />
             </div>
 
-            <div className="katha-login-heading">
+            <div className="katha-login-heading" key={`heading-${mode}`}>
               <h2 id="katha-login-form-title">
                 {mode === 'signup'
-                  ? lang === 'en' ? 'Join SciPal' : 'Tham gia SciPal'
-                  : lang === 'en' ? 'Welcome back' : 'Chào mừng trở lại'}{' '}
+                  ? 'Hello, Welcome'
+                  : 'Welcome back'}{' '}
                 <span className="katha-login-sparkle" aria-hidden="true">
                   ✨
                 </span>
@@ -420,8 +420,8 @@ function LoginContent() {
               <p>
                 {mode === 'signup'
                   ? lang === 'en'
-                    ? 'Free to start. Upgrade only when you need more.'
-                    : 'Học miễn phí ngay, nâng cấp khi bạn cần thêm.'
+                    ? 'Create an account to start your bilingual learning journey.'
+                    : 'Tạo tài khoản để bắt đầu hành trình học tập song ngữ.'
                   : lang === 'en'
                     ? 'Continue your journey exploring bilingual sciences.'
                     : 'Tiếp tục hành trình khám phá khoa học của bạn.'}
@@ -455,9 +455,23 @@ function LoginContent() {
               </div>
             )}
 
-            <div id="auth-panel" role="tabpanel" aria-labelledby={`auth-tab-${mode}`}>
+            <div
+              id="auth-panel"
+              key={`auth-panel-${mode}`}
+              role="tabpanel"
+              aria-labelledby={`auth-tab-${mode}`}
+              className="katha-auth-panel"
+              data-mode={mode}
+            >
             {mode === 'signup' ? (
-              <SignUpForm redirect={targetDestination} signupOpen={(authSettings?.signupOpen ?? true) && signupSwitch} />
+              <SignUpForm
+                redirect={targetDestination}
+                signupOpen={(authSettings?.signupOpen ?? true) && signupSwitch}
+                onSwitchToSignIn={() => {
+                  setMode('signin');
+                  setError(null);
+                }}
+              />
             ) : (
             <form className="katha-login-form" onSubmit={handleSubmit} noValidate>
               <label className="katha-login-label" htmlFor="login-email">
@@ -569,6 +583,20 @@ function LoginContent() {
                   <ArrowRightIcon className="katha-login-submit-arrow" />
                 )}
               </button>
+
+              <div className="katha-auth-toggle-prompt">
+                <span>{lang === 'en' ? "Don't have an account?" : 'Chưa có tài khoản?'}</span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMode('signup');
+                    setError(null);
+                  }}
+                  className="katha-auth-toggle-btn"
+                >
+                  {lang === 'en' ? 'Register now' : 'Đăng ký ngay'}
+                </button>
+              </div>
             </form>
             )}
 

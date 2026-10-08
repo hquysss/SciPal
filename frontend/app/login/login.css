@@ -2171,6 +2171,7 @@
 
 /* ---- sign in / create account ---- */
 .katha-auth-tabs {
+  position: relative;
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 0.25rem;
@@ -2179,9 +2180,30 @@
   border: 1px solid var(--lg-line);
   border-radius: 0.95rem;
   background: color-mix(in srgb, var(--lg-ink) 4%, var(--lg-pane));
+  isolation: isolate;
+}
+
+.katha-auth-thumb {
+  position: absolute;
+  top: 0.25rem;
+  bottom: 0.25rem;
+  left: 0.25rem;
+  width: calc(50% - 0.25rem);
+  border-radius: 0.75rem;
+  background: var(--lg-field);
+  box-shadow: 0 1px 3px color-mix(in srgb, var(--lg-ink) 12%, transparent), 0 0 0 1px var(--lg-line);
+  transition: transform 280ms cubic-bezier(0.22, 1, 0.36, 1);
+  pointer-events: none;
+  z-index: 0;
+}
+
+.katha-auth-thumb[data-mode='signup'] {
+  transform: translateX(100%);
 }
 
 .katha-auth-tab {
+  position: relative;
+  z-index: 1;
   min-height: 2.75rem;
   border: 0;
   border-radius: 0.75rem;
@@ -2191,7 +2213,7 @@
   font-size: 0.9rem;
   font-weight: 600;
   cursor: pointer;
-  transition: background 180ms ease, color 180ms ease, box-shadow 180ms ease;
+  transition: color 180ms ease;
 }
 
 .katha-auth-tab:hover:not(.is-active) {
@@ -2199,15 +2221,77 @@
 }
 
 .katha-auth-tab.is-active {
-  background: var(--lg-field);
   color: var(--lg-ink);
-  box-shadow: 0 1px 2px color-mix(in srgb, var(--lg-ink) 12%, transparent), 0 0 0 1px var(--lg-line);
+  font-weight: 700;
 }
 
 .katha-auth-tab:focus-visible,
 .katha-oauth-button:focus-visible {
   outline: 2px solid var(--lg-field-focus-line);
   outline-offset: 2px;
+}
+
+.katha-auth-panel {
+  animation: katha-auth-toggle 280ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@keyframes katha-auth-toggle {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.katha-login-heading {
+  animation: katha-heading-toggle 280ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@keyframes katha-heading-toggle {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.katha-auth-toggle-prompt {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+  margin-top: 1.15rem;
+  color: var(--lg-muted);
+  font-size: 0.875rem;
+}
+
+.katha-auth-toggle-btn {
+  border: 0;
+  padding: 0;
+  background: transparent;
+  color: var(--lg-gold);
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  transition: opacity 150ms ease;
+}
+
+.katha-auth-toggle-btn:hover {
+  opacity: 0.8;
+}
+
+.katha-auth-toggle-btn:focus-visible {
+  outline: 2px solid var(--lg-field-focus-line);
+  outline-offset: 2px;
+  border-radius: 4px;
 }
 
 .katha-auth-notice {
@@ -2335,8 +2419,13 @@
 
 @media (prefers-reduced-motion: reduce) {
   .katha-auth-tab,
+  .katha-auth-thumb,
   .katha-oauth-button {
     transition: none;
+  }
+  .katha-auth-panel,
+  .katha-login-heading {
+    animation: none;
   }
   .katha-oauth-button:hover:not(:disabled) {
     transform: none;
