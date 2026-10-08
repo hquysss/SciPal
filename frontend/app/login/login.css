@@ -275,3 +275,11 @@
 @keyframes login-form-enter { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
 
 .katha-login-input-wrap input:-webkit-autofill { -webkit-text-fill-color: var(--ink); box-shadow: 0 0 0 100px var(--surface) inset; border-radius: inherit; caret-color: var(--ink); }
+@media (min-width: 768px) and (min-height: 640px) {
+  .katha-login-page { height: 100dvh; display: flex; flex-direction: column; overflow-y: clip; }
+  .login-mode-control { margin: clamp(6px, 1.5vh, 20px) auto; }
+  .katha-login-shell { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+  .login-stage { flex: 1; min-height: 0; }
+  .login-form-panel { overflow-y: auto; }
+  .login-footer { margin-top: clamp(4px, 1vh, 24px); }
+}
