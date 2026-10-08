@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { LessonEditor } from '@/features/authoring/LessonEditor';
-import { AuthoringApiError, getAuthoringLesson } from '@/features/authoring/authoringQueries';
+import { AuthoringApiError, getAuthoringLesson, getAuthoringOptions } from '@/features/authoring/authoringQueries';
 import { getAuthoringSession } from '@/features/authoring/serverAuth';
 import { PageBreadcrumb } from '@/components/nav/PageBreadcrumb';
 import { Alert } from '@/components/ui/alert';
@@ -41,6 +41,11 @@ export default async function LessonAuthoringStudioPage({
     );
   }
 
+  // Topics this lesson may move to: its own subject, and its grade (or any grade). A failed read just hides the picker.
+  const topics = await getAuthoringOptions(token)
+    .then(({ topics: all }) => all.filter((topic) => topic.subject_id === lesson.subject_id && (topic.grade === null || topic.grade === lesson.grade)))
+    .catch(() => []);
+
   return (
     <main className="mx-auto w-full flex max-w-6xl flex-col gap-6 px-4 py-6 pb-20 sm:px-6 sm:py-8">
       <PageBreadcrumb
@@ -58,6 +63,8 @@ export default async function LessonAuthoringStudioPage({
         initialTitleVi={lesson.title_vi}
         initialTitleEn={lesson.title_en}
         initialSource={lesson.source}
+        initialTopicId={lesson.topic_id}
+        topics={topics}
         initialBlocks={lesson.blocks}
         initialUpdatedAt={lesson.updated_at}
         initialStatus={lesson.status}

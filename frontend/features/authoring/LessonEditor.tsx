@@ -48,6 +48,9 @@ interface LessonEditorProps {
   initialTitleVi: string;
   initialTitleEn?: string;
   initialSource?: string | null;
+  /** The lesson's topic and the topics it may move to (same subject and grade); no list, no picker. */
+  initialTopicId?: string;
+  topics?: Array<{ id: string; name_en: string; name_vi: string }>;
   initialBlocks: Block[];
   initialUpdatedAt: string;
   initialStatus: LessonStatus;
@@ -67,6 +70,8 @@ export function LessonEditor({
   initialTitleVi,
   initialTitleEn = '',
   initialSource = '',
+  initialTopicId,
+  topics = [],
   initialBlocks,
   initialUpdatedAt,
   initialStatus,
@@ -78,6 +83,7 @@ export function LessonEditor({
   const [titleVi, setTitleVi] = useState(initialTitleVi);
   const [titleEn, setTitleEn] = useState(initialTitleEn);
   const [source, setSource] = useState(initialSource ?? '');
+  const [topicId, setTopicId] = useState(initialTopicId);
   const [parts, setParts] = useState(() => splitLessonParts(initialBlocks));
   const blocks = useMemo(() => joinLessonParts(parts), [parts]);
   const [activePart, setActivePart] = useState<LessonPart>('lesson');
@@ -121,8 +127,8 @@ export function LessonEditor({
 
   // The latest values, so the autosaver (created once) always saves what is on screen, and every
   // request sends the lesson version the previous save returned.
-  const latest = useRef({ titleVi, titleEn, source, blocks, updatedAt, status });
-  latest.current = { ...latest.current, titleVi, titleEn, source, blocks };
+  const latest = useRef({ titleVi, titleEn, source, topicId, blocks, updatedAt, status });
+  latest.current = { ...latest.current, titleVi, titleEn, source, topicId, blocks };
 
   // ── Automatic translation ─────────────────────────────────────────────────────────────────
   const autoRef = useRef(autoTranslate);
@@ -213,7 +219,7 @@ export function LessonEditor({
   const saveDraft = useCallback(async (): Promise<SaveOutcome> => {
     await translateLesson('autosave');
     const { titleVi: vi, titleEn: en, blocks: content, updatedAt: version } = latest.current;
-    const body: Record<string, unknown> = { blocks: content, expected_updated_at: version, source: latest.current.source };
+    const body: Record<string, unknown> = { blocks: content, expected_updated_at: version, source: latest.current.source, ...(latest.current.topicId ? { topic_id: latest.current.topicId } : {}) };
     // The API refuses empty titles; keep saving the blocks while a title is being typed.
     if (vi.trim()) body.title_vi = vi;
     if (en.trim()) body.title_en = en;
@@ -302,6 +308,7 @@ export function LessonEditor({
           title_vi: latest.current.titleVi,
           title_en: latest.current.titleEn,
           source: latest.current.source,
+          ...(latest.current.topicId ? { topic_id: latest.current.topicId } : {}),
           blocks: latest.current.blocks,
           expected_updated_at: latest.current.updatedAt,
           ...(canReview ? { status: publishChecked ? 'published' : 'draft' } : {}),
@@ -354,6 +361,7 @@ export function LessonEditor({
           title_vi: latest.current.titleVi,
           title_en: latest.current.titleEn,
           source: latest.current.source,
+          ...(latest.current.topicId ? { topic_id: latest.current.topicId } : {}),
           blocks: latest.current.blocks,
           expected_updated_at: latest.current.updatedAt,
         });
@@ -556,6 +564,24 @@ export function LessonEditor({
               }}
             />
           </label>
+          {topics.length > 1 && (
+            <label className="flex flex-col gap-1.5 text-sm font-semibold text-ink sm:col-span-2">
+              {t({ en: 'Topic', vi: 'Chủ đề' })}
+              <select
+                value={topicId}
+                onChange={(e) => {
+                  setTopicId(e.target.value);
+                  changed();
+                }}
+                disabled={!canEditContent}
+                className="min-h-11 rounded-xl border border-edge bg-surface px-3 text-sm font-normal text-ink focus-visible:outline focus-visible:outline-2 focus-visible:outline-focus disabled:opacity-60"
+              >
+                {topics.map((topic) => (
+                  <option key={topic.id} value={topic.id}>{t({ en: topic.name_en, vi: topic.name_vi })}</option>
+                ))}
+              </select>
+            </label>
+          )}
           <label className="flex flex-col gap-1.5 text-sm font-semibold text-ink sm:col-span-2">
             {t({ en: 'Source', vi: 'Nguồn' })}
             <Input
