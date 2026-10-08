@@ -6,7 +6,7 @@ import { ExternalLink, X } from 'lucide-react';
 import { useLanguage } from '@scipal/hooks';
 import type { EducationLevel } from '@/features/landing/educationLevel';
 import { GuestTutor } from '@/features/guest/GuestTutor';
-import { TutorAvatar } from './TutorAvatar';
+import { TutorAvatarOnline } from './TutorAvatar';
 import { TutorChat } from './TutorChat';
 import { lessonQuestions } from './examples';
 import { useTutorSession } from './TutorSession';
@@ -49,7 +49,7 @@ export function AiTutorPanel({ id, visible = true, lessonId, lessonTitle, sugges
 
   return <div ref={panel} id={id} data-visible={visible || undefined} inert={!visible} aria-hidden={!visible} role="dialog" aria-label={t({ en: 'Professor Quys', vi: 'Giáo sư Quý' })} className={styles.panel}>
     <div className={styles.panelHeader}>
-      <TutorAvatar size="2.5rem" />
+      <TutorAvatarOnline size="2.5rem" />
       <div className="min-w-0 flex-1">
         <p className="text-sm font-bold leading-tight text-ink">{t({ en: 'Professor Quys', vi: 'Giáo sư Quý' })}</p>
         <p className="truncate text-xs text-ink-muted">{session?.chat.streaming ? t({ en: 'Thinking…', vi: 'Thầy đang nghĩ…' }) : t({ en: 'Hints one step at a time', vi: 'Thầy gợi ý từng bước' })}</p>
