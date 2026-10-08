@@ -34,6 +34,14 @@ describe('validateSimulationBlock (shared fixture table)', () => {
 });
 
 describe('defaults', () => {
+  it('accepts a native 3D harmonic simulation and refuses invalid physical settings', () => {
+    const block = { type: 'interactive', kind: 'harmonic-3d', heading: { vi: 'Dao động', en: 'Oscillation' }, offline: true, config: {} };
+    expect(BlockSchema.safeParse(block).success).toBe(true);
+    for (const config of [{ period: 0 }, { amplitude: -1 }, { phase: 361 }]) {
+      const parsed = BlockSchema.safeParse({ ...block, config });
+      expect(parsed.success && parsed.data.type === 'interactive' && validateSimulationBlock(parsed.data).ok).toBe(false);
+    }
+  });
   it('every built-in kind has a valid default', () => {
     for (const kind of BUILT_IN_SIMULATION_KINDS) {
       const block = { type: 'interactive' as const, kind, heading: { vi: 'A', en: 'A' }, offline: true, config: defaultSimulationConfig(kind) };

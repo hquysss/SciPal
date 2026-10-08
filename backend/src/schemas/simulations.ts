@@ -160,6 +160,13 @@ const PendulumConfig = z.object({
   amplitude: finite(1, 30).default(10),
 });
 
+const Harmonic3dConfig = z.object({
+  amplitude: finite(0.1, 5).default(1),
+  period: finite(1, 20).default(8),
+  phase: finite(0, 360).default(90),
+  autoplay: z.boolean().default(true),
+});
+
 const OhmCircuitConfig = z.object({
   /** V */
   voltage: finite(0, 240).default(12),
@@ -284,6 +291,7 @@ export const SIMULATION_CONFIGS = {
   'function-graph': FunctionGraphConfig,
   motion: MotionConfig,
   pendulum: PendulumConfig,
+  'harmonic-3d': Harmonic3dConfig,
   'ohm-circuit': OhmCircuitConfig,
   probability: ProbabilityConfig,
   'unit-circle': UnitCircleConfig,
@@ -304,6 +312,7 @@ export const SIMULATION_KINDS = [
   'function-graph',
   'motion',
   'pendulum',
+  'harmonic-3d',
   'ohm-circuit',
   'probability',
   'unit-circle',
@@ -400,6 +409,7 @@ const MESSAGES: Record<string, Message> = {
   'function-graph': { en: 'Check the expression, the parameters and the axes.', vi: 'Kiểm tra biểu thức, tham số và khoảng trục.' },
   motion: { en: 'Speed 0–100 m/s, angle 0–90°, acceleration −20–20 m/s², g 1–25, time 1–30 s.', vi: 'Vận tốc 0–100 m/s, góc 0–90°, gia tốc −20–20 m/s², g 1–25, thời gian 1–30 s.' },
   pendulum: { en: 'Length 0.1–10 m, mass 0.1–10 kg, k 1–1000 N/m, amplitude 1–30.', vi: 'Chiều dài 0,1–10 m, khối lượng 0,1–10 kg, k 1–1000 N/m, biên độ 1–30.' },
+  'harmonic-3d': { en: 'Amplitude 0.1–5 m, period 1–20 s, initial phase 0–360°.', vi: 'Biên độ 0,1–5 m, chu kì 1–20 s, pha ban đầu 0–360°.' },
   'ohm-circuit': { en: 'Voltage 0–240 V and 1–6 resistors of 0.1–10000 Ω.', vi: 'Hiệu điện thế 0–240 V và 1–6 điện trở từ 0,1–10000 Ω.' },
   probability: { en: 'A coin or a die with 2–20 faces; up to 1000 throws at once.', vi: 'Đồng xu hoặc xúc xắc 2–20 mặt; tung tối đa 1000 lần mỗi đợt.' },
   'unit-circle': { en: 'Start angle 0–360°, snap 1, 5, 15, 30 or 45°.', vi: 'Góc ban đầu 0–360°, bước bắt 1, 5, 15, 30 hoặc 45°.' },

@@ -17,6 +17,7 @@ export const LAB_ICONS: Partial<Record<BuiltInSimulationKind, LucideIcon>> = {
   probability: Dices,
   motion: Rocket,
   pendulum: Orbit,
+  'harmonic-3d': Orbit,
   'ohm-circuit': Zap,
   titration: FlaskConical,
   'algorithm-sim': ArrowDownUp,
