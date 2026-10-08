@@ -1,5 +1,14 @@
 # SciPal Web Design System
 
+## Harmonic motion 3D (08/10)
+
+- Reference: user's 11.81s Bandicam recording of YooBook, extracted frames in the local `yoobook-reference` artifact folder. Reconstruct the classroom board and moving diagram with real meshes; no reference video/image substitutes for simulation geometry. Branding and mascot remain SciPal's surrounding shell.
+- Add `harmonic-3d` to the existing physics Lab and lesson simulation registry. The same config drives Studio preview and learner rendering. No account, external iframe, API key or database migration required.
+- Scene material tokens scoped to `.stage` in `harmonic3d.module.css`: background `#488780`, board `#17605D`, metal frame `#676B6B`, chalk `#F5F6EE`, point M/velocity `#E8F500`, projection `#302DEA`, acceleration `#35ED12`, x-axis `#E61B3F`, y-axis `#287BBA`, labels `#DCA900`, rotation `#C44BCE`. These are physical illustration materials, not subject accents. Surrounding controls use existing semantic tokens.
+- Board 8.4 × 5.1 scene units, raised rods/text/balls with cast shadows. The track radius responds to amplitude with display scale `2.1A/(A+0.4)` (1.5 at the reference default A=1); this bounded illustration scale fits the board while SI readouts remain exact. Title and every label exist in the 3D plane and turn out of sight behind the board. Perspective view can orbit 360°, zoom, and return home; responsive lens fits the whole board on mobile with a minimum 320px scene height.
+- M follows uniform circular motion; P is its projection on Ox. `x=A cos(ωt+φ)`, `v=−Aω sin(ωt+φ)`, `a=−ω²x`, `ω=2π/T`. Arrow directions and relative lengths follow these equations; each vector's maximum length is normalized separately for readability. Numeric x/v/a readouts retain physical units.
+- Autoplay follows the video; reduced motion starts paused and supports a time slider. Play/pause, restart, period/amplitude, camera controls and keyboard arrow/+/-/Home interactions use 44px controls. Animation pauses when hidden or offscreen; WebGL failure leaves formulas, a 2D diagram and controls usable. Screen readers get numeric state and a static diagram description, not 60 live announcements per second.
+
 Scope: toàn bộ web frontend. Nguồn giá trị màu: `packages/ui/src/theme/palettes.ts`; spec: `docs/superpowers/specs/2026-09-26-app-wide-level-theming-design.md`.
 
 ## 1. Atmosphere & Identity

@@ -2,6 +2,7 @@ import type { BuiltInSimulationKind } from '@scipal/types';
 import { algorithmModule } from './algorithm';
 import { functionGraphModule } from './functionGraph';
 import { graph3dModule } from './graph3d';
+import { harmonic3dModule } from './harmonic3d';
 import { labeledDiagramModule } from './labeledDiagram';
 import { motionModule } from './motion';
 import { ohmCircuitModule } from './ohmCircuit';
@@ -24,6 +25,7 @@ export const simulationModules: { [K in BuiltInSimulationKind]: SimulationModule
   titration: titrationModule,
   motion: motionModule,
   pendulum: pendulumModule,
+  'harmonic-3d': harmonic3dModule,
   'ohm-circuit': ohmCircuitModule,
   punnett: punnettModule,
   'labeled-diagram': labeledDiagramModule,

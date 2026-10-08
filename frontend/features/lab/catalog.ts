@@ -75,6 +75,13 @@ export const LAB_ITEMS: readonly LabItem[] = [
     grades: { en: 'Grade 11', vi: 'Lớp 11' },
   },
   {
+    kind: 'harmonic-3d',
+    name: { en: 'Harmonic motion 3D', vi: 'Dao động điều hòa 3D' },
+    subject: 'physics',
+    blurb: { en: 'Rotate the 3D board and follow displacement, velocity and acceleration.', vi: 'Xoay bảng 3D, quan sát li độ, hướng vận tốc và gia tốc.' },
+    grades: { en: 'Grade 11', vi: 'Lớp 11' },
+  },
+  {
     kind: 'ohm-circuit',
     name: { en: "Ohm's law circuit", vi: 'Mạch điện định luật Ohm' },
     subject: 'physics',
