@@ -631,7 +631,7 @@ export const authoringRoutes: FastifyPluginAsync = async (app) => {
       }
       const { data: current, error: readError } = await supabase
         .from('lessons')
-        .select('id, subject_id, created_by, status, updated_at, blocks')
+        .select('id, subject_id, grade, created_by, status, updated_at, blocks')
         .eq('id', id)
         .maybeSingle();
 
@@ -674,6 +674,24 @@ export const authoringRoutes: FastifyPluginAsync = async (app) => {
         const source = asSource(body.source);
         if (source === undefined) return reply.code(400).send({ error: 'Nguồn tối đa 300 ký tự.', error_en: 'The source is at most 300 characters.' });
         updateData.source = source;
+      }
+      if (body.topic_id !== undefined) {
+        const topicId = asText(body.topic_id, 64);
+        if (!topicId || !UUID_PATTERN.test(topicId)) return reply.code(400).send({ error: 'Chủ đề không hợp lệ.', error_en: 'The topic is not valid.' });
+        const { data: topic, error: topicError } = await supabase.from('topics').select('id, subject_id, grade').eq('id', topicId).maybeSingle();
+        if (topicError) {
+          request.log.error({ err: topicError, topicId }, 'Failed to find lesson topic');
+          return reply.code(500).send({ error: 'Không xác minh được chủ đề đã chọn.', error_en: 'Could not check the chosen topic.' });
+        }
+        if (!topic) return reply.code(400).send({ error: 'Chủ đề đã chọn không tồn tại.', error_en: 'The chosen topic does not exist.' });
+        // A lesson moves between topics of its own subject and grade, never across them.
+        if (topic.subject_id !== current.subject_id) {
+          return reply.code(400).send({ error: 'Chủ đề phải thuộc cùng môn học với bài.', error_en: 'The topic must belong to the same subject as the lesson.' });
+        }
+        if (topic.grade !== null && topic.grade !== undefined && topic.grade !== current.grade) {
+          return reply.code(400).send({ error: 'Lớp của bài phải trùng lớp của chủ đề.', error_en: 'The lesson grade must match the topic grade.' });
+        }
+        updateData.topic_id = topic.id;
       }
       if (body.blocks !== undefined) {
         const parsedBlocks = BlockSchema.array().safeParse(body.blocks);

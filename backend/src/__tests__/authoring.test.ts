@@ -148,6 +148,36 @@ describe('authoring lesson status', () => {
     await app.close();
   });
 
+  it('moves a lesson to another topic of its own subject and grade, and refuses any other', async () => {
+    const SUBJECT = '33333333-3333-4333-8333-333333333333';
+    const OTHER_SUBJECT = '44444444-4444-4444-8444-444444444444';
+    const TOPIC = '55555555-5555-4555-8555-555555555555';
+    const lessonRow = { id: LESSON_ID, subject_id: SUBJECT, grade: 11, created_by: teacher.id, status: 'draft', updated_at: STAMP };
+    const write = mockQuery({ data: { id: LESSON_ID, topic_id: TOPIC }, error: null });
+    const app = await buildAuthoringApp(teacher, {
+      lessons: [
+        mockQuery({ data: lessonRow, error: null }),
+        write,
+        mockQuery({ data: lessonRow, error: null }),
+        mockQuery({ data: lessonRow, error: null }),
+        mockQuery({ data: lessonRow, error: null }),
+      ],
+      topics: [
+        mockQuery({ data: { id: TOPIC, subject_id: SUBJECT, grade: 11 }, error: null }),
+        mockQuery({ data: { id: TOPIC, subject_id: OTHER_SUBJECT, grade: 11 }, error: null }),
+        mockQuery({ data: { id: TOPIC, subject_id: SUBJECT, grade: 12 }, error: null }),
+      ],
+    });
+    const send = (payload: Record<string, unknown>) =>
+      app.inject({ method: 'PATCH', url: `/api/authoring/lessons/${LESSON_ID}`, payload: { expected_updated_at: STAMP, ...payload } });
+    expect((await send({ topic_id: TOPIC })).statusCode).toBe(200);
+    expect(write.updated[0]).toMatchObject({ topic_id: TOPIC });
+    expect((await send({ topic_id: TOPIC })).statusCode).toBe(400); // another subject
+    expect((await send({ topic_id: TOPIC })).statusCode).toBe(400); // another grade
+    expect((await send({ topic_id: 'not-a-uuid' })).statusCode).toBe(400);
+    await app.close();
+  });
+
   it('admins can unpublish and republish; republishing records the approver', async () => {
     const unpublishWrite = mockQuery({ data: { id: LESSON_ID, status: 'draft' }, error: null });
     const republishWrite = mockQuery({ data: { id: LESSON_ID, status: 'published' }, error: null });
