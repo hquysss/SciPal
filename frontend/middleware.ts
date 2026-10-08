@@ -135,7 +135,7 @@ export async function middleware(request: NextRequest) {
   const access = routeAccess(pathname);
 
   // Maintenance mode: only the sign-in pages stay open, and admins use the site as normal.
-  if (!under(pathname, '/login') && !under(pathname, '/auth')) {
+  if (process.env.NODE_ENV !== 'development' && !under(pathname, '/login') && !under(pathname, '/auth') && !under(pathname, '/dev')) {
     const site = await siteSettings();
     if (site.maintenance) {
       const updates: CookieUpdate[] = [];

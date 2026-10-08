@@ -1,5 +1,4 @@
 import type { Metadata, Viewport } from 'next';
-import Script from "next/script";
 import { Be_Vietnam_Pro, JetBrains_Mono } from 'next/font/google';
 import './globals.css';
 import { TabTitle } from '@/components/nav/TabTitle';
@@ -52,20 +51,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             }`}
           </style>
         </noscript>
-        {process.env.NODE_ENV === "development" && (
-          <>
-            <Script
-              src="//unpkg.com/react-grab/dist/index.global.js"
-              crossOrigin="anonymous"
-              strategy="beforeInteractive"
-            />
-            <Script
-              src="https://unpkg.com/react-scan/dist/auto.global.js"
-              crossOrigin="anonymous"
-              strategy="beforeInteractive"
-            />
-          </>
-        )}
       </head>
       <body className={`${jetbrainsMono.variable} ${beVietnamPro.variable} font-sans antialiased`}>
         <div data-app-shell="" data-level="neutral" suppressHydrationWarning className="flex min-h-screen flex-col">
