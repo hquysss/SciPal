@@ -13,7 +13,8 @@ const MODES: { id: AuthMode; label: { vi: string; en: string } }[] = [
 export function AuthModeTabs({ mode, onChange }: { mode: AuthMode; onChange: (mode: AuthMode) => void }) {
   const { t } = useLanguage();
   return (
-    <div className="katha-auth-tabs" role="tablist" aria-label={t({ vi: 'Chọn cách vào SciPal', en: 'How to enter SciPal' })}>
+    <div className="katha-auth-tabs" data-mode={mode} role="tablist" aria-label={t({ vi: 'Chọn cách vào SciPal', en: 'How to enter SciPal' })}>
+      <span className="katha-auth-thumb" data-mode={mode} aria-hidden="true" />
       {MODES.map(({ id, label }) => (
         <button
           key={id}
