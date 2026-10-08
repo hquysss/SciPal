@@ -19,6 +19,7 @@ Mọi agent bắt đầu phiên làm việc **BẮT BUỘC** đọc theo thứ t
    - [`.agents/rules/01-architecture.md`](.agents/rules/01-architecture.md) — Kiến trúc hệ thống, data flow, boundaries và quyết định kiến trúc đã khóa.
    - [`.agents/rules/02-domain-rules.md`](.agents/rules/02-domain-rules.md) — Quy tắc nghiệp vụ đặc thù (content blocks, RLS, tokens, React 18/19 constraints).
    - [`.agents/rules/03-agent-workflow.md`](.agents/rules/03-agent-workflow.md) — Quy trình làm việc bắt buộc của agent (verify, TDD, review).
+   - [`.agents/rules/04-ui-ux-redesign.md`](.agents/rules/04-ui-ux-redesign.md) — Hướng dẫn & quy tắc thiết kế lại giao diện UI/UX (Checklist chuẩn bị & quy trình 6 bước thực thi).
 2. **Trạng thái công việc hiện tại**:
    - [`PROJECT_STATE.md`](PROJECT_STATE.md) — Mục tiêu đang làm, task dở dang, quyết định gần nhất và phần "Do Not Redo".
 3. **Kế hoạch thực thi chi tiết**:

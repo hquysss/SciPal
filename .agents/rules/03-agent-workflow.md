@@ -26,6 +26,7 @@ Tất cả AI Agent khi tham gia phát triển SciPal bắt buộc phải tuân 
   - Không thay đổi kiến trúc hệ thống (như chuyển thư viện, thay đổi cấu trúc monorepo) nếu chưa có sự đồng ý rõ ràng từ người dùng.
   - Không tự thêm thư viện ngoài (dependencies) khi các gói hiện có đã đáp ứng đủ.
 - **Tôn trọng mã nguồn người dùng**: Không bao giờ ghi đè hoặc xóa bỏ các thay đổi tùy chỉnh của người dùng trừ khi được yêu cầu trực tiếp.
+- **Tái thiết kế & cải tiến giao diện (UI/UX Redesign)**: Khi thực hiện các task liên quan đến tinh chỉnh, làm mới giao diện, bắt buộc tuân thủ đầy đủ Checklist chuẩn bị và Quy trình 6 bước tại [`04-ui-ux-redesign.md`](./04-ui-ux-redesign.md).
 
 ## 3. Quy trình Kiểm thử & Xác thực (Verification Mandatory)
 Trước khi đánh dấu một task là hoàn tất hoặc thông báo thành công cho người dùng:
