@@ -55,6 +55,45 @@ const answered = (extra: Record<string, MockBuilder | MockBuilder[]> = {}) => ({
 beforeEach(() => { rpcCalls.length = 0; });
 
 describe('Tutor requests follow the plan quota', () => {
+  it('reads remaining requests before any chat, including reserved requests', async () => {
+    const { app, ai } = await build({
+      tutor_messages: counted(0),
+      'rpc:billing_get_effective_quotas': ok([{ metric: 'tutor_requests', kind: 'daily', quota_limit: 5, used: 1, reserved: 1, source: 'plan', expires_at: null, resets_at: null }]),
+    });
+    const res = await app.inject({ method: 'GET', url: '/api/tutor/quota' });
+    expect(res.statusCode).toBe(200);
+    expect(res.json()).toMatchObject({ remaining: 3, period: 'day' });
+    expect(ai.calls).toHaveLength(0);
+    expect(names()).toEqual(['billing_get_effective_quotas']);
+    await app.close();
+  });
+
+  it('reads the tighter daily cap even for a monthly plan', async () => {
+    const { app } = await build({
+      tutor_messages: counted(28),
+      'rpc:billing_get_effective_quotas': ok([{ metric: 'tutor_requests', kind: 'monthly', quota_limit: 200, used: 0, reserved: 0, source: 'plan', expires_at: null, resets_at: null }]),
+    });
+    expect((await app.inject({ method: 'GET', url: '/api/tutor/quota' })).json()).toMatchObject({ remaining: 2, period: 'day' });
+    await app.close();
+  });
+
+  it('reads unlimited quota for admins without a billing call', async () => {
+    const { app } = await build({}, provider([]), admin);
+    const res = await app.inject({ method: 'GET', url: '/api/tutor/quota' });
+    expect(res.statusCode).toBe(200);
+    expect(res.json()).toMatchObject({ remaining: null, period: 'day' });
+    expect(rpcCalls).toHaveLength(0);
+    await app.close();
+  });
+
+  it('does not invent remaining requests when quota storage fails', async () => {
+    const { app } = await build({ tutor_messages: counted(0), 'rpc:billing_get_effective_quotas': refused('db down') });
+    const res = await app.inject({ method: 'GET', url: '/api/tutor/quota' });
+    expect(res.statusCode).toBe(503);
+    expect(res.json().code).toBe('BILLING_UNAVAILABLE');
+    await app.close();
+  });
+
   it('holds a request before asking the model and counts it once the answer is stored', async () => {
     const { app } = await build(answered({ 'rpc:billing_reserve_quota': reservation(4) }));
     const res = await ask(app);

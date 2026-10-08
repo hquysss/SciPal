@@ -127,9 +127,9 @@ export function NavBar({ currentSubject }: NavBarProps) {
   const mobileMenuButtonRef = useRef<HTMLButtonElement>(null);
   const openNavTriggerRef = useRef<HTMLButtonElement>(null);
 
-  // The fold-away toggle exists only where the full bar shows (matches the 1280px rule in the stylesheet).
+  // The fold-away toggle exists only where the full bar shows (matches the 1536px rule in the stylesheet).
   useEffect(() => {
-    const wide = window.matchMedia('(min-width: 1280px)');
+    const wide = window.matchMedia('(min-width: 1536px)');
     const sync = () => setWideBar(wide.matches);
     sync();
     wide.addEventListener('change', sync);
@@ -323,7 +323,7 @@ export function NavBar({ currentSubject }: NavBarProps) {
           <span className="text-xl font-black leading-tight tracking-tight">SciPal</span>
         </Link>
 
-        <nav aria-label={lang === 'en' ? 'Main navigation' : 'Điều hướng chính'} className={`${navStyles.navList} hidden items-center gap-1 xl:ml-4 xl:flex`}>
+        <nav aria-label={lang === 'en' ? 'Main navigation' : 'Điều hướng chính'} className={`${navStyles.navList} hidden items-center gap-1 2xl:ml-4 2xl:flex`}>
           <Link
             href="/"
             prefetch={pathname !== '/'}
@@ -407,7 +407,7 @@ export function NavBar({ currentSubject }: NavBarProps) {
           ))}
         </nav>
 
-        <div className={`${navStyles.rise} ml-auto hidden shrink-0 items-center justify-end gap-2 2xl:gap-3 xl:flex`} style={{ '--i': 8 } as React.CSSProperties}>
+        <div className={`${navStyles.rise} ml-auto hidden shrink-0 items-center justify-end gap-2 2xl:gap-3 2xl:flex`} style={{ '--i': 8 } as React.CSSProperties}>
             {/* Signed in, Help is in the account menu. */}
           {!appRole && (
             <Link href="/help" prefetch={false} aria-label={lang === 'en' ? 'Help' : 'Hướng dẫn'} title={lang === 'en' ? 'Help' : 'Hướng dẫn'} aria-current={pathname === '/help' ? 'page' : undefined} className={`${navStyles.navLink} min-h-11 min-w-11 justify-center`}>
@@ -489,7 +489,7 @@ export function NavBar({ currentSubject }: NavBarProps) {
           )}
         </div>
 
-        <div className={`${navStyles.rise} flex shrink-0 items-center gap-2 xl:hidden`} style={{ '--i': 1 } as React.CSSProperties}>
+        <div className={`${navStyles.rise} flex shrink-0 items-center gap-2 2xl:hidden`} style={{ '--i': 1 } as React.CSSProperties}>
           {appRole && <NotificationBell />}
           <LanguageToggle />
           <button
@@ -510,7 +510,7 @@ export function NavBar({ currentSubject }: NavBarProps) {
         id="mobile-navigation"
         aria-label={lang === 'en' ? 'Mobile navigation' : 'Điều hướng di động'}
         aria-hidden={!mobileOpen}
-        className={`${navStyles.mobilePanel} xl:hidden ${mobileOpen ? navStyles.mobilePanelOpen : ''}`}
+        className={`${navStyles.mobilePanel} 2xl:hidden ${mobileOpen ? navStyles.mobilePanelOpen : ''}`}
       >
           <div className="mx-auto max-w-xl space-y-2">
             <div className="flex justify-end pb-2">

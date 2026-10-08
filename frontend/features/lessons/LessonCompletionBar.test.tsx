@@ -2,7 +2,8 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it, vi } from 'vitest';
 import { countRawColors } from '../../lib/theme/rawColors';
 import { LessonCompletionBar } from './LessonCompletionBar';
-import { AiTutorButton } from '../ai-tutor/AiTutorButton';
+import { TutorProvider } from '../ai-tutor/TutorSession';
+import { TutorWidget } from '../ai-tutor/TutorWidget';
 
 vi.mock('@scipal/hooks', () => ({
   useLanguage: () => ({ lang: 'en', t: (o: { en: string; vi: string }) => o.en }),
@@ -22,9 +23,9 @@ describe('LessonCompletionBar', () => {
   });
 });
 
-describe('AiTutorButton', () => {
-  it('has an English label, a 44px target and tokens only', () => {
-    const html = renderToStaticMarkup(<AiTutorButton lessonId="l1" subjectSlug="informatics" />);
+describe('TutorWidget', () => {
+  it('mounts one widget with an English accessible label and tokens only', () => {
+    const html = renderToStaticMarkup(<TutorProvider><TutorWidget /></TutorProvider>);
     expect(html).toContain('aria-label="Open Professor Quys"');
     expect(countRawColors(html).total).toBe(0);
     expect(html).not.toContain('var(--accent');

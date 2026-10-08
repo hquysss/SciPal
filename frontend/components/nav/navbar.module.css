@@ -12,7 +12,7 @@
   display: none;
 }
 
-@media (min-width: 1280px) {
+@media (min-width: 1536px) {
   .header {
     padding-inline: 3.75rem;
   }
@@ -71,15 +71,19 @@
 
 /* A floating bar: the level's nav colour, frosted, detached from the page edges. */
 .bar {
+  --nav-glass-shade: light-dark(var(--ink), var(--paper));
   pointer-events: auto;
   border: 1px solid color-mix(in srgb, var(--nav-ink) 16%, transparent);
   border-radius: 1.25rem;
-  background: color-mix(in srgb, var(--nav) 86%, transparent);
-  backdrop-filter: blur(14px) saturate(1.4);
-  -webkit-backdrop-filter: blur(14px) saturate(1.4);
+  background:
+    linear-gradient(118deg, color-mix(in srgb, var(--nav-ink) 4%, transparent), transparent 45%),
+    color-mix(in srgb, color-mix(in srgb, var(--nav) 45%, var(--nav-glass-shade)) 83%, transparent);
+  backdrop-filter: blur(18px) saturate(1.4);
+  -webkit-backdrop-filter: blur(18px) saturate(1.4);
   box-shadow:
     0 12px 32px -18px color-mix(in srgb, var(--ink) 55%, transparent),
-    inset 0 1px 0 color-mix(in srgb, var(--nav-ink) 14%, transparent);
+    inset 0 1px 0 color-mix(in srgb, var(--nav-ink) 24%, transparent),
+    inset 0 -1px 0 color-mix(in srgb, var(--ink) 10%, transparent);
 }
 
 @supports not (backdrop-filter: blur(1px)) {
@@ -108,7 +112,7 @@
 
 .navLink:hover,
 .navLink[aria-expanded='true'] {
-  background: color-mix(in srgb, var(--nav-ink) 12%, transparent);
+  background: color-mix(in srgb, var(--nav-glass-shade) 14%, transparent);
 }
 
 .navLink:focus-visible {
@@ -124,7 +128,7 @@
 /* The current section is a filled pill. */
 .navLink[aria-current='page'],
 .navLink[data-active] {
-  background: color-mix(in srgb, var(--nav-ink) 18%, transparent);
+  background: color-mix(in srgb, var(--nav-glass-shade) 22%, transparent);
   box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--nav-ink) 22%, transparent);
 }
 
@@ -156,7 +160,7 @@
   flex-shrink: 0;
   place-items: center;
   border-radius: 999px;
-  background: color-mix(in srgb, var(--nav-ink) 18%, transparent);
+  background: color-mix(in srgb, var(--nav-glass-shade) 22%, transparent);
   font-size: 0.8125rem;
   font-weight: 800;
 }
@@ -177,7 +181,7 @@
 
 .ghostButton:hover {
   border-color: color-mix(in srgb, var(--nav-ink) 70%, transparent);
-  background: color-mix(in srgb, var(--nav-ink) 12%, transparent);
+  background: color-mix(in srgb, var(--nav-glass-shade) 14%, transparent);
 }
 .ghostButton:focus-visible { outline: 2px solid var(--nav-ink); outline-offset: 2px; }
 .ghostButton:disabled { cursor: wait; opacity: 0.6; }
@@ -191,7 +195,9 @@
   margin-top: 0.5rem;
   border: 1px solid var(--line);
   padding: 0.375rem;
-  background: var(--surface);
+  background: color-mix(in srgb, var(--surface) 94%, transparent);
+  backdrop-filter: blur(18px) saturate(1.4);
+  -webkit-backdrop-filter: blur(18px) saturate(1.4);
   color: var(--ink);
   visibility: hidden;
   pointer-events: none;
@@ -241,11 +247,13 @@
   border-radius: 1.25rem;
   top: 100%;
   z-index: 40;
-  max-height: calc(100dvh - 4rem);
+  max-height: calc(100dvh - 6rem);
   overflow-y: auto;
   border: 1px solid var(--line);
   padding: 1rem;
-  background: var(--surface);
+  background: color-mix(in srgb, var(--surface) 94%, transparent);
+  backdrop-filter: blur(18px) saturate(1.4);
+  -webkit-backdrop-filter: blur(18px) saturate(1.4);
   color: var(--ink);
   box-shadow: 0 18px 32px -22px color-mix(in srgb, var(--ink) 50%, transparent);
   visibility: hidden;
@@ -399,6 +407,18 @@
 
 .account { padding: 0.25rem 0.625rem 0.25rem 0.25rem; }
 .account:hover,
-.account[aria-expanded='true'] { background: color-mix(in srgb, var(--nav-ink) 12%, transparent); }
+.account[aria-expanded='true'] { background: color-mix(in srgb, var(--nav-glass-shade) 14%, transparent); }
 .account:focus-visible { outline: 2px solid var(--nav-ink); outline-offset: 2px; }
 .account[aria-current='page'] .avatar { box-shadow: 0 0 0 2px var(--nav-ink); }
+
+@supports not (backdrop-filter: blur(1px)) {
+  .dropdown, .mobilePanel { background: var(--surface); }
+}
+@media (prefers-contrast: more) {
+  .bar, .barToggle { background: var(--nav); backdrop-filter: none; }
+  .dropdown, .mobilePanel { background: var(--surface); backdrop-filter: none; border-color: var(--ink); }
+}
+
+@supports not (color: light-dark(white, black)) {
+  .bar { background: var(--nav); }
+}

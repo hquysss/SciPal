@@ -1,5 +1,7 @@
 'use client';
 
+import Link from 'next/link';
+
 import { ArrowRight } from 'lucide-react';
 import { useLanguage } from '@scipal/hooks';
 import type { EducationLevel } from './educationLevel';
@@ -23,10 +25,10 @@ export function TutorSection({ href, level = 'upper_secondary' }: { href?: strin
           })}
         </p>
         {href && (
-          <a href={href} className={styles.primaryAction}>
+          <Link prefetch={false} href={href} className={styles.primaryAction}>
             {t({ en: 'Try it', vi: 'Thử ngay' })}
             <ArrowRight size={18} aria-hidden="true" />
-          </a>
+          </Link>
         )}
       </div>
       <div className={styles.tutorStage} data-landing-reveal>

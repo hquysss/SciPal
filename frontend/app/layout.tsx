@@ -6,6 +6,8 @@ import { TabTitle } from '@/components/nav/TabTitle';
 import { OfflineBanner } from '@/components/pwa/OfflineBanner';
 import { PwaRegister } from '@/components/pwa/PwaRegister';
 import { APP_THEME_COLOR } from '@/lib/pwa/brand';
+import { TutorProvider } from '@/features/ai-tutor/TutorSession';
+import { TutorWidget } from '@/features/ai-tutor/TutorWidget';
 import { NavBar } from '@/components/nav/NavBar';
 import { SkipLink } from '@/components/nav/SkipLink';
 import { GuestTrialBanner } from '@/features/guest/GuestTrialBanner';
@@ -68,6 +70,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body className={`${jetbrainsMono.variable} ${beVietnamPro.variable} font-sans antialiased`}>
         <div data-app-shell="" data-level="neutral" suppressHydrationWarning className="flex min-h-screen flex-col">
           <script dangerouslySetInnerHTML={{ __html: buildBootScript({ darkMode: DARK_MODE_ENABLED }) }} />
+          <TutorProvider>
           <SkipLink />
           <TabTitle />
           <PwaRegister />
@@ -75,6 +78,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <OfflineBanner />
           <GuestTrialBanner />
           <div className="flex flex-1 flex-col">{children}</div>
+          <TutorWidget />
+          </TutorProvider>
         </div>
       </body>
     </html>

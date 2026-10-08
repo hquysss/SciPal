@@ -1,5 +1,7 @@
 'use client';
 
+import Link from 'next/link';
+
 import { useCallback, useEffect, useState } from 'react';
 import { BookOpen, ClipboardCheck } from 'lucide-react';
 import { useLanguage } from '@scipal/hooks';
@@ -58,7 +60,7 @@ export function ClassAssignmentsView({
                   <Icon aria-hidden="true" className="mt-0.5 h-5 w-5 shrink-0 text-ink-muted" />
                   <div className="flex min-w-0 flex-col gap-1">
                     {item.href ? (
-                      <a href={item.href} className="break-words font-semibold text-ink underline-offset-4 hover:underline">{t(item.title)}</a>
+                      <Link prefetch={false} href={item.href} className="break-words font-semibold text-ink underline-offset-4 hover:underline">{t(item.title)}</Link>
                     ) : (
                       <span className="break-words font-semibold text-ink">{t(item.title)}</span>
                     )}

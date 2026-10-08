@@ -55,7 +55,7 @@ export async function streamTutor(
   body: { conversation_id?: string; lesson_id?: string; message: string; language: 'vi' | 'en' },
   onEvent: (e: TutorEvent) => void,
   signal?: AbortSignal,
-): Promise<{ ok: true } | { ok: false; status: number; error: Bilingual; remaining?: number }> {
+): Promise<{ ok: true } | { ok: false; status: number; error: Bilingual; remaining?: number; period?: 'day' | 'month' }> {
   const { data: { session } } = await createBrowserClient().auth.getSession();
   if (!session) return { ok: false, status: 401, error: EXPIRED };
   let res: Response;
@@ -71,12 +71,13 @@ export async function streamTutor(
     return { ok: false, status: 0, error: OFFLINE };
   }
   if (!res.ok || !res.body) {
-    const data = (await res.json().catch(() => ({}))) as { error?: string; error_en?: string; remaining?: number };
+    const data = (await res.json().catch(() => ({}))) as { error?: string; error_en?: string; remaining?: number; period?: unknown };
     return {
       ok: false,
       status: res.status,
       error: { vi: data.error ?? 'Máy chủ từ chối thao tác.', en: data.error_en ?? 'The server refused the request.' },
       remaining: data.remaining,
+      ...(data.period === 'day' || data.period === 'month' ? { period: data.period } : {}),
     };
   }
   const feed = createSseParser(onEvent);
