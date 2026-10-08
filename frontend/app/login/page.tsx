@@ -1,56 +1,34 @@
 'use client';
 
-import { Suspense, useEffect, useRef, useState, type FormEvent } from 'react';
+import { Suspense, useEffect, useRef, useState } from 'react';
+import Image from 'next/image';
+import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
+import { useLanguage } from '@scipal/hooks';
+import { ThemeToggle } from '@/components/nav/ThemeToggle';
 import { TrialEndedNote } from '@/features/guest/TrialEndedNote';
 import { readAuthSettings, safeRedirect, type AuthSettings, type Bilingual } from '@/lib/authFlow';
 import { fetchSiteSettings } from '@/lib/siteSettings';
 import { AuthModeTabs, type AuthMode } from './AuthModeTabs';
-import { OAuthButtons } from './OAuthButtons';
-import { SignUpForm } from './SignUpForm';
-import Link from 'next/link';
-import Image from 'next/image';
-import { useRouter, useSearchParams } from 'next/navigation';
-import { useLanguage } from '@scipal/hooks';
-import { createBrowserClient } from '@/lib/supabase';
 import { LoginLanguageSwitch } from './LoginLanguageSwitch';
-import { ThemeToggle } from '@/components/nav/ThemeToggle';
+import { OAuthButtons } from './OAuthButtons';
 import { SciPalMascot } from './SciPalMascot';
-import { ScienceDnaHelix, ScienceAlgorithmTree } from './ScienceHelixes';
-import {
-  InformaticsSlideGraphic,
-  PhysicsSlideGraphic,
-  ChemistrySlideGraphic,
-} from './ScienceSlideIllustrations';
+import { SignInForm } from './SignInForm';
+import { SignUpForm } from './SignUpForm';
+import { ArrowRightIcon, AtomOrbitMark, CloseIcon, ShieldCheckIcon } from './ScienceMotifs';
 import './login.css';
-import {
-  ArrowRightIcon,
-  AtomOrbitMark,
-  CheckIcon,
-  CloseIcon,
-  EyeIcon,
-  EyeOffIcon,
-  LockIcon,
-  MailIcon,
-  QuantumNodeMark,
-  ShieldCheckIcon,
-} from './ScienceMotifs';
-
-const SCIPAL_REMEMBERED_EMAIL_KEY = 'scipal-remembered-email-v1';
 
 function LoginContent() {
-  const { lang } = useLanguage();
-  const router = useRouter();
+  const { lang, t } = useLanguage();
   const searchParams = useSearchParams();
-  const targetDestination = safeRedirect(searchParams.get('redirect'));
-  // A visitor whose trial ended most likely has no account yet.
+  const destination = safeRedirect(searchParams.get('redirect'));
   const [mode, setMode] = useState<AuthMode>(
     searchParams.get('mode') === 'signup' || searchParams.get('reason') === 'trial' ? 'signup' : 'signin',
   );
+  const initialMode = useRef(mode);
+  const signupPanel = useRef<HTMLDivElement>(null);
   const [authSettings, setAuthSettings] = useState<AuthSettings | null>(null);
   const [signupSwitch, setSignupSwitch] = useState(true);
-  // A failed provider sign-in is an error; a spent confirmation link usually is not: Supabase
-  // confirms the e-mail before the redirect, so opening the link in another browser or a second
-  // time still leaves a working account.
   const [notice, setNotice] = useState<(Bilingual & { tone: 'danger' | 'info' }) | null>(() => {
     const failure = searchParams.get('error');
     if (failure === 'oauth') {
@@ -62,624 +40,115 @@ function LoginContent() {
     return null;
   });
 
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [showPassword, setShowPassword] = useState(false);
-  const [rememberMe, setRememberMe] = useState(true);
-  const [showHelp, setShowHelp] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [emailFormatError, setEmailFormatError] = useState<string | null>(null);
-  const [submitting, setSubmitting] = useState(false);
-
-  const scienceSlides = [
-    {
-      id: 'informatics',
-      title: lang === 'en' ? 'Algorithms & Data Structures' : 'Tư duy Thuật toán & Dữ liệu',
-      tag: 'Tin học 11',
-      word: 'Algorithm',
-      phonetic: 'æl.ɡə.rɪ.ðəm',
-      desc:
-        lang === 'en'
-          ? 'Deep bilingual exploration of computational complexity, sorting algorithms, and recursion.'
-          : 'Học sâu về độ phức tạp tính toán, thuật toán sắp xếp và kỹ thuật đệ quy chuẩn THPT.',
-      Graphic: InformaticsSlideGraphic,
-    },
-    {
-      id: 'physics',
-      title: lang === 'en' ? 'Wave Mechanics & Optics' : 'Dao động & Cơ học Sóng điện từ',
-      tag: 'Vật lý 11',
-      word: 'Wave Optics',
-      phonetic: 'weɪv ˈɒp.tɪks',
-      desc:
-        lang === 'en'
-          ? 'Interactive physical simulations connecting waves and frequencies with rigorous mathematics.'
-          : 'Mô phỏng tương tác kết nối hiện tượng giao thoa sóng với hệ thống toán học chuẩn mực.',
-      Graphic: PhysicsSlideGraphic,
-    },
-    {
-      id: 'chemistry',
-      title: lang === 'en' ? 'Chemical Equilibrium & Thermodynamics' : 'Cân bằng Hóa học & Nhiệt động học',
-      tag: 'Hóa học 11',
-      word: 'Thermodynamics',
-      phonetic: 'ˌθɜː.məʊ.daɪˈnæm.ɪks',
-      desc:
-        lang === 'en'
-          ? 'Molecular reaction models and energetic bonds designed for intuitive retention and test success.'
-          : 'Mô hình phản ứng phân tử và liên kết năng lượng giúp nắm chắc lý thuyết và thi đạt điểm cao.',
-      Graphic: ChemistrySlideGraphic,
-    },
-  ];
-
   useEffect(() => {
     const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
     const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-    if (!url || !key) return;
     const controller = new AbortController();
-    fetch(`${url}/auth/v1/settings`, { headers: { apikey: key }, signal: controller.signal })
-      .then((res) => (res.ok ? res.json() : null))
-      .then((body) => setAuthSettings(readAuthSettings(body)))
-      .catch(() => {});
-    // The admin's own switch (site_settings) closes sign-up too.
+    if (url && key) {
+      fetch(`${url}/auth/v1/settings`, { headers: { apikey: key }, signal: controller.signal })
+        .then((res) => (res.ok ? res.json() : null))
+        .then((body) => setAuthSettings(readAuthSettings(body)))
+        .catch(() => setAuthSettings(null));
+    }
     void fetchSiteSettings().then((site) => setSignupSwitch(site.signupEnabled));
     return () => controller.abort();
   }, []);
 
-  const [activeSlide, setActiveSlide] = useState(0);
-  const [slidePaused, setSlidePaused] = useState(false);
-
   useEffect(() => {
-    if (slidePaused) return;
-    const timer = window.setInterval(() => {
-      setActiveSlide((prev) => (prev + 1) % scienceSlides.length);
-    }, 6500);
-    return () => window.clearInterval(timer);
-  }, [slidePaused, scienceSlides.length]);
-
-  const emailInputRef = useRef<HTMLInputElement>(null);
-  const passwordInputRef = useRef<HTMLInputElement>(null);
-  const helpTriggerRef = useRef<HTMLButtonElement>(null);
-  const modalRef = useRef<HTMLDivElement>(null);
-  const modalCloseBtnRef = useRef<HTMLButtonElement>(null);
-
-  useEffect(() => {
-    if (typeof window === 'undefined') return;
-    let savedEmail: string | null = null;
-    try {
-      savedEmail = localStorage.getItem(SCIPAL_REMEMBERED_EMAIL_KEY);
-    } catch {
-      // Ignore localStorage read errors
-    }
-
-    const frame = requestAnimationFrame(() => {
-      if (savedEmail) {
-        setEmail(savedEmail);
-        passwordInputRef.current?.focus();
-      } else {
-        emailInputRef.current?.focus();
-      }
-    });
-
+    if (initialMode.current !== 'signup' || window.matchMedia('(max-width: 767px)').matches) return;
+    const frame = requestAnimationFrame(() => signupPanel.current?.querySelector('input')?.focus());
     return () => cancelAnimationFrame(frame);
   }, []);
 
-  function handleEmailBlur(value: string) {
-    const trimmed = value.trim();
-    if (!trimmed) {
-      setEmailFormatError(null);
-      return;
-    }
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (trimmed.includes('@') && !emailRegex.test(trimmed)) {
-      setEmailFormatError(
-        lang === 'en'
-          ? 'Invalid email format (e.g. name@gmail.com)'
-          : 'Định dạng email chưa hợp lệ (vd: name@gmail.com)',
-      );
-    } else {
-      setEmailFormatError(null);
+  function switchMode(next: AuthMode) {
+    setMode(next);
+    const focused = document.activeElement;
+    if (focused instanceof HTMLElement && focused.closest('[role="tabpanel"]')) {
+      requestAnimationFrame(() => document.getElementById(`auth-tab-${next}`)?.focus());
     }
   }
 
-  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    setError(null);
-
-    const emailTrimmed = email.trim();
-    if (!emailTrimmed || !password) {
-      setError(
-        lang === 'en'
-          ? 'Please enter both your account identifier and password.'
-          : 'Vui lòng điền đầy đủ tài khoản và mật khẩu.',
-      );
-      return;
-    }
-
-    setSubmitting(true);
-    try {
-      if (rememberMe) {
-        localStorage.setItem(SCIPAL_REMEMBERED_EMAIL_KEY, emailTrimmed);
-      } else {
-        localStorage.removeItem(SCIPAL_REMEMBERED_EMAIL_KEY);
-      }
-    } catch {
-      // Ignore storage errors
-    }
-
-    try {
-      const supabase = createBrowserClient();
-      const { data, error: signInError } = await supabase.auth.signInWithPassword({
-        email: emailTrimmed,
-        password,
-      });
-
-      if (signInError) {
-        setError(
-          signInError.message.includes('Invalid login credentials')
-            ? lang === 'en'
-              ? 'Wrong email or password. Please check and try again.'
-              : 'Email hoặc mật khẩu chưa đúng. Vui lòng kiểm tra lại.'
-            : /failed to fetch|fetch failed|network/i.test(signInError.message)
-              ? lang === 'en'
-                ? 'Cannot connect to sign-in. Please check your connection and try again.'
-                : 'Không thể kết nối để đăng nhập. Vui lòng kiểm tra mạng và thử lại.'
-              : signInError.message,
-        );
-      } else if (data.session) {
-        router.replace(targetDestination);
-        router.refresh();
-      } else {
-        setError(
-          lang === 'en'
-            ? 'Sign-in did not create a session. Please try again.'
-            : 'Đăng nhập chưa tạo được phiên làm việc. Vui lòng thử lại.',
-        );
-      }
-    } catch {
-      setError(
-        lang === 'en'
-          ? 'Cannot connect to sign-in. Please check your connection and try again.'
-          : 'Không thể kết nối để đăng nhập. Vui lòng kiểm tra mạng và thử lại.',
-      );
-    } finally {
-      setSubmitting(false);
-    }
-  }
-
-  useEffect(() => {
-    if (!showHelp) return;
-
-    const helpTrigger = helpTriggerRef.current;
-    const previousOverflow = document.body.style.overflow;
-    document.body.style.overflow = 'hidden';
-
-    const frameId = window.requestAnimationFrame(() => {
-      modalCloseBtnRef.current?.focus();
-    });
-
-    function handleKeyDown(event: KeyboardEvent) {
-      if (event.key === 'Escape') {
-        setShowHelp(false);
-      }
-    }
-
-    window.addEventListener('keydown', handleKeyDown);
-    return () => {
-      window.cancelAnimationFrame(frameId);
-      document.body.style.overflow = previousOverflow;
-      window.removeEventListener('keydown', handleKeyDown);
-      helpTrigger?.focus();
-    };
-  }, [showHelp]);
+  const providers = { google: authSettings?.google ?? true };
+  const handleOAuthError = (message: Bilingual) => setNotice({ ...message, tone: 'danger' });
 
   return (
-    <main className="katha-login-page">
-      {/* Composed Folio Shell — 56 / 44 edge-to-edge */}
-      <div className="katha-login-shell">
-        {/* Theme control — upper corner */}
-        <div className="katha-login-theme-control">
+    <main id="main-content" className="katha-login-page" lang={lang}>
+      <header className="login-topbar">
+        <Link href="/" className="login-brand" aria-label={t({ vi: 'SciPal · Trang chủ', en: 'SciPal · Home' })}>
+          <Image src="/logo.svg" alt="" width={38} height={38} priority />
+          <span>SciPal<span className="login-brand-note">{t({ vi: 'Học bằng sự tò mò', en: 'Learn through curiosity' })}</span></span>
+        </Link>
+        <div className="login-topbar-controls">
+          <LoginLanguageSwitch />
           <ThemeToggle tone="surface" />
         </div>
+      </header>
 
-        {/* Fine emerald seam divider */}
-        <div className="katha-login-seam" aria-hidden="true">
-          <span />
-        </div>
-
-        {/* Left hero: editorial science pane */}
-        <section className="katha-login-hero" aria-labelledby="katha-login-hero-title">
-          <div className="katha-login-hero-art" aria-hidden="true">
-            <ScienceDnaHelix className="katha-login-vine" />
-          </div>
-
-          <header className="katha-login-hero-head">
-            <p className="katha-login-eyebrow">
-              <AtomOrbitMark className="katha-login-eyebrow-mark text-action" />
-              <span>
-                SciPal · {lang === 'en' ? 'Visual Learning Space' : 'Không gian học tập trực quan'}
-              </span>
-            </p>
-          </header>
-
-          <div className="katha-login-hero-body">
-            <h1 id="katha-login-hero-title" className="katha-login-hero-title">
-              {lang === 'en'
-                ? 'Explore through each lesson.'
-                : 'Khám phá qua từng bài học.'}
-            </h1>
-            <p className="katha-login-hero-note">
-              {lang === 'en'
-                ? 'Step into interactive simulations, algorithmic thinking, and bilingual concept mastery.'
-                : 'Bước vào những bài học tương tác, thuật toán trực quan và không gian học tập số của SciPal.'}
-            </p>
-          </div>
-
-          <figure
-            className="katha-login-figure"
-            onMouseEnter={() => setSlidePaused(true)}
-            onMouseLeave={() => setSlidePaused(false)}
-            onFocus={() => setSlidePaused(true)}
-            onBlur={() => setSlidePaused(false)}
-          >
-            <div className="katha-login-photo">
-              {scienceSlides.map((slide, idx) => {
-                const SlideGraphic = slide.Graphic;
-                return (
-                  <div
-                    key={slide.id}
-                    className={`katha-login-slide ${idx === activeSlide ? 'is-active' : ''}`}
-                    aria-hidden={idx !== activeSlide}
-                  >
-                    <div className="katha-login-slide-bg absolute inset-0" />
-                    <div className="pointer-events-none absolute inset-0 bg-science-grid opacity-25" />
-                    <SlideGraphic />
-                    <div className="katha-login-photo-shade" aria-hidden="true" />
-
-                    <div className="katha-login-slide-badge">
-                      <span className="katha-login-slide-word">{slide.word}</span>
-                      <span className="katha-login-slide-phonetic">[{slide.phonetic}]</span>
-                      <span className="katha-login-slide-tag">{slide.tag}</span>
-                    </div>
-
-                    <figcaption className="katha-login-photo-caption">
-                      <span className="katha-login-photo-caption-rule" aria-hidden="true" />
-                      <div className="katha-login-photo-caption-content">
-                        <strong className="katha-login-photo-caption-title">{slide.title}</strong>
-                        <span className="katha-login-photo-caption-text">{slide.desc}</span>
-                      </div>
-                    </figcaption>
-                  </div>
-                );
-              })}
-            </div>
-
-            {/* Slide Navigation Dots */}
-            <div className="katha-login-dots" role="tablist" aria-label="Slides">
-              {scienceSlides.map((slide, idx) => (
-                <button
-                  key={slide.id}
-                  type="button"
-                  role="tab"
-                  aria-selected={idx === activeSlide}
-                  aria-label={`Slide ${idx + 1}: ${slide.title}`}
-                  className={`katha-login-dot ${idx === activeSlide ? 'is-active' : ''}`}
-                  onClick={() => setActiveSlide(idx)}
-                >
-                  <span className="sr-only">{slide.title}</span>
-                </button>
-              ))}
-            </div>
-          </figure>
-
-          <p className="katha-login-archive" aria-hidden="true">
-            <span className="katha-login-archive-rule" />
-            <span>VIETNAM</span>
-          </p>
-        </section>
-
-        {/* Right pane: quiet login */}
-        <section className="katha-login-pane" aria-labelledby="katha-login-form-title">
-          <div className="katha-login-pane-art" aria-hidden="true">
-            <ScienceAlgorithmTree className="katha-login-vine katha-login-vine-right" />
-          </div>
-
-          <div className="katha-login-card">
-            <Link href="/" className="katha-login-home-link">
-              <ArrowRightIcon className="katha-login-home-link-icon" />
-              <span>{lang === 'en' ? 'Home' : 'Trang chủ'}</span>
-            </Link>
-
-            <div className="katha-login-header-row">
-              <div className="katha-login-brand">
-                <Image
-                  src="/logo.svg"
-                  alt="SciPal Logo"
-                  width={44}
-                  height={44}
-                  className="katha-login-brand-logo"
-                  priority
-                />
-                <div className="katha-login-brand-text">
-                  <span className="katha-login-brand-name">SCIPAL</span>
-                  <span className="katha-login-brand-khmer">
-                    {lang === 'en' ? 'HIGH SCHOOL SCIENCE LAB' : 'PHÒNG THÍ NGHIỆM KHTN SỐ'}
-                  </span>
-                </div>
-              </div>
-              <SciPalMascot size={68} />
-            </div>
-
-            <div className="katha-login-heading" key={`heading-${mode}`}>
-              <h2 id="katha-login-form-title">
-                {mode === 'signup'
-                  ? 'Hello, Welcome'
-                  : 'Welcome back'}{' '}
-                <span className="katha-login-sparkle" aria-hidden="true">
-                  ✨
-                </span>
-              </h2>
-              <p>
-                {mode === 'signup'
-                  ? lang === 'en'
-                    ? 'Create an account to start your bilingual learning journey.'
-                    : 'Tạo tài khoản để bắt đầu hành trình học tập song ngữ.'
-                  : lang === 'en'
-                    ? 'Continue your journey exploring bilingual sciences.'
-                    : 'Tiếp tục hành trình khám phá khoa học của bạn.'}
-              </p>
-            </div>
-
-            <AuthModeTabs
-              mode={mode}
-              onChange={(next) => {
-                setMode(next);
-                setError(null);
-              }}
-            />
-
-            {searchParams.get('reason') === 'trial' && <TrialEndedNote />}
-
-            {notice && (
-              <div
-                role={notice.tone === 'danger' ? 'alert' : 'status'}
-                className={`katha-auth-notice ${notice.tone === 'danger' ? 'is-danger' : 'is-info'}`}
-              >
-                <p>{lang === 'en' ? notice.en : notice.vi}</p>
-                <button
-                  type="button"
-                  className="katha-auth-notice-close"
-                  onClick={() => setNotice(null)}
-                  aria-label={lang === 'en' ? 'Dismiss' : 'Đóng thông báo'}
-                >
-                  <CloseIcon />
-                </button>
-              </div>
-            )}
-
-            <div
-              id="auth-panel"
-              key={`auth-panel-${mode}`}
-              role="tabpanel"
-              aria-labelledby={`auth-tab-${mode}`}
-              className="katha-auth-panel"
-              data-mode={mode}
-            >
-            {mode === 'signup' ? (
-              <SignUpForm
-                redirect={targetDestination}
-                signupOpen={(authSettings?.signupOpen ?? true) && signupSwitch}
-                onSwitchToSignIn={() => {
-                  setMode('signin');
-                  setError(null);
-                }}
-              />
-            ) : (
-            <form className="katha-login-form" onSubmit={handleSubmit} noValidate>
-              <label className="katha-login-label" htmlFor="login-email">
-                <span>{lang === 'en' ? 'Email' : 'Email'}</span>
-                <div className="katha-login-input-wrap">
-                  <MailIcon className="katha-login-input-icon" />
-                  <input
-                    ref={emailInputRef}
-                    id="login-email"
-                    type="email"
-                    autoComplete="email"
-                    inputMode="email"
-                    value={email}
-                    onChange={(event) => {
-                      setEmail(event.target.value);
-                      if (emailFormatError) setEmailFormatError(null);
-                    }}
-                    onBlur={(event) => handleEmailBlur(event.target.value)}
-                    placeholder="name@gmail.com"
-                    disabled={submitting}
-                    aria-invalid={Boolean(error || emailFormatError)}
-                    aria-describedby={emailFormatError ? 'login-email-error' : undefined}
-                  />
-                </div>
-                {emailFormatError && (
-                  <p id="login-email-error" className="katha-login-field-error" role="alert">
-                    {emailFormatError}
-                  </p>
-                )}
-              </label>
-
-              <label className="katha-login-label" htmlFor="login-password">
-                <span>{lang === 'en' ? 'Password' : 'Mật khẩu'}</span>
-                <div className="katha-login-input-wrap">
-                  <LockIcon className="katha-login-input-icon" />
-                  <input
-                    ref={passwordInputRef}
-                    id="login-password"
-                    type={showPassword ? 'text' : 'password'}
-                    autoComplete="current-password"
-                    value={password}
-                    onChange={(event) => setPassword(event.target.value)}
-                    placeholder="••••••••"
-                    disabled={submitting}
-                    aria-invalid={Boolean(error)}
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword((previous) => !previous)}
-                    className="katha-login-password-toggle"
-                    aria-controls="login-password"
-                    aria-label={showPassword ? 'Hide password' : 'Show password'}
-                    title={showPassword ? 'Hide password' : 'Show password'}
-                  >
-                    {showPassword ? <EyeOffIcon /> : <EyeIcon />}
-                  </button>
-                </div>
-              </label>
-
-              {/* Auxiliary row: remember me & account help */}
-              <div className="katha-login-aux">
-                <label className="katha-login-remember">
-                  <input
-                    type="checkbox"
-                    checked={rememberMe}
-                    onChange={(e) => setRememberMe(e.target.checked)}
-                    className="sr-only"
-                  />
-                  <span className={`katha-login-checkbox-box ${rememberMe ? 'checked' : ''}`}>
-                    {rememberMe && <CheckIcon />}
-                  </span>
-                  <span className="katha-login-remember-text">
-                    {lang === 'en' ? 'Remember login' : 'Ghi nhớ đăng nhập'}
-                  </span>
-                </label>
-
-                <button
-                  ref={helpTriggerRef}
-                  type="button"
-                  onClick={() => setShowHelp(true)}
-                  className="katha-login-help-trigger"
-                >
-                  {lang === 'en' ? 'Need account help?' : 'Cần hỗ trợ tài khoản?'}
-                </button>
-              </div>
-
-              {/* Error alert */}
-              {error && (
-                <div id="login-error" role="alert" className="katha-login-error">
-                  <span aria-hidden="true">!</span>
-                  <p>{error}</p>
-                </div>
-              )}
-
-              {/* Submit button */}
-              <button type="submit" disabled={submitting} className="katha-login-submit">
-                <span>
-                  {submitting
-                    ? lang === 'en'
-                      ? 'Signing in...'
-                      : 'Đang xác thực...'
-                    : lang === 'en'
-                      ? 'Sign In'
-                      : 'Đăng nhập'}
-                </span>
-                {submitting ? (
-                  <span className="katha-login-spinner" aria-hidden="true" />
-                ) : (
-                  <ArrowRightIcon className="katha-login-submit-arrow" />
-                )}
-              </button>
-
-              <div className="katha-auth-toggle-prompt">
-                <span>{lang === 'en' ? "Don't have an account?" : 'Chưa có tài khoản?'}</span>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setMode('signup');
-                    setError(null);
-                  }}
-                  className="katha-auth-toggle-btn"
-                >
-                  {lang === 'en' ? 'Register now' : 'Đăng ký ngay'}
-                </button>
-              </div>
-            </form>
-            )}
-
-            <OAuthButtons
-              // Until the settings arrive (or if they cannot be read) both are offered.
-              providers={{ google: authSettings?.google ?? true }}
-              redirect={targetDestination}
-              onError={(message) => setNotice({ ...message, tone: 'danger' })}
-            />
-            </div>
-
-            <p className="katha-login-footnote">
-              <span className="katha-login-sparkle" aria-hidden="true">✨</span>
-              <span>
-                {lang === 'en'
-                  ? 'Private learning workspace by SciPal.'
-                  : 'Không gian học tập riêng tư của SciPal.'}
-              </span>
-            </p>
-          </div>
-        </section>
-
-        {/* Language plaque, anchored at the bottom */}
-        <div className="katha-login-language-control">
-          <LoginLanguageSwitch />
-        </div>
-      </div>
-
-      {/* Account help modal */}
-      {showHelp && (
-        <div
-          className="katha-login-modal-backdrop"
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="katha-help-title"
-          aria-describedby="katha-help-body"
-          onClick={() => setShowHelp(false)}
-        >
-          <div
-            ref={modalRef}
-            className="katha-login-modal-dialog"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="katha-login-modal-header">
-              <h3 id="katha-help-title">
-                <QuantumNodeMark className="katha-login-eyebrow-mark text-action" />
-                {lang === 'en' ? 'Account help' : 'Hỗ trợ tài khoản'}
-              </h3>
-              <button
-                ref={modalCloseBtnRef}
-                type="button"
-                onClick={() => setShowHelp(false)}
-                className="katha-login-modal-close"
-                aria-label={lang === 'en' ? 'Close' : 'Đóng'}
-              >
-                <CloseIcon />
-              </button>
-            </div>
-            <p id="katha-help-body" className="katha-login-modal-body">
-              {lang === 'en'
-                ? 'No account yet? Choose “Create account” to make a free student account with email or Google. Teacher accounts and accounts issued by your school come from an administrator: if you forgot that password, contact your teacher or the school’s ICT staff.'
-                : 'Chưa có tài khoản? Chọn “Tạo tài khoản” để lập tài khoản học sinh miễn phí bằng email hoặc Google. Tài khoản giáo viên và tài khoản do trường cấp được quản trị viên tạo: nếu quên mật khẩu, bạn liên hệ giáo viên hoặc bộ phận Tin học của trường.'}
-            </p>
-            <div className="katha-login-modal-footer">
-              <button
-                type="button"
-                onClick={() => setShowHelp(false)}
-                className="katha-login-modal-btn"
-              >
-                {lang === 'en' ? 'Understood' : 'Đã hiểu'}
-              </button>
-            </div>
-          </div>
+      <div className="login-mode-control"><AuthModeTabs mode={mode} onChange={switchMode} /></div>
+      {searchParams.get('reason') === 'trial' && <div className="login-global-notice"><TrialEndedNote /></div>}
+      {notice && (
+        <div role={notice.tone === 'danger' ? 'alert' : 'status'} className={`katha-auth-notice login-global-notice ${notice.tone === 'danger' ? 'is-danger' : 'is-info'}`}>
+          <p>{t(notice)}</p>
+          <button type="button" className="katha-auth-notice-close" onClick={() => setNotice(null)} aria-label={t({ vi: 'Đóng thông báo', en: 'Dismiss' })}><CloseIcon /></button>
         </div>
       )}
+
+      <div className="katha-login-shell" data-mode={mode}>
+        <div className="login-stage">
+          <section id="auth-panel-signin" role="tabpanel" aria-labelledby="auth-tab-signin" className="login-form-panel login-signin-panel" aria-hidden={mode !== 'signin'} inert={mode !== 'signin'}>
+            <div className="katha-login-card">
+              <div className="katha-login-heading">
+                <p className="login-form-eyebrow">{t({ vi: 'HÀNH TRÌNH TIẾP TỤC', en: 'YOUR JOURNEY CONTINUES' })}</p>
+                <h1>{t({ vi: 'Chào bạn trở lại.', en: 'Welcome back.' })}</h1>
+                <p>{t({ vi: 'Một chút tò mò. Một điều mới mỗi ngày.', en: 'A little curiosity. Something new every day.' })}</p>
+              </div>
+              <SignInForm redirect={destination} initiallyActive={initialMode.current === 'signin'} />
+              <OAuthButtons providers={providers} redirect={destination} onError={handleOAuthError} />
+            </div>
+          </section>
+
+          <section ref={signupPanel} id="auth-panel-signup" role="tabpanel" aria-labelledby="auth-tab-signup" className="login-form-panel login-signup-panel" aria-hidden={mode !== 'signup'} inert={mode !== 'signup'}>
+            <div className="katha-login-card">
+              <div className="katha-login-heading">
+                <p className="login-form-eyebrow">{t({ vi: 'BẮT ĐẦU TỪ ĐÂY', en: 'START RIGHT HERE' })}</p>
+                <h1>{t({ vi: 'Mở lối khám phá.', en: 'Make room for discovery.' })}</h1>
+                <p>{t({ vi: 'Tạo tài khoản và tìm điều bạn muốn hiểu.', en: 'Create your account. Find what sparks your curiosity.' })}</p>
+              </div>
+              <SignUpForm redirect={destination} signupOpen={(authSettings?.signupOpen ?? true) && signupSwitch} />
+              <OAuthButtons providers={providers} redirect={destination} onError={handleOAuthError} />
+            </div>
+          </section>
+
+          <aside className="login-welcome" aria-labelledby="login-welcome-title">
+            <div className="login-welcome-content">
+              <p className="login-welcome-eyebrow"><AtomOrbitMark />{t({ vi: 'KHÔNG GIAN HỌC TẬP SONG NGỮ', en: 'YOUR BILINGUAL LEARNING SPACE' })}</p>
+              <div className="login-professor-scene">
+                <div className="login-orbit login-orbit-one" aria-hidden="true" />
+                <div className="login-orbit login-orbit-two" aria-hidden="true" />
+                <span className="login-science-label login-label-en" aria-hidden="true">Curiosity</span>
+                <span className="login-science-label login-label-vi" aria-hidden="true">Sự tò mò</span>
+                <SciPalMascot size={184} customMessages={{ vi: ['Mình ở đây để cùng bạn khám phá. Bắt đầu từ điều bạn tò mò nhé!'], en: ["I'm right here to explore with you. Start with what makes you curious!"] }} />
+              </div>
+              <div className="login-welcome-copy" key={mode}>
+                <h2 id="login-welcome-title">{mode === 'signin' ? t({ vi: 'Điều hay đang\nchờ bạn.', en: 'Your next discovery\nstarts here.' }) : t({ vi: 'Rất vui được\ngặp lại bạn.', en: 'Good to have\nyou back.' })}</h2>
+                <p>{mode === 'signin' ? t({ vi: 'Cùng Giáo sư SciPal khám phá bài học, mô phỏng và những ý tưởng mới bằng cả hai ngôn ngữ.', en: 'Explore lessons, simulations and new ideas in two languages with the SciPal Professor.' }) : t({ vi: 'Đã có tài khoản? Đăng nhập để tiếp tục khám phá cùng Giáo sư SciPal.', en: 'Already have an account? Sign in and keep exploring with the SciPal Professor.' })}</p>
+              </div>
+              <button type="button" className="login-welcome-switch" onClick={() => switchMode(mode === 'signin' ? 'signup' : 'signin')}>
+                <span>{mode === 'signin' ? t({ vi: 'Tạo tài khoản', en: 'Create account' }) : t({ vi: 'Đăng nhập', en: 'Sign in' })}</span><ArrowRightIcon />
+              </button>
+              <p className="login-welcome-footer"><span>EN</span><span className="login-language-bridge" aria-hidden="true" /><span>VI</span><span>{t({ vi: 'Hai ngôn ngữ. Một thế giới khám phá.', en: 'Two languages. One world to explore.' })}</span></p>
+            </div>
+          </aside>
+        </div>
+      </div>
+      <footer className="login-footer">
+        <span><ShieldCheckIcon />{t({ vi: 'Không gian học tập riêng tư của bạn', en: 'Your private learning space' })}</span>
+        <Link href="/">{t({ vi: 'Về trang chủ', en: 'Back to home' })}<ArrowRightIcon /></Link>
+      </footer>
     </main>
   );
 }
 
 export default function LoginPage() {
-  return (
-    <Suspense fallback={<div className="katha-login-page" />}>
-      <LoginContent />
-    </Suspense>
-  );
+  return <Suspense fallback={<div className="katha-login-page" />}><LoginContent /></Suspense>;
 }

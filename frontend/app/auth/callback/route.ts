@@ -52,5 +52,14 @@ export async function GET(request: NextRequest) {
 
   const response = NextResponse.redirect(new URL(redirect, request.url));
   for (const { name, value, options } of pending) response.cookies.set(name, value, options);
+  if (params.get('flow') === 'recovery') {
+    response.cookies.set('scipal-password-recovery', 'verified', {
+      httpOnly: true,
+      secure: request.nextUrl.protocol === 'https:',
+      sameSite: 'lax',
+      maxAge: 600,
+      path: '/reset-password',
+    });
+  }
   return response;
 }

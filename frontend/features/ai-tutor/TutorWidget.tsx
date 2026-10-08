@@ -39,7 +39,7 @@ export function TutorWidget() {
   useEffect(() => { if (session?.open) setOpened(true); }, [session?.open]);
   useEffect(() => { if (fullPage) setOpen?.(false); }, [fullPage, setOpen]);
   const close = useCallback(() => { setOpen?.(false); requestAnimationFrame(() => trigger.current?.focus()); }, [setOpen]);
-  if (!session) return null;
+  if (!session || pathname === '/login' || pathname === '/reset-password') return null;
   const visible = session.open && !fullPage;
   const activeLevel = session.lesson?.level ?? level;
   const suggestions = session.lesson ? lessonQuestions(session.lesson.title) : LANDING_QUESTIONS[activeLevel];
