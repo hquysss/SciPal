@@ -69,21 +69,26 @@
   }
 }
 
-/* A floating bar: the level's nav colour, frosted, detached from the page edges. */
+/* A floating bar: the level's nav colour as frosted glass, detached from the page edges. */
 .bar {
   --nav-glass-shade: light-dark(var(--ink), var(--paper));
   pointer-events: auto;
-  border: 1px solid color-mix(in srgb, var(--nav-ink) 16%, transparent);
+  border: 1px solid color-mix(in srgb, var(--nav-ink) 38%, transparent);
   border-radius: 1.25rem;
   background:
-    linear-gradient(118deg, color-mix(in srgb, var(--nav-ink) 4%, transparent), transparent 45%),
-    color-mix(in srgb, var(--nav) 92%, transparent);
-  backdrop-filter: blur(18px) saturate(1.4);
-  -webkit-backdrop-filter: blur(18px) saturate(1.4);
+    linear-gradient(180deg, color-mix(in srgb, var(--nav-ink) 22%, transparent), transparent 70%),
+    color-mix(in srgb, var(--nav) 70%, transparent);
+  backdrop-filter: blur(22px) saturate(1.7);
+  -webkit-backdrop-filter: blur(22px) saturate(1.7);
   box-shadow:
-    0 12px 32px -18px color-mix(in srgb, black 55%, transparent),
-    inset 0 1px 0 color-mix(in srgb, var(--nav-ink) 24%, transparent),
-    inset 0 -1px 0 color-mix(in srgb, black 12%, transparent);
+    0 14px 34px -18px color-mix(in srgb, var(--nav) 70%, black),
+    inset 0 1px 0 color-mix(in srgb, var(--nav-ink) 45%, transparent),
+    inset 0 -1px 0 color-mix(in srgb, var(--nav-ink) 10%, transparent);
+}
+
+/* Glass costs contrast: anyone asking for more gets the solid bar. */
+@media (prefers-contrast: more) {
+  .bar { background: var(--nav); backdrop-filter: none; -webkit-backdrop-filter: none; }
 }
 
 @supports not (backdrop-filter: blur(1px)) {
