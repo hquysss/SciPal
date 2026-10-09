@@ -14,7 +14,7 @@ describe('LevelGate', () => {
   it('is one heading, three level buttons in a POST form, no status labels', () => {
     lang = 'vi';
     const html = guest();
-    expect(html).toMatch(/<h1[^>]*>Bạn học lớp mấy\?<\/h1>/);
+    expect(html).toMatch(/<h1[^>]*>Chọn cấp học của bạn<\/h1>/);
     expect(html).toContain('method="post"');
     expect(html).toContain('action="/api/preferences/education-level"');
     for (const value of ['primary', 'lower_secondary', 'upper_secondary']) {
@@ -64,7 +64,7 @@ describe('LevelGate', () => {
   it('switches to English', () => {
     lang = 'en';
     const html = guest();
-    expect(html).toMatch(/<h1[^>]*>What grade are you in\?<\/h1>/);
+    expect(html).toMatch(/<h1[^>]*>Choose your school level<\/h1>/);
     expect(html).toContain('You can change this later in Profile.');
     expect(html).toContain('Grades 10–12');
     lang = 'vi';
