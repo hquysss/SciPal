@@ -8,6 +8,7 @@ import { formatVnd, limitText, type PublicPlan } from './billingApi';
 
 vi.mock('@scipal/hooks', () => ({ useLanguage: () => ({ lang: 'vi', t: (o: { vi: string }) => o.vi }) }));
 vi.mock('@scipal/supabase', () => ({ createBrowserClient: () => ({}) }));
+vi.mock('next/navigation', () => ({ useRouter: () => ({ refresh: vi.fn() }) }));
 
 const P = (n: number) => `b0000000-0000-4000-8000-00000000000${n}`;
 const plan = (code: PublicPlan['code'], vi: string, prices: PublicPlan['prices'], limits: PublicPlan['limits']): PublicPlan => ({

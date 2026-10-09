@@ -51,7 +51,7 @@ Menu, popover hay dialog render qua portal phải gắn vào trong `[data-app-sh
 - Materials scoped to `.katha-login-page`: shell 68% `surface`, fields 84% `surface`, 24px shell backdrop blur with 130% saturation, inset reflection and a soft 32px/80px elevation from `ink`. Hero uses `nav` plus a dark shade derived from `light-dark(ink, paper)`; text is `nav-ink`. Background static radial light uses `sun`, `coral`, `sky`. Controls always use `edge`, `focus`, `action`; submit gradient `sun → coral` with `ink`. No hard-coded subject colour or root variables.
 - Geometry: 1120px maximum width; desktop equal columns, 680px minimum stage, 16px inset, 32px outer radius, 24px inner radius, form maximum 380px. Spacing scale 4/8/12/16/24/32/48px. Existing Be Vietnam Pro; form headings 30px, hero heading 40px, body 14px with 1.6 line height. Fields and controls at least 44px; inputs 48px. Focus reveals a token-coloured shadow ring over 180ms without moving the field; the label and leading icon ease into the action colour, and active form fields rise 8px and fade in over 320ms with a 40ms stagger; keyboard focus adds a 2px outline with 3px offset. Small phones start at the page top without opening the keyboard.
 - Motion tokens: `--login-slide-duration: 500ms`, `--login-slide-ease: cubic-bezier(.32,.72,0,1)`. Hero translates a full column; form layers move 32px and crossfade with an interruptible CSS transition. Mechanism consulted from beui.dev tabs (shared indicator and reduced-motion handling), adapted to CSS without new dependencies. Stable mounted forms preserve drafts and success states; inactive forms have `inert` and `aria-hidden` and never receive initial focus. Auth tabs support roving tabindex, arrows, Home and End. Mode switching uses the tabs and single welcome-panel CTA; there is no duplicate prompt beneath either submit button.
-- Responsive: below 768px one form column, inactive form removed from layout, compact welcome strip below with the same mode switch; no horizontal slide or fixed viewport height. At 768px retain two columns with compact padding. At 320px labels/controls wrap naturally, page scroll owns long signup/error content.
+- Responsive: below 768px one form column, inactive form removed from layout, compact welcome strip below with the same mode switch; no horizontal slide or fixed viewport height. At 768px retain two columns with compact padding. Below 400px the brand sits above the language and theme controls, and both the brand and language choices retain 44px touch targets. Visible Login microcopy starts at 12px; page scroll owns long signup/error content.
 - States/primitives: sign-in/signup tabs (selected, hover, focus); field (empty, entered, focus, invalid, disabled); submit (idle/loading/disabled); Google (idle/loading/error); Professor (idle/boop/message); notices and signup confirmation/resend; account help (Escape, focus loop, return focus). Reduced motion removes spatial transitions and spinner rotation; high contrast and unsupported backdrop-filter use solid token surfaces. Keyboard learners and mobile learners must complete the same tasks. Password help opens an accessible request form with a generic sent confirmation; the recovery link returns through the existing `/auth/callback` to a dedicated password update screen. New passwords follow the shared 8-character minimum and do not appear in URLs or logs. No accepted new accessibility debt.
 
 ### Trang bài học
@@ -134,8 +134,11 @@ Spec: `docs/superpowers/specs/2026-09-26-landing-redesign-design.md`.
 
 ### Landing
 
-- Thứ tự: hero (nhãn cấp, tiêu đề hai dòng, một câu phụ, "Xem môn học" + "Đổi cấp", tranh bàn học SVG) → "Môn học của bạn" (`SubjectGrid`) → "Học thế nào" (ba thẻ demo Tin học theo cấp, mỗi thẻ là một vùng giấy kẻ chấm có demo chạy được + tiêu đề + một câu: tìm kiếm nhị phân chạy từng bước khi thẻ vào màn hình, có nút "Xem lại" (Tiểu học là trò đoán số 1–8); câu song ngữ đổi bằng cờ, tự đổi sang tiếng Anh rồi quay lại một lần, thuật ngữ chính được tô dấu; thuật ngữ trong từ điển mở ra định nghĩa và ví dụ. Hover: thẻ nhô 6px, viền và nền demo ngả màu `action`) → "Hỏi bất cứ lúc nào" (`TutorDemoCard`; nút "Thử ngay" chỉ khi truyền `href` cho `TutorSection`) → "Sẵn sàng chưa?" trên nền `--nav` → khảo sát một dòng → footer.
+- Thứ tự: hero (nhãn cấp, tiêu đề hai dòng, một câu phụ, "Xem môn học" → `#mon-hoc` và "Đổi cấp", tranh bàn học SVG) → `SubjectSpotlight` → "Môn học của bạn" (dải môn học) → "Học thế nào" (ba thẻ demo Tin học theo cấp: tìm kiếm nhị phân từng bước, đổi ngôn ngữ Anh–Việt, tra thuật ngữ) → "Hỏi bất cứ lúc nào" (`TutorDemoCard`) → "Sẵn sàng chưa?" → khảo sát một dòng → footer.
+- Cỡ chữ hero thu theo viewport từ 24px để giữ trọn cả hai dòng trên màn hình hẹp.
 - Mỗi section một tiêu đề, tối đa một câu phụ; không đoạn văn.
+- Spotlight tự chuyển sau 6 giây trên thiết bị có hover; rê chuột vào hoặc đưa bàn phím vào điều khiển sẽ tạm dừng. Thiết bị cảm ứng dùng mũi tên/chấm, còn `prefers-reduced-motion` tắt tự chuyển. Chấm điều hướng có vùng bấm ít nhất 24×24px; mũi tên còn 48×48px trên điện thoại. Dải môn học tự cuộn trên con trỏ hover-capable, dừng khi rê chuột hoặc focus bàn phím. Vùng dải có focus ring; khi focus, nó dừng và đưa bộ thẻ truy cập được về đầu để link luôn nhìn thấy. Bản sao trang trí là `aria-hidden` + `inert`, không chứa link; touch và `prefers-reduced-motion` dùng cuộn thủ công. Không có nút pause.
+- CTA floats, nhịp phóng nhẹ của biểu tượng ứng dụng, nhịp nghiêng của biểu tượng khảo sát, quầng sáng/vệt quét/chấm sáng và gradient tiêu đề bảng giá được giữ ở lượt chạy ngắn khi section vào màn hình; chúng chạy một lần dưới năm giây rồi dừng. Quầng màu và chiều sâu tĩnh vẫn hiện khi giảm chuyển động.
 - Tranh hero (`features/landing/hero/`): SVG tĩnh (`HeroIllustration`) render phía server, màu chỉ lấy từ token. Chiều sâu được vẽ bằng mặt bên tối hơn (`color-mix` với `--ink`), chồng giấy và bóng đổ mờ, không xoay cả khung bằng CSS và không đóng khung thẻ. Một vùng `--paper` mờ dần phía sau làm dịu hoạ tiết nền. Tranh tự dựng một lần khi vào trang (~1,8 s, chỉ CSS): sách trồi lên, hai trang mở từ gáy, dòng kẻ và đồ thị tự vẽ (`pathLength=1` + `stroke-dashoffset`), điểm đánh dấu nảy, dải đánh dấu buông xuống, rồi đồ vật rơi xuống có độ nảy và bóng đổ lớn dần. Đổi cấp thì dựng lại (`key={level}`). Máy có chuột: `HeroStage` ghi vị trí con trỏ trên hero vào `--px`/`--py` (một khung hình mỗi lần di chuột, không vòng lặp); tranh nghiêng tối đa 5–7° và ba lớp (sách, đồ vật sau, đồ vật trước) dịch lệch nhau. Tiêu đề hiện từng dòng từ mờ sang rõ, rồi câu phụ và nút. Tất cả tắt khi `prefers-reduced-motion`. Đồ vật theo cấp là dữ liệu trong `levelObjects.ts`. Không dùng `three`/WebGL hay canvas.
 - Hiệu ứng hiện khi cuộn (700 ms: trượt lên 1,75rem, thu nhỏ 0,97 và bỏ mờ 6px, lệch 80 ms theo cột) dùng thuộc tính `translate`/`scale` riêng để không đè `transform` của thẻ; bật giảm chuyển động giữa chừng thì mọi khối hiện ngay.
 
@@ -224,9 +227,21 @@ All spacing intent derives from 4px.
 - **Variants**: Available Informatics, upcoming subject, catalog error, catalog empty.
 - **Spacing**: Inline status follows `--space-2`; group follows `--space-4`.
 - **States**: Available, upcoming, empty, error, retrying.
-- **Accessibility**: Links exist only for supported routes and real published content; status is text, not color alone.
-- **Motion**: No motion required; marquee movement is disabled for reduced motion.
-- **Layout**: Static Informatics entry precedes its secondary marquee; younger-level subjects form a simple readable list.
+- **Accessibility**: Links exist only for supported routes and real published content; upcoming status is text, not color alone.
+- **Motion**: The Landing spotlight advances every six seconds on hover-capable devices. Hovering or focusing its controls pauses it; touch and reduced-motion users change subjects manually.
+- **Layout**: The `/subjects` page places a grade selector above a responsive grid of subject cards.
+
+### Authoring reference picker
+- **Structure**: Labeled editable combobox controlling a listbox; each option contains bilingual term or resource names.
+- **Accessibility**: DOM focus stays on the input; `aria-activedescendant` identifies the active option. Arrow keys move the active option, Enter chooses it, Escape dismisses suggestions, and Tab/Shift+Tab continue through the page without a trap. Options are not nested buttons.
+- **States**: Closed, searching, results, no results, active option, selected reference.
+
+### Shared confirmation dialog
+- ExamBuilder and LessonEditor confirmations use the shared `ConfirmDialog` built on `Dialog` and `Button` tokens. Use bilingual titles/actions, preserve the focused invoker on cancel/close, and keep the least destructive close/cancel action first in the dialog tab order.
+- Dialogs provide a close button, Escape dismissal, a contained Tab sequence, and focus restoration. Backdrop dismissal is enabled only where it matches the existing interaction.
+
+### Pricing load recovery
+- A missing plan catalog shows a bilingual error and an in-page retry action. The retry announces its pending state, disables duplicate activation while refreshing, and never substitutes estimated prices.
 
 ### Profile level preference
 - **Structure**: Labeled three-choice control with current value and ownership status.
@@ -254,9 +269,11 @@ All spacing intent derives from 4px.
 | Emphasis | 400–600ms | cubic-bezier(0.16, 1, 0.3, 1) | One hero or notebook entrance |
 
 - Motion communicates a state change or reading order and uses transform/opacity where possible.
+- Automatically changing carousel content pauses on hover and keyboard focus; it is manual on touch devices and disabled when reduced motion is requested. Decorative motion starts as its section enters view, runs once for under five seconds, then stops.
+- Landing subject strip auto-scrolls on hover-capable pointers, pauses on hover/focus without a pause button, resets to the visible canonical links on keyboard focus, and stays manually scrollable on touch or reduced-motion settings. Decorative loop copies are inert and hidden from assistive technology.
 - Tutor transcript auto-reveals once per landing visit when visible, keeps the full transcript, and has no replay control.
-- `prefers-reduced-motion` shows all content immediately. Missing JavaScript or `IntersectionObserver` never hides content.
-- Preserve native page scrolling; keep marquee controls operable by touch, pointer, and keyboard.
+- `prefers-reduced-motion` shows all content immediately, disables autoplay and continuous motion, and keeps manual carousel/list controls available. Missing JavaScript or `IntersectionObserver` never hides content.
+- Preserve native page scrolling; manual carousel controls remain operable by touch, pointer, and keyboard.
 
 ## 7. Depth & Surface
 
@@ -279,7 +296,7 @@ Strategy: mixed paper layers with restrained, tinted shadows. The page canvas is
 
 | Item | Location | Why accepted | Owner / Exit |
 |---|---|---|---|
-| Legacy global `--accent` is assigned at the root | `frontend/app/globals.css` | Existing app-wide issue is outside this landing/Profile scope; new level and subject styles do not depend on it. | Project design-system follow-up; remove only in a separately scoped theme task. |
+| None | — | No accepted design or accessibility debt is currently recorded. | — |
 
 ### Cinematic 404 (Katha port, 06/10/2026)
 

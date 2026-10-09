@@ -58,7 +58,7 @@ export default function PrivacyPage() {
       <Section title={{ vi: 'Dữ liệu SciPal thu thập', en: 'What SciPal collects' }}>
         <Items
           items={[
-            { vi: 'Tài khoản: email, họ tên, mật khẩu (được mã hóa, SciPal không đọc được). Khi đăng nhập bằng Google: email, tên và ảnh đại diện mà Google chia sẻ.', en: 'Account: e-mail, name, password (hashed; SciPal cannot read it). With Google sign-in: the e-mail, name and profile picture Google shares.' },
+            { vi: 'Tài khoản: email, họ tên, mật khẩu (được mã hóa, SciPal không đọc được). Khi đăng nhập bằng Google: email, tên và ảnh đại diện mà Google chia sẻ.', en: 'Account: email, name, password (hashed; SciPal cannot read it). With Google sign-in: the email, name and profile picture Google shares.' },
             { vi: 'Việc học: cấp học đã chọn, tiến trình bài học, điểm và bài làm khi thi thử, lớp học tham gia.', en: 'Learning: chosen school level, lesson progress, exam answers and scores, classes joined.' },
             { vi: 'Giáo sư SciPal: câu hỏi và câu trả lời trong các cuộc trò chuyện của tài khoản, để bạn xem lại. Câu hỏi thử của khách chưa đăng nhập không được lưu.', en: 'SciPal Professor: questions and answers in your account’s conversations, so you can come back to them. A visitor’s trial question is not stored.' },
             { vi: 'Thanh toán: mã đơn, gói, số tiền và trạng thái giao dịch. SciPal không nhận và không lưu số thẻ hay thông tin ngân hàng.', en: 'Payments: order code, plan, amount and status. SciPal never receives or stores card or bank details.' },
@@ -86,7 +86,7 @@ export default function PrivacyPage() {
           items={[
             { vi: 'Supabase: cơ sở dữ liệu và đăng nhập.', en: 'Supabase: database and sign-in.' },
             { vi: 'Vercel: máy chủ chạy website và API.', en: 'Vercel: hosting for the website and API.' },
-            { vi: 'Google Gemini và OpenAI: tạo câu trả lời của Giáo sư SciPal và hỗ trợ soạn bài. Chỉ nội dung câu hỏi và ngữ cảnh bài học được gửi đi, không kèm email hay tên của bạn.', en: 'Google Gemini and OpenAI: generate SciPal Professor answers and help write lessons. Only the question and lesson context are sent, not your e-mail or name.' },
+            { vi: 'Google Gemini và OpenAI: tạo câu trả lời của Giáo sư SciPal và hỗ trợ soạn bài. Chỉ nội dung câu hỏi và ngữ cảnh bài học được gửi đi, không kèm email hay tên của bạn.', en: 'Google Gemini and OpenAI: generate SciPal Professor answers and help write lessons. Only the question and lesson context are sent, not your email or name.' },
             { vi: 'payOS: xử lý thanh toán chuyển khoản/QR.', en: 'payOS: processes bank transfer / QR payments.' },
             { vi: 'Google: chỉ khi bạn chọn đăng nhập bằng Google.', en: 'Google: only if you choose to sign in with Google.' },
           ]}
@@ -97,7 +97,7 @@ export default function PrivacyPage() {
         <p>
           {t({
             vi: 'SciPal dùng cookie cần thiết để giữ phiên đăng nhập và đếm lượt dùng thử, và bộ nhớ trình duyệt để nhớ ngôn ngữ, giao diện sáng/tối, cấp học và email đăng nhập (nếu bạn chọn "Ghi nhớ đăng nhập"). SciPal không dùng cookie quảng cáo hay theo dõi của bên thứ ba.',
-            en: 'SciPal uses necessary cookies to keep you signed in and count trials, and browser storage to remember your language, light/dark theme, school level and sign-in e-mail (if you choose “Remember login”). SciPal uses no advertising or third-party tracking cookies.',
+            en: 'SciPal uses necessary cookies to keep you signed in and count trials, and browser storage to remember your language, light/dark theme, school level and sign-in email (if you choose “Remember login”). SciPal uses no advertising or third-party tracking cookies.',
           })}
         </p>
       </Section>
@@ -129,7 +129,7 @@ export default function PrivacyPage() {
         <p>
           {t({
             vi: 'SciPal dành cho học sinh phổ thông. Học sinh dưới 16 tuổi nên dùng SciPal với sự đồng ý của cha mẹ hoặc giáo viên. Cha mẹ có thể yêu cầu xem hoặc xóa dữ liệu của con qua email bên dưới.',
-            en: 'SciPal is made for school students. Students under 16 should use SciPal with a parent’s or teacher’s consent. Parents can ask to see or delete their child’s data at the e-mail below.',
+            en: 'SciPal is made for school students. Students under 16 should use SciPal with a parent’s or teacher’s consent. Parents can ask to see or delete their child’s data at the email below.',
           })}
         </p>
       </Section>
