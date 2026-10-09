@@ -10,3 +10,8 @@ export function getSubjectAction(subject: LandingSubject): string | null {
   const first = [...subject.liveGrades].sort((a, b) => a - b)[0];
   return first === undefined ? null : `/${subject.slug}#lop-${first}`;
 }
+
+export function subjectsByAvailability(subjects: readonly LandingSubject[]): LandingSubject[] {
+  const live = subjects.filter((subject) => getSubjectAction(subject) !== null);
+  return [...live, ...subjects.filter((subject) => getSubjectAction(subject) === null)];
+}

@@ -23,7 +23,18 @@
   place-items: center;
   border-radius: 0.95rem;
   background: color-mix(in srgb, var(--nav-ink) 14%, transparent);
-  animation: poll-nod 3.2s ease-in-out infinite;
+}
+
+[data-landing-motion-visible='true'] .icon {
+  animation: poll-nod 3.2s ease-in-out 1;
+}
+
+@keyframes poll-nod {
+  0%,
+  70%,
+  100% { rotate: 0deg; }
+  78% { rotate: -10deg; }
+  86% { rotate: 8deg; }
 }
 
 .copy {
@@ -81,20 +92,6 @@
 .vote:focus-visible {
   outline: 3px solid var(--nav-ink);
   outline-offset: 3px;
-}
-
-@keyframes poll-nod {
-  0%,
-  70%,
-  100% {
-    rotate: 0deg;
-  }
-  78% {
-    rotate: -10deg;
-  }
-  86% {
-    rotate: 8deg;
-  }
 }
 
 @media (max-width: 30rem) {

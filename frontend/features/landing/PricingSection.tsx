@@ -111,16 +111,16 @@ export function PricingSection({
                 </li>
               ))}
             </ul>
-            <a href="#mon-hoc" className={styles.freeAction}>
+            <Link href="/subjects" className={styles.freeAction}>
               {t({ en: 'Learn for free', vi: 'Học miễn phí' })}
-            </a>
+            </Link>
           </article>
         )}
 
         {paid && (
           <div className={styles.aura} data-aura="">
             <span className={styles.sparkles} aria-hidden="true">
-              {[0, 1, 2, 3, 4].map((n) => <span key={n} style={item(n)}>✦</span>)}
+              {[0, 1, 2, 3, 4].map((n) => <Sparkles key={n} className={styles.sparkle} style={item(n)} size={n === 2 ? 18 : 14} />)}
             </span>
             <article className={styles.paid} aria-labelledby={`landing-${paid.code}`} onPointerMove={tilt} onPointerLeave={untilt}>
               <span className={styles.badge}>{t({ en: 'Recommended', vi: 'Khuyên dùng' })}</span>

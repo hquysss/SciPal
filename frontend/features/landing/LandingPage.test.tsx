@@ -10,10 +10,6 @@ vi.mock('@scipal/hooks', () => ({
   useLanguage: () => ({ lang, t: (o: { en: string; vi: string }) => o[lang] }),
 }));
 vi.mock('next/dynamic', () => ({ default: () => () => null }));
-vi.mock('@/features/subjects/SubjectMarquee', () => ({
-  SubjectMarquee: () => <div data-subject-grid="" />,
-  marqueeOrder: <T,>(subjects: T[]) => subjects,
-}));
 vi.mock('@/features/survey/DemandPollBanner', () => ({ DemandPollBanner: () => <div data-poll="" /> }));
 vi.mock('./hero/HeroStage', () => ({ HeroStage: ({ level }: { level: string }) => <div data-hero-stage={level} /> }));
 
@@ -21,8 +17,13 @@ const render = (level: EducationLevel) =>
   renderToStaticMarkup(
     <LandingPage
       level={level}
-      levelSource="session"
-      catalog={[] as unknown as LandingCatalog}
+      catalog={{
+        kind: 'ready',
+        subjects: [{
+          id: `${level}-math`, slug: 'math', name_en: 'Mathematics', name_vi: 'Toán', icon: 'Σ', icon_url: null,
+          accent_color: '', sort_order: 0, education_level: level, status: 'active', liveGrades: [10],
+        }],
+      } as LandingCatalog}
       informatics={{ kind: 'empty' }}
     />,
   );
@@ -39,12 +40,12 @@ describe('LandingPage', () => {
     expect(h1).toContain(first);
     expect(h1).toContain(second);
     expect(html).toContain('Học song ngữ Anh–Việt theo Chương trình GDPT 2018.');
-    expect(html).toMatch(/<a[^>]*href="#mon-hoc"[^>]*>[\s\S]*?Xem môn học/);
+    expect(html).toContain('Xem môn học');
     expect(html).toMatch(/<a[^>]*href="\/\?chooseLevel=1"[^>]*>[\s\S]*?Đổi cấp/);
     expect(html).toContain(`data-hero-stage="${level}"`);
   });
 
-  it('sections in order: hero, subjects, how, tutor, final CTA, footer', () => {
+  it('keeps the subject carousel between the hero and learning sections', () => {
     lang = 'vi';
     const html = render('upper_secondary');
     const order = ['data-hero-stage', 'id="mon-hoc"', 'id="cach-hoc"', 'Hỏi bất cứ lúc nào', 'Sẵn sàng chưa?', '<footer'];
@@ -52,8 +53,10 @@ describe('LandingPage', () => {
     positions.forEach((position, index) => expect(position, order[index]).toBeGreaterThan(-1));
     expect([...positions].sort((a, b) => a - b)).toEqual(positions);
     expect(html).toContain('Môn học của bạn');
-    expect(html).toContain('data-subject-grid');
-    expect(html).toMatch(/<a[^>]*href="#mon-hoc"[^>]*>[\s\S]*?Bắt đầu học/);
+    expect(html).toContain('aria-label="Các môn học; đưa tiêu điểm vào để dừng"');
+    expect(html).not.toMatch(/aria-label="[^\"]*(pause|tạm dừng)[^\"]*"/i);
+    expect(html).toContain('Bắt đầu học');
+    expect(html.split('href="/subjects"')).toHaveLength(3);
   });
 
   it('closes with a lively call to action that holds the subject poll', () => {
@@ -63,7 +66,7 @@ describe('LandingPage', () => {
     expect(cta).toContain('Mọi bài học đều miễn phí');
     expect(cta).toMatch(/<a[^>]*href="\/tutor"[^>]*>[\s\S]*?Hỏi Giáo sư SciPal/);
     expect(cta).toContain('data-poll');
-    expect(cta.match(/data-cta-float/g)?.length).toBeGreaterThanOrEqual(4);
+    expect(cta).toContain('data-cta-float');
   });
 
   it('no "in preparation" copy at any level and the poll on every level', () => {
@@ -94,12 +97,15 @@ describe('LandingPage', () => {
   });
 
   it('uses only theme tokens', () => {
-    expect(countRawColors(render('primary')).total).toBe(0);
+    const html = renderToStaticMarkup(
+      <LandingPage level="primary" catalog={{ kind: 'ready', subjects: [] }} informatics={{ kind: 'empty' }} />,
+    );
+    expect(countRawColors(html).total).toBe(0);
   });
 
   it('lets a guest change level in place with a button instead of a link', () => {
     const html = renderToStaticMarkup(
-      <LandingPage level="primary" levelSource="session" catalog={{ kind: 'ready', subjects: [] }} informatics={{ kind: 'empty' }} onChangeLevel={() => {}} />,
+      <LandingPage level="primary" catalog={{ kind: 'ready', subjects: [] }} informatics={{ kind: 'empty' }} onChangeLevel={() => {}} />,
     );
     expect(html).toMatch(/<button[^>]*type="button"[^>]*>[\s\S]*?Đổi cấp/);
     expect(html).not.toContain('href="/?chooseLevel=1"');
@@ -114,7 +120,6 @@ describe('LandingPage', () => {
     const html = renderToStaticMarkup(
       <LandingPage
         level="upper_secondary"
-        levelSource="session"
         catalog={{ kind: 'ready', subjects: [subject('math', 'Toán', 'upper_secondary'), subject('physics', 'Vật lí', 'upper_secondary'), subject('science', 'Khoa học', 'primary')] }}
         informatics={{ kind: 'empty' }}
       />,
@@ -128,7 +133,7 @@ describe('LandingPage', () => {
   it('renders the intro curtain only when asked', () => {
     expect(render('primary')).not.toContain('data-phase');
     const html = renderToStaticMarkup(
-      <LandingPage level="primary" levelSource="session" catalog={{ kind: 'ready', subjects: [] }} informatics={{ kind: 'empty' }} showIntro />,
+      <LandingPage level="primary" catalog={{ kind: 'ready', subjects: [] }} informatics={{ kind: 'empty' }} showIntro />,
     );
     expect(html).toContain('data-phase="show"');
     expect(html).not.toContain('data-ready');

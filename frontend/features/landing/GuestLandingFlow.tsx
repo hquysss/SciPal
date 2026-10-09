@@ -75,7 +75,6 @@ export function GuestLandingFlow({
   return (
     <DeferredLandingPage
       level={sessionLevel}
-      levelSource="session"
       catalog={catalog}
       informatics={informatics}
       pricing={pricing}

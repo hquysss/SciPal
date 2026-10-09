@@ -90,7 +90,6 @@ export default async function HomePage({ searchParams }: HomePageProps) {
   return (
       <DeferredLandingPage
       level={accountLevel}
-      levelSource="account"
       catalog={landingData.catalog}
       informatics={landingData.informatics}
       pricing={pricing}

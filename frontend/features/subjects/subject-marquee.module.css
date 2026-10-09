@@ -5,10 +5,9 @@
 
 .marquee {
   position: relative;
-  overflow: hidden;
+  overflow-x: auto;
   padding-block: 1.25rem 1.75rem;
-  -webkit-mask-image: linear-gradient(90deg, transparent, #000 7%, #000 93%, transparent);
-  mask-image: linear-gradient(90deg, transparent, #000 7%, #000 93%, transparent);
+  scroll-snap-type: x proximity;
 }
 
 .rail {
@@ -18,7 +17,7 @@
   margin: 0;
   padding: 0;
   list-style: none;
-  animation: marquee-run var(--marquee-duration, 40s) linear infinite;
+  animation: none;
 }
 
 /* A margin, not a flex gap: both halves then measure the same and -50% lands seamlessly. */
@@ -27,15 +26,42 @@
   margin-inline-end: 1rem;
 }
 
-.marquee:hover .rail,
-.marquee:focus-within .rail {
-  animation-play-state: paused;
-}
-
 @keyframes marquee-run {
   to {
     translate: -50% 0;
   }
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .marquee {
+    overflow: hidden;
+    -webkit-mask-image: linear-gradient(90deg, transparent, #000 7%, #000 93%, transparent);
+    mask-image: linear-gradient(90deg, transparent, #000 7%, #000 93%, transparent);
+  }
+
+  .rail {
+    animation: marquee-run var(--marquee-duration, 40s) linear infinite;
+  }
+
+  .marquee:hover .rail,
+  .marquee:focus-within .rail {
+    animation-play-state: paused;
+  }
+}
+
+.marquee:focus-visible {
+  outline: 3px solid var(--focus);
+  outline-offset: 4px;
+}
+
+.marquee:focus-within {
+  -webkit-mask-image: none;
+  mask-image: none;
+}
+
+.marquee:focus-within .rail {
+  animation: none;
+  translate: 0 0;
 }
 
 /* ---------- cards ---------- */
@@ -131,7 +157,7 @@
     radial-gradient(120% 90% at 100% 0%, color-mix(in srgb, var(--sun) 30%, transparent), transparent 60%),
     linear-gradient(160deg, color-mix(in srgb, var(--coral) 14%, var(--surface)), var(--surface));
   box-shadow: 0 0.6rem 1.4rem -1rem color-mix(in srgb, var(--coral) 60%, transparent);
-  animation: live-breathe 3.6s ease-in-out infinite;
+  animation: live-breathe 1.5s ease-out both paused;
 }
 
 .live::after {
@@ -141,7 +167,12 @@
   inset: 0;
   background: linear-gradient(105deg, transparent 35%, color-mix(in srgb, var(--surface) 70%, transparent) 50%, transparent 65%);
   translate: -120% 0;
-  animation: live-sweep 4.8s ease-in-out infinite;
+  animation: live-sweep 1.8s ease-in-out both paused;
+}
+
+[data-subject-grid][data-landing-motion-visible='true'] .live,
+[data-subject-grid][data-landing-motion-visible='true'] .live::after {
+  animation-play-state: running;
 }
 
 .live:hover {
@@ -280,6 +311,16 @@
   }
 
   .live::after {
+    display: none;
+  }
+}
+
+@media (hover: none), (pointer: coarse) {
+  .rail > li {
+    scroll-snap-align: start;
+  }
+
+  .rail > li[data-copy] {
     display: none;
   }
 }

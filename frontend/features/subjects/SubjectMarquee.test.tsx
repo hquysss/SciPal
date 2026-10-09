@@ -43,20 +43,43 @@ describe('SubjectMarquee', () => {
     expect(html).toContain('Đang biên soạn');
   });
 
-  it('fills the loop with copies hidden from readers and keys, but a pointer can still click them', () => {
+  it('fills the loop with inert copies hidden from assistive technology', () => {
     const html = render([subject('informatics', 0, true)]);
-    const copies = html.match(/<li\b[^>]*aria-hidden="true"/g) ?? [];
+    const copies = [...html.matchAll(/<li\b(?=[^>]*aria-hidden="true")(?=[^>]*inert="")([^>]*)>([\s\S]*?)<\/li>/g)];
     expect(copies.length).toBeGreaterThanOrEqual(7);
     expect(html.match(/<li\b(?![^>]*aria-hidden)/g)).toHaveLength(1);
-    expect(html).not.toContain('inert');
-    // Every copy's link is out of the tab order; the real one stays in it.
-    expect(html.match(/<a [^>]*tabindex="-1"/gi)?.length).toBe(copies.length);
-    expect(html.match(/<a (?![^>]*tabindex)/gi)).toHaveLength(1);
+    expect(copies.every((copy) => !/<a\b/i.test(copy[2]))).toBe(true);
+    expect(html.match(/<a\b/g)).toHaveLength(1);
   });
 
   it('keeps the catalog messages', () => {
     expect(renderToStaticMarkup(<SubjectMarquee level="upper_secondary" catalog={{ kind: 'error' }} />)).toContain('Tải lại danh sách');
     expect(render([])).toContain('đang được chuẩn bị');
+  });
+
+  it('has no pause button and pauses the rail on hover or keyboard focus', async () => {
+    const html = render();
+    expect(html).not.toMatch(/<button[^>]*(pause|tạm dừng)|aria-label="[^\"]*(pause|tạm dừng)/i);
+    expect(html).toContain('role="region"');
+    expect(html).toContain('tabindex="0"');
+    expect(html).toContain('aria-label="Các môn học; đưa tiêu điểm vào để dừng"');
+
+    const { readFileSync } = await import('node:fs');
+    const css = readFileSync('features/subjects/subject-marquee.module.css', 'utf8');
+    expect(css).toContain('(hover: hover) and (pointer: fine)');
+    expect(css).toMatch(/\.marquee:hover \.rail/);
+    expect(css).toMatch(/\.marquee:focus-within \.rail/);
+    expect(css).toMatch(/\.marquee:focus-within \.rail\s*\{[^}]*animation:\s*none;[^}]*translate:\s*0\s+0/);
+    expect(css).toMatch(/\.marquee:focus-within\s*\{[^}]*mask-image:\s*none/);
+    expect(css).toContain('prefers-reduced-motion: reduce');
+    expect(css).toMatch(/\(hover: none\), \(pointer: coarse\)/);
+  });
+
+  it('still gives keyboard users a stop target when every subject is in development', () => {
+    const html = render([subject('literature', 0, false)]);
+    expect(html).toContain('aria-label="Các môn học; đưa tiêu điểm vào để dừng"');
+    expect(html).toContain('tabindex="0"');
+    expect(html).not.toMatch(/<a\b/);
   });
 });
 

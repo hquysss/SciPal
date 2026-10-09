@@ -4,11 +4,9 @@ import { countRawColors } from '../../lib/theme/rawColors';
 import { PricingSection } from './PricingSection';
 import { LandingPage } from './LandingPage';
 import type { Catalog, PublicPlan } from '@/features/billing/billingApi';
-import type { LandingCatalog } from './getLandingData';
 
 vi.mock('@scipal/hooks', () => ({ useLanguage: () => ({ lang: 'vi', t: (o: { vi: string }) => o.vi }) }));
 vi.mock('next/dynamic', () => ({ default: () => () => null }));
-vi.mock('@/features/subjects/SubjectMarquee', () => ({ SubjectMarquee: () => <div data-subject-grid="" /> }));
 vi.mock('@/features/survey/DemandPollBanner', () => ({ DemandPollBanner: () => <div data-poll="" /> }));
 vi.mock('./hero/HeroStage', () => ({ HeroStage: () => <div /> }));
 
@@ -63,7 +61,7 @@ describe('PricingSection (landing)', () => {
 
 describe('LandingPage with pricing', () => {
   const render = (pricing: Catalog | null) => renderToStaticMarkup(
-    <LandingPage level="upper_secondary" levelSource="session" catalog={[] as unknown as LandingCatalog} informatics={{ kind: 'empty' }} pricing={pricing} />,
+    <LandingPage level="upper_secondary" catalog={{ kind: 'ready', subjects: [] }} informatics={{ kind: 'empty' }} pricing={pricing} />,
   );
 
   it('puts the plans between the tutor and the final call to action', () => {
