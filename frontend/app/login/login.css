@@ -280,10 +280,18 @@
   .login-mode-control { margin: clamp(6px, 1.5vh, 20px) auto; }
   .katha-login-shell { flex: 1; min-height: 0; display: flex; flex-direction: column; }
   .login-stage { flex: 1; min-height: 0; }
-  .login-form-panel { overflow-y: auto; }
+  .login-form-panel { overflow-y: auto; align-items: safe center; }
   .login-footer { margin-top: clamp(4px, 1vh, 24px); }
 }
 @media (min-width: 768px) and (min-height: 640px) and (max-height: 860px) {
+  .login-welcome-content { padding: 16px 20px; }
+  .login-welcome-content > * { flex-shrink: 0; }
+  .login-professor-scene { height: clamp(150px, 22vh, 180px); margin: 8px 0; }
+  .login-professor-scene::before { width: 150px; height: 150px; }
+  .login-orbit { width: 220px; height: 110px; }
+  .login-welcome-copy h2 { font-size: clamp(26px, 2.5vw, 32px); margin-bottom: 10px; }
+  .login-welcome-copy > p { line-height: 1.6; }
+  .login-welcome-switch { margin: 14px 0; min-height: 44px; padding-block: 10px; }
   .login-form-panel { padding-block: 8px; }
   .katha-login-heading { margin-bottom: 12px; }
   .katha-login-heading h1 { font-size: 24px; margin: 4px 0 6px; }

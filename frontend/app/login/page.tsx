@@ -131,7 +131,7 @@ function LoginContent() {
               </div>
               <div className="login-welcome-copy" key={mode}>
                 <h2 id="login-welcome-title">{mode === 'signin' ? t({ vi: 'Điều hay đang\nchờ bạn.', en: 'Your next discovery\nstarts here.' }) : t({ vi: 'Rất vui được\ngặp lại bạn.', en: 'Good to have\nyou back.' })}</h2>
-                <p>{mode === 'signin' ? t({ vi: 'Cùng Giáo sư SciPal khám phá bài học, mô phỏng và những ý tưởng mới bằng cả hai ngôn ngữ.', en: 'Explore lessons, simulations and new ideas in two languages with the SciPal Professor.' }) : t({ vi: 'Đã có tài khoản? Đăng nhập để tiếp tục khám phá cùng Giáo sư SciPal.', en: 'Already have an account? Sign in and keep exploring with the SciPal Professor.' })}</p>
+                <p>{mode === 'signin' ? t({ vi: 'Cùng SciPal khám phá bài học, mô phỏng và những ý tưởng mới bằng cả hai ngôn ngữ.', en: 'Explore lessons, simulations and new ideas in two languages with SciPal.' }) : t({ vi: 'Đã có tài khoản? Đăng nhập để tiếp tục khám phá.', en: 'Already have an account? Sign in and keep exploring.' })}</p>
               </div>
               <button type="button" className="login-welcome-switch" onClick={() => switchMode(mode === 'signin' ? 'signup' : 'signin')}>
                 <span>{mode === 'signin' ? t({ vi: 'Tạo tài khoản', en: 'Create account' }) : t({ vi: 'Đăng nhập', en: 'Sign in' })}</span><ArrowRightIcon />
