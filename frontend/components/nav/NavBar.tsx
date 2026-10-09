@@ -310,7 +310,7 @@ export function NavBar({ currentSubject }: NavBarProps) {
       >
         {barHidden ? <PanelTopOpen size={18} aria-hidden="true" /> : <PanelTopClose size={18} aria-hidden="true" />}
       </button>
-      <div inert={barHidden && wideBar} className={`${navStyles.bar} relative z-10 mx-auto flex h-16 max-w-7xl min-[1400px]:max-w-[90rem] 2xl:max-w-[100rem] items-center justify-between gap-3 px-3 sm:px-4`}>
+      <div inert={barHidden && wideBar} className={`${navStyles.bar} relative z-10 mx-auto flex h-14 max-w-5xl 2xl:max-w-[90rem] items-center justify-between gap-3 px-3 sm:px-4`}>
         <Link href="/" prefetch={pathname !== '/'} className={`${navStyles.rise} group flex shrink-0 items-center gap-3 font-bold text-nav-ink`}>
           <Image
             src="/logo.svg"
