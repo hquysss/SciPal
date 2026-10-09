@@ -96,7 +96,7 @@ export function LevelGate({ currentLevel, isAuthenticated, saveError, onGuestSel
     <main className={styles.gate} data-scipal-level-gate data-opening={opening ?? undefined}>
       <section className={styles.stage} aria-labelledby="level-gate-title">
         <h1 id="level-gate-title" className={styles.title}>
-          {t({ en: 'What grade are you in?', vi: 'Bạn học lớp mấy?' })}
+          {t({ en: 'Choose your school level', vi: 'Chọn cấp học của bạn' })}
         </h1>
 
         {saveError && (
