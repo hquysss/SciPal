@@ -86,6 +86,17 @@ describe('ExamBuilder', () => {
     expect(renderToStaticMarkup(<ExamBuilder exam={draft} subjects={subjects} isAdmin={false} />)).toContain('Xóa đề');
     expect(renderToStaticMarkup(<ExamBuilder exam={null} subjects={subjects} isAdmin={false} />)).not.toContain('Xóa đề');
   });
+
+  it('uses a shared dialog rather than the browser prompt before deleting a draft', () => {
+    const nativeConfirm = vi.spyOn(window, 'confirm').mockReturnValue(false);
+    const draft = { ...exam, status: 'draft' as const, editable: true };
+    render(<ExamBuilder exam={draft} subjects={subjects} isAdmin={false} />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Xóa đề' }));
+
+    expect(nativeConfirm).not.toHaveBeenCalled();
+    expect(screen.getByRole('dialog', { name: 'Xóa đề này?' })).toBeTruthy();
+  });
 });
 
 describe('ExamBuilder with an exam format', () => {
@@ -196,20 +207,25 @@ describe('ExamBuilder with an exam format', () => {
     expect(screen.getAllByRole('tab')[2]!.textContent).toContain('1 / 6');
   });
 
-  it('asks before a new structure drops the passages, and keeps the layout when declined', () => {
+  it('uses a shared dialog before a new structure drops passages', async () => {
     const layout = setPassage(buildLayout('thptqg:foreign'), 'mc', 0, { vi: 'Đọc đoạn văn', en: 'Read' });
-    const confirm = vi.spyOn(window, 'confirm').mockReturnValue(false);
+    const nativeConfirm = vi.spyOn(window, 'confirm').mockReturnValue(false);
     render(<ExamBuilder exam={{ ...draft, format: 'thptqg', layout, duration_minutes: 50 }} subjects={subjects} isAdmin={false} />);
     expect(picker().value).toBe('thptqg:foreign');
     pickFormat('THPTQG: Toán');
-    expect(confirm).toHaveBeenCalledTimes(1);
-    expect(confirm.mock.calls[0]![0]).toContain('đoạn văn');
+    expect(nativeConfirm).not.toHaveBeenCalled();
+    expect(screen.getByRole('dialog')).toBeTruthy();
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'Hủy' }));
+    });
     expect(picker().value).toBe('thptqg:foreign');
     expect(screen.getAllByRole('tab')).toHaveLength(1);
     expect(duration()).toBe('50');
 
-    confirm.mockReturnValue(true);
-    pickFormat('THPTQG: Toán');
+    await act(async () => {
+      pickFormat('THPTQG: Toán');
+      fireEvent.click(screen.getByRole('button', { name: 'Đổi cấu trúc' }));
+    });
     expect(screen.getAllByRole('tab')).toHaveLength(3);
     expect(duration()).toBe('90');
   });
@@ -220,5 +236,22 @@ describe('ExamBuilder with an exam format', () => {
     pickFormat('THPTQG: Toán');
     expect(confirm).not.toHaveBeenCalled();
     expect(screen.getAllByRole('tab')).toHaveLength(3);
+  });
+
+  it('asks before saving an unassigned question and leaves it untouched on cancel', async () => {
+    const nativeConfirm = vi.spyOn(window, 'confirm').mockReturnValue(false);
+    render(<ExamBuilder exam={{ ...draft, question_ids: ['m1', 's1'] }} subjects={subjects} isAdmin={false} initialQuestions={[question('m1', 'mc'), question('s1', 'short')]} />);
+    pickFormat('THPTQG: Ngoại ngữ');
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'Lưu đề' }));
+    });
+
+    expect(nativeConfirm).not.toHaveBeenCalled();
+    expect(screen.getByRole('dialog')).toBeTruthy();
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'Hủy' }));
+    });
+    expect(updateExam).not.toHaveBeenCalled();
   });
 });

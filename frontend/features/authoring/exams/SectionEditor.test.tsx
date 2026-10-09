@@ -110,6 +110,18 @@ describe('SectionEditor', () => {
     expect(two.last()[0]!.groups).toHaveLength(1);
   });
 
+  it('uses a shared dialog before removing a group that contains a passage', () => {
+    const layout = setPassage(addGroup(buildLayout('thptqg:foreign'), 'mc'), 'mc', 0, { vi: 'Đọc đoạn sau', en: '' });
+    const nativeConfirm = vi.spyOn(window, 'confirm').mockReturnValue(false);
+    const { onChange } = setup(layout);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Bỏ nhóm 1' }));
+
+    expect(nativeConfirm).not.toHaveBeenCalled();
+    expect(screen.getByRole('dialog')).toBeTruthy();
+    expect(onChange).not.toHaveBeenCalled();
+  });
+
   it('picks questions from the bank filtered by the section’s kind', async () => {
     listQuestions.mockResolvedValue({ ok: true, data: { questions: [question('t9', 'truefalse')], page: 1, page_size: 20, total: 1 } });
     const { last, onKnown } = setup(buildLayout('thptqg:math'));

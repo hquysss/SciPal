@@ -10,6 +10,8 @@ interface DialogProps {
   title: ReactNode;
   closeLabel: string;
   className?: string;
+  closeOnBackdrop?: boolean;
+  descriptionId?: string;
   children: ReactNode;
 }
 
@@ -25,7 +27,7 @@ export function wrapFocusIndex(current: number, count: number, shift: boolean): 
 }
 
 /** Modal dialog on theme tokens: Escape and the close button dismiss it; focus moves into it on open. */
-function Dialog({ open, onClose, title, closeLabel, className, children }: DialogProps) {
+function Dialog({ open, onClose, title, closeLabel, className, closeOnBackdrop = false, descriptionId, children }: DialogProps) {
   const titleId = useId();
   const panelRef = useRef<HTMLDivElement>(null);
   const onCloseRef = useRef(onClose);
@@ -60,12 +62,17 @@ function Dialog({ open, onClose, title, closeLabel, className, children }: Dialo
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-[color-mix(in_srgb,var(--ink)_60%,transparent)] p-4">
+      <div
+        role="presentation"
+        className="fixed inset-0 z-50 flex items-center justify-center bg-[color-mix(in_srgb,var(--ink)_60%,transparent)] p-4"
+        onClick={closeOnBackdrop ? (event) => { if (event.target === event.currentTarget) onClose(); } : undefined}
+      >
       <div
         ref={panelRef}
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}
+        aria-describedby={descriptionId}
         className={cn('relative max-h-[calc(100dvh-2rem)] w-full max-w-md overflow-y-auto rounded-xl border border-line bg-surface p-6 text-ink', className)}
       >
         <div className="flex items-start justify-between gap-4">

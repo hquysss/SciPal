@@ -25,6 +25,7 @@ import {
 import { FormatPicker, type FormatChoice } from './FormatPicker';
 import { DIFFICULTY_LABEL, questionStem } from './QuestionBank';
 import { SectionEditor } from './SectionEditor';
+import { useExamStructureConfirmations } from './useExamStructureConfirmations';
 
 type Bilingual = { en: string; vi: string };
 type Panel = 'write' | 'bank' | 'draw' | null;
@@ -48,6 +49,7 @@ interface ExamBuilderProps {
  */
 export function ExamBuilder({ exam, subjects, isAdmin, initialQuestions = [] }: ExamBuilderProps) {
   const { t } = useLanguage();
+  const { dialog: confirmationDialog, askFormatChange, askUnassignedSave, askDeleteExam } = useExamStructureConfirmations();
   const router = useRouter();
   const ids = useId();
   const [form, setForm] = useState<ExamInput>(() => ({
@@ -126,19 +128,9 @@ export function ExamBuilder({ exam, subjects, isAdmin, initialQuestions = [] }: 
    * "Cấu trúc đề": lay the exam out on another structure (or back to one list) without losing
    * questions. Passages and extra groups do not survive, so the author confirms first.
    */
-  const pickFormat = (next: FormatChoice) => {
+  const pickFormat = async (next: FormatChoice) => {
     if (next === choice) return;
-    if (
-      layoutHasGroupWork(layout) &&
-      !window.confirm(
-        t({
-          en: 'Changing the structure removes the shared passages and merges the question groups. Change it anyway?',
-          vi: 'Đổi cấu trúc sẽ bỏ các đoạn văn dùng chung và gộp các nhóm câu. Bạn vẫn muốn đổi?',
-        }),
-      )
-    ) {
-      return;
-    }
+    if (layoutHasGroupWork(layout) && !(await askFormatChange())) return;
     const kinds: Record<string, SectionKind> = Object.fromEntries(Object.values(rows).map((row) => [row.id, row.type]));
     const { unassigned: left, ...patch } = switchFormat(form, unassigned, next, kinds);
     change(patch);
@@ -166,18 +158,7 @@ export function ExamBuilder({ exam, subjects, isAdmin, initialQuestions = [] }: 
       setMessage({ text: why, tone: 'danger' });
       return null;
     }
-    if (
-      layout &&
-      unassigned.length > 0 &&
-      !window.confirm(
-        t({
-          en: `${unassigned.length} question(s) are not in any section. Saving now leaves them out of the exam. Save anyway?`,
-          vi: `Còn ${unassigned.length} câu chưa xếp vào phần nào. Lưu lúc này sẽ bỏ các câu đó khỏi đề. Bạn vẫn muốn lưu?`,
-        }),
-      )
-    ) {
-      return null;
-    }
+    if (layout && unassigned.length > 0 && !(await askUnassignedSave(unassigned.length))) return null;
     const body = examBody(form, savedFormat);
     const res = saved
       ? await updateExam(saved.id, examPatch(body, saved, saved.updated_at))
@@ -229,8 +210,7 @@ export function ExamBuilder({ exam, subjects, isAdmin, initialQuestions = [] }: 
 
   /** Deletes a draft after a confirmation; its questions stay in the bank. */
   const remove = async () => {
-    if (!saved || busy) return;
-    if (!window.confirm(t({ en: 'Delete this exam? Its questions stay in the bank.', vi: 'Xóa đề này? Các câu hỏi vẫn còn trong ngân hàng.' }))) return;
+    if (!saved || busy || !(await askDeleteExam())) return;
     setBusy(true);
     const res = await deleteExam(saved.id);
     setBusy(false);
@@ -355,7 +335,7 @@ export function ExamBuilder({ exam, subjects, isAdmin, initialQuestions = [] }: 
           </div>
         </div>
         <div className="sm:col-span-2">
-          <FormatPicker value={choice} onChange={pickFormat} disabled={readOnly} />
+          <FormatPicker value={choice} onChange={(next) => { void pickFormat(next); }} disabled={readOnly} />
         </div>
       </section>
 
@@ -628,6 +608,7 @@ export function ExamBuilder({ exam, subjects, isAdmin, initialQuestions = [] }: 
           />
         )}
       </Dialog>
+      {confirmationDialog}
     </div>
   );
 }
