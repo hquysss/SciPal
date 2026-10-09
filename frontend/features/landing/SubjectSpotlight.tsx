@@ -6,14 +6,15 @@ import { useLanguage } from '@scipal/hooks';
 import { SubjectProvider } from '@scipal/ui';
 import { Mascot } from '@/components/mascot/Mascot';
 import { SubjectIcon } from '@/components/subject/SubjectIcon';
-import { marqueeOrder } from '@/features/subjects/SubjectMarquee';
-import { getSubjectAction } from '@/features/subjects/subjectAvailability';
+import { getSubjectAction, subjectsByAvailability } from '@/features/subjects/subjectAvailability';
 import { useInView } from './countUp';
 import type { EducationLevel } from './educationLevel';
 import type { LandingCatalog } from './getLandingData';
 import styles from './landing.module.css';
 
 type Copy = { en: string; vi: string };
+
+const AUTOPLAY_MS = 6000;
 
 /** The fixed ghost words: top row "Học … Song", the right end of the bottom row "Ngữ". */
 const LEARN: Copy = { en: 'Learn', vi: 'Học' };
@@ -30,9 +31,6 @@ const SHORT_NAME: Record<string, { en: string; vi: string }> = {
   'physical-education': { en: 'Phys. Ed.', vi: 'GDTC' },
   'economic-law-education': { en: 'Economics & Law', vi: 'GDKTPL' },
 };
-
-/** Time each subject stays up before the next one takes over. */
-const AUTOPLAY_MS = 3800;
 
 function GhostWord({ word, i, ink }: { word: string; i: number; ink?: boolean }) {
   return (
@@ -51,12 +49,16 @@ function GhostWord({ word, i, ink }: { word: string; i: number; ink?: boolean })
  */
 export function SubjectSpotlight({ level, catalog }: { level: EducationLevel; catalog: LandingCatalog }) {
   const { t, lang } = useLanguage();
-  const subjects = catalog?.kind === 'ready' ? marqueeOrder(catalog.subjects.filter((s) => s.education_level === level)) : [];
+  const subjects = catalog?.kind === 'ready' ? subjectsByAvailability(catalog.subjects.filter((s) => s.education_level === level)) : [];
   const [index, setIndex] = useState(0);
   const [moved, setMoved] = useState(false);
-  const [paused, setPaused] = useState(false);
+  const [hovering, setHovering] = useState(false);
+  const [focusWithin, setFocusWithin] = useState(false);
+  const [reducedMotion, setReducedMotion] = useState(true);
+  const [canAutoAdvance, setCanAutoAdvance] = useState(false);
   const stageRef = useRef<HTMLDivElement>(null);
   const inView = useInView(stageRef, 0.3);
+  const paused = hovering || focusWithin || reducedMotion || !canAutoAdvance;
   const subject = subjects.length ? subjects[index % subjects.length] : null;
   const name = subject ? (lang === 'en' ? subject.name_en : subject.name_vi) : t({ en: 'Every subject', vi: 'Mọi môn học' });
   const headline = subject && SHORT_NAME[subject.slug] ? t(SHORT_NAME[subject.slug]) : name;
@@ -68,24 +70,30 @@ export function SubjectSpotlight({ level, catalog }: { level: EducationLevel; ca
     window.dispatchEvent(new Event('scroll'));
   }, [index]);
 
-  const hold = {
-    onPointerEnter: () => setPaused(true),
-    onPointerLeave: () => setPaused(false),
-    onFocus: () => setPaused(true),
-    onBlur: () => setPaused(false),
-  };
+  useEffect(() => {
+    const preference = window.matchMedia('(prefers-reduced-motion: reduce)');
+    const hoverCapability = window.matchMedia('(hover: hover) and (pointer: fine)');
+    const update = () => {
+      setReducedMotion(preference.matches);
+      setCanAutoAdvance(hoverCapability.matches);
+    };
+    update();
+    preference.addEventListener('change', update);
+    hoverCapability.addEventListener('change', update);
+    return () => {
+      preference.removeEventListener('change', update);
+      hoverCapability.removeEventListener('change', update);
+    };
+  }, []);
 
-  // Moves on by itself while the carousel is on screen. Hover or focus holds it, and a manual
-  // change restarts the count (the effect re-runs when index changes). Reduced motion: no autoplay.
   useEffect(() => {
     if (subjects.length < 2 || paused || !inView) return;
-    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
     const timer = window.setTimeout(() => {
       setIndex((current) => (current + 1) % subjects.length);
       setMoved(true);
     }, AUTOPLAY_MS);
     return () => window.clearTimeout(timer);
-  }, [index, paused, inView, subjects.length]);
+  }, [index, inView, paused, subjects.length]);
 
   const go = (next: number) => {
     setIndex((next + subjects.length) % subjects.length);
@@ -94,7 +102,13 @@ export function SubjectSpotlight({ level, catalog }: { level: EducationLevel; ca
 
   return (
     <>
-      <div ref={stageRef} className={styles.spotStage} {...hold}>
+      <div
+        ref={stageRef}
+        className={styles.spotStage}
+        data-subject-carousel-stage
+        onPointerEnter={() => setHovering(true)}
+        onPointerLeave={() => setHovering(false)}
+      >
         <h2
           id="trust-title"
           className={`${styles.ghost} ${moved ? styles.clipIn : ''}`}
@@ -146,7 +160,15 @@ export function SubjectSpotlight({ level, catalog }: { level: EducationLevel; ca
       </div>
 
       {subjects.length > 1 && (
-        <div className={styles.controls} {...hold}>
+        <div
+          className={styles.controls}
+          onPointerEnter={() => setHovering(true)}
+          onPointerLeave={() => setHovering(false)}
+          onFocusCapture={() => setFocusWithin(true)}
+          onBlurCapture={(event) => {
+            if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setFocusWithin(false);
+          }}
+        >
           <button type="button" className={styles.arrowOutline} onClick={() => go(index - 1)} aria-label={t({ en: 'Previous subject', vi: 'Môn trước' })}>
             <ArrowRight size={20} aria-hidden="true" className={styles.flipX} />
           </button>
@@ -166,7 +188,7 @@ export function SubjectSpotlight({ level, catalog }: { level: EducationLevel; ca
           <button type="button" className={styles.arrowSolid} onClick={() => go(index + 1)} aria-label={t({ en: 'Next subject', vi: 'Môn tiếp theo' })}>
             <ArrowRight size={20} aria-hidden="true" />
           </button>
-          <p className={styles.srOnly} aria-live="polite">{name}</p>
+          <p className={styles.srOnly} aria-live={paused ? 'polite' : 'off'} aria-atomic="true">{name}</p>
         </div>
       )}
     </>

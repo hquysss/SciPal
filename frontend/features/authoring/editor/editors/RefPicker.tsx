@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useId, useState } from 'react';
+import { useEffect, useId, useRef, useState } from 'react';
 import { useLanguage } from '@scipal/hooks';
 import { createBrowserClient } from '@scipal/supabase';
 import { Input } from '@/components/ui/input';
@@ -43,17 +43,26 @@ export function RefPicker({
   const [query, setQuery] = useState('');
   const [options, setOptions] = useState<Option[]>([]);
   const [searching, setSearching] = useState(false);
+  const [open, setOpen] = useState(false);
+  const [activeIndex, setActiveIndex] = useState(-1);
+  const pickerRef = useRef<HTMLDivElement>(null);
   const selected = useRefRow<Record<string, string>>(source.table, `${source.vi}, ${source.en}`, selectedId ?? '');
+  const listId = `${id}-list`;
+  const isOpen = open && query.trim().length >= 2;
+  const activeOption = options[activeIndex];
 
   useEffect(() => {
     const q = query.trim();
     if (q.length < 2) {
       setOptions([]);
+      setSearching(false);
+      setOpen(false);
+      setActiveIndex(-1);
       return;
     }
     let live = true;
+    setSearching(true);
     const timer = setTimeout(async () => {
-      setSearching(true);
       const pattern = searchPattern(q);
       const { data } = await createBrowserClient()
         .from(source.table)
@@ -65,12 +74,56 @@ export function RefPicker({
       setSearching(false);
       const rows = (data ?? []) as unknown as Array<Record<string, string>>;
       setOptions(rows.map((row) => ({ id: row.id!, label: { vi: row[source.vi] ?? '', en: row[source.en] ?? '' } })));
+      setActiveIndex(-1);
     }, 300);
     return () => {
       live = false;
       clearTimeout(timer);
     };
   }, [query, subjectId, source]);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    const dismissOutside = (event: PointerEvent) => {
+      if (event.target instanceof Node && !pickerRef.current?.contains(event.target)) {
+        setOpen(false);
+        setActiveIndex(-1);
+      }
+    };
+    document.addEventListener('pointerdown', dismissOutside);
+    return () => document.removeEventListener('pointerdown', dismissOutside);
+  }, [isOpen]);
+
+  const choose = (option: Option) => {
+    onPick(option.id, option.label);
+    setChanging(false);
+    setQuery('');
+    setOptions([]);
+    setOpen(false);
+    setActiveIndex(-1);
+  };
+
+  const handleKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
+    if (event.key === 'ArrowDown' && options.length > 0) {
+      event.preventDefault();
+      setOpen(true);
+      setActiveIndex((index) => (index < 0 || index === options.length - 1 ? 0 : index + 1));
+    } else if (event.key === 'ArrowUp' && options.length > 0) {
+      event.preventDefault();
+      setOpen(true);
+      setActiveIndex((index) => (index <= 0 ? options.length - 1 : index - 1));
+    } else if (event.key === 'Enter' && isOpen && activeOption) {
+      event.preventDefault();
+      choose(activeOption);
+    } else if (event.key === 'Escape' && isOpen) {
+      event.preventDefault();
+      setOpen(false);
+      setActiveIndex(-1);
+    } else if (event.key === 'Tab' && isOpen) {
+      setOpen(false);
+      setActiveIndex(-1);
+    }
+  };
 
   const noun = kind === 'term' ? t({ en: 'glossary term', vi: 'thuật ngữ' }) : t({ en: 'resource', vi: 'tài nguyên' });
 
@@ -90,43 +143,47 @@ export function RefPicker({
   }
 
   return (
-    <div className="flex flex-col gap-1.5">
+    <div ref={pickerRef} className="flex flex-col gap-1.5">
       <label htmlFor={id} className={LABEL}>
         {t({ en: `Find a ${noun} by name`, vi: `Tìm ${noun} theo tên` })}
       </label>
       <Input
         id={id}
         value={query}
-        onChange={(e) => setQuery(e.target.value)}
+        onChange={(event) => {
+          setQuery(event.target.value);
+          setOpen(event.target.value.trim().length >= 2);
+          setActiveIndex(-1);
+        }}
+        onKeyDown={handleKeyDown}
+        onClick={() => { if (options.length > 0 && query.trim().length >= 2) setOpen(true); }}
         role="combobox"
-        aria-expanded={options.length > 0}
-        aria-controls={`${id}-list`}
+        aria-autocomplete="list"
+        aria-expanded={isOpen}
+        aria-controls={listId}
+        aria-activedescendant={activeOption ? `${id}-option-${activeIndex}` : undefined}
         autoComplete="off"
         placeholder={t({ en: 'At least 2 letters', vi: 'Gõ ít nhất 2 chữ' })}
       />
-      {options.length > 0 ? (
-        <ul id={`${id}-list`} role="listbox" className="flex flex-col overflow-hidden rounded-lg border border-line bg-surface">
-          {options.map((option) => (
-            <li key={option.id} role="option" aria-selected={option.id === selectedId}>
-              <button
-                type="button"
-                onClick={() => {
-                  onPick(option.id, option.label);
-                  setChanging(false);
-                  setQuery('');
-                }}
-                className="flex min-h-11 w-full flex-col items-start justify-center px-3 py-1.5 text-left text-sm hover:bg-surface-sunken"
-              >
-                <span className="font-semibold text-ink">{option.label.vi}</span>
-                {option.label.en && <span className="text-ink-muted">{option.label.en}</span>}
-              </button>
-            </li>
-          ))}
-        </ul>
-      ) : (
-        query.trim().length >= 2 &&
-        !searching && <p className="text-sm text-ink-muted">{t({ en: 'Nothing found in this subject.', vi: 'Không tìm thấy trong môn này.' })}</p>
-      )}
+      <ul id={listId} role="listbox" hidden={!isOpen} aria-busy={searching} className="flex max-h-60 flex-col overflow-y-auto rounded-lg border border-line bg-surface">
+        {options.map((option, index) => (
+          <li
+            id={`${id}-option-${index}`}
+            key={option.id}
+            role="option"
+            aria-selected={activeIndex === index}
+            onMouseDown={(event) => event.preventDefault()}
+            onMouseEnter={() => setActiveIndex(index)}
+            onClick={() => choose(option)}
+            className={`flex min-h-11 cursor-pointer flex-col items-start justify-center px-3 py-1.5 text-left text-sm hover:bg-surface-sunken ${activeIndex === index ? 'bg-surface-sunken' : ''}`}
+          >
+            <span className="font-semibold text-ink">{option.label.vi}</span>
+            {option.label.en && <span className="text-ink-muted">{option.label.en}</span>}
+          </li>
+        ))}
+      </ul>
+      {isOpen && searching && <p role="status" className="text-sm text-ink-muted">{t({ en: 'Searching…', vi: 'Đang tìm…' })}</p>}
+      {isOpen && !searching && options.length === 0 && <p role="status" className="text-sm text-ink-muted">{t({ en: 'Nothing found in this subject.', vi: 'Không tìm thấy trong môn này.' })}</p>}
     </div>
   );
 }

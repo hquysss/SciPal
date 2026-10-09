@@ -27,7 +27,6 @@ const CONTACT_EMAIL = 'tuilangus@gmail.com';
 
 export interface LandingPageProps {
   level: EducationLevel;
-  levelSource: 'account' | 'session';
   /** A guest changes level on this page (the gate opens in place); signed-in users follow a link. */
   onChangeLevel?: () => void;
   catalog: LandingCatalog;
@@ -40,7 +39,6 @@ export interface LandingPageProps {
 
 type Copy = { en: string; vi: string };
 
-/** Subject glyphs drifting up through the closing call to action (decoration only). */
 const CTA_FLOATS = [Atom, Sigma, FlaskConical, Braces, Dna, BookOpen, Globe, Lightbulb];
 
 const LEVEL_LABEL: Record<EducationLevel, Copy> = {
@@ -114,12 +112,14 @@ function useRevealOnScroll(pageRef: React.RefObject<HTMLDivElement | null>) {
         const target = entry.target;
         if (!entry.isIntersecting) {
           settling.get(target)?.();
+          target.removeAttribute('data-landing-motion-visible');
           target.classList.remove(styles.revealed);
           target.classList.add(styles.revealPending);
           return;
         }
         const enough = entry.intersectionRatio >= 0.12 || entry.intersectionRect.height >= window.innerHeight * 0.3;
         if (!enough || !target.classList.contains(styles.revealPending)) return;
+        target.setAttribute('data-landing-motion-visible', 'true');
         target.classList.add(styles.revealed);
         settle(target);
       });
@@ -135,7 +135,10 @@ function useRevealOnScroll(pageRef: React.RefObject<HTMLDivElement | null>) {
     const revealPending = () => {
       if (!motionPreference.matches) return;
       observer.disconnect();
-      targets.forEach(clearReveal);
+      targets.forEach((target) => {
+        clearReveal(target);
+        target.removeAttribute('data-landing-motion-visible');
+      });
     };
     motionPreference.addEventListener('change', revealPending);
 
@@ -242,7 +245,7 @@ function ChangeLevel({ onChangeLevel, className }: { onChangeLevel?: () => void;
   );
 }
 
-export function LandingPage({ level, levelSource, catalog, onChangeLevel, pricing = null, showIntro = false }: LandingPageProps) {
+export function LandingPage({ level, catalog, onChangeLevel, pricing = null, showIntro = false }: LandingPageProps) {
   const { t, lang } = useLanguage();
   const pageRef = useRef<HTMLDivElement>(null);
   const [intro] = useState(() => showIntro && !introPlayed());
@@ -288,10 +291,10 @@ export function LandingPage({ level, levelSource, catalog, onChangeLevel, pricin
                   })}
                 </p>
                 <div className={styles.heroActions}>
-                  <a href="#mon-hoc" className={styles.pillLight}>
+                  <Link href="#mon-hoc" className={styles.pillLight}>
                     {t({ en: 'Explore subjects', vi: 'Xem môn học' })}
                     <ArrowRight size={16} aria-hidden="true" />
-                  </a>
+                  </Link>
                   <ChangeLevel onChangeLevel={onChangeLevel} className={styles.pillGhost} />
                 </div>
               </div>
@@ -334,13 +337,8 @@ export function LandingPage({ level, levelSource, catalog, onChangeLevel, pricin
                 </h2>
               </div>
               <ChangeLevel onChangeLevel={onChangeLevel} className={styles.inlineLink} />
-              <p className={styles.srOnly}>
-                {levelSource === 'account'
-                  ? t({ en: 'Your level is saved to your account.', vi: 'Cấp học đã lưu vào tài khoản.' })
-                  : t({ en: 'Your level is saved in this tab.', vi: 'Cấp học được lưu trong tab này.' })}
-              </p>
             </div>
-            <div className={styles.subjectGrid} data-landing-reveal>
+            <div className={styles.subjectGrid} data-landing-reveal data-subject-grid>
               <SubjectMarquee level={level} catalog={catalog} />
             </div>
           </section>
@@ -376,8 +374,8 @@ export function LandingPage({ level, levelSource, catalog, onChangeLevel, pricin
           <section className={styles.finalCta} aria-labelledby="start-title" data-landing-reveal>
             <div className={styles.ctaFloats} aria-hidden="true">
               {CTA_FLOATS.map((Icon, index) => (
-                <span key={index} data-cta-float="" style={{ '--i': index } as React.CSSProperties}>
-                  <Icon size={26} strokeWidth={1.6} />
+                <span key={index} data-cta-float style={{ '--i': index } as React.CSSProperties}>
+                  <Icon size={28} strokeWidth={1.5} />
                 </span>
               ))}
             </div>
@@ -393,10 +391,10 @@ export function LandingPage({ level, levelSource, catalog, onChangeLevel, pricin
                 </p>
               </div>
               <div className={styles.finalActions}>
-                <a href="#mon-hoc" className={styles.pillLight}>
+                <Link href="/subjects" className={styles.pillLight}>
                   {t({ en: 'Start learning', vi: 'Bắt đầu học' })}
                   <ArrowRight size={16} aria-hidden="true" />
-                </a>
+                </Link>
                 <Link href="/tutor" className={styles.pillGhost}>
                   <Sparkles size={16} aria-hidden="true" />
                   {t({ en: 'Ask the SciPal Professor', vi: 'Hỏi Giáo sư SciPal' })}
@@ -421,7 +419,7 @@ export function LandingPage({ level, levelSource, catalog, onChangeLevel, pricin
             <nav className={styles.footerCol} aria-label={t({ en: 'Learn', vi: 'Học tập' })}>
               <h3>{t({ en: 'Learn', vi: 'Học tập' })}</h3>
               <ul>
-                <li><a href="#mon-hoc">{t({ en: 'Subjects', vi: 'Môn học' })}</a></li>
+                <li><Link href="/subjects">{t({ en: 'Subjects', vi: 'Môn học' })}</Link></li>
                 <li><Link href="/glossary">{t({ en: 'Glossary', vi: 'Từ điển thuật ngữ' })}</Link></li>
                 <li><Link href="/tutor">{t({ en: 'SciPal Professor', vi: 'Giáo sư SciPal' })}</Link></li>
               </ul>

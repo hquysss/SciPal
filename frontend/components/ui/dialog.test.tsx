@@ -21,6 +21,15 @@ describe('Dialog', () => {
     expect(html).toContain('nội dung');
     expect(countRawColors(html).total).toBe(0);
   });
+
+  it('associates supporting copy with the modal description', () => {
+    const html = renderToStaticMarkup(
+      <Dialog open onClose={() => {}} title="Confirm action" closeLabel="Cancel" descriptionId="dialog-description">
+        <p id="dialog-description">The action removes this draft.</p>
+      </Dialog>,
+    );
+    expect(html).toContain('aria-describedby="dialog-description"');
+  });
 });
 
 describe('wrapFocusIndex', () => {

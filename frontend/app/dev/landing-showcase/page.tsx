@@ -98,7 +98,6 @@ export default async function LandingShowcase({
   return (
     <LandingPage
       level={level}
-      levelSource={params.scope === 'account' ? 'account' : 'session'}
       catalog={catalog}
       informatics={informatics}
       pricing={pricing}

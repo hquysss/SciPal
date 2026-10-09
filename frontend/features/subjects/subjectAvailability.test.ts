@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { LandingSubject } from '../landing/getLandingData';
-import { getSubjectAction } from './subjectAvailability';
+import { getSubjectAction, subjectsByAvailability } from './subjectAvailability';
 
 const subject = (patch: Partial<LandingSubject> = {}): LandingSubject => ({
   id: 'subject-math',
@@ -29,5 +29,14 @@ describe('getSubjectAction', () => {
 
   it('opens the subject page itself when the live grades are unknown', () => {
     expect(getSubjectAction(subject({ liveGrades: undefined }))).toBe('/math');
+  });
+});
+
+describe('subjectsByAvailability', () => {
+  it('puts available subjects first and keeps each group in catalog order', () => {
+    const upcoming = subject({ id: 'subject-upcoming', slug: 'writing', status: 'upcoming', liveGrades: [] });
+    const available = subject({ id: 'subject-available', slug: 'physics' });
+
+    expect(subjectsByAvailability([upcoming, available]).map((item) => item.slug)).toEqual(['physics', 'writing']);
   });
 });

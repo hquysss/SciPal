@@ -23,7 +23,7 @@ import { lessonIssues, type LessonIssue } from './editor/lessonIssues';
 import { PartTabs } from './editor/PartTabs';
 import { LessonRequestsPanel } from './simulationRequests/LessonRequestsPanel';
 import { PracticeQuestionsContext, usePracticeQuestionRows } from './practice/PracticeQuestionsContext';
-import { leavingHref } from './editor/leaveGuard';
+import { UnsavedNavigationGuard } from './editor/UnsavedNavigationGuard';
 import { uploadLessonMedia } from './editor/mediaApi';
 import { nextNotice, translateBeforeSave, type Mark } from './translation/autoTranslate';
 import { AutoTranslateContext, AutoTranslatedNote, type AutoTranslateValue } from './translation/AutoTranslateContext';
@@ -239,6 +239,7 @@ export function LessonEditor({
   }, [lessonId]);
 
   const saverRef = useRef<Autosaver | null>(null);
+  const hasUnsavedWork = useCallback(() => saverRef.current?.hasUnsavedWork() ?? false, []);
   useEffect(() => {
     const saver = createAutosaver({ delayMs: AUTOSAVE_DELAY_MS, save: saveDraft, onState: setSaveState });
     saverRef.current = saver;
@@ -248,43 +249,6 @@ export function LessonEditor({
   useEffect(() => {
     saverRef.current?.setEnabled(canAutosave(status) && canEditContent);
   }, [status, canEditContent]);
-
-  // Warn before leaving with unsaved or in-flight work: tab close and reload (beforeunload), and
-  // in-app links, which navigate without beforeunload.
-  const leaveQuestion = t({ en: 'Leave the editor? Some changes are not saved yet.', vi: 'Rời trang soạn? Vẫn còn thay đổi chưa được lưu.' });
-  useEffect(() => {
-    const warn = (event: BeforeUnloadEvent) => {
-      if (!saverRef.current?.hasUnsavedWork()) return;
-      event.preventDefault();
-      event.returnValue = '';
-    };
-    const guardLinks = (event: MouseEvent) => {
-      if (!saverRef.current?.hasUnsavedWork()) return;
-      const anchor = event.target instanceof Element ? event.target.closest('a[href]') : null;
-      const href = leavingHref(
-        {
-          button: event.button,
-          ctrlKey: event.ctrlKey,
-          metaKey: event.metaKey,
-          shiftKey: event.shiftKey,
-          altKey: event.altKey,
-          defaultPrevented: event.defaultPrevented,
-          anchor: anchor instanceof HTMLAnchorElement ? { href: anchor.href, target: anchor.target, download: anchor.hasAttribute('download') } : null,
-        },
-        new URL(window.location.href),
-      );
-      if (href && !window.confirm(leaveQuestion)) {
-        event.preventDefault();
-        event.stopPropagation();
-      }
-    };
-    window.addEventListener('beforeunload', warn);
-    document.addEventListener('click', guardLinks, true);
-    return () => {
-      window.removeEventListener('beforeunload', warn);
-      document.removeEventListener('click', guardLinks, true);
-    };
-  }, [leaveQuestion]);
 
   const changed = () => {
     setSubmitIssues([]);
@@ -482,6 +446,7 @@ export function LessonEditor({
 
   return (
     <AutoTranslateContext.Provider value={autoTranslateValue}>
+    <UnsavedNavigationGuard hasUnsavedWork={hasUnsavedWork} />
     <div className="flex flex-col gap-5">
       <header className="flex flex-col gap-4 rounded-xl border border-line bg-surface p-4 sm:p-5">
         <div className="flex flex-wrap items-center justify-between gap-3">

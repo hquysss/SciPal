@@ -9,12 +9,6 @@ import type { LandingCatalog, LandingSubject } from '../landing/getLandingData';
 import { getSubjectAction } from './subjectAvailability';
 import styles from './subject-marquee.module.css';
 
-// The landing page's subjects as one strip that keeps running sideways. Subjects with lessons lead
-// and stand out in warm sun → coral; the rest follow as quieter cards. Readers and keyboards get each subject once: the
-// copies that make the loop seamless are aria-hidden and their links leave the tab order (not inert:
-// most cards on screen are copies, and a pointer must still open them). Hover or focus pauses the strip;
-// with reduced motion it stops and scrolls by hand instead.
-
 /** Cards per half of the loop at least, so a short catalog still fills a wide screen. */
 const MIN_PER_LOOP = 8;
 /** Seconds each card takes to cross, so long and short strips move at the same pace. */
@@ -53,10 +47,14 @@ function MarqueeCard({ subject, copy, level }: { subject: LandingSubject; copy: 
         <h3>{name}</h3>
         <span lang={lang === 'en' ? 'vi' : 'en'}>{other}</span>
       </span>
-      <Link href={href} className={styles.go} tabIndex={copy ? -1 : undefined}>
-        {t({ en: 'Start now', vi: 'Học ngay' })}
-        <span aria-hidden="true">→</span>
-      </Link>
+      {copy ? (
+        <span className={styles.soon}>{t({ en: 'Available', vi: 'Đang mở' })}</span>
+      ) : (
+        <Link href={href} className={styles.go}>
+          {t({ en: 'Start now', vi: 'Học ngay' })}
+          <span aria-hidden="true">→</span>
+        </Link>
+      )}
     </article>
   );
 }
@@ -83,6 +81,7 @@ function CatalogMessage({ kind }: { kind: 'empty' | 'error' }) {
 export function SubjectMarquee({ level, catalog }: { level: EducationLevel; catalog: LandingCatalog }) {
   const { t } = useLanguage();
   const label = t({ en: 'Subjects', vi: 'Các môn học' });
+  const carouselLabel = t({ en: 'Subjects; focus here to pause', vi: 'Các môn học; đưa tiêu điểm vào để dừng' });
 
   if (catalog.kind === 'error') {
     return <div role="region" aria-label={label}><CatalogMessage kind="error" /></div>;
@@ -102,7 +101,9 @@ export function SubjectMarquee({ level, catalog }: { level: EducationLevel; cata
     <div
       className={styles.marquee}
       role="region"
-      aria-label={label}
+      aria-label={carouselLabel}
+      aria-roledescription={t({ en: 'carousel', vi: 'băng chuyền' })}
+      tabIndex={0}
       style={{ '--marquee-duration': `${half.length * SECONDS_PER_CARD}s` } as CSSProperties}
     >
       {liveCount > 0 && (
@@ -114,7 +115,7 @@ export function SubjectMarquee({ level, catalog }: { level: EducationLevel; cata
         {cards.map((subject, index) => {
           const copy = index >= subjects.length;
           return (
-            <li key={`${subject.slug}-${index}`} aria-hidden={copy || undefined} data-copy={copy || undefined}>
+            <li key={`${subject.slug}-${index}`} aria-hidden={copy || undefined} inert={copy || undefined} data-copy={copy || undefined}>
               <MarqueeCard subject={subject} copy={copy} level={level} />
             </li>
           );

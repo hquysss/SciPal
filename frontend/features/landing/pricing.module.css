@@ -228,7 +228,6 @@
   /* The ring: the three colors around the card, the halo's sharp edge. */
   background: conic-gradient(from var(--aura-turn, 0deg), var(--sun), var(--coral), var(--sky), var(--sun));
   box-shadow: 0 2.5rem 4rem -2.5rem color-mix(in srgb, var(--coral) 55%, transparent);
-  animation: aura-turn 14s linear infinite;
 }
 
 /* The glow: the same colors, blurred wide behind the card. */
@@ -243,7 +242,12 @@
   background: conic-gradient(from var(--aura-turn, 0deg), var(--sun), var(--coral), var(--sky), var(--sun));
   filter: blur(46px);
   opacity: 0.7;
-  animation: aura-breathe 5s ease-in-out infinite;
+}
+
+@property --aura-turn {
+  syntax: '<angle>';
+  inherits: true;
+  initial-value: 0deg;
 }
 
 .paid {
@@ -264,7 +268,6 @@
   pointer-events: none;
 }
 
-/* A sweep of light crosses the card now and then. */
 .paid::after {
   content: '';
   position: absolute;
@@ -272,42 +275,26 @@
   z-index: 0;
   background: linear-gradient(110deg, transparent 38%, color-mix(in srgb, var(--surface) 75%, transparent) 50%, transparent 62%);
   translate: -130% 0;
-  animation: paid-sweep 6s ease-in-out 1.2s infinite;
   pointer-events: none;
+}
+
+@keyframes aura-turn {
+  to { --aura-turn: 360deg; }
+}
+
+@keyframes aura-breathe {
+  50% { opacity: 0.95; scale: 1.06; }
+}
+
+@keyframes paid-sweep {
+  0%,
+  35% { translate: -130% 0; }
+  100% { translate: 130% 0; }
 }
 
 .paid > * {
   position: relative;
   z-index: 1;
-}
-
-@property --aura-turn {
-  syntax: '<angle>';
-  inherits: true;
-  initial-value: 0deg;
-}
-
-@keyframes aura-turn {
-  to {
-    --aura-turn: 360deg;
-  }
-}
-
-@keyframes aura-breathe {
-  50% {
-    opacity: 0.95;
-    scale: 1.06;
-  }
-}
-
-@keyframes paid-sweep {
-  0%,
-  60% {
-    translate: -130% 0;
-  }
-  100% {
-    translate: 130% 0;
-  }
 }
 
 /* ---------- stage: soft colour drifting behind the section ---------- */
@@ -324,10 +311,10 @@
   border-radius: 50%;
   filter: blur(60px);
   opacity: 0.35;
-  animation: orb-drift 18s ease-in-out infinite alternate;
 }
 
 .orbSun {
+  --i: 0;
   top: 8%;
   left: 2%;
   width: clamp(10rem, 22vw, 18rem);
@@ -336,28 +323,25 @@
 }
 
 .orbCoral {
+  --i: 1;
   right: 4%;
   bottom: 6%;
   width: clamp(12rem, 26vw, 22rem);
   aspect-ratio: 1;
   background: var(--coral);
-  animation-delay: -6s;
 }
 
 .orbSky {
+  --i: 2;
   top: 30%;
   left: 42%;
   width: clamp(8rem, 18vw, 15rem);
   aspect-ratio: 1;
   background: var(--sky);
-  animation-delay: -12s;
 }
 
 @keyframes orb-drift {
-  to {
-    translate: 3rem -2rem;
-    scale: 1.15;
-  }
+  to { translate: 3rem -2rem; scale: 1.15; }
 }
 
 /* ---------- title ---------- */
@@ -372,16 +356,11 @@
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
-  animation: title-flow 8s linear infinite;
 }
 
 @keyframes title-flow {
-  to {
-    background-position: 300% 0;
-  }
+  to { background-position: 300% 0; }
 }
-
-/* ---------- badge and sparkles ---------- */
 
 .badge {
   position: absolute;
@@ -404,39 +383,28 @@
   pointer-events: none;
 }
 
-.sparkles span {
+.sparkle {
   position: absolute;
   color: var(--sun);
-  font-size: 1rem;
-  opacity: 0;
-  animation: twinkle 3.2s ease-in-out infinite;
-  animation-delay: calc(var(--i, 0) * 0.64s);
+  opacity: 0.55;
 }
 
-.sparkles span:nth-child(1) { top: 0; left: 12%; }
-.sparkles span:nth-child(2) { top: 18%; right: 0; font-size: 0.8rem; color: var(--coral); }
-.sparkles span:nth-child(3) { bottom: 8%; right: 6%; font-size: 1.2rem; }
-.sparkles span:nth-child(4) { bottom: 0; left: 30%; font-size: 0.75rem; color: var(--sky); }
-.sparkles span:nth-child(5) { top: 45%; left: 0; font-size: 0.9rem; color: var(--coral); }
+.sparkle:nth-child(1) { top: 0; left: 12%; }
+.sparkle:nth-child(2) { top: 18%; right: 0; color: var(--coral); }
+.sparkle:nth-child(3) { right: 6%; bottom: 8%; }
+.sparkle:nth-child(4) { bottom: 0; left: 30%; color: var(--sky); }
+.sparkle:nth-child(5) { top: 45%; left: 0; color: var(--coral); }
 
 @keyframes twinkle {
   0%,
-  100% {
-    opacity: 0;
-    scale: 0.4;
-    rotate: 0deg;
-  }
-  50% {
-    opacity: 1;
-    scale: 1;
-    rotate: 45deg;
-  }
+  100% { scale: 0.4; rotate: 0deg; }
+  50% { opacity: 1; scale: 1; rotate: 45deg; }
 }
 
 /* ---------- entrance: replays each time the section comes into view ---------- */
 
 .price {
-  animation: price-pop 420ms cubic-bezier(0.34, 1.56, 0.64, 1);
+  animation: price-pop 420ms cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 @keyframes price-pop {
@@ -451,13 +419,47 @@
 }
 
 .pricing[data-inview='true'] .aura {
-  animation:
-    aura-turn 14s linear infinite,
-    aura-in 900ms cubic-bezier(0.16, 1, 0.3, 1) 120ms both;
+  animation: aura-in 900ms cubic-bezier(0.16, 1, 0.3, 1) 120ms both, aura-turn 4.8s linear 120ms 1 both;
+}
+
+.pricing[data-inview='true'] .aura::before {
+  animation: aura-breathe 4.8s ease-in-out 120ms 1 both;
+}
+
+.pricing[data-inview='true'] .paid::after {
+  animation: paid-sweep 4.8s ease-in-out 120ms 1 both;
+}
+
+.pricing[data-inview='true'] .stage span {
+  animation: orb-drift 4.8s ease-in-out calc(var(--i, 0) * 80ms) 1 both;
+}
+
+.pricing[data-inview='true'] .titleGlow {
+  animation: title-flow 4.8s linear 1 both;
+}
+
+.pricing[data-inview='true'] .sparkle {
+  animation: twinkle 3.2s ease-in-out calc(var(--i, 0) * 220ms) 1 both;
+}
+
+.pricingPage .aura {
+  animation: aura-turn 4.8s linear 120ms 1 both;
+}
+
+.pricingPage .aura::before {
+  animation: aura-breathe 4.8s ease-in-out 120ms 1 both;
+}
+
+.pricingPage .paid::after {
+  animation: paid-sweep 4.8s ease-in-out 120ms 1 both;
+}
+
+.pricingPage .sparkle {
+  animation: twinkle 3.2s ease-in-out calc(var(--i, 0) * 220ms) 1 both;
 }
 
 .pricing[data-inview='true'] .badge {
-  animation: badge-in 600ms cubic-bezier(0.34, 1.56, 0.64, 1) 700ms both;
+  animation: badge-in 600ms cubic-bezier(0.22, 1, 0.36, 1) 700ms both;
 }
 
 .pricing[data-inview='true'] .limits li {
@@ -519,7 +521,7 @@
   .paid::after,
   .stage span,
   .titleGlow,
-  .sparkles span,
+  .sparkle,
   .price,
   .pricing[data-inview='true'] .free,
   .pricing[data-inview='true'] .badge,
@@ -531,11 +533,6 @@
     transform: none;
     transition: none;
   }
-
-  .paid::after,
-  .sparkles {
-    display: none;
-  }
 }
 
 @media (prefers-contrast: more) {
@@ -545,8 +542,7 @@
   }
 
   .aura::before,
-  .stage,
-  .sparkles {
+  .stage {
     display: none;
   }
 
@@ -578,21 +574,7 @@
   }
 }
 
-/* Phones and touch screens: wide blurs that move or turn repaint every frame and stutter there.
-   Keep the look, drop the motion: the colour stays still, the ring stops turning, no sweep. */
 @media (pointer: coarse), (max-width: 48rem) {
-  .aura,
-  .pricing[data-inview='true'] .aura,
-  .aura::before,
-  .stage span,
-  .titleGlow {
-    animation: none;
-  }
-
-  .paid::after {
-    display: none;
-  }
-
   .aura::before {
     filter: blur(28px);
     opacity: 0.6;

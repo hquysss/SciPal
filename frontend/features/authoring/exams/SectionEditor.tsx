@@ -7,6 +7,7 @@ import { useLanguage } from '@scipal/hooks';
 import { layoutQuestionIds, MAX_PASSAGE_TEXT, type ExamSection } from '@scipal/types';
 import { cn } from 'cn';
 import { Button } from '@/components/ui/button';
+import { useExamStructureConfirmations } from './useExamStructureConfirmations';
 import { LessonStatusBadge } from '../lessonStatusBadge';
 import type { AuthorQuestion } from '../practice/api';
 import { QUESTION_TYPE_LABEL } from '../practice/questionDraft';
@@ -43,6 +44,7 @@ interface SectionEditorProps {
  */
 export function SectionEditor({ layout, rows, problems, subjectId, readOnly = false, missingLabel, onChange, onKnown, onEdit }: SectionEditorProps) {
   const { t } = useLanguage();
+  const { dialog: confirmationDialog, askRemoveGroup } = useExamStructureConfirmations();
   const ids = useId();
   const [activeKey, setActiveKey] = useState(layout[0]?.key ?? '');
   const [bankFor, setBankFor] = useState<{ key: string; group: number } | null>(null);
@@ -71,9 +73,9 @@ export function SectionEditor({ layout, rows, problems, subjectId, readOnly = fa
     onChange(setPassage(layout, active.key, groupIndex, next.vi || next.en ? next : undefined));
   };
 
-  const dropGroup = (groupIndex: number) => {
+  const dropGroup = async (groupIndex: number) => {
     const group = active.groups[groupIndex];
-    if (group?.passage && !window.confirm(t({ en: 'Remove this group and its passage? Its questions move to the group next to it.', vi: 'Bỏ nhóm này cùng đoạn văn? Các câu của nhóm sẽ chuyển sang nhóm bên cạnh.' }))) return;
+    if (group?.passage && !(await askRemoveGroup())) return;
     setBankFor(null);
     onChange(removeGroup(layout, active.key, groupIndex));
   };
@@ -145,7 +147,7 @@ export function SectionEditor({ layout, rows, problems, subjectId, readOnly = fa
                 <div className="flex items-center justify-between gap-2">
                   <h4 className="text-sm font-semibold text-ink">{t(groupName)}</h4>
                   {!readOnly && (
-                    <Button type="button" variant="ghost" aria-label={t({ en: `Remove group ${gi + 1}`, vi: `Bỏ nhóm ${gi + 1}` })} onClick={() => dropGroup(gi)}>
+                    <Button type="button" variant="ghost" aria-label={t({ en: `Remove group ${gi + 1}`, vi: `Bỏ nhóm ${gi + 1}` })} onClick={() => { void dropGroup(gi); }}>
                       {t({ en: 'Remove group', vi: 'Bỏ nhóm' })}
                     </Button>
                   )}
@@ -283,6 +285,7 @@ export function SectionEditor({ layout, rows, problems, subjectId, readOnly = fa
           </div>
         )}
       </div>
+      {confirmationDialog}
     </div>
   );
 }

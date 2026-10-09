@@ -1,12 +1,13 @@
 'use client';
 
-import { useEffect, useRef, useState, type CSSProperties } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { ArrowRight, BookOpen, Check, QrCode, RefreshCcw, Sparkles } from 'lucide-react';
 import { useLanguage } from '@scipal/hooks';
 import { createBrowserClient } from '@scipal/supabase';
 import type { BillingAudience, BillingInterval } from '@scipal/types';
 import { Alert } from '@/components/ui/alert';
+import { PricingLoadError } from './PricingLoadError';
 import shared from '@/features/landing/pricing.module.css';
 import { tilt, untilt } from '@/features/landing/tilt';
 import { formatVnd, limitText, startCheckout, type PublicPlan } from './billingApi';
@@ -92,11 +93,7 @@ export function PricingPage({ plans, checkoutOpen, initialAudience = 'student', 
   };
 
   if (!plans) {
-    return (
-      <Alert tone="danger">
-        <p>{t({ en: 'The price list could not be loaded. Please reload the page in a moment.', vi: 'Chưa tải được bảng giá. Hãy tải lại trang sau ít phút.' })}</p>
-      </Alert>
-    );
+    return <PricingLoadError />;
   }
 
   const shown = plans.filter((plan) => plan.audience === audience);
@@ -196,7 +193,7 @@ export function PricingPage({ plans, checkoutOpen, initialAudience = 'student', 
         </Alert>
       )}
 
-      <div className={s.plans} data-count={shown.length}>
+      <div className={`${s.plans} ${shared.pricingPage}`} data-count={shown.length}>
         {shown.map((plan) => {
           const paid = plan.prices.length > 0;
           const price = plan.prices.find((p) => p.interval === interval);
@@ -254,7 +251,7 @@ export function PricingPage({ plans, checkoutOpen, initialAudience = 'student', 
           return (
             <div key={plan.code} className={shared.aura}>
               <span className={shared.sparkles} aria-hidden="true">
-                {[0, 1, 2, 3, 4].map((n) => <span key={n} style={{ '--i': n } as CSSProperties}>✦</span>)}
+                {[0, 1, 2, 3, 4].map((n) => <Sparkles key={n} className={shared.sparkle} style={{ '--i': n } as React.CSSProperties} size={n === 2 ? 18 : 14} />)}
               </span>
               <section aria-labelledby={`plan-${plan.code}`} className={shared.paid} onPointerMove={tilt} onPointerLeave={untilt}>
                 <span className={shared.badge}>{t({ en: 'Recommended', vi: 'Khuyên dùng' })}</span>
