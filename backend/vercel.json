@@ -1,6 +1,9 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "regions": ["sin1"],
+  "crons": [
+    { "path": "/api/internal/billing/renewals/run", "schedule": "0 17 * * *" }
+  ],
   "git": {
     "deploymentEnabled": {
       "main": true,

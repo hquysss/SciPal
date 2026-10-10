@@ -78,11 +78,19 @@ export const EffectiveQuotaSchema = z.object({
   resetsAt: IsoDateTimeSchema.nullable(),
 }).strict();
 
+export const BillingRenewalSchema = z.object({
+  status: z.enum(['manual', 'active', 'cancel_pending', 'cancelled', 'paused', 'failed', 'pending']),
+  interval: BillingIntervalSchema.nullable(),
+  amountVnd: z.number().int().positive().nullable(),
+  nextChargeAt: IsoDateTimeSchema.nullable(),
+}).strict();
+
 /** GET /api/billing/me: the plan of the signed-in account; admins have no plan and no limits. */
 export const BillingAccountSchema = z.object({
   role: z.enum(['student', 'teacher', 'admin']),
   plan: PlanCodeSchema.nullable(),
   paidThrough: IsoDateTimeSchema.nullable(),
+  renewal: BillingRenewalSchema.nullable().optional(),
   quotas: z.array(EffectiveQuotaSchema),
 }).strict();
 
@@ -98,13 +106,13 @@ export const QuotaChangeSchema = z.discriminatedUnion('action', [
 
 export const CheckoutInputSchema = z.object({
   priceId: z.string().uuid(),
-  provider: z.enum(['payos', 'vnpay']),
+  provider: z.enum(['payos', 'vnpay', 'momo']),
   idempotencyKey: z.string().min(8).max(120),
   autoRenew: z.boolean(),
 }).strict();
 
 export const PaymentEventSchema = z.object({
-  provider: z.enum(['payos', 'vnpay']),
+  provider: z.enum(['payos', 'vnpay', 'momo']),
   merchantRef: z.string().min(1).max(160),
   providerTransactionId: z.string().min(1).max(160),
   amountVnd: z.number().int().positive(),

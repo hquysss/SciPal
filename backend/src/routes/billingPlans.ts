@@ -1,6 +1,7 @@
 import type { FastifyPluginAsync, FastifyRequest } from 'fastify';
 import { createBillingRepository } from '../billing/repository.js';
 import { checkoutDisabled, payosFromEnv } from '../billing/providers/payos.js';
+import { momoRenewalsAvailable } from '../billing/providers/momo.js';
 
 // The public plan catalog and the signed-in account's plan (billing plan Task 9, without payment).
 // Prices, limits and wording are rows of billing_plans / billing_prices / billing_plan_limits.
@@ -61,7 +62,9 @@ export const billingRoutes: FastifyPluginAsync = async (app) => {
         };
       });
       reply.header('Cache-Control', 'public, max-age=300');
-      return { plans: catalog, checkoutOpen: payosFromEnv() !== null && !checkoutDisabled() };
+      const payosCheckoutOpen = payosFromEnv() !== null && !checkoutDisabled();
+      const momoAutoRenewOpen = momoRenewalsAvailable() && !checkoutDisabled();
+      return { plans: catalog, checkoutOpen: payosCheckoutOpen || momoAutoRenewOpen, payosCheckoutOpen, momoAutoRenewOpen };
     } catch (error) {
       request.log.error({ err: error }, 'Billing catalog could not be read');
       return reply.code(503).send(UNAVAILABLE);
@@ -71,7 +74,7 @@ export const billingRoutes: FastifyPluginAsync = async (app) => {
   app.get('/api/billing/me', async (request, reply) => {
     const user = actor(request)!;
     const role = user.app_metadata?.app_role;
-    if (role === 'admin') return { role: 'admin', plan: null, paidThrough: null, quotas: [] };
+    if (role === 'admin') return { role: 'admin', plan: null, paidThrough: null, renewal: null, quotas: [] };
     // Sign-up sets no app_role: an account without one is a student (as in the ledger).
     const audience = role === 'teacher' ? 'teacher' : 'student';
     const supabase = app.supabase!;
@@ -80,15 +83,34 @@ export const billingRoutes: FastifyPluginAsync = async (app) => {
     try {
       const [quotas, subscription] = await Promise.all([
         billing.getEffectiveQuotas(user.id, now),
-        supabase.from('billing_subscriptions').select('plan_code, paid_through').eq('user_id', user.id).maybeSingle(),
+        supabase.from('billing_subscriptions').select('plan_code, paid_through, renewal_mode, mandate_id').eq('user_id', user.id).maybeSingle(),
       ]);
       if (subscription.error) throw subscription.error;
-      const sub = subscription.data as { plan_code: string; paid_through: string } | null;
+      const sub = subscription.data as { plan_code: string; paid_through: string; renewal_mode: string; mandate_id: string | null } | null;
       const paid = sub && sub.plan_code.startsWith(`${audience}_`) && new Date(sub.paid_through) > now ? sub : null;
+      let renewal = { status: 'manual', interval: null as 'month' | 'year' | null, amountVnd: null as number | null, nextChargeAt: null as string | null };
+      if (sub?.mandate_id) {
+        const mandate = await supabase.from('billing_mandates')
+          .select('status, interval, amount_vnd, next_charge_at')
+          .eq('id', sub.mandate_id)
+          .eq('user_id', user.id)
+          .maybeSingle();
+        if (mandate.error) throw mandate.error;
+        if (mandate.data) {
+          const data = mandate.data as { status: string; interval: 'month' | 'year'; amount_vnd: number; next_charge_at: string | null };
+          renewal = {
+            status: sub.renewal_mode === 'auto' && data.status === 'active' ? 'active' : data.status,
+            interval: data.interval,
+            amountVnd: data.amount_vnd,
+            nextChargeAt: data.next_charge_at ? new Date(data.next_charge_at).toISOString() : null,
+          };
+        }
+      }
       return {
         role: audience,
         plan: paid?.plan_code ?? `${audience}_free`,
         paidThrough: paid ? new Date(paid.paid_through).toISOString() : null,
+        renewal,
         quotas,
       };
     } catch (error) {

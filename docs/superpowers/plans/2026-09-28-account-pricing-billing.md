@@ -192,15 +192,17 @@ Thực thi từng nhánh/PR con, phụ thuộc Task 1 và 4. Đây là dependenc
 
 ## Task 8 / PR 8: Tự gia hạn có consent
 
-**Branch:** `codex/billing-recurring`; depends Task 7 và merchant recurring capability.
+**Branch:** `codex/momo-auto-renew`; depends Task 6 and MoMo merchant Subscription API. VNPAY card work is separate and is not required for this provider.
 
-**Files:** create `backend/src/billing/renewals.ts`, `backend/src/routes/billingRenewal.ts`, `backend/src/__tests__/billing-renewals.test.ts`; provider mandate adapter + DB migration khi contract yêu cầu; modify billing capability DTO.
+**Files:** `backend/src/billing/providers/momo.ts`, `backend/src/billing/momoPayments.ts`, `backend/src/billing/renewals.ts`, `backend/src/routes/billingMomo.ts`, `backend/src/routes/billingCheckout.ts`, `backend/src/routes/billingPlans.ts`, `backend/src/__tests__/momo.test.ts`, `backend/src/__tests__/billing-renewals.test.ts`, `backend/src/__tests__/billing-momo-routes.test.ts`; migration `20261010120541_momo_auto_renew.sql` (applied to SciPal Supabase on 10/10); modify catalog, checkout, plan UI, `backend/vercel.json`, auth/maintenance allowlists, and billing runbook.
 
-- [ ] Trước code adapter: xác nhận recurring spec/version, merchant capability, create/cancel/query/status và cách retry. Nếu chưa được bật, one-time card vẫn triển khai; auto-renew capability=false và task này ghi chưa hoàn tất.
-- [ ] Failing tests: không consent không charge; hai worker cùng kỳ một attempt; unknown provider result phải query trước retry; hủy ở giữa charge có state đúng; switch QR không để lịch charge cũ chạy; failure giữ paid_through cũ; yearly renewal không tăng quota tháng 12 lần.
-- [ ] Run `pnpm --filter @scipal/api test -- src/__tests__/billing-renewals.test.ts`.
-- [ ] Implement mandate consent/version + cancellation confirmed/pending, provider-managed schedule khi hỗ trợ; nếu merchant scheduler thì lease + unique (subscription, period), authenticated scheduler và reconciliation.
-- [ ] Test tại môi trường provider đã cấp, full gate, commit, PR. Không dùng user request “cả hai” để tự đăng ký dịch vụ hoặc charge thật.
+- [x] Xác nhận recurring protocol, callback/cancel/query/status và retry theo tài liệu MoMo hiện hành; chủ merchant xác nhận Subscription API đã bật ngày 10/10.
+- [x] Adapter kiểm chữ ký IPN/action; tạo checkout opt-in; lấy callback token; mã hóa token recurring theo tài liệu; query giao dịch; hủy mandate.
+- [x] Worker chỉ nhận mandate đã claim; unique `(mandate_id, renewal_period)`, lease DB, query trước retry cho kết quả chưa rõ; kết quả sai/declined giữ `paid_through` và tắt gia hạn.
+- [x] Checkout QR hủy mandate hiện tại và chờ MoMo xác nhận trước khi tạo QR; UI báo giá/kỳ consent, trạng thái hủy và ngày thu tiếp.
+- [x] API regression tests cho consent, webhook, token, hủy, cron auth, query-before-retry, không cấp trùng và đối soát MoMo/payOS (71 test); UI billing/reconciliation (27 test); typecheck API/web/types và build API/web đều đạt.
+- [ ] Chạy `supabase/tests/billing.sql` trong PostgreSQL CI, xác nhận SQL concurrency/RLS trên workflow; host hiện tại không có `psql`/Docker.
+- [ ] Cấu hình secret ở backend/Vercel và hoàn tất sandbox success/decline/duplicate/IPN delay/timeout/cancel trước khi production enable. Không dùng test mock để thay evidence merchant thật.
 
 ## Task 9 / PR 9: Pricing, checkout và quản lý gói
 
@@ -237,7 +239,7 @@ Thực thi từng nhánh/PR con, phụ thuộc Task 1 và 4. Đây là dependenc
 
 ## Chốt trước phát hành, không cản viết code độc lập
 
-- Merchant recurring của VNPAY và môi trường thử payOS chưa được xác nhận; Task 8 phụ thuộc external capability.
+- MoMo Subscription API được chủ merchant xác nhận bật 10/10; test sandbox/production của MoMo vẫn phải hoàn tất trước khi mở bán.
 - Spec §2 có mặc định tháng lịch, đổi chu kỳ, role change và quyền Tutor của teacher/admin cần review.
 - Chính sách hoàn tiền/chứng từ và hiệu quả kinh tế của quota AI cần owner chốt trước bán.
 - Giao bài thật là dependency 5c có plan con khi hiện trạng chưa đủ; không coi nó đã xong.

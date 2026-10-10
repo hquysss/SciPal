@@ -8,6 +8,7 @@ const isPublicPath = (path: string): boolean => {
   if (path === '/api/billing/plans') return true;
   // payOS calls this; the handler checks its signature.
   if (path === '/api/billing/webhooks/payos') return true;
+  if (path === '/api/billing/webhooks/momo' || path === '/api/internal/billing/renewals/run') return true;
   // Guest trials: the web server's check (it holds the shared key) and one Tutor question.
   if (path === '/api/guest/trial' || path === '/api/tutor/guest') return true;
   // Visitors can report a problem; the handler limits them by a hash of their address.

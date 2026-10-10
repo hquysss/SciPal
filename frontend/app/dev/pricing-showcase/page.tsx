@@ -17,13 +17,13 @@ const plans: PublicPlan[] = [
     limits: [{ metric: 'tutor_requests', kind: 'monthly', limit: 200 }, { metric: 'graded_exam_attempts', kind: 'monthly', limit: 30 }] },
 ];
 
-export default async function PricingShowcasePage({ searchParams }: { searchParams: Promise<{ as?: string }> }) {
+export default async function PricingShowcasePage({ searchParams }: { searchParams: Promise<{ as?: string; momo?: string }> }) {
   if (process.env.NODE_ENV !== 'development') notFound();
-  const { as } = await searchParams;
+  const { as, momo } = await searchParams;
   const viewerRole = as === 'student' || as === 'admin' ? as : null;
   return (
     <PricingFrame>
-      <PricingPage plans={plans} checkoutOpen viewerRole={viewerRole} />
+      <PricingPage plans={plans} checkoutOpen payosCheckoutOpen momoAutoRenewOpen={momo !== 'off'} viewerRole={viewerRole} />
     </PricingFrame>
   );
 }

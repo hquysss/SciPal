@@ -95,10 +95,24 @@ describe('GET /api/billing/me', () => {
     await lapsed.close();
   });
 
+  it('returns only the renewal amount, interval and next date for the account page', async () => {
+    const paidThrough = new Date(Date.now() + 86_400_000).toISOString();
+    const nextChargeAt = new Date(Date.now() + 60_000).toISOString();
+    const app = await build(student, {
+      'rpc:billing_get_effective_quotas': ok([]),
+      billing_subscriptions: ok({ plan_code: 'student_plus', paid_through: paidThrough, renewal_mode: 'auto', mandate_id: 'd0000000-0000-4000-8000-000000000001' }),
+      billing_mandates: ok({ status: 'active', interval: 'month', amount_vnd: 39_000, next_charge_at: nextChargeAt }),
+    });
+    const response = await app.inject({ method: 'GET', url: '/api/billing/me' });
+    expect(response.json().renewal).toEqual({ status: 'active', interval: 'month', amountVnd: 39_000, nextChargeAt });
+    expect(JSON.stringify(response.json())).not.toContain('provider_token');
+    await app.close();
+  });
+
   it('tells an admin they have no limits, without asking the ledger', async () => {
     const app = await build(admin, {});
     const res = await app.inject({ method: 'GET', url: '/api/billing/me' });
-    expect(res.json()).toEqual({ role: 'admin', plan: null, paidThrough: null, quotas: [] });
+    expect(res.json()).toEqual({ role: 'admin', plan: null, paidThrough: null, renewal: null, quotas: [] });
     expect(rpcCalls).toHaveLength(0);
     await app.close();
   });
@@ -125,6 +139,36 @@ describe('checkout switch in the catalog', () => {
       await closed.close();
     } finally {
       for (const key of ['PAYOS_CLIENT_ID', 'PAYOS_API_KEY', 'PAYOS_CHECKSUM_KEY', 'BILLING_CHECKOUT_DISABLED']) delete process.env[key];
+    }
+  });
+
+  it('opens MoMo renewal only when server credentials, HTTPS IPN and cron authentication are configured', async () => {
+    const keys = ['MOMO_ENV', 'MOMO_PARTNER_CODE', 'MOMO_ACCESS_KEY', 'MOMO_SECRET_KEY', 'MOMO_PUBLIC_KEY', 'MOMO_IPN_URL', 'CRON_SECRET'] as const;
+    const previous = Object.fromEntries(keys.map((key) => [key, process.env[key]]));
+    Object.assign(process.env, {
+      MOMO_ENV: 'sandbox',
+      MOMO_PARTNER_CODE: 'partner',
+      MOMO_ACCESS_KEY: 'access',
+      MOMO_SECRET_KEY: '0123456789abcdef0123456789abcdef',
+      MOMO_PUBLIC_KEY: 'public-key',
+      MOMO_IPN_URL: 'https://api.scipal.test/api/billing/webhooks/momo',
+      CRON_SECRET: 'cron-secret',
+    });
+    try {
+      const enabled = await build(null, catalogTables());
+      expect((await enabled.inject({ method: 'GET', url: '/api/billing/plans' })).json()).toMatchObject({ checkoutOpen: true, payosCheckoutOpen: false, momoAutoRenewOpen: true });
+      await enabled.close();
+
+      process.env.MOMO_IPN_URL = 'http://api.scipal.test/api/billing/webhooks/momo';
+      const disabled = await build(null, catalogTables());
+      expect((await disabled.inject({ method: 'GET', url: '/api/billing/plans' })).json()).toMatchObject({ checkoutOpen: false, momoAutoRenewOpen: false });
+      await disabled.close();
+    } finally {
+      for (const key of keys) {
+        const value = previous[key];
+        if (value === undefined) delete process.env[key];
+        else process.env[key] = value;
+      }
     }
   });
 });

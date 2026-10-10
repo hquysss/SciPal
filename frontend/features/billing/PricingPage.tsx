@@ -16,6 +16,8 @@ import s from './pricing-page.module.css';
 type Props = {
   plans: PublicPlan[] | null;
   checkoutOpen: boolean;
+  payosCheckoutOpen?: boolean;
+  momoAutoRenewOpen?: boolean;
   initialAudience?: BillingAudience;
   initialInterval?: BillingInterval;
   /** Role of the signed-in viewer, null for a visitor; read from the session when not given. */
@@ -32,7 +34,7 @@ const FREE_START: Record<BillingAudience, string> = { student: '/subjects', teac
 const FAQ: Array<{ q: Bilingual; a: Bilingual }> = [
   {
     q: { vi: 'Gói có tự gia hạn không?', en: 'Does a plan renew by itself?' },
-    a: { vi: 'Không. Gói chạy tới hết kỳ bạn đã trả; muốn dùng tiếp thì mua thêm kỳ mới.', en: 'No. A plan runs to the end of the period you paid for; buy another period to keep it.' },
+    a: { vi: 'QR payOS thanh toán từng kỳ. Gia hạn MoMo chỉ bật khi bạn chủ động chọn và đồng ý rõ số tiền, chu kỳ; có thể hủy trong mục Gói của tôi.', en: 'payOS QR is a one-time payment. MoMo renews only when you opt in and agree to the amount and billing period; cancel it from My Plan.' },
   },
   {
     q: { vi: 'Thanh toán như thế nào?', en: 'How do I pay?' },
@@ -44,7 +46,7 @@ const FAQ: Array<{ q: Bilingual; a: Bilingual }> = [
   },
 ];
 
-export function PricingPage({ plans, checkoutOpen, initialAudience = 'student', initialInterval = 'month', viewerRole: givenRole }: Props) {
+export function PricingPage({ plans, checkoutOpen, payosCheckoutOpen = checkoutOpen, momoAutoRenewOpen = false, initialAudience = 'student', initialInterval = 'month', viewerRole: givenRole }: Props) {
   const { t } = useLanguage();
   // undefined while the session is being read: the buy button waits.
   const [viewerRole, setViewerRole] = useState<ViewerRole | null | undefined>(givenRole);
@@ -63,32 +65,35 @@ export function PricingPage({ plans, checkoutOpen, initialAudience = 'student', 
   }, [givenRole, checkoutOpen]);
   const [audience, setAudience] = useState<BillingAudience>(initialAudience);
   const [interval, setInterval] = useState<BillingInterval>(initialInterval);
+  const [autoRenew, setAutoRenew] = useState(false);
   const [buying, setBuying] = useState<string | null>(null);
   const [buyError, setBuyError] = useState<Bilingual | null>(null);
   // One key per price while the page is open: a double click or a retry resumes the same order.
   const keys = useRef(new Map<string, string>());
 
-  const buy = async (priceId: string) => {
+  const buy = async (priceId: string, renew: boolean) => {
+    const provider = renew ? 'momo' : 'payos';
+    if ((renew && !momoAutoRenewOpen) || (!renew && !payosCheckoutOpen)) return;
     setBuying(priceId);
     setBuyError(null);
-    let key = keys.current.get(priceId);
+    const checkoutKey = `${provider}:${priceId}`;
+    let key = keys.current.get(checkoutKey);
     if (!key) {
       key = newKey();
-      keys.current.set(priceId, key);
+      keys.current.set(checkoutKey, key);
     }
-    let result = await startCheckout(priceId, key);
+    let result = await startCheckout(priceId, key, provider);
     // That order was cancelled or ran out: this click starts a new one.
     if (result.ok && ['cancelled', 'expired', 'failed'].includes(result.data.status)) {
       key = newKey();
-      keys.current.set(priceId, key);
-      result = await startCheckout(priceId, key);
+      keys.current.set(checkoutKey, key);
+      result = await startCheckout(priceId, key, provider);
     }
     if (!result.ok) {
       setBuyError(result.error);
       setBuying(null);
       return;
     }
-    // Pay on the payOS page when a link exists; otherwise follow the order (paid or expired).
     window.location.assign(result.data.checkoutUrl ?? `/checkout/${result.data.orderId}`);
   };
 
@@ -116,14 +121,14 @@ export function PricingPage({ plans, checkoutOpen, initialAudience = 'student', 
           <button type="button" disabled className={s.buy}>
             {t({ en: 'Coming soon', vi: 'Sắp mở bán' })}
           </button>
-          <p className={s.small}>{t({ en: 'QR and card payment open soon.', vi: 'Thanh toán bằng QR và thẻ sẽ mở sớm.' })}</p>
+          <p className={s.small}>{t({ en: 'Checkout is not available right now.', vi: 'Hiện chưa thể thanh toán.' })}</p>
         </>
       );
     }
     if (viewerRole === undefined) {
       return (
         <button type="button" disabled className={s.buy}>
-          {t({ en: 'Buy with QR', vi: 'Mua bằng QR' })}
+          {t({ en: 'Continue to payment', vi: 'Tiếp tục thanh toán' })}
         </button>
       );
     }
@@ -146,21 +151,42 @@ export function PricingPage({ plans, checkoutOpen, initialAudience = 'student', 
       );
     }
     if (!price) return null;
+    const period = price.interval === 'year' ? t({ en: 'year', vi: 'năm' }) : t({ en: 'month', vi: 'tháng' });
+    const canBuy = autoRenew ? momoAutoRenewOpen : payosCheckoutOpen;
     return (
       <>
+        {momoAutoRenewOpen && (
+          <label className="mb-3 flex min-h-11 cursor-pointer items-start gap-2 text-sm text-ink-muted">
+            <input
+              type="checkbox"
+              checked={autoRenew}
+              onChange={(event) => setAutoRenew(event.currentTarget.checked)}
+              className="mt-1 size-4 shrink-0 accent-action"
+            />
+            <span>
+              {t({
+                en: `After this payment, MoMo will charge ${formatVnd(price.amountVnd)} each ${period} starting next period. Cancel from My Plan; a charge already in progress may finish.`,
+                vi: `Sau khi thanh toán kỳ này, MoMo tự thu ${formatVnd(price.amountVnd)} mỗi ${period} từ kỳ tiếp theo. Bạn có thể hủy trong mục Gói của tôi; lần thu đã bắt đầu có thể hoàn tất.`,
+              })}
+            </span>
+          </label>
+        )}
         <button
           type="button"
-          onClick={() => void buy(price.id)}
-          disabled={buying !== null}
+          onClick={() => void buy(price.id, autoRenew)}
+          disabled={buying !== null || !canBuy}
           aria-busy={buying === price.id}
           className={s.buy}
         >
-          {buying === price.id ? t({ en: 'Opening the QR code…', vi: 'Đang mở mã QR…' }) : t({ en: 'Buy with QR', vi: 'Mua bằng QR' })}
+          {buying === price.id
+            ? autoRenew ? t({ en: 'Opening MoMo…', vi: 'Đang mở MoMo…' }) : t({ en: 'Opening QR checkout…', vi: 'Đang mở thanh toán QR…' })
+            : autoRenew ? t({ en: 'Continue with MoMo', vi: 'Tiếp tục với MoMo' }) : t({ en: 'Buy with QR', vi: 'Mua bằng QR' })}
           {buying !== price.id && <ArrowRight aria-hidden="true" />}
         </button>
-        <p className={s.small}>
-          {t({ en: 'Bank transfer by VietQR through payOS. The plan starts once the bank confirms.', vi: 'Chuyển khoản VietQR qua payOS. Gói có hiệu lực khi ngân hàng xác nhận.' })}
-        </p>
+        {!autoRenew && payosCheckoutOpen && <p className={s.small}>
+          {t({ en: 'One-time bank transfer by VietQR through payOS. The plan starts once the bank confirms.', vi: 'Chuyển khoản VietQR một lần qua payOS. Gói có hiệu lực khi ngân hàng xác nhận.' })}
+        </p>}
+        {!autoRenew && !payosCheckoutOpen && <p className={s.small}>{t({ en: 'Select MoMo auto-renewal to continue.', vi: 'Chọn gia hạn tự động MoMo để tiếp tục.' })}</p>}
       </>
     );
   };
@@ -169,18 +195,18 @@ export function PricingPage({ plans, checkoutOpen, initialAudience = 'student', 
     <div className={s.page}>
       <div className={s.controls}>
         <div role="group" aria-label={t({ en: 'Plans for', vi: 'Gói dành cho' })} className={shared.segment}>
-          <button type="button" aria-pressed={audience === 'student'} onClick={() => setAudience('student')}>
+        <button type="button" aria-pressed={audience === 'student'} onClick={() => { setAudience('student'); setAutoRenew(false); }}>
             {t({ en: 'Students', vi: 'Học sinh' })}
           </button>
-          <button type="button" aria-pressed={audience === 'teacher'} onClick={() => setAudience('teacher')}>
+        <button type="button" aria-pressed={audience === 'teacher'} onClick={() => { setAudience('teacher'); setAutoRenew(false); }}>
             {t({ en: 'Teachers', vi: 'Giáo viên' })}
           </button>
         </div>
         <div role="group" aria-label={t({ en: 'Billing period', vi: 'Chu kỳ thanh toán' })} className={shared.segment}>
-          <button type="button" aria-pressed={interval === 'month'} onClick={() => setInterval('month')}>
+        <button type="button" aria-pressed={interval === 'month'} onClick={() => { setInterval('month'); setAutoRenew(false); }}>
             {t({ en: 'Monthly', vi: 'Theo tháng' })}
           </button>
-          <button type="button" aria-pressed={interval === 'year'} onClick={() => setInterval('year')}>
+        <button type="button" aria-pressed={interval === 'year'} onClick={() => { setInterval('year'); setAutoRenew(false); }}>
             {t({ en: 'Yearly', vi: 'Theo năm' })}
             {savePercent > 0 && <span className={s.save}>−{savePercent}%</span>}
           </button>
@@ -264,8 +290,9 @@ export function PricingPage({ plans, checkoutOpen, initialAudience = 'student', 
 
       <ul className={s.trust}>
         <li><BookOpen aria-hidden="true" size={18} />{t({ en: 'Every lesson stays free', vi: 'Mọi bài học luôn miễn phí' })}</li>
-        <li><RefreshCcw aria-hidden="true" size={18} />{t({ en: 'No auto-renewal', vi: 'Không tự gia hạn' })}</li>
-        <li><QrCode aria-hidden="true" size={18} />{t({ en: 'VietQR via payOS', vi: 'Thanh toán VietQR qua payOS' })}</li>
+        <li><RefreshCcw aria-hidden="true" size={18} />{t({ en: 'You choose whether to renew', vi: 'Bạn chủ động chọn gia hạn hay không' })}</li>
+        {payosCheckoutOpen && <li><QrCode aria-hidden="true" size={18} />{t({ en: 'One-time VietQR via payOS', vi: 'Thanh toán một lần bằng VietQR qua payOS' })}</li>}
+        {momoAutoRenewOpen && <li><RefreshCcw aria-hidden="true" size={18} />{t({ en: 'Optional MoMo auto-renewal', vi: 'Có thể chọn tự động gia hạn qua MoMo' })}</li>}
       </ul>
 
       <section className={s.faq} aria-labelledby="pricing-faq">
