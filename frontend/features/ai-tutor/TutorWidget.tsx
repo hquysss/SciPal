@@ -10,6 +10,7 @@ import { parseEducationLevel, type EducationLevel } from '@/features/landing/edu
 import { TutorAvatar } from './TutorAvatar';
 import { LANDING_QUESTIONS, lessonQuestions } from './examples';
 import { useTutorSession } from './TutorSession';
+import { useTutorDrag } from './useTutorDrag';
 import styles from './widget.module.css';
 
 const Panel = dynamic(() => import('./AiTutorPanel').then((module) => module.AiTutorPanel));
@@ -23,8 +24,11 @@ export function TutorWidget() {
   const [online, setOnline] = useState(true);
   const [level, setLevel] = useState<EducationLevel>('upper_secondary');
   const trigger = useRef<HTMLButtonElement>(null);
+  const drag = useTutorDrag();
   const setOpen = session?.setOpen;
   const fullPage = pathname === '/tutor';
+  // No help during an exam: /exam/<id> is the exam room (the list and /exam/manage keep the chat).
+  const examRoom = /^\/exam\/(?!manage(\/|$))[^/]+\/?$/.test(pathname ?? '');
   useEffect(() => {
     const shell = getShell();
     const update = () => setLevel(parseEducationLevel(shell?.dataset.level) ?? 'upper_secondary');
@@ -37,18 +41,20 @@ export function TutorWidget() {
     return () => { observer.disconnect(); window.removeEventListener('online', connection); window.removeEventListener('offline', connection); };
   }, []);
   useEffect(() => { if (session?.open) setOpened(true); }, [session?.open]);
-  useEffect(() => { if (fullPage) setOpen?.(false); }, [fullPage, setOpen]);
+  useEffect(() => { if (fullPage || examRoom) setOpen?.(false); }, [fullPage, examRoom, setOpen]);
   const close = useCallback(() => { setOpen?.(false); requestAnimationFrame(() => trigger.current?.focus()); }, [setOpen]);
-  if (!session || pathname === '/login' || pathname === '/reset-password') return null;
+  if (!session || examRoom || pathname === '/login' || pathname === '/reset-password') return null;
   const visible = session.open && !fullPage;
   const activeLevel = session.lesson?.level ?? level;
   const suggestions = session.lesson ? lessonQuestions(session.lesson.title) : LANDING_QUESTIONS[activeLevel];
-  return <LevelScope level={activeLevel} className={styles.scope}>
+  return <LevelScope level={activeLevel} className={styles.scope}><div data-tutor-scope>
     <button ref={trigger} type="button" disabled={!online} aria-haspopup="dialog" aria-expanded={visible} aria-controls={opened ? 'scipal-professor-panel' : undefined}
       aria-label={t({ en: 'Open Professor Quys', vi: 'Mở Giáo sư Quý' })}
       title={online ? t({ en: 'Ask the Professor', vi: 'Hỏi thầy' }) : t({ en: 'Needs an internet connection', vi: 'Cần kết nối mạng' })}
       className={styles.trigger} data-open={visible || undefined} data-answering={session.chat.streaming || undefined}
+      {...drag.handlers}
       onClick={() => {
+        if (drag.wasDragged()) return;
         if (fullPage) { document.querySelector<HTMLTextAreaElement>('main textarea')?.focus(); return; }
         setOpened(true); session.setOpen(!session.open);
       }}>
@@ -57,5 +63,5 @@ export function TutorWidget() {
       <span className={styles.hint}>{t({ en: 'Ask the Professor', vi: 'Hỏi thầy' })}</span>
     </button>
     {opened && <Panel id="scipal-professor-panel" visible={visible} lessonId={session.lesson?.id} lessonTitle={session.lesson?.title} level={activeLevel} signedIn={session.signedIn} suggestions={suggestions} onClose={close} />}
-  </LevelScope>;
+  </div></LevelScope>;
 }
