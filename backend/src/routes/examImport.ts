@@ -489,7 +489,7 @@ export const examImportRoutes: FastifyPluginAsync = async (app) => {
       if (error?.code === '42703') return reply.code(503).send({ error: 'Cơ sở dữ liệu chưa chạy migration nhập nội dung.' });
       if (error?.code === '23505') {
         return reply.code(409).send({
-          error: what === 'exams' ? 'Đã có đề thi trùng tên. Đổi title_vi rồi nhập lại.' : 'Nội dung vừa bị trùng với dữ liệu khác. Hãy thử lại.',
+          error: what === 'exams' ? 'Đề thi vừa bị trùng với dữ liệu khác. Hãy thử lại.' : 'Nội dung vừa bị trùng với dữ liệu khác. Hãy thử lại.',
         });
       }
       request.log.error({ err: error }, `Failed to insert imported ${what}`);
