@@ -53,14 +53,22 @@ export function StreakCalendar({ streaks }: { streaks: StreakRow[] }) {
     };
   });
 
+  const best = streaks.reduce((max, s) => Math.max(max, s.current_streak), 0);
+
   return (
-    <section className="rounded-xl border border-line border-t-4 border-t-sky bg-surface p-6">
-      <div className="mb-4 flex items-center justify-between">
-        <div>
-          <h2 className="text-lg font-bold text-ink">{t({ en: 'Learning streak', vi: 'Chuỗi ngày học liên tục' })}</h2>
-          <p className="text-sm text-ink-muted">{t({ en: 'Last 7 days', vi: '7 ngày gần nhất' })}</p>
+    <section className="rounded-3xl border border-line bg-surface p-5 sm:p-6">
+      <div className="mb-5 flex items-center justify-between gap-4">
+        <div className="flex items-center gap-3">
+          <span aria-hidden="true" className="grid h-10 w-10 place-items-center rounded-2xl bg-gradient-to-br from-sun to-coral text-ink"><Flame className="h-5 w-5" /></span>
+          <div>
+            <h2 className="text-lg font-bold text-ink">{t({ en: 'Learning streak', vi: 'Chuỗi ngày học liên tục' })}</h2>
+            <p className="text-sm text-ink-muted">{t({ en: 'Last 7 days', vi: '7 ngày gần nhất' })}</p>
+          </div>
         </div>
-        <span aria-hidden="true" className="grid h-10 w-10 place-items-center rounded-full bg-gradient-to-br from-sun to-coral text-ink shadow-[0_8px_18px_-10px_var(--coral)]"><Flame className="h-5 w-5" /></span>
+        <p className="text-right leading-none">
+          <span className="block text-3xl font-extrabold tabular-nums text-ink">{best}</span>
+          <span className="text-sm text-ink-muted">{t({ en: best === 1 ? 'day in a row' : 'days in a row', vi: 'ngày liên tiếp' })}</span>
+        </p>
       </div>
 
       {/* 7-day heat track */}
@@ -77,7 +85,7 @@ export function StreakCalendar({ streaks }: { streaks: StreakRow[] }) {
                 role="img"
                 title={label}
                 aria-label={label}
-                className={`flex h-12 w-full items-center justify-center rounded-lg text-sm font-bold text-ink transition-transform duration-300 ease-out hover:-translate-y-0.5 motion-reduce:transition-none ${streakCellClass(d.count)} ${d.isToday ? 'outline outline-2 outline-offset-2 outline-focus' : ''}`}
+                className={`flex h-14 w-full items-center justify-center rounded-xl text-sm font-bold text-ink transition-transform duration-300 ease-out hover:-translate-y-0.5 motion-reduce:transition-none ${streakCellClass(d.count)} ${d.isToday ? 'outline outline-2 outline-offset-2 outline-focus' : ''}`}
               >
                 {d.count > 0 ? d.count : ''}
               </div>

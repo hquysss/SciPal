@@ -32,9 +32,9 @@ const SAMPLE_LOCKED_BADGES = [
 export function BadgeWall({ badges }: { badges: BadgeRow[] }) {
   const { lang, t } = useLanguage();
   return (
-    <section className="rounded-xl border border-line border-t-4 border-t-sun bg-surface p-6">
+    <section className="rounded-3xl border border-line bg-surface p-5 sm:p-6">
       <div className="mb-4">
-        <h2 className="text-lg font-bold text-ink">{t({ en: 'Badges', vi: 'Bảo tàng huy hiệu danh dự' })}</h2>
+        <h2 className="text-lg font-bold text-ink">{t({ en: 'Badges', vi: 'Huy hiệu' })}</h2>
         <p className="text-sm text-ink-muted">
           {t({ en: `${badges.length} unlocked`, vi: `${badges.length} huy hiệu đã mở khoá` })}
         </p>
@@ -45,7 +45,7 @@ export function BadgeWall({ badges }: { badges: BadgeRow[] }) {
           <li
             key={i}
             style={tone(i)}
-            className="flex flex-col items-center gap-2 rounded-xl border border-[color-mix(in_srgb,var(--tone)_60%,var(--line))] bg-[color-mix(in_srgb,var(--tone)_16%,var(--surface))] p-4 text-center text-ink transition duration-300 ease-out hover:-translate-y-1 hover:shadow-[0_14px_26px_-18px_var(--tone)] motion-reduce:transition-none motion-reduce:hover:translate-y-0"
+            className="flex flex-col items-center gap-2 rounded-2xl border border-[color-mix(in_srgb,var(--tone)_60%,var(--line))] bg-[color-mix(in_srgb,var(--tone)_16%,var(--surface))] p-4 text-center text-ink transition duration-300 ease-out hover:-translate-y-1 hover:shadow-[0_14px_26px_-18px_var(--tone)] motion-reduce:transition-none motion-reduce:hover:translate-y-0"
           >
             <span aria-hidden="true" className="flex h-12 w-12 items-center justify-center rounded-full bg-[var(--tone)] text-2xl shadow-[0_6px_14px_-8px_var(--tone)]">
               {ub.badges?.icon ?? '🏅'}

@@ -1,6 +1,9 @@
 import { cookies } from 'next/headers';
 import { createServerClient } from '@scipal/supabase';
 import { levelOfGrade, type EducationLevel } from '../landing/educationLevel';
+import { groupTopicsByGrade, type GradeGroup, type TopicRow } from './groupTopics';
+
+export { groupTopicsByGrade, type GradeGroup, type TopicRow } from './groupTopics';
 
 export type QueryOutcome<T> = { data: T; error: unknown };
 
@@ -15,26 +18,6 @@ export interface SubjectRow {
   subject_grade_catalog: Array<{ grade: number; active: boolean }>;
 }
 
-export interface TopicRow {
-  id: string;
-  name_en: string;
-  name_vi: string;
-  sort_order: number;
-  grade: number | null;
-  lessons: Array<{ id: string; slug: string; title_en: string; title_vi: string; source?: string | null; sort_order: number; grade: number }>;
-}
-
-export interface GradeGroup {
-  grade: number;
-  topics: Array<{
-    id: string;
-    name_en: string;
-    name_vi: string;
-    sort_order: number;
-    lessons: Array<{ id: string; slug: string; title_en: string; title_vi: string; source?: string | null; sort_order: number }>;
-  }>;
-}
-
 export type SubjectSummary = Omit<SubjectRow, 'subject_grade_catalog'> & { levels: EducationLevel[] };
 
 export type SubjectPageResult =
@@ -43,44 +26,6 @@ export type SubjectPageResult =
   | { kind: 'error' };
 
 const LEVEL_ORDER: EducationLevel[] = ['primary', 'lower_secondary', 'upper_secondary'];
-
-export function groupTopicsByGrade(topics: TopicRow[]): GradeGroup[] {
-  const groups = new Map<number, Map<string, GradeGroup['topics'][number]>>();
-
-  for (const topic of [...topics].sort((a, b) => a.sort_order - b.sort_order)) {
-    for (const lesson of topic.lessons ?? []) {
-      const grade = topic.grade ?? lesson.grade;
-      const byTopic = groups.get(grade) ?? new Map();
-      groups.set(grade, byTopic);
-      const entry = byTopic.get(topic.id) ?? {
-        id: topic.id,
-        name_en: topic.name_en,
-        name_vi: topic.name_vi,
-        sort_order: topic.sort_order,
-        lessons: [],
-      };
-      byTopic.set(topic.id, entry);
-      entry.lessons.push({
-        id: lesson.id,
-        slug: lesson.slug,
-        title_en: lesson.title_en,
-        title_vi: lesson.title_vi,
-        source: lesson.source ?? null,
-        sort_order: lesson.sort_order,
-      });
-    }
-  }
-
-  return [...groups.entries()]
-    .sort(([a], [b]) => a - b)
-    .map(([grade, byTopic]) => ({
-      grade,
-      topics: [...byTopic.values()].map((topic) => ({
-        ...topic,
-        lessons: [...topic.lessons].sort((a, b) => a.sort_order - b.sort_order),
-      })),
-    }));
-}
 
 export function classifySubjectPage(
   subject: QueryOutcome<SubjectRow | null>,
