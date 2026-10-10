@@ -8,6 +8,7 @@ import { PageBreadcrumb } from '@/components/nav/PageBreadcrumb';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { HELP_CATEGORIES, searchHelp, type HelpCategory, type HelpGuide } from './helpContent';
+import { GuideIllustration } from './GuideIllustration';
 
 const CATEGORY_ICONS = { all: CircleHelp, start: Compass, learn: BookOpen, account: Settings2, teach: GraduationCap } as const;
 const QUICK_START = [
@@ -21,11 +22,12 @@ function GuideCard({ guide }: { readonly guide: HelpGuide }) {
   const Icon = CATEGORY_ICONS[guide.category];
   return (
     <article id={`guide-${guide.id}`} className="flex scroll-mt-24 flex-col rounded-2xl border border-line bg-surface p-5 sm:p-6">
+      <GuideIllustration guide={guide} />
       <div className="mb-4 flex items-center gap-3">
         <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-surface-sunken text-action">
           <Icon aria-hidden="true" className="size-5" />
         </span>
-        <h3 className="text-lg font-bold leading-snug text-ink">{t(guide.title)}</h3>
+        <h4 className="text-lg font-bold leading-snug text-ink">{t(guide.title)}</h4>
       </div>
       <p className="mb-5 text-sm leading-relaxed text-ink-muted">{t(guide.description)}</p>
       <ol className="flex flex-col gap-4">
@@ -36,7 +38,7 @@ function GuideCard({ guide }: { readonly guide: HelpGuide }) {
           </li>
         ))}
       </ol>
-      {guide.note && <p className="mt-5 rounded-xl border-l-2 border-action bg-surface-sunken p-3 text-sm leading-relaxed text-ink-muted">{t(guide.note)}</p>}
+      {guide.note && <p className="mt-5 rounded-lg bg-surface-sunken px-3 py-2 text-sm leading-relaxed text-ink-muted">{t(guide.note)}</p>}
       <div className="mt-auto pt-5">
         <Link href={guide.href} prefetch={false} className={buttonVariants({ variant: 'link', className: 'whitespace-normal text-left' })}>
           {t(guide.action)}<ArrowRight aria-hidden="true" />
@@ -46,12 +48,39 @@ function GuideCard({ guide }: { readonly guide: HelpGuide }) {
   );
 }
 
+function GuideGroup({ audience, guides }: { readonly audience: HelpGuide['audience']; readonly guides: readonly HelpGuide[] }) {
+  const { t } = useLanguage();
+  if (guides.length === 0) return null;
+  const isStudent = audience === 'student';
+  const title = isStudent
+    ? t({ en: 'For students', vi: 'Dành cho học sinh' })
+    : t({ en: 'For teachers', vi: 'Dành cho giáo viên' });
+  const description = isStudent
+    ? t({ en: 'Learn with lessons, simulations and the Professor; practise, play and track progress.', vi: 'Học bài, mô phỏng, hỏi Giáo sư, tự luyện, chơi game và theo dõi tiến trình.' })
+    : t({ en: 'Create learning materials, manage classes and games, add terms and request simulations.', vi: 'Soạn học liệu, quản lý lớp và game, thêm thuật ngữ, đề xuất mô phỏng.' });
+  const headingId = `${audience}-guides-title`;
+
+  return (
+    <section aria-labelledby={headingId}>
+      <div className="mb-5">
+        <h3 id={headingId} className="text-lg font-bold text-ink">{title}</h3>
+        <p className="mt-1 max-w-prose text-sm leading-relaxed text-ink-muted">{description}</p>
+      </div>
+      <div className="grid items-stretch gap-4 md:grid-cols-2">
+        {guides.map((guide) => <GuideCard key={guide.id} guide={guide} />)}
+      </div>
+    </section>
+  );
+}
+
 export function HelpCenter() {
   const { t } = useLanguage();
   const [query, setQuery] = useState('');
   const [category, setCategory] = useState<HelpCategory>('all');
   const searchRef = useRef<HTMLInputElement>(null);
   const { guides, faqs } = searchHelp(query, category);
+  const studentGuides = guides.filter((guide) => guide.audience === 'student');
+  const teacherGuides = guides.filter((guide) => guide.audience === 'teacher');
   const resultCount = guides.length + faqs.length;
   const filtered = Boolean(query.trim()) || category !== 'all';
   const reset = () => { setQuery(''); setCategory('all'); searchRef.current?.focus(); };
@@ -61,15 +90,11 @@ export function HelpCenter() {
       <PageBreadcrumb items={[{ href: '/', label: { en: 'Home', vi: 'Trang chủ' } }, { label: { en: 'Help', vi: 'Hướng dẫn' } }]} />
       <header className="my-8 grid gap-8 lg:grid-cols-[1.3fr_1fr] lg:items-center lg:gap-12">
         <div>
-          <p className="mb-3 flex items-center gap-2 text-sm font-semibold text-action">
-            <CircleHelp aria-hidden="true" className="size-4" />
-            {t({ en: 'SCIPAL HELP CENTER', vi: 'HƯỚNG DẪN SCIPAL' })}
-          </p>
           <h1 className="text-balance text-3xl font-extrabold leading-tight tracking-tight text-ink sm:text-4xl">
-            {t({ en: 'A little guidance. A better start.', vi: 'Bắt đầu dễ hơn, học chủ động hơn.' })}
+            {t({ en: 'How to use SciPal', vi: 'Hướng dẫn sử dụng SciPal' })}
           </h1>
           <p className="mt-4 max-w-prose text-base leading-relaxed text-ink-muted">
-            {t({ en: 'From your first lesson to your next exam. Find the steps you need to learn with SciPal.', vi: 'Từ bài học đầu tiên đến lần thi thử tiếp theo. Tìm các bước bạn cần để học cùng SciPal.' })}
+            {t({ en: 'Clear steps for students and teachers, from the first lesson to creating class materials.', vi: 'Hướng dẫn cho học sinh và giáo viên, từ bài học đầu tiên đến soạn học liệu cho lớp.' })}
           </p>
           <div className="relative mt-6">
             <label htmlFor="help-search" className="sr-only">{t({ en: 'Search guides and questions', vi: 'Tìm hướng dẫn và câu hỏi' })}</label>
@@ -96,14 +121,14 @@ export function HelpCenter() {
               </li>
             ))}
           </ol>
-          <Link href="/subjects" prefetch={false} className={buttonVariants({ className: 'mt-6 w-full' })}>
-            {t({ en: 'Find my first lesson', vi: 'Tìm bài học đầu tiên' })}<ArrowRight aria-hidden="true" />
+          <Link href="/subjects" prefetch={false} className={buttonVariants({ className: 'mt-6 w-fit max-w-full whitespace-normal text-left' })}>
+            {t({ en: 'Browse subjects', vi: 'Xem môn học' })}<ArrowRight aria-hidden="true" />
           </Link>
         </section>
       </header>
       <div className="grid items-start gap-6 border-t border-line pt-8 lg:grid-cols-[13rem_minmax(0,1fr)] lg:gap-8">
         <aside className="lg:sticky lg:top-24">
-          <h2 className="mb-3 text-xs font-bold uppercase tracking-wider text-ink-muted">{t({ en: 'Browse by topic', vi: 'Chọn chủ đề' })}</h2>
+          <h2 className="mb-3 text-sm font-semibold text-ink-muted">{t({ en: 'Browse by topic', vi: 'Chọn chủ đề' })}</h2>
           <div role="group" aria-label={t({ en: 'Help topics', vi: 'Chủ đề hướng dẫn' })} className="flex flex-wrap gap-2 lg:flex-col">
             {HELP_CATEGORIES.map((item) => {
               const Icon = CATEGORY_ICONS[item.id];
@@ -126,7 +151,10 @@ export function HelpCenter() {
             <p className="mt-2 text-sm text-ink-muted">{t({ en: 'Try a shorter keyword in English or Vietnamese, or browse all topics.', vi: 'Thử từ khóa ngắn hơn bằng tiếng Anh hoặc tiếng Việt, hoặc xem tất cả chủ đề.' })}</p>
             <Button type="button" variant="outline" onClick={reset} className="mt-5">{t({ en: 'Show all topics', vi: 'Xem tất cả chủ đề' })}</Button>
           </div>}
-          {guides.length > 0 && <div className="grid items-stretch gap-4 md:grid-cols-2">{guides.map((guide) => <GuideCard key={guide.id} guide={guide} />)}</div>}
+          <div className="space-y-10">
+            <GuideGroup audience="student" guides={studentGuides} />
+            <GuideGroup audience="teacher" guides={teacherGuides} />
+          </div>
           {faqs.length > 0 && <section aria-labelledby="faq-title" className="mt-10">
             <h2 id="faq-title" className="mb-4 text-xl font-bold text-ink">{t({ en: 'Frequently asked questions', vi: 'Câu hỏi thường gặp' })}</h2>
             <div className="overflow-hidden rounded-2xl border border-line bg-surface">

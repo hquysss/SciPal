@@ -400,24 +400,24 @@
 
 .ghostWord {
   display: block;
-  --from: -3;
-  --to: 3;
+  --from: -10;
+  --to: 10;
   translate: calc((var(--from) + (var(--to) - var(--from)) * var(--p, 0.5)) * 1%) 0;
 }
 
 .ghostRow + .ghostRow .ghostWord {
-  --from: -2;
-  --to: 4;
+  --from: -9;
+  --to: 11;
 }
 
 .ghostWord + .ghostWord {
-  --from: 3;
-  --to: -3;
+  --from: 10;
+  --to: -10;
 }
 
 .ghostRow + .ghostRow .ghostWord + .ghostWord {
-  --from: 4;
-  --to: -3;
+  --from: 11;
+  --to: -10;
 }
 
 .ghostWord[data-ink] {
