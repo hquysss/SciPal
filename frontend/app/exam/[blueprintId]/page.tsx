@@ -38,8 +38,7 @@ export default async function ExamDetailPage({
 
   return (
     <div data-pattern="off" className="flex-1">
-      <main className="mx-auto flex w-full max-w-3xl flex-col gap-6 px-4 pb-20 pt-6 sm:px-6 sm:pt-8">
-        <ExamRoomHeader blueprint={blueprint} questionCount={questions.length} />
+      <main className="mx-auto flex w-full max-w-6xl flex-col gap-6 px-4 pb-10 pt-4 sm:px-6 sm:pt-6">
 
         {/* Interactive Runner */}
         <ExamRunner
@@ -48,6 +47,7 @@ export default async function ExamDetailPage({
           questions={questions}
           layout={blueprint.layout}
           showIntro
+          header={<ExamRoomHeader blueprint={blueprint} questionCount={questions.length} />}
           {...(blueprint.duration_minutes ? { durationMinutes: blueprint.duration_minutes } : {})}
         />
       </main>

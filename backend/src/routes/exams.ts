@@ -22,6 +22,8 @@ interface ExamRow {
   name: string;
   name_en: string | null;
   source?: string | null;
+  exam_code?: string | null;
+  exam_year?: number | null;
   subject_id: string;
   grade: number | null;
   duration_minutes: number | null;
@@ -38,7 +40,7 @@ interface ExamRow {
 }
 
 const COLUMNS =
-  'id, name, name_en, source, subject_id, grade, duration_minutes, status, question_ids, sections, format, layout, review_note, updated_at, created_by, import_id, subjects(name_vi, archived_at)';
+  'id, name, name_en, source, exam_code, exam_year, subject_id, grade, duration_minutes, status, question_ids, sections, format, layout, review_note, updated_at, created_by, import_id, subjects(name_vi, archived_at)';
 const STATUSES = ['draft', 'pending_review', 'published', 'class_only'];
 const ID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -73,6 +75,8 @@ export function present(row: ExamRow, user: ExamUser) {
     name: row.name,
     name_en: row.name_en,
     source: row.source ?? null,
+    exam_code: row.exam_code ?? null,
+    exam_year: row.exam_year ?? null,
     subject_id: row.subject_id,
     subject_name_vi: subject?.name_vi ?? null,
     grade: row.grade,
@@ -221,6 +225,8 @@ export const examRoutesAuthoring: FastifyPluginAsync = async (app) => {
           name: input.name,
           name_en: input.name_en || null,
           source: input.source || null,
+          exam_code: input.exam_code || null,
+          exam_year: input.exam_year ?? null,
           subject_id: input.subject_id,
           grade: input.grade,
           duration_minutes: input.duration_minutes,
@@ -272,6 +278,7 @@ export const examRoutesAuthoring: FastifyPluginAsync = async (app) => {
       else delete update.question_ids;
       if (patch.name_en !== undefined) update.name_en = patch.name_en || null;
       if (patch.source !== undefined) update.source = patch.source || null;
+      if (patch.exam_code !== undefined) update.exam_code = patch.exam_code || null;
       // A published exam stays complete: English name, and every question published and complete.
       const live = row.status === 'published';
       if (live && !(patch.name_en ?? row.name_en)) return reply.code(400).send(needEnglish);

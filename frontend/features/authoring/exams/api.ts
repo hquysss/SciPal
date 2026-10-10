@@ -10,6 +10,10 @@ export interface ExamSummary {
   name_en: string | null;
   /** Where the exam comes from, when its author wrote it. */
   source?: string | null;
+  /** Mã đề. */
+  exam_code?: string | null;
+  /** Năm của đề. */
+  exam_year?: number | null;
   subject_id: string;
   subject_name_vi: string | null;
   grade: number | null;
@@ -35,6 +39,8 @@ export interface ExamInput {
   name: string;
   name_en: string;
   source?: string;
+  exam_code?: string;
+  exam_year?: number | null;
   subject_id: string;
   grade: number;
   duration_minutes: number;

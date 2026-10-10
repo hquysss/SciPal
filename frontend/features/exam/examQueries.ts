@@ -8,6 +8,9 @@ export interface BlueprintSummary {
   name_en?: string | null;
   /** Where the exam comes from, when its author wrote it. */
   source?: string | null;
+  /** Mã đề and the year it was set, when the author wrote them. */
+  exam_code?: string | null;
+  exam_year?: number | null;
   grade: number | null;
   subject_id: string | null;
   subject_slug: string | null;

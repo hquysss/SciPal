@@ -32,6 +32,8 @@ export interface DraftBlueprint {
   code: string;
   subject_slug: string;
   grade: number;
+  /** Năm của đề (optional `year` column). */
+  year?: number;
   title: Text;
   duration_minutes: number;
   sections: Array<{ type: QuestionType; difficulty: number; count: number }>;
@@ -269,6 +271,7 @@ export function readExamWorkbook(workbook: Workbook): ExamImportDraft {
       subject_slug,
       ...(format !== 'generic' ? { format, layout } : {}),
       grade: int(row, 'grade', 1, 12),
+      ...(str(row, 'year', false) ? { year: int(row, 'year', 2000, 2100) } : {}),
       title: { vi: str(row, 'title_vi'), en: str(row, 'title_en', false) },
       duration_minutes: int(row, 'duration_minutes', 5, 300),
       sections,
@@ -464,8 +467,8 @@ export async function createExamWorkbookTemplate(format: ExamFormat = 'generic')
     ['informatics', 'vd-dung-sai', 'a', 'range(5) có 5 phần tử', 'range(5) has 5 elements', true],
     ['informatics', 'vd-dung-sai', 'b', 'range(1, 5) bắt đầu từ 0', 'range(1, 5) starts at 0', false],
   ]);
-  addSheet(SHEETS.exams.name, [...SHEETS.exams.headers, 'format'], [22, 16, 8, 36, 36, 16], [
-    ['vd-de-on-tap', 'informatics', 11, 'Ôn tập tìm kiếm và vòng lặp', 'Search and loops review', 45, format],
+  addSheet(SHEETS.exams.name, [...SHEETS.exams.headers, 'format', 'year'], [22, 16, 8, 36, 36, 16], [
+    ['vd-de-on-tap', 'informatics', 11, 'Ôn tập tìm kiếm và vòng lặp', 'Search and loops review', 45, format, 2026],
   ]);
   addSheet(SHEETS.sections.name, [...SHEETS.sections.headers, 'section_key', 'title_vi', 'title_en', 'max_points'], [22, 12, 11, 8], [
     ['vd-de-on-tap', 'mc', 1, 1, ...(format === 'generic' ? [] : ['mc', 'Phần I', 'Part I', format === 'dgnl_hcm' ? 400 : 3])],

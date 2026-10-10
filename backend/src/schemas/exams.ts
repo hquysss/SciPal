@@ -8,6 +8,10 @@ export interface ExamInput {
   name_en: string;
   /** Where the exam comes from, shown on its card. */
   source?: string;
+  /** Mã đề, e.g. "0101". */
+  exam_code?: string;
+  /** Năm của đề, 2000–2100. */
+  exam_year?: number | null;
   subject_id: string;
   grade: number;
   duration_minutes: number;
@@ -26,6 +30,8 @@ const fields = {
   name: z.string().trim().min(1).max(200),
   name_en: z.string().trim().max(200),
   source: z.string().trim().max(300).optional(),
+  exam_code: z.string().trim().max(40).optional(),
+  exam_year: z.number().int().min(2000).max(2100).nullable().optional(),
   subject_id: z.string().regex(UUID),
   grade: z.number().int().min(1).max(12),
   duration_minutes: z.number().int().min(5).max(300),
@@ -46,6 +52,8 @@ const MESSAGES: Record<string, Message> = {
   name: { vi: 'Tên đề cần từ 1 đến 200 ký tự.', en: 'The exam name needs 1–200 characters.' },
   name_en: { vi: 'Tên tiếng Anh tối đa 200 ký tự.', en: 'The English name is at most 200 characters.' },
   source: { vi: 'Nguồn đề tối đa 300 ký tự.', en: 'The source is at most 300 characters.' },
+  exam_code: { vi: 'Mã đề tối đa 40 ký tự.', en: 'The exam code is at most 40 characters.' },
+  exam_year: { vi: 'Năm phải từ 2000 đến 2100.', en: 'The year must be 2000–2100.' },
   subject_id: { vi: 'Môn học không hợp lệ.', en: 'Invalid subject.' },
   grade: { vi: 'Lớp phải từ 1 đến 12.', en: 'The grade must be 1–12.' },
   duration_minutes: { vi: 'Thời gian làm bài từ 5 đến 300 phút.', en: 'The duration must be 5–300 minutes.' },

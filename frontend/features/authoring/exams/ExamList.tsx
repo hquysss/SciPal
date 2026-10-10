@@ -35,6 +35,8 @@ export function ExamTable({ exams }: { exams: ExamSummary[] }) {
               <span className="block truncate font-semibold text-ink">{exam.name}</span>
               <span className="mt-1 block text-sm text-ink-muted">
                 {[
+                  exam.exam_code ? t({ en: `Code ${exam.exam_code}`, vi: `Mã đề ${exam.exam_code}` }) : null,
+                  exam.exam_year ? t({ en: `Year ${exam.exam_year}`, vi: `Năm ${exam.exam_year}` }) : null,
                   exam.subject_name_vi && exam.grade ? `${exam.subject_name_vi} · ${t({ en: `Grade ${exam.grade}`, vi: `Lớp ${exam.grade}` })}` : exam.subject_name_vi,
                   t({ en: `${exam.question_count} questions`, vi: `${exam.question_count} câu` }),
                   exam.duration_minutes ? t({ en: `${exam.duration_minutes} min`, vi: `${exam.duration_minutes} phút` }) : null,
