@@ -47,7 +47,7 @@ export function TutorWidget() {
   const visible = session.open && !fullPage;
   const activeLevel = session.lesson?.level ?? level;
   const suggestions = session.lesson ? lessonQuestions(session.lesson.title) : LANDING_QUESTIONS[activeLevel];
-  return <LevelScope level={activeLevel} className={styles.scope}>
+  return <LevelScope level={activeLevel} className={styles.scope}><div data-tutor-scope>
     <button ref={trigger} type="button" disabled={!online} aria-haspopup="dialog" aria-expanded={visible} aria-controls={opened ? 'scipal-professor-panel' : undefined}
       aria-label={t({ en: 'Open Professor Quys', vi: 'Mở Giáo sư Quý' })}
       title={online ? t({ en: 'Ask the Professor', vi: 'Hỏi thầy' }) : t({ en: 'Needs an internet connection', vi: 'Cần kết nối mạng' })}
@@ -63,5 +63,5 @@ export function TutorWidget() {
       <span className={styles.hint}>{t({ en: 'Ask the Professor', vi: 'Hỏi thầy' })}</span>
     </button>
     {opened && <Panel id="scipal-professor-panel" visible={visible} lessonId={session.lesson?.id} lessonTitle={session.lesson?.title} level={activeLevel} signedIn={session.signedIn} suggestions={suggestions} onClose={close} />}
-  </LevelScope>;
+  </div></LevelScope>;
 }
