@@ -20,8 +20,29 @@ describe('Help search', () => {
 
   it('applies the topic filter to guides and FAQs together', () => {
     const result = searchHelp('', 'teach');
-    expect(result.guides.map((guide) => guide.id)).toEqual(['teachers']);
-    expect(result.faqs.map((faq) => faq.id)).toEqual(['teacher-tools']);
+    expect(result.guides.map((guide) => guide.id)).toEqual([
+      'teachers',
+      'teacher-lessons',
+      'teacher-import',
+      'teacher-exams',
+      'teacher-classes',
+      'teacher-games',
+      'teacher-terms',
+      'teacher-simulations',
+    ]);
+    expect(result.faqs.map((faq) => faq.id)).toEqual(['teacher-tools', 'teacher-review']);
+  });
+
+  it('covers student and teacher features with visual workflows', () => {
+    const guideIds = new Set(HELP_GUIDES.map((guide) => guide.id));
+    for (const id of [
+      'start', 'account', 'lesson', 'professor', 'lab', 'glossary', 'exams', 'games', 'profile', 'classes', 'offline',
+      'teachers', 'teacher-lessons', 'teacher-import', 'teacher-exams', 'teacher-classes', 'teacher-games', 'teacher-terms', 'teacher-simulations',
+    ]) {
+      expect(guideIds.has(id), `missing help guide: ${id}`).toBe(true);
+    }
+    expect(HELP_GUIDES.every((guide) => Object.hasOwn(guide, 'audience'))).toBe(true);
+    expect(HELP_GUIDES.every((guide) => Object.hasOwn(guide, 'visualSteps'))).toBe(true);
   });
 
   it('requires every search word and returns an honest empty result', () => {

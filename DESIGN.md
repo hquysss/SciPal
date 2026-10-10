@@ -85,6 +85,16 @@ Một nguồn: `LessonStatusBadge` (`features/authoring/lessonStatusBadge.tsx`) 
 
 Bảng (`Table`) cho danh sách tài khoản và học sinh, cuộn ngang trong khung ở 375px; hộp thoại dùng `Dialog` (Esc đóng, focus vào ô đầu, trả focus khi đóng); `font-mono` chỉ cho mã mời lớp và khối code. Trang server dùng `PageBreadcrumb` và `Bi` để song ngữ.
 
+### Help center role guides
+- **Structure**: Public `/help` groups step-by-step articles under student and teacher headings. Search and topic filters continue to narrow both guides and FAQs. Each article links to the real feature route.
+- **Visuals**: A compact three-step SVG path sits above the full ordered instructions. It uses `--action`, `--action-ink`, and `--line`; the SVG is decorative because the adjacent bilingual steps carry the same sequence.
+- **Content**: Student guides cover subjects, lessons, simulations, practice, Professor, glossary, exams, games, classes, progress, account preferences and offline lessons. Teacher guides cover access, lesson authoring/import, exam creation/import, classes and assignments, class games, glossary terms and simulation requests. Teacher review/publication limits are stated explicitly.
+- **Typography and spacing**: Use the shared Be Vietnam Pro scale and 4px spacing rhythm. Diagram labels remain supplementary to body-size instructions.
+- **States**: All topics, each topic filter, bilingual search results, no results, and FAQs.
+- **Accessibility**: Guide groups use headings and articles. Diagram labels are hidden from assistive technology because the full text sequence follows immediately; filter controls keep 44px minimum targets and visible focus.
+- **Layout**: Each audience is a separate section; guide articles form two columns when they fit and one column on narrow screens.
+- **Motion**: Diagrams are static; no new autoplay or scroll motion is added.
+
 ### Palette
 
 | Role | Token | Value | Usage |
@@ -138,6 +148,7 @@ Spec: `docs/superpowers/specs/2026-09-26-landing-redesign-design.md`.
 - Cỡ chữ hero thu theo viewport từ 24px để giữ trọn cả hai dòng trên màn hình hẹp.
 - Mỗi section một tiêu đề, tối đa một câu phụ; không đoạn văn.
 - Spotlight tự chuyển sau 6 giây trên thiết bị có hover; rê chuột vào hoặc đưa bàn phím vào điều khiển sẽ tạm dừng. Thiết bị cảm ứng dùng mũi tên/chấm, còn `prefers-reduced-motion` tắt tự chuyển. Chấm điều hướng có vùng bấm ít nhất 24×24px; mũi tên còn 48×48px trên điện thoại. Dải môn học tự cuộn trên con trỏ hover-capable, dừng khi rê chuột hoặc focus bàn phím. Vùng dải có focus ring; khi focus, nó dừng và đưa bộ thẻ truy cập được về đầu để link luôn nhìn thấy. Bản sao trang trí là `aria-hidden` + `inert`, không chứa link; touch và `prefers-reduced-motion` dùng cuộn thủ công. Không có nút pause.
+- Ghost words quanh SubjectSpotlight đi ngược hướng nhau theo tiến độ cuộn của section; biên độ được đặt đủ rõ để tạo chiều sâu nhưng vẫn nằm trong vùng an toàn của tiêu đề. `prefers-reduced-motion` giữ chữ đứng yên.
 - CTA floats, nhịp phóng nhẹ của biểu tượng ứng dụng, nhịp nghiêng của biểu tượng khảo sát, quầng sáng/vệt quét/chấm sáng và gradient tiêu đề bảng giá được giữ ở lượt chạy ngắn khi section vào màn hình; chúng chạy một lần dưới năm giây rồi dừng. Quầng màu và chiều sâu tĩnh vẫn hiện khi giảm chuyển động.
 - Tranh hero (`features/landing/hero/`): SVG tĩnh (`HeroIllustration`) render phía server, màu chỉ lấy từ token. Chiều sâu được vẽ bằng mặt bên tối hơn (`color-mix` với `--ink`), chồng giấy và bóng đổ mờ, không xoay cả khung bằng CSS và không đóng khung thẻ. Một vùng `--paper` mờ dần phía sau làm dịu hoạ tiết nền. Tranh tự dựng một lần khi vào trang (~1,8 s, chỉ CSS): sách trồi lên, hai trang mở từ gáy, dòng kẻ và đồ thị tự vẽ (`pathLength=1` + `stroke-dashoffset`), điểm đánh dấu nảy, dải đánh dấu buông xuống, rồi đồ vật rơi xuống có độ nảy và bóng đổ lớn dần. Đổi cấp thì dựng lại (`key={level}`). Máy có chuột: `HeroStage` ghi vị trí con trỏ trên hero vào `--px`/`--py` (một khung hình mỗi lần di chuột, không vòng lặp); tranh nghiêng tối đa 5–7° và ba lớp (sách, đồ vật sau, đồ vật trước) dịch lệch nhau. Tiêu đề hiện từng dòng từ mờ sang rõ, rồi câu phụ và nút. Tất cả tắt khi `prefers-reduced-motion`. Đồ vật theo cấp là dữ liệu trong `levelObjects.ts`. Không dùng `three`/WebGL hay canvas.
 - Hiệu ứng hiện khi cuộn (700 ms: trượt lên 1,75rem, thu nhỏ 0,97 và bỏ mờ 6px, lệch 80 ms theo cột) dùng thuộc tính `translate`/`scale` riêng để không đè `transform` của thẻ; bật giảm chuyển động giữa chừng thì mọi khối hiện ngay.

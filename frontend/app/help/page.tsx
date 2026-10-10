@@ -4,7 +4,7 @@ import { pageTitle } from '@/lib/pageTitle';
 
 export const metadata: Metadata = {
   ...pageTitle('Help', 'Hướng dẫn'),
-  description: 'Hướng dẫn sử dụng SciPal: bài học, mô phỏng, tự luyện, từ điển, thi thử và Giáo sư SciPal. Learn how to use SciPal.',
+  description: 'Hướng dẫn song ngữ cho học sinh và giáo viên: học bài, thi thử, lớp học và soạn học liệu. Bilingual guides to learning, exams, classes and teaching tools in SciPal.',
 };
 
 export default function HelpPage() {
