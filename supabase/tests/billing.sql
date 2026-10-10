@@ -1104,7 +1104,11 @@ begin
   v_result := public.billing_apply_momo_payment(v_claim.order_id, v_claim.request_id, '00000000-0000-4000-8000-000000000006', 'momo-yearly-renewal-tx', v_renewal_amount, 'paid', now(), 'momo-yearly-renewal-fingerprint', 'renewal');
   select paid_through into v_paid_through from public.billing_subscriptions where user_id = '00000000-0000-4000-8000-000000000006';
   v_expected_paid_through := ((v_initial_paid_through at time zone 'Asia/Ho_Chi_Minh') + interval '12 months') at time zone 'Asia/Ho_Chi_Minh';
-  select used into v_monthly_usage_after from public.quota_usage where user_id = '00000000-0000-4000-8000-000000000006' and metric = 'tutor_requests';
+  select used into v_monthly_usage_after
+    from public.quota_usage
+   where user_id = '00000000-0000-4000-8000-000000000006'
+     and metric = 'tutor_requests'
+     and period_start = pg_catalog.date_trunc('month', now() at time zone 'Asia/Ho_Chi_Minh')::date;
   select count(*) into v_grant_count from public.billing_grants where user_id = '00000000-0000-4000-8000-000000000006';
   if v_result <> 'applied' or v_paid_through <> v_expected_paid_through or v_monthly_usage_after <> 7 or v_grant_count <> 2 then
     raise exception 'Yearly MoMo renewal invariant failed: result=%, paid_through=%, expected=%, monthly_usage=%, grants=%',
