@@ -1105,6 +1105,14 @@ export interface Database {
         Args: { p_operation_id: string; p_outcome: 'commit' | 'release' };
         Returns: boolean;
       };
+      my_exam_results: {
+        Args: Record<string, never>;
+        Returns: Array<{ blueprint_id: string; name: string | null; score: number; max_score: number; submitted_at: string }>;
+      };
+      xp_leaderboard: {
+        Args: { p_weekly?: boolean };
+        Returns: Array<{ rank: number; display_name: string | null; xp: number; is_me: boolean }>;
+      };
     };
     Enums: {
       [_ in never]: never;
