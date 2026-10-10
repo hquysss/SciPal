@@ -254,6 +254,13 @@ All spacing intent derives from 4px.
 ### Pricing load recovery
 - A missing plan catalog shows a bilingual error and an in-page retry action. The retry announces its pending state, disables duplicate activation while refreshing, and never substitutes estimated prices.
 
+### Billing renewal consent and plan management
+- **Structure**: The paid-plan action keeps the existing one-time VietQR path. MoMo automatic renewal is a separate, unchecked checkbox with the exact VND price and monthly/yearly period in its bilingual label.
+- **States**: Consent unchecked, consent selected, provider unavailable, order opening, renewal active, cancellation pending, cancelled, paused, and renewal failed. Changing the audience or billing period clears the checkbox so consent never silently carries to a different price.
+- **Accessibility**: Use a native checkbox and associated label with a 44px minimum target. The next-period timing and cancellation path are written in text. Buttons expose busy/disabled state; cancellation pending is announced without claiming success.
+- **Layout**: Keep the consent copy inside the paid-plan card and allow it to wrap naturally at mobile widths. In My Plan, show the agreed amount, period, next charge date and cancel/retry action beside the current paid-through date.
+- **Motion**: Use existing focus and button feedback only; do not add autoplay or decorative motion to billing controls.
+
 ### Profile level preference
 - **Structure**: Labeled three-choice control with current value and ownership status.
 - **Variants**: Account-synced and device-only.

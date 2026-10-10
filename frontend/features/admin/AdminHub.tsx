@@ -36,7 +36,7 @@ export const ADMIN_GROUPS: Group[] = [
     title: { vi: 'Gói & thanh toán', en: 'Plans & payments' },
     tools: [
       { href: '/admin/plans', label: { vi: 'Hạn mức & giá gói', en: 'Plans & prices' }, hint: { vi: 'Lượt dùng, giá, quyền lợi', en: 'Limits, prices, benefits' }, Icon: Settings2 },
-      { href: '/admin/billing', label: { vi: 'Đối soát thanh toán', en: 'Payment reconciliation' }, hint: { vi: 'Giao dịch payOS, xử lý sai lệch', en: 'payOS payments, mismatches' }, Icon: ReceiptText },
+      { href: '/admin/billing', label: { vi: 'Đối soát thanh toán', en: 'Payment reconciliation' }, hint: { vi: 'Giao dịch qua cổng thanh toán, xử lý sai lệch', en: 'Provider payments and mismatches' }, Icon: ReceiptText },
     ],
   },
   {

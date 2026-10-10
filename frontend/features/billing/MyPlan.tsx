@@ -6,15 +6,20 @@ import { useLanguage } from '@scipal/hooks';
 import type { BillingAccount, EffectiveQuota } from '@scipal/types';
 import { Alert } from '@/components/ui/alert';
 import { buttonVariants } from '@/components/ui/button';
-import { METRIC, PLAN_NAME, fetchMyPlan, fetchTransactions, formatVnd, type Transaction } from './billingApi';
+import { cancelRenewal, METRIC, PLAN_NAME, fetchMyPlan, fetchTransactions, formatVnd, type Transaction } from './billingApi';
 
 type Bilingual = { vi: string; en: string };
 export type MyPlanState = { status: 'loading' } | { status: 'error'; message: Bilingual } | { status: 'ready'; account: BillingAccount };
 
-const VIETNAM_DATE = new Intl.DateTimeFormat('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh', day: '2-digit', month: '2-digit', year: 'numeric' });
+function formatDate(value: string, lang: 'en' | 'vi') {
+  return new Intl.DateTimeFormat(lang === 'vi' ? 'vi-VN' : 'en-US', {
+    timeZone: 'Asia/Ho_Chi_Minh',
+    dateStyle: 'medium',
+  }).format(new Date(value));
+}
 
 function QuotaMeter({ quota }: { quota: EffectiveQuota }) {
-  const { t } = useLanguage();
+  const { lang, t } = useLanguage();
   const taken = quota.used + quota.reserved;
   const left = Math.max(0, quota.limit - taken);
   const share = quota.limit > 0 ? Math.min(100, Math.round((taken / quota.limit) * 100)) : 100;
@@ -44,15 +49,21 @@ function QuotaMeter({ quota }: { quota: EffectiveQuota }) {
       {quota.source === 'override' && (
         <span className="text-xs text-ink-muted">
           {t({ vi: 'Hạn mức riêng do quản trị viên cấp', en: 'A custom limit set by an admin' })}
-          {quota.expiresAt && ` · ${t({ vi: 'đến', en: 'until' })} ${VIETNAM_DATE.format(new Date(quota.expiresAt))}`}
+          {quota.expiresAt && ` · ${t({ vi: 'đến', en: 'until' })} ${formatDate(quota.expiresAt, lang)}`}
         </span>
       )}
     </li>
   );
 }
 
-export function MyPlanView({ state, onRetry }: { state: MyPlanState; onRetry?: () => void }) {
-  const { t } = useLanguage();
+export function MyPlanView({ state, onRetry, onCancelRenewal, cancelling = false, cancelMessage }: {
+  state: MyPlanState;
+  onRetry?: () => void;
+  onCancelRenewal?: () => void;
+  cancelling?: boolean;
+  cancelMessage?: Bilingual | null;
+}) {
+  const { lang, t } = useLanguage();
 
   if (state.status === 'loading') {
     return <p className="text-sm text-ink-muted" role="status">{t({ vi: 'Đang tải gói của bạn…', en: 'Loading your plan…' })}</p>;
@@ -81,6 +92,18 @@ export function MyPlanView({ state, onRetry }: { state: MyPlanState; onRetry?: (
 
   const planName = t(PLAN_NAME[account.plan ?? ''] ?? { vi: account.plan ?? '', en: account.plan ?? '' });
   const isFree = !account.paidThrough;
+  const renewal = account.renewal;
+  const renewalLabel = renewal?.status === 'active'
+    ? { vi: 'Đang tự gia hạn qua MoMo', en: 'MoMo auto-renewal is on' }
+    : renewal?.status === 'cancel_pending'
+      ? { vi: 'Đang chờ MoMo xác nhận hủy', en: 'Waiting for MoMo to confirm cancellation' }
+      : renewal?.status === 'failed'
+        ? { vi: 'Gia hạn MoMo không thành công; gói còn hiệu lực tới ngày đã trả', en: 'MoMo renewal failed; your plan remains active through the paid period' }
+        : renewal?.status === 'paused'
+          ? { vi: 'Gia hạn MoMo đang tạm dừng', en: 'MoMo renewal is paused' }
+          : renewal?.status === 'cancelled'
+            ? { vi: 'Đã hủy gia hạn tự động', en: 'Auto-renewal is cancelled' }
+            : null;
   return (
     <div className="flex flex-col gap-5">
       <section className="flex flex-col gap-3 rounded-xl border border-line bg-surface p-5 sm:flex-row sm:items-center sm:justify-between">
@@ -89,13 +112,38 @@ export function MyPlanView({ state, onRetry }: { state: MyPlanState; onRetry?: (
           <p className="text-xl font-bold text-ink">{planName}</p>
           {account.paidThrough && (
             <p className="text-sm text-ink-muted">
-              {t({ vi: 'Có hiệu lực đến', en: 'Active until' })} {VIETNAM_DATE.format(new Date(account.paidThrough))}
+              {t({ vi: 'Có hiệu lực đến', en: 'Active until' })} {formatDate(account.paidThrough, lang)}
             </p>
           )}
+          {renewalLabel && <p className="mt-2 text-sm text-ink-muted">{t(renewalLabel)}</p>}
+          {renewal?.status === 'cancel_pending' && (
+            <p className="text-sm text-ink-muted">
+              {t({ vi: 'Không bắt đầu kỳ thu mới; lần thu đang xử lý vẫn có thể hoàn tất.', en: 'No new charge will start; a charge already in progress may finish.' })}
+            </p>
+          )}
+          {renewal?.status === 'active' && renewal.amountVnd && renewal.interval && (
+            <p className="text-sm text-ink-muted">
+              {t({ vi: 'Kỳ tới', en: 'Next charge' })}: {formatVnd(renewal.amountVnd)} / {renewal.interval === 'year' ? t({ vi: 'năm', en: 'year' }) : t({ vi: 'tháng', en: 'month' })}
+              {renewal.nextChargeAt && ` · ${formatDate(renewal.nextChargeAt, lang)}`}
+            </p>
+          )}
+          {cancelMessage && <p role="status" className="mt-2 text-sm text-ink-muted">{t(cancelMessage)}</p>}
         </div>
-        <Link href="/pricing" className={buttonVariants({ variant: isFree ? 'default' : 'outline' })}>
-          {isFree ? t({ vi: 'Xem gói nâng cấp', en: 'See upgrade plans' }) : t({ vi: 'Xem bảng giá', en: 'See pricing' })}
-        </Link>
+        <div className="flex flex-wrap gap-2">
+          {renewal?.status === 'active' && onCancelRenewal && (
+            <button type="button" onClick={onCancelRenewal} disabled={cancelling} aria-busy={cancelling} className={buttonVariants({ variant: 'outline' })}>
+              {cancelling ? t({ vi: 'Đang hủy…', en: 'Cancelling…' }) : t({ vi: 'Hủy gia hạn', en: 'Cancel renewal' })}
+            </button>
+          )}
+          {renewal?.status === 'cancel_pending' && onCancelRenewal && (
+            <button type="button" onClick={onCancelRenewal} disabled={cancelling} aria-busy={cancelling} className={buttonVariants({ variant: 'outline' })}>
+              {cancelling ? t({ vi: 'Đang kiểm tra…', en: 'Checking…' }) : t({ vi: 'Kiểm tra trạng thái hủy', en: 'Check cancellation status' })}
+            </button>
+          )}
+          <Link href="/pricing" className={buttonVariants({ variant: isFree ? 'default' : 'outline' })}>
+            {isFree ? t({ vi: 'Xem gói nâng cấp', en: 'See upgrade plans' }) : t({ vi: 'Xem bảng giá', en: 'See pricing' })}
+          </Link>
+        </div>
       </section>
 
       <section aria-labelledby="my-plan-usage" className="rounded-xl border border-line bg-surface px-5 py-2">
@@ -127,7 +175,7 @@ const STATUS: Record<string, { label: Bilingual; tone: string }> = {
 
 /** Payment receipts of the account (not tax invoices). */
 export function TransactionsView({ state, onMore }: { state: TransactionsState; onMore: () => void }) {
-  const { t } = useLanguage();
+  const { lang, t } = useLanguage();
   return (
     <section aria-labelledby="my-plan-transactions" className="flex flex-col gap-2 rounded-xl border border-line bg-surface px-5 py-4">
       <h2 id="my-plan-transactions" className="text-base font-bold text-ink">{t({ vi: 'Lịch sử giao dịch', en: 'Payment history' })}</h2>
@@ -146,7 +194,7 @@ export function TransactionsView({ state, onMore }: { state: TransactionsState; 
               <li key={tx.id} className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1 py-3">
                 <div className="flex min-w-0 flex-col">
                   <span className="text-sm font-semibold text-ink">{plan} · {period}</span>
-                  <span className="text-xs text-ink-muted">{VIETNAM_DATE.format(new Date(tx.createdAt))}</span>
+                  <span className="text-xs text-ink-muted">{formatDate(tx.createdAt, lang)}</span>
                 </div>
                 <div className="flex flex-col items-end">
                   <span className="text-sm font-semibold tabular-nums text-ink">{formatVnd(tx.amountVnd)}</span>
@@ -187,15 +235,31 @@ function Transactions() {
 
 export function MyPlan() {
   const [state, setState] = useState<MyPlanState>({ status: 'loading' });
+  const [cancelling, setCancelling] = useState(false);
+  const [cancelMessage, setCancelMessage] = useState<Bilingual | null>(null);
   const load = useCallback(async () => {
     setState({ status: 'loading' });
     const result = await fetchMyPlan();
     setState(result.ok ? { status: 'ready', account: result.data } : { status: 'error', message: result.error });
   }, []);
+  const cancel = useCallback(async () => {
+    setCancelling(true);
+    setCancelMessage(null);
+    const result = await cancelRenewal();
+    setCancelling(false);
+    if (!result.ok) {
+      setCancelMessage(result.error);
+      return;
+    }
+    setCancelMessage(result.data.status === 'cancel_pending'
+      ? { vi: 'MoMo chưa xác nhận hủy; hãy kiểm tra lại trạng thái sau.', en: 'MoMo has not confirmed the cancellation; check the status again later.' }
+      : { vi: 'Đã hủy gia hạn tự động. Gói hiện tại vẫn dùng đến hết kỳ đã trả.', en: 'Auto-renewal is cancelled. Your current plan remains active through the paid period.' });
+    await load();
+  }, [load]);
   useEffect(() => { void load(); }, [load]);
   return (
     <>
-      <MyPlanView state={state} onRetry={() => void load()} />
+      <MyPlanView state={state} onRetry={() => void load()} onCancelRenewal={() => void cancel()} cancelling={cancelling} cancelMessage={cancelMessage} />
       {state.status === 'ready' && state.account.role !== 'admin' && <Transactions />}
     </>
   );

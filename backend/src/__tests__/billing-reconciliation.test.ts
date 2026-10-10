@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import Fastify from 'fastify';
 import { billingReconciliationRoutes } from '../routes/billingReconciliation.js';
 import type { PayosClient } from '../billing/providers/payos.js';
+import type { MomoClient } from '../billing/providers/momo.js';
 import { mockQuery, mockSupabase, rpcCalls, type MockBuilder } from './helpers/supabaseMock.js';
 
 const admin = { id: 'a0000000-0000-4000-8000-000000000005', app_metadata: { app_role: 'admin' } };
@@ -20,11 +21,11 @@ function fakePayos(overrides: Partial<PayosClient> = {}): PayosClient {
   } as PayosClient;
 }
 
-async function build(user: object | null, tables: Record<string, MockBuilder | MockBuilder[]>, payos: PayosClient | null = fakePayos()) {
+async function build(user: object | null, tables: Record<string, MockBuilder | MockBuilder[]>, payos: PayosClient | null = fakePayos(), momo: MomoClient | null = null) {
   const app = Fastify();
   app.decorate('supabase', mockSupabase(tables));
   if (user) app.addHook('onRequest', async (request) => { Object.assign(request, { user }); });
-  await app.register(billingReconciliationRoutes, { payos });
+  await app.register(billingReconciliationRoutes, { payos, momo });
   await app.ready();
   return app;
 }
@@ -36,6 +37,7 @@ describe('GET /api/admin/billing/reconciliation', () => {
         data: {
           items: [{
           incident_id: 'd0000000-0000-4000-8000-000000000001',
+          provider: 'payos',
           source: 'event',
           event_id: 'd0000000-0000-4000-8000-000000000001',
           attempt_id: 'e0000000-0000-4000-8000-000000000001',
@@ -73,6 +75,7 @@ describe('GET /api/admin/billing/reconciliation', () => {
       pageSize: 2,
       totalCount: 5,
       items: [{
+        provider: 'payos',
         orderId: 'c0000000-0000-4000-8000-000000000001',
         amountReceivedVnd: 3900,
         reason: { code: 'incorrect_amount' },
@@ -107,6 +110,34 @@ describe('GET /api/admin/billing/reconciliation', () => {
 });
 
 describe('POST /api/admin/billing/orders/:id/reconcile', () => {
+  it('rechecks a MoMo renewal and applies only provider-confirmed payment evidence', async () => {
+    const reference = 'momo-renewal-reference';
+    const momo = {
+      queryTransaction: vi.fn().mockResolvedValue({ resultCode: 0, amountVnd: 39000, transactionId: 'momo-tx-1', paidAt: '2026-09-29T03:15:00.000Z' }),
+    } as unknown as MomoClient;
+    const app = await build(admin, {
+      billing_payment_attempts: mockQuery({ data: { id: 'e0000000-0000-4000-8000-000000000001', provider: 'momo', provider_reference: reference, status: 'pending' }, error: null }),
+      billing_renewal_attempts: mockQuery({ data: { state: 'reconciliation' }, error: null }),
+      billing_orders: mockQuery({ data: { user_id: 'a0000000-0000-4000-8000-000000000001' }, error: null }),
+      'rpc:billing_apply_momo_payment': mockQuery({ data: 'applied', error: null }),
+    }, null, momo);
+
+    const response = await app.inject({ method: 'POST', url: `/api/admin/billing/orders/${ORDER}/reconcile` });
+
+    expect(response.statusCode).toBe(200);
+    expect(momo.queryTransaction).toHaveBeenCalledWith({ orderId: reference, requestId: reference });
+    expect(rpcCalls).toContainEqual(['billing_apply_momo_payment', expect.objectContaining({
+      p_reference: reference,
+      p_request_id: reference,
+      p_partner_client_id: 'a0000000-0000-4000-8000-000000000001',
+      p_transaction_id: 'momo-tx-1',
+      p_amount_vnd: 39000,
+      p_outcome: 'paid',
+      p_event_type: 'admin_reconciliation',
+    })]);
+    await app.close();
+  });
+
   it('rechecks payOS and applies each transaction through the payment RPC', async () => {
     const attempt = mockQuery({ data: { id: 'e0000000-0000-4000-8000-000000000001', provider_reference: '1234567890', status: 'reconciliation' }, error: null });
     const apply = mockQuery({ data: 'reconciliation', error: null });
@@ -155,7 +186,7 @@ describe('POST /api/admin/billing/orders/:id/reconcile', () => {
     const response = await app.inject({ method: 'POST', url: `/api/admin/billing/orders/${ORDER}/reconcile` });
 
     expect(response.statusCode).toBe(200);
-    expect(attempt.inCalls).toContainEqual(['status', ['reconciliation', 'paid']]);
+    expect(attempt.inCalls).toContainEqual(['provider', ['payos', 'momo']]);
     expect(payos.getPaymentLink).toHaveBeenCalledWith(1234567890);
     expect(rpcCalls).toHaveLength(2);
     expect(attempt.updated).toHaveLength(0);

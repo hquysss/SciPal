@@ -1,14 +1,16 @@
 import { renderToStaticMarkup } from 'react-dom/server';
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { countRawColors } from '../../lib/theme/rawColors';
 import { PricingPage } from './PricingPage';
 import { MyPlanView, TransactionsView } from './MyPlan';
 import { CheckoutStatusView, countdown } from './CheckoutStatus';
 import { formatVnd, limitText, type PublicPlan } from './billingApi';
 
-vi.mock('@scipal/hooks', () => ({ useLanguage: () => ({ lang: 'vi', t: (o: { vi: string }) => o.vi }) }));
+const language = vi.hoisted(() => ({ lang: 'vi' as 'en' | 'vi' }));
+vi.mock('@scipal/hooks', () => ({ useLanguage: () => ({ lang: language.lang, t: (o: { en: string; vi: string }) => o[language.lang] }) }));
 vi.mock('@scipal/supabase', () => ({ createBrowserClient: () => ({}) }));
 vi.mock('next/navigation', () => ({ useRouter: () => ({ refresh: vi.fn() }) }));
+afterEach(() => { language.lang = 'vi'; });
 
 const P = (n: number) => `b0000000-0000-4000-8000-00000000000${n}`;
 const plan = (code: PublicPlan['code'], vi: string, prices: PublicPlan['prices'], limits: PublicPlan['limits']): PublicPlan => ({
@@ -76,6 +78,37 @@ describe('MyPlanView', () => {
     expect(html).toContain('Còn 0 / 3 tháng này');
     expect(html).toContain('href="/pricing"');
     expect(countRawColors(html).total).toBe(0);
+  });
+
+  it('shows the active MoMo amount, next date and cancellation control', () => {
+    const html = renderToStaticMarkup(<MyPlanView
+      state={{ status: 'ready', account: {
+        role: 'student', plan: 'student_plus', paidThrough: '2026-11-10T00:00:00.000Z', quotas: [],
+        renewal: { status: 'active', interval: 'month', amountVnd: 39_000, nextChargeAt: '2026-11-09T17:00:00.000Z' },
+      } }}
+      onCancelRenewal={() => {}}
+    />);
+    expect(html).toContain('Đang tự gia hạn qua MoMo');
+    expect(html).toContain('39.000 ₫');
+    expect(html).toContain('Hủy gia hạn');
+  });
+
+  it('formats renewal dates for English readers and keeps cancellation reassurance visible after reload', () => {
+    language.lang = 'en';
+    const active = renderToStaticMarkup(<MyPlanView state={{ status: 'ready', account: {
+      role: 'student', plan: 'student_plus', paidThrough: '2026-12-10T00:00:00.000Z', quotas: [],
+      renewal: { status: 'active', interval: 'month', amountVnd: 39_000, nextChargeAt: '2026-12-09T17:00:00.000Z' },
+    } }} />);
+    expect(active).toContain('Dec');
+    expect(active).toContain('2026');
+
+    const pending = renderToStaticMarkup(<MyPlanView state={{ status: 'ready', account: {
+      role: 'student', plan: 'student_plus', paidThrough: '2026-12-10T00:00:00.000Z', quotas: [],
+      renewal: { status: 'cancel_pending', interval: 'month', amountVnd: 39_000, nextChargeAt: null },
+    } }} />);
+    expect(pending).toContain('No new charge will start');
+    expect(pending).toContain('charge already in progress may finish');
+    language.lang = 'vi';
   });
 
   it('tells an admin there are no limits', () => {

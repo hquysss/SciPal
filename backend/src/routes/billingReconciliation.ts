@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto';
 import type { FastifyPluginAsync, FastifyReply, FastifyRequest } from 'fastify';
 import { z } from 'zod';
 import { payosFromEnv, type PayosClient } from '../billing/providers/payos.js';
+import { momoFromEnv, type MomoClient } from '../billing/providers/momo.js';
 import { classifyReconciliationReason } from '../billing/reconciliationReason.js';
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -25,10 +26,12 @@ const NOT_FOUND = err('RECONCILIATION_ORDER_NOT_FOUND', 'Không tìm thấy lầ
 const REFERENCE_INVALID = err('PAYMENT_REFERENCE_INVALID', 'Mã payOS của lần thanh toán không hợp lệ.', 'The payOS reference for this attempt is invalid.');
 const CLOSED = err('PAYMENT_PROVIDER_UNAVAILABLE', 'Chưa kết nối được payOS. Thử lại sau.', 'payOS is not configured. Try again later.');
 const PROVIDER_ERROR = err('PAYMENT_PROVIDER_ERROR', 'Chưa hỏi lại được payOS. Thử lại sau.', 'Could not query payOS. Try again later.');
+const MOMO_PROVIDER_ERROR = err('MOMO_PROVIDER_ERROR', 'Chưa hỏi lại được MoMo. Thử lại sau.', 'Could not query MoMo. Try again later.');
 const UNAVAILABLE = err('BILLING_UNAVAILABLE', 'Chưa tải được dữ liệu đối soát. Thử lại sau.', 'Reconciliation data is not available. Try again later.');
 
 type IncidentRow = {
   incident_id: string;
+  provider: 'payos' | 'momo';
   event_id: string | null;
   attempt_id: string | null;
   order_id: string | null;
@@ -53,10 +56,11 @@ type IncidentRow = {
 };
 
 type PageResult = { items: IncidentRow[]; total_count: number };
-type PaymentAttempt = { id: string; provider_reference: string; status: string };
+type PaymentAttempt = { id: string; provider: 'payos' | 'momo'; provider_reference: string; status: string };
 
-export const billingReconciliationRoutes: FastifyPluginAsync<{ payos?: PayosClient | null }> = async (app, opts) => {
+export const billingReconciliationRoutes: FastifyPluginAsync<{ payos?: PayosClient | null; momo?: MomoClient | null }> = async (app, opts) => {
   const payos = opts.payos === undefined ? payosFromEnv() : opts.payos;
+  const momo = opts.momo === undefined ? momoFromEnv() : opts.momo;
   const actor = (request: FastifyRequest) => (request as FastifyRequest & { user?: { app_metadata?: { app_role?: string } } }).user;
   const requireAdmin = async (request: FastifyRequest, reply: FastifyReply) => {
     if (actor(request)?.app_metadata?.app_role !== 'admin') return reply.code(403).send(FORBIDDEN);
@@ -82,6 +86,7 @@ export const billingReconciliationRoutes: FastifyPluginAsync<{ payos?: PayosClie
       totalCount: Number(result?.total_count ?? 0),
       items: rows.map((row) => ({
         id: row.incident_id,
+        provider: row.provider,
         source: row.event_id ? 'event' : 'attempt',
         eventId: row.event_id,
         attemptId: row.attempt_id,
@@ -118,10 +123,9 @@ export const billingReconciliationRoutes: FastifyPluginAsync<{ payos?: PayosClie
     if (!UUID.test(orderId)) return reply.code(404).send(NOT_FOUND);
     const attemptResult = await app.supabase
       .from('billing_payment_attempts')
-      .select('id, provider_reference, status')
+      .select('id, provider, provider_reference, status')
       .eq('order_id', orderId)
-      .eq('provider', 'payos')
-      .in('status', ['reconciliation', 'paid'])
+      .in('provider', ['payos', 'momo'])
       .order('updated_at', { ascending: false })
       .limit(1)
       .maybeSingle();
@@ -131,6 +135,44 @@ export const billingReconciliationRoutes: FastifyPluginAsync<{ payos?: PayosClie
     }
     const attempt = attemptResult.data as PaymentAttempt | null;
     if (!attempt) return reply.code(404).send(NOT_FOUND);
+    if (attempt.provider === 'momo') {
+      if (!momo) return reply.code(503).send(MOMO_PROVIDER_ERROR);
+      if (attempt.status === 'pending') {
+        const renewal = await app.supabase.from('billing_renewal_attempts').select('state').eq('order_id', orderId).maybeSingle();
+        if (renewal.error) return reply.code(503).send(UNAVAILABLE);
+        if ((renewal.data as { state?: string } | null)?.state !== 'reconciliation') return reply.code(409).send(NOT_FOUND);
+      } else if (!['reconciliation', 'paid'].includes(attempt.status)) {
+        return reply.code(409).send(NOT_FOUND);
+      }
+      const orderResult = await app.supabase.from('billing_orders').select('user_id').eq('id', orderId).maybeSingle();
+      if (orderResult.error) return reply.code(503).send(UNAVAILABLE);
+      const userId = (orderResult.data as { user_id: string | null } | null)?.user_id;
+      if (!userId) return reply.code(409).send(NOT_FOUND);
+      let providerResult;
+      try {
+        providerResult = await momo.queryTransaction({ orderId: attempt.provider_reference, requestId: attempt.provider_reference });
+      } catch {
+        request.log.warn({ orderId }, 'MoMo reconciliation query failed');
+        return reply.code(502).send(MOMO_PROVIDER_ERROR);
+      }
+      if (providerResult.resultCode !== 0 || providerResult.amountVnd === null || !providerResult.transactionId) {
+        return { orderId, providerStatus: `resultCode:${providerResult.resultCode}`, results: [] };
+      }
+      const applied = await app.supabase.rpc('billing_apply_momo_payment', {
+        p_reference: attempt.provider_reference,
+        p_request_id: attempt.provider_reference,
+        p_partner_client_id: userId,
+        p_transaction_id: providerResult.transactionId,
+        p_amount_vnd: providerResult.amountVnd,
+        p_outcome: 'paid',
+        p_paid_at: providerResult.paidAt,
+        p_fingerprint: `admin-momo-reconciliation:${randomUUID()}`,
+        p_event_type: 'admin_reconciliation',
+      });
+      if (applied.error) return reply.code(503).send(UNAVAILABLE);
+      return { orderId, providerStatus: 'PAID', results: [{ transactionId: providerResult.transactionId, result: applied.data as string }] };
+    }
+    if (!['reconciliation', 'paid'].includes(attempt.status)) return reply.code(409).send(NOT_FOUND);
     const orderCode = Number(attempt.provider_reference);
     if (!/^\d+$/.test(attempt.provider_reference) || !Number.isSafeInteger(orderCode)) return reply.code(409).send(REFERENCE_INVALID);
     if (!payos) return reply.code(503).send(CLOSED);

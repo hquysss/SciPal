@@ -13,6 +13,9 @@ async function build(maintenance: boolean, user?: { app_metadata: { app_role: st
   app.get('/api/anything', async () => ({ ok: true }));
   app.get('/health', async () => ({ ok: true }));
   app.post('/api/billing/webhooks/payos', async () => ({ ok: true }));
+  app.post('/api/billing/webhooks/momo', async () => ({ ok: true }));
+  app.get('/api/internal/billing/renewals/run', async () => ({ ok: true }));
+  app.post('/api/billing/renewal/cancel', async () => ({ ok: true }));
   return app;
 }
 
@@ -29,6 +32,9 @@ describe('maintenance mode', () => {
     const app = await build(true);
     expect((await app.inject({ method: 'GET', url: '/health' })).statusCode).toBe(200);
     expect((await app.inject({ method: 'POST', url: '/api/billing/webhooks/payos' })).statusCode).toBe(200);
+    expect((await app.inject({ method: 'POST', url: '/api/billing/webhooks/momo' })).statusCode).toBe(200);
+    expect((await app.inject({ method: 'GET', url: '/api/internal/billing/renewals/run' })).statusCode).toBe(200);
+    expect((await app.inject({ method: 'POST', url: '/api/billing/renewal/cancel' })).statusCode).toBe(200);
   });
 
   it('does nothing while off', async () => {

@@ -101,7 +101,7 @@ type BillingTables = {
   billing_payment_attempts: DbTable<{
     id: string;
     order_id: string;
-    provider: 'payos' | 'vnpay';
+    provider: 'payos' | 'vnpay' | 'momo';
     provider_reference: string;
     provider_transaction_id: string | null;
     status: 'pending' | 'paid' | 'failed' | 'cancelled' | 'expired' | 'reconciliation';
@@ -112,7 +112,7 @@ type BillingTables = {
   }, WithDefaults<{
     id: string;
     order_id: string;
-    provider: 'payos' | 'vnpay';
+    provider: 'payos' | 'vnpay' | 'momo';
     provider_reference: string;
     provider_transaction_id: string | null;
     status: 'pending' | 'paid' | 'failed' | 'cancelled' | 'expired' | 'reconciliation';
@@ -123,7 +123,7 @@ type BillingTables = {
   }, 'id' | 'provider_transaction_id' | 'status' | 'currency' | 'created_at' | 'updated_at'>>;
   billing_events: DbTable<{
     id: string;
-    provider: 'payos' | 'vnpay';
+    provider: 'payos' | 'vnpay' | 'momo';
     fingerprint: string;
     event_type: string;
     merchant_reference: string | null;
@@ -134,7 +134,7 @@ type BillingTables = {
     processed_at: string | null;
   }, WithDefaults<{
     id: string;
-    provider: 'payos' | 'vnpay';
+    provider: 'payos' | 'vnpay' | 'momo';
     fingerprint: string;
     event_type: string;
     merchant_reference: string | null;

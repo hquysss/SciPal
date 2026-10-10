@@ -48,6 +48,7 @@ values
 \ir ../migrations/20260929140000_admin_plan_settings.sql
 \ir ../migrations/20260929160000_daily_counted_quotas.sql
 \ir ../migrations/20260930000000_guest_trials.sql
+\ir ../migrations/20261010120541_momo_auto_renew.sql
 -- Supabase's service_role writes these tables; the stubs above need the same grant.
 grant select, insert, update, delete on public.class_rooms, public.class_members, public.exam_blueprints, public.assignments to service_role;
 
@@ -255,11 +256,11 @@ begin
    where n.nspname = 'public'
      and c.relname = any(array[
        'billing_plans', 'billing_prices', 'billing_plan_limits', 'billing_orders',
-       'billing_payment_attempts', 'billing_events', 'billing_subscriptions', 'billing_grants',
+       'billing_payment_attempts', 'billing_events', 'billing_subscriptions', 'billing_grants', 'billing_mandates', 'billing_renewal_attempts',
        'account_quota_versions', 'account_quota_overrides', 'account_quota_audit', 'quota_usage', 'quota_operations'
      ])
      and c.relrowsecurity;
-  if v_role_count <> 13 then
+  if v_role_count <> 15 then
     raise exception 'RLS is not enabled for every internal billing table';
   end if;
   if has_table_privilege('anon', 'public.billing_plans', 'select')
@@ -275,6 +276,8 @@ begin
 end;
 $$;
 reset role;
+
+
 
 set role service_role;
 do $$
@@ -982,3 +985,128 @@ begin
 end;
 $$;
 reset role;
+
+do $$
+declare
+  v_month_price uuid;
+  v_year_price uuid;
+  v_order record;
+  v_mandate_id uuid;
+  v_result text;
+  v_initial_paid_through timestamptz;
+  v_paid_through timestamptz;
+  v_duplicate_through timestamptz;
+  v_claim record;
+  v_claim_count bigint;
+  v_renewal_amount integer;
+  v_expected_paid_through timestamptz;
+  v_grant_count bigint;
+  v_monthly_usage_after integer;
+begin
+  if has_table_privilege('anon', 'public.billing_mandates', 'select')
+     or has_table_privilege('authenticated', 'public.billing_mandates', 'select')
+     or has_table_privilege('anon', 'public.billing_renewal_attempts', 'select')
+     or has_table_privilege('authenticated', 'public.billing_renewal_attempts', 'select') then
+    raise exception 'MoMo secrets or renewal ledger are readable by browser roles';
+  end if;
+  if not (select relrowsecurity from pg_class where oid = 'public.billing_mandates'::regclass)
+     or not (select relrowsecurity from pg_class where oid = 'public.billing_renewal_attempts'::regclass) then
+    raise exception 'MoMo private tables must have RLS enabled';
+  end if;
+
+  select id into v_month_price from public.billing_prices where plan_code = 'student_plus' and interval = 'month' and active;
+  select * into v_order from public.billing_create_order(
+    '00000000-0000-4000-8000-000000000001', v_month_price, 'momo-consent-cancel-race', repeat(md5('momo-consent-cancel-race'), 2), now() + interval '30 minutes'
+  );
+  v_mandate_id := public.billing_prepare_momo_mandate('00000000-0000-4000-8000-000000000001', v_order.order_id, 'momo-subscription-v1');
+  if public.billing_activate_momo_mandate(v_order.order_id, 'encrypted-token-test') then
+    raise exception 'An unpaid order activated MoMo renewal';
+  end if;
+  insert into public.billing_payment_attempts (order_id, provider, provider_reference, amount_vnd)
+  values (v_order.order_id, 'momo', v_order.order_id::text, v_order.amount_vnd);
+  v_result := public.billing_apply_momo_payment(v_order.order_id::text, v_order.order_id::text, '00000000-0000-4000-8000-000000000001', 'momo-initial-tx-1', v_order.amount_vnd, 'paid', now(), 'momo-initial-fingerprint-1', 'webhook');
+  if v_result <> 'applied' or not public.billing_activate_momo_mandate(v_order.order_id, 'encrypted-token-test') then
+    raise exception 'Verified MoMo payment did not activate its consented mandate';
+  end if;
+  select paid_through into v_initial_paid_through from public.billing_subscriptions where user_id = '00000000-0000-4000-8000-000000000001';
+  update public.billing_mandates set next_charge_at = now() - interval '1 second' where id = v_mandate_id;
+  select * into v_claim from public.billing_claim_momo_renewals(5);
+  if v_claim.attempt_id is null or v_claim.state <> 'ready' then
+    raise exception 'A due and consented MoMo mandate was not claimed';
+  end if;
+  select count(*) into v_claim_count from public.billing_claim_momo_renewals(5);
+  if v_claim_count <> 0 then raise exception 'A processing renewal was claimed twice'; end if;
+  perform public.billing_begin_momo_cancellation('00000000-0000-4000-8000-000000000001');
+  select count(*) into v_claim_count from public.billing_claim_momo_renewals(5);
+  if v_claim_count <> 0 then raise exception 'A cancellation-pending mandate created another charge'; end if;
+
+  select amount_vnd into v_renewal_amount from public.billing_orders where id = v_claim.order_id::uuid;
+  v_result := public.billing_apply_momo_payment(v_claim.order_id, v_claim.request_id, '00000000-0000-4000-8000-000000000001', 'momo-renewal-tx-1', v_renewal_amount, 'paid', now(), 'momo-renewal-fingerprint-1', 'renewal');
+  if v_result <> 'applied' then raise exception 'An in-flight MoMo renewal was not applied'; end if;
+  select paid_through into v_paid_through from public.billing_subscriptions where user_id = '00000000-0000-4000-8000-000000000001';
+  v_result := public.billing_apply_momo_payment(v_claim.order_id, v_claim.request_id, '00000000-0000-4000-8000-000000000001', 'momo-renewal-tx-1', v_renewal_amount, 'paid', now(), 'momo-renewal-fingerprint-repeat', 'webhook');
+  select paid_through into v_duplicate_through from public.billing_subscriptions where user_id = '00000000-0000-4000-8000-000000000001';
+  if v_result <> 'duplicate' or v_duplicate_through <> v_paid_through or v_paid_through <= v_initial_paid_through then
+    raise exception 'A repeated MoMo renewal extended the paid period more than once';
+  end if;
+  if (select renewal_mode from public.billing_subscriptions where user_id = '00000000-0000-4000-8000-000000000001') <> 'manual'
+     or (select status from public.billing_mandates where id = v_mandate_id) <> 'cancel_pending'
+     or (select next_charge_at from public.billing_mandates where id = v_mandate_id) is not null then
+    raise exception 'A cancellation race left a later MoMo charge scheduled';
+  end if;
+  if not public.billing_confirm_momo_cancellation(v_mandate_id, 'cancelled') then
+    raise exception 'A confirmed MoMo cancellation did not update the mandate';
+  end if;
+
+  select * into v_order from public.billing_create_order(
+    '00000000-0000-4000-8000-000000000002', v_month_price, 'momo-failed-renewal', repeat(md5('momo-failed-renewal'), 2), now() + interval '30 minutes'
+  );
+  v_mandate_id := public.billing_prepare_momo_mandate('00000000-0000-4000-8000-000000000002', v_order.order_id, 'momo-subscription-v1');
+  insert into public.billing_payment_attempts (order_id, provider, provider_reference, amount_vnd)
+  values (v_order.order_id, 'momo', v_order.order_id::text, v_order.amount_vnd);
+  v_result := public.billing_apply_momo_payment(v_order.order_id::text, v_order.order_id::text, '00000000-0000-4000-8000-000000000002', 'momo-initial-tx-2', v_order.amount_vnd, 'paid', now(), 'momo-initial-fingerprint-2', 'webhook');
+  if v_result <> 'applied' or not public.billing_activate_momo_mandate(v_order.order_id, 'encrypted-token-test') then
+    raise exception 'Second MoMo mandate setup failed';
+  end if;
+  select paid_through into v_initial_paid_through from public.billing_subscriptions where user_id = '00000000-0000-4000-8000-000000000002';
+  update public.billing_mandates set next_charge_at = now() - interval '1 second' where id = v_mandate_id;
+  select * into v_claim from public.billing_claim_momo_renewals(5);
+  if v_claim.attempt_id is null then raise exception 'Second MoMo renewal was not claimed'; end if;
+  perform public.billing_mark_momo_renewal_failed(v_claim.attempt_id, 2007);
+  select paid_through into v_paid_through from public.billing_subscriptions where user_id = '00000000-0000-4000-8000-000000000002';
+  if v_paid_through <> v_initial_paid_through
+     or (select renewal_mode from public.billing_subscriptions where user_id = '00000000-0000-4000-8000-000000000002') <> 'manual'
+     or (select status from public.billing_mandates where id = v_mandate_id) <> 'failed' then
+    raise exception 'A failed MoMo renewal changed paid access or stayed scheduled';
+  end if;
+
+  select id into v_year_price from public.billing_prices where plan_code = 'student_plus' and interval = 'year' and active;
+  select * into v_order from public.billing_create_order(
+    '00000000-0000-4000-8000-000000000006', v_year_price, 'momo-yearly-renewal', repeat(md5('momo-yearly-renewal'), 2), now() + interval '30 minutes'
+  );
+  v_mandate_id := public.billing_prepare_momo_mandate('00000000-0000-4000-8000-000000000006', v_order.order_id, 'momo-subscription-v1');
+  insert into public.billing_payment_attempts (order_id, provider, provider_reference, amount_vnd)
+  values (v_order.order_id, 'momo', v_order.order_id::text, v_order.amount_vnd);
+  v_result := public.billing_apply_momo_payment(v_order.order_id::text, v_order.order_id::text, '00000000-0000-4000-8000-000000000006', 'momo-yearly-initial-tx', v_order.amount_vnd, 'paid', now(), 'momo-yearly-initial-fingerprint', 'webhook');
+  if v_result <> 'applied' or not public.billing_activate_momo_mandate(v_order.order_id, 'encrypted-yearly-token-test') then
+    raise exception 'Yearly MoMo mandate setup failed';
+  end if;
+  select paid_through into v_initial_paid_through from public.billing_subscriptions where user_id = '00000000-0000-4000-8000-000000000006';
+  insert into public.quota_usage (user_id, metric, period_start, used, reserved)
+  values ('00000000-0000-4000-8000-000000000006', 'tutor_requests', pg_catalog.date_trunc('month', now() at time zone 'Asia/Ho_Chi_Minh')::date, 7, 0);
+  update public.billing_mandates set next_charge_at = now() - interval '1 second' where id = v_mandate_id;
+  select * into v_claim from public.billing_claim_momo_renewals(5);
+  if v_claim.attempt_id is null or v_claim.billing_interval <> 'year' then
+    raise exception 'Yearly MoMo renewal was not claimed as one annual period';
+  end if;
+  select amount_vnd into v_renewal_amount from public.billing_orders where id = v_claim.order_id::uuid;
+  v_result := public.billing_apply_momo_payment(v_claim.order_id, v_claim.request_id, '00000000-0000-4000-8000-000000000006', 'momo-yearly-renewal-tx', v_renewal_amount, 'paid', now(), 'momo-yearly-renewal-fingerprint', 'renewal');
+  select paid_through into v_paid_through from public.billing_subscriptions where user_id = '00000000-0000-4000-8000-000000000006';
+  v_expected_paid_through := ((v_initial_paid_through at time zone 'Asia/Ho_Chi_Minh') + interval '12 months') at time zone 'Asia/Ho_Chi_Minh';
+  select used into v_monthly_usage_after from public.quota_usage where user_id = '00000000-0000-4000-8000-000000000006' and metric = 'tutor_requests';
+  select count(*) into v_grant_count from public.billing_grants where user_id = '00000000-0000-4000-8000-000000000006';
+  if v_result <> 'applied' or v_paid_through <> v_expected_paid_through or v_monthly_usage_after <> 7 or v_grant_count <> 2 then
+    raise exception 'Yearly MoMo renewal multiplied monthly usage or granted more than one annual period';
+  end if;
+end;
+$$;

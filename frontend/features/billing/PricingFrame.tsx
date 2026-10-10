@@ -22,7 +22,7 @@ export function PricingFrame({ staff, children }: { staff?: ReactNode; children:
           </h1>
           <p className={s.lead}>
             <Bi
-              en="Every lesson stays free. A paid plan raises how much SciPal Professoring, graded exams and teaching tools you can use."
+              en="Every lesson stays free. A paid plan gives you more SciPal Professor questions, graded exams and teaching tools."
               vi="Mọi bài học vẫn miễn phí. Gói trả phí nâng số lượt Giáo sư SciPal, lượt thi có chấm điểm và công cụ dạy học."
             />
           </p>

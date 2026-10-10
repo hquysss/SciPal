@@ -51,11 +51,17 @@ describe('authPlugin', () => {
     billing.get('/api/billing/plans', async () => ({ ok: true }));
     billing.get('/api/billing/me', async () => ({ ok: true }));
     billing.post('/api/billing/webhooks/payos', async () => ({ ok: true }));
+    billing.post('/api/billing/webhooks/momo', async () => ({ ok: true }));
+    billing.get('/api/internal/billing/renewals/run', async () => ({ ok: true }));
+    billing.post('/api/billing/renewal/cancel', async () => ({ ok: true }));
     billing.post('/api/billing/checkout', async () => ({ ok: true }));
     await billing.ready();
     expect((await billing.inject({ method: 'GET', url: '/api/billing/plans' })).statusCode).toBe(200);
     expect((await billing.inject({ method: 'GET', url: '/api/billing/me' })).statusCode).toBe(401);
     expect((await billing.inject({ method: 'POST', url: '/api/billing/webhooks/payos', payload: {} })).statusCode).toBe(200);
+    expect((await billing.inject({ method: 'POST', url: '/api/billing/webhooks/momo', payload: {} })).statusCode).toBe(200);
+    expect((await billing.inject({ method: 'GET', url: '/api/internal/billing/renewals/run' })).statusCode).toBe(200);
+    expect((await billing.inject({ method: 'POST', url: '/api/billing/renewal/cancel', payload: {} })).statusCode).toBe(401);
     expect((await billing.inject({ method: 'POST', url: '/api/billing/checkout', payload: {} })).statusCode).toBe(401);
     await billing.close();
   });

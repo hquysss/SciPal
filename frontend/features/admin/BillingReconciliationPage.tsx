@@ -68,6 +68,7 @@ export function BillingReconciliationPage() {
 
   async function handleRecheck(item: BillingReconciliationItem) {
     if (!item.orderId || busyOrderId) return;
+    const providerName = item.provider === 'momo' ? 'MoMo' : 'payOS';
     setBusyOrderId(item.orderId);
     setNotice(null);
     setError(null);
@@ -76,14 +77,14 @@ export function BillingReconciliationPage() {
       const applied = result.results.some((entry) => entry.result === 'applied');
       const remains = result.results.some((entry) => entry.result === 'reconciliation');
       const text = applied
-        ? (lang === 'vi' ? 'payOS đã xác nhận giao dịch và hệ thống đã cập nhật gói.' : 'payOS confirmed the payment and the plan was updated.')
+        ? (lang === 'vi' ? `${providerName} đã xác nhận giao dịch và hệ thống đã cập nhật gói.` : `${providerName} confirmed the payment and the plan was updated.`)
         : remains
-          ? (lang === 'vi' ? 'Đã hỏi payOS; giao dịch vẫn cần được đối soát thêm.' : 'payOS was checked; the payment still needs review.')
-          : (lang === 'vi' ? `Đã hỏi payOS. Trạng thái hiện tại: ${result.providerStatus}.` : `payOS was checked. Current status: ${result.providerStatus}.`);
+          ? (lang === 'vi' ? `Đã hỏi ${providerName}; giao dịch vẫn cần được đối soát thêm.` : `${providerName} was checked; the payment still needs review.`)
+          : (lang === 'vi' ? `Đã hỏi ${providerName}. Trạng thái hiện tại: ${result.providerStatus}.` : `${providerName} was checked. Current status: ${result.providerStatus}.`);
       setNotice({ tone: applied ? 'success' : 'info', text });
       await loadPage();
     } catch {
-      setError(lang === 'vi' ? 'Chưa hỏi lại được payOS. Hãy thử lại sau.' : 'Could not recheck payOS. Try again later.');
+      setError(lang === 'vi' ? `Chưa hỏi lại được ${providerName}. Hãy thử lại sau.` : `Could not recheck ${providerName}. Try again later.`);
     } finally {
       setBusyOrderId(null);
     }
@@ -100,7 +101,7 @@ export function BillingReconciliationPage() {
             {t({ en: 'Payment reconciliation', vi: 'Đối soát thanh toán' })}
           </h1>
           <p className="mt-2 text-sm text-ink-muted">
-            {t({ en: 'Review payments payOS could not safely match. Rechecks use provider records and never mark an order paid by hand.', vi: 'Kiểm tra các giao dịch payOS chưa thể khớp an toàn. Việc đối chiếu dùng dữ liệu từ payOS, không có thao tác ghi nhận đã trả thủ công.' })}
+            {t({ en: 'Review payments a provider could not safely match. Rechecks use provider records and never mark an order paid by hand.', vi: 'Kiểm tra các giao dịch cổng thanh toán chưa thể khớp an toàn. Việc đối chiếu dùng dữ liệu từ cổng thanh toán, không có thao tác ghi nhận đã trả thủ công.' })}
           </p>
         </div>
         <button type="button" className={buttonVariants({ variant: 'outline' })} onClick={() => {
@@ -143,7 +144,7 @@ export function BillingReconciliationPage() {
                   <TableHead>{t({ en: 'Account', vi: 'Tài khoản' })}</TableHead>
                   <TableHead>{t({ en: 'Plan and order', vi: 'Gói và đơn hàng' })}</TableHead>
                   <TableHead>{t({ en: 'Amounts', vi: 'Số tiền' })}</TableHead>
-                  <TableHead>{t({ en: 'Bank transaction', vi: 'Giao dịch ngân hàng' })}</TableHead>
+                  <TableHead>{t({ en: 'Provider transaction', vi: 'Giao dịch qua cổng thanh toán' })}</TableHead>
                   <TableHead>{t({ en: 'Reason', vi: 'Lý do' })}</TableHead>
                   <TableHead>{t({ en: 'Received', vi: 'Thời điểm nhận' })}</TableHead>
                   <TableHead><span className="sr-only">{t({ en: 'Actions', vi: 'Thao tác' })}</span></TableHead>
@@ -166,14 +167,14 @@ export function BillingReconciliationPage() {
                     </TableCell>
                     <TableCell>
                       <p className="max-w-[12rem] truncate font-mono text-xs">{item.bankTransactionId ?? '—'}</p>
-                      <p className="text-xs text-ink-muted">{t({ en: 'payOS transaction ID', vi: 'Mã giao dịch ngân hàng' })}</p>
+                      <p className="text-xs text-ink-muted">{t({ en: `${item.provider === 'momo' ? 'MoMo' : 'payOS'} transaction ID`, vi: `Mã giao dịch ${item.provider === 'momo' ? 'MoMo' : 'payOS'}` })}</p>
                     </TableCell>
                     <TableCell><Badge variant="outline">{lang === 'vi' ? item.reason.vi : item.reason.en}</Badge></TableCell>
                     <TableCell className="whitespace-nowrap text-ink-muted">{formatDate(item.paidAt ?? item.createdAt, lang)}</TableCell>
                     <TableCell>
                       {item.canReconcile && item.orderId ? (
                         <button type="button" className={buttonVariants({ variant: 'outline' })} onClick={() => void handleRecheck(item)} disabled={Boolean(busyOrderId)}>
-                          {busyOrderId === item.orderId ? t({ en: 'Checking…', vi: 'Đang hỏi…' }) : t({ en: 'Recheck payOS', vi: 'Hỏi lại payOS' })}
+                          {busyOrderId === item.orderId ? t({ en: 'Checking…', vi: 'Đang hỏi…' }) : t({ en: `Recheck ${item.provider === 'momo' ? 'MoMo' : 'payOS'}`, vi: `Hỏi lại ${item.provider === 'momo' ? 'MoMo' : 'payOS'}` })}
                         </button>
                       ) : <span className="text-sm text-ink-muted">{t({ en: 'No order to recheck', vi: 'Chưa tìm thấy đơn' })}</span>}
                     </TableCell>

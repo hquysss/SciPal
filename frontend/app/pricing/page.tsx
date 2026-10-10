@@ -12,7 +12,12 @@ export default async function PricingRoute() {
   const catalog = await fetchCatalog();
   return (
     <PricingFrame staff={<StaffLinks place="pricing" />}>
-      <PricingPage plans={catalog?.plans ?? null} checkoutOpen={catalog?.checkoutOpen ?? false} />
+      <PricingPage
+        plans={catalog?.plans ?? null}
+        checkoutOpen={catalog?.checkoutOpen ?? false}
+        payosCheckoutOpen={catalog?.payosCheckoutOpen ?? false}
+        momoAutoRenewOpen={catalog?.momoAutoRenewOpen ?? false}
+      />
     </PricingFrame>
   );
 }

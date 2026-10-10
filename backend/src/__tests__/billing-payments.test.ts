@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import Fastify from 'fastify';
 import { billingCheckoutRoutes } from '../routes/billingCheckout.js';
 import type { PayosClient, PayosPayment } from '../billing/providers/payos.js';
+import { createMomoClient, type MomoClient } from '../billing/providers/momo.js';
 import { mockQuery, mockSupabase, rpcCalls, type MockBuilder } from './helpers/supabaseMock.js';
 
 const student = { id: 'a0000000-0000-4000-8000-000000000001', app_metadata: {} };
@@ -26,11 +27,11 @@ function fakePayos(overrides: Partial<PayosClient> = {}): PayosClient {
   } as PayosClient;
 }
 
-async function build(user: object | null, tables: Record<string, MockBuilder | MockBuilder[]>, payos: PayosClient | null = fakePayos()) {
+async function build(user: object | null, tables: Record<string, MockBuilder | MockBuilder[]>, payos: PayosClient | null = fakePayos(), momo: MomoClient | null = null) {
   const app = Fastify();
-  app.decorate('supabase', mockSupabase(tables));
+  app.decorate('supabase', mockSupabase({ 'rpc:billing_begin_momo_cancellation': ok([]), ...tables }));
   if (user) app.addHook('onRequest', async (req) => { (req as any).user = user; });
-  await app.register(billingCheckoutRoutes, { payos, webBase: 'https://scipal.test' });
+  await app.register(billingCheckoutRoutes, { payos, momo, webBase: 'https://scipal.test' });
   await app.ready();
   return app;
 }
@@ -125,6 +126,48 @@ describe('POST /api/billing/checkout', () => {
     expect(res.statusCode).toBe(201);
     expect(payos.cancelPaymentLink).toHaveBeenCalledWith(1111111111);
     expect(cancelOld.updated[0]).toMatchObject({ status: 'cancelled' });
+    await app.close();
+  });
+
+  it('confirms MoMo cancellation before starting a QR checkout', async () => {
+    const payos = fakePayos();
+    const momo = {
+      ...createMomoClient({ partnerCode: 'p', accessKey: 'a', secretKey: '0123456789abcdef0123456789abcdef', publicKey: 'unused', apiBaseUrl: 'https://momo.test' }, async () => new Response('{}')),
+      cancelSubscription: vi.fn().mockResolvedValue(undefined),
+    };
+    const app = await build(student, {
+      'rpc:billing_create_order': ok([orderRow()]),
+      'rpc:billing_begin_momo_cancellation': ok([{ mandate_id: 'd0000000-0000-4000-8000-000000000001', partner_client_id: student.id, aes_token: 'encrypted-aes-token' }]),
+      'rpc:billing_confirm_momo_cancellation': ok(true),
+      billing_payment_attempts: [ok([]), ok({ id: 'attempt-1' }), ok()],
+    }, payos, momo);
+
+    const response = await checkout(app);
+
+    expect(response.statusCode).toBe(201);
+    expect(momo.cancelSubscription).toHaveBeenCalledWith(expect.objectContaining({ orderId: 'cancel-d0000000-0000-4000-8000-000000000001' }));
+    expect(rpcCalls.map(([name]) => name)).toEqual(['billing_create_order', 'billing_begin_momo_cancellation', 'billing_confirm_momo_cancellation']);
+    expect(payos.createPaymentLink).toHaveBeenCalledOnce();
+    await app.close();
+  });
+
+  it('does not create a QR checkout while MoMo cancellation is unconfirmed', async () => {
+    const payos = fakePayos();
+    const momo = {
+      ...createMomoClient({ partnerCode: 'p', accessKey: 'a', secretKey: '0123456789abcdef0123456789abcdef', publicKey: 'unused', apiBaseUrl: 'https://momo.test' }, async () => new Response('{}')),
+      cancelSubscription: vi.fn().mockRejectedValue(new Error('provider unavailable')),
+    };
+    const app = await build(student, {
+      'rpc:billing_create_order': ok([orderRow()]),
+      'rpc:billing_begin_momo_cancellation': ok([{ mandate_id: 'd0000000-0000-4000-8000-000000000001', partner_client_id: student.id, aes_token: 'encrypted-aes-token' }]),
+      billing_payment_attempts: ok([]),
+    }, payos, momo);
+
+    const response = await checkout(app);
+
+    expect(response.statusCode).toBe(202);
+    expect(response.json().code).toBe('RENEWAL_CANCELLATION_PENDING');
+    expect(payos.createPaymentLink).not.toHaveBeenCalled();
     await app.close();
   });
 });

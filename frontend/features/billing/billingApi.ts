@@ -8,7 +8,7 @@ const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL ?? 'https://sci-pal-backen
 
 type Bilingual = { vi: string; en: string };
 export type PublicPlan = BillingPlan;
-export type Catalog = { plans: PublicPlan[]; checkoutOpen: boolean };
+export type Catalog = { plans: PublicPlan[]; checkoutOpen: boolean; payosCheckoutOpen?: boolean; momoAutoRenewOpen?: boolean };
 
 /** The catalog for the pricing page, or null when it cannot be read (no made-up prices). */
 export async function fetchCatalog(): Promise<Catalog | null> {
@@ -17,7 +17,12 @@ export async function fetchCatalog(): Promise<Catalog | null> {
     const res = await fetch(`${API_BASE}/api/billing/plans`, { next: { revalidate: 300 }, signal: AbortSignal.timeout(3000) } as RequestInit);
     if (!res.ok) return null;
     const body = (await res.json()) as Partial<Catalog>;
-    return Array.isArray(body.plans) && body.plans.length > 0 ? { plans: body.plans, checkoutOpen: body.checkoutOpen === true } : null;
+    return Array.isArray(body.plans) && body.plans.length > 0 ? {
+      plans: body.plans,
+      checkoutOpen: body.checkoutOpen === true,
+      payosCheckoutOpen: body.payosCheckoutOpen === true,
+      momoAutoRenewOpen: body.momoAutoRenewOpen === true,
+    } : null;
   } catch {
     return null;
   }
@@ -36,8 +41,11 @@ export type OrderView = {
 };
 
 /** Starts (or, with the same key, resumes) a QR checkout; the backend sets the amount. */
-export const startCheckout = (priceId: string, idempotencyKey: string): Promise<ApiResult<CheckoutAnswer>> =>
-  authoringCall<CheckoutAnswer>('/api/billing/checkout', 'POST', { priceId, provider: 'payos', idempotencyKey, autoRenew: false });
+export const startCheckout = (priceId: string, idempotencyKey: string, provider: 'payos' | 'momo' = 'payos'): Promise<ApiResult<CheckoutAnswer>> =>
+  authoringCall<CheckoutAnswer>('/api/billing/checkout', 'POST', { priceId, provider, idempotencyKey, autoRenew: provider === 'momo' });
+
+export const cancelRenewal = (): Promise<ApiResult<{ status: 'cancelled' | 'cancel_pending' }>> =>
+  authoringCall('/api/billing/renewal/cancel', 'POST');
 
 export const cancelOrder = (id: string): Promise<ApiResult<OrderView>> => authoringCall<OrderView>(`/api/billing/orders/${encodeURIComponent(id)}/cancel`, 'POST');
 
