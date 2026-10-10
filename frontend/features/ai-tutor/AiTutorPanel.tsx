@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import { useTutorDrag } from './useTutorDrag';
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import { ExternalLink, X } from 'lucide-react';
 import { useLanguage } from '@scipal/hooks';
@@ -31,6 +32,8 @@ export function AiTutorPanel({ id, visible = true, lessonId, lessonTitle, sugges
   const { t } = useLanguage();
   const session = useTutorSession();
   const panel = useRef<HTMLDivElement>(null);
+  // Drag the header to move the chat (wide screens; on a phone the panel fills the width).
+  const drag = useTutorDrag({ skip: (el) => window.innerWidth < 640 || Boolean(el.closest('a,button')) });
   const [localConversationId, setConversationId] = useState<string | null>(null);
   const onConversation = useCallback((value: string) => setConversationId(value), []);
   const conversationId = session?.chat.conversationId ?? localConversationId;
@@ -48,7 +51,7 @@ export function AiTutorPanel({ id, visible = true, lessonId, lessonTitle, sugges
   }, [visible, onClose, signedIn]);
 
   return <div ref={panel} id={id} data-visible={visible || undefined} inert={!visible} aria-hidden={!visible} role="dialog" aria-label={t({ en: 'Professor Quys', vi: 'Giáo sư Quý' })} className={styles.panel}>
-    <div className={styles.panelHeader}>
+    <div className={styles.panelHeader} {...drag.handlers}>
       <TutorAvatarOnline size="2.5rem" />
       <div className="min-w-0 flex-1">
         <p className="text-sm font-bold leading-tight text-ink">{t({ en: 'Professor Quys', vi: 'Giáo sư Quý' })}</p>

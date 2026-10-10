@@ -1,8 +1,9 @@
 .scope { position: relative; z-index: 50; }
 .trigger {
   position: fixed;
-  right: max(1.25rem, env(safe-area-inset-right));
-  bottom: max(1.25rem, env(safe-area-inset-bottom));
+  right: min(calc(max(1.25rem, env(safe-area-inset-right)) + var(--tutor-r, 0px)), calc(100vw - 4.75rem));
+  bottom: min(calc(max(1.25rem, env(safe-area-inset-bottom)) + var(--tutor-b, 0px)), calc(100dvh - 4.75rem));
+  touch-action: none;
   display: grid;
   width: 3.75rem;
   height: 3.75rem;
@@ -47,8 +48,15 @@
   border-bottom: 1px solid var(--line);
   background: linear-gradient(115deg, color-mix(in srgb, var(--action) 8%, var(--surface)), color-mix(in srgb, var(--sun) 10%, var(--surface)));
 }
+@media (min-width: 640px) { .panelHeader { cursor: grab; touch-action: none; user-select: none; } }
 @keyframes answering { 50% { opacity: 0.4; } }
-@media (min-width: 640px) { .panel { left: auto; right: max(1.25rem, env(safe-area-inset-right)); bottom: max(1.25rem, env(safe-area-inset-bottom)); width: 26rem; } }
+@media (min-width: 640px) {
+  .panel {
+    left: auto; width: 26rem;
+    right: clamp(0.5rem, calc(max(1.25rem, env(safe-area-inset-right)) + var(--tutor-r, 0px)), calc(100vw - 26.5rem));
+    bottom: clamp(0.5rem, calc(max(1.25rem, env(safe-area-inset-bottom)) + var(--tutor-b, 0px)), calc(100dvh - min(36rem, 100dvh - 5.5rem) - 0.5rem));
+  }
+}
 @media (max-height: 500px) { .panel { height: calc(100dvh - 1rem); } }
 @media (prefers-reduced-motion: reduce) {
   .trigger, .hint, .panel { transition: none; transform: none; }
