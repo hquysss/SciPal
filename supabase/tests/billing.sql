@@ -49,6 +49,7 @@ values
 \ir ../migrations/20260929160000_daily_counted_quotas.sql
 \ir ../migrations/20260930000000_guest_trials.sql
 \ir ../migrations/20261010120541_momo_auto_renew.sql
+\ir ../migrations/20261010130000_momo_cancellation_ambiguity.sql
 -- Supabase's service_role writes these tables; the stubs above need the same grant.
 grant select, insert, update, delete on public.class_rooms, public.class_members, public.exam_blueprints, public.assignments to service_role;
 
