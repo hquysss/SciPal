@@ -1,5 +1,6 @@
 'use client';
 
+import { useState } from 'react';
 import Link from 'next/link';
 import { StaffLinks } from '@/features/nav/StaffLinks';
 import { useLanguage } from '@scipal/hooks';
@@ -60,15 +61,35 @@ export function ExamBlueprintList({ blueprints }: { blueprints: BlueprintSummary
   const { lang, t } = useLanguage();
   const nameOf = (bp: BlueprintSummary) =>
     lang === 'en' ? (bp.subject_name_en ?? bp.subject_name_vi) : bp.subject_name_vi;
+  // Classify by subject: chips above the list, "All" by default.
+  const [subject, setSubject] = useState<string | null>(null);
+  const subjects = [...new Map(blueprints.flatMap((bp) => (bp.subject_slug ? [[bp.subject_slug, nameOf(bp) ?? bp.subject_slug] as const] : []))).entries()];
+  const shown = subject ? blueprints.filter((bp) => bp.subject_slug === subject) : blueprints;
+  const chip = (active: boolean) =>
+    `min-h-11 rounded-full border px-4 text-sm font-semibold transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus ${
+      active ? 'border-action bg-action text-action-ink' : 'border-edge bg-surface text-ink hover:bg-surface-sunken'
+    }`;
   const sections = [
     { format: 'thptqg', title: t({ en: 'National High School Graduation Exam (THPTQG)', vi: 'Kỳ thi tốt nghiệp THPT (THPTQG)' }) },
     { format: 'dgnl_hcm', title: t({ en: 'Competency Assessment (ĐGNL)', vi: 'Kỳ thi Đánh giá năng lực (ĐGNL)' }) },
     { format: 'generic', title: t({ en: 'Other practice exams', vi: 'Đề luyện tập khác' }) },
   ]
-    .map((s) => ({ ...s, items: blueprints.filter((bp) => (bp.format ?? 'generic') === s.format) }))
+    .map((s) => ({ ...s, items: shown.filter((bp) => (bp.format ?? 'generic') === s.format).sort((a, b) => (b.exam_year ?? 0) - (a.exam_year ?? 0)) }))
     .filter((s) => s.items.length > 0);
   return (
     <div className="flex flex-col gap-8">
+      {subjects.length > 1 && (
+        <div role="group" aria-label={t({ en: 'Filter by subject', vi: 'Lọc theo môn' })} className="flex flex-wrap gap-2">
+          <button type="button" aria-pressed={subject === null} onClick={() => setSubject(null)} className={chip(subject === null)}>
+            {t({ en: 'All subjects', vi: 'Tất cả môn' })}
+          </button>
+          {subjects.map(([slug, name]) => (
+            <button key={slug} type="button" aria-pressed={subject === slug} onClick={() => setSubject(slug)} className={chip(subject === slug)}>
+              {name}
+            </button>
+          ))}
+        </div>
+      )}
       {sections.map(({ format, title: group, items }) => (
         <section key={format} aria-label={group} className="flex flex-col gap-4">
           <h2 className="text-lg font-bold text-ink">
@@ -89,6 +110,7 @@ export function ExamBlueprintList({ blueprints }: { blueprints: BlueprintSummary
                     <span className="rounded-md bg-surface-sunken px-2.5 py-0.5 text-sm font-semibold text-ink">{subjectName}</span>
                   )}
                   <span className="text-sm text-ink-muted">
+                    {bp.exam_year ? `${bp.exam_year} · ` : ''}
                     {bp.grade !== null ? t({ en: `Grade ${bp.grade} · `, vi: `Lớp ${bp.grade} · ` }) : ''}
                     {t({
                       en: `${bp.question_count} ${bp.question_count === 1 ? 'question' : 'questions'}`,
@@ -97,6 +119,11 @@ export function ExamBlueprintList({ blueprints }: { blueprints: BlueprintSummary
                   </span>
                 </span>
                 <span className="text-base font-bold text-ink">{bp.name}</span>
+                {bp.exam_code && (
+                  <span className="text-sm text-ink-muted">
+                    {t({ en: 'Code', vi: 'Mã đề' })}: <span className="font-semibold text-ink">{bp.exam_code}</span>
+                  </span>
+                )}
                 {bp.source && (
                   <span className="text-sm text-ink-muted">
                     {t({ en: 'Source', vi: 'Nguồn' })}: {bp.source}

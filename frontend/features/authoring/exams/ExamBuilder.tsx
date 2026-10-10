@@ -56,6 +56,8 @@ export function ExamBuilder({ exam, subjects, isAdmin, initialQuestions = [] }: 
     name: exam?.name ?? '',
     name_en: exam?.name_en ?? '',
     source: exam?.source ?? '',
+    exam_code: exam?.exam_code ?? '',
+    exam_year: exam?.exam_year ?? null,
     subject_id: exam?.subject_id ?? '',
     grade: exam?.grade ?? subjects[0]?.grades[0] ?? 10,
     duration_minutes: exam?.duration_minutes ?? 45,
@@ -272,6 +274,32 @@ export function ExamBuilder({ exam, subjects, isAdmin, initialQuestions = [] }: 
         <div className="flex flex-col gap-1">
           <label htmlFor={`${ids}-name-en`} className={LABEL}>{t({ en: 'Name (English)', vi: 'Tên đề (tiếng Anh)' })}</label>
           <input id={`${ids}-name-en`} value={form.name_en} maxLength={200} disabled={readOnly} onChange={(e) => change({ name_en: e.target.value })} className={FIELD} />
+        </div>
+        <div className="flex flex-col gap-1">
+          <label htmlFor={`${ids}-exam-code`} className={LABEL}>{t({ en: 'Exam code', vi: 'Mã đề' })}</label>
+          <input
+            id={`${ids}-exam-code`}
+            value={form.exam_code ?? ''}
+            maxLength={40}
+            disabled={readOnly}
+            placeholder={t({ en: 'e.g. 0101', vi: 'VD: 0101' })}
+            onChange={(e) => change({ exam_code: e.target.value })}
+            className={FIELD}
+          />
+        </div>
+        <div className="flex flex-col gap-1">
+          <label htmlFor={`${ids}-exam-year`} className={LABEL}>{t({ en: 'Year', vi: 'Năm' })}</label>
+          <input
+            id={`${ids}-exam-year`}
+            type="number"
+            min={2000}
+            max={2100}
+            value={form.exam_year ?? ''}
+            disabled={readOnly}
+            placeholder={t({ en: 'e.g. 2026', vi: 'VD: 2026' })}
+            onChange={(e) => change({ exam_year: e.target.value === '' ? null : Number(e.target.value) })}
+            className={FIELD}
+          />
         </div>
         <div className="flex flex-col gap-1">
           <label htmlFor={`${ids}-source`} className={LABEL}>{t({ en: 'Source', vi: 'Nguồn đề' })}</label>

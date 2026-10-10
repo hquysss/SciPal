@@ -109,6 +109,7 @@ describe('readExamWorkbook', () => {
       code: 'vd-de-on-tap',
       subject_slug: 'informatics',
       grade: 11,
+      year: 2026,
       title: { vi: 'Ôn tập tìm kiếm và vòng lặp', en: 'Search and loops review' },
       duration_minutes: 45,
       sections: [

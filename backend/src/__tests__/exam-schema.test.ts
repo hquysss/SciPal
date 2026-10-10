@@ -40,6 +40,13 @@ describe('validateExamInput', () => {
   });
 });
 
+describe('exam code', () => {
+  it('trims the code and refuses over 40 characters', () => {
+    expect(validateExamInput({ ...base, exam_code: ' 0101 ' }, 'create')).toMatchObject({ ok: true, value: { exam_code: '0101' } });
+    expect(validateExamInput({ ...base, exam_code: 'x'.repeat(41) }, 'create').ok).toBe(false);
+  });
+});
+
 describe('examSections', () => {
   it('counts questions per type and difficulty in first-seen order', () => {
     expect(examSections([{ type: 'mc', difficulty: 1 }, { type: 'mc', difficulty: 1 }, { type: 'short', difficulty: 2 }])).toEqual([

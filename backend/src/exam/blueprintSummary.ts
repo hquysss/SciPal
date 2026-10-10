@@ -7,6 +7,10 @@ export interface BlueprintSummary {
   name_en: string | null;
   /** Where the exam comes from, written by its author. */
   source: string | null;
+  /** Mã đề. */
+  exam_code: string | null;
+  /** Năm của đề. */
+  exam_year: number | null;
   grade: number | null;
   subject_id: string | null;
   subject_slug: string | null;
@@ -32,6 +36,8 @@ export interface BlueprintRow {
   name: string;
   name_en?: string | null;
   source?: string | null;
+  exam_code?: string | null;
+  exam_year?: number | null;
   grade: number | null;
   subject_id: string | null;
   sections: unknown;
@@ -90,6 +96,8 @@ export function toBlueprintSummary(row: BlueprintRow): BlueprintSummary {
     name: row.name,
     name_en: row.name_en ?? null,
     source: row.source?.trim() || null,
+    exam_code: row.exam_code?.trim() || null,
+    exam_year: row.exam_year ?? null,
     grade: row.grade ?? null,
     subject_id: row.subject_id ?? null,
     subject_slug: subject?.slug ?? null,

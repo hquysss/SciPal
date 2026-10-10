@@ -1,9 +1,9 @@
 'use client';
 
-import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef, type ReactNode } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { ChevronLeft, ChevronRight, CircleCheck, CircleX, Timer } from 'lucide-react';
+import { Check, ChevronLeft, ChevronRight, CircleCheck, CircleX, Timer } from 'lucide-react';
 import { useLanguage } from '@scipal/hooks';
 import type { ExamSection } from '@scipal/types';
 import { AnswerPalette, type AnswerPaletteSection } from './AnswerPalette';
@@ -231,6 +231,8 @@ interface ExamRunnerProps {
   layout?: ExamSection[] | null;
   /** Open on the page before the exam; the clock and the graded attempt begin at its button. */
   showIntro?: boolean;
+  /** The exam's title block: shown before and after the exam, hidden while it runs to save room. */
+  header?: ReactNode;
 }
 
 export function ExamRunner({
@@ -241,6 +243,7 @@ export function ExamRunner({
   token,
   layout = null,
   showIntro = false,
+  header,
 }: ExamRunnerProps) {
   const { lang, t } = useLanguage();
   const places = useMemo(() => questionPlaces(layout, questions), [layout, questions]);
@@ -254,6 +257,7 @@ export function ExamRunner({
   const answeredIndexes = Object.fromEntries(
     Object.entries(answers).filter(([, answer]) => isAnswered(answer)).map(([index]) => [index, true]),
   );
+  const answeredCount = Object.keys(answeredIndexes).length;
   const updateAnswer = (index: number, next: DraftAnswer) => setAnswers((prev) => ({ ...prev, [index]: next }));
   const [timeLeft, setTimeLeft] = useState(durationMinutes * 60);
   const [submitting, setSubmitting] = useState(false);
@@ -355,16 +359,26 @@ export function ExamRunner({
         ? blueprintTitle.en
         : blueprintTitle.vi
       : t({ en: 'Informatics evaluation', vi: 'Khảo sát chất lượng Tin học' });
-    return <ExamResultView result={result} title={title} layout={layout} />;
+    return (
+      <div className="mx-auto flex w-full max-w-3xl flex-col gap-6">
+        {header}
+        <ExamResultView result={result} title={title} layout={layout} />
+      </div>
+    );
   }
 
   if (!started) {
-    return <ExamStart title={blueprintTitle} questionCount={questions.length} durationMinutes={durationMinutes} layout={layout} onStart={() => setStarted(true)} />;
+    return (
+      <div className="mx-auto flex w-full max-w-3xl flex-col gap-6">
+        {header}
+        <ExamStart title={blueprintTitle} questionCount={questions.length} durationMinutes={durationMinutes} layout={layout} onStart={() => setStarted(true)} />
+      </div>
+    );
   }
 
   if (attemptProblem?.blocked) {
     return (
-      <section className="flex flex-col items-start gap-4 rounded-xl border border-line bg-surface p-6 sm:p-8">
+      <section className="mx-auto flex w-full max-w-3xl flex-col items-start gap-4 rounded-xl border border-line bg-surface p-6 sm:p-8">
         <h2 className="text-xl font-bold text-ink">{t({ en: 'No graded attempts left', vi: 'Đã hết lượt thi chấm điểm' })}</h2>
         <p className="text-base text-ink-muted">{t(attemptProblem.error)}</p>
         <Link href="/exam" className={buttonVariants({ variant: 'outline' })}>
@@ -375,7 +389,7 @@ export function ExamRunner({
   }
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex flex-col gap-3">
       {attemptProblem && (
         <Alert tone="warning">
           {t(attemptProblem.error)}{' '}
@@ -383,12 +397,12 @@ export function ExamRunner({
         </Alert>
       )}
       {/* Top sticky timer bar */}
-      <div className="sticky top-20 z-30 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-line bg-surface px-4 py-3 sm:px-6">
-        <div className="flex flex-wrap items-center gap-3">
+      <div className="sticky top-20 z-30 flex flex-wrap items-center justify-between gap-x-3 gap-y-2 overflow-hidden rounded-xl border border-line bg-surface px-3 py-2 sm:px-4">
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
           <div
             role="timer"
             aria-label={t({ en: 'Time remaining', vi: 'Thời gian còn lại' })}
-            className={`flex items-center gap-2 rounded-lg border px-3.5 py-1.5 text-lg font-bold tabular-nums ${TIMER_CLASS[tone]}`}
+            className={`flex items-center gap-2 rounded-lg border px-3 py-1 text-base font-bold tabular-nums ${TIMER_CLASS[tone]}`}
           >
             <Timer aria-hidden="true" className="h-5 w-5" />
             <span>
@@ -411,19 +425,30 @@ export function ExamRunner({
           </span>
         </div>
 
-        <button type="button" onClick={handleSubmit} disabled={submitting} className={buttonVariants()}>
-          {submitting ? t({ en: 'Submitting…', vi: 'Đang nộp bài…' }) : t({ en: 'Submit exam', vi: 'Nộp bài thi' })}
-        </button>
+        <div className="flex items-center gap-3">
+          <span className="text-sm font-semibold tabular-nums text-ink">
+            {answeredCount} / {questions.length}
+            <span className="ml-1 hidden font-normal text-ink-muted sm:inline">{t({ en: 'answered', vi: 'đã làm' })}</span>
+          </span>
+          <button type="button" onClick={handleSubmit} disabled={submitting} className={buttonVariants()}>
+            {submitting ? t({ en: 'Submitting…', vi: 'Đang nộp bài…' }) : t({ en: 'Submit exam', vi: 'Nộp bài thi' })}
+          </button>
+        </div>
+        {/* How far through the exam: grows with every answered question. */}
+        <div aria-hidden="true" className="absolute inset-x-0 bottom-0 h-1 bg-surface-sunken">
+          <div className="h-full bg-action transition-[width] duration-300 ease-out" style={{ width: `${questions.length ? (answeredCount / questions.length) * 100 : 0}%` }} />
+        </div>
       </div>
 
       {submissionError && <Alert tone="danger">{submissionError}</Alert>}
 
-      {/* Main question card */}
+      {/* Question on the left, the question grid beside it on a wide screen (a strip above on a phone). */}
+      <div className="flex flex-col gap-3 lg:grid lg:grid-cols-[minmax(0,1fr)_18rem] lg:items-start">
+      <div className="order-2 lg:order-1">
       {currentQ && (
-        <section className="flex flex-col gap-6 rounded-xl border border-line bg-surface p-6 sm:p-8">
-          {place && <h2 className="text-base font-bold text-ink">{pick(place.section.title)}</h2>}
+        <section className="flex flex-col gap-4 rounded-xl border border-line bg-surface p-4 sm:p-5">
           {place?.passage && (
-            <div className="flex flex-col gap-2 rounded-lg border border-line bg-surface-sunken p-4 sm:p-5">
+            <div className="flex max-h-48 flex-col gap-2 overflow-y-auto rounded-lg border border-line bg-surface-sunken p-3 sm:p-4">
               <p className="text-sm font-semibold text-ink-muted">
                 {place.group.first === place.group.last
                   ? t({
@@ -438,27 +463,28 @@ export function ExamRunner({
               <MathText text={pick(place.passage)} className="block text-base leading-relaxed text-ink" />
             </div>
           )}
-          <fieldset className="flex min-w-0 flex-col gap-6">
-            <legend className="flex w-full flex-col gap-6">
-              <span className="flex flex-wrap items-center gap-2.5 border-b border-line pb-3">
+          <fieldset className="flex min-w-0 flex-col gap-4">
+            <legend className="flex w-full flex-col gap-3">
+              <span className="flex flex-wrap items-center gap-2 border-b border-line pb-2">
                 <span className="rounded-md bg-surface-sunken px-3 py-1 text-sm font-bold text-ink">
                   {t({ en: 'Question', vi: 'Câu' })} {currentIndex + 1} / {questions.length}
                 </span>
                 <span className="rounded-md bg-surface-sunken px-3 py-1 text-sm font-semibold text-ink-muted">
                   {t(DIFFICULTY_LABEL[difficultyKey(currentQ.difficulty)])}
                 </span>
+                {place && <h2 className="text-sm font-semibold text-ink-muted">{pick(place.section.title)}</h2>}
               </span>
-              <MathText text={lang === 'en' ? currentQ.data.stem.en : currentQ.data.stem.vi} className="block text-lg font-bold leading-relaxed text-ink sm:text-xl" />
+              <MathText text={lang === 'en' ? currentQ.data.stem.en : currentQ.data.stem.vi} className="block text-base font-bold leading-relaxed text-ink sm:text-lg" />
             </legend>
             {/* A legend takes no part in the fieldset's gap, so the figure keeps its own distance from it. */}
             {currentQ.data.image && (
-              <div className="mt-5">
-                <QuestionFigure image={currentQ.data.image} lang={lang === 'en' ? 'en' : 'vi'} />
+              <div className="mt-4">
+                <QuestionFigure compact image={currentQ.data.image} lang={lang === 'en' ? 'en' : 'vi'} />
               </div>
             )}
 
             {currentQ.type === 'truefalse' && (
-              <div className="flex flex-col gap-3">
+              <div className="flex flex-col gap-2">
                 <p className="text-sm text-ink-muted">
                   {t({ en: 'Mark each statement true or false.', vi: 'Chọn Đúng hoặc Sai cho từng nhận định.' })}
                 </p>
@@ -469,7 +495,9 @@ export function ExamRunner({
                       key={item.id}
                       role="radiogroup"
                       aria-label={`${String.fromCharCode(97 + itemIndex)}) ${lang === 'en' ? item.text.en : item.text.vi}`}
-                      className="flex flex-col gap-3 rounded-lg border border-edge bg-surface p-4 sm:flex-row sm:items-center sm:justify-between"
+                      className={`flex flex-col gap-2 rounded-lg border-2 p-3 transition-colors sm:flex-row sm:items-center sm:justify-between ${
+                        chosen === undefined ? 'border-edge bg-surface' : 'border-action/60 bg-[color-mix(in_srgb,var(--action)_6%,var(--surface))]'
+                      }`}
                     >
                       <span className="text-base font-semibold leading-normal text-ink">
                         {String.fromCharCode(97 + itemIndex)}) <MathText text={lang === 'en' ? item.text.en : item.text.vi} />
@@ -479,7 +507,7 @@ export function ExamRunner({
                           <label
                             key={String(value)}
                             className={`flex min-h-11 min-w-20 cursor-pointer items-center justify-center rounded-lg border px-4 text-sm font-bold transition-colors has-[:focus-visible]:outline has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-focus ${
-                              chosen === value ? 'border-action bg-action text-action-ink' : 'border-edge bg-surface text-ink hover:bg-surface-sunken'
+                              chosen === value ? 'answer-pop border-action bg-action text-action-ink' : 'border-edge bg-surface text-ink hover:bg-surface-sunken'
                             }`}
                           >
                             <input
@@ -518,17 +546,17 @@ export function ExamRunner({
             )}
 
             {/* Options list */}
-            <div className="flex flex-col gap-3">
+            <div className="grid gap-2 md:grid-cols-2">
               {(currentQ.type === 'truefalse' || currentQ.type === 'short' ? [] : currentQ.data.options ?? []).map((opt, optIndex) => {
                 const letter = String.fromCharCode(65 + optIndex);
                 const isSelected = answers[currentIndex]?.option === opt.id;
                 return (
                   <label
                     key={opt.id}
-                    className={`flex min-h-11 w-full cursor-pointer items-center gap-4 rounded-lg border p-4 text-left text-base font-semibold transition-colors has-[:focus-visible]:outline has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-focus sm:p-5 ${
+                    className={`flex min-h-11 w-full cursor-pointer items-center gap-3 rounded-lg border-2 p-3 text-left text-base font-semibold transition-colors has-[:focus-visible]:outline has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-focus ${
                       isSelected
-                        ? 'border-action bg-[color-mix(in_srgb,var(--action)_10%,var(--surface))] text-ink'
-                        : 'border-edge bg-surface text-ink hover:bg-surface-sunken'
+                        ? 'answer-pop border-action bg-[color-mix(in_srgb,var(--action)_14%,var(--surface))] text-ink shadow-sm'
+                        : 'border-edge bg-surface text-ink hover:border-action/50 hover:bg-surface-sunken'
                     }`}
                   >
                     <input
@@ -541,13 +569,14 @@ export function ExamRunner({
                     />
                     <span
                       aria-hidden="true"
-                      className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-sm font-bold ${
+                      className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-sm font-bold transition-colors ${
                         isSelected ? 'bg-action text-action-ink' : 'border border-edge bg-surface-sunken text-ink'
                       }`}
                     >
                       {letter}
                     </span>
                     <MathText text={lang === 'en' ? opt.text.en : opt.text.vi} className="min-w-0 flex-1 leading-normal" />
+                    {isSelected && <Check aria-hidden="true" className="h-5 w-5 shrink-0 text-action" />}
                   </label>
                 );
               })}
@@ -556,7 +585,7 @@ export function ExamRunner({
           <QuestionSource source={currentQ.data.source} lang={lang === 'en' ? 'en' : 'vi'} />
 
           {/* Bottom question step buttons */}
-          <div className="flex items-center justify-between gap-3 border-t border-line pt-4">
+          <div className="flex items-center justify-between gap-3 border-t border-line pt-3">
             <button
               type="button"
               disabled={currentIndex === 0}
@@ -578,8 +607,9 @@ export function ExamRunner({
           </div>
         </section>
       )}
+      </div>
 
-      {/* Answer Palette */}
+      <div className="order-1 lg:sticky lg:top-40 lg:order-2">
       <AnswerPalette
         total={questions.length}
         currentIndex={currentIndex}
@@ -587,6 +617,8 @@ export function ExamRunner({
         onSelect={(i) => setCurrentIndex(i)}
         {...(paletteSections ? { sections: paletteSections } : {})}
       />
+      </div>
+      </div>
     </div>
   );
 }

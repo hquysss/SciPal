@@ -50,6 +50,7 @@ const BlueprintSchema = z.object({
   code: Key,
   subject_slug: Slug,
   grade: z.number().int().min(1).max(12),
+  year: z.number().int().min(2000).max(2100).optional(),
   title: Bilingual,
   duration_minutes: z.number().int().min(5).max(300),
   sections: z
@@ -347,6 +348,8 @@ export const examImportRoutes: FastifyPluginAsync = async (app) => {
       blueprintRows.push({
         name: blueprint.title.vi,
         name_en: blueprint.title.en,
+        exam_code: blueprint.code,
+        exam_year: blueprint.year ?? null,
         grade: blueprint.grade,
         subject_id: subjectIds.get(blueprint.subject_slug),
         sections: structured.layout ? examSections(pick.ids.flatMap((id) => examQuestions.find((q) => q.id === id) ?? [])) : blueprint.sections,
