@@ -1107,7 +1107,8 @@ begin
   select used into v_monthly_usage_after from public.quota_usage where user_id = '00000000-0000-4000-8000-000000000006' and metric = 'tutor_requests';
   select count(*) into v_grant_count from public.billing_grants where user_id = '00000000-0000-4000-8000-000000000006';
   if v_result <> 'applied' or v_paid_through <> v_expected_paid_through or v_monthly_usage_after <> 7 or v_grant_count <> 2 then
-    raise exception 'Yearly MoMo renewal multiplied monthly usage or granted more than one annual period';
+    raise exception 'Yearly MoMo renewal invariant failed: result=%, paid_through=%, expected=%, monthly_usage=%, grants=%',
+      v_result, v_paid_through, v_expected_paid_through, v_monthly_usage_after, v_grant_count;
   end if;
 end;
 $$;
