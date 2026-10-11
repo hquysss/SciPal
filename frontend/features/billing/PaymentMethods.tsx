@@ -60,21 +60,18 @@ export function PaymentMethodsView({ catalog, account, accountStatus, onCancel, 
   {!catalog && <Alert tone="danger"><p>{t({ vi: 'Chưa tải được các cổng thanh toán. Thử lại sau nhé.', en: 'Payment providers could not be loaded. Try again later.' })}</p>{onRetry && <button type="button" onClick={onRetry} className={buttonVariants({ variant: 'outline' })}>{t({ vi: 'Thử lại', en: 'Try again' })}</button>}</Alert>}
   <fieldset className="min-w-0">
    <legend className="mb-4 text-sm font-semibold text-ink">{t({ vi: 'Chọn cổng cho lần thanh toán tiếp theo', en: 'Choose a provider for your next payment' })}</legend>
-   <div className="grid gap-3 md:grid-cols-3">
+   <div className="flex flex-col gap-2">
     {providers.map((provider) => {
      const checked = selected === provider.id && offered(provider.id);
      const Icon = provider.icon;
-     return <label key={provider.id} className={`relative flex min-w-0 flex-col gap-4 rounded-2xl border p-5 transition-colors focus-within:outline focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-focus ${checked ? 'border-action bg-surface' : 'border-edge bg-surface'} ${offered(provider.id) ? 'cursor-pointer hover:bg-surface-sunken' : 'text-ink-muted'}`}>
-      <div className="flex items-center justify-between gap-2">
-       <span className="flex size-11 items-center justify-center rounded-xl border border-line bg-surface-sunken text-ink"><Icon size={22} aria-hidden="true" /></span>
-       <input type="radio" name="payment-provider" aria-label={provider.name} value={provider.id} checked={checked} disabled={!offered(provider.id)} onChange={() => { setSelected(provider.id); setRenew(false); }} className="size-5 accent-action" />
-      </div>
-      <div><p className="mb-1 text-xs font-medium tracking-wider text-ink-muted">{t(provider.type)}</p><h2 className="text-xl font-extrabold tracking-tight text-ink">{provider.name}</h2></div>
-      <p className="text-sm leading-relaxed text-ink-muted">{t(provider.description)}</p>
-      <span className={`mt-auto inline-flex items-center gap-1.5 text-xs font-semibold ${offered(provider.id) ? 'text-success' : 'text-ink-muted'}`}>
-       {offered(provider.id) && <Check size={14} aria-hidden="true" />}
-       {t(!catalog ? {vi:'Chưa tải được trạng thái',en:'Status unavailable'} : offered(provider.id) ? {vi:'Sẵn sàng',en:'Available'} : {vi:'Chưa mở',en:'Not available yet'})}
+     return <label key={provider.id} className={`flex min-h-16 min-w-0 items-center gap-4 rounded-2xl border px-4 py-3 transition-colors focus-within:outline focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-focus ${checked ? 'border-action bg-surface' : 'border-line bg-surface'} ${offered(provider.id) ? 'cursor-pointer hover:bg-surface-sunken' : 'opacity-60'}`}>
+      <span className="flex size-11 shrink-0 items-center justify-center rounded-xl border border-line bg-surface-sunken text-ink"><Icon size={22} aria-hidden="true" /></span>
+      <span className="min-w-0 flex-1">
+       <span className="flex flex-wrap items-baseline gap-x-2"><span className="font-bold text-ink">{provider.name}</span><span className="text-xs font-medium tracking-wider text-ink-muted">{t(provider.type)}</span></span>
+       <span className="mt-0.5 block text-sm leading-snug text-ink-muted">{offered(provider.id) ? t(provider.description) : t(!catalog ? {vi:'Chưa tải được trạng thái',en:'Status unavailable'} : {vi:'Chưa mở',en:'Not available yet'})}</span>
       </span>
+
+      <input type="radio" name="payment-provider" aria-label={provider.name} value={provider.id} checked={checked} disabled={!offered(provider.id)} onChange={() => { setSelected(provider.id); setRenew(false); }} className="size-5 shrink-0 accent-action" />
      </label>;
     })}
    </div>
