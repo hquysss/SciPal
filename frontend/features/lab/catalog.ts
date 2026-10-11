@@ -1,15 +1,16 @@
 import type { BuiltInSimulationKind } from '@scipal/types';
 
-// The Lab: every built-in simulation of Mathematics, Physics, Chemistry and Informatics, open to
-// play with on its own. Biology templates (Punnett square, labelled diagram) live in lessons only.
+// The Lab: every built-in simulation of Mathematics, Physics, Chemistry, Biology and Informatics,
+// open to play with on its own. The Punnett square and labelled diagram are lesson-only.
 
 export type Bilingual = { en: string; vi: string };
-export type LabSubject = 'math' | 'physics' | 'chemistry' | 'informatics';
+export type LabSubject = 'math' | 'physics' | 'chemistry' | 'biology' | 'informatics';
 
 export const LAB_SUBJECTS: ReadonlyArray<{ slug: LabSubject; name: Bilingual }> = [
   { slug: 'math', name: { en: 'Mathematics', vi: 'Toán' } },
   { slug: 'physics', name: { en: 'Physics', vi: 'Vật lí' } },
   { slug: 'chemistry', name: { en: 'Chemistry', vi: 'Hoá học' } },
+  { slug: 'biology', name: { en: 'Biology', vi: 'Sinh học' } },
   { slug: 'informatics', name: { en: 'Informatics', vi: 'Tin học' } },
 ];
 
@@ -100,6 +101,13 @@ export const LAB_ITEMS: readonly LabItem[] = [
     name: { en: 'Acid–base titration', vi: 'Chuẩn độ axit – bazơ' },
     subject: 'chemistry',
     blurb: { en: 'Add NaOH drop by drop, watch the indicator turn and the pH jump.', vi: 'Nhỏ NaOH từng giọt, xem chất chỉ thị đổi màu và bước nhảy pH.' },
+    grades: { en: 'Grade 11', vi: 'Lớp 11' },
+  },
+  {
+    kind: 'knee-reflex',
+    name: { en: 'Knee-jerk reflex', vi: 'Phản xạ đầu gối' },
+    subject: 'biology',
+    blurb: { en: 'Tap the tendon and follow the signal round the reflex arc in a 3D leg.', vi: 'Gõ vào gân và theo dõi xung thần kinh đi qua cung phản xạ trên chân 3D.' },
     grades: { en: 'Grade 11', vi: 'Lớp 11' },
   },
   {

@@ -23,8 +23,9 @@ describe('the Lab catalogue', () => {
     for (const s of LAB_SUBJECTS) expect(LAB_ITEMS.some((i) => i.subject === s.slug)).toBe(true);
   });
 
-  it('has a chemistry experiment and leaves biology templates out', () => {
+  it('has a chemistry experiment and the knee reflex in biology, and leaves the other biology templates out', () => {
     expect(labItem('titration')?.subject).toBe('chemistry');
+    expect(labItem('knee-reflex')?.subject).toBe('biology');
     expect(labItem('punnett')).toBeNull();
     expect(labItem('nope')).toBeNull();
   });
