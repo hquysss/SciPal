@@ -7,7 +7,7 @@ export const dynamic = 'force-dynamic';
 
 export const metadata: Metadata = {
   ...pageTitle('Lab', 'Phòng thí nghiệm'),
-  description: 'Mô phỏng và thí nghiệm Toán, Vật lí, Hoá học, Tin học để thử trực tiếp.',
+  description: 'Mô phỏng và thí nghiệm Toán, Vật lí, Hoá học, Sinh học, Tin học để thử trực tiếp.',
 };
 
 export default async function LabPage() {
