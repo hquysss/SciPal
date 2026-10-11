@@ -512,7 +512,7 @@ export function NavBar({ currentSubject }: NavBarProps) {
         aria-hidden={!mobileOpen}
         className={`${navStyles.mobilePanel} 2xl:hidden ${mobileOpen ? navStyles.mobilePanelOpen : ''}`}
       >
-          <div className="mx-auto max-w-xl space-y-2">
+          <div className="space-y-1">
             <div className="flex justify-end pb-2">
               <ThemeToggle tone="surface" />
             </div>
@@ -521,7 +521,7 @@ export function NavBar({ currentSubject }: NavBarProps) {
               prefetch={pathname !== '/'}
               onClick={() => setMobileOpen(false)}
               aria-current={pathname === '/' ? 'page' : undefined}
-              className={`block rounded-xl px-4 py-3 text-sm font-semibold transition hover:bg-surface-sunken focus-visible:outline focus-visible:outline-2 focus-visible:outline-focus ${pathname === '/' ? 'bg-surface-sunken text-action' : 'text-ink'}`}
+              className={`block rounded-xl px-4 py-2 text-sm font-semibold transition hover:bg-surface-sunken focus-visible:outline focus-visible:outline-2 focus-visible:outline-focus ${pathname === '/' ? 'bg-surface-sunken text-action' : 'text-ink'}`}
             >
               {homeLinkLabel}
             </Link>
@@ -530,7 +530,7 @@ export function NavBar({ currentSubject }: NavBarProps) {
               prefetch={pathname !== '/'}
               onClick={() => setMobileOpen(false)}
               aria-current={pathname === pricing.href ? 'page' : undefined}
-              className={`block rounded-xl px-4 py-3 text-sm font-semibold transition hover:bg-surface-sunken focus-visible:outline focus-visible:outline-2 focus-visible:outline-focus ${pathname === pricing.href ? 'bg-surface-sunken text-action' : 'text-ink'}`}
+              className={`block rounded-xl px-4 py-2 text-sm font-semibold transition hover:bg-surface-sunken focus-visible:outline focus-visible:outline-2 focus-visible:outline-focus ${pathname === pricing.href ? 'bg-surface-sunken text-action' : 'text-ink'}`}
             >
               {pricing.label}
             </Link>
@@ -539,7 +539,7 @@ export function NavBar({ currentSubject }: NavBarProps) {
               prefetch={pathname !== '/'}
               onClick={() => setMobileOpen(false)}
               aria-current={pathname === '/subjects' ? 'page' : undefined}
-              className={`block rounded-xl px-4 py-3 text-sm font-semibold transition hover:bg-surface-sunken focus-visible:outline focus-visible:outline-2 focus-visible:outline-focus ${subjectsActive ? 'bg-surface-sunken text-action' : 'text-ink'}`}
+              className={`block rounded-xl px-4 py-2 text-sm font-semibold transition hover:bg-surface-sunken focus-visible:outline focus-visible:outline-2 focus-visible:outline-focus ${subjectsActive ? 'bg-surface-sunken text-action' : 'text-ink'}`}
             >
               {subjectsLabel}
             </Link>
@@ -550,14 +550,14 @@ export function NavBar({ currentSubject }: NavBarProps) {
                 prefetch={pathname !== '/'}
                 onClick={() => setMobileOpen(false)}
                 aria-current={pathname === link.href ? 'page' : undefined}
-                className={`block rounded-xl px-4 py-3 text-sm font-semibold transition hover:bg-surface-sunken focus-visible:outline focus-visible:outline-2 focus-visible:outline-focus ${pathname === link.href ? 'bg-surface-sunken text-action' : 'text-ink'}`}
+                className={`block rounded-xl px-4 py-2 text-sm font-semibold transition hover:bg-surface-sunken focus-visible:outline focus-visible:outline-2 focus-visible:outline-focus ${pathname === link.href ? 'bg-surface-sunken text-action' : 'text-ink'}`}
               >
                 {link.label}
               </Link>
             ))}
             <Link href="/help" prefetch={false} onClick={() => setMobileOpen(false)} aria-current={pathname === '/help' ? 'page' : undefined}
               aria-label={lang === 'en' ? 'Help' : 'Hướng dẫn'} title={lang === 'en' ? 'Help' : 'Hướng dẫn'}
-              className={`flex min-h-11 items-center rounded-xl px-4 py-3 transition hover:bg-surface-sunken focus-visible:outline focus-visible:outline-2 focus-visible:outline-focus ${pathname === '/help' ? 'bg-surface-sunken text-action' : 'text-ink'}`}>
+              className={`flex min-h-9 items-center rounded-xl px-4 py-2 transition hover:bg-surface-sunken focus-visible:outline focus-visible:outline-2 focus-visible:outline-focus ${pathname === '/help' ? 'bg-surface-sunken text-action' : 'text-ink'}`}>
               <CircleHelp aria-hidden="true" className="h-5 w-5" />
             </Link>
             {teacherLinks.length > 0 && (
@@ -585,7 +585,7 @@ export function NavBar({ currentSubject }: NavBarProps) {
                         prefetch={pathname !== '/'}
                         onClick={() => { setOpenNavGroup(null); setMobileOpen(false); }}
                         aria-current={pathname === link.href ? 'page' : undefined}
-                        className={`block rounded-xl px-4 py-3 text-sm font-semibold transition hover:bg-surface-sunken focus-visible:outline focus-visible:outline-2 focus-visible:outline-focus ${pathname === link.href ? 'bg-surface-sunken text-action' : 'text-ink'}`}
+                        className={`block rounded-xl px-4 py-2 text-sm font-semibold transition hover:bg-surface-sunken focus-visible:outline focus-visible:outline-2 focus-visible:outline-focus ${pathname === link.href ? 'bg-surface-sunken text-action' : 'text-ink'}`}
                       >
                         {link.label}
                       </Link>
@@ -601,7 +601,7 @@ export function NavBar({ currentSubject }: NavBarProps) {
                 prefetch={pathname !== '/'}
                 onClick={() => setMobileOpen(false)}
                 aria-current={pathname === link.href ? 'page' : undefined}
-                className={`block rounded-xl px-4 py-3 text-sm font-bold transition hover:bg-surface-sunken focus-visible:outline focus-visible:outline-2 focus-visible:outline-focus ${adminRouteActive ? 'bg-surface-sunken text-action' : 'text-ink'}`}
+                className={`block rounded-xl px-4 py-2 text-sm font-bold transition hover:bg-surface-sunken focus-visible:outline focus-visible:outline-2 focus-visible:outline-focus ${adminRouteActive ? 'bg-surface-sunken text-action' : 'text-ink'}`}
               >
                 {link.label}
               </Link>
@@ -628,7 +628,7 @@ export function NavBar({ currentSubject }: NavBarProps) {
                 href="/login"
                 prefetch={pathname !== '/'}
                 onClick={() => setMobileOpen(false)}
-                className="flex items-center justify-center gap-2 rounded-xl bg-gradient-to-br from-sun to-coral px-4 py-3 text-sm font-extrabold text-ink shadow-[0_10px_24px_-12px_var(--coral)] transition hover:brightness-105 focus-visible:outline focus-visible:outline-2 focus-visible:outline-focus"
+                className="flex items-center justify-center gap-2 rounded-xl bg-gradient-to-br from-sun to-coral px-4 py-2 text-sm font-extrabold text-ink shadow-[0_10px_24px_-12px_var(--coral)] transition hover:brightness-105 focus-visible:outline focus-visible:outline-2 focus-visible:outline-focus"
               >
                 {lang === 'en' ? 'Sign In' : 'Đăng nhập'} <ArrowRight aria-hidden="true" size={16} />
               </Link>
