@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { completionRequest, isOpenAiReasoningModel } from '../providers/ai.js';
+import { completionRequest, isOpenAiReasoningModel, readCompletion, type TokenUsage } from '../providers/ai.js';
 
 const messages = [{ role: 'user' as const, content: 'Hỏi' }];
 
@@ -41,5 +41,46 @@ describe('isOpenAiReasoningModel', () => {
   it('asks gpt-5-pro for high, the only level it takes', () => {
     expect(completionRequest({ apiKey: 'k', baseURL: undefined, model: 'gpt-5-pro', effort: 'low' }, messages, 's')).toMatchObject({ reasoning_effort: 'high' });
     expect(completionRequest({ apiKey: 'k', baseURL: undefined, model: 'gpt-6-luna', effort: 'low' }, messages, 's')).toMatchObject({ reasoning_effort: 'low', max_completion_tokens: 8192 });
+  });
+});
+
+describe('token usage', () => {
+  it('asks the provider to report the tokens of a streamed answer', () => {
+    const req = completionRequest({ apiKey: 'k', baseURL: 'https://gemini', model: 'gemini-3.8-flash' }, messages, 'sys');
+    expect(req.stream_options).toEqual({ include_usage: true });
+    expect(completionRequest({ apiKey: 'k', baseURL: undefined, model: 'gpt-4o-mini' }, messages, 'sys').stream_options).toEqual({ include_usage: true });
+  });
+
+  async function* chunks(...items: unknown[]) {
+    for (const item of items) yield item as never;
+  }
+  const collect = async (stream: ReturnType<typeof chunks>, onUsage?: (usage: TokenUsage) => void) => {
+    let text = '';
+    for await (const part of readCompletion(stream, onUsage)) text += part;
+    return text;
+  };
+
+  it('yields the text and reports the usage that arrives with the last chunk', async () => {
+    let seen: TokenUsage | null = null;
+    const text = await collect(chunks(
+      { choices: [{ delta: { content: 'Xin ' } }] },
+      { choices: [{ delta: { content: 'chào' } }] },
+      { choices: [], usage: { prompt_tokens: 1200, completion_tokens: 300, total_tokens: 1500 } },
+    ), (usage) => { seen = usage; });
+    expect(text).toBe('Xin chào');
+    expect(seen).toEqual({ prompt: 1200, completion: 300, total: 1500 });
+  });
+
+  it('adds prompt and completion when the total is missing, and ignores an answer without usage', async () => {
+    let seen: TokenUsage | null = null;
+    await collect(chunks({ choices: [], usage: { prompt_tokens: 10, completion_tokens: 5 } }), (usage) => { seen = usage; });
+    expect(seen).toEqual({ prompt: 10, completion: 5, total: 15 });
+    seen = null;
+    expect(await collect(chunks({ choices: [{ delta: { content: 'a' } }] }), (usage) => { seen = usage; })).toBe('a');
+    expect(seen).toBeNull();
+  });
+
+  it('works without a usage callback', async () => {
+    expect(await collect(chunks({ choices: [{ delta: { content: 'ok' } }], usage: { total_tokens: 3 } }))).toBe('ok');
   });
 });

@@ -2,6 +2,7 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it, vi } from 'vitest';
 import { BUILT_IN_SIMULATION_KINDS, defaultSimulationConfig } from '@scipal/types';
 import { countRawColors } from '../../lib/theme/rawColors';
+import { EmbedRenderer } from './EmbedRenderer';
 import { simulationModules } from './registry';
 
 vi.mock('@scipal/hooks', () => ({ useLanguage: () => ({ lang: 'vi', t: (o: { vi: string }) => o.vi }) }));
@@ -150,5 +151,16 @@ describe('biology views', () => {
     expect(filled).toContain('value="Nhân"');
     expect(filled).toContain('Chạm lên ảnh để thêm nhãn');
     expect(filled).toContain('Thêm nhãn');
+  });
+});
+
+describe('Sketchfab embed', () => {
+  const uid = '0123456789abcdef0123456789abcdef';
+  it('frames the embed page when given a share link, and refuses other sketchfab paths', () => {
+    const html = renderToStaticMarkup(<EmbedRenderer url={`https://sketchfab.com/3d-models/knee-joint-${uid}`} title="Knee" lang="en" />);
+    expect(html).toContain(`src="https://sketchfab.com/models/${uid}/embed"`);
+    expect(html).toContain('sandbox="allow-scripts allow-same-origin"');
+    const refused = renderToStaticMarkup(<EmbedRenderer url="https://sketchfab.com/settings" title="x" lang="en" />);
+    expect(refused).not.toContain('<iframe');
   });
 });

@@ -7,7 +7,8 @@ export type TutorEvent =
   /** remaining is null for admins (not metered); period says whether it counts a day or a month. */
   | { event: 'meta'; conversation_id: string; remaining: number | null; period: 'day' | 'month' }
   | { event: 'delta'; text: string }
-  | { event: 'done' }
+  /** The tokens left now that the answer is counted; absent from an older server. */
+  | { event: 'done'; remaining?: number | null; period?: 'day' | 'month' }
   | { event: 'error'; error: Bilingual; remaining?: number; conversationRemoved?: boolean };
 
 /** Feeds text chunks of an SSE stream; calls onEvent for each complete, well-formed event. */
@@ -34,7 +35,12 @@ export function createSseParser(onEvent: (e: TutorEvent) => void) {
       if (name === 'meta' && typeof parsed.conversation_id === 'string' && (typeof parsed.remaining === 'number' || parsed.remaining === null)) {
         onEvent({ event: 'meta', conversation_id: parsed.conversation_id, remaining: parsed.remaining, period: parsed.period === 'month' ? 'month' : 'day' });
       } else if (name === 'delta' && typeof parsed.text === 'string') onEvent({ event: 'delta', text: parsed.text });
-      else if (name === 'done') onEvent({ event: 'done' });
+      else if (name === 'done') {
+        onEvent({
+          event: 'done',
+          ...(typeof parsed.remaining === 'number' || parsed.remaining === null ? { remaining: parsed.remaining, period: parsed.period === 'month' ? ('month' as const) : ('day' as const) } : {}),
+        });
+      }
       else if (name === 'error') {
         onEvent({
           event: 'error',

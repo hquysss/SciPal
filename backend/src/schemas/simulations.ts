@@ -374,9 +374,11 @@ const EMBED_SITES: ReadonlyArray<{ origin: string; path: RegExp }> = [
   { origin: 'https://phet.colorado.edu', path: /^\/sims\/html\/[\w./-]+$/ },
   { origin: 'https://www.geogebra.org', path: /^\/m\/[\w-]+$/ },
   { origin: 'https://www.desmos.com', path: /^\/calculator\/[\w-]+$/ },
+  // A model's embed page, or its public share page (turned into the embed page below).
+  { origin: 'https://sketchfab.com', path: /^\/(?:models\/[0-9a-f]{32}\/embed|3d-models\/(?:[\w-]*-)?[0-9a-f]{32})$/ },
 ];
 
-/** The URL when it is an approved embed (exact https origin, supported path), else null. */
+/** The URL when it is an approved embed (exact https origin, supported path), else null. A Sketchfab share link comes back as its embed link. */
 export function embedUrl(value: string): URL | null {
   let url: URL;
   try {
@@ -387,7 +389,8 @@ export function embedUrl(value: string): URL | null {
   if (url.protocol !== 'https:' || url.username || url.password || url.search || url.hash) return null;
   const site = EMBED_SITES.find((s) => s.origin === url.origin);
   if (!site || !site.path.test(url.pathname) || url.pathname.split('/').includes('..')) return null;
-  return url;
+  const shared = url.origin === 'https://sketchfab.com' && url.pathname.startsWith('/3d-models/');
+  return shared ? new URL(`/models/${url.pathname.slice(-32)}/embed`, url.origin) : url;
 }
 
 /**
@@ -447,7 +450,7 @@ export function validateSimulationBlock<B extends InteractiveLike>(block: B, opt
   if ((LEGACY_SIMULATION_KINDS as readonly string[]).includes(block.kind)) return { ok: true, block };
   if (block.kind === 'embed') {
     if (!block.embed_url || !embedUrl(block.embed_url)) {
-      return { ok: false, message: { en: 'Only PhET, GeoGebra (/m/…) or Desmos (/calculator/…) https links can be embedded.', vi: 'Chỉ nhúng được link https của PhET, GeoGebra (/m/…) hoặc Desmos (/calculator/…).' } };
+      return { ok: false, message: { en: 'Only PhET, GeoGebra (/m/…), Desmos (/calculator/…) or Sketchfab (/3d-models/… or /models/…/embed) https links can be embedded.', vi: 'Chỉ nhúng được link https của PhET, GeoGebra (/m/…), Desmos (/calculator/…) hoặc Sketchfab (/3d-models/… hoặc /models/…/embed).' } };
     }
     if (block.offline || Object.keys(block.config).length > 0) {
       return { ok: false, message: { en: 'An embedded page needs the internet and takes no settings.', vi: 'Trang nhúng cần mạng và không có thông số riêng.' } };

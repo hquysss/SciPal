@@ -7,6 +7,7 @@ type Bilingual = { vi: string; en: string };
 export type QuotaRow = { metric: QuotaMetric; mode: 'plan' | 'custom'; limit: string; expires: string };
 
 const METRIC_NAME: Record<QuotaMetric, Bilingual> = {
+  tutor_tokens: { vi: 'Token Giáo sư Quý', en: 'Professor tokens' },
   tutor_requests: { vi: 'Lượt Tutor', en: 'Tutor requests' },
   graded_exam_attempts: { vi: 'Lượt thi chấm điểm', en: 'Graded exam attempts' },
   import_files: { vi: 'Tệp nhập', en: 'Imported files' },

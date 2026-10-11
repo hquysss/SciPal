@@ -1,10 +1,11 @@
 import { createHash, randomUUID } from 'node:crypto';
-import type { FastifyPluginAsync, FastifyRequest } from 'fastify';
+import type { FastifyInstance, FastifyPluginAsync, FastifyRequest } from 'fastify';
 import { BillingRepositoryError, createBillingRepository } from '../billing/repository.js';
-import type { AIProvider } from '../providers/ai.js';
+import type { AIProvider, TokenUsage } from '../providers/ai.js';
 import { CONTEXT_MESSAGES, MESSAGE_MAX, PAGE_SIZE, TITLE_LENGTH, vietnamDayStart } from '../tutor/limits.js';
 import { resolveTutorSettings, type SettingsStore } from '../tutor/settings.js';
 import { buildSystemPrompt, lessonContext, type EducationLevel } from '../tutor/systemPrompt.js';
+import { groupDigits, sumTokens, TUTOR_HOLD_TOKENS, tokensUsed } from '../tutor/tokens.js';
 import { featureAllowed, featureOff } from '../site/features.js';
 import { createVoiceToken, VOICE_SEGMENT_MINUTES } from '../tutor/voiceToken.js';
 import { isSubjectArchived } from '../subjects/archived.js';
@@ -39,14 +40,18 @@ const visibleQuota = (daily: number, remaining: number, period: Period) =>
 const quotaRefused = (limit: number, period: Period, resetsAt: string | null) => ({
   code: 'QUOTA_EXCEEDED',
   ...(period === 'day'
-    ? msg(`Em đã dùng hết ${limit} lượt hôm nay. Lượt mới có lúc 0 giờ.`, `You have used your ${limit} questions today. New ones arrive at midnight (Vietnam time).`)
-    : msg(`Em đã dùng hết ${limit} lượt tháng này.`, `You have used your ${limit} questions this month.`)),
+    ? msg(`Em đã dùng hết ${groupDigits(limit, '.')} token hôm nay. Token mới có lúc 0 giờ.`, `You have used your ${groupDigits(limit, ',')} tokens today. New ones arrive at midnight (Vietnam time).`)
+    : msg(`Em đã dùng hết ${groupDigits(limit, '.')} token tháng này.`, `You have used your ${groupDigits(limit, ',')} tokens this month.`)),
   remaining: 0,
   limit,
   period,
   resetsAt,
 });
-const quotaUnavailable = { code: 'BILLING_UNAVAILABLE', ...msg('Chưa kiểm tra được lượt hỏi. Em thử lại sau ít phút nhé.', 'Could not check your questions. Try again in a few minutes.') };
+const quotaUnavailable = { code: 'BILLING_UNAVAILABLE', ...msg('Chưa kiểm tra được hạn mức token. Em thử lại sau ít phút nhé.', 'Could not check your token allowance. Try again in a few minutes.') };
+/** Tokens of the answers counted for a student since 00:00 Vietnam time. */
+const tokensToday = (supabase: NonNullable<FastifyInstance['supabase']>, uid: string) =>
+  supabase.from('tutor_messages').select('tokens')
+    .eq('user_id', uid).eq('role', 'assistant').not('tokens', 'is', null).gte('created_at', vietnamDayStart(new Date()).toISOString());
 
 export const tutorRoutes: FastifyPluginAsync = async (app) => {
   app.addHook('preHandler', async (request, reply) => {
@@ -66,14 +71,10 @@ export const tutorRoutes: FastifyPluginAsync = async (app) => {
     const settings = app.tutorSettings ? await app.tutorSettings.get() : resolveTutorSettings(null, process.env);
     const billing = createBillingRepository((name, args) => supabase.rpc(name, args));
     try {
-      const [{ count, error }, quotas] = await Promise.all([
-        supabase.from('tutor_messages').select('id', { count: 'exact', head: true })
-          .eq('user_id', uid).eq('role', 'user').gte('created_at', vietnamDayStart(new Date()).toISOString()),
-        billing.getEffectiveQuotas(uid, new Date()),
-      ]);
-      const quota = quotas.find((q) => q.metric === 'tutor_requests');
+      const [{ data, error }, quotas] = await Promise.all([tokensToday(supabase, uid), billing.getEffectiveQuotas(uid, new Date())]);
+      const quota = quotas.find((q) => q.metric === 'tutor_tokens');
       if (error || !quota) return reply.code(503).send(quotaUnavailable);
-      return visibleQuota(Math.max(0, settings.dailyLimit - (count ?? 0)), Math.max(0, quota.limit - quota.used - quota.reserved), quota.kind === 'monthly' ? 'month' : 'day');
+      return visibleQuota(Math.max(0, settings.dailyLimit - sumTokens(data)), Math.max(0, quota.limit - quota.used - quota.reserved), quota.kind === 'monthly' ? 'month' : 'day');
     } catch (err) {
       request.log.error({ err }, 'Failed to read tutor quota');
       return reply.code(503).send(quotaUnavailable);
@@ -242,25 +243,18 @@ export const tutorRoutes: FastifyPluginAsync = async (app) => {
     }
 
     // Admins are not metered (decided 28/09). For everyone else the admin's daily cap below is an
-    // operational ceiling; the plan quota (ledger) decides what they may use.
+    // operational ceiling, in tokens; the plan quota (ledger) decides what they may use.
     const admin = isAdmin(request);
-    // Two questions sent at the same moment at limit − 1 can both pass the cap: an overshoot of one is accepted.
-    const { count, error: countError } = admin ? { count: 0, error: null } : await supabase
-      .from('tutor_messages')
-      .select('id', { count: 'exact', head: true })
-      .eq('user_id', uid)
-      .eq('role', 'user')
-      .gte('created_at', vietnamDayStart(new Date()).toISOString());
+    // Two questions sent at the same moment with a little cap left can both pass it: an overshoot of one answer is accepted.
+    const { data: todaysTokens, error: countError } = admin ? { data: [], error: null } : await tokensToday(supabase, uid);
     if (countError) {
-      request.log.error({ err: countError }, 'Failed to count tutor questions');
-      return reply.code(500).send(msg('Không kiểm tra được lượt hỏi.', 'Could not check your questions today.'));
+      request.log.error({ err: countError }, 'Failed to read the tokens used today');
+      return reply.code(500).send(msg('Không kiểm tra được hạn mức hôm nay.', 'Could not check your allowance today.'));
     }
-    const limit = settings.dailyLimit;
-    const used = count ?? 0;
-    if (!admin && !resend && used >= limit) {
-      return reply.code(429).send({ ...msg('Em đã hết lượt hỏi hôm nay. Lượt mới có lúc 0 giờ.', 'You have used today’s questions. New ones arrive at midnight (Vietnam time).'), remaining: 0, period: 'day' });
+    const capRemaining = Math.max(0, settings.dailyLimit - sumTokens(todaysTokens));
+    if (!admin && capRemaining <= 0) {
+      return reply.code(429).send({ ...msg('Em đã dùng hết hạn mức token hôm nay. Hạn mức mới có lúc 0 giờ.', 'You have used today’s tokens. New ones arrive at midnight (Vietnam time).'), remaining: 0, period: 'day' });
     }
-    const capRemaining = Math.max(0, limit - used - (resend ? 0 : 1));
 
     let lessonText: string | undefined;
     if (lessonId) {
@@ -281,39 +275,58 @@ export const tutorRoutes: FastifyPluginAsync = async (app) => {
     const { data: profile } = await supabase.from('profiles').select('preferred_education_level').eq('id', uid).maybeSingle();
     const level = ((profile as { preferred_education_level?: EducationLevel | null } | null)?.preferred_education_level ?? null);
 
-    // Hold one request of the plan quota before storing anything or asking the model; it is counted
-    // only once the answer is stored, and given back on any failure (spec §5).
+    // Hold tokens of the plan quota before storing anything or asking the model: the usual hold, or
+    // what is left when that is less. The answer is then counted for the tokens it really used, only
+    // once it is stored, and the hold is given back on any failure (spec §5).
     const billing = createBillingRepository((name, args) => supabase.rpc(name, args));
-    let hold: { operationId: string; remaining: number; period: Period } | null = null;
+    let hold: { operationId: string; units: number; remaining: number; period: Period } | null = null;
     if (!admin) {
-      try {
+      const hash = createHash('sha256').update(`${uid}:${conversationId ?? ''}:${message}`).digest('hex');
+      const holdTokens = async (units: number) => {
         const operationId = randomUUID();
-        const hash = createHash('sha256').update(`${uid}:${conversationId ?? ''}:${message}`).digest('hex');
-        const r = await billing.reserveQuota(uid, 'tutor_requests', operationId, 1, hash);
-        hold = { operationId, remaining: r.remaining, period: r.kind === 'monthly' ? 'month' : 'day' };
+        const r = await billing.reserveQuota(uid, 'tutor_tokens', operationId, units, hash);
+        return { operationId, units, remaining: r.remaining, period: (r.kind === 'monthly' ? 'month' : 'day') as Period };
+      };
+      try {
+        hold = await holdTokens(TUTOR_HOLD_TOKENS);
       } catch (err) {
         if (err instanceof BillingRepositoryError && err.code === 'QUOTA_EXCEEDED') {
-          const quota = await billing.getEffectiveQuotas(uid, new Date()).then((qs) => qs.find((q) => q.metric === 'tutor_requests')).catch(() => undefined);
-          return reply.code(429).send(quotaRefused(quota?.limit ?? 0, quota?.kind === 'monthly' ? 'month' : 'day', quota?.resetsAt ?? null));
+          const quota = await billing.getEffectiveQuotas(uid, new Date()).then((qs) => qs.find((q) => q.metric === 'tutor_tokens')).catch(() => undefined);
+          const left = quota ? quota.limit - quota.used - quota.reserved : 0;
+          if (quota && left > 0 && left < TUTOR_HOLD_TOKENS) {
+            // Less than the usual hold is left: let this last question use it.
+            try {
+              hold = await holdTokens(left);
+            } catch (again) {
+              if (!(again instanceof BillingRepositoryError && again.code === 'QUOTA_EXCEEDED')) {
+                request.log.error({ err: again }, 'Failed to hold the last tutor tokens');
+                return reply.code(503).send(quotaUnavailable);
+              }
+            }
+          }
+          if (!hold) return reply.code(429).send(quotaRefused(quota?.limit ?? 0, quota?.kind === 'monthly' ? 'month' : 'day', quota?.resetsAt ?? null));
+        } else {
+          request.log.error({ err }, 'Failed to hold tutor tokens');
+          return reply.code(503).send(quotaUnavailable);
         }
-        request.log.error({ err }, 'Failed to hold a tutor request');
-        return reply.code(503).send(quotaUnavailable);
       }
     }
     let settled = false;
-    const settle = async (outcome: 'commit' | 'release') => {
+    /** `used` is what a commit counts; a release counts nothing. */
+    const settle = async (outcome: 'commit' | 'release', used?: number) => {
       if (!hold || settled) return;
       settled = true;
       try {
-        await billing.settleQuota(hold.operationId, outcome);
+        await billing.settleQuota(hold.operationId, outcome, outcome === 'commit' ? used : undefined);
       } catch (err) {
-        request.log.error({ err, outcome }, 'Failed to settle a tutor request');
+        request.log.error({ err, outcome }, 'Failed to settle tutor tokens');
       }
     };
-    // What the student sees: the tighter of the plan quota and the daily cap.
-    const shown = (extra: number) => {
+    // What the student sees: the tighter of the plan quota and the daily cap, with `used` tokens already spent.
+    const planLeft = hold ? hold.remaining + hold.units : 0;
+    const shown = (used: number) => {
       if (!hold) return { remaining: null, period: null };
-      return visibleQuota(capRemaining + extra, hold.remaining + extra, hold.period);
+      return visibleQuota(Math.max(0, capRemaining - used), Math.max(0, planLeft - used), hold.period);
     };
 
     let id = conversationId;
@@ -364,8 +377,10 @@ export const tutorRoutes: FastifyPluginAsync = async (app) => {
     let answer = '';
     let failed = false;
     let stopped = false;
+    let usage: TokenUsage | undefined;
+    const systemPrompt = buildSystemPrompt({ language, level, lesson: lessonText });
     try {
-      for await (const text of app.aiProvider.chat(history, buildSystemPrompt({ language, level, lesson: lessonText }), { provider: settings.provider, model: settings.model, effort: settings.reasoningEffort })) {
+      for await (const text of app.aiProvider.chat(history, systemPrompt, { provider: settings.provider, model: settings.model, effort: settings.reasoningEffort }, (u) => { usage = u; })) {
         if (closed || raw.destroyed) {
           stopped = true;
           break;
@@ -381,15 +396,15 @@ export const tutorRoutes: FastifyPluginAsync = async (app) => {
       if (answer) {
         send('error', msg('Câu trả lời bị ngắt giữa chừng. Em thử hỏi lại sau ít phút nhé.', 'The answer was cut off. Try asking again in a few minutes.'));
       } else {
-        // No answer at all: the question is taken back, so it does not use up a daily question.
+        // No answer at all: the question is taken back and nothing is counted.
         if (questionId) await supabase.from('tutor_messages').delete().eq('id', questionId);
         const conversationRemoved = !conversationId;
         if (conversationRemoved) await supabase.from('tutor_conversations').delete().eq('id', id).eq('user_id', uid);
         send('error', {
           ...(overloaded
-            ? msg('Giáo sư Quý đang quá tải. Câu hỏi này không bị tính lượt, em thử lại sau ít phút nhé.', 'The Professor is overloaded. This question was not counted — try again in a few minutes.')
-            : msg('Giáo sư Quý đang gặp sự cố. Câu hỏi này không bị tính lượt, em thử lại sau nhé.', 'The Professor ran into a problem. This question was not counted — try again later.')),
-          ...shown(1),
+            ? msg('Giáo sư Quý đang quá tải. Câu hỏi này không bị trừ token, em thử lại sau ít phút nhé.', 'The Professor is overloaded. No tokens were used for this question — try again in a few minutes.')
+            : msg('Giáo sư Quý đang gặp sự cố. Câu hỏi này không bị trừ token, em thử lại sau nhé.', 'The Professor ran into a problem. No tokens were used for this question — try again later.')),
+          ...shown(0),
           conversation_removed: conversationRemoved,
         });
       }
@@ -398,15 +413,19 @@ export const tutorRoutes: FastifyPluginAsync = async (app) => {
       raw.end();
       return;
     }
+    // Counted only for a complete answer that was stored; a cut-off or unsaved one is given back.
+    // The tokens go on the answer, so the daily cap can add up what a student has used today.
+    const complete = !failed && !stopped;
+    const counted = complete ? tokensUsed(usage?.total, systemPrompt + history.map((m) => m.content).join('\n'), answer) : null;
     let stored = false;
     if (answer) {
-      const { error: answerError } = await supabase.from('tutor_messages').insert({ conversation_id: id, user_id: uid, role: 'assistant', content: answer.slice(0, 20000) });
+      const { error: answerError } = await supabase.from('tutor_messages').insert({ conversation_id: id, user_id: uid, role: 'assistant', content: answer.slice(0, 20000), tokens: admin ? null : counted });
       stored = !answerError;
     }
-    // Counted only for a complete answer that was stored; a cut-off or unsaved one is given back.
-    await settle(!failed && !stopped && stored ? 'commit' : 'release');
+    const commit = complete && stored;
+    await settle(commit ? 'commit' : 'release', counted ?? undefined);
     await supabase.from('tutor_conversations').update({ updated_at: new Date().toISOString() }).eq('id', id);
-    if (!failed) send('done', {});
+    if (!failed) send('done', commit ? shown(counted ?? 0) : shown(0));
     raw.end();
   });
 };

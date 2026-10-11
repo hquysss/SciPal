@@ -88,6 +88,33 @@ describe('embedUrl', () => {
   });
 });
 
+describe('embedUrl for Sketchfab', () => {
+  const uid = '0123456789abcdef0123456789abcdef';
+  const embed = `https://sketchfab.com/models/${uid}/embed`;
+  it('accepts the embed link and turns a share link into it', () => {
+    expect(embedUrl(embed)?.href).toBe(embed);
+    expect(embedUrl(`https://sketchfab.com/3d-models/knee-joint-${uid}`)?.href).toBe(embed);
+    expect(embedUrl(`https://sketchfab.com/3d-models/${uid}`)?.href).toBe(embed);
+  });
+  it('refuses lookalikes, other paths, ids that are not 32 hex digits and extra parts', () => {
+    for (const bad of [
+      `https://sketchfab.com.evil.example/models/${uid}/embed`,
+      `https://www.sketchfab.com/models/${uid}/embed`,
+      `http://sketchfab.com/models/${uid}/embed`,
+      `https://sketchfab.com/models/${uid}/embed?autostart=1`,
+      `https://sketchfab.com/models/${uid}/embed#x`,
+      `https://sketchfab.com/models/${uid.slice(1)}/embed`,
+      `https://sketchfab.com/models/${uid}`,
+      `https://sketchfab.com/3d-models/knee-joint`,
+      `https://sketchfab.com/3d-models/knee-joint-${uid}/extra`,
+      `https://sketchfab.com/redirect?url=https://evil.example`,
+      `https://sketchfab.com/${uid}`,
+    ]) {
+      expect(embedUrl(bad), bad).toBeNull();
+    }
+  });
+});
+
 describe('isLessonMediaUrl', () => {
   const base = 'https://pub-test.r2.dev';
   it('checks the parsed origin and path, not a string prefix', () => {

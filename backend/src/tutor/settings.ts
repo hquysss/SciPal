@@ -73,8 +73,10 @@ const asVoice = (value: string | null | undefined): string | null => {
   const v = value?.trim().toLowerCase();
   return VOICES.find((voice) => voice.name.toLowerCase() === v)?.name ?? null;
 };
-export const DEFAULT_DAILY_LIMIT = 30;
-export const DAILY_LIMIT_MAX = 200;
+/** The daily cap on what one student may use of the Professor, in tokens (it was a count of questions before 12/10). */
+export const DEFAULT_DAILY_LIMIT = 90_000;
+export const DAILY_LIMIT_MIN = 1_000;
+export const DAILY_LIMIT_MAX = 600_000;
 const CACHE_MS = 60_000;
 
 const asProvider = (value: string | null | undefined): TutorProvider | null => {
@@ -83,7 +85,7 @@ const asProvider = (value: string | null | undefined): TutorProvider | null => {
 };
 const asLimit = (value: unknown): number | null => {
   const n = Number(value);
-  return Number.isInteger(n) && n >= 1 && n <= DAILY_LIMIT_MAX ? n : null;
+  return Number.isInteger(n) && n >= DAILY_LIMIT_MIN && n <= DAILY_LIMIT_MAX ? n : null;
 };
 const asText = (value: string | null | undefined) => value?.trim() || null;
 

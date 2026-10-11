@@ -24,6 +24,8 @@ describe('quotaLabel', () => {
     expect(quotaLabel('tutor_requests', 'daily').vi).toBe('Lượt Tutor mỗi ngày');
     expect(quotaLabel('tutor_requests', 'monthly').vi).toBe('Lượt Tutor mỗi tháng');
     expect(quotaLabel('active_classes', 'capacity').vi).toBe('Lớp đang hoạt động');
+    expect(quotaLabel('tutor_tokens', 'daily').vi).toBe('Token Giáo sư Quý mỗi ngày');
+    expect(quotaLabel('tutor_tokens', 'monthly').en).toBe('Professor tokens a month');
   });
 });
 

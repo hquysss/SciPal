@@ -10,7 +10,10 @@ export const PlanCodeSchema = z.enum([
 export const BillingAudienceSchema = z.enum(['student', 'teacher']);
 export const BillingIntervalSchema = z.enum(['month', 'quarter', 'half_year', 'year']);
 export const QuotaMetricSchema = z.enum([
+  // The Professor's allowance is in tokens. 'tutor_requests' (questions) stays readable for the
+  // days between a deploy and the migration that converts the plans; nothing sets it any more.
   'tutor_requests',
+  'tutor_tokens',
   'graded_exam_attempts',
   'active_classes',
   'students_per_class',

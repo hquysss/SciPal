@@ -11,7 +11,7 @@ const fail = (message: string) => mockQuery({ data: null, error: { code: 'P0001'
 
 const row = (metric: string, patch: Record<string, unknown> = {}) => ({
   metric,
-  kind: metric === 'tutor_requests' || metric === 'graded_exam_attempts' ? 'monthly' : 'capacity',
+  kind: metric === 'tutor_tokens' || metric === 'graded_exam_attempts' ? 'monthly' : 'capacity',
   quota_limit: 10,
   used: 0,
   reserved: 0,
@@ -20,12 +20,12 @@ const row = (metric: string, patch: Record<string, unknown> = {}) => ({
   resets_at: '2026-09-30T17:00:00+00:00',
   ...patch,
 });
-const studentQuotas = () => ok([row('graded_exam_attempts', { quota_limit: 3, used: 1 }), row('tutor_requests', { quota_limit: 500, used: 40, source: 'override' })]);
+const studentQuotas = () => ok([row('graded_exam_attempts', { quota_limit: 3, used: 1 }), row('tutor_tokens', { quota_limit: 500, used: 40, source: 'override' })]);
 const snapshotTables = (extra: Record<string, MockBuilder | MockBuilder[]> = {}) => ({
   'rpc:billing_get_effective_quotas': studentQuotas(),
   account_quota_versions: ok({ version: 3 }),
   billing_subscriptions: ok(null),
-  billing_plan_limits: ok([{ metric: 'graded_exam_attempts', limit_value: 3 }, { metric: 'tutor_requests', limit_value: 10 }]),
+  billing_plan_limits: ok([{ metric: 'graded_exam_attempts', limit_value: 3 }, { metric: 'tutor_tokens', limit_value: 10 }]),
   ...extra,
 });
 
@@ -39,7 +39,7 @@ async function build(user: object, tables: Record<string, MockBuilder | MockBuil
 }
 
 const change = (payload: unknown) => ({ method: 'PATCH' as const, url: `/api/admin/accounts/${S1}/quotas`, payload: payload as Record<string, unknown> });
-const valid = { expectedVersion: 3, reason: 'Lớp chuyên', changes: [{ metric: 'tutor_requests', action: 'set', limit: 500, expiresAt: null }] };
+const valid = { expectedVersion: 3, reason: 'Lớp chuyên', changes: [{ metric: 'tutor_tokens', action: 'set', limit: 500, expiresAt: null }] };
 
 beforeEach(() => { rpcCalls.length = 0; });
 
@@ -68,7 +68,7 @@ describe('admin account quotas', () => {
       version: 3,
       quotas: [
         { metric: 'graded_exam_attempts', kind: 'monthly', limit: 3, planLimit: 3, used: 1, reserved: 0, source: 'plan', expiresAt: null, resetsAt: '2026-09-30T17:00:00.000Z' },
-        { metric: 'tutor_requests', kind: 'monthly', limit: 500, planLimit: 10, used: 40, reserved: 0, source: 'override', expiresAt: null, resetsAt: '2026-09-30T17:00:00.000Z' },
+        { metric: 'tutor_tokens', kind: 'monthly', limit: 500, planLimit: 10, used: 40, reserved: 0, source: 'override', expiresAt: null, resetsAt: '2026-09-30T17:00:00.000Z' },
       ],
     });
     await app.close();
@@ -108,7 +108,7 @@ describe('admin account quotas', () => {
       p_actor_id: admin.id,
       p_target_id: S1,
       p_expected_version: 3,
-      p_changes: [{ metric: 'tutor_requests', action: 'set', limit: 500, expires_at: null }, { metric: 'graded_exam_attempts', action: 'reset' }],
+      p_changes: [{ metric: 'tutor_tokens', action: 'set', limit: 500, expires_at: null }, { metric: 'graded_exam_attempts', action: 'reset' }],
       p_reason: 'Lớp chuyên',
       p_now: expect.any(String),
     }]);
@@ -120,10 +120,12 @@ describe('admin account quotas', () => {
     const past = new Date(Date.now() - 60_000).toISOString();
     for (const payload of [
       { ...valid, changes: [{ metric: 'video_minutes', action: 'reset' }] },
-      { ...valid, changes: [{ metric: 'tutor_requests', action: 'set', limit: -1, expiresAt: null }] },
-      { ...valid, changes: [{ metric: 'tutor_requests', action: 'set', limit: 1.5, expiresAt: null }] },
-      { ...valid, changes: [{ metric: 'tutor_requests', action: 'set', limit: 5, expiresAt: past }] },
-      { ...valid, changes: [{ metric: 'tutor_requests', action: 'reset' }, { metric: 'tutor_requests', action: 'reset' }] },
+      { ...valid, changes: [{ metric: 'tutor_tokens', action: 'set', limit: -1, expiresAt: null }] },
+      { ...valid, changes: [{ metric: 'tutor_tokens', action: 'set', limit: 1_000_000_001, expiresAt: null }] },
+      { ...valid, changes: [{ metric: 'graded_exam_attempts', action: 'set', limit: 1_000_001, expiresAt: null }] },
+      { ...valid, changes: [{ metric: 'tutor_tokens', action: 'set', limit: 1.5, expiresAt: null }] },
+      { ...valid, changes: [{ metric: 'tutor_tokens', action: 'set', limit: 5, expiresAt: past }] },
+      { ...valid, changes: [{ metric: 'tutor_tokens', action: 'reset' }, { metric: 'tutor_tokens', action: 'reset' }] },
       { ...valid, changes: [] },
       { ...valid, reason: '   ' },
       { ...valid, reason: 'x'.repeat(501) },
@@ -156,7 +158,7 @@ describe('admin account quotas', () => {
 
   it('lists the audit newest first with who changed what, 20 at a time', async () => {
     const entries = Array.from({ length: 21 }, (_, i) => ({
-      id: `e${i}`, actor_id: admin.id, before_state: {}, after_state: { tutor_requests: { limit: 500, expires_at: null } },
+      id: `e${i}`, actor_id: admin.id, before_state: {}, after_state: { tutor_tokens: { limit: 500, expires_at: null } },
       reason: 'Lớp chuyên', created_at: `2026-09-${String(28 - i).padStart(2, '0')}T00:00:00+00:00`,
     }));
     const audit = ok(entries);
@@ -165,7 +167,7 @@ describe('admin account quotas', () => {
     expect(res.statusCode).toBe(200);
     const body = res.json();
     expect(body.entries).toHaveLength(20);
-    expect(body.entries[0]).toEqual({ id: 'e0', actor: { id: admin.id, name: 'Cô Hà' }, before: {}, after: { tutor_requests: { limit: 500, expires_at: null } }, reason: 'Lớp chuyên', createdAt: '2026-09-28T00:00:00.000Z' });
+    expect(body.entries[0]).toEqual({ id: 'e0', actor: { id: admin.id, name: 'Cô Hà' }, before: {}, after: { tutor_tokens: { limit: 500, expires_at: null } }, reason: 'Lớp chuyên', createdAt: '2026-09-28T00:00:00.000Z' });
     expect(body.next).toBe('2026-09-09T00:00:00.000Z');
     expect(audit.eqCalls).toEqual([['target_id', S1]]);
     const more = await app.inject({ method: 'GET', url: `/api/admin/accounts/${S1}/quota-audit?cursor=${encodeURIComponent(body.next)}` });

@@ -88,6 +88,27 @@ describe('billing repository', () => {
     });
   });
 
+  it('commits the units really used when the call says so, and nothing extra otherwise', async () => {
+    const rpc = vi.fn().mockResolvedValue({ data: true, error: null });
+    const repository = createBillingRepository(rpc);
+
+    await repository.settleQuota(OPERATION_ID, 'commit', 1234);
+    expect(rpc).toHaveBeenCalledWith('billing_settle_quota', { p_operation_id: OPERATION_ID, p_outcome: 'commit', p_units_used: 1234 });
+    await repository.settleQuota(OPERATION_ID, 'release');
+    expect(rpc).toHaveBeenLastCalledWith('billing_settle_quota', { p_operation_id: OPERATION_ID, p_outcome: 'release' });
+  });
+
+  it.each([-1, 1.5, Number.NaN, Number.POSITIVE_INFINITY, 2_147_483_648])('refuses to commit %s units before calling the database', async (units) => {
+    const rpc = vi.fn();
+    await expect(createBillingRepository(rpc).settleQuota(OPERATION_ID, 'commit', units)).rejects.toMatchObject({ code: 'INVALID_QUOTA_UNITS' });
+    expect(rpc).not.toHaveBeenCalled();
+  });
+
+  it('reads the Professor token quota as a metric', async () => {
+    const rpc = vi.fn().mockResolvedValue({ data: [{ metric: 'tutor_tokens', kind: 'daily', quota_limit: 90000, used: 3000, reserved: 0, source: 'plan', expires_at: null, resets_at: null }], error: null });
+    await expect(createBillingRepository(rpc).getEffectiveQuotas('u', new Date())).resolves.toMatchObject([{ metric: 'tutor_tokens', limit: 90000, used: 3000 }]);
+  });
+
   it('rejects a settlement when the database lease has expired', async () => {
     const rpc = vi.fn().mockResolvedValue({ data: false, error: null });
     const repository = createBillingRepository(rpc);

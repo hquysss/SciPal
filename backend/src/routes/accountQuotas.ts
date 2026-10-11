@@ -7,7 +7,7 @@ import { BillingRepositoryError, createBillingRepository } from '../billing/repo
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const AUDIT_PAGE = 20;
-const METRICS = ['tutor_requests', 'graded_exam_attempts', 'active_classes', 'students_per_class', 'import_files', 'active_authored_exams', 'author_ai_requests', 'voice_minutes'] as const;
+const METRICS = ['tutor_tokens', 'graded_exam_attempts', 'active_classes', 'students_per_class', 'import_files', 'active_authored_exams', 'author_ai_requests', 'voice_minutes'] as const;
 
 type ErrorBody = { code: string; error: string; error_en: string };
 const err = (code: string, error: string, error_en: string): ErrorBody => ({ code, error, error_en });
@@ -22,7 +22,7 @@ const Change = z.discriminatedUnion('action', [
   z.object({
     metric: z.enum(METRICS),
     action: z.literal('set'),
-    limit: z.number().int().min(0).max(1_000_000),
+    limit: z.number().int().min(0).max(1_000_000_000),
     expiresAt: z.string().datetime({ offset: true }).nullable(),
   }).strict(),
   z.object({ metric: z.enum(METRICS), action: z.literal('reset') }).strict(),
@@ -68,7 +68,7 @@ export const accountQuotaRoutes: FastifyPluginAsync = async (app) => {
     const sub = subscription.data as { plan_code: string; paid_through: string } | null;
     const paid = sub && new Date(sub.paid_through) > now ? sub : null;
     // Free plans are not stored: the audience shows in which metrics the account has.
-    const plan = paid?.plan_code ?? (quotas.some((q) => q.metric === 'tutor_requests') ? 'student_free' : 'teacher_free');
+    const plan = paid?.plan_code ?? (quotas.some((q) => q.metric === 'tutor_tokens') ? 'student_free' : 'teacher_free');
     const limits = await supabase.from('billing_plan_limits').select('metric, limit_value').eq('plan_code', plan);
     if (limits.error) throw limits.error;
     const planLimit = new Map(((limits.data ?? []) as Array<{ metric: string; limit_value: number }>).map((l) => [l.metric, l.limit_value]));
@@ -110,6 +110,8 @@ export const accountQuotaRoutes: FastifyPluginAsync = async (app) => {
     const { changes, expectedVersion, reason } = parsed.data;
     const metrics = changes.map((c) => c.metric);
     if (new Set(metrics).size !== metrics.length) return reply.code(400).send(INVALID);
+    // Tokens count in thousands; every other quota is a small number.
+    if (changes.some((c) => c.action === 'set' && c.metric !== 'tutor_tokens' && c.limit > 1_000_000)) return reply.code(400).send(INVALID);
     if (changes.some((c) => c.action === 'set' && c.expiresAt !== null && new Date(c.expiresAt) <= now)) return reply.code(400).send(INVALID);
 
     const { error } = await app.supabase.rpc('billing_update_account_quotas', {

@@ -21,6 +21,6 @@ export async function getTutorQuota() {
   const parsed = TutorQuotaSchema.safeParse(res.data);
   return parsed.success ? { ok: true as const, data: parsed.data } : {
     ok: false as const, status: 502,
-    error: { vi: 'Chưa tải được lượt hỏi. Em thử lại nhé.', en: 'Could not load your remaining questions. Try again.' },
+    error: { vi: 'Chưa tải được số token còn lại. Em thử lại nhé.', en: 'Could not load your remaining tokens. Try again.' },
   };
 }

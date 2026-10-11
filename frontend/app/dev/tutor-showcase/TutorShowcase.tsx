@@ -57,7 +57,7 @@ export function TutorShowcase({ view }: { view: string }) {
     ) : view === 'error' ? (
       <TutorChatView {...base} error={{ vi: 'Gia sư đang bận. Hãy thử lại sau ít phút.', en: 'The tutor is busy. Try again in a few minutes.' }} messages={CHAT.slice(0, 1)} />
     ) : view === 'limit' ? (
-      <TutorChatView {...base} remaining={0} limitReached error={{ vi: 'Em đã hết lượt hỏi hôm nay. Lượt mới có lúc 0 giờ.', en: 'You have used today’s questions.' }} messages={CHAT} />
+      <TutorChatView {...base} remaining={0} limitReached error={{ vi: 'Em đã dùng hết token hôm nay. Token mới có lúc 0 giờ.', en: 'You have used today’s tokens.' }} messages={CHAT} />
     ) : (
       <TutorChatView {...base} lessonTitle="Vòng lặp for" messages={CHAT} />
     );

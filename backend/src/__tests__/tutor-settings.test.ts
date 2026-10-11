@@ -3,20 +3,20 @@ import { createSettingsStore, resolveTranslateSettings, resolveTutorSettings } f
 
 describe('resolveTutorSettings', () => {
   it('uses the admin row first, then the environment, then the defaults', () => {
-    expect(resolveTutorSettings(null, {})).toEqual({ provider: 'gemini', model: 'gemini-3.8-flash', dailyLimit: 30, enabled: true, voiceModel: 'gemini-3.8-live', voiceName: 'Charon', voiceEnabled: true, reasoningEffort: 'low' });
-    expect(resolveTutorSettings(null, { AI_PROVIDER: 'openai', TUTOR_MODEL: 'env-model', TUTOR_DAILY_LIMIT: '12' })).toEqual({
-      provider: 'openai', model: 'env-model', dailyLimit: 12, enabled: true, voiceModel: 'gemini-3.8-live', voiceName: 'Charon', voiceEnabled: true, reasoningEffort: 'low',
+    expect(resolveTutorSettings(null, {})).toEqual({ provider: 'gemini', model: 'gemini-3.8-flash', dailyLimit: 90000, enabled: true, voiceModel: 'gemini-3.8-live', voiceName: 'Charon', voiceEnabled: true, reasoningEffort: 'low' });
+    expect(resolveTutorSettings(null, { AI_PROVIDER: 'openai', TUTOR_MODEL: 'env-model', TUTOR_DAILY_LIMIT: '12000' })).toEqual({
+      provider: 'openai', model: 'env-model', dailyLimit: 12000, enabled: true, voiceModel: 'gemini-3.8-live', voiceName: 'Charon', voiceEnabled: true, reasoningEffort: 'low',
     });
     expect(
-      resolveTutorSettings({ provider: 'gemini', model: 'row-model', daily_limit: 5, enabled: false }, { AI_PROVIDER: 'openai', TUTOR_MODEL: 'env-model', TUTOR_DAILY_LIMIT: '12' }),
-    ).toEqual({ provider: 'gemini', model: 'row-model', dailyLimit: 5, enabled: false, voiceModel: 'gemini-3.8-live', voiceName: 'Charon', voiceEnabled: true, reasoningEffort: 'low' });
+      resolveTutorSettings({ provider: 'gemini', model: 'row-model', daily_limit: 5000, enabled: false }, { AI_PROVIDER: 'openai', TUTOR_MODEL: 'env-model', TUTOR_DAILY_LIMIT: '12000' }),
+    ).toEqual({ provider: 'gemini', model: 'row-model', dailyLimit: 5000, enabled: false, voiceModel: 'gemini-3.8-live', voiceName: 'Charon', voiceEnabled: true, reasoningEffort: 'low' });
   });
 
   it('falls back field by field, and a provider change without a model takes that provider’s default', () => {
     expect(resolveTutorSettings({ provider: 'openai', model: null, daily_limit: null, enabled: true }, { TUTOR_MODEL: '' })).toEqual({
-      provider: 'openai', model: 'gpt-5-mini', dailyLimit: 30, enabled: true, voiceModel: 'gemini-3.8-live', voiceName: 'Charon', voiceEnabled: true, reasoningEffort: 'low',
+      provider: 'openai', model: 'gpt-5-mini', dailyLimit: 90000, enabled: true, voiceModel: 'gemini-3.8-live', voiceName: 'Charon', voiceEnabled: true, reasoningEffort: 'low',
     });
-    expect(resolveTutorSettings({ provider: null, model: '  ', daily_limit: 0, enabled: true }, { TUTOR_DAILY_LIMIT: 'abc' })).toMatchObject({ model: 'gemini-3.8-flash', dailyLimit: 30 });
+    expect(resolveTutorSettings({ provider: null, model: '  ', daily_limit: 0, enabled: true }, { TUTOR_DAILY_LIMIT: 'abc' })).toMatchObject({ model: 'gemini-3.8-flash', dailyLimit: 90000 });
   });
 
   it('voice model: row, then TUTOR_VOICE_MODEL, then the default; thinking level only low, medium or high', () => {
@@ -58,8 +58,8 @@ describe('createSettingsStore', () => {
   it('reads the row at most once per minute, and again after invalidate()', async () => {
     let loads = 0;
     let now = 0;
-    const store = createSettingsStore(async () => { loads += 1; return { provider: 'openai', model: null, daily_limit: 7, enabled: true }; }, {}, () => now);
-    expect((await store.get()).dailyLimit).toBe(7);
+    const store = createSettingsStore(async () => { loads += 1; return { provider: 'openai', model: null, daily_limit: 7000, enabled: true }; }, {}, () => now);
+    expect((await store.get()).dailyLimit).toBe(7000);
     now = 59_000;
     await store.get();
     expect(loads).toBe(1);
@@ -72,7 +72,7 @@ describe('createSettingsStore', () => {
   });
 
   it('falls back to the environment when the row cannot be read', async () => {
-    const store = createSettingsStore(async () => { throw new Error('db down'); }, { TUTOR_DAILY_LIMIT: '9' }, () => 0);
-    expect(await store.get()).toMatchObject({ provider: 'gemini', dailyLimit: 9 });
+    const store = createSettingsStore(async () => { throw new Error('db down'); }, { TUTOR_DAILY_LIMIT: '9000' }, () => 0);
+    expect(await store.get()).toMatchObject({ provider: 'gemini', dailyLimit: 9000 });
   });
 });

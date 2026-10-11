@@ -53,13 +53,13 @@ describe('POST /api/tutor/chat', () => {
     await app.close();
   });
 
-  it('answers 429 at the daily limit, counting from the Vietnam day start', async () => {
-    const count = mockQuery({ data: null, error: null, count: 30 });
+  it('answers 429 at the daily token limit, counting from the Vietnam day start', async () => {
+    const count = ok([{ tokens: 60_000 }, { tokens: 30_000 }]);
     const { app } = await build({ tutor_messages: count });
     const res = await app.inject({ method: 'POST', url: '/api/tutor/chat', payload: { message: 'Hỏi', language: 'vi' } });
     expect(res.statusCode).toBe(429);
     expect(res.json().remaining).toBe(0);
-    expect(count.eqCalls).toEqual(expect.arrayContaining([['user_id', 'student-1'], ['role', 'user']]));
+    expect(count.eqCalls).toEqual(expect.arrayContaining([['user_id', 'student-1'], ['role', 'assistant']]));
     expect(count.gteCalls[0][0]).toBe('created_at');
     await app.close();
   });
@@ -69,7 +69,7 @@ describe('POST /api/tutor/chat', () => {
     const userInsert = ok();
     const assistantInsert = ok();
     const { app, ai } = await build({
-      tutor_messages: [mockQuery({ data: null, error: null, count: 3 }), userInsert, ok([{ role: 'user', content: 'Vòng lặp là gì?' }]), assistantInsert],
+      tutor_messages: [ok([{ tokens: 3_000 }]), userInsert, ok([{ role: 'user', content: 'Vòng lặp là gì?' }]), assistantInsert],
       profiles: ok({ preferred_education_level: 'lower_secondary' }),
       tutor_conversations: [convInsert, ok()],
     });
@@ -78,10 +78,11 @@ describe('POST /api/tutor/chat', () => {
     expect(res.headers['content-type']).toContain('text/event-stream');
     const ev = events(res.body);
     expect(ev.map((e) => e.event)).toEqual(['meta', 'delta', 'delta', 'done']);
-    expect(ev[0].data).toEqual({ conversation_id: C1, remaining: 26 , period: 'day' });
+    // 99 left on the plan plus the 3,000 held; the daily cap (90,000 − 3,000 used) is looser.
+    expect(ev[0].data).toEqual({ conversation_id: C1, remaining: 3_099, period: 'day' });
     expect(convInsert.inserted[0]).toMatchObject({ user_id: 'student-1', title: 'Vòng lặp là gì?', lesson_id: null });
     expect(userInsert.inserted[0]).toMatchObject({ conversation_id: C1, role: 'user', content: 'Vòng lặp là gì?' });
-    expect(assistantInsert.inserted[0]).toMatchObject({ role: 'assistant', content: 'Gợi ý một bước.' });
+    expect(assistantInsert.inserted[0]).toMatchObject({ role: 'assistant', content: 'Gợi ý một bước.', tokens: expect.any(Number) });
     expect(ai.calls[0].system).toMatch(/lower secondary/i);
     expect(ai.calls[0].system).toContain('"thầy"');
     await app.close();
@@ -158,7 +159,7 @@ describe('POST /api/tutor/chat', () => {
     const conversationDelete = ok();
     const { app } = await build(
       {
-        tutor_messages: [mockQuery({ data: null, error: null, count: 3 }), userInsert, ok([{ role: 'user', content: 'Hỏi' }]), questionDelete],
+        tutor_messages: [ok([{ tokens: 3_000 }]), userInsert, ok([{ role: 'user', content: 'Hỏi' }]), questionDelete],
         profiles: ok(null),
         tutor_conversations: [ok({ id: C1 }), conversationDelete],
       },
@@ -167,9 +168,9 @@ describe('POST /api/tutor/chat', () => {
     const res = await app.inject({ method: 'POST', url: '/api/tutor/chat', payload: { message: 'Hỏi', language: 'vi' } });
     const ev = events(res.body);
     expect(ev.map((e) => e.event)).toEqual(['meta', 'error']);
-    expect(ev[0].data.remaining).toBe(26);
-    expect(ev[1].data).toMatchObject({ remaining: 27, conversation_removed: true });
-    expect(ev[1].data.error).toMatch(/không bị tính lượt/);
+    expect(ev[0].data.remaining).toBe(3_099);
+    expect(ev[1].data).toMatchObject({ remaining: 3_099, conversation_removed: true });
+    expect(ev[1].data.error).toMatch(/không bị trừ token/);
     expect(questionDelete.deleteCalls).toBe(1);
     expect(questionDelete.eqCalls).toContainEqual(['id', 'q1']);
     expect(conversationDelete.deleteCalls).toBe(1);
@@ -197,7 +198,7 @@ describe('POST /api/tutor/chat', () => {
     const error = events(res.body)[1].data;
     expect(error.error).toMatch(/quá tải/);
     expect(error.error_en).toMatch(/overloaded/i);
-    expect(error).toMatchObject({ remaining: 30, conversation_removed: false });
+    expect(error).toMatchObject({ remaining: 3_099, conversation_removed: false });
     expect(questionDelete.eqCalls).toContainEqual(['id', 'q2']);
     await app.close();
   });
@@ -235,9 +236,9 @@ describe('POST /api/tutor/chat', () => {
     await app.close();
   });
 
-  it('retrying the unanswered last question neither stores nor counts it again', async () => {
+  it('retrying the unanswered last question does not store it again; the cut-off try counted no tokens, so the cap is read afresh', async () => {
     const last = ok({ role: 'user', content: 'Hỏi' });
-    const count = mockQuery({ data: null, error: null, count: 30 });
+    const count = ok([{ tokens: 80_000 }]);
     const history = ok([{ role: 'user', content: 'Hỏi' }]);
     const assistantInsert = ok();
     const { app } = await build({
@@ -247,7 +248,7 @@ describe('POST /api/tutor/chat', () => {
     });
     const res = await app.inject({ method: 'POST', url: '/api/tutor/chat', payload: { conversation_id: C1, message: 'Hỏi', language: 'vi', retry: true } });
     expect(res.statusCode).toBe(200);
-    expect(events(res.body)[0].data).toEqual({ conversation_id: C1, remaining: 0 , period: 'day' });
+    expect(events(res.body)[0].data).toEqual({ conversation_id: C1, remaining: 3_099, period: 'day' });
     expect(history.inserted).toEqual([]);
     expect(assistantInsert.inserted[0]).toMatchObject({ role: 'assistant', content: 'Gợi ý một bước.' });
     await app.close();
@@ -283,7 +284,7 @@ describe('POST /api/tutor/chat', () => {
   });
 
   it('follows the admin settings: off answers 503, the limit and the model come from them', async () => {
-    const settings = (value: object) => ({ get: async () => ({ provider: 'openai' as const, model: 'admin-model', dailyLimit: 5, enabled: true, voiceModel: 'gemini-3.8-live', voiceName: 'Charon', voiceEnabled: true, reasoningEffort: 'high' as const, ...value }), invalidate() {} });
+    const settings = (value: object) => ({ get: async () => ({ provider: 'openai' as const, model: 'admin-model', dailyLimit: 5_000, enabled: true, voiceModel: 'gemini-3.8-live', voiceName: 'Charon', voiceEnabled: true, reasoningEffort: 'high' as const, ...value }), invalidate() {} });
 
     const offApp = Fastify();
     offApp.decorate('supabase', mockSupabase({}));
@@ -297,7 +298,7 @@ describe('POST /api/tutor/chat', () => {
     await offApp.close();
 
     const limited = Fastify();
-    limited.decorate('supabase', mockSupabase({ tutor_messages: mockQuery({ data: null, error: null, count: 5 }) }));
+    limited.decorate('supabase', mockSupabase({ tutor_messages: ok([{ tokens: 5_000 }]) }));
     limited.decorate('aiProvider', provider([]));
     limited.decorate('tutorSettings', settings({}));
     limited.addHook('onRequest', async (req) => { (req as any).user = student; });
@@ -317,7 +318,7 @@ describe('POST /api/tutor/chat', () => {
     app.addHook('onRequest', async (req) => { (req as any).user = student; });
     await app.register(tutorRoutes);
     const res = await app.inject({ method: 'POST', url: '/api/tutor/chat', payload: { message: 'Hỏi', language: 'vi' } });
-    expect(events(res.body)[0].data).toEqual({ conversation_id: C1, remaining: 4 , period: 'day' });
+    expect(events(res.body)[0].data).toEqual({ conversation_id: C1, remaining: 3_099, period: 'day' });
     expect(ai.choices[0]).toEqual({ provider: 'openai', model: 'admin-model', effort: 'high' });
     await app.close();
   });

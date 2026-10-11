@@ -73,6 +73,9 @@ export function tutorReducer(state: TutorState, action: Action): TutorState {
           conversationId: e.conversationRemoved ? null : state.conversationId,
         };
       }
+      if (e.event === 'done' && e.remaining !== undefined) {
+        return { ...state, streaming: false, remaining: e.remaining, period: e.period ?? state.period, limitReached: e.remaining === 0 };
+      }
       return { ...state, streaming: false };
     }
     case 'failed':

@@ -8,8 +8,8 @@ vi.mock('@scipal/hooks', () => ({ useLanguage: () => ({ lang: 'vi', t: (o: { vi:
 vi.mock('@scipal/supabase', () => ({ createBrowserClient: () => ({}) }));
 
 const snapshot: AiSettingsSnapshot = {
-  saved: { provider: 'gemini', model: null, daily_limit: 20, enabled: true, updated_at: '2026-09-28T08:00:00Z' },
-  effective: { provider: 'gemini', model: 'gemini-3.8-flash', dailyLimit: 20, enabled: true },
+  saved: { provider: 'gemini', model: null, daily_limit: 60000, enabled: true, updated_at: '2026-09-28T08:00:00Z' },
+  effective: { provider: 'gemini', model: 'gemini-3.8-flash', dailyLimit: 60000, enabled: true },
   keys: { gemini: true, openai: false },
   defaults: { gemini: 'gemini-3.8-flash', openai: 'gpt-5-mini' },
   usage: { today: 4, week: 25, students_week: 2 },
@@ -31,7 +31,8 @@ describe('AiSettingsForm', () => {
     expect(html).toContain('Đã đặt key');
     expect(html).toContain('Chưa đặt key');
     expect(control(html, 'Model')).toContain('placeholder="gemini-3.8-flash"');
-    expect(control(html, 'Số câu hỏi mỗi học sinh mỗi ngày')).toContain('value="20"');
+    expect(control(html, 'Token mỗi học sinh mỗi ngày')).toContain('value="60000"');
+    expect(html).toContain('1.000–600.000 token');
     expect(html).toContain('Bật Giáo sư Quý cho học sinh');
     expect(html).toContain('Thử kết nối');
     expect(html).toMatch(/>4<[\s\S]*>25<[\s\S]*>2</);

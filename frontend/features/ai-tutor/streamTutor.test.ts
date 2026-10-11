@@ -30,6 +30,17 @@ describe('createSseParser', () => {
     expect(seen).toEqual([{ event: 'error', error: { vi: 'Quá tải', en: 'Overloaded' }, remaining: 27, conversationRemoved: true }]);
   });
 
+  it('carries the tokens left after an answer with done, and nothing for an older server', () => {
+    const seen: TutorEvent[] = [];
+    const feed = createSseParser((e) => seen.push(e));
+    feed('event: done\ndata: {"remaining":28500,"period":"day"}\n\nevent: done\ndata: {"remaining":null,"period":null}\n\nevent: done\ndata: {}\n\n');
+    expect(seen).toEqual([
+      { event: 'done', remaining: 28500, period: 'day' },
+      { event: 'done', remaining: null, period: 'day' },
+      { event: 'done' },
+    ]);
+  });
+
   it('reads the period of the count, and no count at all for admins', () => {
     const seen: TutorEvent[] = [];
     const feed = createSseParser((e) => seen.push(e));

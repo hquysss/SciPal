@@ -1,7 +1,10 @@
 import { z } from 'zod';
 
 const QuotaMetricSchema = z.enum([
+  // Old per-question metric: no plan has it after the token switch, but it stays readable so a
+  // backend deployed before that migration still understands the rows it finds.
   'tutor_requests',
+  'tutor_tokens',
   'graded_exam_attempts',
   'active_classes',
   'students_per_class',
@@ -46,6 +49,8 @@ type Reservation = {
   resetsAt: string | null;
 };
 type QuotaMetric = z.infer<typeof QuotaMetricSchema>;
+
+const MAX_UNITS = 2_147_483_647;
 
 type RpcError = { code?: string; message?: string };
 type RpcResult = { data: unknown; error: RpcError | null };
@@ -125,10 +130,18 @@ export function createBillingRepository(rpc: BillingRpc) {
       };
     },
 
-    async settleQuota(operationId: string, outcome: 'commit' | 'release'): Promise<void> {
+    /**
+     * `unitsUsed` is for a hold that was an estimate (tokens): a commit then counts what was really
+     * used, which may be more or less than was held. Without it a commit counts the whole hold.
+     */
+    async settleQuota(operationId: string, outcome: 'commit' | 'release', unitsUsed?: number): Promise<void> {
+      if (unitsUsed !== undefined && (!Number.isInteger(unitsUsed) || unitsUsed < 0 || unitsUsed > MAX_UNITS)) {
+        throw new BillingRepositoryError('INVALID_QUOTA_UNITS', 'Units used must be a whole number of at most 2147483647');
+      }
       const { data, error } = await rpc('billing_settle_quota', {
         p_operation_id: operationId,
         p_outcome: outcome,
+        ...(unitsUsed === undefined ? {} : { p_units_used: unitsUsed }),
       });
       if (error) throwRpcError(error);
       if (data === false) {
