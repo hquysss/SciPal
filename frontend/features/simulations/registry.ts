@@ -12,6 +12,7 @@ import { punnettModule } from './punnett';
 import { solid3dModule } from './solid3d';
 import { titrationModule } from './titration';
 import { unitCircleModule } from './unitCircle';
+import { wave3dModule } from './wave3d';
 import type { SimulationModule } from './types';
 
 /** Every built-in template, used by the Studio editor, its preview and the learner page alike. */
@@ -26,6 +27,7 @@ export const simulationModules: { [K in BuiltInSimulationKind]: SimulationModule
   motion: motionModule,
   pendulum: pendulumModule,
   'harmonic-3d': harmonic3dModule,
+  'wave-3d': wave3dModule,
   'ohm-circuit': ohmCircuitModule,
   punnett: punnettModule,
   'labeled-diagram': labeledDiagramModule,

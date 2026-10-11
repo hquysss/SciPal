@@ -167,6 +167,18 @@ const Harmonic3dConfig = z.object({
   autoplay: z.boolean().default(true),
 });
 
+const Wave3dConfig = z.object({
+  /** Hz */
+  frequency: finite(0.5, 4).default(1),
+  /** cm */
+  amplitude: finite(0.5, 3).default(1.5),
+  /** m/s */
+  speed: finite(0.2, 1.2).default(0.4),
+  /** `manual`: the learner turns the crank; `auto`: the motor does. */
+  mode: z.enum(['auto', 'manual']).default('auto'),
+  autoplay: z.boolean().default(true),
+});
+
 const OhmCircuitConfig = z.object({
   /** V */
   voltage: finite(0, 240).default(12),
@@ -292,6 +304,7 @@ export const SIMULATION_CONFIGS = {
   motion: MotionConfig,
   pendulum: PendulumConfig,
   'harmonic-3d': Harmonic3dConfig,
+  'wave-3d': Wave3dConfig,
   'ohm-circuit': OhmCircuitConfig,
   probability: ProbabilityConfig,
   'unit-circle': UnitCircleConfig,
@@ -313,6 +326,7 @@ export const SIMULATION_KINDS = [
   'motion',
   'pendulum',
   'harmonic-3d',
+  'wave-3d',
   'ohm-circuit',
   'probability',
   'unit-circle',
@@ -410,6 +424,7 @@ const MESSAGES: Record<string, Message> = {
   motion: { en: 'Speed 0–100 m/s, angle 0–90°, acceleration −20–20 m/s², g 1–25, time 1–30 s.', vi: 'Vận tốc 0–100 m/s, góc 0–90°, gia tốc −20–20 m/s², g 1–25, thời gian 1–30 s.' },
   pendulum: { en: 'Length 0.1–10 m, mass 0.1–10 kg, k 1–1000 N/m, amplitude 1–30.', vi: 'Chiều dài 0,1–10 m, khối lượng 0,1–10 kg, k 1–1000 N/m, biên độ 1–30.' },
   'harmonic-3d': { en: 'Amplitude 0.1–5 m, period 1–20 s, initial phase 0–360°.', vi: 'Biên độ 0,1–5 m, chu kì 1–20 s, pha ban đầu 0–360°.' },
+  'wave-3d': { en: 'Frequency 0.5–4 Hz, amplitude 0.5–3 cm, wave speed 0.2–1.2 m/s.', vi: 'Tần số 0,5–4 Hz, biên độ 0,5–3 cm, tốc độ truyền sóng 0,2–1,2 m/s.' },
   'ohm-circuit': { en: 'Voltage 0–240 V and 1–6 resistors of 0.1–10000 Ω.', vi: 'Hiệu điện thế 0–240 V và 1–6 điện trở từ 0,1–10000 Ω.' },
   probability: { en: 'A coin or a die with 2–20 faces; up to 1000 throws at once.', vi: 'Đồng xu hoặc xúc xắc 2–20 mặt; tung tối đa 1000 lần mỗi đợt.' },
   'unit-circle': { en: 'Start angle 0–360°, snap 1, 5, 15, 30 or 45°.', vi: 'Góc ban đầu 0–360°, bước bắt 1, 5, 15, 30 hoặc 45°.' },

@@ -2,8 +2,11 @@
 
 import { useEffect, useRef, useState, type RefObject } from 'react';
 
-export function useHarmonicPlayback(period: number, autoplay: boolean, host: RefObject<HTMLElement | null>) {
+/** `wrap` maps time past `period` back into range; by default playback loops from 0. */
+export function useHarmonicPlayback(period: number, autoplay: boolean, host: RefObject<HTMLElement | null>, wrap?: (t: number) => number) {
   const time = useRef(0);
+  const wrapRef = useRef(wrap);
+  useEffect(() => { wrapRef.current = wrap; });
   const [shownTime, setShownTime] = useState(0);
   const [playing, setPlaying] = useState(false);
   const [active, setActive] = useState(true);
@@ -32,7 +35,8 @@ export function useHarmonicPlayback(period: number, autoplay: boolean, host: Ref
     let last = performance.now();
     let published = last;
     const tick = (now: number) => {
-      time.current = (time.current + Math.min((now - last) / 1000, 0.1)) % period;
+      const next = time.current + Math.min((now - last) / 1000, 0.1);
+      time.current = wrapRef.current ? wrapRef.current(next) : next % period;
       last = now;
       if (now - published >= 100) { setShownTime(time.current); published = now; }
       frame = requestAnimationFrame(tick);
@@ -45,5 +49,5 @@ export function useHarmonicPlayback(period: number, autoplay: boolean, host: Ref
     time.current = Math.min(Math.max(value, 0), period);
     setShownTime(time.current);
   };
-  return { time, shownTime, playing, running: playing && active, toggle: () => { setShownTime(time.current); setPlaying((p) => !p); }, seek };
+  return { time, shownTime, playing, running: playing && active, toggle: () => { setShownTime(time.current); setPlaying((p) => !p); }, seek, play: () => setPlaying(true) };
 }

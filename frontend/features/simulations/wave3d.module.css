@@ -1,0 +1,97 @@
+/* Physical illustration materials for the ripple tank, not subject accents.
+   Only the measuring overlay follows the subject accent. */
+.stage {
+  --wave-background: #e7edef;
+  --wave-floor: #d5dee2;
+  --wave-base: #2f6fd1;
+  --wave-glass: #d6eef4;
+  --wave-frame: #8a969c;
+  --wave-deep: #0b5770;
+  --wave-shallow: #3aa6bb;
+  --wave-sky: #dff6fa;
+  --wave-crest: #f4fcfd;
+  --wave-metal: #7d8990;
+  --wave-dark: #283036;
+  --wave-rod: #c3ccd1;
+  --wave-source: #e3a43a;
+  --wave-float: #f7f2e6;
+  --wave-absorber: #8b5a3c;
+  --wave-highlight: #ffd34d;
+  --wave-measure: var(--accent, #d9466f);
+  background: linear-gradient(180deg, var(--wave-background), var(--wave-floor));
+  aspect-ratio: 16 / 10;
+  min-height: 340px;
+  touch-action: pan-y;
+}
+
+.stage canvas {
+  display: block;
+}
+
+.chip {
+  position: absolute;
+  left: 0;
+  top: 0;
+  padding: 4px 10px;
+  border-radius: 999px;
+  border: 0;
+  background: #1f5f5a;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.2;
+  white-space: nowrap;
+  box-shadow: 0 2px 6px rgb(0 0 0 / 0.18);
+  cursor: pointer;
+  visibility: hidden;
+}
+
+.chip[aria-pressed='true'] {
+  background: #ffd34d;
+  color: #1d2327;
+}
+
+.chip:focus-visible {
+  outline: 2px solid #ffd34d;
+  outline-offset: 2px;
+}
+
+.measure {
+  position: absolute;
+  left: 0;
+  top: 0;
+  padding: 1px 6px;
+  border-radius: 6px;
+  background: rgb(255 255 255 / 0.85);
+  color: #1d2327;
+  font-size: 13px;
+  font-weight: 700;
+  font-style: italic;
+  white-space: nowrap;
+  pointer-events: none;
+  visibility: hidden;
+}
+
+.grab {
+  cursor: grab;
+}
+
+.fallback {
+  width: 100%;
+  height: 100%;
+  min-height: 340px;
+}
+
+@media (max-width: 520px) {
+  .stage { min-height: 250px; }
+  .chip { padding: 3px 7px; font-size: 10px; }
+  .measure { font-size: 11px; }
+}
+
+@media (pointer: fine) {
+  .stage { touch-action: none; }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .chip { transition: background-color 150ms ease, color 150ms ease; }
+}

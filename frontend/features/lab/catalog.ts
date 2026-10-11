@@ -82,6 +82,13 @@ export const LAB_ITEMS: readonly LabItem[] = [
     grades: { en: 'Grade 11', vi: 'Lớp 11' },
   },
   {
+    kind: 'wave-3d',
+    name: { en: 'Water waves 3D', vi: 'Sóng trên mặt nước 3D' },
+    subject: 'physics',
+    blurb: { en: 'A ripple tank: run the motor or turn the crank yourself and watch λ = v/f.', vi: 'Máng tạo sóng: bật motor hoặc tự quay tay, quan sát λ = v/f và miếng xốp dao động tại chỗ.' },
+    grades: { en: 'Grade 11', vi: 'Lớp 11' },
+  },
+  {
     kind: 'ohm-circuit',
     name: { en: "Ohm's law circuit", vi: 'Mạch điện định luật Ohm' },
     subject: 'physics',
