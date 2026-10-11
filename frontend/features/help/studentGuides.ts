@@ -48,7 +48,7 @@ export const STUDENT_GUIDES = [
   },
   {
     id: 'professor', audience: 'student', category: 'learn',
-    title: { en: 'Ask the SciPal Professor', vi: 'Hỏi Giáo sư SciPal' },
+    title: { en: 'Ask Professor Quys', vi: 'Hỏi Giáo sư Quý' },
     description: { en: 'Get a hint when a lesson or question has you stuck.', vi: 'Nhận gợi ý khi bạn chưa hiểu bài hoặc câu hỏi.' },
     visualSteps: [
       { en: 'Ask', vi: 'Hỏi' }, { en: 'Get a hint', vi: 'Nhận gợi ý' }, { en: 'Continue', vi: 'Học tiếp' },
@@ -59,7 +59,7 @@ export const STUDENT_GUIDES = [
       { en: 'Use the hints one step at a time, then ask about any step that remains unclear.', vi: 'Làm theo từng gợi ý rồi hỏi tiếp về bước bạn chưa rõ.' },
     ],
     note: { en: 'The Professor needs an internet connection. Available questions depend on your plan.', vi: 'Giáo sư cần kết nối mạng. Số lượt hỏi phụ thuộc vào gói của bạn.' },
-    href: '/tutor', action: { en: 'Ask the Professor', vi: 'Mở Giáo sư SciPal' },
+    href: '/tutor', action: { en: 'Ask the Professor', vi: 'Mở Giáo sư Quý' },
   },
   {
     id: 'lab', audience: 'student', category: 'learn',

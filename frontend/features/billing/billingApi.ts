@@ -61,12 +61,12 @@ export const fetchMyPlan = (): Promise<ApiResult<BillingAccount>> => authoringCa
 /** "390.000 ₫" */
 export const formatVnd = (amount: number) => `${String(Math.round(amount)).replace(/\B(?=(\d{3})+(?!\d))/g, '.')} ₫`;
 
-/** Title of a quota, and the noun used after a number ("5 lượt hỏi Giáo sư SciPal"). */
+/** Title of a quota, and the noun used after a number ("5 lượt hỏi Giáo sư Quý"). */
 export const METRIC: Record<QuotaMetric, { title: Bilingual; unit: Bilingual }> = {
-  tutor_requests: { title: { vi: 'Lượt hỏi Giáo sư SciPal', en: 'SciPal Professor requests' }, unit: { vi: 'lượt hỏi Giáo sư SciPal', en: 'SciPal Professor requests' } },
+  tutor_requests: { title: { vi: 'Lượt hỏi Giáo sư Quý', en: 'Professor Quys requests' }, unit: { vi: 'lượt hỏi Giáo sư Quý', en: 'Professor Quys requests' } },
   graded_exam_attempts: { title: { vi: 'Lượt thi có chấm điểm', en: 'Graded exam attempts' }, unit: { vi: 'lượt thi có chấm điểm', en: 'graded exam attempts' } },
   import_files: { title: { vi: 'Tệp nhập', en: 'Imported files' }, unit: { vi: 'tệp nhập', en: 'imported files' } },
-  voice_minutes: { title: { vi: 'Phút nói chuyện với Giáo sư SciPal', en: 'Minutes talking with the SciPal Professor' }, unit: { vi: 'phút nói chuyện với Giáo sư SciPal', en: 'minutes talking with the SciPal Professor' } },
+  voice_minutes: { title: { vi: 'Phút nói chuyện với Giáo sư Quý', en: 'Minutes talking with Professor Quys' }, unit: { vi: 'phút nói chuyện với Giáo sư Quý', en: 'minutes talking with Professor Quys' } },
   author_ai_requests: { title: { vi: 'Lượt AI soạn bài', en: 'Lesson-drafting AI requests' }, unit: { vi: 'lượt AI soạn bài', en: 'lesson-drafting AI requests' } },
   active_classes: { title: { vi: 'Lớp đang hoạt động', en: 'Active classes' }, unit: { vi: 'lớp đang hoạt động', en: 'active classes' } },
   students_per_class: { title: { vi: 'Học sinh mỗi lớp', en: 'Students per class' }, unit: { vi: 'học sinh mỗi lớp', en: 'students per class' } },
@@ -80,7 +80,7 @@ export const PLAN_NAME: Record<string, Bilingual> = {
   teacher_pro: { vi: 'Giáo viên Pro', en: 'Teacher Pro' },
 };
 
-/** "5 lượt hỏi Giáo sư SciPal mỗi ngày", "1 lớp đang hoạt động", "Không có lượt AI soạn bài". */
+/** "5 lượt hỏi Giáo sư Quý mỗi ngày", "1 lớp đang hoạt động", "Không có lượt AI soạn bài". */
 export function limitText(limit: PlanLimit, t: (text: Bilingual) => string): string {
   const unit = t(METRIC[limit.metric]?.unit ?? { vi: limit.metric, en: limit.metric });
   if (limit.limit === 0) return t({ vi: `Không có ${unit}`, en: `No ${unit}` });

@@ -42,7 +42,7 @@ const FAQ: Array<{ q: Bilingual; a: Bilingual }> = [
   },
   {
     q: { vi: 'Không mua gói thì còn học được không?', en: 'Can I learn without a plan?' },
-    a: { vi: 'Được. Mọi bài học đều miễn phí; gói trả phí chỉ nâng số lượt Giáo sư SciPal, lượt thi có chấm điểm và công cụ dạy học.', en: 'Yes. Every lesson is free; a paid plan only raises SciPal Professor questions, graded exams and teaching tools.' },
+    a: { vi: 'Được. Mọi bài học đều miễn phí; gói trả phí chỉ nâng số lượt Giáo sư Quý, lượt thi có chấm điểm và công cụ dạy học.', en: 'Yes. Every lesson is free; a paid plan only raises Professor Quys questions, graded exams and teaching tools.' },
   },
 ];
 

@@ -59,7 +59,7 @@ export function getAvatarUrl(user: AuthUser | null): string | null {
   return typeof url === 'string' && url.startsWith('https://') ? url : null;
 }
 
-/** "Giáo sư SciPal" in the main links, for everyone: a visitor gets a trial question, then signs in. */
+/** "Giáo sư Quý" in the main links, for everyone: a visitor gets a trial question, then signs in. */
 export function tutorLink(lang: 'en' | 'vi') {
   return { href: '/tutor', label: lang === 'en' ? 'Professor' : 'Giáo sư' };
 }

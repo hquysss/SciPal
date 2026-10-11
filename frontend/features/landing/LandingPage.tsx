@@ -397,7 +397,7 @@ export function LandingPage({ level, catalog, onChangeLevel, pricing = null, sho
                 </Link>
                 <Link href="/tutor" className={styles.pillGhost}>
                   <Sparkles size={16} aria-hidden="true" />
-                  {t({ en: 'Ask the SciPal Professor', vi: 'Hỏi Giáo sư SciPal' })}
+                  {t({ en: 'Ask Professor Quys', vi: 'Hỏi Giáo sư Quý' })}
                 </Link>
               </div>
             </div>
@@ -421,7 +421,7 @@ export function LandingPage({ level, catalog, onChangeLevel, pricing = null, sho
               <ul>
                 <li><Link href="/subjects">{t({ en: 'Subjects', vi: 'Môn học' })}</Link></li>
                 <li><Link href="/glossary">{t({ en: 'Glossary', vi: 'Từ điển thuật ngữ' })}</Link></li>
-                <li><Link href="/tutor">{t({ en: 'SciPal Professor', vi: 'Giáo sư SciPal' })}</Link></li>
+                <li><Link href="/tutor">{t({ en: 'Professor Quys', vi: 'Giáo sư Quý' })}</Link></li>
               </ul>
             </nav>
             <nav className={styles.footerCol} aria-label={t({ en: 'Contact SciPal', vi: 'Liên hệ SciPal' })}>
