@@ -1,0 +1,44 @@
+.stage {
+  --circ-background: #13202b;
+  --circ-artery: #e0384f;
+  --circ-vein: #5c7cf0;
+  --circ-wall: #f0b8b0;
+  --circ-muscle: #b4535a;
+  --circ-septum: #8a3c45;
+  --circ-valve: #fbe9d6;
+  --circ-signal: #ffd166;
+  --circ-white: #eef3f8;
+  position: relative;
+  width: 100%;
+  height: clamp(540px, 72vh, 760px);
+  background: var(--circ-background);
+  border-radius: 14px;
+  overflow: hidden;
+  touch-action: pan-y;
+}
+.stage canvas { display: block; }
+.stage:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+.frame { position: relative; width: 100%; }
+.stage[data-panel-layout='bottom'] { height: 720px; }
+.stage[data-fullscreen='true'], .stage:fullscreen { position: fixed; inset: 0; z-index: 200; height: 100dvh; border-radius: 0; }
+.toolbar { position: absolute; top: 12px; left: 16px; right: 16px; z-index: 5; display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.title { min-width: 0; color: var(--circ-white); font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.panel { position: absolute; top: 68px; bottom: 16px; right: 16px; z-index: 4; width: 320px; overflow: auto; overscroll-behavior: contain; padding: 14px; border-radius: 12px; }
+.stage[data-panel-layout='bottom'] .panel { top: auto; bottom: 16px; left: 16px; right: 16px; width: auto; height: 280px; }
+.loading { min-height: 540px; }
+.label { position: absolute; top: 0; left: 0; max-width: 160px; pointer-events: none; visibility: hidden; z-index: 2; }
+.labelButton { min-height: 36px; min-width: 36px; pointer-events: auto; }
+.legend { position: absolute; bottom: 12px; left: 16px; right: 16px; display: flex; flex-wrap: wrap; gap: 8px 16px; font-size: 11px; color: var(--circ-white); pointer-events: none; }
+.legend span { display: inline-flex; align-items: center; gap: 6px; }
+.legend i { width: 18px; height: 4px; border-radius: 2px; }
+.cycle { position: relative; display: flex; height: 28px; overflow: hidden; border-radius: 8px; border: 1px solid var(--line); }
+.cycle button { min-width: 0; padding: 0 4px; font-size: 11px; color: var(--ink-muted); background: var(--surface); border-right: 1px solid var(--line); overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.cycle button:last-of-type { border-right: 0; }
+.cycle button[aria-pressed='true'] { background: var(--action); color: var(--action-ink); }
+.cycle button:focus-visible { outline: 2px solid var(--focus); outline-offset: -2px; }
+.cursor { position: absolute; top: 0; bottom: 0; width: 2px; background: var(--ink); pointer-events: none; }
+@media (max-width: 520px) {
+  .label { font-size: 10px; max-width: 100px; }
+  .loading .panel { top: auto; bottom: 16px; left: 16px; right: 16px; width: auto; height: 280px; }
+}
+@media (pointer: fine) { .stage { touch-action: none; } }

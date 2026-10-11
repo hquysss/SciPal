@@ -111,6 +111,13 @@ export const LAB_ITEMS: readonly LabItem[] = [
     grades: { en: 'Grade 11', vi: 'Lớp 11' },
   },
   {
+    kind: 'circulation-3d',
+    name: { en: 'Blood circulation 3D', vi: 'Tuần hoàn máu 3D' },
+    subject: 'biology',
+    blurb: { en: 'Follow blood round both loops and watch the heart’s valves and impulses through one cycle.', vi: 'Theo dòng máu qua hai vòng tuần hoàn, xem van tim và xung điện trong một chu kì tim.' },
+    grades: { en: 'Grade 11', vi: 'Lớp 11' },
+  },
+  {
     kind: 'algorithm-sim',
     name: { en: 'Algorithm steps', vi: 'Thuật toán từng bước' },
     subject: 'informatics',
