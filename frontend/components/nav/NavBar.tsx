@@ -499,9 +499,9 @@ export function NavBar({ currentSubject }: NavBarProps) {
             aria-controls="mobile-navigation"
             ref={mobileMenuButtonRef}
             onClick={() => setMobileOpen((value) => !value)}
-            className="flex h-11 w-11 items-center justify-center rounded-full border border-[color-mix(in_srgb,var(--nav-ink)_30%,transparent)] bg-transparent text-nav-ink text-xl transition hover:bg-[color-mix(in_srgb,var(--nav-ink)_12%,transparent)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-nav-ink"
+            className="flex h-9 w-9 items-center justify-center rounded-full bg-[color-mix(in_srgb,var(--nav-ink)_12%,transparent)] text-nav-ink text-xl transition hover:bg-[color-mix(in_srgb,var(--nav-ink)_12%,transparent)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-nav-ink"
           >
-            {mobileOpen ? <X aria-hidden="true" size={20} /> : <Menu aria-hidden="true" size={20} />}
+            {mobileOpen ? <X aria-hidden="true" size={18} /> : <Menu aria-hidden="true" size={18} />}
           </button>
         </div>
       </div>
