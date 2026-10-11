@@ -104,7 +104,7 @@ describe('GET /api/billing/me', () => {
       billing_mandates: ok({ status: 'active', interval: 'month', amount_vnd: 39_000, next_charge_at: nextChargeAt }),
     });
     const response = await app.inject({ method: 'GET', url: '/api/billing/me' });
-    expect(response.json().renewal).toEqual({ status: 'active', interval: 'month', amountVnd: 39_000, nextChargeAt });
+    expect(response.json().renewal).toEqual({ provider: 'momo', status: 'active', interval: 'month', amountVnd: 39_000, nextChargeAt });
     expect(JSON.stringify(response.json())).not.toContain('provider_token');
     await app.close();
   });

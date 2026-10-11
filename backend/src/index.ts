@@ -1,5 +1,5 @@
 import 'dotenv/config';
-import Fastify from 'fastify';
+import Fastify, { type FastifyRequest } from 'fastify';
 import cors from '@fastify/cors';
 import { supabasePlugin } from './plugins/supabase.js';
 import { mediaStorePlugin } from './plugins/mediaStore.js';
@@ -33,6 +33,7 @@ import { adminSubjectRoutes } from './routes/adminSubjects.js';
 import { billingRoutes } from './routes/billingPlans.js';
 import { billingCheckoutRoutes } from './routes/billingCheckout.js';
 import { billingReconciliationRoutes } from './routes/billingReconciliation.js';
+import { billingVnpayRoutes } from './routes/billingVnpay.js';
 import { billingMomoRoutes } from './routes/billingMomo.js';
 import { authorAiRoutes } from './routes/authorAi.js';
 import { createSettingsStore } from './tutor/settings.js';
@@ -41,7 +42,7 @@ import { practiceRoutes } from './routes/practice.js';
 import { profileRoutes } from './routes/profile.js';
 import { gameRoutes } from './routes/games.js';
 
-const app = Fastify({ logger: true });
+const app = Fastify({ logger: { serializers: { req: (request: FastifyRequest) => ({ id: request.id, method: request.method, url: request.url.startsWith('/api/billing/') ? request.url.split('?')[0] : request.url, hostname: request.hostname, remoteAddress: request.ip }) } } });
 
 const corsOrigins = process.env.CORS_ORIGINS?.split(',').map((origin) => origin.trim()).filter(Boolean);
 await app.register(cors, { origin: corsOrigins?.length ? corsOrigins : '*' });
@@ -81,6 +82,7 @@ await app.register(adminSubjectRoutes);
 await app.register(billingRoutes);
 await app.register(billingCheckoutRoutes);
 await app.register(billingMomoRoutes);
+await app.register(billingVnpayRoutes);
 await app.register(billingReconciliationRoutes);
 await app.register(authorAiRoutes);
 await app.register(practiceRoutes);

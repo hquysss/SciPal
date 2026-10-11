@@ -68,7 +68,7 @@ describe('SubjectsPage', () => {
   it('links a subject only in a grade with published lessons, straight to that grade', () => {
     const html = renderToStaticMarkup(<SubjectsPage accountLevel="upper_secondary" catalog={catalog} />);
     // Grade 10: informatics has no lessons there yet, so no link.
-    expect(html).not.toContain('href="/informatics#lop-10"');
+    expect(html).not.toContain('href="/informatics?grade=10"');
     expect(html).toContain('Đang biên soạn');
   });
 });

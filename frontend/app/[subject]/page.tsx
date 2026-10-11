@@ -4,7 +4,7 @@ import { notFound } from 'next/navigation';
 import { LevelScope, SubjectProvider } from '@scipal/ui';
 import { TopicAccordion } from '@/features/lessons/TopicAccordion';
 import { getSubjectPage } from '@/features/lessons/subjectPageQuery';
-import { GradeHeading, InDevelopmentNotice } from '@/features/lessons/SubjectPageNotices';
+import { GradeHeading, InDevelopmentNotice, ShowAllGrades } from '@/features/lessons/SubjectPageNotices';
 import { SubjectHeader } from '@/features/lessons/SubjectHeader';
 import { SaveOfflineButton } from '@/features/lessons/SaveOfflineButton';
 import { levelOfGrade } from '@/features/landing/educationLevel';
@@ -24,10 +24,13 @@ export async function generateMetadata({ params }: { params: Promise<{ subject: 
 
 export default async function SubjectPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ subject: string }>;
+  searchParams: Promise<{ grade?: string | string[] }>;
 }) {
   const { subject: subjectSlug } = await params;
+  const gradeParam = (await searchParams).grade;
   const result = await loadSubject(subjectSlug);
   if (result.kind === 'not_found') notFound();
 
@@ -42,7 +45,10 @@ export default async function SubjectPage({
     );
   }
 
-  const { subject, gradeGroups } = result;
+  const { subject } = result;
+  // /subjects links here with ?grade=N to show that grade alone; an unknown grade shows them all.
+  const picked = result.gradeGroups.find((group) => String(group.grade) === gradeParam);
+  const gradeGroups = picked ? [picked] : result.gradeGroups;
   const topicCount = gradeGroups.reduce((acc, group) => acc + group.topics.length, 0);
   const lessonCount = gradeGroups.reduce(
     (acc, group) => acc + group.topics.reduce((sum, topic) => sum + topic.lessons.length, 0),
@@ -58,6 +64,7 @@ export default async function SubjectPage({
             <SaveOfflineButton urls={gradeGroups.flatMap((group) => group.topics.flatMap((topic) => topic.lessons.map((lesson) => `/${subject.slug}/${lesson.slug}`)))} />
           </div>
         )}
+        {picked && result.gradeGroups.length > 1 && <ShowAllGrades href={`/${subject.slug}`} />}
         {gradeGroups.length === 0 ? (
           <InDevelopmentNotice />
         ) : (

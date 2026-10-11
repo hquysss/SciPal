@@ -120,8 +120,8 @@ export function SiteSwitches({ initial }: { initial?: SiteSettings }) {
       </fieldset>
       <p className="text-sm text-ink-muted">
         {t({
-          vi: 'Giáo sư SciPal và nói chuyện bằng giọng nói bật/tắt ở trang Cài đặt AI. Admin vẫn thấy mọi tính năng để kiểm tra khi đang tắt.',
-          en: 'The SciPal Professor and voice chat are switched on the AI settings page. Admins still see every feature, to check it while it is off.',
+          vi: 'Giáo sư Quý và nói chuyện bằng giọng nói bật/tắt ở trang Cài đặt AI. Admin vẫn thấy mọi tính năng để kiểm tra khi đang tắt.',
+          en: 'Professor Quys and voice chat are switched on the AI settings page. Admins still see every feature, to check it while it is off.',
         })}
       </p>
 

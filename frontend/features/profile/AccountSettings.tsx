@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { BookOpen, Gauge, GraduationCap, Languages, LifeBuoy, LogOut, Palette, UserRound } from 'lucide-react';
+import { BookOpen, CreditCard, Gauge, GraduationCap, Languages, LifeBuoy, LogOut, Palette, UserRound } from 'lucide-react';
 import { useLanguage } from '@scipal/hooks';
 import { buttonVariants } from '@/components/ui/button';
 import { createBrowserClient } from '@/lib/supabase';
@@ -165,13 +165,19 @@ export function AccountSettings({ currentRole = 'student', educationPreference, 
 
           {isAuthenticated && (
             <div className={row}>
+              <div><div className={rowLabel}><CreditCard aria-hidden="true" className="h-4 w-4" /><span>{t({en:'Payment methods',vi:'Phương thức thanh toán'})}</span></div><p className={rowHint}>{t({en:'Choose a payment provider and manage auto-renewal',vi:'Chọn cổng thanh toán và quản lý tự gia hạn'})}</p></div>
+              <Link href="/profile/payment-methods" className={buttonVariants({variant:'outline',className:'self-start sm:self-auto'})}>{t({en:'Manage',vi:'Quản lý'})}</Link>
+            </div>
+          )}
+          {isAuthenticated && (
+            <div className={row}>
               <div>
                 <div className={rowLabel}>
                   <Gauge aria-hidden="true" className="h-4 w-4" />
                   <span>{t({ en: 'My plan', vi: 'Gói của tôi' })}</span>
                 </div>
                 <div className={rowHint}>
-                  {t({ en: 'Your plan and how many SciPal Professor and exam turns are left', vi: 'Gói đang dùng và số lượt Giáo sư SciPal, lượt thi còn lại' })}
+                  {t({ en: 'Your plan and how many Professor Quys and exam turns are left', vi: 'Gói đang dùng và số lượt Giáo sư Quý, lượt thi còn lại' })}
                 </div>
               </div>
               <Link href="/profile/plan" className={buttonVariants({ variant: 'outline', className: 'self-start sm:self-auto' })}>

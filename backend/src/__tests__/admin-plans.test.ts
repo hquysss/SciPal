@@ -40,7 +40,7 @@ describe('GET /api/admin/plans', () => {
     expect(body.plans.map((p: { code: string }) => p.code)).toEqual(['student_free', 'student_plus', 'teacher_free', 'teacher_pro']);
     expect(body.plans[0]).toMatchObject({ version: 3, description: { en: 'd', vi: 'd vi' }, prices: null });
     expect(body.plans[0].limits).toEqual([{ metric: 'tutor_requests', kind: 'daily', limit: 5 }, { metric: 'graded_exam_attempts', kind: 'monthly', limit: 3 }]);
-    expect(body.plans[1].prices).toEqual({ month: 39000, year: 390000 });
+    expect(body.plans[1].prices).toEqual({ month: 39000, quarter: null, half_year: null, year: 390000 });
     expect(body.audit[0]).toMatchObject({ planCode: 'student_free', reason: 'Thử', createdAt: '2026-09-29T02:00:00.000Z' });
     await app.close();
   });

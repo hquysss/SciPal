@@ -3,6 +3,8 @@ import type { FastifyPluginAsync, FastifyReply, FastifyRequest } from 'fastify';
 import { z } from 'zod';
 import { payosFromEnv, type PayosClient } from '../billing/providers/payos.js';
 import { momoFromEnv, type MomoClient } from '../billing/providers/momo.js';
+import { vnpayFromEnv, vnpayTimestamp, type VnpayClient } from '../billing/providers/vnpay.js';
+import { applyVnpayPayment } from '../billing/vnpayPayments.js';
 import { classifyReconciliationReason } from '../billing/reconciliationReason.js';
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -31,7 +33,7 @@ const UNAVAILABLE = err('BILLING_UNAVAILABLE', 'Chưa tải được dữ liệu
 
 type IncidentRow = {
   incident_id: string;
-  provider: 'payos' | 'momo';
+  provider: 'payos' | 'momo' | 'vnpay';
   event_id: string | null;
   attempt_id: string | null;
   order_id: string | null;
@@ -56,10 +58,11 @@ type IncidentRow = {
 };
 
 type PageResult = { items: IncidentRow[]; total_count: number };
-type PaymentAttempt = { id: string; provider: 'payos' | 'momo'; provider_reference: string; status: string };
+type PaymentAttempt = { id: string; provider: 'payos' | 'momo' | 'vnpay'; provider_reference: string; status: string; created_at?: string };
 
-export const billingReconciliationRoutes: FastifyPluginAsync<{ payos?: PayosClient | null; momo?: MomoClient | null }> = async (app, opts) => {
+export const billingReconciliationRoutes: FastifyPluginAsync<{ payos?: PayosClient | null; momo?: MomoClient | null; vnpay?: VnpayClient | null }> = async (app, opts) => {
   const payos = opts.payos === undefined ? payosFromEnv() : opts.payos;
+  const vnpay = opts.vnpay === undefined ? vnpayFromEnv() : opts.vnpay;
   const momo = opts.momo === undefined ? momoFromEnv() : opts.momo;
   const actor = (request: FastifyRequest) => (request as FastifyRequest & { user?: { app_metadata?: { app_role?: string } } }).user;
   const requireAdmin = async (request: FastifyRequest, reply: FastifyReply) => {
@@ -123,9 +126,9 @@ export const billingReconciliationRoutes: FastifyPluginAsync<{ payos?: PayosClie
     if (!UUID.test(orderId)) return reply.code(404).send(NOT_FOUND);
     const attemptResult = await app.supabase
       .from('billing_payment_attempts')
-      .select('id, provider, provider_reference, status')
+      .select('id, provider, provider_reference, status, created_at')
       .eq('order_id', orderId)
-      .in('provider', ['payos', 'momo'])
+      .in('provider', ['payos', 'momo', 'vnpay'])
       .order('updated_at', { ascending: false })
       .limit(1)
       .maybeSingle();
@@ -135,6 +138,15 @@ export const billingReconciliationRoutes: FastifyPluginAsync<{ payos?: PayosClie
     }
     const attempt = attemptResult.data as PaymentAttempt | null;
     if (!attempt) return reply.code(404).send(NOT_FOUND);
+    if (attempt.provider === 'vnpay') {
+      if (!vnpay || !attempt.created_at) return reply.code(503).send(UNAVAILABLE);
+      try {
+        const payment = await vnpay.queryTransaction({ reference: attempt.provider_reference, transactionDate: vnpayTimestamp(attempt.created_at), ipAddr: request.ip });
+        if (!payment) return { orderId, providerStatus: 'UNCONFIRMED', results: [] };
+        const result = await applyVnpayPayment(app.supabase, payment, 'admin_reconciliation');
+        return { orderId, providerStatus: payment.outcome === 'paid' ? 'PAID' : 'FAILED', results: [{ transactionId: payment.transactionId, result }] };
+      } catch { return reply.code(503).send(UNAVAILABLE); }
+    }
     if (attempt.provider === 'momo') {
       if (!momo) return reply.code(503).send(MOMO_PROVIDER_ERROR);
       if (attempt.status === 'pending') {

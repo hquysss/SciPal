@@ -30,6 +30,19 @@ Cho chủ dự án/admin vận hành bán gói. Chi tiết thiết kế: `docs/s
 5. Người dùng hủy tại `/profile/plan`. Quyền hiện tại giữ tới `paid_through`; khi hủy đang chờ xác nhận, worker không tạo lượt thu mới. Nếu một khoản thu đã ở trạng thái đang xử lý tại MoMo, nó có thể hoàn tất trước khi lệnh hủy có hiệu lực.
 6. Trước khi bật production, hoàn thành giao dịch thử trên sandbox với success, decline, duplicate IPN, webhook bị trễ, timeout khi charge, hủy thành công và hủy chưa xác nhận. Bộ test local không thay thế bước này.
 
+## 3b. VNPAY (thanh toán một lần và tự gia hạn, mặc định đóng)
+
+- Bật thanh toán một lần: `VNPAY_TMN_CODE`, `VNPAY_HASH_SECRET`, `VNPAY_ENV` (`sandbox` hoặc `production`) ở `backend/.env`. Thiếu một biến thì VNPAY đóng; `sandbox` hiện nhãn "chế độ thử nghiệm" trên trang giá.
+- Bật tự gia hạn (riêng, opt-in): `VNPAY_RECURRING_ENABLED=true`, `VNPAY_RECURRING_BASE_URL`, `VNPAY_RECURRING_CLIENT_ID`, `VNPAY_RECURRING_CLIENT_SECRET`, `VNPAY_RECURRING_USERNAME`, `VNPAY_RECURRING_PASSWORD`, `VNPAY_RECURRING_IPN_ENCODING`, và `VNPAY_PUBLIC_API_URL` (https, URL công khai của backend cho IPN/redirect).
+- Return URL không cấp gói; chỉ IPN có chữ ký hoặc truy vấn giao dịch được xác minh mới cấp, một lần. Một tài khoản chỉ có một ủy quyền gia hạn (MoMo hoặc VNPAY); đổi cổng phải hủy cái cũ trước, hủy chưa xác nhận thì giữ trạng thái chờ hủy và gói đã trả.
+- Migration `momo_cancellation_ambiguity` và `vnpay_gateway` đã áp lên Supabase SciPal ngày 11/10 (theo thứ tự đó); VNPAY vẫn đóng cho tới khi có biến môi trường. Chưa có giao dịch VNPAY sandbox/production thật nào được xác minh, và SQL test chưa chạy.
+
+## 3c. Gói 3 tháng và 6 tháng
+
+- Chu kỳ: `month`, `quarter` (3 tháng), `half_year` (6 tháng), `year`. Gói 3 và 6 tháng chỉ thanh toán một lần (payOS/VNPAY), không tự gia hạn; checkout từ chối MoMo hoặc tự gia hạn cho hai chu kỳ này.
+- Admin đổi giá ở `/admin/plans`; để trống giá 3 hoặc 6 tháng để ngừng bán. Giá tháng và năm luôn phải có.
+- Migration `billing_quarter_half_year` đã áp lên Supabase SciPal ngày 11/10; các hàm gia hạn MoMo/VNPAY cũng dùng `billing_interval_months`.
+
 ## 4. Tắt bán khẩn cấp (rollback)
 
 - Đặt `BILLING_CHECKOUT_DISABLED=true` ở backend rồi deploy lại: không tạo checkout mới và cron không bắt đầu lần gia hạn nào; **webhook, hủy mandate và trang đơn vẫn hoạt động** — khoản MoMo/payOS đã nhận vẫn được ghi nhận hoặc đưa vào đối soát.
@@ -63,6 +76,6 @@ Cho chủ dự án/admin vận hành bán gói. Chi tiết thiết kế: `docs/s
 
 ## 7. Chưa có (theo plan)
 
-- Thẻ VNPAY (Task 7) — cần hồ sơ và sandbox VNPAY.
+- VNPAY (Task 7): code và migration đã có (migration đã áp), mặc định đóng; cần hồ sơ merchant và sandbox trước khi mở.
 - Giao dịch MoMo sandbox/production thật chưa được xác minh trong lần triển khai code này.
 - Thu hồi gói sau hoàn tiền; thông báo email khi thanh toán.

@@ -186,7 +186,7 @@ describe('POST /api/admin/billing/orders/:id/reconcile', () => {
     const response = await app.inject({ method: 'POST', url: `/api/admin/billing/orders/${ORDER}/reconcile` });
 
     expect(response.statusCode).toBe(200);
-    expect(attempt.inCalls).toContainEqual(['provider', ['payos', 'momo']]);
+    expect(attempt.inCalls).toContainEqual(['provider', ['payos', 'momo', 'vnpay']]);
     expect(payos.getPaymentLink).toHaveBeenCalledWith(1234567890);
     expect(rpcCalls).toHaveLength(2);
     expect(attempt.updated).toHaveLength(0);

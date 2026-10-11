@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { ArrowRight, Check, Sparkles } from 'lucide-react';
 import { useLanguage } from '@scipal/hooks';
 import type { BillingAudience, BillingInterval } from '@scipal/types';
+import { INTERVALS, INTERVAL_LABEL, INTERVAL_MONTHS, INTERVAL_NOUN, INTERVAL_SPAN } from '@/features/billing/intervals';
 import { formatVnd, limitText, type Catalog } from '@/features/billing/billingApi';
 import { useCountUp, useInView } from './countUp';
 import { tilt, untilt } from './tilt';
@@ -47,7 +48,8 @@ export function PricingSection({
   const paid = plans.find((p) => p.prices.length > 0);
   const price = paid?.prices.find((p) => p.interval === interval);
   const monthly = paid?.prices.find((p) => p.interval === 'month');
-  const yearMonths = price && monthly && interval === 'year' ? Math.round(price.amountVnd / monthly.amountVnd) : null;
+  const paidMonths = price && monthly && interval !== 'month' ? Math.round(price.amountVnd / monthly.amountVnd) : null;
+  const offered = INTERVALS.filter((i) => paid?.prices.some((p) => p.interval === i));
 
   return (
     <section ref={sectionRef} className={styles.pricing} aria-labelledby="pricing-title" data-inview={inView}>
@@ -65,8 +67,8 @@ export function PricingSection({
         </h2>
         <p className={styles.lead}>
           {t({
-            en: 'Every lesson stays free. A paid plan adds SciPal Professor questions, graded exams and teaching tools.',
-            vi: 'Mọi bài học vẫn miễn phí. Gói trả phí mở thêm lượt hỏi Giáo sư SciPal, lượt thi có chấm điểm và công cụ dạy học.',
+            en: 'Every lesson stays free. A paid plan adds Professor Quys questions, graded exams and teaching tools.',
+            vi: 'Mọi bài học vẫn miễn phí. Gói trả phí mở thêm lượt hỏi Giáo sư Quý, lượt thi có chấm điểm và công cụ dạy học.',
           })}
         </p>
         <div className={styles.switches}>
@@ -79,12 +81,11 @@ export function PricingSection({
             </button>
           </div>
           <div role="group" aria-label={t({ en: 'Billing period', vi: 'Chu kỳ thanh toán' })} className={styles.segment}>
-            <button type="button" aria-pressed={interval === 'month'} onClick={() => setInterval('month')}>
-              {t({ en: 'Monthly', vi: 'Theo tháng' })}
-            </button>
-            <button type="button" aria-pressed={interval === 'year'} onClick={() => setInterval('year')}>
-              {t({ en: 'Yearly', vi: 'Theo năm' })}
-            </button>
+            {offered.map((value) => (
+              <button key={value} type="button" aria-pressed={interval === value} onClick={() => setInterval(value)}>
+                {t(INTERVAL_LABEL[value])}
+              </button>
+            ))}
           </div>
         </div>
       </div>
@@ -130,11 +131,11 @@ export function PricingSection({
               </h3>
               <p className={styles.price} key={`${audience}-${interval}`}>
                 <CountingPrice amount={price?.amountVnd ?? 0} run={inView} className={`${styles.amount} ${styles.amountPaid}`} />
-                <span className={styles.per}>{interval === 'year' ? t({ en: '/ year', vi: '/ năm' }) : t({ en: '/ month', vi: '/ tháng' })}</span>
+                <span className={styles.per}>{`/ ${t(INTERVAL_NOUN[interval])}`}</span>
               </p>
               <p className={styles.note}>
-                {interval === 'year'
-                  ? `${t({ en: 'Paid up front for 1 year', vi: 'trả trước 1 năm' })}${yearMonths !== null && yearMonths < 12 ? ` · ${t({ en: `the price of ${yearMonths} months`, vi: `bằng giá ${yearMonths} tháng` })}` : ''}`
+                {interval !== 'month'
+                  ? `${t({ en: `Paid up front for ${INTERVAL_SPAN[interval].en}`, vi: `trả trước ${INTERVAL_SPAN[interval].vi}` })}${paidMonths !== null && paidMonths < INTERVAL_MONTHS[interval] ? ` · ${t({ en: `the price of ${paidMonths} months`, vi: `bằng giá ${paidMonths} tháng` })}` : ''}`
                   : t({ en: 'No auto-renewal; the plan runs to the end of the period you paid for.', vi: 'Không tự gia hạn; gói chạy tới hết kỳ đã trả.' })}
               </p>
               <ul className={styles.limits}>
@@ -152,7 +153,7 @@ export function PricingSection({
                 ))}
               </ul>
               {catalog.checkoutOpen ? (
-                <Link href="/pricing" className={styles.paidAction}>
+                <Link href={`/profile/payment-methods?audience=${audience}&interval=${interval}`} className={styles.paidAction}>
                   {t({ en: 'Upgrade now', vi: 'Nâng cấp ngay' })}
                   <ArrowRight aria-hidden="true" size={18} />
                 </Link>

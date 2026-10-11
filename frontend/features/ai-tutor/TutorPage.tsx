@@ -145,7 +145,7 @@ export function TutorChatFrame({ children }: { children: ReactNode }) {
   const { t } = useLanguage();
   return (
     <section
-      aria-label={t({ en: 'Chat with the Professor Quys', vi: 'Trò chuyện với Giáo sư Quý' })}
+      aria-label={t({ en: 'Chat with Professor Quys', vi: 'Trò chuyện với Giáo sư Quý' })}
       className="flex h-[calc(100dvh-13rem)] min-h-[28rem] flex-col overflow-hidden rounded-3xl border border-line bg-surface shadow-[0_24px_50px_-34px_color-mix(in_srgb,var(--ink)_55%,transparent)] lg:h-[calc(100dvh-11rem)]"
     >
       <div className={styles.bar}>

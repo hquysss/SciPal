@@ -3,7 +3,7 @@ import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 // Maintenance mode (site_settings.maintenance): the API answers 503 to everyone but admins, except
 // what must keep working: the health check and the payment provider's webhook.
 
-const OPEN = new Set(['/health', '/api/billing/webhooks/payos', '/api/billing/webhooks/momo', '/api/internal/billing/renewals/run', '/api/billing/renewal/cancel']);
+const OPEN = new Set(['/health', '/api/billing/webhooks/vnpay', '/api/billing/webhooks/vnpay/recurring', '/api/internal/billing/vnpay/renewals/run', '/api/billing/renewal/vnpay/cancel', '/api/billing/webhooks/payos', '/api/billing/webhooks/momo', '/api/internal/billing/renewals/run', '/api/billing/renewal/cancel']);
 
 export const MAINTENANCE_BODY = {
   code: 'MAINTENANCE',

@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { useLanguage } from '@scipal/hooks';
 import { EmptyState } from '../../components/ui/empty-state';
 import { EDUCATION_LEVEL_LABELS, type EducationLevel } from '../landing/educationLevel';
@@ -29,5 +30,16 @@ export function InDevelopmentNotice() {
       title={t({ en: 'In development', vi: 'Đang biên soạn' })}
       description={t({ en: 'Lessons for this subject are being written.', vi: 'Bài học của môn này đang được biên soạn.' })}
     />
+  );
+}
+
+export function ShowAllGrades({ href }: { href: string }) {
+  const { t } = useLanguage();
+  return (
+    <p className="mb-6 text-sm">
+      <Link href={href} className="font-semibold text-accent underline-offset-4 hover:underline">
+        {t({ en: 'Show all grades', vi: 'Xem tất cả các lớp' })}
+      </Link>
+    </p>
   );
 }

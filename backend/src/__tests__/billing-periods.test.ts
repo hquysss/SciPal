@@ -29,3 +29,10 @@ describe('billing periods', () => {
     expect(() => quotaPeriod(new Date(Number.NaN))).toThrow(RangeError);
   });
 });
+
+describe('paidThrough for 3-month and 6-month plans', () => {
+  it('adds 3 and 6 calendar months, clamping the day', () => {
+    expect(paidThrough(new Date('2026-10-31T00:00:00Z'), 'quarter')).toBe('2027-01-31T00:00:00.000Z');
+    expect(paidThrough(new Date('2026-08-31T00:00:00Z'), 'half_year')).toBe('2027-02-28T00:00:00.000Z');
+  });
+});

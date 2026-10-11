@@ -1,6 +1,8 @@
 import type { FastifyPluginAsync, FastifyRequest } from 'fastify';
 import { createBillingRepository } from '../billing/repository.js';
 import { checkoutDisabled, payosFromEnv } from '../billing/providers/payos.js';
+import { vnpayFromEnv } from '../billing/providers/vnpay.js';
+import { vnpayRecurringFromEnv } from '../billing/providers/vnpayRecurring.js';
 import { momoRenewalsAvailable } from '../billing/providers/momo.js';
 
 // The public plan catalog and the signed-in account's plan (billing plan Task 9, without payment).
@@ -8,7 +10,7 @@ import { momoRenewalsAvailable } from '../billing/providers/momo.js';
 // Checkout opens once payOS credentials are configured in the backend environment.
 
 const PLAN_ORDER = ['student_free', 'student_plus', 'teacher_free', 'teacher_pro'] as const;
-const INTERVAL_ORDER = ['month', 'year'] as const;
+const INTERVAL_ORDER = ['month', 'quarter', 'half_year', 'year'] as const;
 // Student metrics first, then a teacher's classes, exams, imports and AI.
 const METRIC_ORDER = ['tutor_requests', 'voice_minutes', 'graded_exam_attempts', 'active_classes', 'students_per_class', 'active_authored_exams', 'import_files', 'author_ai_requests'];
 const UNAVAILABLE = { code: 'BILLING_UNAVAILABLE', error: 'Chưa tải được thông tin gói. Thử lại sau.', error_en: 'Plan information is not available. Try again later.' };
@@ -41,9 +43,10 @@ export const billingRoutes: FastifyPluginAsync = async (app) => {
         const planPrices = INTERVAL_ORDER.flatMap((interval) => priceRows
           .filter((p) => p.plan_code === code && p.interval === interval)
           .map((p) => ({ id: p.id, interval, amountVnd: p.amount_vnd })));
-        // A paid plan needs exactly one monthly and one yearly price; a free plan has none.
+        // A paid plan needs a monthly and a yearly price (3 and 6 months are optional); a free plan has none.
         const paid = code.endsWith('_plus') || code.endsWith('_pro');
-        if (paid ? planPrices.length !== 2 || planPrices[0].interval === planPrices[1].interval : planPrices.length !== 0) {
+        const hasPrice = (interval: string) => planPrices.some((p) => p.interval === interval);
+        if (paid ? !hasPrice('month') || !hasPrice('year') : planPrices.length !== 0) {
           throw new IncompleteCatalog(`bad prices for ${code}`);
         }
         return {
@@ -64,7 +67,10 @@ export const billingRoutes: FastifyPluginAsync = async (app) => {
       reply.header('Cache-Control', 'public, max-age=300');
       const payosCheckoutOpen = payosFromEnv() !== null && !checkoutDisabled();
       const momoAutoRenewOpen = momoRenewalsAvailable() && !checkoutDisabled();
-      return { plans: catalog, checkoutOpen: payosCheckoutOpen || momoAutoRenewOpen, payosCheckoutOpen, momoAutoRenewOpen };
+      const vnpayCheckoutOpen = vnpayFromEnv() !== null && !checkoutDisabled();
+      const apiUrl = process.env.VNPAY_PUBLIC_API_URL;
+      const vnpayAutoRenewOpen = vnpayCheckoutOpen && vnpayRecurringFromEnv() !== null && Boolean(apiUrl && URL.canParse(apiUrl) && new URL(apiUrl).protocol === 'https:');
+      return { plans: catalog, checkoutOpen: payosCheckoutOpen || momoAutoRenewOpen || vnpayCheckoutOpen, payosCheckoutOpen, momoAutoRenewOpen, vnpayCheckoutOpen, vnpayAutoRenewOpen, vnpaySandbox: vnpayCheckoutOpen && process.env.VNPAY_ENV === 'sandbox' };
     } catch (error) {
       request.log.error({ err: error }, 'Billing catalog could not be read');
       return reply.code(503).send(UNAVAILABLE);
@@ -88,22 +94,32 @@ export const billingRoutes: FastifyPluginAsync = async (app) => {
       if (subscription.error) throw subscription.error;
       const sub = subscription.data as { plan_code: string; paid_through: string; renewal_mode: string; mandate_id: string | null } | null;
       const paid = sub && sub.plan_code.startsWith(`${audience}_`) && new Date(sub.paid_through) > now ? sub : null;
-      let renewal = { status: 'manual', interval: null as 'month' | 'year' | null, amountVnd: null as number | null, nextChargeAt: null as string | null };
+      let renewal = { status: 'manual', interval: null as 'month' | 'year' | null, amountVnd: null as number | null, nextChargeAt: null as string | null, provider: undefined as 'momo' | 'vnpay' | undefined };
       if (sub?.mandate_id) {
         const mandate = await supabase.from('billing_mandates')
-          .select('status, interval, amount_vnd, next_charge_at')
+          .select('status, interval, amount_vnd, next_charge_at, provider')
           .eq('id', sub.mandate_id)
           .eq('user_id', user.id)
           .maybeSingle();
         if (mandate.error) throw mandate.error;
         if (mandate.data) {
-          const data = mandate.data as { status: string; interval: 'month' | 'year'; amount_vnd: number; next_charge_at: string | null };
+          const data = mandate.data as { status: string; interval: 'month' | 'year'; amount_vnd: number; next_charge_at: string | null; provider?: string };
           renewal = {
             status: sub.renewal_mode === 'auto' && data.status === 'active' ? 'active' : data.status,
             interval: data.interval,
             amountVnd: data.amount_vnd,
+            provider: data.provider === 'vnpay' ? 'vnpay' : 'momo',
             nextChargeAt: data.next_charge_at ? new Date(data.next_charge_at).toISOString() : null,
           };
+        }
+      }
+      if (vnpayFromEnv()) {
+        const pending = await supabase.from('billing_mandates').select('status, interval, amount_vnd, next_charge_at')
+          .eq('user_id', user.id).eq('provider', 'vnpay').in('status', ['pending', 'cancel_pending', 'paused', 'failed']).order('created_at', { ascending: false }).limit(1).maybeSingle();
+        if (pending.error) throw pending.error;
+        if (pending.data) {
+          const data = pending.data as { status: string; interval: 'month' | 'year'; amount_vnd: number; next_charge_at: string | null };
+          renewal = { status: data.status, interval: data.interval, amountVnd: data.amount_vnd, nextChargeAt: data.next_charge_at, provider: 'vnpay' };
         }
       }
       return {

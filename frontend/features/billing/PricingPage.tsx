@@ -6,6 +6,7 @@ import { ArrowRight, BookOpen, Check, QrCode, RefreshCcw, Sparkles } from 'lucid
 import { useLanguage } from '@scipal/hooks';
 import { createBrowserClient } from '@scipal/supabase';
 import type { BillingAudience, BillingInterval } from '@scipal/types';
+import { INTERVALS, INTERVAL_LABEL, INTERVAL_MONTHS, INTERVAL_NOUN, INTERVAL_SPAN, approxDays, canAutoRenew, savePercent } from './intervals';
 import { Alert } from '@/components/ui/alert';
 import { PricingLoadError } from './PricingLoadError';
 import shared from '@/features/landing/pricing.module.css';
@@ -18,6 +19,10 @@ type Props = {
   checkoutOpen: boolean;
   payosCheckoutOpen?: boolean;
   momoAutoRenewOpen?: boolean;
+  vnpayCheckoutOpen?: boolean;
+  vnpayAutoRenewOpen?: boolean;
+  vnpaySandbox?: boolean;
+  initialProvider?: 'payos' | 'vnpay' | 'momo';
   initialAudience?: BillingAudience;
   initialInterval?: BillingInterval;
   /** Role of the signed-in viewer, null for a visitor; read from the session when not given. */
@@ -34,19 +39,19 @@ const FREE_START: Record<BillingAudience, string> = { student: '/subjects', teac
 const FAQ: Array<{ q: Bilingual; a: Bilingual }> = [
   {
     q: { vi: 'Gói có tự gia hạn không?', en: 'Does a plan renew by itself?' },
-    a: { vi: 'QR payOS thanh toán từng kỳ. Gia hạn MoMo chỉ bật khi bạn chủ động chọn và đồng ý rõ số tiền, chu kỳ; có thể hủy trong mục Gói của tôi.', en: 'payOS QR is a one-time payment. MoMo renews only when you opt in and agree to the amount and billing period; cancel it from My Plan.' },
+    a: { vi: 'Thanh toán một lần qua payOS hoặc VNPAY. Tự gia hạn qua MoMo/VNPAY chỉ bật khi bạn chủ động chọn và đồng ý rõ số tiền, chu kỳ; có thể hủy trong mục Gói của tôi.', en: 'payOS and VNPAY offer one-time payments. MoMo/VNPAY renew only when you opt in and agree to the amount and billing period; cancel it from My Plan.' },
   },
   {
     q: { vi: 'Thanh toán như thế nào?', en: 'How do I pay?' },
-    a: { vi: 'Quét mã VietQR bằng ứng dụng ngân hàng, qua cổng payOS. Gói có hiệu lực ngay khi ngân hàng xác nhận. SciPal không nhận và không lưu thông tin thẻ hay tài khoản ngân hàng.', en: 'Scan the VietQR code with your banking app, through payOS. The plan starts as soon as the bank confirms. SciPal never receives or stores card or bank details.' },
+    a: { vi: 'Chọn payOS để chuyển khoản VietQR hoặc VNPAY để xem phương thức được hỗ trợ. Gói có hiệu lực ngay khi ngân hàng xác nhận. SciPal không nhận và không lưu thông tin thẻ hay tài khoản ngân hàng.', en: 'Choose payOS for VietQR bank transfer or VNPAY for supported payment methods. The plan starts as soon as the bank confirms. SciPal never receives or stores card or bank details.' },
   },
   {
     q: { vi: 'Không mua gói thì còn học được không?', en: 'Can I learn without a plan?' },
-    a: { vi: 'Được. Mọi bài học đều miễn phí; gói trả phí chỉ nâng số lượt Giáo sư SciPal, lượt thi có chấm điểm và công cụ dạy học.', en: 'Yes. Every lesson is free; a paid plan only raises SciPal Professor questions, graded exams and teaching tools.' },
+    a: { vi: 'Được. Mọi bài học đều miễn phí; gói trả phí chỉ nâng số lượt Giáo sư Quý, lượt thi có chấm điểm và công cụ dạy học.', en: 'Yes. Every lesson is free; a paid plan only raises Professor Quys questions, graded exams and teaching tools.' },
   },
 ];
 
-export function PricingPage({ plans, checkoutOpen, payosCheckoutOpen = checkoutOpen, momoAutoRenewOpen = false, initialAudience = 'student', initialInterval = 'month', viewerRole: givenRole }: Props) {
+export function PricingPage({ plans, checkoutOpen, payosCheckoutOpen = checkoutOpen, momoAutoRenewOpen = false, vnpayCheckoutOpen = false, vnpayAutoRenewOpen = false, vnpaySandbox = false, initialProvider, initialAudience = 'student', initialInterval = 'month', viewerRole: givenRole }: Props) {
   const { t } = useLanguage();
   // undefined while the session is being read: the buy button waits.
   const [viewerRole, setViewerRole] = useState<ViewerRole | null | undefined>(givenRole);
@@ -65,6 +70,10 @@ export function PricingPage({ plans, checkoutOpen, payosCheckoutOpen = checkoutO
   }, [givenRole, checkoutOpen]);
   const [audience, setAudience] = useState<BillingAudience>(initialAudience);
   const [interval, setInterval] = useState<BillingInterval>(initialInterval);
+  const [oneTimeProvider, setOneTimeProvider] = useState<'payos' | 'vnpay'>(initialProvider === 'vnpay' && vnpayCheckoutOpen ? 'vnpay' : initialProvider === 'momo' || initialProvider === 'payos' ? 'payos' : vnpayCheckoutOpen && !payosCheckoutOpen ? 'vnpay' : 'payos');
+  const renewalProvider = oneTimeProvider === 'vnpay' ? 'vnpay' : 'momo';
+  const canRenew = (interval === 'month' || interval === 'year') && (renewalProvider === 'vnpay' ? vnpayAutoRenewOpen : momoAutoRenewOpen);
+  const renewalName = renewalProvider === 'vnpay' ? 'VNPAY' : 'MoMo';
   const [autoRenew, setAutoRenew] = useState(false);
   const [buying, setBuying] = useState<string | null>(null);
   const [buyError, setBuyError] = useState<Bilingual | null>(null);
@@ -72,8 +81,8 @@ export function PricingPage({ plans, checkoutOpen, payosCheckoutOpen = checkoutO
   const keys = useRef(new Map<string, string>());
 
   const buy = async (priceId: string, renew: boolean) => {
-    const provider = renew ? 'momo' : 'payos';
-    if ((renew && !momoAutoRenewOpen) || (!renew && !payosCheckoutOpen)) return;
+    const provider = renew ? renewalProvider : oneTimeProvider;
+    if ((renew && !canRenew) || (!renew && !(oneTimeProvider === 'vnpay' ? vnpayCheckoutOpen : payosCheckoutOpen))) return;
     setBuying(priceId);
     setBuyError(null);
     const checkoutKey = `${provider}:${priceId}`;
@@ -82,12 +91,12 @@ export function PricingPage({ plans, checkoutOpen, payosCheckoutOpen = checkoutO
       key = newKey();
       keys.current.set(checkoutKey, key);
     }
-    let result = await startCheckout(priceId, key, provider);
+    let result = await startCheckout(priceId, key, provider, renew);
     // That order was cancelled or ran out: this click starts a new one.
     if (result.ok && ['cancelled', 'expired', 'failed'].includes(result.data.status)) {
       key = newKey();
       keys.current.set(checkoutKey, key);
-      result = await startCheckout(priceId, key, provider);
+      result = await startCheckout(priceId, key, provider, renew);
     }
     if (!result.ok) {
       setBuyError(result.error);
@@ -103,9 +112,7 @@ export function PricingPage({ plans, checkoutOpen, payosCheckoutOpen = checkoutO
 
   const shown = plans.filter((plan) => plan.audience === audience);
   const firstPaid = shown.find((plan) => plan.prices.length > 0);
-  const firstMonth = firstPaid?.prices.find((p) => p.interval === 'month');
-  const firstYear = firstPaid?.prices.find((p) => p.interval === 'year');
-  const savePercent = firstMonth && firstYear ? Math.round((1 - firstYear.amountVnd / (firstMonth.amountVnd * 12)) * 100) : 0;
+  const offered = INTERVALS.filter((i) => firstPaid?.prices.some((p) => p.interval === i));
 
   const action = (plan: PublicPlan, paid: boolean, price: PublicPlan['prices'][number] | undefined) => {
     if (!paid) {
@@ -151,11 +158,21 @@ export function PricingPage({ plans, checkoutOpen, payosCheckoutOpen = checkoutO
       );
     }
     if (!price) return null;
-    const period = price.interval === 'year' ? t({ en: 'year', vi: 'năm' }) : t({ en: 'month', vi: 'tháng' });
-    const canBuy = autoRenew ? momoAutoRenewOpen : payosCheckoutOpen;
+    const period = t(INTERVAL_NOUN[price.interval]);
+    const canBuy = autoRenew ? canRenew : oneTimeProvider === 'vnpay' ? vnpayCheckoutOpen : payosCheckoutOpen;
     return (
       <>
-        {momoAutoRenewOpen && (
+        {vnpayCheckoutOpen && (
+          <label className="mb-3 flex flex-col gap-2 text-sm text-ink-muted">
+            <span>{t({ vi: 'Cổng thanh toán', en: 'Payment provider' })}</span>
+            <select value={oneTimeProvider} onChange={(event) => { setOneTimeProvider(event.currentTarget.value === 'vnpay' ? 'vnpay' : 'payos'); setAutoRenew(false); }} disabled={buying !== null} className="min-h-11 rounded-lg border border-edge bg-surface px-3 text-ink focus-visible:outline focus-visible:outline-2 focus-visible:outline-focus">
+              <option value="payos" disabled={!payosCheckoutOpen}>payOS · VietQR</option>
+              <option value="vnpay">VNPAY</option>
+            </select>
+          </label>
+        )}
+        {oneTimeProvider === 'vnpay' && vnpaySandbox && <p className={s.small}>{t({ vi: 'VNPAY đang ở chế độ thử nghiệm, không thu tiền thật.', en: 'VNPAY is in test mode; no real money is charged.' })}</p>}
+        {canRenew && canAutoRenew(price.interval) && (
           <label className="mb-3 flex min-h-11 cursor-pointer items-start gap-2 text-sm text-ink-muted">
             <input
               type="checkbox"
@@ -165,8 +182,8 @@ export function PricingPage({ plans, checkoutOpen, payosCheckoutOpen = checkoutO
             />
             <span>
               {t({
-                en: `After this payment, MoMo will charge ${formatVnd(price.amountVnd)} each ${period} starting next period. Cancel from My Plan; a charge already in progress may finish.`,
-                vi: `Sau khi thanh toán kỳ này, MoMo tự thu ${formatVnd(price.amountVnd)} mỗi ${period} từ kỳ tiếp theo. Bạn có thể hủy trong mục Gói của tôi; lần thu đã bắt đầu có thể hoàn tất.`,
+                en: `After authorization, ${renewalName} will charge ${formatVnd(price.amountVnd)} each ${period} for the first period, then each following period. Cancel from My Plan; a charge already in progress may finish.`,
+                vi: `Sau khi bạn ủy quyền, ${renewalName} tự thu ${formatVnd(price.amountVnd)} mỗi ${period} cho kỳ đầu và các kỳ tiếp theo. Bạn có thể hủy trong mục Gói của tôi; lần thu đã bắt đầu có thể hoàn tất.`,
               })}
             </span>
           </label>
@@ -179,14 +196,14 @@ export function PricingPage({ plans, checkoutOpen, payosCheckoutOpen = checkoutO
           className={s.buy}
         >
           {buying === price.id
-            ? autoRenew ? t({ en: 'Opening MoMo…', vi: 'Đang mở MoMo…' }) : t({ en: 'Opening QR checkout…', vi: 'Đang mở thanh toán QR…' })
-            : autoRenew ? t({ en: 'Continue with MoMo', vi: 'Tiếp tục với MoMo' }) : t({ en: 'Buy with QR', vi: 'Mua bằng QR' })}
+            ? t({ en: 'Opening payment…', vi: 'Đang mở thanh toán…' })
+            : oneTimeProvider === 'vnpay' ? autoRenew ? t({ en: 'Auto-renew with VNPAY', vi: 'Tự gia hạn với VNPAY' }) : t({ en: 'Pay with VNPAY', vi: 'Thanh toán với VNPAY' }) : autoRenew ? t({ en: 'Continue with MoMo', vi: 'Tiếp tục với MoMo' }) : t({ en: 'Buy with QR', vi: 'Mua bằng QR' })}
           {buying !== price.id && <ArrowRight aria-hidden="true" />}
         </button>
-        {!autoRenew && payosCheckoutOpen && <p className={s.small}>
+        {!autoRenew && oneTimeProvider === 'payos' && payosCheckoutOpen && <p className={s.small}>
           {t({ en: 'One-time bank transfer by VietQR through payOS. The plan starts once the bank confirms.', vi: 'Chuyển khoản VietQR một lần qua payOS. Gói có hiệu lực khi ngân hàng xác nhận.' })}
         </p>}
-        {!autoRenew && !payosCheckoutOpen && <p className={s.small}>{t({ en: 'Select MoMo auto-renewal to continue.', vi: 'Chọn gia hạn tự động MoMo để tiếp tục.' })}</p>}
+        {!autoRenew && oneTimeProvider === 'payos' && !payosCheckoutOpen && <p className={s.small}>{t({ en: 'Select MoMo auto-renewal to continue.', vi: 'Chọn gia hạn tự động MoMo để tiếp tục.' })}</p>}
       </>
     );
   };
@@ -203,13 +220,15 @@ export function PricingPage({ plans, checkoutOpen, payosCheckoutOpen = checkoutO
           </button>
         </div>
         <div role="group" aria-label={t({ en: 'Billing period', vi: 'Chu kỳ thanh toán' })} className={shared.segment}>
-        <button type="button" aria-pressed={interval === 'month'} onClick={() => { setInterval('month'); setAutoRenew(false); }}>
-            {t({ en: 'Monthly', vi: 'Theo tháng' })}
-          </button>
-        <button type="button" aria-pressed={interval === 'year'} onClick={() => { setInterval('year'); setAutoRenew(false); }}>
-            {t({ en: 'Yearly', vi: 'Theo năm' })}
-            {savePercent > 0 && <span className={s.save}>−{savePercent}%</span>}
-          </button>
+        {offered.map((value) => {
+            const save = savePercent(firstPaid?.prices ?? [], value);
+            return (
+              <button key={value} type="button" aria-pressed={interval === value} onClick={() => { setInterval(value); setAutoRenew(false); }}>
+                {t(INTERVAL_LABEL[value])}
+                {save > 0 && <span className={s.save}>−{save}%</span>}
+              </button>
+            );
+          })}
         </div>
       </div>
 
@@ -224,8 +243,8 @@ export function PricingPage({ plans, checkoutOpen, payosCheckoutOpen = checkoutO
           const paid = plan.prices.length > 0;
           const price = plan.prices.find((p) => p.interval === interval);
           const monthly = plan.prices.find((p) => p.interval === 'month');
-          const yearMonths = price && monthly && interval === 'year' ? Math.round(price.amountVnd / monthly.amountVnd) : null;
-          const perDay = price ? Math.round(price.amountVnd / (interval === 'year' ? 365 : 30) / 100) * 100 : 0;
+          const paidMonths = price && monthly && interval !== 'month' ? Math.round(price.amountVnd / monthly.amountVnd) : null;
+          const perDay = price ? Math.round(price.amountVnd / approxDays(interval) / 100) * 100 : 0;
 
           const body = (
             <>
@@ -237,13 +256,13 @@ export function PricingPage({ plans, checkoutOpen, payosCheckoutOpen = checkoutO
               <p className={shared.price} key={`${audience}-${interval}`}>
                 <span className={`${shared.amount} ${paid ? shared.amountPaid : ''}`}>{formatVnd(price?.amountVnd ?? 0)}</span>
                 <span className={shared.per}>
-                  {paid ? (interval === 'year' ? t({ en: '/ year', vi: '/ năm' }) : t({ en: '/ month', vi: '/ tháng' })) : t({ en: 'forever', vi: 'mãi mãi' })}
+                  {paid ? `/ ${t(INTERVAL_NOUN[interval])}` : t({ en: 'forever', vi: 'mãi mãi' })}
                 </span>
               </p>
-              {paid && interval === 'year' && (
+              {paid && interval !== 'month' && (
                 <p className={shared.note}>
-                  {t({ en: 'Paid up front for 1 year', vi: 'trả trước 1 năm' })}
-                  {yearMonths !== null && yearMonths < 12 && ` · ${t({ en: `the price of ${yearMonths} months`, vi: `bằng giá ${yearMonths} tháng` })}`}
+                  {t({ en: `Paid up front for ${INTERVAL_SPAN[interval].en}`, vi: `trả trước ${INTERVAL_SPAN[interval].vi}` })}
+                  {paidMonths !== null && paidMonths < INTERVAL_MONTHS[interval] && ` · ${t({ en: `the price of ${paidMonths} months`, vi: `bằng giá ${paidMonths} tháng` })}`}
                 </p>
               )}
               {paid && perDay > 0 && (

@@ -32,6 +32,9 @@ const Patch = z.object({
   prices: z.object({
     month: z.number().int().min(1000).max(100_000_000).optional(),
     year: z.number().int().min(1000).max(100_000_000).optional(),
+    // null takes the 3-month / 6-month price off sale; month and year always stay on sale.
+    quarter: z.number().int().min(1000).max(100_000_000).nullable().optional(),
+    half_year: z.number().int().min(1000).max(100_000_000).nullable().optional(),
   }).strict().optional(),
 }).strict();
 
@@ -79,7 +82,7 @@ export const adminPlanRoutes: FastifyPluginAsync = async (app) => {
             .sort((a, b) => METRIC_ORDER.indexOf(a.metric) - METRIC_ORDER.indexOf(b.metric))
             .map((l) => ({ metric: l.metric, kind: l.kind, limit: l.limit_value })),
           prices: paid.length
-            ? { month: paid.find((p) => p.interval === 'month')?.amount_vnd ?? null, year: paid.find((p) => p.interval === 'year')?.amount_vnd ?? null }
+            ? Object.fromEntries(['month', 'quarter', 'half_year', 'year'].map((interval) => [interval, paid.find((p) => p.interval === interval)?.amount_vnd ?? null]))
             : null,
         }];
       }),

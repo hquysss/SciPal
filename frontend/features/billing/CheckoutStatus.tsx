@@ -6,6 +6,8 @@ import { useLanguage } from '@scipal/hooks';
 import { Alert } from '@/components/ui/alert';
 import { buttonVariants } from '@/components/ui/button';
 import { PLAN_NAME, cancelOrder, fetchOrder, formatVnd, type OrderView } from './billingApi';
+import type { BillingInterval } from '@scipal/types';
+import { INTERVAL_SPAN } from './intervals';
 
 type Bilingual = { vi: string; en: string };
 export type CheckoutState = { status: 'loading' } | { status: 'error'; message: Bilingual } | { status: 'ready'; order: OrderView };
@@ -58,7 +60,7 @@ export function CheckoutStatusView({
 
   const { order } = state;
   const plan = t(PLAN_NAME[order.planCode] ?? { vi: order.planCode, en: order.planCode });
-  const period = order.interval === 'year' ? t({ vi: '1 năm', en: '1 year' }) : t({ vi: '1 tháng', en: '1 month' });
+  const period = t(INTERVAL_SPAN[order.interval as BillingInterval] ?? INTERVAL_SPAN.month);
 
   return (
     <div className="flex flex-col gap-5">

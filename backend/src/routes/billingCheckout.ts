@@ -3,6 +3,10 @@ import type { FastifyPluginAsync, FastifyReply, FastifyRequest } from 'fastify';
 import { z } from 'zod';
 import { checkoutDisabled, payosFromEnv, type PayosClient } from '../billing/providers/payos.js';
 import { momoFromEnv, type MomoClient } from '../billing/providers/momo.js';
+import { vnpayFromEnv, vnpayTimestamp, type VnpayClient } from '../billing/providers/vnpay.js';
+import { vnpayRecurringFromEnv, type VnpayRecurringClient } from '../billing/providers/vnpayRecurring.js';
+import { applyVnpayPayment } from '../billing/vnpayPayments.js';
+import { cancelVnpayForUser } from '../billing/vnpayCancellation.js';
 import { applyVerifiedMomoPayment } from '../billing/momoPayments.js';
 import { featureAllowed, featureOff } from '../site/features.js';
 
@@ -25,12 +29,16 @@ const NOT_PENDING = err('ORDER_NOT_PENDING', 'Đơn này không còn chờ thanh
 const PROVIDER = err('PAYMENT_PROVIDER_ERROR', 'Cổng thanh toán chưa tạo được mã QR. Thử lại sau ít phút.', 'The payment provider could not create the QR code. Try again in a few minutes.');
 const MOMO_PROVIDER = err('MOMO_PROVIDER_ERROR', 'MoMo chưa tạo được liên kết gia hạn. Thử lại sau ít phút.', 'MoMo could not create the renewal link. Try again in a few minutes.');
 const RENEWAL_CANCELLATION_PENDING = err('RENEWAL_CANCELLATION_PENDING', 'MoMo chưa xác nhận hủy gia hạn. Chưa tạo thanh toán QR mới; hãy kiểm tra lại sau.', 'MoMo has not confirmed renewal cancellation. No new QR payment was created; check again later.');
+const PREPAID_ONLY = err('AUTO_RENEW_NOT_AVAILABLE', 'Gói 3 và 6 tháng chỉ thanh toán một lần, không tự gia hạn. Chọn thanh toán một lần.', '3-month and 6-month plans are one-time payments without auto-renew. Choose a one-time payment.');
 const REFUSALS: Record<string, [number, ErrorBody]> = {
   PLAN_NOT_FOR_ROLE: [403, err('PLAN_NOT_FOR_ROLE', 'Gói này dành cho vai trò khác với tài khoản của bạn.', 'This plan is for a different role than your account.')],
   UNSUPPORTED_BILLING_ROLE: [403, err('UNSUPPORTED_BILLING_ROLE', 'Tài khoản quản trị không mua gói.', 'Admin accounts do not buy plans.')],
   IDEMPOTENCY_CONFLICT: [409, err('IDEMPOTENCY_CONFLICT', 'Yêu cầu này đã được dùng cho đơn khác. Tải lại trang rồi thử lại.', 'This request was already used for another order. Reload the page and try again.')],
   PRICE_NOT_AVAILABLE: [400, err('PRICE_NOT_AVAILABLE', 'Giá này không còn bán. Tải lại bảng giá.', 'This price is no longer offered. Reload the pricing page.')],
   BILLING_ACCOUNT_NOT_FOUND: [404, err('BILLING_ACCOUNT_NOT_FOUND', 'Không tìm thấy tài khoản.', 'Account not found.')],
+  ACTIVE_VNPAY_MANDATE_EXISTS: [409, err('ACTIVE_VNPAY_MANDATE_EXISTS', 'Hãy hủy gia hạn hiện tại trước khi đăng ký VNPAY.', 'Cancel the current renewal before registering VNPAY.')],
+  VNPAY_ORDER_NOT_PENDING: [409, NOT_PENDING],
+  VNPAY_MANDATE_NOT_PENDING: [409, NOT_PENDING],
   ACTIVE_MOMO_MANDATE_EXISTS: [409, err('ACTIVE_MOMO_MANDATE_EXISTS', 'Hãy hủy gia hạn MoMo hiện tại trước khi đăng ký gia hạn mới.', 'Cancel the current MoMo renewal before starting another one.')],
   MOMO_ORDER_NOT_PENDING: [409, err('MOMO_ORDER_NOT_PENDING', 'Đơn MoMo không còn chờ thanh toán.', 'This MoMo order is no longer pending.')],
   MOMO_MANDATE_NOT_PENDING: [409, err('MOMO_MANDATE_NOT_PENDING', 'Ủy quyền MoMo không còn ở trạng thái chờ.', 'This MoMo authorization is no longer pending.')],
@@ -38,21 +46,25 @@ const REFUSALS: Record<string, [number, ErrorBody]> = {
 
 const CheckoutInput = z.object({
   priceId: z.string().regex(UUID),
-  provider: z.enum(['payos', 'momo']),
+  provider: z.enum(['payos', 'momo', 'vnpay']),
   idempotencyKey: z.string().min(8).max(120),
   autoRenew: z.boolean(),
-}).strict().refine((input) => input.provider === 'momo' ? input.autoRenew : !input.autoRenew);
+}).strict().refine((input) => input.provider === 'vnpay' || (input.provider === 'momo' ? input.autoRenew : !input.autoRenew));
 
 type OrderRow = { order_id: string; plan_code: string; billing_interval: 'month' | 'year'; amount_vnd: number; status: string; expires_at: string; created: boolean };
 type StoredOrder = { id: string; user_id: string | null; plan_code: string; interval: string; amount_vnd: number; status: string; expires_at: string; paid_at: string | null };
-type Attempt = { id: string; provider: string; provider_reference: string; status: string; checkout_url: string | null };
+type Attempt = { id: string; provider: string; provider_reference: string; status: string; checkout_url: string | null; created_at?: string };
 
 /** payOS order codes are integers; seconds × 1000 + a random suffix stays unique in practice (unique index backs it). */
 const newOrderCode = () => Math.floor(Date.now() / 1000) * 1000 + randomInt(1000);
 
-export const billingCheckoutRoutes: FastifyPluginAsync<{ payos?: PayosClient | null; momo?: MomoClient | null; momoIpnUrl?: string; renewalSchedulerReady?: boolean; webBase?: string }> = async (app, opts) => {
+export const billingCheckoutRoutes: FastifyPluginAsync<{ payos?: PayosClient | null; momo?: MomoClient | null; vnpay?: VnpayClient | null; vnpayRecurring?: VnpayRecurringClient | null; publicApiUrl?: string; momoIpnUrl?: string; renewalSchedulerReady?: boolean; webBase?: string }> = async (app, opts) => {
   const payos = opts.payos === undefined ? payosFromEnv() : opts.payos;
   const momo = opts.momo === undefined ? momoFromEnv() : opts.momo;
+  const vnpay = opts.vnpay === undefined ? vnpayFromEnv() : opts.vnpay;
+  const recurring = opts.vnpayRecurring === undefined ? vnpayRecurringFromEnv() : opts.vnpayRecurring;
+  const publicApiUrl = (opts.publicApiUrl ?? process.env.VNPAY_PUBLIC_API_URL ?? '').replace(/\/+$/, '');
+  const recurringAvailable = Boolean(recurring && vnpay && URL.canParse(publicApiUrl) && new URL(publicApiUrl).protocol === 'https:');
   const momoIpnUrl = opts.momoIpnUrl ?? process.env.MOMO_IPN_URL;
   const schedulerReady = opts.renewalSchedulerReady ?? Boolean(process.env.CRON_SECRET);
   const momoAvailable = momo !== null && Boolean(momoIpnUrl && URL.canParse(momoIpnUrl) && new URL(momoIpnUrl).protocol === 'https:') && schedulerReady;
@@ -62,7 +74,7 @@ export const billingCheckoutRoutes: FastifyPluginAsync<{ payos?: PayosClient | n
   const attemptsOf = async (orderId: string): Promise<Attempt[]> => {
     const { data, error } = await app.supabase!
       .from('billing_payment_attempts')
-      .select('id, provider, provider_reference, status, checkout_url')
+      .select('id, provider, provider_reference, status, checkout_url, created_at')
       .eq('order_id', orderId)
       .order('created_at', { ascending: false });
     if (error) throw error;
@@ -99,10 +111,17 @@ export const billingCheckoutRoutes: FastifyPluginAsync<{ payos?: PayosClient | n
     const parsed = CheckoutInput.safeParse(request.body);
     if (!parsed.success) return reply.code(400).send(INVALID);
     const input = parsed.data;
-    if (checkoutDisabled() || (input.provider === 'payos' ? !payos : !momoAvailable)) return reply.code(503).send(CLOSED);
+    if (checkoutDisabled() || (input.provider === 'vnpay' ? (!vnpay || (input.autoRenew && !recurringAvailable)) : input.provider === 'payos' ? !payos : !momoAvailable)) return reply.code(503).send(CLOSED);
     const user = userOf(request)!;
     if (!(await featureAllowed(app, 'pricing', user as never))) return reply.code(403).send(featureOff('pricing'));
     const supabase = app.supabase!;
+    // 3-month and 6-month plans are prepaid: MoMo is subscription-only and VNPAY auto-renew needs a monthly or yearly cycle.
+    if (input.provider === 'momo' || input.autoRenew) {
+      const price = await supabase.from('billing_prices').select('interval').eq('id', input.priceId).maybeSingle();
+      if (price.error) return refuse(request, reply, price.error);
+      const interval = (price.data as { interval?: string } | null)?.interval;
+      if (interval && interval !== 'month' && interval !== 'year') return reply.code(400).send(PREPAID_ONLY);
+    }
     const payloadHash = createHash('sha256').update(JSON.stringify([input.priceId, input.provider, input.autoRenew])).digest('hex');
 
     let order: OrderRow;
@@ -127,7 +146,7 @@ export const billingCheckoutRoutes: FastifyPluginAsync<{ payos?: PayosClient | n
     if (order.status !== 'pending') return reply.code(200).send(answer(order.status, null));
     if (new Date(order.expires_at) <= new Date()) return reply.code(200).send(answer('expired', null));
 
-    if (input.provider === 'payos') {
+    if (input.provider === 'payos' || input.provider === 'vnpay') {
       try {
         if (!(await cancelMomoBeforeQr(user.id))) return reply.code(202).send(RENEWAL_CANCELLATION_PENDING);
       } catch (error) {
@@ -135,8 +154,46 @@ export const billingCheckoutRoutes: FastifyPluginAsync<{ payos?: PayosClient | n
       }
     }
 
+    if (vnpay && !(input.provider === 'vnpay' && input.autoRenew)) {
+      try {
+        if (!(await cancelVnpayForUser(supabase, recurring, user.id, request.ip, request.headers['user-agent'] ?? 'SciPal'))) {
+          return reply.code(202).send(err('RENEWAL_CANCELLATION_PENDING', 'VNPAY chưa xác nhận hủy gia hạn. Kiểm tra lại sau.', 'VNPAY has not confirmed renewal cancellation. Check again later.'));
+        }
+      } catch (error) { return refuse(request, reply, error); }
+    }
+
     const open = attempts.find((a) => a.provider === input.provider && a.status === 'pending');
     if (open?.checkout_url) return reply.code(200).send(answer('pending', open.checkout_url));
+
+    if (input.provider === 'vnpay') {
+      if (!vnpay) return reply.code(503).send(CLOSED);
+      const createdAt = new Date().toISOString();
+      const reference = input.autoRenew ? `i${order.order_id.replace(/-/g, '')}` : order.order_id;
+      if (!open) {
+        const saved = await supabase.from('billing_payment_attempts').insert({ order_id: order.order_id, provider: 'vnpay', provider_reference: reference, amount_vnd: order.amount_vnd, created_at: createdAt }).select('id').single();
+        if (saved.error || !saved.data) return refuse(request, reply, saved.error);
+      }
+      let checkoutUrl: string;
+      if (input.autoRenew) {
+        if (!recurring || !recurringAvailable) return reply.code(503).send(CLOSED);
+        const prepared = await supabase.rpc('billing_prepare_vnpay_mandate', { p_user_id: user.id, p_order_id: order.order_id, p_consent_version: 'vnpay-subscription-v1' });
+        if (prepared.error) return refuse(request, reply, prepared.error);
+        try {
+          const registration = await recurring.startSubscription({ reference: order.order_id, userId: user.id, amountVnd: order.amount_vnd, interval: order.billing_interval, createdAt, returnUrl: `${webBase}/checkout/${order.order_id}`, ipAddr: request.ip, userAgent: request.headers['user-agent'] ?? 'SciPal' });
+          const stored = await supabase.from('billing_mandates').update({ provider_checkout: registration }).eq('order_id', order.order_id).eq('provider', 'vnpay').eq('status', 'pending');
+          if (stored.error) throw stored.error;
+          checkoutUrl = `${publicApiUrl}/api/billing/vnpay/redirect/${order.order_id}`;
+        } catch {
+          request.log.warn({ orderId: order.order_id }, 'VNPAY authorization could not be created');
+          return reply.code(502).send(err('VNPAY_PROVIDER_ERROR', 'Chưa mở được VNPAY. Thử lại sau.', 'VNPAY could not be opened. Try again later.'));
+        }
+      } else {
+        checkoutUrl = vnpay.createPaymentUrl({ reference, amountVnd: order.amount_vnd, createdAt: open?.created_at ?? createdAt, expiresAt: order.expires_at, returnUrl: `${webBase}/checkout/${order.order_id}`, ipAddr: request.ip, orderInfo: `SciPal ${order.plan_code} ${order.billing_interval}` });
+      }
+      const stored = await supabase.from('billing_payment_attempts').update({ checkout_url: checkoutUrl }).eq('order_id', order.order_id).eq('provider', 'vnpay').eq('provider_reference', reference);
+      if (stored.error) return refuse(request, reply, stored.error);
+      return reply.code(201).send(answer('pending', checkoutUrl));
+    }
 
     if (input.provider === 'momo') {
       if (!momo || !momoAvailable || !momoIpnUrl) return reply.code(503).send(CLOSED);
@@ -314,6 +371,17 @@ export const billingCheckoutRoutes: FastifyPluginAsync<{ payos?: PayosClient | n
         const cancelled = sync.providerStatus === 'CANCELLED' && (await markCancelled(order.id));
         if (sync.changed || cancelled) order = (await readOrder(id)) ?? order;
       }
+      const vnpayAttempt = attempts.find((attempt) => attempt.provider === 'vnpay' && attempt.status === 'pending');
+      if (vnpay && vnpayAttempt?.created_at && order.status === 'pending') {
+        try {
+          const payment = await vnpay.queryTransaction({ reference: vnpayAttempt.provider_reference, transactionDate: vnpayTimestamp(vnpayAttempt.created_at), ipAddr: request.ip });
+          if (payment) {
+            await applyVnpayPayment(app.supabase!, payment, 'query');
+            order = (await readOrder(id)) ?? order;
+            attempts = await attemptsOf(order.id);
+          }
+        } catch { request.log.warn({ orderId: id }, 'VNPAY status query is unconfirmed'); }
+      }
       const momoAttempt = attempts.find((a) => a.provider === 'momo');
       if (momoAttempt && order.status === 'pending') {
         await syncWithMomo(request, order, momoAttempt);
@@ -350,6 +418,17 @@ export const billingCheckoutRoutes: FastifyPluginAsync<{ payos?: PayosClient | n
       const notPending = (o: StoredOrder) => reply.code(409).send({ ...NOT_PENDING, status: orderView(o, undefined).status });
       if (order.status !== 'pending') return notPending(order);
       const attempts = await attemptsOf(order.id);
+      const openVnpay = attempts.find((a) => a.provider === 'vnpay' && a.status === 'pending');
+      if (openVnpay) {
+        if (!vnpay || !openVnpay.created_at) return reply.code(503).send(UNAVAILABLE);
+        const payment = await vnpay.queryTransaction({ reference: openVnpay.provider_reference, transactionDate: vnpayTimestamp(openVnpay.created_at), ipAddr: request.ip });
+        if (payment) {
+          await applyVnpayPayment(app.supabase!, payment, 'query');
+          order = (await readOrder(id)) ?? order;
+          if (order.status !== 'pending') return notPending(order);
+        }
+        if (!(await cancelVnpayForUser(app.supabase!, recurring, user.id, request.ip, request.headers['user-agent'] ?? 'SciPal'))) return reply.code(202).send(err('RENEWAL_CANCELLATION_PENDING', 'VNPAY chưa xác nhận hủy. Kiểm tra lại sau.', 'VNPAY has not confirmed cancellation. Check again later.'));
+      }
       const open = attempts.find((a) => a.provider === 'payos' && a.status === 'pending');
       if (open) {
         const sync = await syncWithPayos(request, open);
