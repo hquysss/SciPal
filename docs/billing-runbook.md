@@ -62,6 +62,9 @@ Cho chủ dự án/admin vận hành bán gói. Chi tiết thiết kế: `docs/s
 | payOS lỗi khi tạo QR | Người mua thấy "Cổng thanh toán chưa tạo được mã QR" (502), bấm lại dùng cùng đơn | Theo dõi trạng thái payOS; tắt bán nếu kéo dài |
 | MoMo chưa xác nhận giao dịch do timeout | Renewal chuyển `unknown`; lượt cron kế tiếp hỏi trạng thái trước khi gửi lại cùng request ID | Kiểm tra giao dịch/mandate trong MoMo; nếu quá số lần truy vấn an toàn, trạng thái chuyển đối soát và tự gia hạn tắt |
 | Hủy MoMo còn chờ xác nhận | `renewal_mode` chuyển manual ngay, không tạo lượt thu tiếp; UI hiện trạng thái chờ | Mở `/profile/plan` và bấm kiểm tra lại; không tạo QR mới trước khi MoMo xác nhận |
+| VNPAY gửi IPN sai chữ ký hoặc sai số tiền/merchant | Từ chối (`RspCode 97`), không cấp gói, không ghi nhận như đã trả | Kiểm tra giao dịch trong cổng VNPAY; nếu tiền thật đã trừ thì xử lý như "Chuyển sai số tiền" |
+| VNPAY hủy gia hạn chưa được xác nhận | Giữ trạng thái chờ hủy, không tạo lượt thu mới, giữ gói đã trả (HTTP 202) | Mở `/profile/plan` và kiểm tra lại; không tạo thanh toán một lần mới cho tới khi VNPAY xác nhận |
+| Khách khiếu nại/chargeback qua thẻ | Hệ thống không tự thu hồi gói | Làm theo mục 6: đặt hạn mức riêng về mức Free có lý do "chargeback đơn …"; giữ nguyên sổ cái, ghi lại mã giao dịch |
 | Hết lượt (Tutor, thi, nhập tệp, AI soạn bài) | 429 kèm số lượt và thời điểm làm mới | Cấp hạn mức riêng có hạn và lý do ở `/admin/accounts` nếu cần |
 | Không đọc được sổ hạn mức | 503, **không** cho qua | Kiểm Supabase |
 
@@ -73,6 +76,15 @@ Cho chủ dự án/admin vận hành bán gói. Chi tiết thiết kế: `docs/s
 - payOS là chuyển khoản ngân hàng: hoàn tiền bằng chuyển khoản ngược lại từ tài khoản nhận, ngoài hệ thống.
 - Hệ thống **chưa có** thao tác thu hồi gói sau hoàn tiền. Khi hoàn toàn bộ tiền của một đơn đã cấp gói: đặt hạn mức riêng về mức gói miễn phí (có lý do "hoàn tiền đơn …") cho tới khi có tính năng thu hồi.
 - Chính sách hoàn tiền, chứng từ/thuế: chủ dự án chốt trước khi mở bán rộng (spec §2.1).
+
+## 6b. Kiểm tra trước khi mở bán (Task 10)
+
+Bằng chứng đã có: SQL kiểm trên PostgreSQL thật (PGlite, `supabase/tests/check-sql.mjs`, cài `@electric-sql/pglite` một lần bằng `npm i --no-save` trong thư mục đó); backend và web test, typecheck, build đều đạt; migration chain trên Supabase SciPal đã áp đủ. Việc **chỉ chủ dự án làm được**, xác nhận riêng từng việc:
+
+1. Credentials merchant (payOS, MoMo, VNPAY) đặt trong backend, không vào PR.
+2. Giao dịch sandbox/thật: payOS (tiền nhỏ), MoMo (success, decline, duplicate IPN, timeout, hủy), VNPAY (một lần và tự gia hạn).
+3. Chính sách hoàn tiền, chứng từ/thuế, giá gói 3/6 tháng và hiệu quả kinh tế quota AI.
+4. Bật checkout: deploy DB, rồi backend, rồi web; bật từng cổng riêng bằng biến môi trường. Tắt khẩn cấp: mục 4.
 
 ## 7. Chưa có (theo plan)
 

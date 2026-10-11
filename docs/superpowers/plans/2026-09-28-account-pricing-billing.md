@@ -232,8 +232,8 @@ Thực thi từng nhánh/PR con, phụ thuộc Task 1 và 4. Đây là dependenc
 - [ ] Kiểm traceability spec -> task -> test/evidence; merchant payOS/VNPAY có credentials do owner cấu hình backend, không đưa vào PR.
 - [ ] Kiểm thuế/biên nhận/refund/cancel/cost AI, quyền lợi Teacher Pro còn thiếu, lịch sử user hiện có và migration chain trên DB thử nghiệm. Không áp toàn bộ migration pending remote ngoài scope.
 - [ ] Feature flags catalog/checkout/enforcement tách nhau; triển khai DB trước backend trước web. Dữ liệu user cũ về Free theo role; dữ liệu vượt capacity giữ nguyên, chặn tăng thêm sau bật enforcement.
-- [ ] Full `npx turbo run typecheck test lint`, rồi `npx turbo run build`; ghi test count/exit code và coverage lint thực tế. Không chạy Prettier.
-- [ ] RLS/concurrency integration DB + hai callback provider + account QA thật; mock không thay live sandbox evidence.
+- [x] (11/10) `npx turbo run typecheck test lint`: typecheck sạch; web 1166/1167 test (1 lỗi là test chưa commit đọc file xlsx cục bộ, ngoài PR), backend 912; không có task lint trong turbo (0 task). `npx turbo run build` đạt (web + api). Ban đầu: `npx turbo run typecheck test lint`, rồi `npx turbo run build`; ghi test count/exit code và coverage lint thực tế. Không chạy Prettier.
+- [~] (11/10) SQL integration chạy trên PGlite (RLS, idempotency, quota, MoMo/VNPAY, gói 3/6 tháng) đạt; Supabase advisors không có cảnh báo billing. Còn thiếu: hai callback provider thật + account QA thật. RLS/concurrency integration DB + hai callback provider + account QA thật; mock không thay live sandbox evidence.
 - [ ] User duyệt merge PR, migration production và bật checkout là các hành động phát hành được xác nhận riêng. Thử tiền thật chỉ khi được cho phép.
 - [ ] Runbook nêu provider outage/duplicate/overpayment/refund/chargeback, quota lease cleanup và cancellation race. Rollback tắt checkout/renewal creation, vẫn nhận callback và giữ quyền đã trả; không xóa ledger.
 

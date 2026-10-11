@@ -48,9 +48,11 @@ values
 \ir ../migrations/20260929140000_admin_plan_settings.sql
 \ir ../migrations/20260929160000_daily_counted_quotas.sql
 \ir ../migrations/20260930000000_guest_trials.sql
+\ir ../migrations/20261003020000_billing_plan_perks.sql
 \ir ../migrations/20261010120541_momo_auto_renew.sql
 \ir ../migrations/20261010130000_momo_cancellation_ambiguity.sql
 \ir ../migrations/20261011072311_vnpay_gateway.sql
+\ir ../migrations/20261011120000_billing_quarter_half_year.sql
 -- Supabase's service_role writes these tables; the stubs above need the same grant.
 grant select, insert, update, delete on public.class_rooms, public.class_members, public.exam_blueprints, public.assignments to service_role;
 
@@ -75,8 +77,8 @@ begin
   if (select count(*) from public.billing_plans) <> 4 then
     raise exception 'Expected four plan records';
   end if;
-  if (select count(*) from public.billing_prices) <> 4 then
-    raise exception 'Expected four paid price records';
+  if (select count(*) from public.billing_prices) <> 8 then
+    raise exception 'Expected eight paid price records (month, quarter, half_year, year for two plans)';
   end if;
   if (select count(*) from public.billing_plan_limits) <> 16 then
     raise exception 'Expected sixteen plan limits';
@@ -1120,3 +1122,4 @@ end;
 $$;
 
 \ir billing_vnpay_cases.sql
+\ir billing_interval_cases.sql
