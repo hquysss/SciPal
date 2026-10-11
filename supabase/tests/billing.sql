@@ -50,7 +50,6 @@ values
 \ir ../migrations/20260930000000_guest_trials.sql
 \ir ../migrations/20261010120541_momo_auto_renew.sql
 \ir ../migrations/20261010130000_momo_cancellation_ambiguity.sql
-\ir ../migrations/20261011072311_vnpay_gateway.sql
 -- Supabase's service_role writes these tables; the stubs above need the same grant.
 grant select, insert, update, delete on public.class_rooms, public.class_members, public.exam_blueprints, public.assignments to service_role;
 
@@ -746,10 +745,9 @@ begin
   end if;
 
   select items, total_count into v_page_items, v_total_count from public.billing_reconciliation_page(100, 0);
-  if v_total_count <> 6 or pg_catalog.jsonb_array_length(v_page_items) <> 6 then
-    raise exception 'The reconciliation page did not include five payOS incidents and one VNPAY incident: % %', v_total_count, v_page_items;
+  if v_total_count <> 5 or pg_catalog.jsonb_array_length(v_page_items) <> 5 then
+    raise exception 'The reconciliation page did not include exactly five payOS incidents: % %', v_total_count, v_page_items;
   end if;
-  if not exists(select 1 from pg_catalog.jsonb_array_elements(v_page_items) item where item ->> 'provider' = 'vnpay' and item ->> 'provider_reference' = 'VN1001') then raise exception 'VNPAY incident missing'; end if;
   if not exists (
     select 1 from pg_catalog.jsonb_array_elements(v_page_items) as item(value)
      where item.value ->> 'provider_reference' = '1002'
@@ -768,7 +766,7 @@ begin
     raise exception 'Reconciliation reason belongs to the backend, not the database result';
   end if;
   select items, total_count into v_page_items, v_total_count from public.billing_reconciliation_page(2, 0);
-  if v_total_count <> 6 or pg_catalog.jsonb_array_length(v_page_items) <> 2 then
+  if v_total_count <> 5 or pg_catalog.jsonb_array_length(v_page_items) <> 2 then
     raise exception 'Reconciliation pagination did not return a two-row page and global count';
   end if;
 end;
@@ -1118,5 +1116,3 @@ begin
   end if;
 end;
 $$;
-
-\ir billing_vnpay_cases.sql
