@@ -2,13 +2,14 @@
 import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { ArrowRight, Check, CreditCard, QrCode, RefreshCcw, ShieldCheck, Wallet } from 'lucide-react';
+import { Check, CreditCard, QrCode, RefreshCcw, ShieldCheck, Wallet } from 'lucide-react';
 import { useLanguage } from '@scipal/hooks';
 import type { BillingAccount } from '@scipal/types';
 import { Alert } from '@/components/ui/alert';
 import { buttonVariants } from '@/components/ui/button';
 import { cancelRenewal, fetchMyPlan, formatVnd, startCheckout, type Catalog } from './billingApi';
-import { INTERVAL_NOUN, canAutoRenew } from './intervals';
+import { INTERVAL_NOUN, INTERVAL_SPAN, canAutoRenew } from './intervals';
+import slip from './payment-methods.module.css';
 type Provider = 'payos' | 'vnpay' | 'momo';
 type Props = {
  readonly context?: { readonly audience?: string; readonly interval?: string; readonly plan?: string };
@@ -64,13 +65,16 @@ export function PaymentMethodsView({ catalog, account, accountStatus, onCancel, 
  return <div className="flex flex-col gap-8">
   {!catalog && <Alert tone="danger"><p>{t({ vi: 'Chưa tải được các cổng thanh toán. Thử lại sau nhé.', en: 'Payment providers could not be loaded. Try again later.' })}</p>{onRetry && <button type="button" onClick={onRetry} className={buttonVariants({ variant: 'outline' })}>{t({ vi: 'Thử lại', en: 'Try again' })}</button>}</Alert>}
 
-  {chosenPlan && chosenPrice && <section className="flex items-center justify-between gap-4 rounded-2xl border border-line bg-surface p-5" aria-label={t({vi:'Gói đã chọn',en:'Selected plan'})}>
-   <div className="min-w-0">
-    <p className="text-xs font-semibold uppercase tracking-wider text-ink-muted">{t({vi:'Gói đã chọn',en:'Selected plan'})}</p>
-    <p className="mt-1 truncate text-lg font-extrabold tracking-tight text-ink">{t(chosenPlan.name)}</p>
-    <Link href={`/pricing?audience=${chosenPlan.audience}&interval=${chosenPrice.interval}`} className="mt-1 inline-flex min-h-11 items-center text-sm font-semibold text-action underline-offset-4 hover:underline">{t({vi:'Đổi gói hoặc chu kỳ',en:'Change plan or period'})}</Link>
+  {chosenPlan && chosenPrice && <section className={slip.slip} aria-label={t({vi:'Gói đã chọn',en:'Selected plan'})}>
+   <p className="text-sm leading-7 text-ink-muted">{t({vi:'Bạn đang mua',en:'You are buying'})}</p>
+   <div className={slip.row}>
+    <p className="min-w-0 truncate text-lg font-extrabold tracking-tight text-ink">{t(chosenPlan.name)}</p>
+    <p className={slip.price}>{formatVnd(chosenPrice.amountVnd)}</p>
    </div>
-   <p className="shrink-0 text-right"><span className="block text-2xl font-extrabold tabular-nums tracking-tight text-ink">{formatVnd(chosenPrice.amountVnd)}</span><span className="text-sm text-ink-muted">/ {t(INTERVAL_NOUN[chosenPrice.interval])}</span></p>
+   <div className={slip.row}>
+    <Link href={`/pricing?audience=${chosenPlan.audience}&interval=${chosenPrice.interval}`} className="text-sm font-semibold text-action underline-offset-4 hover:underline">{t({vi:'Đổi gói hoặc chu kỳ',en:'Change plan or period'})}</Link>
+    <p className="text-sm text-ink-muted">{t({vi:`cho ${INTERVAL_SPAN[chosenPrice.interval].vi}`,en:`for ${INTERVAL_SPAN[chosenPrice.interval].en}`})}</p>
+   </div>
   </section>}
   {chosenPlan && !chosenPrice && <Alert tone="danger"><p>{t({vi:'Chu kỳ này không còn bán. Quay lại bảng giá để chọn lại.',en:'This period is no longer sold. Go back to pricing and choose again.'})}</p></Alert>}
   {roleBlocks && <Alert tone="danger"><p>{t(chosenPlan?.audience === 'student' ? {vi:'Gói này dành cho học sinh.',en:'This plan is for students.'} : {vi:'Gói này dành cho giáo viên.',en:'This plan is for teachers.'})}</p></Alert>}
@@ -104,8 +108,8 @@ export function PaymentMethodsView({ catalog, account, accountStatus, onCancel, 
   <div className="flex flex-col gap-3" aria-live="polite">
    {buyError && <Alert tone="danger"><p>{t(buyError)}</p></Alert>}
    {canPay && method && selected ? (buyNow
-     ? <button type="button" onClick={() => onBuy!(selected, wantsRenew)} disabled={buying || roleBlocks || (needsConsent && !renew)} aria-busy={buying} className={`${buttonVariants({ size: 'lg' })} w-full`}>{buying ? t({vi:'Đang mở thanh toán…',en:'Opening payment…'}) : t(wantsRenew ? {vi:`Tự gia hạn với ${method.name}`,en:`Auto-renew with ${method.name}`} : {vi:`Thanh toán với ${method.name}`,en:`Pay with ${method.name}`})}<ArrowRight size={16} aria-hidden="true" /></button>
-     : <Link href={`/pricing?${pricingQuery.toString()}`} className={`${buttonVariants({ size: 'lg' })} w-full`}>{t({vi:`Chọn gói để trả qua ${method.name}`,en:`Choose a plan to pay with ${method.name}`})}<ArrowRight size={16} aria-hidden="true" /></Link>)
+     ? <button type="button" onClick={() => onBuy!(selected, wantsRenew)} disabled={buying || roleBlocks || (needsConsent && !renew)} aria-busy={buying} className={`${buttonVariants({ size: 'lg' })} w-full`}>{buying ? t({vi:'Đang mở thanh toán…',en:'Opening payment…'}) : t(wantsRenew ? {vi:`Tự gia hạn với ${method.name}`,en:`Auto-renew with ${method.name}`} : {vi:`Thanh toán với ${method.name}`,en:`Pay with ${method.name}`})}</button>
+     : <Link href={`/pricing?${pricingQuery.toString()}`} className={`${buttonVariants({ size: 'lg' })} w-full`}>{t({vi:`Chọn gói để trả qua ${method.name}`,en:`Choose a plan to pay with ${method.name}`})}</Link>)
     : <button type="button" disabled className={`${buttonVariants({ size: 'lg' })} w-full`}>{t({vi:'Chưa mở thanh toán',en:'Checkout is not open yet'})}</button>}
    {canPay && <p className="text-center text-sm text-ink-muted">{t(note)}</p>}
    <p className="flex items-center justify-center gap-2 text-center text-xs text-ink-muted"><ShieldCheck className="shrink-0 text-action" size={16} aria-hidden="true" />{t({vi:'Bạn nhập thông tin thanh toán trên trang của nhà cung cấp. SciPal không nhận số thẻ, CVV hay mật khẩu ngân hàng.',en:'You enter payment details on the provider’s page. SciPal never receives your card number, CVV or banking password.'})}</p>

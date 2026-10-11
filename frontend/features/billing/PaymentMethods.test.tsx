@@ -34,7 +34,7 @@ const student = { role: 'student', plan: null, quotas: [], paidThrough: null, re
 it('pays for the plan picked on pricing: provider chosen here, renewal only by explicit consent', () => {
  const onBuy = vi.fn();
  render(<PaymentMethodsView catalog={buyCatalog} account={student} accountStatus="ready" context={{ plan: 'student_plus', interval: 'month' }} onBuy={onBuy} />);
- expect(screen.getByRole('region', { name: 'Gói đã chọn' }).textContent).toMatch(/Plus.*39\.000 ₫\/ tháng/);
+ expect(screen.getByRole('region', { name: 'Gói đã chọn' }).textContent).toMatch(/Plus.*39\.000 ₫.*cho 1 tháng/);
  fireEvent.click(screen.getByRole('button', { name: /Thanh toán với payOS/ }));
  expect(onBuy).toHaveBeenLastCalledWith('payos', false);
  fireEvent.click(screen.getByRole('radio', { name: /VNPAY/ }));
