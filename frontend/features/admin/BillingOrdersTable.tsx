@@ -8,6 +8,8 @@ import { buttonVariants } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { listBillingOrders, type BillingOrderItem, type BillingOrderStatus, type BillingOrdersPage } from './billingReconciliationApi';
+import type { BillingInterval } from '@scipal/types';
+import { INTERVAL_SPAN } from '@/features/billing/intervals';
 
 // Every order on the reconciliation page: the full payment history, newest first, by status.
 
@@ -114,7 +116,7 @@ export function BillingOrdersTableView({
                   </TableCell>
                   <TableCell>
                     <p className="font-semibold text-ink">{planName(item)}</p>
-                    <p className="text-xs text-ink-muted">{item.interval === 'year' ? t({ vi: 'Gói 1 năm', en: '1 year' }) : t({ vi: 'Gói 1 tháng', en: '1 month' })}</p>
+                    <p className="text-xs text-ink-muted">{t((({ vi, en }) => ({ vi: `Gói ${vi}`, en }))(INTERVAL_SPAN[item.interval as BillingInterval] ?? INTERVAL_SPAN.month))}</p>
                   </TableCell>
                   <TableCell className="whitespace-nowrap font-semibold tabular-nums text-ink">{money(item.amountVnd, lang)}</TableCell>
                   <TableCell>

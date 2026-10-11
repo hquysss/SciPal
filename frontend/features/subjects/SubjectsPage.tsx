@@ -40,7 +40,7 @@ export function subjectsForGrade(catalog: LandingCatalog, grade: number): Landin
 function GradeSubjectCard({ subject, grade }: { subject: LandingSubject; grade: number }) {
   const { lang, t } = useLanguage();
   const live = subject.liveGrades?.includes(grade) ?? false;
-  const href = live ? `/${subject.slug}#lop-${grade}` : null;
+  const href = live ? `/${subject.slug}?grade=${grade}` : null;
 
   const card = (
     <article className={[styles.card, href ? styles.activeCard : ''].filter(Boolean).join(' ')}>

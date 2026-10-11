@@ -8,7 +8,7 @@ import { momoRenewalsAvailable } from '../billing/providers/momo.js';
 // Checkout opens once payOS credentials are configured in the backend environment.
 
 const PLAN_ORDER = ['student_free', 'student_plus', 'teacher_free', 'teacher_pro'] as const;
-const INTERVAL_ORDER = ['month', 'year'] as const;
+const INTERVAL_ORDER = ['month', 'quarter', 'half_year', 'year'] as const;
 // Student metrics first, then a teacher's classes, exams, imports and AI.
 const METRIC_ORDER = ['tutor_requests', 'voice_minutes', 'graded_exam_attempts', 'active_classes', 'students_per_class', 'active_authored_exams', 'import_files', 'author_ai_requests'];
 const UNAVAILABLE = { code: 'BILLING_UNAVAILABLE', error: 'Chưa tải được thông tin gói. Thử lại sau.', error_en: 'Plan information is not available. Try again later.' };
@@ -41,9 +41,10 @@ export const billingRoutes: FastifyPluginAsync = async (app) => {
         const planPrices = INTERVAL_ORDER.flatMap((interval) => priceRows
           .filter((p) => p.plan_code === code && p.interval === interval)
           .map((p) => ({ id: p.id, interval, amountVnd: p.amount_vnd })));
-        // A paid plan needs exactly one monthly and one yearly price; a free plan has none.
+        // A paid plan needs a monthly and a yearly price (3 and 6 months are optional); a free plan has none.
         const paid = code.endsWith('_plus') || code.endsWith('_pro');
-        if (paid ? planPrices.length !== 2 || planPrices[0].interval === planPrices[1].interval : planPrices.length !== 0) {
+        const hasPrice = (interval: string) => planPrices.some((p) => p.interval === interval);
+        if (paid ? !hasPrice('month') || !hasPrice('year') : planPrices.length !== 0) {
           throw new IncompleteCatalog(`bad prices for ${code}`);
         }
         return {

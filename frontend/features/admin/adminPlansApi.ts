@@ -13,7 +13,7 @@ export type AdminPlan = {
   perks: Bilingual[];
   version: number;
   limits: Array<{ metric: string; kind: Kind; limit: number }>;
-  prices: { month: number | null; year: number | null } | null;
+  prices: { month: number | null; quarter: number | null; half_year: number | null; year: number | null } | null;
 };
 export type PlanAudit = { id: string; planCode: string; actorId: string | null; reason: string; before: unknown; after: unknown; createdAt: string };
 
@@ -25,6 +25,9 @@ export type PlanForm = {
   perksEn: string;
   limits: Record<string, { kind: Kind; limit: string }>;
   month: string;
+  /** Empty takes the 3-month / 6-month plan off sale. */
+  quarter: string;
+  half_year: string;
   year: string;
   reason: string;
 };
@@ -35,7 +38,7 @@ export type PlanPatch = {
   limits: Array<{ metric: string; kind: Kind; limit: number }>;
   description: Bilingual;
   perks: Bilingual[];
-  prices?: { month: number; year: number };
+  prices?: { month: number; quarter: number | null; half_year: number | null; year: number };
 };
 
 export const formFromPlan = (plan: AdminPlan): PlanForm => ({
@@ -46,6 +49,8 @@ export const formFromPlan = (plan: AdminPlan): PlanForm => ({
   limits: Object.fromEntries(plan.limits.map((l) => [l.metric, { kind: l.kind, limit: String(l.limit) }])),
   month: plan.prices?.month != null ? String(plan.prices.month) : '',
   year: plan.prices?.year != null ? String(plan.prices.year) : '',
+  quarter: plan.prices?.quarter != null ? String(plan.prices.quarter) : '',
+  half_year: plan.prices?.half_year != null ? String(plan.prices.half_year) : '',
   reason: '',
 });
 
@@ -79,8 +84,12 @@ export function patchFromForm(form: PlanForm, plan: AdminPlan): { ok: true; body
   if (plan.prices) {
     const month = wholeNumber(form.month, 1000);
     const year = wholeNumber(form.year, 1000);
-    if (month === null || year === null) return { ok: false, error: { vi: 'Giá phải là số nguyên từ 1.000 ₫.', en: 'Prices must be whole numbers from 1,000 VND.' } };
-    body.prices = { month, year };
+    const optional = (text: string) => (text.trim() === '' ? null : wholeNumber(text, 1000));
+    const quarter = optional(form.quarter);
+    const halfYear = optional(form.half_year);
+    const bad = month === null || year === null || (form.quarter.trim() !== '' && quarter === null) || (form.half_year.trim() !== '' && halfYear === null);
+    if (bad) return { ok: false, error: { vi: 'Giá phải là số nguyên từ 1.000 ₫ (gói 3 và 6 tháng có thể để trống để ngừng bán).', en: 'Prices must be whole numbers from 1,000 VND (leave 3-month and 6-month empty to stop selling them).' } };
+    body.prices = { month, quarter, half_year: halfYear, year };
   }
   return { ok: true, body };
 }

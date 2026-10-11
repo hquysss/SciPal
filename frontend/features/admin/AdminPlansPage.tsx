@@ -86,6 +86,12 @@ export function PlanCard({ plan, onSaved }: { plan: AdminPlan; onSaved: () => vo
             <Field id={id('month')} label={t({ vi: 'Giá theo tháng', en: 'Monthly price' })}>
               {(control) => <Input {...control} inputMode="numeric" value={form.month} onChange={(e) => setForm((f) => ({ ...f, month: e.target.value }))} className="tabular-nums" />}
             </Field>
+            <Field id={id('quarter')} label={t({ vi: 'Giá 3 tháng (để trống = ngừng bán)', en: '3-month price (empty = not sold)' })}>
+              {(control) => <Input {...control} inputMode="numeric" value={form.quarter} onChange={(e) => setForm((f) => ({ ...f, quarter: e.target.value }))} className="tabular-nums" />}
+            </Field>
+            <Field id={id('half_year')} label={t({ vi: 'Giá 6 tháng (để trống = ngừng bán)', en: '6-month price (empty = not sold)' })}>
+              {(control) => <Input {...control} inputMode="numeric" value={form.half_year} onChange={(e) => setForm((f) => ({ ...f, half_year: e.target.value }))} className="tabular-nums" />}
+            </Field>
             <Field id={id('year')} label={t({ vi: 'Giá theo năm', en: 'Yearly price' })}>
               {(control) => <Input {...control} inputMode="numeric" value={form.year} onChange={(e) => setForm((f) => ({ ...f, year: e.target.value }))} className="tabular-nums" />}
             </Field>

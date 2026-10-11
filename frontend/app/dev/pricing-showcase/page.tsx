@@ -11,7 +11,7 @@ const plans: PublicPlan[] = [
     description: { en: 'Core lessons and progress, 5 tutor questions a day and 3 graded exams a month.', vi: 'Bài học cốt lõi và theo dõi tiến độ, 5 lượt Tutor mỗi ngày và 3 lượt thi chấm điểm mỗi tháng.' },
     limits: [{ metric: 'tutor_requests', kind: 'daily', limit: 5 }, { metric: 'graded_exam_attempts', kind: 'monthly', limit: 3 }] },
   { code: 'student_plus', audience: 'student', active: true, version: 1,
-    prices: [{ id: P(1), interval: 'month', amountVnd: 39000 }, { id: P(2), interval: 'year', amountVnd: 390000 }],
+    prices: [{ id: P(1), interval: 'month', amountVnd: 39000 }, { id: P(5), interval: 'quarter', amountVnd: 105000 }, { id: P(6), interval: 'half_year', amountVnd: 199000 }, { id: P(2), interval: 'year', amountVnd: 390000 }],
     name: { en: 'Student Plus', vi: 'Học sinh Plus' },
     description: { en: '200 tutor questions and 30 graded exams a month.', vi: '200 lượt Tutor và 30 lượt thi chấm điểm mỗi tháng.' },
     limits: [{ metric: 'tutor_requests', kind: 'monthly', limit: 200 }, { metric: 'graded_exam_attempts', kind: 'monthly', limit: 30 }] },

@@ -6,6 +6,7 @@ import { ArrowRight, BookOpen, Check, QrCode, RefreshCcw, Sparkles } from 'lucid
 import { useLanguage } from '@scipal/hooks';
 import { createBrowserClient } from '@scipal/supabase';
 import type { BillingAudience, BillingInterval } from '@scipal/types';
+import { INTERVALS, INTERVAL_LABEL, INTERVAL_MONTHS, INTERVAL_NOUN, INTERVAL_SPAN, approxDays, canAutoRenew, savePercent } from './intervals';
 import { Alert } from '@/components/ui/alert';
 import { PricingLoadError } from './PricingLoadError';
 import shared from '@/features/landing/pricing.module.css';
@@ -103,9 +104,7 @@ export function PricingPage({ plans, checkoutOpen, payosCheckoutOpen = checkoutO
 
   const shown = plans.filter((plan) => plan.audience === audience);
   const firstPaid = shown.find((plan) => plan.prices.length > 0);
-  const firstMonth = firstPaid?.prices.find((p) => p.interval === 'month');
-  const firstYear = firstPaid?.prices.find((p) => p.interval === 'year');
-  const savePercent = firstMonth && firstYear ? Math.round((1 - firstYear.amountVnd / (firstMonth.amountVnd * 12)) * 100) : 0;
+  const offered = INTERVALS.filter((i) => firstPaid?.prices.some((p) => p.interval === i));
 
   const action = (plan: PublicPlan, paid: boolean, price: PublicPlan['prices'][number] | undefined) => {
     if (!paid) {
@@ -151,11 +150,11 @@ export function PricingPage({ plans, checkoutOpen, payosCheckoutOpen = checkoutO
       );
     }
     if (!price) return null;
-    const period = price.interval === 'year' ? t({ en: 'year', vi: 'năm' }) : t({ en: 'month', vi: 'tháng' });
+    const period = t(INTERVAL_NOUN[price.interval]);
     const canBuy = autoRenew ? momoAutoRenewOpen : payosCheckoutOpen;
     return (
       <>
-        {momoAutoRenewOpen && (
+        {momoAutoRenewOpen && canAutoRenew(price.interval) && (
           <label className="mb-3 flex min-h-11 cursor-pointer items-start gap-2 text-sm text-ink-muted">
             <input
               type="checkbox"
@@ -203,13 +202,15 @@ export function PricingPage({ plans, checkoutOpen, payosCheckoutOpen = checkoutO
           </button>
         </div>
         <div role="group" aria-label={t({ en: 'Billing period', vi: 'Chu kỳ thanh toán' })} className={shared.segment}>
-        <button type="button" aria-pressed={interval === 'month'} onClick={() => { setInterval('month'); setAutoRenew(false); }}>
-            {t({ en: 'Monthly', vi: 'Theo tháng' })}
-          </button>
-        <button type="button" aria-pressed={interval === 'year'} onClick={() => { setInterval('year'); setAutoRenew(false); }}>
-            {t({ en: 'Yearly', vi: 'Theo năm' })}
-            {savePercent > 0 && <span className={s.save}>−{savePercent}%</span>}
-          </button>
+        {offered.map((value) => {
+            const save = savePercent(firstPaid?.prices ?? [], value);
+            return (
+              <button key={value} type="button" aria-pressed={interval === value} onClick={() => { setInterval(value); setAutoRenew(false); }}>
+                {t(INTERVAL_LABEL[value])}
+                {save > 0 && <span className={s.save}>−{save}%</span>}
+              </button>
+            );
+          })}
         </div>
       </div>
 
@@ -224,8 +225,8 @@ export function PricingPage({ plans, checkoutOpen, payosCheckoutOpen = checkoutO
           const paid = plan.prices.length > 0;
           const price = plan.prices.find((p) => p.interval === interval);
           const monthly = plan.prices.find((p) => p.interval === 'month');
-          const yearMonths = price && monthly && interval === 'year' ? Math.round(price.amountVnd / monthly.amountVnd) : null;
-          const perDay = price ? Math.round(price.amountVnd / (interval === 'year' ? 365 : 30) / 100) * 100 : 0;
+          const paidMonths = price && monthly && interval !== 'month' ? Math.round(price.amountVnd / monthly.amountVnd) : null;
+          const perDay = price ? Math.round(price.amountVnd / approxDays(interval) / 100) * 100 : 0;
 
           const body = (
             <>
@@ -237,13 +238,13 @@ export function PricingPage({ plans, checkoutOpen, payosCheckoutOpen = checkoutO
               <p className={shared.price} key={`${audience}-${interval}`}>
                 <span className={`${shared.amount} ${paid ? shared.amountPaid : ''}`}>{formatVnd(price?.amountVnd ?? 0)}</span>
                 <span className={shared.per}>
-                  {paid ? (interval === 'year' ? t({ en: '/ year', vi: '/ năm' }) : t({ en: '/ month', vi: '/ tháng' })) : t({ en: 'forever', vi: 'mãi mãi' })}
+                  {paid ? `/ ${t(INTERVAL_NOUN[interval])}` : t({ en: 'forever', vi: 'mãi mãi' })}
                 </span>
               </p>
-              {paid && interval === 'year' && (
+              {paid && interval !== 'month' && (
                 <p className={shared.note}>
-                  {t({ en: 'Paid up front for 1 year', vi: 'trả trước 1 năm' })}
-                  {yearMonths !== null && yearMonths < 12 && ` · ${t({ en: `the price of ${yearMonths} months`, vi: `bằng giá ${yearMonths} tháng` })}`}
+                  {t({ en: `Paid up front for ${INTERVAL_SPAN[interval].en}`, vi: `trả trước ${INTERVAL_SPAN[interval].vi}` })}
+                  {paidMonths !== null && paidMonths < INTERVAL_MONTHS[interval] && ` · ${t({ en: `the price of ${paidMonths} months`, vi: `bằng giá ${paidMonths} tháng` })}`}
                 </p>
               )}
               {paid && perDay > 0 && (

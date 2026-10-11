@@ -1,5 +1,6 @@
 const VIETNAM_OFFSET_MS = 7 * 60 * 60 * 1000;
-type BillingInterval = 'month' | 'year';
+type BillingInterval = 'month' | 'quarter' | 'half_year' | 'year';
+const INTERVAL_MONTHS: Record<BillingInterval, number> = { month: 1, quarter: 3, half_year: 6, year: 12 };
 
 function assertValidDate(date: Date): void {
   if (!Number.isFinite(date.getTime())) throw new RangeError('Invalid date');
@@ -18,7 +19,7 @@ export function quotaPeriod(now: Date): { start: string; end: string } {
 
 export function paidThrough(start: Date, interval: BillingInterval): string {
   assertValidDate(start);
-  const months = interval === 'month' ? 1 : 12;
+  const months = INTERVAL_MONTHS[interval];
   const targetMonth = start.getUTCMonth() + months;
   const targetYear = start.getUTCFullYear() + Math.floor(targetMonth / 12);
   const normalizedMonth = targetMonth % 12;

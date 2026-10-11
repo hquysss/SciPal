@@ -10,7 +10,7 @@ vi.mock('@scipal/supabase', () => ({ createBrowserClient: () => ({}) }));
 const plus: AdminPlan = {
   code: 'student_plus', audience: 'student', name: { en: 'Student Plus', vi: 'Học sinh Plus' }, description: { en: 'More', vi: 'Nhiều hơn' }, perks: [{ en: 'All lessons', vi: 'Mọi bài học' }], version: 3,
   limits: [{ metric: 'tutor_requests', kind: 'monthly', limit: 200 }, { metric: 'graded_exam_attempts', kind: 'monthly', limit: 30 }],
-  prices: { month: 39000, year: 390000 },
+  prices: { month: 39000, quarter: 105000, half_year: null, year: 390000 },
 };
 const free: AdminPlan = { ...plus, code: 'student_free', name: { en: 'Student Free', vi: 'Học sinh Miễn phí' }, prices: null, limits: [{ metric: 'tutor_requests', kind: 'daily', limit: 5 }] };
 
@@ -25,7 +25,7 @@ describe('patchFromForm', () => {
         limits: [{ metric: 'tutor_requests', kind: 'monthly', limit: 300 }, { metric: 'graded_exam_attempts', kind: 'monthly', limit: 30 }],
         description: { en: 'More', vi: 'Nhiều hơn' },
         perks: [{ en: 'All lessons', vi: 'Mọi bài học' }],
-        prices: { month: 49000, year: 390000 },
+        prices: { month: 49000, quarter: 105000, half_year: null, year: 390000 },
       },
     });
   });

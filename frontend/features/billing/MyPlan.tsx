@@ -7,6 +7,8 @@ import type { BillingAccount, EffectiveQuota } from '@scipal/types';
 import { Alert } from '@/components/ui/alert';
 import { buttonVariants } from '@/components/ui/button';
 import { cancelRenewal, METRIC, PLAN_NAME, fetchMyPlan, fetchTransactions, formatVnd, type Transaction } from './billingApi';
+import type { BillingInterval } from '@scipal/types';
+import { INTERVAL_NOUN, INTERVAL_SPAN } from './intervals';
 
 type Bilingual = { vi: string; en: string };
 export type MyPlanState = { status: 'loading' } | { status: 'error'; message: Bilingual } | { status: 'ready'; account: BillingAccount };
@@ -123,14 +125,14 @@ export function MyPlanView({ state, onRetry, onCancelRenewal, cancelling = false
           )}
           {renewal?.status === 'active' && renewal.amountVnd && renewal.interval && (
             <p className="text-sm text-ink-muted">
-              {t({ vi: 'Kỳ tới', en: 'Next charge' })}: {formatVnd(renewal.amountVnd)} / {renewal.interval === 'year' ? t({ vi: 'năm', en: 'year' }) : t({ vi: 'tháng', en: 'month' })}
+              {t({ vi: 'Kỳ tới', en: 'Next charge' })}: {formatVnd(renewal.amountVnd)} / {t(INTERVAL_NOUN[renewal.interval])}
               {renewal.nextChargeAt && ` · ${formatDate(renewal.nextChargeAt, lang)}`}
             </p>
           )}
           {cancelMessage && <p role="status" className="mt-2 text-sm text-ink-muted">{t(cancelMessage)}</p>}
         </div>
         <div className="flex flex-wrap gap-2">
-          {renewal?.status === 'active' && onCancelRenewal && (
+          {(renewal?.status === 'active' || (renewal?.provider === 'vnpay' && ['pending', 'paused', 'failed'].includes(renewal.status))) && onCancelRenewal && (
             <button type="button" onClick={onCancelRenewal} disabled={cancelling} aria-busy={cancelling} className={buttonVariants({ variant: 'outline' })}>
               {cancelling ? t({ vi: 'Đang hủy…', en: 'Cancelling…' }) : t({ vi: 'Hủy gia hạn', en: 'Cancel renewal' })}
             </button>
@@ -189,7 +191,7 @@ export function TransactionsView({ state, onMore }: { state: TransactionsState; 
           {state.items.map((tx) => {
             const status = STATUS[tx.status] ?? { label: { vi: tx.status, en: tx.status }, tone: 'text-ink-muted' };
             const plan = t(PLAN_NAME[tx.planCode] ?? { vi: tx.planCode, en: tx.planCode });
-            const period = tx.interval === 'year' ? t({ vi: '1 năm', en: '1 year' }) : t({ vi: '1 tháng', en: '1 month' });
+            const period = t(INTERVAL_SPAN[tx.interval as BillingInterval] ?? INTERVAL_SPAN.month);
             return (
               <li key={tx.id} className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1 py-3">
                 <div className="flex min-w-0 flex-col">

@@ -8,7 +8,7 @@ export const PlanCodeSchema = z.enum([
 ]);
 
 export const BillingAudienceSchema = z.enum(['student', 'teacher']);
-export const BillingIntervalSchema = z.enum(['month', 'year']);
+export const BillingIntervalSchema = z.enum(['month', 'quarter', 'half_year', 'year']);
 export const QuotaMetricSchema = z.enum([
   'tutor_requests',
   'graded_exam_attempts',
@@ -56,8 +56,8 @@ export const BillingPlanSchema = z.object({
   if (plan.code.endsWith('_free') && plan.prices.length > 0) {
     context.addIssue({ code: z.ZodIssueCode.custom, path: ['prices'], message: 'Free plans cannot be checked out' });
   }
-  if (!plan.code.endsWith('_free') && (plan.prices.length !== 2 || intervals.size !== 2)) {
-    context.addIssue({ code: z.ZodIssueCode.custom, path: ['prices'], message: 'Paid plans require monthly and annual prices' });
+  if (!plan.code.endsWith('_free') && (intervals.size !== plan.prices.length || !intervals.has('month') || !intervals.has('year'))) {
+    context.addIssue({ code: z.ZodIssueCode.custom, path: ['prices'], message: 'Paid plans require one monthly and one annual price; 3-month and 6-month prices are optional' });
   }
 });
 

@@ -49,7 +49,7 @@ function fakeMomo(overrides: Partial<MomoClient> = {}): MomoClient {
 
 function withUser(userValue: object | null, tables: Record<string, MockBuilder | MockBuilder[]>) {
   const app = Fastify();
-  app.decorate('supabase', mockSupabase(tables));
+  app.decorate('supabase', mockSupabase({ billing_prices: ok({ interval: 'month' }), ...tables }));
   if (userValue) app.addHook('onRequest', async (request) => { (request as typeof request & { user?: object }).user = userValue; });
   return app;
 }
