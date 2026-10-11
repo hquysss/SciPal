@@ -21,4 +21,16 @@ export const createTopic = (subjectId: string, grade: number, names: Names) =>
   authoringCall<{ topic: ManagedTopic }>('/api/authoring/topics', 'POST', { subject_id: subjectId, grade, ...names });
 export const renameTopic = (id: string, names: Names) => authoringCall<{ topic: ManagedTopic }>(path(id), 'PATCH', names);
 export const moveTopic = (id: string, direction: 'up' | 'down') => authoringCall<Record<string, never>>(path(id, '/move'), 'POST', { direction });
+/** A lesson as the topic's lesson list shows it, in student order. */
+export interface TopicLesson {
+  id: string;
+  slug: string;
+  title_en: string;
+  title_vi: string;
+  status: string;
+  sort_order: number;
+}
+export const listTopicLessons = (id: string) => authoringCall<{ lessons: TopicLesson[] }>(path(id, '/lessons'), 'GET');
+export const moveTopicLesson = (id: string, lessonId: string, direction: 'up' | 'down') =>
+  authoringCall<Record<string, never>>(path(id, '/lessons/move'), 'POST', { lesson_id: lessonId, direction });
 export const deleteTopic = (id: string) => authoringCall<Record<string, never>>(path(id), 'DELETE');

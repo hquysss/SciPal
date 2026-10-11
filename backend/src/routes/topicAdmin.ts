@@ -180,6 +180,54 @@ export const topicAdminRoutes: FastifyPluginAsync = async (app) => {
     },
   });
 
+  const LESSON_COLUMNS = 'id, slug, title_en, title_vi, status, sort_order';
+  const topicLessons = (topicId: string) =>
+    app.supabase!.from('lessons').select(LESSON_COLUMNS).eq('topic_id', topicId).order('sort_order', { ascending: true }).order('title_vi', { ascending: true });
+
+  /** The lessons of a topic in the order students see them (all statuses, for the admin). */
+  app.get('/api/authoring/topics/:id/lessons', {
+    preHandler: [requireAdmin],
+    handler: async (request, reply) => {
+      if (!app.supabase) return reply.code(503).send(unavailable);
+      const topic = await loadTopic(request, reply);
+      if (!topic) return reply;
+      const { data, error } = await topicLessons(topic.id);
+      if (error) {
+        request.log.error({ err: error, topicId: topic.id }, 'Failed to list topic lessons');
+        return reply.code(500).send(msg('Không tải được các bài.', 'Could not load the lessons.'));
+      }
+      return reply.send({ lessons: data ?? [] });
+    },
+  });
+
+  /** Moves one lesson a place up or down inside its topic; the topic is renumbered 0..n. */
+  app.post('/api/authoring/topics/:id/lessons/move', {
+    preHandler: [requireAdmin],
+    handler: async (request, reply) => {
+      if (!app.supabase) return reply.code(503).send(unavailable);
+      const body = (request.body ?? {}) as { lesson_id?: unknown; direction?: unknown };
+      if (body.direction !== 'up' && body.direction !== 'down') return reply.code(400).send(msg('Hướng di chuyển không hợp lệ.', 'Invalid direction.'));
+      if (typeof body.lesson_id !== 'string' || !UUID.test(body.lesson_id)) return reply.code(400).send(msg('Bài học không hợp lệ.', 'Invalid lesson.'));
+      const topic = await loadTopic(request, reply);
+      if (!topic) return reply;
+      const { data, error } = await topicLessons(topic.id);
+      if (error) {
+        request.log.error({ err: error, topicId: topic.id }, 'Failed to list topic lessons');
+        return reply.code(500).send(msg('Không đổi được thứ tự.', 'Could not reorder.'));
+      }
+      const rows = (data ?? []) as Array<{ id: string; sort_order: number }>;
+      if (!rows.some((row) => row.id === body.lesson_id)) return reply.code(404).send(msg('Bài này không thuộc chủ đề.', 'This lesson is not in the topic.'));
+      for (const change of reorderTopics(rows, body.lesson_id, body.direction)) {
+        const { error: updateError } = await app.supabase.from('lessons').update({ sort_order: change.sort_order }).eq('id', change.id);
+        if (updateError) {
+          request.log.error({ err: updateError, lessonId: change.id }, 'Failed to reorder lessons');
+          return reply.code(500).send(msg('Không đổi được thứ tự.', 'Could not reorder.'));
+        }
+      }
+      return reply.code(204).send();
+    },
+  });
+
   app.delete('/api/authoring/topics/:id', {
     preHandler: [requireAdmin],
     handler: async (request, reply) => {
