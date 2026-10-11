@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { KneeReflexConfig } from './kneeReflex.js';
 import { GRAPH_PARAMETER_NAME, MAX_GRAPH_EXPRESSION, parseGraphExpression } from './graphExpression.js';
 
 // Simulation templates for `interactive` blocks. Each built-in kind runs in the browser from its
@@ -299,6 +300,7 @@ const LabeledDiagramConfig = z.object({
 });
 
 export const SIMULATION_CONFIGS = {
+  'knee-reflex': KneeReflexConfig,
   'algorithm-sim': AlgorithmConfig,
   'function-graph': FunctionGraphConfig,
   motion: MotionConfig,
@@ -321,6 +323,7 @@ export const BUILT_IN_SIMULATION_KINDS = Object.keys(SIMULATION_CONFIGS) as Buil
 /** Kinds stored before the templates existed; they keep a placeholder and any config. */
 export const LEGACY_SIMULATION_KINDS = ['geometry-3d', 'experiment', 'bio-diagram'] as const;
 export const SIMULATION_KINDS = [
+  'knee-reflex',
   'algorithm-sim',
   'function-graph',
   'motion',
@@ -419,6 +422,7 @@ interface InteractiveLike {
 }
 
 const MESSAGES: Record<string, Message> = {
+  'knee-reflex': { en: 'Playback speed 0.5–2; choose the body or reflex circuit view.', vi: 'Tốc độ phát 0,5–2; chọn cảnh toàn thân hoặc cung phản xạ.' },
   'algorithm-sim': { en: 'Check the algorithm, the values (2–32 whole numbers) and the target.', vi: 'Kiểm tra thuật toán, dãy số (2–32 số nguyên) và giá trị cần tìm.' },
   'function-graph': { en: 'Check the expression, the parameters and the axes.', vi: 'Kiểm tra biểu thức, tham số và khoảng trục.' },
   motion: { en: 'Speed 0–100 m/s, angle 0–90°, acceleration −20–20 m/s², g 1–25, time 1–30 s.', vi: 'Vận tốc 0–100 m/s, góc 0–90°, gia tốc −20–20 m/s², g 1–25, thời gian 1–30 s.' },

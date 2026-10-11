@@ -1,4 +1,5 @@
 import type { BuiltInSimulationKind } from '@scipal/types';
+import { kneeReflexModule } from './kneeReflex';
 import { algorithmModule } from './algorithm';
 import { functionGraphModule } from './functionGraph';
 import { graph3dModule } from './graph3d';
@@ -17,6 +18,7 @@ import type { SimulationModule } from './types';
 
 /** Every built-in template, used by the Studio editor, its preview and the learner page alike. */
 export const simulationModules: { [K in BuiltInSimulationKind]: SimulationModule<K> } = {
+  'knee-reflex': kneeReflexModule,
   'algorithm-sim': algorithmModule,
   'function-graph': functionGraphModule,
   probability: probabilityModule,

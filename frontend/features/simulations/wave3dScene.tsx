@@ -9,6 +9,7 @@ import { ABSORBER_START, autoSource, displacementAt, sampleProfile, TANK_LENGTH,
 import { Rig, useOrbit, usePalette, type Orbit } from './scene3d';
 import { pick, type Lang } from './types';
 import { WAVE_PARTS, type WavePart } from './wave3dParts';
+import overlay from './simOverlay.module.css';
 import styles from './wave3d.module.css';
 
 const TOKENS = { background: '--wave-background', floor: '--wave-floor', base: '--wave-base', glass: '--wave-glass', frame: '--wave-frame', deep: '--wave-deep', shallow: '--wave-shallow', sky: '--wave-sky', crest: '--wave-crest', metal: '--wave-metal', charcoal: '--wave-dark', rod: '--wave-rod', source: '--wave-source', float: '--wave-float', absorber: '--wave-absorber', highlight: '--wave-highlight', lampOn: '--wave-lamp-on', lampOff: '--wave-lamp-off', measure: '--wave-measure' } as const;
@@ -683,7 +684,7 @@ function WaveScene({ settings, mode, time, running, stamp, lang, history, crank,
       key={key}
       type="button"
       ref={(el) => { if (el) labels.current.set(key, el); else labels.current.delete(key); }}
-      className={styles.chip}
+      className={`${overlay.chip} ${styles.anchor}`}
       aria-pressed={part === key}
       onPointerDown={(e) => e.stopPropagation()}
       onClick={() => onPart(part === key ? null : key)}
@@ -750,16 +751,16 @@ function WaveScene({ settings, mode, time, running, stamp, lang, history, crank,
           measure('amp', `A = ${format(settings.amplitude)} cm`),
           measure('v', `v = ${format(settings.speed)} m/s`),
         ]}
-        {!panelsHidden && <div className={styles.hud}>{hud(expanded)}</div>}
-        <div className={styles.tools} onPointerDown={(e) => e.stopPropagation()}>
+        {!panelsHidden && <div className={overlay.hud}>{hud(expanded)}</div>}
+        <div className={`${overlay.tools} ${styles.toolsPos}`} onPointerDown={(e) => e.stopPropagation()}>
           {([
-            [panelsHidden ? <EyeOff key="panels" aria-hidden="true" className="h-4 w-4" /> : <Eye key="panels" aria-hidden="true" className="h-4 w-4" />, panelsHidden ? t({ vi: 'Hiện bảng thông tin', en: 'Show info panels' }) : t({ vi: 'Ẩn bảng thông tin', en: 'Hide info panels' }), () => setPanelsHidden((hidden) => !hidden)],
             [<Plus key="in" aria-hidden="true" className="h-4 w-4" />, t({ vi: 'Phóng to', en: 'Zoom in' }), () => zoom(0.85)],
             [<Minus key="out" aria-hidden="true" className="h-4 w-4" />, t({ vi: 'Thu nhỏ', en: 'Zoom out' }), () => zoom(1 / 0.85)],
             [<RotateCcw key="reset" aria-hidden="true" className="h-4 w-4" />, t({ vi: 'Góc nhìn ban đầu', en: 'Reset view' }), resetView],
+            [panelsHidden ? <EyeOff key="panels" aria-hidden="true" className="h-4 w-4" /> : <Eye key="panels" aria-hidden="true" className="h-4 w-4" />, panelsHidden ? t({ vi: 'Hiện bảng thông tin', en: 'Show info panels' }) : t({ vi: 'Ẩn bảng thông tin', en: 'Hide info panels' }), () => setPanelsHidden((hidden) => !hidden)],
             [expanded ? <Minimize2 key="full" aria-hidden="true" className="h-4 w-4" /> : <Maximize2 key="full" aria-hidden="true" className="h-4 w-4" />, expanded ? t({ vi: 'Thoát toàn màn hình', en: 'Exit full screen' }) : t({ vi: 'Toàn màn hình', en: 'Full screen' }), toggleFullscreen],
           ] as const).map(([icon, label, action]) => (
-            <button key={label} type="button" className={styles.tool} aria-label={label} title={label} onClick={() => void action()}>{icon}</button>
+            <button key={label} type="button" className={overlay.tool} aria-label={label} title={label} onClick={() => void action()}>{icon}</button>
           ))}
         </div>
       </div>

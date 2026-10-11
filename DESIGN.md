@@ -1,5 +1,12 @@
 # SciPal Web Design System
 
+## Shared 3D overlay and knee-jerk reflex (12/10)
+
+- `simOverlay.module.css` is the one look for what a 3D simulation draws over its scene: frosted `card`, square icon `tool`, `chip` part labels, `readouts` list, `part` explanation card and the full-screen `dock`. Theme tokens only. `wave-3d` and `knee-reflex` import it and add only placement and their own scene colours. Tool order is the same in both: zoom in, zoom out, reset view, hide/show info panels, full screen. Under 520px the cards start below the tool row.
+- `knee-reflex` (Biology, `/dev/knee-reflex`, Studio picker): a seated body view and a reflex-circuit view, six steps (stimulus, sensory input, spinal integration, motor output, response). Config is `speed` 0.5-2, `view` body|circuit, `labels`. Playback is slowed for teaching and says so on the page.
+- The body is `public/models/knee-reflex/anatomy.glb` (about 3 MB, Draco, skinned knee joint) derived from BodyParts3D / Z-Anatomy, CC BY-SA 4.0; attribution and the rebuild script (`scripts/assets/build-knee-anatomy.mjs`) are kept beside it. The model licence does not change the licence of SciPal code.
+- If the model or WebGL fails, the six steps and their explanations stay usable (tested).
+
 ## Water waves 3D (11/10)
 
 - Reference: user's 26s Bandicam recording of YooBook "Mô tả sóng" (ripple tank). Treated as a goal, not a copy: the SciPal version adds a hand-turned crank mode, live λ/A/v measures, u(x) and u(t) graphs and droppable floats.

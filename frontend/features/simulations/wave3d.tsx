@@ -8,6 +8,7 @@ import { pick, type SimulationEditorProps, type SimulationModule, type Simulatio
 import { useHarmonicPlayback } from './useHarmonicPlayback';
 import { WAVE_PARTS, type WavePart } from './wave3dParts';
 import type { CrankState } from './wave3dScene';
+import overlay from './simOverlay.module.css';
 import styles from './wave3d.module.css';
 
 const WaveScene = lazy(() => import('./wave3dScene'));
@@ -91,7 +92,7 @@ function WaveExperiment({ config, lang }: Props) {
     en: 'The turning wheel moves the wave source up and down. The wave travels along the tank at speed v; each turn makes one wavelength λ = v/f. The floats only bob in place.',
   });
   const readouts = (
-    <dl className={`${styles.readouts} ${styles.card}`}>
+    <dl className={`${overlay.readouts} ${overlay.card}`}>
       <dt>{t({ vi: 'Tần số f', en: 'Frequency f' })}</dt><dd>{turning ? `${format(frequency)} Hz` : '—'}</dd>
       <dt>{t({ vi: 'Chu kì T', en: 'Period T' })}</dt><dd>{turning ? `${format(1 / frequency)} s` : '—'}</dd>
       <dt>{t({ vi: 'Bước sóng λ', en: 'Wavelength λ' })}</dt><dd>{lambda !== null ? `${format(lambda, 3)} m` : '—'}</dd>
@@ -132,18 +133,18 @@ function WaveExperiment({ config, lang }: Props) {
   const hud = (expanded: boolean) => (
     <>
       {readouts}
-      <div className={styles.bottom}>
+      <div className={overlay.bottom}>
         {part && (
-          <div aria-live="polite" className={`${styles.card} ${styles.part} ${styles.interactive}`} onPointerDown={stop}>
+          <div aria-live="polite" className={`${overlay.card} ${overlay.part} ${overlay.interactive}`} onPointerDown={stop}>
             <div className="min-w-0 flex-1">
               <p className="font-semibold">{t(WAVE_PARTS[part].name)}</p>
               <p className="mt-0.5 text-ink-muted">{t(WAVE_PARTS[part].about)}</p>
             </div>
-            <button type="button" className={styles.tool} aria-label={t({ vi: 'Đóng', en: 'Close' })} onClick={() => setPart(null)}><X aria-hidden="true" className="h-4 w-4" /></button>
+            <button type="button" className={overlay.tool} aria-label={t({ vi: 'Đóng', en: 'Close' })} onClick={() => setPart(null)}><X aria-hidden="true" className="h-4 w-4" /></button>
           </div>
         )}
         {expanded && (
-          <div className={`${styles.card} ${styles.dock} ${styles.interactive}`} onPointerDown={stop}>
+          <div className={`${overlay.card} ${overlay.dock} ${overlay.interactive}`} onPointerDown={stop}>
             {modeSwitch}
             {transport}
             <div className="flex min-w-0 flex-[3_1_420px] flex-wrap gap-x-4 gap-y-2 [&>*]:min-w-[140px] [&>*]:flex-1">{sliders}</div>
