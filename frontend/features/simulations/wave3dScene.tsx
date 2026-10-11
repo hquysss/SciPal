@@ -1,12 +1,11 @@
 'use client';
 
-import { memo, useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent, type ReactNode, type RefObject } from 'react';
-import { Eye, EyeOff, Maximize2, Minimize2, Minus, Plus, RotateCcw } from 'lucide-react';
+import { memo, useEffect, useMemo, useRef, type PointerEvent as ReactPointerEvent, type RefObject } from 'react';
 import { Canvas, useFrame, useThree, type ThreeEvent } from '@react-three/fiber';
 import * as THREE from 'three';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 import { ABSORBER_START, autoSource, displacementAt, sampleProfile, TANK_LENGTH, wavelength, type SourceHistory, type WaveSettings } from './engines/wave';
-import { Rig, useOrbit, usePalette, type Orbit } from './scene3d';
+import { Rig, useOrbit, usePalette, ViewButtons, type Orbit } from './scene3d';
 import { pick, type Lang } from './types';
 import { WAVE_PARTS, type WavePart } from './wave3dParts';
 import styles from './wave3d.module.css';
@@ -31,7 +30,7 @@ const ARM_Y = WATER_Y + 0.85;
 const SAMPLES = 512;
 const HOME: Orbit = { theta: -1.9, phi: 0.3, dist: 9.4 };
 const LIMITS = { min: 3.2, max: 17 };
-const HOME_TARGET = new THREE.Vector3(2.55, 1.35, 0.45);
+const HOME_TARGET = new THREE.Vector3(3.05, 0.95, 0.45);
 const sceneX = (x: number) => X0 + x * SCALE;
 const metres = (sx: number) => (sx - X0) / SCALE;
 
@@ -52,8 +51,6 @@ export type WaveSceneProps = {
   readonly showMeasure: boolean;
   readonly part: WavePart | null;
   readonly onPart: (part: WavePart | null) => void;
-  /** Readouts and controls drawn over the view; `expanded` is true in full screen. */
-  readonly hud: (expanded: boolean) => ReactNode;
 };
 
 const WATER_VERTEX = /* glsl */ `
@@ -335,7 +332,7 @@ function Drive({ mats, palette, settings, mode, crank, onPart, onHover, onGrab }
         <group
           ref={wheel}
           position={[WHEEL.x, WHEEL.y, WHEEL.z]}
-          onPointerDown={(e) => { if (manual && e.nativeEvent.button === 0) { e.stopPropagation(); onGrab(); } }}
+          onPointerDown={(e) => { if (manual) { e.stopPropagation(); onGrab(); } }}
         >
           <mesh material={mats.charcoal} castShadow rotation={[Math.PI / 2, 0, 0]}><cylinderGeometry args={[WHEEL_RADIUS, WHEEL_RADIUS, 0.08, 64]} /></mesh>
           <mesh material={mats.metal} rotation={[Math.PI / 2, 0, 0]} position={[0, 0, -0.08]}><cylinderGeometry args={[0.16, 0.16, 0.06, 32]} /></mesh>
@@ -505,33 +502,13 @@ const PART_FOCUS: Record<WavePart, { point: THREE.Vector3; dist: number }> = {
   absorber: { point: new THREE.Vector3(7.1, 0.6, 0), dist: 5.4 },
 };
 
-const PAN_BOX = { x: [-1.5, 9.5], y: [-0.5, 4], z: [-3, 3] } as const;
-
-/** Slides the orbit target across the screen plane by a pointer drag of (dx, dy) pixels. */
-function panBy(target: THREE.Vector3, o: Orbit, dx: number, dy: number) {
-  const k = o.dist * 0.0016;
-  const cp = Math.cos(o.phi);
-  const fx = -cp * Math.cos(o.theta);
-  const fy = -Math.sin(o.phi);
-  const fz = cp * Math.sin(o.theta);
-  const length = Math.hypot(fz, fx) || 1;
-  const rx = -fz / length;
-  const rz = fx / length;
-  target.x += -dx * k * rx + dy * k * (-rz * fy);
-  target.y += dy * k * (rz * fx - rx * fz);
-  target.z += -dx * k * rz + dy * k * (rx * fy);
-  target.x = Math.min(Math.max(target.x, PAN_BOX.x[0]), PAN_BOX.x[1]);
-  target.y = Math.min(Math.max(target.y, PAN_BOX.y[0]), PAN_BOX.y[1]);
-  target.z = Math.min(Math.max(target.z, PAN_BOX.z[0]), PAN_BOX.z[1]);
-}
-
 function angleAt(e: ReactPointerEvent<HTMLElement>, center: { x: number; y: number; mirror: boolean }) {
   const rect = e.currentTarget.getBoundingClientRect();
   const dx = e.clientX - rect.left - center.x;
   return Math.atan2(-(e.clientY - rect.top - center.y), center.mirror ? -dx : dx);
 }
 
-function WaveScene({ settings, mode, time, running, stamp, lang, history, crank, floats, selectedFloat, onAddFloat, onSelectFloat, showMeasure, part, onPart, hud }: WaveSceneProps) {
+function WaveScene({ settings, mode, time, running, stamp, lang, history, crank, floats, selectedFloat, onAddFloat, onSelectFloat, showMeasure, part, onPart }: WaveSceneProps) {
   const t = pick(lang);
   const { host, orbit, invalidate, handlers, reset, zoom } = useOrbit(HOME, LIMITS);
   const palette = usePalette(host, TOKENS);
@@ -541,11 +518,6 @@ function WaveScene({ settings, mode, time, running, stamp, lang, history, crank,
   const hover = useRef<WavePart | null>(null);
   const grab = useRef<{ id: number; last: number } | null>(null);
   const grabRequested = useRef(false);
-  const pan = useRef<{ id: number; x: number; y: number } | null>(null);
-  const [fullscreen, setFullscreen] = useState(false);
-  const [covering, setCovering] = useState(false);
-  const [panelsHidden, setPanelsHidden] = useState(false);
-  const expanded = fullscreen || covering;
   const wheelScreen = useRef({ x: 0, y: 0, mirror: false });
   const anchors = useMemo(() => ({
     drive: new THREE.Vector3(WHEEL.x, WHEEL.y + WHEEL_RADIUS + 0.35, WHEEL.z),
@@ -568,41 +540,6 @@ function WaveScene({ settings, mode, time, running, stamp, lang, history, crank,
     invalidate.current();
   }, [part, floats, selectedFloat, invalidate]);
 
-  useEffect(() => {
-    const sync = () => {
-      const on = document.fullscreenElement !== null && document.fullscreenElement === host.current;
-      setFullscreen(on);
-      if (on) setCovering(false);
-    };
-    document.addEventListener('fullscreenchange', sync);
-    return () => document.removeEventListener('fullscreenchange', sync);
-  }, [host]);
-  // Browsers without the Fullscreen API (iPhone Safari) get the view stretched over the page instead.
-  useEffect(() => {
-    if (!covering) return;
-    const leave = (e: KeyboardEvent) => { if (e.key === 'Escape') setCovering(false); };
-    const html = document.documentElement;
-    const before = html.style.overflow;
-    html.style.overflow = 'hidden';
-    window.addEventListener('keydown', leave);
-    return () => { html.style.overflow = before; window.removeEventListener('keydown', leave); };
-  }, [covering]);
-  const toggleFullscreen = async () => {
-    const el = host.current;
-    if (!el) return;
-    if (document.fullscreenElement) { await document.exitFullscreen().catch(() => {}); return; }
-    if (covering) { setCovering(false); return; }
-    try {
-      if (!el.requestFullscreen) throw new Error('no fullscreen');
-      // Some embedded browsers leave the request pending forever; stop waiting and cover the page.
-      const slow = new Promise<'slow'>((resolve) => setTimeout(() => resolve('slow'), 700));
-      const outcome = await Promise.race([el.requestFullscreen().then(() => 'ok' as const), slow]);
-      if (outcome === 'slow' && !document.fullscreenElement) setCovering(true);
-    } catch {
-      setCovering(true);
-    }
-  };
-
   const setHover = (p: WavePart | null) => {
     hover.current = p;
     if (host.current) host.current.style.cursor = p ? 'pointer' : '';
@@ -617,13 +554,6 @@ function WaveScene({ settings, mode, time, running, stamp, lang, history, crank,
   const sceneHandlers = {
     ...handlers,
     onPointerDown: (e: ReactPointerEvent<HTMLDivElement>) => {
-      if (e.pointerType === 'mouse' && e.button === 2) {
-        try { e.currentTarget.setPointerCapture(e.pointerId); } catch { /* already released */ }
-        pan.current = { id: e.pointerId, x: e.clientX, y: e.clientY };
-        goal.current = null;
-        e.currentTarget.style.cursor = 'move';
-        return;
-      }
       if (grabRequested.current) {
         grabRequested.current = false;
         try { e.currentTarget.setPointerCapture(e.pointerId); } catch { /* already released */ }
@@ -637,17 +567,9 @@ function WaveScene({ settings, mode, time, running, stamp, lang, history, crank,
       try { e.currentTarget.releasePointerCapture(e.pointerId); } catch { /* not captured */ }
     },
     onPointerLeave: (e: ReactPointerEvent<HTMLDivElement>) => {
-      if (grab.current?.id !== e.pointerId && pan.current?.id !== e.pointerId) handlers.onPointerUp(e);
+      if (grab.current?.id !== e.pointerId) handlers.onPointerUp(e);
     },
     onPointerMove: (e: ReactPointerEvent<HTMLDivElement>) => {
-      const p = pan.current;
-      if (p && p.id === e.pointerId) {
-        panBy(target, orbit.current, e.clientX - p.x, e.clientY - p.y);
-        p.x = e.clientX;
-        p.y = e.clientY;
-        invalidate.current();
-        return;
-      }
       const g = grab.current;
       if (g && g.id === e.pointerId) {
         const a = angleAt(e, wheelScreen.current);
@@ -662,18 +584,15 @@ function WaveScene({ settings, mode, time, running, stamp, lang, history, crank,
       handlers.onPointerMove(e);
     },
     onPointerUp: (e: ReactPointerEvent<HTMLDivElement>) => {
-      if (pan.current?.id === e.pointerId) { pan.current = null; e.currentTarget.style.cursor = ''; }
       if (grab.current?.id === e.pointerId) { grab.current = null; e.currentTarget.style.cursor = ''; }
       handlers.onPointerUp(e);
     },
     onPointerCancel: (e: ReactPointerEvent<HTMLDivElement>) => {
       grab.current = null;
-      pan.current = null;
       handlers.onPointerCancel(e);
     },
     onLostPointerCapture: (e: ReactPointerEvent<HTMLDivElement>) => {
       if (grab.current?.id === e.pointerId) grab.current = null;
-      if (pan.current?.id === e.pointerId) pan.current = null;
       handlers.onLostPointerCapture(e);
     },
   };
@@ -708,8 +627,7 @@ function WaveScene({ settings, mode, time, running, stamp, lang, history, crank,
         role="group"
         aria-label={description}
         tabIndex={0}
-        onContextMenu={(e) => e.preventDefault()}
-        className={`relative w-full overflow-hidden rounded-md border border-line ${styles.stage} ${styles.grab} ${covering ? styles.covering : ''} focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus`}
+        className={`relative w-full overflow-hidden rounded-md border border-line ${styles.stage} ${styles.grab} focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus`}
         style={mode === 'manual' ? { touchAction: 'none' } : undefined}
       >
         {palette && (
@@ -740,7 +658,7 @@ function WaveScene({ settings, mode, time, running, stamp, lang, history, crank,
             <FitLens />
             <Focus target={target} goal={goal} orbit={orbit} invalidate={() => invalidate.current()} />
             <Rig orbit={orbit} target={target} labels={labels} points={points} onInvalidate={(fn) => { invalidate.current = fn; }} />
-            <Refresh stamp={`${stamp}|${settings.frequency}|${settings.amplitude}|${settings.speed}|${mode}|${showMeasure}|${floats.join()}|${expanded}`} />
+            <Refresh stamp={`${stamp}|${settings.frequency}|${settings.amplitude}|${settings.speed}|${mode}|${showMeasure}|${floats.join()}`} />
           </Canvas>
         )}
         {(['drive', 'source', 'absorber'] as const).map(chip)}
@@ -750,23 +668,12 @@ function WaveScene({ settings, mode, time, running, stamp, lang, history, crank,
           measure('amp', `A = ${format(settings.amplitude)} cm`),
           measure('v', `v = ${format(settings.speed)} m/s`),
         ]}
-        {!panelsHidden && <div className={styles.hud}>{hud(expanded)}</div>}
-        <div className={styles.tools} onPointerDown={(e) => e.stopPropagation()}>
-          {([
-            [panelsHidden ? <EyeOff key="panels" aria-hidden="true" className="h-4 w-4" /> : <Eye key="panels" aria-hidden="true" className="h-4 w-4" />, panelsHidden ? t({ vi: 'Hiện bảng thông tin', en: 'Show info panels' }) : t({ vi: 'Ẩn bảng thông tin', en: 'Hide info panels' }), () => setPanelsHidden((hidden) => !hidden)],
-            [<Plus key="in" aria-hidden="true" className="h-4 w-4" />, t({ vi: 'Phóng to', en: 'Zoom in' }), () => zoom(0.85)],
-            [<Minus key="out" aria-hidden="true" className="h-4 w-4" />, t({ vi: 'Thu nhỏ', en: 'Zoom out' }), () => zoom(1 / 0.85)],
-            [<RotateCcw key="reset" aria-hidden="true" className="h-4 w-4" />, t({ vi: 'Góc nhìn ban đầu', en: 'Reset view' }), resetView],
-            [expanded ? <Minimize2 key="full" aria-hidden="true" className="h-4 w-4" /> : <Maximize2 key="full" aria-hidden="true" className="h-4 w-4" />, expanded ? t({ vi: 'Thoát toàn màn hình', en: 'Exit full screen' }) : t({ vi: 'Toàn màn hình', en: 'Full screen' }), toggleFullscreen],
-          ] as const).map(([icon, label, action]) => (
-            <button key={label} type="button" className={styles.tool} aria-label={label} title={label} onClick={() => void action()}>{icon}</button>
-          ))}
-        </div>
       </div>
+      <ViewButtons lang={lang} onReset={resetView} onZoom={zoom} />
       <p className="text-xs text-ink-muted">
         {mode === 'manual'
-          ? t({ vi: 'Kéo vòng quanh bánh xe để quay tay quay · Kéo chỗ khác để xoay · Giữ chuột phải kéo để di chuyển · Ctrl + cuộn để zoom · Bấm mặt nước để thả miếng xốp.', en: 'Drag around the wheel to turn the crank · Drag elsewhere to rotate · Hold the right button and drag to move · Ctrl + wheel to zoom · Click the water to drop a float.' })
-          : t({ vi: 'Kéo để xoay · Giữ chuột phải kéo để di chuyển · Chụm hai ngón hoặc Ctrl + cuộn để zoom · Phím mũi tên, + / −, Home khi chọn khung · Bấm mặt nước để thả miếng xốp, bấm nhãn để xem bộ phận.', en: 'Drag to rotate · Hold the right button and drag to move · Pinch or Ctrl + wheel to zoom · Arrow keys, + / −, Home while focused · Click the water to drop a float, click a label to inspect a part.' })}
+          ? t({ vi: 'Kéo vòng quanh bánh xe để quay tay quay · Kéo chỗ khác để xoay · Ctrl + cuộn để zoom · Bấm mặt nước để thả miếng xốp.', en: 'Drag around the wheel to turn the crank · Drag elsewhere to rotate · Ctrl + wheel to zoom · Click the water to drop a float.' })
+          : t({ vi: 'Kéo để xoay · Chụm hai ngón hoặc Ctrl + cuộn để zoom · Phím mũi tên, + / −, Home khi chọn khung · Bấm mặt nước để thả miếng xốp, bấm nhãn để xem bộ phận.', en: 'Drag to rotate · Pinch or Ctrl + wheel to zoom · Arrow keys, + / −, Home while focused · Click the water to drop a float, click a label to inspect a part.' })}
       </p>
     </div>
   );
