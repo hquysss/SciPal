@@ -5,7 +5,7 @@ import { ExternalLink } from 'lucide-react';
 import { embedUrl } from '@scipal/types';
 import { pick, type Lang } from './types';
 
-/** An approved PhET / GeoGebra / Desmos page in a sandboxed frame, with a link out. */
+/** An approved PhET / GeoGebra / Desmos / Sketchfab page in a sandboxed frame, with a link out. */
 export function EmbedRenderer({ url, title, lang }: { url: string | undefined; title: string; lang: Lang }) {
   const t = pick(lang);
   const safe = url ? embedUrl(url) : null;

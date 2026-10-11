@@ -80,7 +80,7 @@ export function useLabEmbeds() {
   };
 }
 
-/** Add an outside simulation (PhET, GeoGebra, Desmos) by its link, into the subject chosen. */
+/** Add an outside simulation (PhET, GeoGebra, Desmos, Sketchfab) by its link, into the subject chosen. */
 export function AddEmbedForm({ onAdd, defaultSubject }: { onAdd: (link: string, subject: LabSubject) => boolean; defaultSubject: LabSubject }) {
   const { t } = useLanguage();
   const [text, setText] = useState('');
@@ -106,8 +106,8 @@ export function AddEmbedForm({ onAdd, defaultSubject }: { onAdd: (link: string, 
       </summary>
       <p className="mt-2 max-w-prose text-sm text-ink-muted">
         {t({
-          en: 'Paste the link of a PhET, GeoGebra or Desmos simulation. It becomes a card with that subject’s other simulations and stays in this browser.',
-          vi: 'Dán link mô phỏng PhET, GeoGebra hoặc Desmos. Nó thành một thẻ cùng các mô phỏng khác của môn đã chọn và được lưu trong trình duyệt này.',
+          en: 'Paste the link of a PhET, GeoGebra, Desmos or Sketchfab simulation or 3D model. It becomes a card with that subject’s other simulations and stays in this browser.',
+          vi: 'Dán link mô phỏng PhET, GeoGebra, Desmos hoặc mô hình Sketchfab. Nó thành một thẻ cùng các mô phỏng khác của môn đã chọn và được lưu trong trình duyệt này.',
         })}
       </p>
       <form onSubmit={submit} className="mt-3 grid gap-3 sm:grid-cols-[minmax(0,12rem)_minmax(0,1fr)_auto] sm:items-end">

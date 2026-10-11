@@ -17,7 +17,7 @@ import { pick, type Lang, type SimulationEditorProps } from './types';
 
 export type NewSimulationKind = BuiltInSimulationKind | 'embed';
 
-export const EMBED_LABEL = { en: 'Embed a PhET / GeoGebra / Desmos link', vi: 'Nhúng link PhET / GeoGebra / Desmos' };
+export const EMBED_LABEL = { en: 'Embed a PhET / GeoGebra / Desmos / Sketchfab link', vi: 'Nhúng link PhET / GeoGebra / Desmos / Sketchfab' };
 
 /** A fresh simulation block: built-in templates start offline with their defaults. */
 export function newSimulationBlock(kind: NewSimulationKind): InteractiveBlock {
@@ -63,8 +63,8 @@ export function SimulationEditor({ block, onChange, lang, onLangChange }: Simula
         />
         <p className={`text-xs ${block.embed_url && !valid ? 'font-medium text-danger' : 'text-ink-muted'}`}>
           {t({
-            en: 'PhET, GeoGebra or Desmos over https: phet.colorado.edu/sims/html/…, www.geogebra.org/m/…, www.desmos.com/calculator/….',
-            vi: 'PhET, GeoGebra hoặc Desmos (https): phet.colorado.edu/sims/html/…, www.geogebra.org/m/…, www.desmos.com/calculator/….',
+            en: 'PhET, GeoGebra, Desmos or Sketchfab over https: phet.colorado.edu/sims/html/…, www.geogebra.org/m/…, www.desmos.com/calculator/…, sketchfab.com/3d-models/….',
+            vi: 'PhET, GeoGebra, Desmos hoặc Sketchfab (https): phet.colorado.edu/sims/html/…, www.geogebra.org/m/…, www.desmos.com/calculator/…, sketchfab.com/3d-models/….',
           })}
         </p>
       </div>
