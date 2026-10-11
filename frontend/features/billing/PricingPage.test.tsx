@@ -63,3 +63,17 @@ describe('PricingPage recovery', () => {
     expect((screen.getByRole('button', { name: 'Tiếp tục với MoMo' }) as HTMLButtonElement).disabled).toBe(false);
   });
 });
+
+it('offers VNPAY as a separate method and requires fresh recurring consent', () => {
+  render(<PricingPage plans={plans} checkoutOpen payosCheckoutOpen vnpayCheckoutOpen vnpayAutoRenewOpen viewerRole="student" />);
+  fireEvent.change(screen.getByRole('combobox', { name: 'Cổng thanh toán' }), { target: { value: 'vnpay' } });
+  expect(screen.getByRole('button', { name: 'Thanh toán với VNPAY' })).toBeTruthy();
+  const consent = screen.getByRole('checkbox') as HTMLInputElement;
+  expect(consent.checked).toBe(false);
+  expect(screen.getByText(/VNPAY tự thu 39\.000 ₫ mỗi tháng/)).toBeTruthy();
+  fireEvent.click(consent);
+  expect(screen.getByRole('button', { name: 'Tự gia hạn với VNPAY' })).toBeTruthy();
+  fireEvent.change(screen.getByRole('combobox', { name: 'Cổng thanh toán' }), { target: { value: 'payos' } });
+  fireEvent.change(screen.getByRole('combobox', { name: 'Cổng thanh toán' }), { target: { value: 'vnpay' } });
+  expect((screen.getByRole('checkbox') as HTMLInputElement).checked).toBe(false);
+});

@@ -68,7 +68,7 @@ export function BillingReconciliationPage() {
 
   async function handleRecheck(item: BillingReconciliationItem) {
     if (!item.orderId || busyOrderId) return;
-    const providerName = item.provider === 'momo' ? 'MoMo' : 'payOS';
+    const providerName = item.provider === 'vnpay' ? 'VNPAY' : item.provider === 'momo' ? 'MoMo' : 'payOS';
     setBusyOrderId(item.orderId);
     setNotice(null);
     setError(null);
@@ -167,14 +167,14 @@ export function BillingReconciliationPage() {
                     </TableCell>
                     <TableCell>
                       <p className="max-w-[12rem] truncate font-mono text-xs">{item.bankTransactionId ?? '—'}</p>
-                      <p className="text-xs text-ink-muted">{t({ en: `${item.provider === 'momo' ? 'MoMo' : 'payOS'} transaction ID`, vi: `Mã giao dịch ${item.provider === 'momo' ? 'MoMo' : 'payOS'}` })}</p>
+                      <p className="text-xs text-ink-muted">{t({ en: `${item.provider === 'vnpay' ? 'VNPAY' : item.provider === 'momo' ? 'MoMo' : 'payOS'} transaction ID`, vi: `Mã giao dịch ${item.provider === 'vnpay' ? 'VNPAY' : item.provider === 'momo' ? 'MoMo' : 'payOS'}` })}</p>
                     </TableCell>
                     <TableCell><Badge variant="outline">{lang === 'vi' ? item.reason.vi : item.reason.en}</Badge></TableCell>
                     <TableCell className="whitespace-nowrap text-ink-muted">{formatDate(item.paidAt ?? item.createdAt, lang)}</TableCell>
                     <TableCell>
                       {item.canReconcile && item.orderId ? (
                         <button type="button" className={buttonVariants({ variant: 'outline' })} onClick={() => void handleRecheck(item)} disabled={Boolean(busyOrderId)}>
-                          {busyOrderId === item.orderId ? t({ en: 'Checking…', vi: 'Đang hỏi…' }) : t({ en: `Recheck ${item.provider === 'momo' ? 'MoMo' : 'payOS'}`, vi: `Hỏi lại ${item.provider === 'momo' ? 'MoMo' : 'payOS'}` })}
+                          {busyOrderId === item.orderId ? t({ en: 'Checking…', vi: 'Đang hỏi…' }) : t({ en: `Recheck ${item.provider === 'vnpay' ? 'VNPAY' : item.provider === 'momo' ? 'MoMo' : 'payOS'}`, vi: `Hỏi lại ${item.provider === 'vnpay' ? 'VNPAY' : item.provider === 'momo' ? 'MoMo' : 'payOS'}` })}
                         </button>
                       ) : <span className="text-sm text-ink-muted">{t({ en: 'No order to recheck', vi: 'Chưa tìm thấy đơn' })}</span>}
                     </TableCell>

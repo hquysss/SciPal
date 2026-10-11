@@ -225,3 +225,15 @@ describe('checkout countdown and cancel', () => {
     expect(html).not.toContain('Hủy giao dịch</button>');
   });
 });
+
+it('identifies VNPAY and lets a pending or paused authorization be cancelled', () => {
+  for (const status of ['pending', 'paused', 'active'] as const) {
+    const html = renderToStaticMarkup(<MyPlanView state={{ status: 'ready', account: {
+      role: 'student', plan: 'student_plus', paidThrough: '2026-11-10T00:00:00.000Z', quotas: [],
+      renewal: { provider: 'vnpay', status, interval: 'month', amountVnd: 39000, nextChargeAt: null },
+    } }} onCancelRenewal={() => {}} />);
+    expect(html).toContain('VNPAY');
+    expect(html).toContain('Hủy gia hạn');
+    expect(html).not.toContain('MoMo');
+  }
+});

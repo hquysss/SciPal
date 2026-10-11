@@ -324,3 +324,11 @@ Strategy: mixed paper layers with restrained, tinted shadows. The page canvas is
 - Lazy-load Three.js only on missing pages. Render a static CSS scene if WebGL fails or loses its context; stop the frame loop in hidden tabs and freeze the scene for reduced motion. Soundtrack is loaded and played only after the user taps its control; never autoplay on page entry.
 
 - The complete 404 UI color palette is centralized as named `--nf-*` properties at the top of `NotFoundExperience.module.css`: atmosphere/vignette, fallback, audio, recovery actions, focus and status. All consuming CSS rules reference these tokens; resolving them yields the exact original colors. Procedural shader illumination remains source-identical artwork.
+
+## Payment methods (11/10)
+
+- `/profile/payment-methods` lives in the existing authenticated profile shell. Use the current breadcrumb, Be Vietnam Pro, semantic paper/surface/ink/edge/action tokens and 44px controls.
+- Header explains choosing a provider for the next purchase. Three radio cards show payOS (bank transfer), VNPAY (hosted payment), MoMo (wallet/recurring). Availability comes from billing catalog; a closed provider remains visible with a disabled control and a clear label. No invented saved cards, balances or default-method persistence.
+- Cards use rounded notebook surfaces, a provider icon, a name and one sentence; selection uses action border/focus, rather than provider brand colors. Stack on phones; three columns on wide screens. The selected-provider summary and single pricing CTA follow the cards.
+- Current renewal is a separate account-owned panel: provider, status, amount/cycle and cancellation. A cancellation in progress retains its status and paid entitlement. Loading/failure must never look like no existing authorization. Hosted-provider explanation and link to My Plan remain available.
+- Keyboard radio selection, visible focus, EN/VI, reduced motion, no horizontal overflow. Card or bank credentials are entered only on provider pages.

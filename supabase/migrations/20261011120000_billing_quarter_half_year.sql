@@ -2,7 +2,7 @@
 -- Optional intervals (quarter, half_year) can be taken off sale by an admin; month and year cannot.
 -- Quarter and half-year are prepaid: auto-renew stays month/year only (backend enforces it).
 
-create function public.billing_interval_months(p_interval text)
+create or replace function public.billing_interval_months(p_interval text)
 returns integer
 language sql
 immutable

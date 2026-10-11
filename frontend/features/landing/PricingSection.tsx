@@ -153,7 +153,7 @@ export function PricingSection({
                 ))}
               </ul>
               {catalog.checkoutOpen ? (
-                <Link href="/pricing" className={styles.paidAction}>
+                <Link href={`/profile/payment-methods?audience=${audience}&interval=${interval}`} className={styles.paidAction}>
                   {t({ en: 'Upgrade now', vi: 'Nâng cấp ngay' })}
                   <ArrowRight aria-hidden="true" size={18} />
                 </Link>

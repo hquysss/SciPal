@@ -1,6 +1,8 @@
 import type { FastifyPluginAsync, FastifyRequest } from 'fastify';
 import { createBillingRepository } from '../billing/repository.js';
 import { checkoutDisabled, payosFromEnv } from '../billing/providers/payos.js';
+import { vnpayFromEnv } from '../billing/providers/vnpay.js';
+import { vnpayRecurringFromEnv } from '../billing/providers/vnpayRecurring.js';
 import { momoRenewalsAvailable } from '../billing/providers/momo.js';
 
 // The public plan catalog and the signed-in account's plan (billing plan Task 9, without payment).
@@ -65,7 +67,10 @@ export const billingRoutes: FastifyPluginAsync = async (app) => {
       reply.header('Cache-Control', 'public, max-age=300');
       const payosCheckoutOpen = payosFromEnv() !== null && !checkoutDisabled();
       const momoAutoRenewOpen = momoRenewalsAvailable() && !checkoutDisabled();
-      return { plans: catalog, checkoutOpen: payosCheckoutOpen || momoAutoRenewOpen, payosCheckoutOpen, momoAutoRenewOpen };
+      const vnpayCheckoutOpen = vnpayFromEnv() !== null && !checkoutDisabled();
+      const apiUrl = process.env.VNPAY_PUBLIC_API_URL;
+      const vnpayAutoRenewOpen = vnpayCheckoutOpen && vnpayRecurringFromEnv() !== null && Boolean(apiUrl && URL.canParse(apiUrl) && new URL(apiUrl).protocol === 'https:');
+      return { plans: catalog, checkoutOpen: payosCheckoutOpen || momoAutoRenewOpen || vnpayCheckoutOpen, payosCheckoutOpen, momoAutoRenewOpen, vnpayCheckoutOpen, vnpayAutoRenewOpen, vnpaySandbox: vnpayCheckoutOpen && process.env.VNPAY_ENV === 'sandbox' };
     } catch (error) {
       request.log.error({ err: error }, 'Billing catalog could not be read');
       return reply.code(503).send(UNAVAILABLE);
@@ -89,22 +94,32 @@ export const billingRoutes: FastifyPluginAsync = async (app) => {
       if (subscription.error) throw subscription.error;
       const sub = subscription.data as { plan_code: string; paid_through: string; renewal_mode: string; mandate_id: string | null } | null;
       const paid = sub && sub.plan_code.startsWith(`${audience}_`) && new Date(sub.paid_through) > now ? sub : null;
-      let renewal = { status: 'manual', interval: null as 'month' | 'year' | null, amountVnd: null as number | null, nextChargeAt: null as string | null };
+      let renewal = { status: 'manual', interval: null as 'month' | 'year' | null, amountVnd: null as number | null, nextChargeAt: null as string | null, provider: undefined as 'momo' | 'vnpay' | undefined };
       if (sub?.mandate_id) {
         const mandate = await supabase.from('billing_mandates')
-          .select('status, interval, amount_vnd, next_charge_at')
+          .select('status, interval, amount_vnd, next_charge_at, provider')
           .eq('id', sub.mandate_id)
           .eq('user_id', user.id)
           .maybeSingle();
         if (mandate.error) throw mandate.error;
         if (mandate.data) {
-          const data = mandate.data as { status: string; interval: 'month' | 'year'; amount_vnd: number; next_charge_at: string | null };
+          const data = mandate.data as { status: string; interval: 'month' | 'year'; amount_vnd: number; next_charge_at: string | null; provider?: string };
           renewal = {
             status: sub.renewal_mode === 'auto' && data.status === 'active' ? 'active' : data.status,
             interval: data.interval,
             amountVnd: data.amount_vnd,
+            provider: data.provider === 'vnpay' ? 'vnpay' : 'momo',
             nextChargeAt: data.next_charge_at ? new Date(data.next_charge_at).toISOString() : null,
           };
+        }
+      }
+      if (vnpayFromEnv()) {
+        const pending = await supabase.from('billing_mandates').select('status, interval, amount_vnd, next_charge_at')
+          .eq('user_id', user.id).eq('provider', 'vnpay').in('status', ['pending', 'cancel_pending', 'paused', 'failed']).order('created_at', { ascending: false }).limit(1).maybeSingle();
+        if (pending.error) throw pending.error;
+        if (pending.data) {
+          const data = pending.data as { status: string; interval: 'month' | 'year'; amount_vnd: number; next_charge_at: string | null };
+          renewal = { status: data.status, interval: data.interval, amountVnd: data.amount_vnd, nextChargeAt: data.next_charge_at, provider: 'vnpay' };
         }
       }
       return {

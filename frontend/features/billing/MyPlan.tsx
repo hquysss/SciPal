@@ -95,17 +95,18 @@ export function MyPlanView({ state, onRetry, onCancelRenewal, cancelling = false
   const planName = t(PLAN_NAME[account.plan ?? ''] ?? { vi: account.plan ?? '', en: account.plan ?? '' });
   const isFree = !account.paidThrough;
   const renewal = account.renewal;
+  const providerName = renewal?.provider === 'vnpay' ? 'VNPAY' : 'MoMo';
   const renewalLabel = renewal?.status === 'active'
-    ? { vi: 'Đang tự gia hạn qua MoMo', en: 'MoMo auto-renewal is on' }
+    ? { vi: `Đang tự gia hạn qua ${providerName}`, en: `${providerName} auto-renewal is on` }
     : renewal?.status === 'cancel_pending'
-      ? { vi: 'Đang chờ MoMo xác nhận hủy', en: 'Waiting for MoMo to confirm cancellation' }
+      ? { vi: `Đang chờ ${providerName} xác nhận hủy`, en: `Waiting for ${providerName} to confirm cancellation` }
       : renewal?.status === 'failed'
-        ? { vi: 'Gia hạn MoMo không thành công; gói còn hiệu lực tới ngày đã trả', en: 'MoMo renewal failed; your plan remains active through the paid period' }
+        ? { vi: `Gia hạn ${providerName} không thành công; gói còn hiệu lực tới ngày đã trả`, en: `${providerName} renewal failed; your plan remains active through the paid period` }
         : renewal?.status === 'paused'
-          ? { vi: 'Gia hạn MoMo đang tạm dừng', en: 'MoMo renewal is paused' }
+          ? { vi: `Gia hạn ${providerName} đang tạm dừng`, en: `${providerName} renewal is paused` }
           : renewal?.status === 'cancelled'
             ? { vi: 'Đã hủy gia hạn tự động', en: 'Auto-renewal is cancelled' }
-            : null;
+            : renewal?.status === 'pending' ? { vi: `Đang xử lý đăng ký gia hạn ${providerName}; gói chưa được cấp từ đăng ký này.`, en: `${providerName} renewal registration is pending; it has not granted a plan.` } : null;
   return (
     <div className="flex flex-col gap-5">
       <section className="flex flex-col gap-3 rounded-xl border border-line bg-surface p-5 sm:flex-row sm:items-center sm:justify-between">
@@ -244,20 +245,22 @@ export function MyPlan() {
     const result = await fetchMyPlan();
     setState(result.ok ? { status: 'ready', account: result.data } : { status: 'error', message: result.error });
   }, []);
+  const cancellationProvider = state.status === 'ready' ? state.account.renewal?.provider : undefined;
+  const cancellationName = cancellationProvider === 'vnpay' ? 'VNPAY' : 'MoMo';
   const cancel = useCallback(async () => {
     setCancelling(true);
     setCancelMessage(null);
-    const result = await cancelRenewal();
+    const result = await cancelRenewal(cancellationProvider);
     setCancelling(false);
     if (!result.ok) {
       setCancelMessage(result.error);
       return;
     }
     setCancelMessage(result.data.status === 'cancel_pending'
-      ? { vi: 'MoMo chưa xác nhận hủy; hãy kiểm tra lại trạng thái sau.', en: 'MoMo has not confirmed the cancellation; check the status again later.' }
+      ? { vi: `${cancellationName} chưa xác nhận hủy; hãy kiểm tra lại trạng thái sau.`, en: `${cancellationName} has not confirmed the cancellation; check the status again later.` }
       : { vi: 'Đã hủy gia hạn tự động. Gói hiện tại vẫn dùng đến hết kỳ đã trả.', en: 'Auto-renewal is cancelled. Your current plan remains active through the paid period.' });
     await load();
-  }, [load]);
+  }, [load, cancellationProvider, cancellationName]);
   useEffect(() => { void load(); }, [load]);
   return (
     <>

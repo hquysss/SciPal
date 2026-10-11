@@ -1,3 +1,8 @@
+-- Months in a billing interval (month | quarter | half_year | year); also created by 20261011120000.
+create or replace function public.billing_interval_months(p_interval text)
+returns integer language sql immutable set search_path = ''
+as $$ select case p_interval when 'month' then 1 when 'quarter' then 3 when 'half_year' then 6 when 'year' then 12 end; $$;
+
 create or replace function public.billing_claim_momo_renewals(p_limit integer default 20)
 returns table (
   attempt_id uuid,
@@ -39,7 +44,7 @@ begin
      limit p_limit
      for update of m skip locked
   loop
-    v_interval := case when v_due.interval = 'year' then interval '12 months' else interval '1 month' end;
+    v_interval := (public.billing_interval_months(v_due.interval) * interval '1 month');
     v_next_payment_date := ((v_due.paid_through at time zone 'Asia/Ho_Chi_Minh') + v_interval)::date;
 
     select a.* into v_attempt

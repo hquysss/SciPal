@@ -8,7 +8,7 @@ export type BillingReconciliationReason = {
 
 export type BillingReconciliationItem = {
   id: string;
-  provider: 'payos' | 'momo';
+  provider: 'payos' | 'momo' | 'vnpay';
   source: 'event' | 'attempt';
   eventId: string | null;
   attemptId: string | null;

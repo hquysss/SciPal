@@ -7,6 +7,7 @@ const isPublicPath = (path: string): boolean => {
   // The plan catalog only; the rest of /api/billing needs a session.
   if (path === '/api/billing/plans') return true;
   // payOS calls this; the handler checks its signature.
+  if (['/api/billing/webhooks/vnpay', '/api/billing/webhooks/vnpay/recurring', '/api/internal/billing/vnpay/renewals/run', '/api/billing/vnpay/redirect/:id'].includes(path)) return true;
   if (path === '/api/billing/webhooks/payos') return true;
   if (path === '/api/billing/webhooks/momo' || path === '/api/internal/billing/renewals/run') return true;
   // Guest trials: the web server's check (it holds the shared key) and one Tutor question.

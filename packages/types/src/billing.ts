@@ -79,6 +79,7 @@ export const EffectiveQuotaSchema = z.object({
 }).strict();
 
 export const BillingRenewalSchema = z.object({
+  provider: z.enum(['momo', 'vnpay']).optional(),
   status: z.enum(['manual', 'active', 'cancel_pending', 'cancelled', 'paused', 'failed', 'pending']),
   interval: BillingIntervalSchema.nullable(),
   amountVnd: z.number().int().positive().nullable(),
