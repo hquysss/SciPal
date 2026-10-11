@@ -254,12 +254,12 @@
 }
 
 .heroSubline {
-  max-width: 28ch;
+  max-width: 24ch;
   margin: 0;
-  color: color-mix(in srgb, var(--nav-ink) 85%, transparent);
-  font-size: clamp(1.25rem, 2.2vw, 1.9rem);
-  font-weight: 600;
-  line-height: 1.15;
+  color: var(--nav-ink);
+  font-size: clamp(1.5rem, 3vw, 2.6rem);
+  font-weight: 800;
+  line-height: 1.12;
   letter-spacing: -0.02em;
   animation-delay: 450ms;
 }

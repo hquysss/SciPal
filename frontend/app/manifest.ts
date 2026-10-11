@@ -19,7 +19,7 @@ export default function manifest(): MetadataRoute.Manifest {
     id: '/',
     name: 'SciPal',
     short_name: 'SciPal',
-    description: 'Học song ngữ Việt–Anh — hướng tới tiếng Anh là ngôn ngữ thứ hai · Vietnamese–English bilingual learning, with English as your second language.',
+    description: 'Học song ngữ Việt–Anh, để tiếng Anh trở thành ngôn ngữ thứ hai của bạn · Learn in Vietnamese and English, so English becomes your second language.',
     lang: 'vi',
     dir: 'ltr',
     categories: ['education'],
