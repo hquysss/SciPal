@@ -19,7 +19,7 @@ export default function manifest(): MetadataRoute.Manifest {
     id: '/',
     name: 'SciPal',
     short_name: 'SciPal',
-    description: 'Học song ngữ Anh–Việt theo Chương trình GDPT 2018, lớp 1–12 · Bilingual lessons for Vietnam’s 2018 curriculum, grades 1–12.',
+    description: 'Học song ngữ Việt–Anh — hướng tới tiếng Anh là ngôn ngữ thứ hai · Vietnamese–English bilingual learning, with English as your second language.',
     lang: 'vi',
     dir: 'ltr',
     categories: ['education'],
