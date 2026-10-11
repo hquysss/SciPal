@@ -1,17 +1,16 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { ArrowRight, BookOpen, Check, QrCode, RefreshCcw, Sparkles } from 'lucide-react';
 import { useLanguage } from '@scipal/hooks';
 import { createBrowserClient } from '@scipal/supabase';
 import type { BillingAudience, BillingInterval } from '@scipal/types';
-import { INTERVALS, INTERVAL_LABEL, INTERVAL_MONTHS, INTERVAL_NOUN, INTERVAL_SPAN, approxDays, canAutoRenew, savePercent } from './intervals';
-import { Alert } from '@/components/ui/alert';
+import { INTERVALS, INTERVAL_LABEL, INTERVAL_MONTHS, INTERVAL_NOUN, INTERVAL_SPAN, approxDays, savePercent } from './intervals';
 import { PricingLoadError } from './PricingLoadError';
 import shared from '@/features/landing/pricing.module.css';
 import { tilt, untilt } from '@/features/landing/tilt';
-import { formatVnd, limitText, startCheckout, type PublicPlan } from './billingApi';
+import { formatVnd, limitText, type PublicPlan } from './billingApi';
 import s from './pricing-page.module.css';
 
 type Props = {
@@ -19,10 +18,6 @@ type Props = {
   checkoutOpen: boolean;
   payosCheckoutOpen?: boolean;
   momoAutoRenewOpen?: boolean;
-  vnpayCheckoutOpen?: boolean;
-  vnpayAutoRenewOpen?: boolean;
-  vnpaySandbox?: boolean;
-  initialProvider?: 'payos' | 'vnpay' | 'momo';
   initialAudience?: BillingAudience;
   initialInterval?: BillingInterval;
   /** Role of the signed-in viewer, null for a visitor; read from the session when not given. */
@@ -31,7 +26,6 @@ type Props = {
 
 type ViewerRole = 'student' | 'teacher' | 'admin';
 type Bilingual = { vi: string; en: string };
-const newKey = () => (typeof crypto !== 'undefined' && 'randomUUID' in crypto ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(36).slice(2)}`);
 
 const FREE_START: Record<BillingAudience, string> = { student: '/subjects', teacher: '/teacher/classes' };
 
@@ -51,7 +45,7 @@ const FAQ: Array<{ q: Bilingual; a: Bilingual }> = [
   },
 ];
 
-export function PricingPage({ plans, checkoutOpen, payosCheckoutOpen = checkoutOpen, momoAutoRenewOpen = false, vnpayCheckoutOpen = false, vnpayAutoRenewOpen = false, vnpaySandbox = false, initialProvider, initialAudience = 'student', initialInterval = 'month', viewerRole: givenRole }: Props) {
+export function PricingPage({ plans, checkoutOpen, payosCheckoutOpen = checkoutOpen, momoAutoRenewOpen = false, initialAudience = 'student', initialInterval = 'month', viewerRole: givenRole }: Props) {
   const { t } = useLanguage();
   // undefined while the session is being read: the buy button waits.
   const [viewerRole, setViewerRole] = useState<ViewerRole | null | undefined>(givenRole);
@@ -70,42 +64,6 @@ export function PricingPage({ plans, checkoutOpen, payosCheckoutOpen = checkoutO
   }, [givenRole, checkoutOpen]);
   const [audience, setAudience] = useState<BillingAudience>(initialAudience);
   const [interval, setInterval] = useState<BillingInterval>(initialInterval);
-  const [oneTimeProvider, setOneTimeProvider] = useState<'payos' | 'vnpay'>(initialProvider === 'vnpay' && vnpayCheckoutOpen ? 'vnpay' : initialProvider === 'momo' || initialProvider === 'payos' ? 'payos' : vnpayCheckoutOpen && !payosCheckoutOpen ? 'vnpay' : 'payos');
-  const renewalProvider = oneTimeProvider === 'vnpay' ? 'vnpay' : 'momo';
-  const canRenew = (interval === 'month' || interval === 'year') && (renewalProvider === 'vnpay' ? vnpayAutoRenewOpen : momoAutoRenewOpen);
-  const renewalName = renewalProvider === 'vnpay' ? 'VNPAY' : 'MoMo';
-  const [autoRenew, setAutoRenew] = useState(false);
-  const [buying, setBuying] = useState<string | null>(null);
-  const [buyError, setBuyError] = useState<Bilingual | null>(null);
-  // One key per price while the page is open: a double click or a retry resumes the same order.
-  const keys = useRef(new Map<string, string>());
-
-  const buy = async (priceId: string, renew: boolean) => {
-    const provider = renew ? renewalProvider : oneTimeProvider;
-    if ((renew && !canRenew) || (!renew && !(oneTimeProvider === 'vnpay' ? vnpayCheckoutOpen : payosCheckoutOpen))) return;
-    setBuying(priceId);
-    setBuyError(null);
-    const checkoutKey = `${provider}:${priceId}`;
-    let key = keys.current.get(checkoutKey);
-    if (!key) {
-      key = newKey();
-      keys.current.set(checkoutKey, key);
-    }
-    let result = await startCheckout(priceId, key, provider, renew);
-    // That order was cancelled or ran out: this click starts a new one.
-    if (result.ok && ['cancelled', 'expired', 'failed'].includes(result.data.status)) {
-      key = newKey();
-      keys.current.set(checkoutKey, key);
-      result = await startCheckout(priceId, key, provider, renew);
-    }
-    if (!result.ok) {
-      setBuyError(result.error);
-      setBuying(null);
-      return;
-    }
-    window.location.assign(result.data.checkoutUrl ?? `/checkout/${result.data.orderId}`);
-  };
-
   if (!plans) {
     return <PricingLoadError />;
   }
@@ -158,53 +116,11 @@ export function PricingPage({ plans, checkoutOpen, payosCheckoutOpen = checkoutO
       );
     }
     if (!price) return null;
-    const period = t(INTERVAL_NOUN[price.interval]);
-    const canBuy = autoRenew ? canRenew : oneTimeProvider === 'vnpay' ? vnpayCheckoutOpen : payosCheckoutOpen;
     return (
-      <>
-        {vnpayCheckoutOpen && (
-          <label className="mb-3 flex flex-col gap-2 text-sm text-ink-muted">
-            <span>{t({ vi: 'Cổng thanh toán', en: 'Payment provider' })}</span>
-            <select value={oneTimeProvider} onChange={(event) => { setOneTimeProvider(event.currentTarget.value === 'vnpay' ? 'vnpay' : 'payos'); setAutoRenew(false); }} disabled={buying !== null} className="min-h-11 rounded-lg border border-edge bg-surface px-3 text-ink focus-visible:outline focus-visible:outline-2 focus-visible:outline-focus">
-              <option value="payos" disabled={!payosCheckoutOpen}>payOS · VietQR</option>
-              <option value="vnpay">VNPAY</option>
-            </select>
-          </label>
-        )}
-        {oneTimeProvider === 'vnpay' && vnpaySandbox && <p className={s.small}>{t({ vi: 'VNPAY đang ở chế độ thử nghiệm, không thu tiền thật.', en: 'VNPAY is in test mode; no real money is charged.' })}</p>}
-        {canRenew && canAutoRenew(price.interval) && (
-          <label className="mb-3 flex min-h-11 cursor-pointer items-start gap-2 text-sm text-ink-muted">
-            <input
-              type="checkbox"
-              checked={autoRenew}
-              onChange={(event) => setAutoRenew(event.currentTarget.checked)}
-              className="mt-1 size-4 shrink-0 accent-action"
-            />
-            <span>
-              {t({
-                en: `After authorization, ${renewalName} will charge ${formatVnd(price.amountVnd)} each ${period} for the first period, then each following period. Cancel from My Plan; a charge already in progress may finish.`,
-                vi: `Sau khi bạn ủy quyền, ${renewalName} tự thu ${formatVnd(price.amountVnd)} mỗi ${period} cho kỳ đầu và các kỳ tiếp theo. Bạn có thể hủy trong mục Gói của tôi; lần thu đã bắt đầu có thể hoàn tất.`,
-              })}
-            </span>
-          </label>
-        )}
-        <button
-          type="button"
-          onClick={() => void buy(price.id, autoRenew)}
-          disabled={buying !== null || !canBuy}
-          aria-busy={buying === price.id}
-          className={s.buy}
-        >
-          {buying === price.id
-            ? t({ en: 'Opening payment…', vi: 'Đang mở thanh toán…' })
-            : oneTimeProvider === 'vnpay' ? autoRenew ? t({ en: 'Auto-renew with VNPAY', vi: 'Tự gia hạn với VNPAY' }) : t({ en: 'Pay with VNPAY', vi: 'Thanh toán với VNPAY' }) : autoRenew ? t({ en: 'Continue with MoMo', vi: 'Tiếp tục với MoMo' }) : t({ en: 'Buy with QR', vi: 'Mua bằng QR' })}
-          {buying !== price.id && <ArrowRight aria-hidden="true" />}
-        </button>
-        {!autoRenew && oneTimeProvider === 'payos' && payosCheckoutOpen && <p className={s.small}>
-          {t({ en: 'One-time bank transfer by VietQR through payOS. The plan starts once the bank confirms.', vi: 'Chuyển khoản VietQR một lần qua payOS. Gói có hiệu lực khi ngân hàng xác nhận.' })}
-        </p>}
-        {!autoRenew && oneTimeProvider === 'payos' && !payosCheckoutOpen && <p className={s.small}>{t({ en: 'Select MoMo auto-renewal to continue.', vi: 'Chọn gia hạn tự động MoMo để tiếp tục.' })}</p>}
-      </>
+      <Link href={`/profile/payment-methods?plan=${plan.code}&interval=${price.interval}`} className={s.buy}>
+        {t({ en: 'Continue to payment', vi: 'Tiếp tục thanh toán' })}
+        <ArrowRight aria-hidden="true" />
+      </Link>
     );
   };
 
@@ -212,10 +128,10 @@ export function PricingPage({ plans, checkoutOpen, payosCheckoutOpen = checkoutO
     <div className={s.page}>
       <div className={s.controls}>
         <div role="group" aria-label={t({ en: 'Plans for', vi: 'Gói dành cho' })} className={shared.segment}>
-        <button type="button" aria-pressed={audience === 'student'} onClick={() => { setAudience('student'); setAutoRenew(false); }}>
+        <button type="button" aria-pressed={audience === 'student'} onClick={() => { setAudience('student'); }}>
             {t({ en: 'Students', vi: 'Học sinh' })}
           </button>
-        <button type="button" aria-pressed={audience === 'teacher'} onClick={() => { setAudience('teacher'); setAutoRenew(false); }}>
+        <button type="button" aria-pressed={audience === 'teacher'} onClick={() => { setAudience('teacher'); }}>
             {t({ en: 'Teachers', vi: 'Giáo viên' })}
           </button>
         </div>
@@ -223,7 +139,7 @@ export function PricingPage({ plans, checkoutOpen, payosCheckoutOpen = checkoutO
         {offered.map((value) => {
             const save = savePercent(firstPaid?.prices ?? [], value);
             return (
-              <button key={value} type="button" aria-pressed={interval === value} onClick={() => { setInterval(value); setAutoRenew(false); }}>
+              <button key={value} type="button" aria-pressed={interval === value} onClick={() => { setInterval(value); }}>
                 {t(INTERVAL_LABEL[value])}
                 {save > 0 && <span className={s.save}>−{save}%</span>}
               </button>
@@ -231,12 +147,6 @@ export function PricingPage({ plans, checkoutOpen, payosCheckoutOpen = checkoutO
           })}
         </div>
       </div>
-
-      {buyError && (
-        <Alert tone="danger">
-          <p>{t(buyError)}</p>
-        </Alert>
-      )}
 
       <div className={`${s.plans} ${shared.pricingPage}`} data-count={shown.length}>
         {shown.map((plan) => {
