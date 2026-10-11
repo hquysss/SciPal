@@ -286,8 +286,8 @@ export function LandingPage({ level, catalog, onChangeLevel, pricing = null, sho
               <div className={styles.heroCopy}>
                 <p className={styles.heroSubline}>
                   {t({
-                    en: 'Bilingual Vietnamese–English learning, with English as your second language.',
-                    vi: 'Học song ngữ Việt–Anh — hướng tới tiếng Anh là ngôn ngữ thứ hai.',
+                    en: 'Learn in Vietnamese and English, so English becomes your second language.',
+                    vi: 'Học song ngữ Việt–Anh, để tiếng Anh trở thành ngôn ngữ thứ hai của bạn.',
                   })}
                 </p>
                 <div className={styles.heroActions}>
@@ -414,7 +414,7 @@ export function LandingPage({ level, catalog, onChangeLevel, pricing = null, sho
                 <Image src="/logo.svg" width={32} height={32} alt="" aria-hidden="true" />
                 <strong>SciPal</strong>
               </Link>
-              <p>{t({ en: 'Vietnamese–English bilingual learning, with English as your second language.', vi: 'Học song ngữ Việt–Anh — hướng tới tiếng Anh là ngôn ngữ thứ hai.' })}</p>
+              <p>{t({ en: 'Learn in Vietnamese and English, so English becomes your second language.', vi: 'Học song ngữ Việt–Anh, để tiếng Anh trở thành ngôn ngữ thứ hai của bạn.' })}</p>
             </div>
             <nav className={styles.footerCol} aria-label={t({ en: 'Learn', vi: 'Học tập' })}>
               <h3>{t({ en: 'Learn', vi: 'Học tập' })}</h3>
