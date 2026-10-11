@@ -21,11 +21,11 @@
   .barToggle {
     position: fixed;
     z-index: 60;
-    top: 0.875rem;
+    top: 1.25rem;
     right: 0.75rem;
     display: grid;
-    width: 2.5rem;
-    height: 2.5rem;
+    width: 1.75rem;
+    height: 1.75rem;
     place-items: center;
     pointer-events: auto;
     border: 1px solid color-mix(in srgb, var(--nav-ink) 16%, transparent);

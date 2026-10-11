@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { ArrowRight, ChevronDown, CircleHelp, Gauge, LogOut, Menu, PanelTopClose, PanelTopOpen, UserRound, X } from 'lucide-react';
+import { ArrowRight, ChevronDown, ChevronUp, CircleHelp, Gauge, LogOut, Menu, UserRound, X } from 'lucide-react';
 import { useParams, usePathname, useRouter } from 'next/navigation';
 import { useLanguage } from '@scipal/hooks';
 import { LanguageToggle } from './LanguageToggle';
@@ -308,7 +308,7 @@ export function NavBar({ currentSubject }: NavBarProps) {
         aria-label={barHidden ? (lang === 'en' ? 'Show navigation bar' : 'Hiện thanh điều hướng') : (lang === 'en' ? 'Hide navigation bar' : 'Ẩn thanh điều hướng')}
         title={barHidden ? (lang === 'en' ? 'Show navigation bar' : 'Hiện thanh điều hướng') : (lang === 'en' ? 'Hide navigation bar' : 'Ẩn thanh điều hướng')}
       >
-        {barHidden ? <PanelTopOpen size={18} aria-hidden="true" /> : <PanelTopClose size={18} aria-hidden="true" />}
+        {barHidden ? <ChevronDown size={14} aria-hidden="true" /> : <ChevronUp size={14} aria-hidden="true" />}
       </button>
       <div inert={barHidden && wideBar} className={`${navStyles.bar} relative z-10 mx-auto flex h-14 max-w-5xl 2xl:max-w-[90rem] items-center justify-between gap-3 px-3 sm:px-4`}>
         <Link href="/" prefetch={pathname !== '/'} className={`${navStyles.rise} group flex shrink-0 items-center gap-3 font-bold text-nav-ink`}>
@@ -320,7 +320,13 @@ export function NavBar({ currentSubject }: NavBarProps) {
             className="h-9 w-9 rounded-xl shadow-inner transition duration-150 group-hover:scale-105"
             priority
           />
-          <span className="text-xl font-black leading-tight tracking-tight">SciPal</span>
+          <span className="text-xl font-black leading-tight tracking-tight">
+            SciPal
+            <span className="hidden font-semibold sm:inline">
+              {' - '}
+              {lang === 'en' ? 'Vietnamese–English bilingual learning' : 'Học song ngữ Việt–Anh'}
+            </span>
+          </span>
         </Link>
 
         <nav aria-label={lang === 'en' ? 'Main navigation' : 'Điều hướng chính'} className={`${navStyles.navList} hidden items-center gap-1 2xl:ml-4 2xl:flex`}>
@@ -556,9 +562,9 @@ export function NavBar({ currentSubject }: NavBarProps) {
               </Link>
             ))}
             <Link href="/help" prefetch={false} onClick={() => setMobileOpen(false)} aria-current={pathname === '/help' ? 'page' : undefined}
-              className={`flex min-h-11 items-center gap-2 rounded-xl px-4 py-3 text-sm font-semibold hover:bg-surface-sunken focus-visible:outline focus-visible:outline-2 focus-visible:outline-focus ${pathname === '/help' ? 'bg-surface-sunken text-action' : 'text-ink'}`}>
-              <CircleHelp aria-hidden="true" className="h-4 w-4" />
-              {lang === 'en' ? 'Help' : 'Hướng dẫn'}
+              aria-label={lang === 'en' ? 'Help' : 'Hướng dẫn'} title={lang === 'en' ? 'Help' : 'Hướng dẫn'}
+              className={`flex min-h-11 items-center rounded-xl px-4 py-3 transition hover:bg-surface-sunken focus-visible:outline focus-visible:outline-2 focus-visible:outline-focus ${pathname === '/help' ? 'bg-surface-sunken text-action' : 'text-ink'}`}>
+              <CircleHelp aria-hidden="true" className="h-5 w-5" />
             </Link>
             {teacherLinks.length > 0 && (
               <div data-nav-group="teacher">
