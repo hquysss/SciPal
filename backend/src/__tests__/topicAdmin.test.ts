@@ -107,3 +107,45 @@ describe('topic admin routes', () => {
     await app.close();
   });
 });
+
+describe('lesson order inside a topic', () => {
+  const L1 = 'b0000000-0000-4000-8000-000000000001';
+  const L2 = 'b0000000-0000-4000-8000-000000000002';
+  const L3 = 'b0000000-0000-4000-8000-000000000003';
+  const lesson = (id: string, sort_order: number) => ({ id, slug: id, title_en: id, title_vi: id, status: 'published', sort_order });
+
+  it('lists a topic’s lessons for admins only', async () => {
+    const forbidden = await build(teacher, { topics: [mockQuery({ data: topic(T1), error: null })] });
+    expect((await forbidden.inject({ method: 'GET', url: `/api/authoring/topics/${T1}/lessons` })).statusCode).toBe(403);
+    await forbidden.close();
+    const app = await build(admin, { topics: [mockQuery({ data: topic(T1), error: null })], lessons: [mockQuery({ data: [lesson(L1, 0), lesson(L2, 1)], error: null })] });
+    const res = await app.inject({ method: 'GET', url: `/api/authoring/topics/${T1}/lessons` });
+    expect(res.statusCode).toBe(200);
+    expect(res.json().lessons.map((l: { id: string }) => l.id)).toEqual([L1, L2]);
+    await app.close();
+  });
+
+  it('moves a lesson down and renumbers the topic, even when sort_orders were equal', async () => {
+    const u1 = mockQuery({ data: null, error: null });
+    const u2 = mockQuery({ data: null, error: null });
+    const u3 = mockQuery({ data: null, error: null });
+    const app = await build(admin, { topics: [mockQuery({ data: topic(T1), error: null })], lessons: [mockQuery({ data: [lesson(L1, 0), lesson(L2, 0), lesson(L3, 0)], error: null }), u1, u2, u3] });
+    const res = await app.inject({ method: 'POST', url: `/api/authoring/topics/${T1}/lessons/move`, payload: { lesson_id: L1, direction: 'down' } });
+    expect(res.statusCode).toBe(204);
+    // New order L2, L1, L3 is numbered 0..2: L2 keeps 0, so only L1 (1) and L3 (2) are written.
+    expect([u1.updated, u2.updated, u3.updated].flat()).toEqual([{ sort_order: 1 }, { sort_order: 2 }]);
+    await app.close();
+  });
+
+  it('rejects a bad direction, a bad lesson id and a lesson from another topic', async () => {
+    const make = () => build(admin, { topics: [mockQuery({ data: topic(T1), error: null })], lessons: [mockQuery({ data: [lesson(L1, 0)], error: null })] });
+    const url = `/api/authoring/topics/${T1}/lessons/move`;
+    let app = await make();
+    expect((await app.inject({ method: 'POST', url, payload: { lesson_id: L1, direction: 'left' } })).statusCode).toBe(400);
+    expect((await app.inject({ method: 'POST', url, payload: { lesson_id: 'x', direction: 'up' } })).statusCode).toBe(400);
+    await app.close();
+    app = await make();
+    expect((await app.inject({ method: 'POST', url, payload: { lesson_id: L2, direction: 'up' } })).statusCode).toBe(404);
+    await app.close();
+  });
+});

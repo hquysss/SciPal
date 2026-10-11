@@ -140,16 +140,18 @@ describe('PricingPage checkout', () => {
     expect(html).toContain('Đăng nhập để mua');
   });
 
-  it('lets a student buy the student plan by QR', () => {
+  it('sends a student to the payment methods page for the chosen plan and period', () => {
     const html = renderToStaticMarkup(<PricingPage plans={plans} checkoutOpen viewerRole="student" />);
-    expect(html).toContain('Mua bằng QR');
+    expect(html).toContain('href="/profile/payment-methods?plan=student_plus&amp;interval=month"');
+    expect(html).toContain('Tiếp tục thanh toán');
+    expect(html).not.toContain('Cổng thanh toán');
     expect(html).not.toContain('Sắp mở bán');
   });
 
   it('does not sell a teacher the student plan, nor an admin anything', () => {
     const teacher = renderToStaticMarkup(<PricingPage plans={plans} checkoutOpen viewerRole="teacher" />);
     expect(teacher).toContain('Gói dành cho học sinh');
-    expect(teacher).not.toContain('Mua bằng QR');
+    expect(teacher).not.toContain('payment-methods?plan=student_plus');
     const admin = renderToStaticMarkup(<PricingPage plans={plans} checkoutOpen viewerRole="admin" initialAudience="teacher" />);
     expect(admin).toContain('Tài khoản quản trị không cần mua gói');
   });

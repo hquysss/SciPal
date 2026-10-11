@@ -2,12 +2,12 @@
 
 import { INPUT_CLASS as FIELD } from '@/components/ui/input';
 import { useCallback, useEffect, useId, useRef, useState } from 'react';
-import { ArrowDown, ArrowUp, Pencil, Trash2 } from 'lucide-react';
+import { ArrowDown, ArrowUp, ChevronDown, Pencil, Trash2 } from 'lucide-react';
 import { useLanguage } from '@scipal/hooks';
 import { Alert } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import type { AuthoringSubjectOption } from '../authoringQueries';
-import { createTopic, deleteTopic, listTopics, moveTopic, renameTopic, type ManagedTopic } from './api';
+import { createTopic, deleteTopic, listTopicLessons, listTopics, moveTopic, moveTopicLesson, renameTopic, type ManagedTopic, type TopicLesson } from './api';
 
 type Bilingual = { en: string; vi: string };
 type Names = { name_vi: string; name_en: string };
@@ -53,6 +53,53 @@ function NameForm({ initial, submitLabel, busy, onSubmit, onCancel }: {
   );
 }
 
+/** The lessons of one topic in student order, with up/down buttons to reorder them. */
+export function TopicLessons({ topicId }: { topicId: string }) {
+  const { t } = useLanguage();
+  const [lessons, setLessons] = useState<TopicLesson[] | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<Bilingual | null>(null);
+  const load = useCallback(async () => {
+    const res = await listTopicLessons(topicId);
+    if (res.ok) setLessons(res.data.lessons);
+    else setError(res.error);
+  }, [topicId]);
+  useEffect(() => { void load(); }, [load]);
+  const move = async (lesson: TopicLesson, direction: 'up' | 'down') => {
+    if (busy) return;
+    setBusy(true);
+    setError(null);
+    const res = await moveTopicLesson(topicId, lesson.id, direction);
+    if (res.ok) await load();
+    else setError(res.error);
+    setBusy(false);
+  };
+  if (!lessons) return <p className="text-sm text-ink-muted">{error ? t(error) : t({ en: 'Loading…', vi: 'Đang tải…' })}</p>;
+  if (lessons.length === 0) return <p className="text-sm text-ink-muted">{t({ en: 'No lessons in this topic.', vi: 'Chủ đề này chưa có bài.' })}</p>;
+  return (
+    <div className="flex flex-col gap-2">
+      {error && <Alert tone="danger">{t(error)}</Alert>}
+      <ol className="flex flex-col gap-1">
+        {lessons.map((lesson, i) => (
+          <li key={lesson.id} className="flex items-center gap-2 rounded-md border border-line bg-surface-sunken px-3 py-2">
+            <span className="w-6 shrink-0 text-center text-xs font-semibold text-ink-muted">{i + 1}</span>
+            <span className="min-w-0 flex-1 truncate text-sm text-ink">
+              {lesson.title_vi}
+              {lesson.status !== 'published' && <span className="ml-2 text-xs text-ink-muted">({lesson.status})</span>}
+            </span>
+            <Button type="button" variant="ghost" size="icon" aria-label={t({ en: `Move lesson ${lesson.title_en} up`, vi: `Đưa bài ${lesson.title_vi} lên` })} disabled={busy || i === 0} onClick={() => void move(lesson, 'up')}>
+              <ArrowUp aria-hidden className="h-4 w-4" />
+            </Button>
+            <Button type="button" variant="ghost" size="icon" aria-label={t({ en: `Move lesson ${lesson.title_en} down`, vi: `Đưa bài ${lesson.title_vi} xuống` })} disabled={busy || i === lessons.length - 1} onClick={() => void move(lesson, 'down')}>
+              <ArrowDown aria-hidden className="h-4 w-4" />
+            </Button>
+          </li>
+        ))}
+      </ol>
+    </div>
+  );
+}
+
 /**
  * The admin's topic list for one subject and grade: rename, reorder, delete an empty topic, add one.
  * Slugs never change (they are in lesson URLs). `initialTopics` skips the first load (tests, showcase).
@@ -65,6 +112,7 @@ export function TopicManager({ subjects, initialTopics }: { subjects: AuthoringS
   const [grade, setGrade] = useState(subjects[0]?.grades[0] ?? 0);
   const [topics, setTopics] = useState<ManagedTopic[] | null>(initialTopics ?? null);
   const [editing, setEditing] = useState<string | null>(null);
+  const [open, setOpen] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<{ text: Bilingual; tone: 'danger' | 'success' } | null>(null);
   const skipFirstLoad = useRef(initialTopics !== undefined);
@@ -172,6 +220,10 @@ export function TopicManager({ subjects, initialTopics }: { subjects: AuthoringS
                     </p>
                   </div>
                   <div className="flex gap-1">
+                    <Button type="button" variant="ghost" aria-expanded={open === topic.id} onClick={() => setOpen(open === topic.id ? null : topic.id)}>
+                      {t({ en: 'Lessons', vi: 'Bài học' })}
+                      <ChevronDown aria-hidden className={`h-4 w-4 transition-transform ${open === topic.id ? 'rotate-180' : ''}`} />
+                    </Button>
                     <Button type="button" variant="ghost" size="icon" aria-label={t({ en: `Move ${topic.name_en} up`, vi: `Đưa ${topic.name_vi} lên` })} disabled={busy || i === 0} onClick={() => void act(() => moveTopic(topic.id, 'up'))}>
                       <ArrowUp aria-hidden className="h-4 w-4" />
                     </Button>
@@ -195,6 +247,7 @@ export function TopicManager({ subjects, initialTopics }: { subjects: AuthoringS
                   </div>
                 </div>
               )}
+              {open === topic.id && editing !== topic.id && <div className="mt-3 border-t border-line pt-3"><TopicLessons topicId={topic.id} /></div>}
             </li>
           ))}
         </ol>
