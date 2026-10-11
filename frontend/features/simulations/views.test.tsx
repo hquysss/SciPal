@@ -93,6 +93,17 @@ describe('physics views', () => {
     expect(html).toContain('1.00 A');
     expect(html).toContain('I = U / R');
   });
+
+  it('ripple tank offers both drives and shows λ = v/f for the default settings', () => {
+    const { Renderer } = simulationModules['wave-3d']!;
+    const html = renderToStaticMarkup(<Renderer config={defaultSimulationConfig('wave-3d')} lang="vi" />);
+    expect(html).toContain('Motor tự quay');
+    expect(html).toContain('Tự quay tay');
+    expect(html).toContain('0,4 m'); // λ = 0.4 m/s ÷ 1 Hz
+    expect(html).toContain('λ = v·T = v/f');
+    const manual = renderToStaticMarkup(<Renderer config={{ ...defaultSimulationConfig('wave-3d'), mode: 'manual' }} lang="en" />);
+    expect(manual).toContain('Crank angle θ');
+  });
 });
 
 describe('biology views', () => {

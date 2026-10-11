@@ -1,5 +1,15 @@
 # SciPal Web Design System
 
+## Water waves 3D (11/10)
+
+- Reference: user's 26s Bandicam recording of YooBook "Mô tả sóng" (ripple tank). Treated as a goal, not a copy: the SciPal version adds a hand-turned crank mode, live λ/A/v measures, u(x) and u(t) graphs and droppable floats.
+- `wave-3d` joins the physics Lab and the lesson simulation registry; one config (`frequency` 0.5–4 Hz, `amplitude` 0.5–3 cm, `speed` 0.2–1.2 m/s, `mode` auto|manual, `autoplay`) drives Studio preview and learners. No dependency, iframe, API key or migration.
+- Physics in `engines/wave.ts`: the source moves as s(t); every point repeats it later, u(x,t) = s(t − x/v), damped to zero across the anti-reflection slope (last 0.25 m). Motor: s = A sin(2πft). Hand crank: s = A sin θ recorded in a 120 Hz history and high-passed (τ = 1.5 s) so a crank held still leaves the water level. Auto playback loops seamlessly once the tank is full.
+- Water is one `ShaderMaterial` box: top vertices displaced from a 512-sample half-float profile texture, slope normals, depth tint, Fresnel, crest tint and a bright surface rim on the side faces. Glass is `MeshPhysicalMaterial` with a browser-generated `RoomEnvironment`; drive parts are PBR metal. Heights are exaggerated (0.14 scene units per cm); readouts keep SI units.
+- Drive: motor + belt + wheel with the pin at stroke radius r = A, slotted yoke (Scotch yoke), rod, arm and dipper. Manual mode removes the belt, turns the motor lamp off and shows a handle; dragging around the wheel turns it (angle from the pointer around the projected wheel centre, mirrored when viewed from behind), the angle slider is the keyboard path.
+- Material tokens scoped to `.stage` in `wave3d.module.css`; only the measure overlay uses `--accent`. Part chips are real buttons (focus camera + bilingual explanation card). Measure tags hide by default under 520px width.
+- Clicks reach the canvas because this scene releases the orbit pointer capture (drags end on pointerleave); the shared `useOrbit` is unchanged.
+
 ## Harmonic motion 3D (08/10)
 
 - Reference: user's 11.81s Bandicam recording of YooBook, extracted frames in the local `yoobook-reference` artifact folder. Reconstruct the classroom board and moving diagram with real meshes; no reference video/image substitutes for simulation geometry. Branding and mascot remain SciPal's surrounding shell.
