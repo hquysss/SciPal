@@ -17,6 +17,8 @@
   --wave-float: #f7f2e6;
   --wave-absorber: #8b5a3c;
   --wave-highlight: #ffd34d;
+  --wave-lamp-on: #3ddc84;
+  --wave-lamp-off: #7d878c;
   --wave-measure: var(--accent, #d9466f);
   background: linear-gradient(180deg, var(--wave-background), var(--wave-floor));
   aspect-ratio: 16 / 10;

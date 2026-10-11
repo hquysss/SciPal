@@ -10,7 +10,7 @@ import { pick, type Lang } from './types';
 import { WAVE_PARTS, type WavePart } from './wave3dParts';
 import styles from './wave3d.module.css';
 
-const TOKENS = { background: '--wave-background', floor: '--wave-floor', base: '--wave-base', glass: '--wave-glass', frame: '--wave-frame', deep: '--wave-deep', shallow: '--wave-shallow', sky: '--wave-sky', crest: '--wave-crest', metal: '--wave-metal', dark: '--wave-dark', rod: '--wave-rod', source: '--wave-source', float: '--wave-float', absorber: '--wave-absorber', highlight: '--wave-highlight', measure: '--wave-measure' } as const;
+const TOKENS = { background: '--wave-background', floor: '--wave-floor', base: '--wave-base', glass: '--wave-glass', frame: '--wave-frame', deep: '--wave-deep', shallow: '--wave-shallow', sky: '--wave-sky', crest: '--wave-crest', metal: '--wave-metal', charcoal: '--wave-dark', rod: '--wave-rod', source: '--wave-source', float: '--wave-float', absorber: '--wave-absorber', highlight: '--wave-highlight', lampOn: '--wave-lamp-on', lampOff: '--wave-lamp-off', measure: '--wave-measure' } as const;
 type Palette = Record<keyof typeof TOKENS, string>;
 
 // Scene layout (units, y up). The wave runs along +x from the dipper at X0 to the end wall at 8.
@@ -131,7 +131,7 @@ function useMaterials(palette: Palette) {
     glass: new THREE.MeshPhysicalMaterial({ transparent: true, opacity: 0.2, roughness: 0.04, metalness: 0, clearcoat: 0.3, clearcoatRoughness: 0.2, envMapIntensity: 0.45, depthWrite: false, side: THREE.DoubleSide }),
     frame: new THREE.MeshStandardMaterial({ metalness: 0.75, roughness: 0.35 }),
     metal: new THREE.MeshStandardMaterial({ metalness: 0.85, roughness: 0.3 }),
-    dark: new THREE.MeshStandardMaterial({ metalness: 0.6, roughness: 0.45 }),
+    charcoal: new THREE.MeshStandardMaterial({ metalness: 0.6, roughness: 0.45 }),
     rod: new THREE.MeshStandardMaterial({ metalness: 0.9, roughness: 0.2 }),
     source: new THREE.MeshStandardMaterial({ roughness: 0.45 }),
     float: new THREE.MeshStandardMaterial({ roughness: 0.9 }),
@@ -145,7 +145,7 @@ function useMaterials(palette: Palette) {
     mats.glass.color.set(palette.glass);
     mats.frame.color.set(palette.frame);
     mats.metal.color.set(palette.metal);
-    mats.dark.color.set(palette.dark);
+    mats.charcoal.color.set(palette.charcoal);
     mats.rod.color.set(palette.rod);
     mats.source.color.set(palette.source);
     mats.float.color.set(palette.float);
@@ -284,7 +284,7 @@ function Tank({ mats, onPart, onHover }: { readonly mats: Materials; readonly on
 }
 
 /** Motor, belt, wheel with an off-centre pin, slotted yoke, rod and the dipper in the water. */
-function Drive({ mats, settings, mode, crank, onPart, onHover, onGrab }: { readonly mats: Materials; readonly settings: WaveSettings; readonly mode: 'auto' | 'manual'; readonly crank: RefObject<CrankState>; readonly onPart: (p: WavePart) => void; readonly onHover: (p: WavePart | null) => void; readonly onGrab: () => void }) {
+function Drive({ mats, palette, settings, mode, crank, onPart, onHover, onGrab }: { readonly mats: Materials; readonly palette: Palette; readonly settings: WaveSettings; readonly mode: 'auto' | 'manual'; readonly crank: RefObject<CrankState>; readonly onPart: (p: WavePart) => void; readonly onHover: (p: WavePart | null) => void; readonly onGrab: () => void }) {
   const wheel = useRef<THREE.Group>(null);
   const pulley = useRef<THREE.Group>(null);
   const slider = useRef<THREE.Group>(null);
@@ -316,25 +316,25 @@ function Drive({ mats, settings, mode, crank, onPart, onHover, onGrab }: { reado
     <group>
       <group {...pickable('drive')}>
         {/* pillar and axle */}
-        <mesh material={mats.dark} castShadow position={[WHEEL.x, WHEEL.y / 2 + 0.2, 0.9]}><boxGeometry args={[0.24, WHEEL.y + 0.4, 0.12]} /></mesh>
+        <mesh material={mats.charcoal} castShadow position={[WHEEL.x, WHEEL.y / 2 + 0.2, 0.9]}><boxGeometry args={[0.24, WHEEL.y + 0.4, 0.12]} /></mesh>
         <mesh material={mats.metal} rotation={[Math.PI / 2, 0, 0]} position={[WHEEL.x, WHEEL.y, 1.0]}><cylinderGeometry args={[0.05, 0.05, 0.3, 16]} /></mesh>
         {/* motor on its foot, with a status lamp */}
-        <mesh material={mats.dark} castShadow position={[MOTOR.x, 0.12, MOTOR.z - 0.12]}><boxGeometry args={[0.7, 0.24, 0.5]} /></mesh>
+        <mesh material={mats.charcoal} castShadow position={[MOTOR.x, 0.12, MOTOR.z - 0.12]}><boxGeometry args={[0.7, 0.24, 0.5]} /></mesh>
         <mesh material={mats.metal} castShadow rotation={[Math.PI / 2, 0, 0]} position={[MOTOR.x, MOTOR.y, MOTOR.z - 0.3]}><cylinderGeometry args={[0.3, 0.3, 0.5, 32]} /></mesh>
-        {Array.from({ length: 8 }, (_, i) => <mesh key={i} material={mats.dark} rotation={[Math.PI / 2, 0, 0]} position={[MOTOR.x, MOTOR.y, MOTOR.z - 0.5 + i * 0.06]}><torusGeometry args={[0.3, 0.012, 6, 32]} /></mesh>)}
-        <mesh position={[MOTOR.x + 0.22, MOTOR.y + 0.22, MOTOR.z - 0.05]}><sphereGeometry args={[0.04, 12, 8]} /><meshStandardMaterial color={manual ? '#7d878c' : '#3ddc84'} emissive={manual ? '#000000' : '#3ddc84'} emissiveIntensity={manual ? 0 : 1.2} /></mesh>
+        {Array.from({ length: 8 }, (_, i) => <mesh key={i} material={mats.charcoal} rotation={[Math.PI / 2, 0, 0]} position={[MOTOR.x, MOTOR.y, MOTOR.z - 0.5 + i * 0.06]}><torusGeometry args={[0.3, 0.012, 6, 32]} /></mesh>)}
+        <mesh position={[MOTOR.x + 0.22, MOTOR.y + 0.22, MOTOR.z - 0.05]}><sphereGeometry args={[0.04, 12, 8]} /><meshStandardMaterial color={manual ? palette.lampOff : palette.lampOn} emissive={palette.lampOn} emissiveIntensity={manual ? 0 : 1.2} /></mesh>
         <group ref={pulley} position={[MOTOR.x, MOTOR.y, MOTOR.z]}>
           <mesh material={mats.rod} rotation={[Math.PI / 2, 0, 0]}><cylinderGeometry args={[0.12, 0.12, 0.08, 24]} /></mesh>
-          <mesh material={mats.dark} position={[0.07, 0, 0.045]}><boxGeometry args={[0.1, 0.025, 0.01]} /></mesh>
+          <mesh material={mats.charcoal} position={[0.07, 0, 0.045]}><boxGeometry args={[0.1, 0.025, 0.01]} /></mesh>
         </group>
-        {!manual && belt.map((b, i) => <mesh key={i} material={mats.dark} position={[b.mid.x, b.mid.y, MOTOR.z]} rotation={[0, 0, b.angle]}><boxGeometry args={[b.length, 0.025, 0.05]} /></mesh>)}
+        {!manual && belt.map((b, i) => <mesh key={i} material={mats.charcoal} position={[b.mid.x, b.mid.y, MOTOR.z]} rotation={[0, 0, b.angle]}><boxGeometry args={[b.length, 0.025, 0.05]} /></mesh>)}
         {/* the wheel turns; the pin sits at the stroke radius r = A */}
         <group
           ref={wheel}
           position={[WHEEL.x, WHEEL.y, WHEEL.z]}
           onPointerDown={(e) => { if (manual) { e.stopPropagation(); onGrab(); } }}
         >
-          <mesh material={mats.dark} castShadow rotation={[Math.PI / 2, 0, 0]}><cylinderGeometry args={[WHEEL_RADIUS, WHEEL_RADIUS, 0.08, 64]} /></mesh>
+          <mesh material={mats.charcoal} castShadow rotation={[Math.PI / 2, 0, 0]}><cylinderGeometry args={[WHEEL_RADIUS, WHEEL_RADIUS, 0.08, 64]} /></mesh>
           <mesh material={mats.metal} rotation={[Math.PI / 2, 0, 0]} position={[0, 0, -0.08]}><cylinderGeometry args={[0.16, 0.16, 0.06, 32]} /></mesh>
           <mesh material={mats.rod} position={[0, 0, 0.045]}><torusGeometry args={[WHEEL_RADIUS - 0.04, 0.02, 8, 64]} /></mesh>
           {[0, 1, 2, 3].map((i) => <mesh key={i} material={mats.metal} rotation={[0, 0, (i * Math.PI) / 2]} position={[0, 0, 0.045]}><boxGeometry args={[WHEEL_RADIUS * 2 - 0.12, 0.05, 0.015]} /></mesh>)}
@@ -361,8 +361,8 @@ function Drive({ mats, settings, mode, crank, onPart, onHover, onGrab }: { reado
         </group>
       </group>
       {/* fixed guide the rod slides through */}
-      <mesh material={mats.dark} position={[WHEEL.x, ARM_Y + 0.32, WHEEL.z + 0.17]}><cylinderGeometry args={[0.06, 0.06, 0.12, 16]} /></mesh>
-      <mesh material={mats.dark} position={[WHEEL.x, ARM_Y + 0.32, (WHEEL.z + 0.17 + 0.9) / 2]}><boxGeometry args={[0.05, 0.05, WHEEL.z + 0.17 - 0.9]} /></mesh>
+      <mesh material={mats.charcoal} position={[WHEEL.x, ARM_Y + 0.32, WHEEL.z + 0.17]}><cylinderGeometry args={[0.06, 0.06, 0.12, 16]} /></mesh>
+      <mesh material={mats.charcoal} position={[WHEEL.x, ARM_Y + 0.32, (WHEEL.z + 0.17 + 0.9) / 2]}><boxGeometry args={[0.05, 0.05, WHEEL.z + 0.17 - 0.9]} /></mesh>
     </group>
   );
 }
@@ -705,7 +705,7 @@ function SceneBody({ palette, settings, mode, time, history, crank, floats, sele
       <mesh material={mats.floor} rotation={[-Math.PI / 2, 0, 0]} position={[3.5, -0.2, 0]} receiveShadow><circleGeometry args={[30, 48]} /></mesh>
       <Tank mats={mats} onPart={onPart} onHover={hover} />
       <Water texture={texture} settings={settings} palette={palette} onAddFloat={onAddFloat} />
-      <Drive mats={mats} settings={settings} mode={mode} crank={crank} onPart={onPart} onHover={hover} onGrab={onGrab} />
+      <Drive mats={mats} palette={palette} settings={settings} mode={mode} crank={crank} onPart={onPart} onHover={hover} onGrab={onGrab} />
       <Floats mats={mats} profile={profile} floats={floats} selected={selectedFloat} onSelect={onSelectFloat} onHover={hover} onPart={onPart} palette={palette} anchors={anchors.floats} />
       {showMeasure && <Measures mats={mats} settings={settings} mode={mode} time={time} anchors={anchors} />}
     </group>
@@ -717,14 +717,14 @@ function useHoverHighlight(mats: Materials, palette: Palette) {
   const current = useRef<WavePart | null>(null);
   const { invalidate } = useThree();
   const groups: Record<WavePart, THREE.MeshStandardMaterial[]> = useMemo(() => ({
-    drive: [mats.dark, mats.metal, mats.rod],
+    drive: [mats.charcoal, mats.metal, mats.rod],
     source: [mats.source],
     float: [mats.float],
     absorber: [mats.absorber],
   }), [mats]);
   const set = (p: WavePart | null) => {
     if (current.current === p) return;
-    for (const m of Object.values(groups).flat()) m.emissive.set('#000000');
+    for (const m of Object.values(groups).flat()) m.emissive.setScalar(0);
     if (p) for (const m of groups[p]) { m.emissive.set(palette.highlight); m.emissiveIntensity = 0.25; }
     current.current = p;
     invalidate();
