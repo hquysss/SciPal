@@ -248,6 +248,8 @@
 .mobilePanel {
   position: absolute;
   inset-inline: 0.75rem;
+  max-width: 20rem;
+  margin-left: auto;
   margin-top: 0.5rem;
   border-radius: 1.25rem;
   top: 100%;
