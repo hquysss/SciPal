@@ -591,7 +591,7 @@ export function ExamBuilder({ exam, subjects, isAdmin, initialQuestions = [] }: 
               {t({ en: 'Publish', vi: 'Xuất bản' })}
             </Button>
           )}
-          {saved?.status === 'draft' && (
+          {saved && (saved.status === 'draft' || isAdmin) && (
             <Button type="button" variant="ghost" disabled={busy} onClick={() => void remove()}>
               {t({ en: 'Delete exam', vi: 'Xóa đề' })}
             </Button>

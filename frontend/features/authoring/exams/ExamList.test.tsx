@@ -31,3 +31,13 @@ describe('ExamTable', () => {
     expect(renderToStaticMarkup(<ExamTable exams={[]} />)).toContain('Chưa có đề thi');
   });
 });
+
+describe('ExamTable delete', () => {
+  it('offers Delete only on rows the viewer may delete', () => {
+    const exams = [exam({ id: 'd1', name: 'Nháp' }), exam({ id: 'p1', name: 'Đã xuất bản', status: 'published' })];
+    const html = renderToStaticMarkup(<ExamTable exams={exams} canDelete={(e) => e.status === 'draft'} onDelete={() => {}} />);
+    expect(html).toContain('Xóa đề Nháp');
+    expect(html).not.toContain('Xóa đề Đã xuất bản');
+    expect(renderToStaticMarkup(<ExamTable exams={exams} />)).not.toContain('Xóa đề Nháp');
+  });
+});

@@ -51,7 +51,7 @@ export default async function TeacherExamsPage() {
         </div>
       </header>
       {role === 'admin' && <ExamReviewQueue token={token} />}
-      <ExamList />
+      <ExamList isAdmin={role === 'admin'} />
     </main>
   );
 }
