@@ -45,7 +45,7 @@ function WaveExperiment({ config, lang }: Props) {
   useEffect(() => {
     setMounted(true);
     // On a phone the measure tags crowd the part labels; they stay one tick away.
-    if (window.innerWidth > 0 && window.matchMedia?.('(max-width: 520px)').matches) setShowMeasure(false);
+    if (window.matchMedia?.('(max-width: 520px)').matches) setShowMeasure(false);
   }, []);
   useEffect(() => setReadout({ angle: crank.current.angle, rate: crank.current.rate }), [clock.shownTime]);
 
@@ -90,79 +90,22 @@ function WaveExperiment({ config, lang }: Props) {
     vi: 'Bánh xe quay làm vật tạo sóng dao động lên xuống. Sóng truyền dọc máng với tốc độ v; mỗi vòng quay tạo một bước sóng λ = v/f. Miếng xốp chỉ dao động tại chỗ.',
     en: 'The turning wheel moves the wave source up and down. The wave travels along the tank at speed v; each turn makes one wavelength λ = v/f. The floats only bob in place.',
   });
-  const readouts = (
-    <dl className={`${styles.readouts} ${styles.card}`}>
-      <dt>{t({ vi: 'Tần số f', en: 'Frequency f' })}</dt><dd>{turning ? `${format(frequency)} Hz` : '—'}</dd>
-      <dt>{t({ vi: 'Chu kì T', en: 'Period T' })}</dt><dd>{turning ? `${format(1 / frequency)} s` : '—'}</dd>
-      <dt>{t({ vi: 'Bước sóng λ', en: 'Wavelength λ' })}</dt><dd>{lambda !== null ? `${format(lambda, 3)} m` : '—'}</dd>
-      <dt>{t({ vi: 'Tốc độ truyền v', en: 'Wave speed v' })}</dt><dd>{format(settings.speed)} m/s</dd>
-    </dl>
-  );
-  const modeSwitch = (
-    <div role="group" aria-label={t({ vi: 'Chế độ', en: 'Mode' })} className="flex flex-wrap gap-2">
-      {([['auto', Zap, { vi: 'Motor tự quay', en: 'Motor drive' }], ['manual', Hand, { vi: 'Tự quay tay', en: 'Turn by hand' }]] as const).map(([value, Icon, label]) => (
-        <button key={value} type="button" aria-pressed={mode === value} onClick={() => switchMode(value)} className={`${BUTTON} ${mode === value ? 'border-action bg-action text-action-ink hover:bg-action-hover' : ''}`}>
-          <Icon aria-hidden="true" className="h-4 w-4" />
-          {t(label)}
-        </button>
-      ))}
-    </div>
-  );
-  const transport = (
-    <div className="flex flex-wrap gap-2">
-      <button type="button" className={BUTTON} onClick={clock.toggle}>
-        {clock.playing ? <Pause aria-hidden="true" className="h-4 w-4" /> : <Play aria-hidden="true" className="h-4 w-4" />}
-        {t(clock.playing ? { vi: 'Tạm dừng', en: 'Pause' } : { vi: 'Phát', en: 'Play' })}
-      </button>
-      <button type="button" className={BUTTON} onClick={restart}>
-        <RotateCcw aria-hidden="true" className="h-4 w-4" />
-        {t(mode === 'auto' ? { vi: 'Về thời điểm đầu', en: 'Restart' } : { vi: 'Làm phẳng mặt nước', en: 'Calm the water' })}
-      </button>
-    </div>
-  );
-  const sliders = (
-    <>
-      {mode === 'auto' && <Slider label={t({ vi: 'Tần số f', en: 'Frequency f' })} value={settings.frequency} min={0.5} max={4} step={0.1} unit="Hz" onChange={(v) => setPhysical('frequency', v)} />}
-      <Slider label={t({ vi: 'Biên độ A', en: 'Amplitude A' })} value={settings.amplitude} min={0.5} max={3} step={0.1} unit="cm" onChange={(v) => setPhysical('amplitude', v)} />
-      <Slider label={t({ vi: 'Tốc độ truyền v', en: 'Wave speed v' })} value={settings.speed} min={0.2} max={1.2} step={0.05} unit="m/s" onChange={(v) => setPhysical('speed', v)} />
-    </>
-  );
-  // Drawn over the 3D view, so the numbers and the explanation stay in sight (and in full screen).
-  const stop = (e: { stopPropagation: () => void }) => e.stopPropagation();
-  const hud = (expanded: boolean) => (
-    <>
-      {readouts}
-      <div className={styles.bottom}>
-        {part && (
-          <div aria-live="polite" className={`${styles.card} ${styles.part} ${styles.interactive}`} onPointerDown={stop}>
-            <div className="min-w-0 flex-1">
-              <p className="font-semibold">{t(WAVE_PARTS[part].name)}</p>
-              <p className="mt-0.5 text-ink-muted">{t(WAVE_PARTS[part].about)}</p>
-            </div>
-            <button type="button" className={styles.tool} aria-label={t({ vi: 'Đóng', en: 'Close' })} onClick={() => setPart(null)}><X aria-hidden="true" className="h-4 w-4" /></button>
-          </div>
-        )}
-        {expanded && (
-          <div className={`${styles.card} ${styles.dock} ${styles.interactive}`} onPointerDown={stop}>
-            {modeSwitch}
-            {transport}
-            <div className="flex min-w-0 flex-[3_1_420px] flex-wrap gap-x-4 gap-y-2 [&>*]:min-w-[140px] [&>*]:flex-1">{sliders}</div>
-          </div>
-        )}
-      </div>
-    </>
-  );
-
   const fallback = (message: string) => (
-    <div className={`${styles.stage} flex flex-col items-center justify-center gap-3 rounded-md border border-line p-6 text-center text-sm text-ink`}>
-      <p>{message} {t({ vi: 'Số liệu, đồ thị, công thức và điều khiển vẫn dùng được.', en: 'The readouts, graphs, formulas and controls still work.' })}</p>
-      {readouts}
+    <div className={`${styles.stage} flex items-center justify-center rounded-md border border-line p-6 text-center text-sm text-ink`}>
+      <p>{message} {t({ vi: 'Đồ thị, công thức và điều khiển bên dưới vẫn dùng được.', en: 'The graphs, formulas and controls below still work.' })}</p>
     </div>
   );
 
   return (
     <div ref={host} className={PANEL}>
-      {modeSwitch}
+      <div role="group" aria-label={t({ vi: 'Chế độ', en: 'Mode' })} className="flex flex-wrap gap-2">
+        {([['auto', Zap, { vi: 'Motor tự quay', en: 'Motor drive' }], ['manual', Hand, { vi: 'Tự quay tay', en: 'Turn by hand' }]] as const).map(([value, Icon, label]) => (
+          <button key={value} type="button" aria-pressed={mode === value} onClick={() => switchMode(value)} className={`${BUTTON} ${mode === value ? 'border-action bg-action text-action-ink hover:bg-action-hover' : ''}`}>
+            <Icon aria-hidden="true" className="h-4 w-4" />
+            {t(label)}
+          </button>
+        ))}
+      </div>
       {mounted ? (
         <SceneBoundary fallback={fallback(t({ vi: 'Trình duyệt này không hiển thị được 3D.', en: 'This browser cannot display 3D.' }))}>
           <Suspense fallback={fallback(t({ vi: 'Đang tải hình 3D…', en: 'Loading the 3D view…' }))}>
@@ -182,14 +125,32 @@ function WaveExperiment({ config, lang }: Props) {
               showMeasure={showMeasure}
               part={part}
               onPart={setPart}
-              hud={hud}
             />
           </Suspense>
         </SceneBoundary>
       ) : fallback(t({ vi: 'Đang tải hình 3D…', en: 'Loading the 3D view…' }))}
 
+      {part && (
+        <div aria-live="polite" className="flex items-start gap-3 rounded-md border border-line bg-surface-sunken p-3 text-sm">
+          <div className="min-w-0 flex-1">
+            <p className="font-semibold text-ink">{t(WAVE_PARTS[part].name)}</p>
+            <p className="mt-1 text-ink-muted">{t(WAVE_PARTS[part].about)}</p>
+          </div>
+          <button type="button" className={BUTTON} aria-label={t({ vi: 'Đóng', en: 'Close' })} onClick={() => setPart(null)}><X aria-hidden="true" className="h-4 w-4" /></button>
+        </div>
+      )}
+
       <p className="text-sm text-ink-muted">{description}</p>
-      {transport}
+      <div className="flex flex-wrap gap-2">
+        <button type="button" className={BUTTON} onClick={clock.toggle}>
+          {clock.playing ? <Pause aria-hidden="true" className="h-4 w-4" /> : <Play aria-hidden="true" className="h-4 w-4" />}
+          {t(clock.playing ? { vi: 'Tạm dừng', en: 'Pause' } : { vi: 'Phát', en: 'Play' })}
+        </button>
+        <button type="button" className={BUTTON} onClick={restart}>
+          <RotateCcw aria-hidden="true" className="h-4 w-4" />
+          {t(mode === 'auto' ? { vi: 'Về thời điểm đầu', en: 'Restart' } : { vi: 'Làm phẳng mặt nước', en: 'Calm the water' })}
+        </button>
+      </div>
       {mode === 'auto' ? (
         <Slider label={t({ vi: 'Thời gian t', en: 'Time t' })} value={Math.min(now, loopEnd)} min={0} max={Number(loopEnd.toFixed(2))} step={0.01} unit="s" onChange={clock.seek} />
       ) : (
@@ -199,7 +160,18 @@ function WaveExperiment({ config, lang }: Props) {
         </div>
       )}
 
-      <div className="grid gap-3 sm:grid-cols-3">{sliders}</div>
+      <dl className="grid grid-cols-2 gap-2 rounded-md bg-surface-sunken p-3 text-sm tabular-nums sm:grid-cols-4">
+        <div><dt className="text-ink-muted">{t({ vi: 'Tần số f', en: 'Frequency f' })}</dt><dd className="font-semibold text-ink">{turning ? `${format(frequency)} Hz` : '—'}</dd></div>
+        <div><dt className="text-ink-muted">{t({ vi: 'Chu kì T', en: 'Period T' })}</dt><dd className="font-semibold text-ink">{turning ? `${format(1 / frequency)} s` : '—'}</dd></div>
+        <div><dt className="text-ink-muted">{t({ vi: 'Bước sóng λ', en: 'Wavelength λ' })}</dt><dd className="font-semibold text-ink">{lambda !== null ? `${format(lambda, 3)} m` : '—'}</dd></div>
+        <div><dt className="text-ink-muted">{t({ vi: 'Tốc độ truyền v', en: 'Wave speed v' })}</dt><dd className="font-semibold text-ink">{format(settings.speed)} m/s</dd></div>
+      </dl>
+
+      <div className="grid gap-3 sm:grid-cols-3">
+        {mode === 'auto' && <Slider label={t({ vi: 'Tần số f', en: 'Frequency f' })} value={settings.frequency} min={0.5} max={4} step={0.1} unit="Hz" onChange={(v) => setPhysical('frequency', v)} />}
+        <Slider label={t({ vi: 'Biên độ A', en: 'Amplitude A' })} value={settings.amplitude} min={0.5} max={3} step={0.1} unit="cm" onChange={(v) => setPhysical('amplitude', v)} />
+        <Slider label={t({ vi: 'Tốc độ truyền v', en: 'Wave speed v' })} value={settings.speed} min={0.2} max={1.2} step={0.05} unit="m/s" onChange={(v) => setPhysical('speed', v)} />
+      </div>
 
       <WaveGraphs source={source} settings={settings} time={now} floats={floats} selected={selected} lang={lang} />
 

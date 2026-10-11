@@ -9,8 +9,6 @@
 - Drive: motor + belt + wheel with the pin at stroke radius r = A, slotted yoke (Scotch yoke), rod, arm and dipper. Manual mode removes the belt, turns the motor lamp off and shows a handle; dragging around the wheel turns it (angle from the pointer around the projected wheel centre, mirrored when viewed from behind), the angle slider is the keyboard path.
 - Material tokens scoped to `.stage` in `wave3d.module.css`; only the measure overlay uses `--accent`. Part chips are real buttons (focus camera + bilingual explanation card). Measure tags hide by default under 520px width.
 - Clicks reach the canvas because this scene releases the orbit pointer capture (drags end on pointerleave); the shared `useOrbit` is unchanged.
-- Info lives inside the 3D view (12/10): a `.hud` layer (pointer-events none, cards opt back in) holds the f/T/λ/v readouts top-left, the part explanation card bottom-left, and in full screen a dock with mode switch, play/restart and the f/A/v sliders. A toolbar top-right has zoom in/out, reset view, hide/show info panels and full screen. Panels can be hidden to see the bare scene.
-- Holding the right mouse button and dragging pans the camera target (clamped to a box around the tank; the context menu is suppressed on the view). Full screen uses the Fullscreen API on the view; if the request is unsupported, rejected or left pending (0.7 s), the view covers the page with `position: fixed` and Esc leaves it.
 
 ## Harmonic motion 3D (08/10)
 
