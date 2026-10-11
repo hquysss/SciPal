@@ -60,9 +60,9 @@ const userA = '00000000-0000-4000-8000-000000000001';
 const userB = '00000000-0000-4000-8000-000000000002';
 await query(`
   delete from public.quota_operations where user_id = '${userA}';
-  delete from public.quota_usage where user_id = '${userA}' and metric = 'tutor_requests';
+  delete from public.quota_usage where user_id = '${userA}' and metric = 'tutor_tokens';
   insert into public.account_quota_overrides (user_id, metric, limit_value, expires_at, version)
-  values ('${userA}', 'tutor_requests', 1, null, 1)
+  values ('${userA}', 'tutor_tokens', 1, null, 1)
   on conflict (user_id, metric) do update
     set limit_value = excluded.limit_value, expires_at = null, version = excluded.version;
 `);
@@ -70,7 +70,7 @@ await query(`
 const outcomes = await Promise.all(Array.from({ length: 20 }, async () => {
   const operationId = randomUUID();
   const requestHash = createHash('sha256').update(operationId).digest('hex');
-  const sql = `set role service_role; select public.billing_reserve_quota('${userA}', 'tutor_requests', '${operationId}', '${requestHash}', 1); reset role`;
+  const sql = `set role service_role; select public.billing_reserve_quota('${userA}', 'tutor_tokens', '${operationId}', '${requestHash}', 1); reset role`;
   try {
     const result = await query(sql);
     return { success: true, result: result.stdout };
@@ -94,7 +94,7 @@ const isolation = await query(`
     from (select 1) as seed
     left join public.quota_usage as q
       on q.user_id = '${userB}'
-     and q.metric = 'tutor_requests'
+     and q.metric = 'tutor_tokens'
      and q.period_start = pg_catalog.date_trunc('month', pg_catalog.clock_timestamp() at time zone 'Asia/Ho_Chi_Minh')::date;
 `);
 if (isolation.stdout !== '0,0') {
