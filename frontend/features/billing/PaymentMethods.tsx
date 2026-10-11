@@ -2,13 +2,14 @@
 import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { ArrowRight, Check, CreditCard, QrCode, RefreshCcw, ShieldCheck, Wallet } from 'lucide-react';
+import { Check, CreditCard, QrCode, RefreshCcw, ShieldCheck, Wallet } from 'lucide-react';
 import { useLanguage } from '@scipal/hooks';
 import type { BillingAccount } from '@scipal/types';
 import { Alert } from '@/components/ui/alert';
 import { buttonVariants } from '@/components/ui/button';
 import { cancelRenewal, fetchMyPlan, formatVnd, startCheckout, type Catalog } from './billingApi';
-import { INTERVAL_NOUN, canAutoRenew } from './intervals';
+import { INTERVAL_NOUN, INTERVAL_SPAN, canAutoRenew } from './intervals';
+import slip from './payment-methods.module.css';
 type Provider = 'payos' | 'vnpay' | 'momo';
 type Props = {
  readonly context?: { readonly audience?: string; readonly interval?: string; readonly plan?: string };
@@ -56,65 +57,76 @@ export function PaymentMethodsView({ catalog, account, accountStatus, onCancel, 
   : renewal?.status === 'pending' ? { vi: `Đang xử lý đăng ký ${currentProvider}`, en: `${currentProvider} registration is pending` }
   : { vi: `Gia hạn ${currentProvider} đang tạm dừng`, en: `${currentProvider} renewal is paused` };
  const date = (value: string) => new Intl.DateTimeFormat(lang === 'en' ? 'en-GB' : 'vi-VN', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'Asia/Ho_Chi_Minh' }).format(new Date(value));
- return <div className="flex flex-col gap-6">
+ const canPay = Boolean(method && selected && offered(selected));
+ const buyNow = Boolean(chosenPlan && chosenPrice && onBuy);
+ const note = selected === 'vnpay' && catalog?.vnpaySandbox ? {vi:'VNPAY đang ở chế độ thử nghiệm, không thu tiền thật.',en:'VNPAY is in test mode; no real money is charged.'}
+  : wantsRenew ? {vi:'Tự gia hạn mỗi kỳ, hủy được bất cứ lúc nào trong Gói của tôi.',en:'Renews every period; cancel any time from My Plan.'}
+  : {vi:'Thanh toán một lần cho kỳ này, không tự gia hạn.',en:'One payment for this period, no auto-renewal.'};
+ return <div className="flex flex-col gap-8">
   {!catalog && <Alert tone="danger"><p>{t({ vi: 'Chưa tải được các cổng thanh toán. Thử lại sau nhé.', en: 'Payment providers could not be loaded. Try again later.' })}</p>{onRetry && <button type="button" onClick={onRetry} className={buttonVariants({ variant: 'outline' })}>{t({ vi: 'Thử lại', en: 'Try again' })}</button>}</Alert>}
+
+  {chosenPlan && chosenPrice && <section className={slip.slip} aria-label={t({vi:'Gói đã chọn',en:'Selected plan'})}>
+   <p className="text-sm leading-7 text-ink-muted">{t({vi:'Bạn đang mua',en:'You are buying'})}</p>
+   <div className={slip.row}>
+    <p className="min-w-0 truncate text-lg font-extrabold tracking-tight text-ink">{t(chosenPlan.name)}</p>
+    <p className={slip.price}>{formatVnd(chosenPrice.amountVnd)}</p>
+   </div>
+   <div className={slip.row}>
+    <Link href={`/pricing?audience=${chosenPlan.audience}&interval=${chosenPrice.interval}`} className="text-sm font-semibold text-action underline-offset-4 hover:underline">{t({vi:'Đổi gói hoặc chu kỳ',en:'Change plan or period'})}</Link>
+    <p className="text-sm text-ink-muted">{t({vi:`cho ${INTERVAL_SPAN[chosenPrice.interval].vi}`,en:`for ${INTERVAL_SPAN[chosenPrice.interval].en}`})}</p>
+   </div>
+  </section>}
+  {chosenPlan && !chosenPrice && <Alert tone="danger"><p>{t({vi:'Chu kỳ này không còn bán. Quay lại bảng giá để chọn lại.',en:'This period is no longer sold. Go back to pricing and choose again.'})}</p></Alert>}
+  {roleBlocks && <Alert tone="danger"><p>{t(chosenPlan?.audience === 'student' ? {vi:'Gói này dành cho học sinh.',en:'This plan is for students.'} : {vi:'Gói này dành cho giáo viên.',en:'This plan is for teachers.'})}</p></Alert>}
+
   <fieldset className="min-w-0">
-   <legend className="mb-4 text-sm font-semibold text-ink">{t({ vi: 'Chọn cổng cho lần thanh toán tiếp theo', en: 'Choose a provider for your next payment' })}</legend>
-   <div className="grid gap-3 md:grid-cols-3">
+   <legend className="mb-3 text-base font-bold text-ink">{t(buyNow ? { vi: 'Chọn cách thanh toán', en: 'Choose how to pay' } : { vi: 'Chọn cổng cho lần thanh toán tiếp theo', en: 'Choose a provider for your next payment' })}</legend>
+   <div className="flex flex-col gap-2">
     {providers.map((provider) => {
      const checked = selected === provider.id && offered(provider.id);
      const Icon = provider.icon;
-     return <label key={provider.id} className={`relative flex min-w-0 flex-col gap-4 rounded-2xl border p-5 transition-colors focus-within:outline focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-focus ${checked ? 'border-action bg-surface' : 'border-edge bg-surface'} ${offered(provider.id) ? 'cursor-pointer hover:bg-surface-sunken' : 'text-ink-muted'}`}>
-      <div className="flex items-center justify-between gap-2">
-       <span className="flex size-11 items-center justify-center rounded-xl border border-line bg-surface-sunken text-ink"><Icon size={22} aria-hidden="true" /></span>
-       <input type="radio" name="payment-provider" aria-label={provider.name} value={provider.id} checked={checked} disabled={!offered(provider.id)} onChange={() => { setSelected(provider.id); setRenew(false); }} className="size-5 accent-action" />
-      </div>
-      <div><p className="mb-1 text-xs font-medium tracking-wider text-ink-muted">{t(provider.type)}</p><h2 className="text-xl font-extrabold tracking-tight text-ink">{provider.name}</h2></div>
-      <p className="text-sm leading-relaxed text-ink-muted">{t(provider.description)}</p>
-      <span className={`mt-auto inline-flex items-center gap-1.5 text-xs font-semibold ${offered(provider.id) ? 'text-success' : 'text-ink-muted'}`}>
-       {offered(provider.id) && <Check size={14} aria-hidden="true" />}
-       {t(!catalog ? {vi:'Chưa tải được trạng thái',en:'Status unavailable'} : offered(provider.id) ? {vi:'Sẵn sàng',en:'Available'} : {vi:'Chưa mở',en:'Not available yet'})}
+     return <label key={provider.id} className={`flex min-h-16 min-w-0 items-center gap-4 rounded-2xl border bg-surface px-4 py-3 focus-within:outline focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-focus motion-safe:transition-[border-color,box-shadow,transform] motion-safe:duration-150 ${checked ? 'border-action shadow-[0_0_0_1px_var(--action)]' : 'border-line'} ${offered(provider.id) ? 'cursor-pointer hover:border-edge motion-safe:active:scale-[0.99]' : 'cursor-not-allowed opacity-60'}`}>
+      <span className={`flex size-11 shrink-0 items-center justify-center rounded-xl border ${checked ? 'border-action text-action' : 'border-line text-ink'} bg-surface-sunken`}><Icon size={22} aria-hidden="true" /></span>
+      <span className="min-w-0 flex-1">
+       <span className="block font-bold text-ink">{provider.name}</span>
+       <span className="mt-0.5 block text-sm leading-snug text-ink-muted">{offered(provider.id) ? t(provider.description) : t(!catalog ? {vi:'Chưa tải được trạng thái',en:'Status unavailable'} : provider.id === 'momo' && !renewable ? {vi:'Không áp dụng cho gói 3 và 6 tháng',en:'Not for 3- and 6-month plans'} : {vi:'Chưa mở',en:'Not available yet'})}</span>
       </span>
+      <input type="radio" name="payment-provider" aria-label={provider.name} value={provider.id} checked={checked} disabled={!offered(provider.id)} onChange={() => { setSelected(provider.id); setRenew(false); }} className="size-5 shrink-0 accent-action" />
      </label>;
     })}
    </div>
   </fieldset>
-  {chosenPlan && chosenPrice && <section className="rounded-2xl border border-line bg-surface p-5" aria-label={t({vi:'Gói đã chọn',en:'Selected plan'})}>
-   <p className="text-xs font-bold uppercase tracking-wider text-ink-muted">{t({vi:'Gói đã chọn',en:'Selected plan'})}</p>
-   <p className="mt-1 text-lg font-extrabold text-ink">{t(chosenPlan.name)} · {formatVnd(chosenPrice.amountVnd)} / {t(INTERVAL_NOUN[chosenPrice.interval])}</p>
-   <Link href={`/pricing?audience=${chosenPlan.audience}&interval=${chosenPrice.interval}`} className="mt-1 inline-block text-sm font-semibold text-action underline-offset-4 hover:underline">{t({vi:'Đổi gói hoặc chu kỳ',en:'Change plan or period'})}</Link>
-  </section>}
-  {chosenPlan && !chosenPrice && <Alert tone="danger"><p>{t({vi:'Chu kỳ này không còn bán. Quay lại bảng giá để chọn lại.',en:'This period is no longer sold. Go back to pricing and choose again.'})}</p></Alert>}
-  {roleBlocks && <Alert tone="danger"><p>{t(chosenPlan?.audience === 'student' ? {vi:'Gói này dành cho học sinh.',en:'This plan is for students.'} : {vi:'Gói này dành cho giáo viên.',en:'This plan is for teachers.'})}</p></Alert>}
-  {buyError && <Alert tone="danger"><p>{t(buyError)}</p></Alert>}
-  {chosenPrice && selected && offered(selected) && renewAvailable && renewable && <label className="flex min-h-11 cursor-pointer items-start gap-2 text-sm text-ink-muted">
-   <input type="checkbox" checked={renew} onChange={(event) => setRenew(event.currentTarget.checked)} className="mt-1 size-4 shrink-0 accent-action" />
+
+  {chosenPrice && selected && offered(selected) && renewAvailable && renewable && <label className="flex min-h-11 cursor-pointer items-start gap-3 rounded-2xl border border-line bg-surface p-4 text-sm leading-relaxed text-ink-muted">
+   <input type="checkbox" checked={renew} onChange={(event) => setRenew(event.currentTarget.checked)} className="mt-0.5 size-5 shrink-0 accent-action" />
    <span>{t({
     en: `After authorization, ${method?.name} will charge ${formatVnd(chosenPrice.amountVnd)} each ${t(INTERVAL_NOUN[chosenPrice.interval])} for the first period, then each following period. Cancel from My Plan; a charge already in progress may finish.`,
     vi: `Sau khi bạn ủy quyền, ${method?.name} tự thu ${formatVnd(chosenPrice.amountVnd)} mỗi ${t(INTERVAL_NOUN[chosenPrice.interval])} cho kỳ đầu và các kỳ tiếp theo. Bạn có thể hủy trong mục Gói của tôi; lần thu đã bắt đầu có thể hoàn tất.`,
-   })}</span>
+   })}{needsConsent && <span className="block font-semibold text-ink">{t({vi:'MoMo chỉ hỗ trợ tự gia hạn: hãy đánh dấu để tiếp tục.',en:'MoMo only supports auto-renewal: tick the box to continue.'})}</span>}</span>
   </label>}
-  <section className="flex flex-col gap-4 rounded-2xl border border-line bg-surface-sunken p-5 sm:flex-row sm:items-center sm:justify-between" aria-live="polite">
-   <div><p className="font-bold text-ink">{method && selected && offered(selected) ? t({vi:`Thanh toán qua ${method.name}`,en:`Pay through ${method.name}`}) : t({vi:'Cổng thanh toán đang được chuẩn bị',en:'Payment providers are being prepared'})}</p>
-    <p className="mt-1 text-sm text-ink-muted">{t(selected === 'vnpay' && catalog?.vnpaySandbox ? {vi:'Chế độ thử nghiệm, không thu tiền thật.',en:'Test mode; no real money is charged.'} : selected === 'momo' || (selected === 'vnpay' && catalog?.vnpayAutoRenewOpen) ? {vi:'Có thể tự gia hạn',en:'Optional auto-renewal'} : {vi:'Thanh toán riêng từng kỳ',en:'One payment per period'})}</p>
-   </div>
-   {method && selected && offered(selected) ? (chosenPlan && chosenPrice && onBuy
-     ? <button type="button" onClick={() => onBuy(selected, wantsRenew)} disabled={buying || roleBlocks || (needsConsent && !renew)} aria-busy={buying} className={buttonVariants()}>{buying ? t({vi:'Đang mở thanh toán…',en:'Opening payment…'}) : t(wantsRenew ? {vi:`Tự gia hạn với ${method.name}`,en:`Auto-renew with ${method.name}`} : {vi:`Thanh toán với ${method.name}`,en:`Pay with ${method.name}`})}<ArrowRight size={16} aria-hidden="true" /></button>
-     : <Link href={`/pricing?${pricingQuery.toString()}`} className={buttonVariants()}>{t({vi:`Tiếp tục với ${method.name}`,en:`Continue with ${method.name}`})}<ArrowRight size={16} aria-hidden="true" /></Link>) : <button type="button" disabled className={buttonVariants()}>{t({vi:'Chưa mở thanh toán',en:'Checkout is not open yet'})}</button>}
-  </section>
-  <section className="rounded-2xl border border-line bg-surface p-5 sm:p-6">
-   <div className="mb-4 flex items-center justify-between gap-3"><h2 className="flex items-center gap-2 text-base font-bold text-ink"><RefreshCcw size={18} aria-hidden="true" />{t({vi:'Tự gia hạn',en:'Auto-renewal'})}</h2><Link href="/profile/plan" className="text-sm font-semibold text-action underline-offset-4 hover:underline">{t({vi:'Gói của tôi',en:'My plan'})}</Link></div>
+
+  <div className="flex flex-col gap-3" aria-live="polite">
+   {buyError && <Alert tone="danger"><p>{t(buyError)}</p></Alert>}
+   {canPay && method && selected ? (buyNow
+     ? <button type="button" onClick={() => onBuy!(selected, wantsRenew)} disabled={buying || roleBlocks || (needsConsent && !renew)} aria-busy={buying} className={`${buttonVariants({ size: 'lg' })} w-full`}>{buying ? t({vi:'Đang mở thanh toán…',en:'Opening payment…'}) : t(wantsRenew ? {vi:`Tự gia hạn với ${method.name}`,en:`Auto-renew with ${method.name}`} : {vi:`Thanh toán với ${method.name}`,en:`Pay with ${method.name}`})}</button>
+     : <Link href={`/pricing?${pricingQuery.toString()}`} className={`${buttonVariants({ size: 'lg' })} w-full`}>{t({vi:`Chọn gói để trả qua ${method.name}`,en:`Choose a plan to pay with ${method.name}`})}</Link>)
+    : <button type="button" disabled className={`${buttonVariants({ size: 'lg' })} w-full`}>{t({vi:'Chưa mở thanh toán',en:'Checkout is not open yet'})}</button>}
+   {canPay && <p className="text-center text-sm text-ink-muted">{t(note)}</p>}
+   <p className="flex items-center justify-center gap-2 text-center text-xs text-ink-muted"><ShieldCheck className="shrink-0 text-action" size={16} aria-hidden="true" />{t({vi:'Bạn nhập thông tin thanh toán trên trang của nhà cung cấp. SciPal không nhận số thẻ, CVV hay mật khẩu ngân hàng.',en:'You enter payment details on the provider’s page. SciPal never receives your card number, CVV or banking password.'})}</p>
+  </div>
+
+  <section className="rounded-2xl border border-line bg-surface p-5">
+   <div className="mb-3 flex items-center justify-between gap-3"><h2 className="flex items-center gap-2 text-base font-bold text-ink"><RefreshCcw size={18} aria-hidden="true" />{t({vi:'Tự gia hạn',en:'Auto-renewal'})}</h2><Link href="/profile/plan" className="inline-flex min-h-11 items-center text-sm font-semibold text-action underline-offset-4 hover:underline">{t({vi:'Gói của tôi',en:'My plan'})}</Link></div>
    {accountStatus === 'loading' ? <p role="status" className="text-sm text-ink-muted">{t({vi:'Đang kiểm tra trạng thái tự gia hạn…',en:'Checking renewal status…'})}</p>
     : accountStatus === 'error' ? <Alert tone="danger"><p>{t({vi:'Chưa tải được trạng thái tự gia hạn. Thử lại trước khi đổi cổng thanh toán.',en:'Renewal status could not be loaded. Retry before switching providers.'})}</p>{onRetry && <button type="button" onClick={onRetry} className={buttonVariants({variant:'outline'})}>{t({vi:'Thử lại',en:'Try again'})}</button>}</Alert>
     : activeRenewal ? <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between"><div><p className="font-semibold text-ink">{t(status)}</p>
-       {renewal.amountVnd && renewal.interval && <p className="mt-1 text-sm text-ink-muted">{formatVnd(renewal.amountVnd)} / {renewal.interval === 'year' ? t({vi:'năm',en:'year'}) : t({vi:'tháng',en:'month'})}{renewal.nextChargeAt ? ` · ${date(renewal.nextChargeAt)}` : ''}</p>}
+       {renewal.amountVnd && renewal.interval && <p className="mt-1 text-sm text-ink-muted">{formatVnd(renewal.amountVnd)} / {t(INTERVAL_NOUN[renewal.interval])}{renewal.nextChargeAt ? ` · ${date(renewal.nextChargeAt)}` : ''}</p>}
        {renewal.status === 'cancel_pending' && <p className="mt-2 max-w-lg text-sm leading-relaxed text-ink-muted">{t({vi:'Không bắt đầu kỳ thu mới; lần thu đang xử lý vẫn có thể hoàn tất.',en:'No new charge will start; a charge already in progress may finish.'})}</p>}
        {account?.paidThrough && <p className="mt-2 text-sm text-ink-muted">{t({vi:'Gói đã trả vẫn dùng đến',en:'Paid access remains until'})} {date(account.paidThrough)}</p>}
       </div>{mayCancel && onCancel && <button type="button" onClick={onCancel} disabled={cancelling} aria-busy={cancelling} className={buttonVariants({variant:'outline'})}>{t(cancelling ? {vi:'Đang kiểm tra…',en:'Checking…'} : renewal.status === 'cancel_pending' ? {vi:'Kiểm tra trạng thái hủy',en:'Check cancellation status'} : {vi:'Hủy gia hạn',en:'Cancel renewal'})}</button>}</div>
     : <p className="text-sm leading-relaxed text-ink-muted">{t({vi:'Bạn chưa bật tự gia hạn. Mỗi lần mua gói, bạn chủ động chọn có gia hạn hay không.',en:'Auto-renewal is off. You choose whether to enable it when buying a plan.'})}</p>}
    {message && <p role="status" className="mt-3 text-sm text-ink-muted">{t(message)}</p>}
   </section>
-  <div className="flex items-start gap-3 px-1 text-sm leading-relaxed text-ink-muted"><ShieldCheck className="mt-0.5 shrink-0 text-action" size={20} aria-hidden="true" /><p>{t({vi:'Bạn nhập thông tin thanh toán trên trang của nhà cung cấp. SciPal không nhận số thẻ, mã CVV hay mật khẩu ngân hàng.',en:'Enter payment details on the provider’s page. SciPal never receives your card number, CVV or banking password.'})}</p></div>
  </div>;
 }
 export function PaymentMethods({ catalog, context }: { readonly catalog: Catalog | null; readonly context?: { readonly audience?: string; readonly interval?: string; readonly plan?: string } }) {

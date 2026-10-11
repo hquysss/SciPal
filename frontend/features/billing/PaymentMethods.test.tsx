@@ -9,8 +9,8 @@ it('selects an available provider for pricing and keeps unconfigured providers v
  render(<PaymentMethodsView catalog={catalog} account={null} accountStatus="ready" />);
  expect((screen.getByRole('radio', { name: /MoMo/ }) as HTMLInputElement).disabled).toBe(true);
  fireEvent.click(screen.getByRole('radio', { name: /VNPAY/ }));
- expect(screen.getByRole('link', { name: /Tiếp tục với VNPAY/ }).getAttribute('href')).toBe('/pricing?provider=vnpay');
- expect(screen.getByText('Có thể tự gia hạn')).toBeTruthy();
+ expect(screen.getByRole('link', { name: /Chọn gói để trả qua VNPAY/ }).getAttribute('href')).toBe('/pricing?provider=vnpay');
+ expect(screen.getByText('Thanh toán một lần cho kỳ này, không tự gia hạn.')).toBeTruthy();
 });
 it('keeps cancellation pending visible alongside paid access', () => {
  render(<PaymentMethodsView catalog={catalog} accountStatus="ready" account={{ role: 'student', plan: 'student_plus', quotas: [], paidThrough: '2026-11-10T00:00:00.000Z', renewal: { provider: 'vnpay', status: 'cancel_pending', interval: 'month', amountVnd: 39000, nextChargeAt: null } }} onCancel={()=>{}} />);
@@ -34,7 +34,7 @@ const student = { role: 'student', plan: null, quotas: [], paidThrough: null, re
 it('pays for the plan picked on pricing: provider chosen here, renewal only by explicit consent', () => {
  const onBuy = vi.fn();
  render(<PaymentMethodsView catalog={buyCatalog} account={student} accountStatus="ready" context={{ plan: 'student_plus', interval: 'month' }} onBuy={onBuy} />);
- expect(screen.getByText(/Plus · 39\.000 ₫ \/ tháng/)).toBeTruthy();
+ expect(screen.getByRole('region', { name: 'Gói đã chọn' }).textContent).toMatch(/Plus.*39\.000 ₫.*cho 1 tháng/);
  fireEvent.click(screen.getByRole('button', { name: /Thanh toán với payOS/ }));
  expect(onBuy).toHaveBeenLastCalledWith('payos', false);
  fireEvent.click(screen.getByRole('radio', { name: /VNPAY/ }));
