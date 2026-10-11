@@ -58,7 +58,7 @@ export const STUDENT_GUIDES = [
       { en: 'Describe the question and what you have tried by text or voice when available. Add the current lesson when relevant.', vi: 'Mô tả câu hỏi và phần bạn đã thử bằng chữ hoặc giọng nói khi có. Chọn bài đang học nếu phù hợp.' },
       { en: 'Use the hints one step at a time, then ask about any step that remains unclear.', vi: 'Làm theo từng gợi ý rồi hỏi tiếp về bước bạn chưa rõ.' },
     ],
-    note: { en: 'The Professor needs an internet connection. Available questions depend on your plan.', vi: 'Giáo sư cần kết nối mạng. Số lượt hỏi phụ thuộc vào gói của bạn.' },
+    note: { en: 'The Professor needs an internet connection. The tokens you can use depend on your plan.', vi: 'Giáo sư cần kết nối mạng. Số token có thể dùng phụ thuộc vào gói của bạn.' },
     href: '/tutor', action: { en: 'Ask the Professor', vi: 'Mở Giáo sư Quý' },
   },
   {

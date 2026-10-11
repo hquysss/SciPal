@@ -13,6 +13,7 @@ import { EXAMPLE_QUESTIONS } from './examples';
 import { TutorMessage } from './TutorMessage';
 import { useTutorChat } from './useTutorChat';
 import { TutorAvatar } from './TutorAvatar';
+import { formatTokens } from './tokens';
 import styles from './tutor.module.css';
 import { VoiceChat } from './voice/VoiceChat';
 
@@ -72,7 +73,7 @@ export function TutorChatView({
   suggestions,
   onVoice,
 }: TutorChatViewProps) {
-  const { t } = useLanguage();
+  const { t, lang } = useLanguage();
   const ids = useId();
   const [localDraft, setLocalDraft] = useState('');
   const draft = sharedDraft ?? localDraft;
@@ -219,7 +220,7 @@ export function TutorChatView({
                   submit();
                 }
               }}
-              placeholder={limitReached ? (period === 'month' ? t({ en: 'No questions left this month', vi: 'Tháng này em đã hết lượt hỏi' }) : t({ en: 'No questions left today', vi: 'Hôm nay em đã hết lượt hỏi' })) : t({ en: 'Ask the Professor…', vi: 'Hỏi thầy…' })}
+              placeholder={limitReached ? (period === 'month' ? t({ en: 'No tokens left this month', vi: 'Tháng này em đã hết token' }) : t({ en: 'No tokens left today', vi: 'Hôm nay em đã hết token' })) : t({ en: 'Ask the Professor…', vi: 'Hỏi thầy…' })}
               className="max-h-40 min-h-11 flex-1 resize-none bg-transparent px-2 py-2 text-base leading-6 text-ink caret-action outline-none placeholder:text-ink-muted disabled:cursor-not-allowed"
             />
             {onVoice && !streaming && (
@@ -247,14 +248,14 @@ export function TutorChatView({
           </form>
           <div className="flex min-h-5 items-center justify-between gap-3 px-1 text-xs text-ink-muted">
             <span>
-              {quotaStatus === 'loading' && remaining === null && <span role="status">{t({ en: 'Checking questions…', vi: 'Đang tải lượt hỏi…' })}</span>}
-              {quotaStatus === 'error' && <button type="button" onClick={onRefreshQuota} className="text-danger underline underline-offset-2">{t({ en: 'Could not check questions. Retry', vi: 'Chưa tải được lượt hỏi. Thử lại' })}</button>}
-              {quotaStatus === 'ready' && remaining === null && <span>{t({ en: 'Unlimited questions', vi: 'Không giới hạn lượt hỏi' })}</span>}
+              {quotaStatus === 'loading' && remaining === null && <span role="status">{t({ en: 'Checking tokens…', vi: 'Đang tải số token…' })}</span>}
+              {quotaStatus === 'error' && <button type="button" onClick={onRefreshQuota} className="text-danger underline underline-offset-2">{t({ en: 'Could not check tokens. Retry', vi: 'Chưa tải được số token. Thử lại' })}</button>}
+              {quotaStatus === 'ready' && remaining === null && <span>{t({ en: 'Unlimited tokens', vi: 'Không giới hạn token' })}</span>}
               {remaining !== null && quotaStatus !== 'error' && (
                 <span className={styles.left}>
                   {period === 'month'
-                    ? t({ en: `${remaining} questions left this month`, vi: `Còn ${remaining} lượt tháng này` })
-                    : t({ en: `${remaining} questions left today`, vi: `Còn ${remaining} lượt hôm nay` })}
+                    ? t({ en: `${formatTokens(remaining, lang)} tokens left this month`, vi: `Còn ${formatTokens(remaining, lang)} token tháng này` })
+                    : t({ en: `${formatTokens(remaining, lang)} tokens left today`, vi: `Còn ${formatTokens(remaining, lang)} token hôm nay` })}
                 </span>
               )}
             </span>

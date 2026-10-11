@@ -41,6 +41,9 @@ export function modelOnSwitch(from: AiProvider, model: string, drafts: ModelDraf
   const next = { ...drafts, [from]: model };
   return { model: next[to] ?? (saved.provider === to ? saved.model : ''), drafts: next };
 }
+// The daily cap per student, in tokens (the backend checks the same bounds).
+const DAILY_TOKENS_MIN = 1000;
+const DAILY_TOKENS_MAX = 600_000;
 const CHARS_MIN = 1000;
 const CHARS_MAX = 5_000_000;
 const number = (n: number) => n.toLocaleString('vi-VN');
@@ -83,7 +86,7 @@ export function AiSettingsForm({ initial }: { initial?: AiSettingsSnapshot }) {
   }
 
   const limit = Number(form.limit);
-  const limitValid = Number.isInteger(limit) && limit >= 1 && limit <= 200;
+  const limitValid = Number.isInteger(limit) && limit >= DAILY_TOKENS_MIN && limit <= DAILY_TOKENS_MAX;
   const chars = Number(form.translateLimit);
   const charsValid = Number.isInteger(chars) && chars >= CHARS_MIN && chars <= CHARS_MAX;
   const modelValid = form.model.trim() === '' || MODEL_RE.test(form.model.trim());
@@ -195,19 +198,20 @@ export function AiSettingsForm({ initial }: { initial?: AiSettingsSnapshot }) {
             </p>
           </div>
           <div className="flex flex-col gap-1">
-            <label htmlFor={`${ids}-limit`} className="text-sm font-semibold text-ink">{t({ en: 'Questions per student per day', vi: 'Số câu hỏi mỗi học sinh mỗi ngày' })}</label>
+            <label htmlFor={`${ids}-limit`} className="text-sm font-semibold text-ink">{t({ en: 'Tokens per student per day', vi: 'Token mỗi học sinh mỗi ngày' })}</label>
             <input
               id={`${ids}-limit`}
               type="number"
-              min={1}
-              max={200}
+              min={DAILY_TOKENS_MIN}
+              max={DAILY_TOKENS_MAX}
+              step={1000}
               inputMode="numeric"
               value={form.limit}
               aria-invalid={!limitValid}
               onChange={(e) => setForm({ ...form, limit: e.target.value })}
               className={`${FIELD} tabular-nums`}
             />
-            <p className="text-xs text-ink-muted">{t({ en: '1–200, counted per Vietnam day.', vi: '1–200, tính theo ngày giờ Việt Nam.' })}</p>
+            <p className="text-xs text-ink-muted">{t({ en: '1,000–600,000 tokens (about 3,000 per question), counted per Vietnam day.', vi: '1.000–600.000 token (khoảng 3.000 token mỗi câu hỏi), tính theo ngày giờ Việt Nam.' })}</p>
           </div>
         </div>
 

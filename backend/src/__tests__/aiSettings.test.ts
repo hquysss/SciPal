@@ -45,14 +45,14 @@ describe('AI settings routes', () => {
     process.env.GEMINI_API_KEY = 'secret-gemini';
     delete process.env.OPENAI_API_KEY;
     const { app } = await build(admin, {
-      ai_settings: ok({ provider: 'openai', model: null, daily_limit: 12, enabled: true, updated_at: 't' }),
+      ai_settings: ok({ provider: 'openai', model: null, daily_limit: 12000, enabled: true, updated_at: 't' }),
       tutor_messages: usage(),
       translation_usage: translated(),
     });
     const res = await app.inject({ method: 'GET', url: '/api/admin/ai-settings' });
     expect(res.statusCode).toBe(200);
     const body = res.json();
-    expect(body.effective).toEqual({ provider: 'openai', model: 'gpt-5-mini', dailyLimit: 12, enabled: true, voiceModel: 'gemini-3.8-live', voiceName: 'Charon', voiceEnabled: true, reasoningEffort: 'low' });
+    expect(body.effective).toEqual({ provider: 'openai', model: 'gpt-5-mini', dailyLimit: 12000, enabled: true, voiceModel: 'gemini-3.8-live', voiceName: 'Charon', voiceEnabled: true, reasoningEffort: 'low' });
     expect(body.keys).toEqual({ gemini: true, openai: false });
     expect(body.usage).toEqual({ today: 4, week: 25, students_week: 2 });
     expect(body.defaults).toEqual({ gemini: 'gemini-3.8-flash', openai: 'gpt-5-mini' });
@@ -62,18 +62,18 @@ describe('AI settings routes', () => {
   });
 
   it('saves valid settings, clears the cache, and refuses bad input', async () => {
-    const upsert = ok({ provider: 'gemini', model: 'gemini-3.8-flash-lite', daily_limit: 10, enabled: false, updated_at: 't' });
-    const { app, invalidated } = await build(admin, { ai_settings: [upsert, ok({ provider: 'gemini', model: 'gemini-3.8-flash-lite', daily_limit: 10, enabled: false, updated_at: 't' })], tutor_messages: usage(), translation_usage: translated() });
-    const res = await app.inject({ method: 'PATCH', url: '/api/admin/ai-settings', payload: { provider: 'gemini', model: ' gemini-3.8-flash-lite ', daily_limit: 10, enabled: false, translate_enabled: false, translate_daily_chars: 50_000, voice_name: 'Orus' } });
+    const upsert = ok({ provider: 'gemini', model: 'gemini-3.8-flash-lite', daily_limit: 10000, enabled: false, updated_at: 't' });
+    const { app, invalidated } = await build(admin, { ai_settings: [upsert, ok({ provider: 'gemini', model: 'gemini-3.8-flash-lite', daily_limit: 10000, enabled: false, updated_at: 't' })], tutor_messages: usage(), translation_usage: translated() });
+    const res = await app.inject({ method: 'PATCH', url: '/api/admin/ai-settings', payload: { provider: 'gemini', model: ' gemini-3.8-flash-lite ', daily_limit: 10000, enabled: false, translate_enabled: false, translate_daily_chars: 50_000, voice_name: 'Orus' } });
     expect(res.statusCode).toBe(200);
-    expect(upsert.inserted[0]).toMatchObject({ id: 1, provider: 'gemini', model: 'gemini-3.8-flash-lite', daily_limit: 10, enabled: false, translate_enabled: false, translate_daily_chars: 50_000, voice_name: 'Orus', updated_by: 'admin-1' });
+    expect(upsert.inserted[0]).toMatchObject({ id: 1, provider: 'gemini', model: 'gemini-3.8-flash-lite', daily_limit: 10000, enabled: false, translate_enabled: false, translate_daily_chars: 50_000, voice_name: 'Orus', updated_by: 'admin-1' });
     expect(invalidated()).toBe(1);
 
     for (const payload of [
       { provider: 'claude', model: null, daily_limit: null, enabled: true },
       { provider: 'gemini', model: 'bad model!', daily_limit: null, enabled: true },
-      { provider: 'gemini', model: null, daily_limit: 0, enabled: true },
-      { provider: 'gemini', model: null, daily_limit: 201, enabled: true },
+      { provider: 'gemini', model: null, daily_limit: 999, enabled: true },
+      { provider: 'gemini', model: null, daily_limit: 600_001, enabled: true },
       { provider: 'gemini', model: null, daily_limit: null, enabled: 'yes' },
       { provider: 'gemini', model: null, daily_limit: null, enabled: true, translate_enabled: 'no' },
       { provider: 'gemini', model: null, daily_limit: null, enabled: true, translate_daily_chars: 999 },

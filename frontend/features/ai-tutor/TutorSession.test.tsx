@@ -78,7 +78,7 @@ describe('shared tutor session', () => {
     expect(screen.getByText('Câu trước')).toBeTruthy();
     act(() => env.events({ event: 'delta', text: ' ở trang đầy đủ' }));
     await screen.findByText('Gợi ý đầu ở trang đầy đủ');
-    expect(screen.getByText('Còn 2 lượt hôm nay')).toBeTruthy();
+    expect(screen.getByText('Còn 2 token hôm nay')).toBeTruthy();
   });
 
   it('honours a changed conversation query without remounting the Professor page', async () => {
@@ -96,7 +96,7 @@ describe('shared tutor session', () => {
     render(<TutorProvider><TutorPage level="upper_secondary" lessons={[]} initialConversationId="c1" /></TutorProvider>);
     await screen.findByText('Đã tải c1');
     await act(async () => quota.release());
-    await screen.findByText('Còn 3 lượt hôm nay');
+    await screen.findByText('Còn 3 token hôm nay');
   });
 
   it('rejects a previous account response before the new account render commits', async () => {

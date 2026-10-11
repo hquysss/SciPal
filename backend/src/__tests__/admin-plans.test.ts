@@ -13,7 +13,7 @@ const tables = (extra: Record<string, MockBuilder | MockBuilder[]> = {}) => ({
   billing_plans: ok([plan('teacher_pro', 'teacher'), plan('student_free', 'student', 3), plan('student_plus', 'student'), plan('teacher_free', 'teacher')]),
   billing_plan_limits: ok([
     { plan_code: 'student_free', metric: 'graded_exam_attempts', kind: 'monthly', limit_value: 3 },
-    { plan_code: 'student_free', metric: 'tutor_requests', kind: 'daily', limit_value: 5 },
+    { plan_code: 'student_free', metric: 'tutor_tokens', kind: 'daily', limit_value: 5 },
   ]),
   billing_prices: ok([{ id: 'p1', plan_code: 'student_plus', interval: 'year', amount_vnd: 390000 }, { id: 'p2', plan_code: 'student_plus', interval: 'month', amount_vnd: 39000 }]),
   billing_plan_audit: ok([{ id: 'x1', plan_code: 'student_free', actor_id: admin.id, reason: 'Thử', before_state: {}, after_state: {}, created_at: '2026-09-29T02:00:00Z' }]),
@@ -39,7 +39,7 @@ describe('GET /api/admin/plans', () => {
     const body = res.json();
     expect(body.plans.map((p: { code: string }) => p.code)).toEqual(['student_free', 'student_plus', 'teacher_free', 'teacher_pro']);
     expect(body.plans[0]).toMatchObject({ version: 3, description: { en: 'd', vi: 'd vi' }, prices: null });
-    expect(body.plans[0].limits).toEqual([{ metric: 'tutor_requests', kind: 'daily', limit: 5 }, { metric: 'graded_exam_attempts', kind: 'monthly', limit: 3 }]);
+    expect(body.plans[0].limits).toEqual([{ metric: 'tutor_tokens', kind: 'daily', limit: 5 }, { metric: 'graded_exam_attempts', kind: 'monthly', limit: 3 }]);
     expect(body.plans[1].prices).toEqual({ month: 39000, quarter: null, half_year: null, year: 390000 });
     expect(body.audit[0]).toMatchObject({ planCode: 'student_free', reason: 'Thử', createdAt: '2026-09-29T02:00:00.000Z' });
     await app.close();
@@ -62,7 +62,7 @@ describe('PATCH /api/admin/plans/:code', () => {
     const res = await patch(app, 'student_plus', {
       expectedVersion: 3,
       reason: '  Tăng lượt Tutor  ',
-      limits: [{ metric: 'tutor_requests', kind: 'monthly', limit: 300 }],
+      limits: [{ metric: 'tutor_tokens', kind: 'monthly', limit: 3_000_000 }],
       description: { en: 'More', vi: 'Nhiều hơn' },
       prices: { month: 49000, year: 490000 },
       perks: [{ en: ' Worked solutions ', vi: 'Lời giải chi tiết' }],
@@ -71,7 +71,7 @@ describe('PATCH /api/admin/plans/:code', () => {
     expect(res.json()).toEqual({ version: 4 });
     expect(rpcCalls[0]).toEqual(['billing_update_plan', {
       p_actor_id: admin.id, p_plan_code: 'student_plus', p_expected_version: 3, p_reason: 'Tăng lượt Tutor',
-      p_limits: [{ metric: 'tutor_requests', kind: 'monthly', limit: 300 }],
+      p_limits: [{ metric: 'tutor_tokens', kind: 'monthly', limit: 3_000_000 }],
       p_description: { en: 'More', vi: 'Nhiều hơn' }, p_prices: { month: 49000, year: 490000 },
       p_perks: [{ en: 'Worked solutions', vi: 'Lời giải chi tiết' }],
     }]);
@@ -82,7 +82,9 @@ describe('PATCH /api/admin/plans/:code', () => {
     const app = await build(admin, {});
     for (const body of [
       { expectedVersion: 1, reason: '' },
-      { expectedVersion: 1, reason: 'x', limits: [{ metric: 'tutor_requests', kind: 'monthly', limit: -1 }] },
+      { expectedVersion: 1, reason: 'x', limits: [{ metric: 'tutor_tokens', kind: 'monthly', limit: -1 }] },
+      { expectedVersion: 1, reason: 'x', limits: [{ metric: 'tutor_tokens', kind: 'monthly', limit: 1_000_000_001 }] },
+      { expectedVersion: 1, reason: 'x', limits: [{ metric: 'graded_exam_attempts', kind: 'monthly', limit: 1_000_001 }] },
       { expectedVersion: 1, reason: 'x', prices: { month: 1.5 } },
       { expectedVersion: 1, reason: 'x', role: 'admin' },
       { expectedVersion: 1, reason: 'x', perks: [{ en: '', vi: 'a' }] },

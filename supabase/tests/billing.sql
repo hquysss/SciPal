@@ -1123,3 +1123,5 @@ $$;
 
 \ir billing_vnpay_cases.sql
 \ir billing_interval_cases.sql
+
+\ir tutor_token_cases.sql

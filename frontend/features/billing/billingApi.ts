@@ -66,6 +66,7 @@ export const formatVnd = (amount: number) => `${String(Math.round(amount)).repla
 
 /** Title of a quota, and the noun used after a number ("5 lượt hỏi Giáo sư Quý"). */
 export const METRIC: Record<QuotaMetric, { title: Bilingual; unit: Bilingual }> = {
+  tutor_tokens: { title: { vi: 'Token hỏi Giáo sư Quý', en: 'Professor Quys tokens' }, unit: { vi: 'token hỏi Giáo sư Quý', en: 'Professor Quys tokens' } },
   tutor_requests: { title: { vi: 'Lượt hỏi Giáo sư Quý', en: 'Professor Quys requests' }, unit: { vi: 'lượt hỏi Giáo sư Quý', en: 'Professor Quys requests' } },
   graded_exam_attempts: { title: { vi: 'Lượt thi có chấm điểm', en: 'Graded exam attempts' }, unit: { vi: 'lượt thi có chấm điểm', en: 'graded exam attempts' } },
   import_files: { title: { vi: 'Tệp nhập', en: 'Imported files' }, unit: { vi: 'tệp nhập', en: 'imported files' } },
@@ -83,10 +84,12 @@ export const PLAN_NAME: Record<string, Bilingual> = {
   teacher_pro: { vi: 'Giáo viên Pro', en: 'Teacher Pro' },
 };
 
-/** "5 lượt hỏi Giáo sư Quý mỗi ngày", "1 lớp đang hoạt động", "Không có lượt AI soạn bài". */
+/** "15.000 token hỏi Giáo sư Quý mỗi ngày", "1 lớp đang hoạt động", "Không có lượt AI soạn bài". */
 export function limitText(limit: PlanLimit, t: (text: Bilingual) => string): string {
   const unit = t(METRIC[limit.metric]?.unit ?? { vi: limit.metric, en: limit.metric });
   if (limit.limit === 0) return t({ vi: `Không có ${unit}`, en: `No ${unit}` });
   const period = limit.kind === 'daily' ? t({ vi: ' mỗi ngày', en: ' a day' }) : limit.kind === 'monthly' ? t({ vi: ' mỗi tháng', en: ' a month' }) : '';
-  return `${limit.limit} ${unit}${period}`;
+  // Token allowances run to hundreds of thousands: group the digits the way the language writes them.
+  const grouped = String(limit.limit).replace(/\B(?=(\d{3})+(?!\d))/g, t({ vi: '.', en: ',' }));
+  return `${grouped} ${unit}${period}`;
 }

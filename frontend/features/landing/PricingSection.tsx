@@ -67,8 +67,8 @@ export function PricingSection({
         </h2>
         <p className={styles.lead}>
           {t({
-            en: 'Every lesson stays free. A paid plan adds Professor Quys questions, graded exams and teaching tools.',
-            vi: 'Mọi bài học vẫn miễn phí. Gói trả phí mở thêm lượt hỏi Giáo sư Quý, lượt thi có chấm điểm và công cụ dạy học.',
+            en: 'Every lesson stays free. A paid plan adds Professor Quys tokens, graded exams and teaching tools.',
+            vi: 'Mọi bài học vẫn miễn phí. Gói trả phí mở thêm token hỏi Giáo sư Quý, lượt thi có chấm điểm và công cụ dạy học.',
           })}
         </p>
         <div className={styles.switches}>

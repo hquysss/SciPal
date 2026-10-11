@@ -32,6 +32,15 @@ describe('billing copy', () => {
     expect(limitText({ metric: 'active_classes', kind: 'capacity', limit: 1 }, t)).toBe('1 lớp đang hoạt động');
     expect(limitText({ metric: 'author_ai_requests', kind: 'monthly', limit: 0 }, t)).toBe('Không có lượt AI soạn bài');
   });
+
+  it('writes the Professor token allowance with grouped digits in each language', () => {
+    const vi = (o: { vi: string }) => o.vi;
+    const en = (o: { en: string }) => o.en;
+    expect(limitText({ metric: 'tutor_tokens', kind: 'daily', limit: 15000 }, vi)).toBe('15.000 token hỏi Giáo sư Quý mỗi ngày');
+    expect(limitText({ metric: 'tutor_tokens', kind: 'monthly', limit: 600000 }, en)).toBe('600,000 Professor Quys tokens a month');
+    expect(limitText({ metric: 'tutor_tokens', kind: 'monthly', limit: 0 }, vi)).toBe('Không có token hỏi Giáo sư Quý');
+    expect(limitText({ metric: 'active_classes', kind: 'capacity', limit: 1200 }, vi)).toBe('1.200 lớp đang hoạt động');
+  });
 });
 
 describe('PricingPage', () => {

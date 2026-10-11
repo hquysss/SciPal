@@ -1,7 +1,7 @@
 import type { FastifyPluginAsync, FastifyReply, FastifyRequest } from 'fastify';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { vietnamDayStart } from '../tutor/limits.js';
-import { DAILY_LIMIT_MAX, DEFAULT_MODELS, DEFAULT_VOICE_MODEL, DEFAULT_VOICE_NAME, REASONING_EFFORTS, VOICES, TRANSLATE_DAILY_CHARS_MAX, TRANSLATE_DAILY_CHARS_MIN, resolveTranslateSettings, resolveTutorSettings, type AiSettingsRow } from '../tutor/settings.js';
+import { DAILY_LIMIT_MAX, DAILY_LIMIT_MIN, DEFAULT_MODELS, DEFAULT_VOICE_MODEL, DEFAULT_VOICE_NAME, REASONING_EFFORTS, VOICES, TRANSLATE_DAILY_CHARS_MAX, TRANSLATE_DAILY_CHARS_MIN, resolveTranslateSettings, resolveTutorSettings, type AiSettingsRow } from '../tutor/settings.js';
 
 // Admin settings of Professor Quys (/admin/ai): provider, model, daily limit, on/off, a connection
 // test and usage counts. API keys are never read from or written to the page: only whether each
@@ -35,7 +35,7 @@ function parsePatch(body: unknown): Patch | null {
   if (b.model !== null && b.model !== undefined && typeof b.model !== 'string') return null;
   if (model !== null && !MODEL.test(model)) return null;
   const limit = b.daily_limit === null || b.daily_limit === undefined ? null : b.daily_limit;
-  if (limit !== null && !(Number.isInteger(limit) && (limit as number) >= 1 && (limit as number) <= DAILY_LIMIT_MAX)) return null;
+  if (limit !== null && !(Number.isInteger(limit) && (limit as number) >= DAILY_LIMIT_MIN && (limit as number) <= DAILY_LIMIT_MAX)) return null;
   if (typeof b.enabled !== 'boolean') return null;
   // Translation fields may be left out (older pages): on, and the environment's limit.
   if (b.translate_enabled !== undefined && typeof b.translate_enabled !== 'boolean') return null;
@@ -124,7 +124,7 @@ export const aiSettingsRoutes: FastifyPluginAsync = async (app) => {
     if (!patch) {
       return reply
         .code(400)
-        .send(msg(`Cài đặt không hợp lệ: nhà cung cấp Gemini/OpenAI, tên model chỉ gồm chữ, số và . _ : / -, giới hạn 1–${DAILY_LIMIT_MAX} câu, dịch ${TRANSLATE_DAILY_CHARS_MIN}–${TRANSLATE_DAILY_CHARS_MAX} ký tự.`, `Invalid settings: provider Gemini/OpenAI, model name of letters, digits and . _ : / -, limit 1–${DAILY_LIMIT_MAX} questions, translation ${TRANSLATE_DAILY_CHARS_MIN}–${TRANSLATE_DAILY_CHARS_MAX} characters.`));
+        .send(msg(`Cài đặt không hợp lệ: nhà cung cấp Gemini/OpenAI, tên model chỉ gồm chữ, số và . _ : / -, giới hạn ${DAILY_LIMIT_MIN}–${DAILY_LIMIT_MAX} token mỗi ngày, dịch ${TRANSLATE_DAILY_CHARS_MIN}–${TRANSLATE_DAILY_CHARS_MAX} ký tự.`, `Invalid settings: provider Gemini/OpenAI, model name of letters, digits and . _ : / -, limit ${DAILY_LIMIT_MIN}–${DAILY_LIMIT_MAX} tokens a day, translation ${TRANSLATE_DAILY_CHARS_MIN}–${TRANSLATE_DAILY_CHARS_MAX} characters.`));
     }
     const userId = (request as FastifyRequest & { user?: { id?: string } }).user?.id ?? null;
     const { error } = await app.supabase

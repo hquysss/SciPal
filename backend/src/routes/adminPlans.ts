@@ -6,7 +6,7 @@ import { z } from 'zod';
 // in one transaction; a new price replaces the active one and sold orders keep theirs.
 
 const PLAN_ORDER = ['student_free', 'student_plus', 'teacher_free', 'teacher_pro'] as const;
-const METRIC_ORDER = ['tutor_requests', 'voice_minutes', 'graded_exam_attempts', 'active_classes', 'students_per_class', 'active_authored_exams', 'import_files', 'author_ai_requests'];
+const METRIC_ORDER = ['tutor_tokens', 'voice_minutes', 'graded_exam_attempts', 'active_classes', 'students_per_class', 'active_authored_exams', 'import_files', 'author_ai_requests'];
 const AUDIT_LIMIT = 20;
 
 type ErrorBody = { code: string; error: string; error_en: string };
@@ -25,8 +25,8 @@ const Patch = z.object({
   limits: z.array(z.object({
     metric: z.enum(METRIC_ORDER as [string, ...string[]]),
     kind: z.enum(['daily', 'monthly', 'capacity']),
-    limit: z.number().int().min(0).max(1_000_000),
-  }).strict()).max(METRIC_ORDER.length).optional(),
+    limit: z.number().int().min(0).max(1_000_000_000),
+  }).strict().refine((l) => l.metric === 'tutor_tokens' || l.limit <= 1_000_000)).max(METRIC_ORDER.length).optional(),
   description: z.object({ en: Text, vi: Text }).strict().optional(),
   perks: z.array(z.object({ en: Perk, vi: Perk }).strict()).max(8).optional(),
   prices: z.object({

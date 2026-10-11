@@ -12,7 +12,7 @@ import { momoRenewalsAvailable } from '../billing/providers/momo.js';
 const PLAN_ORDER = ['student_free', 'student_plus', 'teacher_free', 'teacher_pro'] as const;
 const INTERVAL_ORDER = ['month', 'quarter', 'half_year', 'year'] as const;
 // Student metrics first, then a teacher's classes, exams, imports and AI.
-const METRIC_ORDER = ['tutor_requests', 'voice_minutes', 'graded_exam_attempts', 'active_classes', 'students_per_class', 'active_authored_exams', 'import_files', 'author_ai_requests'];
+const METRIC_ORDER = ['tutor_tokens', 'voice_minutes', 'graded_exam_attempts', 'active_classes', 'students_per_class', 'active_authored_exams', 'import_files', 'author_ai_requests'];
 const UNAVAILABLE = { code: 'BILLING_UNAVAILABLE', error: 'Chưa tải được thông tin gói. Thử lại sau.', error_en: 'Plan information is not available. Try again later.' };
 
 type PlanRow = { code: string; audience: string; name_en: string; name_vi: string; description_en: string; description_vi: string; perks: Array<{ en: string; vi: string }> | null; active: boolean; version: number };

@@ -2,6 +2,19 @@ import { describe, expect, it } from 'vitest';
 import { initialTutorState, tutorReducer, tutorRequest } from './useTutorChat';
 
 describe('tutorReducer', () => {
+  it('takes the tokens left after an answer from done, and blocks the box at zero', () => {
+    let s = tutorReducer(initialTutorState([]), { type: 'send', text: 'Hỏi' });
+    s = tutorReducer(s, { type: 'event', event: { event: 'meta', conversation_id: 'c1', remaining: 30000, period: 'day' } });
+    s = tutorReducer(s, { type: 'event', event: { event: 'done', remaining: 28500, period: 'day' } });
+    expect(s).toMatchObject({ remaining: 28500, period: 'day', streaming: false, limitReached: false });
+    s = tutorReducer(s, { type: 'send', text: 'Tiếp' });
+    s = tutorReducer(s, { type: 'event', event: { event: 'done', remaining: 0, period: 'month' } });
+    expect(s).toMatchObject({ remaining: 0, period: 'month', limitReached: true });
+    // An older server sends no count: what the student already sees stays.
+    s = tutorReducer(s, { type: 'event', event: { event: 'done' } });
+    expect(s).toMatchObject({ remaining: 0, limitReached: true });
+  });
+
   it('adds the question and an empty answer, then fills the answer from deltas', () => {
     let s = tutorReducer(initialTutorState([]), { type: 'send', text: 'Hỏi' });
     s = tutorReducer(s, { type: 'event', event: { event: 'meta', conversation_id: 'c1', remaining: 5, period: 'month' } });

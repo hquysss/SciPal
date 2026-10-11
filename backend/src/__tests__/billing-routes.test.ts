@@ -23,7 +23,7 @@ const catalogTables = (extra: Record<string, MockBuilder | MockBuilder[]> = {}) 
   ]),
   billing_plan_limits: ok([
     { plan_code: 'student_free', metric: 'graded_exam_attempts', kind: 'monthly', limit_value: 3 },
-    { plan_code: 'student_free', metric: 'tutor_requests', kind: 'daily', limit_value: 5 },
+    { plan_code: 'student_free', metric: 'tutor_tokens', kind: 'daily', limit_value: 5 },
     { plan_code: 'teacher_pro', metric: 'import_files', kind: 'monthly', limit_value: 100 },
   ]),
   ...extra,
@@ -50,7 +50,7 @@ describe('GET /api/billing/plans', () => {
     expect(body.plans.map((p: { code: string }) => p.code)).toEqual(['student_free', 'student_plus', 'teacher_free', 'teacher_pro']);
     expect(body.plans[1]).toMatchObject({ name: { en: 'student_plus', vi: 'student_plus vi' }, prices: [{ interval: 'month', amountVnd: 39000 }, { interval: 'year', amountVnd: 390000 }] });
     expect(body.plans[3].prices.map((p: { interval: string }) => p.interval)).toEqual(['month', 'year']);
-    expect(body.plans[0].limits).toEqual([{ metric: 'tutor_requests', kind: 'daily', limit: 5 }, { metric: 'graded_exam_attempts', kind: 'monthly', limit: 3 }]);
+    expect(body.plans[0].limits).toEqual([{ metric: 'tutor_tokens', kind: 'daily', limit: 5 }, { metric: 'graded_exam_attempts', kind: 'monthly', limit: 3 }]);
     expect(body.plans[0].prices).toEqual([]);
     await app.close();
   });
@@ -73,13 +73,13 @@ describe('GET /api/billing/me', () => {
 
   it('shows a student their free plan and what is left', async () => {
     const app = await build(student, {
-      'rpc:billing_get_effective_quotas': ok([quotaRow('tutor_requests', 'daily', 5, 2), quotaRow('graded_exam_attempts', 'monthly', 3, 1)]),
+      'rpc:billing_get_effective_quotas': ok([quotaRow('tutor_tokens', 'daily', 5, 2), quotaRow('graded_exam_attempts', 'monthly', 3, 1)]),
       billing_subscriptions: ok(null),
     });
     const res = await app.inject({ method: 'GET', url: '/api/billing/me' });
     expect(res.statusCode).toBe(200);
     expect(res.json()).toMatchObject({ role: 'student', plan: 'student_free', paidThrough: null });
-    expect(res.json().quotas[0]).toMatchObject({ metric: 'tutor_requests', kind: 'daily', limit: 5, used: 2 });
+    expect(res.json().quotas[0]).toMatchObject({ metric: 'tutor_tokens', kind: 'daily', limit: 5, used: 2 });
     expect(rpcCalls[0][1]).toMatchObject({ p_user_id: student.id });
     await app.close();
   });

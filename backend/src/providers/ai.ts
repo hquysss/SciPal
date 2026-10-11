@@ -14,11 +14,20 @@ export interface ModelChoice {
   effort?: ReasoningEffort;
 }
 
+/** Tokens the provider billed for one call: what was sent, what came back (thinking included), and both together. */
+export interface TokenUsage {
+  prompt: number;
+  completion: number;
+  total: number;
+}
+
 export interface AIProvider {
+  /** `onUsage` is called once, after the last text, when the provider reports the tokens it used. */
   chat(
     messages:     ChatMessage[],
     systemPrompt: string,
     choice?:      ModelChoice,
+    onUsage?:     (usage: TokenUsage) => void,
   ): AsyncIterable<string>;
 }
 
@@ -62,6 +71,8 @@ export function completionRequest(settings: ReturnType<typeof providerSettings>,
   return {
     model: settings.model,
     stream: true as const,
+    // The last chunk then carries the token counts that the plan quota is charged.
+    stream_options: { include_usage: true as const },
     ...(openAiReasoning ? { max_completion_tokens: MAX_TOKENS } : { max_tokens: MAX_TOKENS }),
     // gpt-5-pro only takes 'high'.
     ...(settings.baseURL || openAiReasoning ? { reasoning_effort: openAiReasoning && /^gpt-5-pro/i.test(settings.model.trim()) ? ('high' as const) : settings.effort ?? ('low' as const) } : {}),
@@ -70,6 +81,25 @@ export function completionRequest(settings: ReturnType<typeof providerSettings>,
       ...messages.map((m) => ({ role: m.role, content: m.content })),
     ],
   };
+}
+
+type CompletionChunk = {
+  choices: Array<{ delta?: { content?: string | null } }>;
+  usage?: { prompt_tokens?: number; completion_tokens?: number; total_tokens?: number } | null;
+};
+
+/** The text of a streamed answer; the usage chunk, if the provider sends one, goes to `onUsage`. */
+export async function* readCompletion(stream: AsyncIterable<CompletionChunk>, onUsage?: (usage: TokenUsage) => void): AsyncIterable<string> {
+  for await (const chunk of stream) {
+    const text = chunk.choices[0]?.delta?.content;
+    if (text) yield text;
+    const usage = chunk.usage;
+    if (usage && onUsage) {
+      const prompt = usage.prompt_tokens ?? 0;
+      const completion = usage.completion_tokens ?? 0;
+      onUsage({ prompt, completion, total: usage.total_tokens ?? prompt + completion });
+    }
+  }
 }
 
 export class ChatCompletionsProvider implements AIProvider {
@@ -83,12 +113,9 @@ export class ChatCompletionsProvider implements AIProvider {
     this.client = new OpenAI({ apiKey: this.settings.apiKey, baseURL: this.settings.baseURL });
   }
 
-  async *chat(messages: ChatMessage[], systemPrompt: string): AsyncIterable<string> {
+  async *chat(messages: ChatMessage[], systemPrompt: string, _choice?: ModelChoice, onUsage?: (usage: TokenUsage) => void): AsyncIterable<string> {
     const stream = await this.client.chat.completions.create(completionRequest(this.settings, messages, systemPrompt));
-    for await (const chunk of stream) {
-      const text = chunk.choices[0]?.delta?.content;
-      if (text) yield text;
-    }
+    yield* readCompletion(stream, onUsage);
   }
 }
 
@@ -103,14 +130,14 @@ export function createAIProvider(choice?: ModelChoice): AIProvider {
 export function lazyAIProvider(): AIProvider {
   const clients = new Map<string, AIProvider>();
   return {
-    chat(messages, systemPrompt, choice) {
+    chat(messages, systemPrompt, choice, onUsage) {
       const key = choice ? `${choice.provider}|${choice.model}|${choice.effort ?? 'low'}` : 'env';
       let provider = clients.get(key);
       if (!provider) {
         provider = createAIProvider(choice);
         clients.set(key, provider);
       }
-      return provider.chat(messages, systemPrompt);
+      return provider.chat(messages, systemPrompt, undefined, onUsage);
     },
   };
 }
