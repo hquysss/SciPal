@@ -320,13 +320,7 @@ export function NavBar({ currentSubject }: NavBarProps) {
             className="h-9 w-9 rounded-xl shadow-inner transition duration-150 group-hover:scale-105"
             priority
           />
-          <span className="text-xl font-black leading-tight tracking-tight">
-            SciPal
-            <span className="hidden font-semibold sm:inline">
-              {' - '}
-              {lang === 'en' ? 'Vietnamese–English bilingual learning' : 'Học song ngữ Việt–Anh'}
-            </span>
-          </span>
+          <span className="text-xl font-black leading-tight tracking-tight">SciPal</span>
         </Link>
 
         <nav aria-label={lang === 'en' ? 'Main navigation' : 'Điều hướng chính'} className={`${navStyles.navList} hidden items-center gap-1 2xl:ml-4 2xl:flex`}>

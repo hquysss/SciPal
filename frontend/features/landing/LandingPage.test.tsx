@@ -39,7 +39,7 @@ describe('LandingPage', () => {
     const h1 = html.match(/<h1[\s\S]*?<\/h1>/)?.[0] ?? '';
     expect(h1).toContain(first);
     expect(h1).toContain(second);
-    expect(html).toContain('Học song ngữ Việt–Anh — hướng tới tiếng Anh là ngôn ngữ thứ hai.');
+    expect(html).toContain('Học song ngữ Việt–Anh, để tiếng Anh trở thành ngôn ngữ thứ hai của bạn.');
     expect(html).toContain('Xem môn học');
     expect(html).toMatch(/<a[^>]*href="\/\?chooseLevel=1"[^>]*>[\s\S]*?Đổi cấp/);
     expect(html).toContain(`data-hero-stage="${level}"`);
@@ -86,7 +86,7 @@ describe('LandingPage', () => {
     const html = render('upper_secondary');
     expect(html).toContain('Understand each lesson.');
     expect(html).toContain('Move forward step by step.');
-    expect(html).toContain('Bilingual Vietnamese–English learning, with English as your second language.');
+    expect(html).toContain('Learn in Vietnamese and English, so English becomes your second language.');
     lang = 'vi';
   });
 

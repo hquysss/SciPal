@@ -24,7 +24,7 @@ const beVietnamPro = Be_Vietnam_Pro({
 export const metadata: Metadata = {
   // A page sets its English name; the home and sign-in pages show SciPal alone.
   title: { default: 'SciPal', template: '%s | SciPal' },
-  description: 'SciPal - Học song ngữ Việt–Anh — hướng tới tiếng Anh là ngôn ngữ thứ hai.',
+  description: 'SciPal - Học song ngữ Việt–Anh, để tiếng Anh trở thành ngôn ngữ thứ hai của bạn.',
   appleWebApp: { capable: true, title: 'SciPal', statusBarStyle: 'default' },
   icons: {
     icon: '/favicon.svg',
