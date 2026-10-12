@@ -183,3 +183,16 @@ Chặn: lưu `chat_blocks`; nếu đang là bạn thì **xoá friendship**; `POS
 - Tìm theo tên và nhắn phòng đều mở cho mọi tài khoản đã đăng nhập.
 - Lọc từ cấm là danh sách tĩnh, sẽ lọt các cách viết lách; kiểm duyệt thật dựa vào báo cáo và admin.
 - Chưa có thông báo khi có tin DM mới ngoài lúc đang mở trang `/community`.
+
+---
+
+## Thay đổi sau khi duyệt (2026-10-12)
+
+Các phần dưới đây thay thế chỗ nào mâu thuẫn ở trên.
+
+- **Một phòng chung, không phòng theo môn.** Tab "Cộng đồng" là một phòng cho mọi người; `chat_messages.community = true`, `room_subject_id` còn trên bảng nhưng luôn null. Tin đã đăng ở phòng môn được gộp vào phòng chung.
+- **Chat lớp học.** Tab "Lớp học": giáo viên và học sinh của một `class_rooms` cùng một cuộc trò chuyện (`chat_messages.class_id`), chỉ chữ. RLS đọc: giáo viên hoặc thành viên lớp, trừ người gửi mình đã chặn. `GET /api/chat/classes` liệt kê các lớp của người dùng.
+- **Ảnh chỉ trong DM** giữa bạn bè (`POST /api/chat/images`, ≤ 1,5 MB, lưu R2 dưới `chat/<người gửi>/`). Bấm ảnh để phóng to.
+- **Bỏ chặn:** `GET`/`DELETE /api/chat/blocks`, khối "Đã chặn" trong tab Bạn bè. Bỏ chặn không khôi phục bạn bè.
+- **Báo cáo là báo cáo cả cuộc trò chuyện**, nút nằm ở thanh trên của khung chat (không còn nút trên từng tin). Khi báo cáo, server chụp 30 tin gần nhất vào `chat_reports.snapshot`, để bằng chứng còn dù cuộc trò chuyện bị xoá về sau (chặn hoặc huỷ kết bạn xoá DM). Mỗi người chỉ có một báo cáo đang mở cho mỗi cuộc trò chuyện. Admin xem cả đoạn hội thoại, xoá từng tin, cấm chat từng người, rồi bấm "Đã xử lý" (`POST /api/admin/chat/reports/:id/resolve`).
+- **Giao diện kiểu Messenger:** tin cùng người gửi gom nhóm, nhãn giờ sau khoảng nghỉ > 15 phút, tên người gửi chỉ hiện ở phòng nhiều người. Nút Gửi chỉ là biểu tượng, hiện vòng quay khi đang gửi.

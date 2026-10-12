@@ -1,14 +1,14 @@
 'use client';
 
 import { useEffect, useRef, useState, type ChangeEvent, type FormEvent } from 'react';
-import { ArrowLeft, ImagePlus, X } from 'lucide-react';
+import { ArrowLeft, Flag, ImagePlus, X } from 'lucide-react';
 import { useLanguage } from '@scipal/hooks';
 import { createBrowserClient } from '@scipal/supabase';
 import { Alert } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Dialog } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
-import { blockUser, reportMessage, sendImage, sendMessage, type ChatMessage, type ChatTarget } from './chatApi';
+import { blockUser, reportConversation, sendImage, sendMessage, type ChatMessage, type ChatTarget } from './chatApi';
 import { groupMessages } from './chatLayout';
 import { SendButton } from './SendButton';
 import { useChatRoom } from './useChatRoom';
@@ -43,7 +43,8 @@ export function ChatPaneView({ messages, meId, onSend, onSendImage, onReport, on
   onSend: (body: string) => Promise<boolean>;
   /** Present only where pictures are allowed (direct messages). */
   onSendImage?: (file: File, caption: string) => Promise<boolean>;
-  onReport: (messageId: string, reason: string) => void;
+  /** Reports the whole conversation, not one message. */
+  onReport: (reason: string) => void;
   onBlock: (userId: string) => void;
   title?: string;
   subtitle?: string;
@@ -58,7 +59,7 @@ export function ChatPaneView({ messages, meId, onSend, onSendImage, onReport, on
   const [file, setFile] = useState<File | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
   const [fileError, setFileError] = useState<Bilingual | null>(null);
-  const [reporting, setReporting] = useState<string | null>(null);
+  const [reporting, setReporting] = useState(false);
   const [confirmBlock, setConfirmBlock] = useState<string | null>(null);
   const [zoomed, setZoomed] = useState<string | null>(null);
   const log = useRef<HTMLDivElement>(null);
@@ -120,10 +121,13 @@ export function ChatPaneView({ messages, meId, onSend, onSendImage, onReport, on
             <Button type="button" variant="ghost" size="icon" aria-label={t({ en: 'Back', vi: 'Quay lại' })} onClick={onBack}><ArrowLeft aria-hidden="true" /></Button>
           )}
           <Avatar name={title} className="h-10 w-10 text-base" />
-          <div className="min-w-0">
+          <div className="min-w-0 flex-1">
             <h2 className="truncate text-base font-bold text-ink">{title}</h2>
             {subtitle && <p className="truncate text-xs text-ink-muted">{subtitle}</p>}
           </div>
+          <Button type="button" variant="ghost" className="shrink-0 text-danger" onClick={() => setReporting(true)}>
+            <Flag aria-hidden="true" />{t({ en: 'Report', vi: 'Báo cáo' })}
+          </Button>
         </header>
       )}
 
@@ -157,7 +161,6 @@ export function ChatPaneView({ messages, meId, onSend, onSendImage, onReport, on
                         </div>
                         {!mine && (
                           <span className="flex shrink-0 opacity-0 transition-opacity focus-within:opacity-100 group-hover:opacity-100 [@media(hover:none)]:opacity-100">
-                            <Button type="button" variant="link" className="min-h-8 px-1 text-xs" onClick={() => setReporting(m.id)}>{t({ en: 'Report', vi: 'Báo cáo' })}</Button>
                             {confirmBlock === m.sender_id
                               ? <Button type="button" variant="link" className="min-h-8 px-1 text-xs text-danger" onClick={() => { setConfirmBlock(null); onBlock(m.sender_id); }}>{t({ en: 'Sure? Block', vi: 'Chắc chắn chặn?' })}</Button>
                               : <Button type="button" variant="link" className="min-h-8 px-1 text-xs" onClick={() => setConfirmBlock(m.sender_id)}>{t({ en: 'Block', vi: 'Chặn' })}</Button>}
@@ -203,10 +206,10 @@ export function ChatPaneView({ messages, meId, onSend, onSendImage, onReport, on
         </form>
       </div>
 
-      <Dialog open={reporting !== null} onClose={() => setReporting(null)} title={t({ en: 'Why are you reporting this?', vi: 'Vì sao bạn báo cáo tin này?' })} closeLabel={t({ en: 'Close', vi: 'Đóng' })}>
+      <Dialog open={reporting} onClose={() => setReporting(false)} title={t({ en: 'Why are you reporting this chat?', vi: 'Vì sao bạn báo cáo cuộc trò chuyện này?' })} closeLabel={t({ en: 'Close', vi: 'Đóng' })}>
         <div className="flex flex-col gap-2">
           {REASONS.map((reason) => (
-            <Button key={reason.vi} type="button" variant="outline" onClick={() => { if (reporting) onReport(reporting, reason.vi); setReporting(null); }}>
+            <Button key={reason.vi} type="button" variant="outline" onClick={() => { setReporting(false); onReport(reason.vi); }}>
               {t(reason)}
             </Button>
           ))}
@@ -259,8 +262,8 @@ export function ChatPane({ target, title, subtitle, onBack, onBlocked }: {
         return result.ok;
       }
     : undefined;
-  const report = async (messageId: string, reason: string) => {
-    const result = await reportMessage(messageId, reason);
+  const report = async (reason: string) => {
+    const result = await reportConversation(target, reason);
     setNotice(result.ok
       ? { tone: 'info', text: { en: 'Thanks, we will take a look.', vi: 'Cảm ơn bạn, chúng tôi sẽ xem xét.' } }
       : { tone: 'danger', text: result.error });
@@ -282,7 +285,7 @@ export function ChatPane({ target, title, subtitle, onBack, onBlocked }: {
         meId={meId}
         onSend={send}
         onSendImage={sendPicture}
-        onReport={(id, reason) => void report(id, reason)}
+        onReport={(reason) => void report(reason)}
         onBlock={(id) => void block(id)}
         title={title}
         subtitle={subtitle}

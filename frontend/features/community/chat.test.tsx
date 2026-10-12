@@ -30,12 +30,12 @@ describe('mergeMessages', () => {
 const handlers = () => ({ onSend: vi.fn().mockResolvedValue(true), onReport: vi.fn(), onBlock: vi.fn() });
 
 describe('ChatPaneView', () => {
-  it('is a log; others show their name and get Báo cáo and Chặn, your own do not', () => {
+  it('is a log; others show their name and get Chặn, your own do not, and no message has its own Báo cáo', () => {
     render(<ChatPaneView messages={[msg('1', 'me', '2026-10-12T10:00:00Z'), msg('2', 'them', '2026-10-12T10:00:01Z')]} meId="me" {...handlers()} />);
     expect(screen.getByRole('log')).toBeTruthy();
     expect(screen.getByText('Tên them')).toBeTruthy();
     expect(screen.queryByText('Tên me')).toBeNull();
-    expect(screen.getAllByRole('button', { name: 'Báo cáo' })).toHaveLength(1);
+    expect(screen.queryByRole('button', { name: 'Báo cáo' })).toBeNull();
     expect(screen.getAllByRole('button', { name: 'Chặn' })).toHaveLength(1);
   });
 
@@ -62,12 +62,14 @@ describe('ChatPaneView', () => {
     expect(box.value).toBe('xin chào');
   });
 
-  it('reports with one of the fixed reasons', () => {
+  it('reports the whole conversation from the top bar, with one of the fixed reasons', () => {
     const h = handlers();
-    render(<ChatPaneView messages={[msg('2', 'them', '2026-10-12T10:00:01Z')]} meId="me" {...h} />);
+    render(<ChatPaneView messages={[msg('1', 'them', '2026-10-12T10:00:00Z'), msg('2', 'them', '2026-10-12T10:00:01Z')]} meId="me" {...h} title="Lớp 10A" />);
+    expect(screen.getAllByRole('button', { name: 'Báo cáo' })).toHaveLength(1);
     fireEvent.click(screen.getByRole('button', { name: 'Báo cáo' }));
     fireEvent.click(screen.getByRole('button', { name: 'Spam' }));
-    expect(h.onReport).toHaveBeenCalledWith('2', 'Spam');
+    expect(h.onReport).toHaveBeenCalledTimes(1);
+    expect(h.onReport).toHaveBeenCalledWith('Spam');
   });
 
   it('blocks only on the second click, since there is no undo', () => {

@@ -17,8 +17,9 @@ export const sendImage = (friendshipId: string, file: File, caption: string): Pr
 export const blockUser = (userId: string): Promise<ApiResult<Record<string, never>>> =>
   authoringCall('/api/chat/blocks', 'POST', { user_id: userId });
 
-export const reportMessage = (messageId: string, reason: string): Promise<ApiResult<Record<string, never>>> =>
-  authoringCall('/api/chat/reports', 'POST', { message_id: messageId, reason });
+/** Reports the whole conversation; the server keeps the latest messages as evidence. */
+export const reportConversation = (target: ChatTarget, reason: string): Promise<ApiResult<Record<string, never>>> =>
+  authoringCall('/api/chat/reports', 'POST', { ...target, reason });
 
 export type BlockedUser = { user_id: string; display_name: string | null; avatar_url: string | null };
 
