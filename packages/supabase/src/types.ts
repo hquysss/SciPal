@@ -1035,6 +1035,7 @@ export interface Database {
           sender_id: string;
           sender_name: string;
           body: string;
+          image_url: string | null;
           created_at: string;
           deleted_at: string | null;
         };
@@ -1045,6 +1046,7 @@ export interface Database {
           sender_id: string;
           sender_name: string;
           body: string;
+          image_url?: string | null;
           created_at?: string;
           deleted_at?: string | null;
         };
@@ -1055,6 +1057,7 @@ export interface Database {
           sender_id?: string;
           sender_name?: string;
           body?: string;
+          image_url?: string | null;
           created_at?: string;
           deleted_at?: string | null;
         };

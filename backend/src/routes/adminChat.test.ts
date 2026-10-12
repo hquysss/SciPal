@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import Fastify from 'fastify';
 import { adminChatRoutes } from './adminChat.js';
 import { fakeDb } from '../__tests__/fakeDb.js';
@@ -33,7 +33,7 @@ describe('admin chat routes', () => {
     const res = await build({ db }).inject({ method: 'GET', url: '/api/admin/chat/reports' });
     expect(res.statusCode).toBe(200);
     expect(res.json().reports).toEqual([
-      { id: 'r1', message_id: MSG, reason: 'Spam', created_at: '2026-10-12T00:00:00Z', body: 'mua ngay', sender_id: USER, sender_name: 'An' },
+      { id: 'r1', message_id: MSG, reason: 'Spam', created_at: '2026-10-12T00:00:00Z', body: 'mua ngay', sender_id: USER, sender_name: 'An', image_url: null },
     ]);
     expect(db.calls[0].chain).toContainEqual(['is', ['handled_at', null]]);
   });
@@ -58,5 +58,37 @@ describe('admin chat routes', () => {
     const app = build({ db: fakeDb({ 'profiles.update': [{ data: [] }] }) });
     expect((await app.inject({ method: 'POST', url: '/api/admin/chat/ban', payload: { user_id: USER, banned: 'yes' } })).statusCode).toBe(400);
     expect((await app.inject({ method: 'POST', url: '/api/admin/chat/ban', payload: { user_id: USER, banned: false } })).statusCode).toBe(404);
+  });
+});
+
+describe('admin chat routes and pictures', () => {
+  function withStore(db: ReturnType<typeof fakeDb>) {
+    const store = { remove: vi.fn().mockResolvedValue(undefined), publicUrl: (k: string) => `https://m.test/${k}` };
+    const app = Fastify({ logger: false });
+    app.decorate('supabase', db as any);
+    app.decorate('mediaStore', store as any);
+    app.addHook('onRequest', async (req) => { (req as any).user = ADMIN; });
+    app.register(adminChatRoutes);
+    return { app, store };
+  }
+
+  it('reports carry the picture URL', async () => {
+    const db = fakeDb({ 'chat_reports.select': [{ data: [
+      { id: 'r1', message_id: MSG, reason: 'Spam', created_at: 't', chat_messages: { body: '', sender_id: USER, sender_name: 'An', image_url: 'https://m.test/chat/u/x.png' } },
+    ] }] });
+    const res = await withStore(db).app.inject({ method: 'GET', url: '/api/admin/chat/reports' });
+    expect(res.json().reports[0].image_url).toBe('https://m.test/chat/u/x.png');
+  });
+
+  it('deleting a message also deletes its stored picture, only from the chat/ folder', async () => {
+    const mine = withStore(fakeDb({ 'chat_messages.update': [{ data: [{ id: MSG, image_url: 'https://m.test/chat/u/x.png' }] }] }));
+    expect((await mine.app.inject({ method: 'DELETE', url: `/api/admin/chat/messages/${MSG}` })).statusCode).toBe(200);
+    expect(mine.store.remove).toHaveBeenCalledWith('chat/u/x.png');
+    const foreign = withStore(fakeDb({ 'chat_messages.update': [{ data: [{ id: MSG, image_url: 'https://m.test/lessons/secret.png' }] }] }));
+    await foreign.app.inject({ method: 'DELETE', url: `/api/admin/chat/messages/${MSG}` });
+    expect(foreign.store.remove).not.toHaveBeenCalled();
+    const text = withStore(fakeDb({ 'chat_messages.update': [{ data: [{ id: MSG, image_url: null }] }] }));
+    await text.app.inject({ method: 'DELETE', url: `/api/admin/chat/messages/${MSG}` });
+    expect(text.store.remove).not.toHaveBeenCalled();
   });
 });

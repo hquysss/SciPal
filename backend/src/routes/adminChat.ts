@@ -8,7 +8,7 @@ const failed = { error: 'Chưa xử lý được. Thử lại sau nhé.', error_
 const notFound = { error: 'Không tìm thấy.', error_en: 'Not found.' };
 const invalid = { error: 'Yêu cầu không hợp lệ.', error_en: 'That request is not valid.' };
 
-type MessageEmbed = { body?: string; sender_id?: string; sender_name?: string };
+type MessageEmbed = { body?: string; sender_id?: string; sender_name?: string; image_url?: string | null };
 type ReportRow = { id: string; message_id: string; reason: string; created_at: string; chat_messages: MessageEmbed | MessageEmbed[] | null };
 
 export const adminChatRoutes: FastifyPluginAsync = async (app) => {
@@ -18,10 +18,24 @@ export const adminChatRoutes: FastifyPluginAsync = async (app) => {
     if (user.app_metadata?.app_role !== 'admin') return reply.code(403).send({ error: 'Chỉ quản trị viên mới có quyền này.', error_en: 'Admins only.' });
   };
 
+  /** Deletes a message's picture from the store; only files under chat/ are ever touched, and a failure is only logged. */
+  const removePicture = async (request: FastifyRequest, url: string | null) => {
+    const store = app.mediaStore;
+    if (!url || !store) return;
+    const base = store.publicUrl('');
+    const key = url.startsWith(base) ? url.slice(base.length) : '';
+    if (!key.startsWith('chat/') || key.includes('..')) return;
+    try {
+      await store.remove(key);
+    } catch (err) {
+      request.log.warn({ err, key }, 'Chat picture was not removed');
+    }
+  };
+
   app.get('/api/admin/chat/reports', { preHandler: [requireAdmin] }, async (_request, reply) => {
     if (!app.supabase) return reply.code(503).send(unavailable);
     const { data, error } = await app.supabase.from('chat_reports')
-      .select('id, message_id, reason, created_at, chat_messages(body, sender_id, sender_name)')
+      .select('id, message_id, reason, created_at, chat_messages(body, sender_id, sender_name, image_url)')
       .is('handled_at', null).order('created_at', { ascending: false }).limit(200);
     if (error) return reply.code(500).send(failed);
     const reports = ((data ?? []) as ReportRow[]).map((r) => {
@@ -29,6 +43,7 @@ export const adminChatRoutes: FastifyPluginAsync = async (app) => {
       return {
         id: r.id, message_id: r.message_id, reason: r.reason, created_at: r.created_at,
         body: message?.body ?? '', sender_id: message?.sender_id ?? '', sender_name: message?.sender_name ?? '',
+        image_url: message?.image_url ?? null,
       };
     });
     return reply.send({ reports });
@@ -39,9 +54,11 @@ export const adminChatRoutes: FastifyPluginAsync = async (app) => {
     const id = (request.params as { id: string }).id;
     if (!UUID_PATTERN.test(id)) return reply.code(404).send(notFound);
     const now = new Date().toISOString();
-    const removed = await app.supabase.from('chat_messages').update({ deleted_at: now }).eq('id', id).is('deleted_at', null).select('id');
+    const removed = await app.supabase.from('chat_messages').update({ deleted_at: now }).eq('id', id).is('deleted_at', null).select('id, image_url');
     if (removed.error) return reply.code(500).send(failed);
-    if (((removed.data as unknown[] | null) ?? []).length === 0) return reply.code(404).send(notFound);
+    const rows = (removed.data ?? []) as Array<{ image_url: string | null }>;
+    if (rows.length === 0) return reply.code(404).send(notFound);
+    await removePicture(request, rows[0].image_url);
     const closed = await app.supabase.from('chat_reports').update({ handled_at: now }).eq('message_id', id).is('handled_at', null);
     if (closed.error) return reply.code(500).send(failed);
     return reply.send({});

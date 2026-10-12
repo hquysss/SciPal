@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import Fastify from 'fastify';
 import { chatRoutes } from './chat.js';
 import { fakeDb } from '../__tests__/fakeDb.js';
@@ -193,5 +193,82 @@ describe('GET /api/chat/blocks and DELETE /api/chat/blocks/:user_id', () => {
     expect(del.chain).toContainEqual(['eq', ['blocker_id', ME]]);
     expect(del.chain).toContainEqual(['eq', ['blocked_id', OTHER]]);
     expect((await build({ db: fakeDb({}) }).inject({ method: 'DELETE', url: '/api/chat/blocks/nope' })).statusCode).toBe(400);
+  });
+});
+
+describe('POST /api/chat/images', () => {
+  const PNG = Buffer.concat([Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]), Buffer.alloc(32)]);
+  const [a, b] = orderPair(ME, OTHER);
+  const friendship = (over: object = {}) => ({ data: { id: FS, user_a: a, user_b: b, requested_by: ME, status: 'accepted', ...over } });
+
+  function setup(results: Record<string, any[]>, withStore = true) {
+    const db = fakeDb({ 'profiles.select': [ok], 'chat_messages.select': [{ count: 0 }], ...results });
+    const store = { put: vi.fn().mockResolvedValue(undefined), remove: vi.fn().mockResolvedValue(undefined), publicUrl: (k: string) => `https://m.test/${k}` };
+    const app = Fastify({ logger: false });
+    app.decorate('supabase', db as any);
+    if (withStore) app.decorate('mediaStore', store as any);
+    app.addHook('onRequest', async (req) => { (req as any).user = { id: ME }; });
+    app.register(chatRoutes);
+    const send = (query: string, payload: Buffer = PNG, type = 'image/png') =>
+      app.inject({ method: 'POST', url: `/api/chat/images?${query}`, payload, headers: { 'content-type': type } });
+    return { db, store, send };
+  }
+  const ready = () => ({ 'friendships.select': [friendship()], 'chat_blocks.select': [{ data: [] }], 'chat_messages.insert': [{ data: { id: MSG } }] });
+
+  it('is not available without the media store', async () => {
+    expect((await setup({}, false).send(`friendship_id=${FS}`)).statusCode).toBe(503);
+  });
+
+  it('rejects a body that is not an image type, and bytes that are not really an image', async () => {
+    const s = setup(ready());
+    expect((await s.send(`friendship_id=${FS}`, Buffer.from('hi'), 'text/plain')).statusCode).toBe(415);
+    expect((await s.send(`friendship_id=${FS}`, Buffer.from('not an image at all'))).statusCode).toBe(400);
+    expect(s.store.put).not.toHaveBeenCalled();
+  });
+
+  it('rejects an image over 1.5 MB', async () => {
+    const big = Buffer.concat([PNG, Buffer.alloc(1.5 * 1024 * 1024)]);
+    expect((await setup(ready()).send(`friendship_id=${FS}`, big)).statusCode).toBe(413);
+  });
+
+  it('is for direct messages only: a room is refused', async () => {
+    const s = setup(ready());
+    expect((await s.send(`room_subject_id=${ROOM}`)).statusCode).toBe(400);
+    expect(s.store.put).not.toHaveBeenCalled();
+  });
+
+  it('stores nothing for a banned account, a pending friendship, a block, or a banned caption', async () => {
+    const banned = setup({ ...ready(), 'profiles.select': [{ data: { chat_banned: true, display_name: 'An' } }] });
+    expect((await banned.send(`friendship_id=${FS}`)).statusCode).toBe(403);
+    const pending = setup({ ...ready(), 'friendships.select': [friendship({ status: 'pending' })] });
+    expect((await pending.send(`friendship_id=${FS}`)).statusCode).toBe(404);
+    const blocked = setup({ ...ready(), 'chat_blocks.select': [{ data: [{ blocker_id: OTHER }] }] });
+    expect((await blocked.send(`friendship_id=${FS}`)).statusCode).toBe(403);
+    const rude = setup(ready());
+    expect((await rude.send(`friendship_id=${FS}&caption=fuck`)).statusCode).toBe(422);
+    for (const s of [banned, pending, blocked, rude]) expect(s.store.put).not.toHaveBeenCalled();
+  });
+
+  it('uploads under chat/<sender>/ and saves the URL with the trimmed caption', async () => {
+    const s = setup(ready());
+    const res = await s.send(`friendship_id=${FS}&caption=${encodeURIComponent('  ảnh bài tập  ')}`);
+    expect(res.statusCode).toBe(201);
+    const [key, body, type] = s.store.put.mock.calls[0];
+    expect(key).toMatch(new RegExp(`^chat/${ME}/[0-9a-f-]{36}\.png$`));
+    expect(type).toBe('image/png');
+    expect(body.equals(PNG)).toBe(true);
+    expect(res.json()).toEqual({ id: MSG, image_url: `https://m.test/${key}` });
+    expect(s.db.calls.find((c) => c.op === 'insert')!.chain[0]).toEqual(['insert', [{
+      friendship_id: FS, sender_id: ME, sender_name: 'An', body: 'ảnh bài tập', image_url: `https://m.test/${key}`,
+    }]]);
+  });
+
+  it('allows a picture with no caption, and removes the file when the message cannot be saved', async () => {
+    const plain = setup(ready());
+    expect((await plain.send(`friendship_id=${FS}`)).statusCode).toBe(201);
+    expect(plain.db.calls.find((c) => c.op === 'insert')!.chain[0][1][0]).toMatchObject({ body: '' });
+    const broken = setup({ ...ready(), 'chat_messages.insert': [{ data: null, error: { message: 'boom' } }] });
+    expect((await broken.send(`friendship_id=${FS}`)).statusCode).toBe(500);
+    expect(broken.store.remove).toHaveBeenCalledWith(broken.store.put.mock.calls[0][0]);
   });
 });

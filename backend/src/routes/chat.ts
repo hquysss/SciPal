@@ -1,7 +1,10 @@
+import { randomUUID } from 'node:crypto';
 import type { FastifyPluginAsync, FastifyReply, FastifyRequest } from 'fastify';
+import type { SupabaseClient } from '@supabase/supabase-js';
 import { hasBannedWord } from '../chat/wordFilter.js';
 import { isSubjectArchived, SUBJECT_ARCHIVED } from '../subjects/archived.js';
 import { orderPair } from './friends.js';
+import { sniffImageType } from './media.js';
 
 // Community chat. Browsers read messages through RLS and Realtime; every write is checked and made
 // here with the service role.
@@ -11,11 +14,14 @@ const BODY_MAX = 500;
 const RATE_LIMIT = 10;
 const RATE_WINDOW_MS = 10_000;
 const REASON_MAX = 300;
+const CHAT_IMAGE_MAX = 1.5 * 1024 * 1024;
+const IMAGE_MIME = { png: 'image/png', jpeg: 'image/jpeg', webp: 'image/webp' } as const;
 
 const unauthorized = { error: 'Phiên đăng nhập không hợp lệ.', error_en: 'Sign in again.' };
 const unavailable = { error: 'Dịch vụ trò chuyện chưa sẵn sàng.', error_en: 'Chat is not available yet.' };
 const failed = { error: 'Chưa xử lý được. Thử lại sau nhé.', error_en: 'That did not work. Try again later.' };
 const notFound = { error: 'Không tìm thấy.', error_en: 'Not found.' };
+const notImage = { error: 'Chỉ nhận ảnh PNG, JPG hoặc WEBP.', error_en: 'Only PNG, JPG or WEBP images.' };
 const invalid = { error: 'Tin nhắn không hợp lệ.', error_en: 'That message is not valid.' };
 
 type FriendRow = { id: string; user_a: string; user_b: string; status: string };
@@ -25,65 +31,127 @@ function userId(request: FastifyRequest): string | null {
 }
 
 export const chatRoutes: FastifyPluginAsync = async (app) => {
+  // Raw image bodies for /api/chat/images, up to the picture limit.
+  app.addContentTypeParser(Object.values(IMAGE_MIME), { parseAs: 'buffer', bodyLimit: CHAT_IMAGE_MAX }, (_req, body, done) => done(null, body));
+
+  app.setErrorHandler((error, request, reply) => {
+    if (error.statusCode === 413) return reply.code(413).send({ error: 'Ảnh tối đa 1,5 MB.', error_en: 'Pictures are up to 1.5 MB.' });
+    if (error.statusCode === 415) return reply.code(415).send(notImage);
+    if (error.statusCode && error.statusCode < 500) return reply.code(error.statusCode).send(invalid);
+    request.log.error({ err: error }, 'Chat request failed');
+    return reply.code(500).send(failed);
+  });
+
   const requireUser = async (request: FastifyRequest, reply: FastifyReply) => {
     if (!userId(request)) return reply.code(401).send(unauthorized);
   };
+
+  /**
+   * Everything a message must pass before it is stored. On a refusal it sends the reply itself and returns
+   * null; otherwise it returns the row to insert. A picture is for direct messages only and may have no words.
+   */
+  async function prepareRow(
+    supabase: SupabaseClient,
+    me: string,
+    reply: FastifyReply,
+    input: { room: unknown; friendship: unknown; body: string; kind: 'text' | 'image' },
+  ): Promise<Record<string, string> | null> {
+    const refuse = (code: number, payload: object): null => {
+      void reply.code(code).send(payload);
+      return null;
+    };
+    const { room, friendship, body, kind } = input;
+    const roomOk = typeof room === 'string' && UUID_PATTERN.test(room);
+    const friendshipOk = typeof friendship === 'string' && UUID_PATTERN.test(friendship);
+    if (body.length < (kind === 'text' ? 1 : 0) || body.length > BODY_MAX || roomOk === friendshipOk) return refuse(400, invalid);
+    if (kind === 'image' && !friendshipOk) {
+      return refuse(400, { error: 'Ảnh chỉ gửi được cho bạn bè.', error_en: 'Pictures can only be sent to friends.' });
+    }
+
+    const profile = await supabase.from('profiles').select('chat_banned, display_name').eq('id', me).maybeSingle();
+    if (profile.error) return refuse(500, failed);
+    const { chat_banned: banned, display_name: name } = (profile.data ?? {}) as { chat_banned?: boolean; display_name?: string | null };
+    if (banned) return refuse(403, { error: 'Tài khoản của bạn đã bị cấm trò chuyện.', error_en: 'You are not allowed to chat.' });
+
+    const recent = await supabase.from('chat_messages').select('id', { count: 'exact', head: true })
+      .eq('sender_id', me).gte('created_at', new Date(Date.now() - RATE_WINDOW_MS).toISOString());
+    if (recent.error) return refuse(500, failed);
+    if ((recent.count ?? 0) >= RATE_LIMIT) {
+      return refuse(429, { error: 'Bạn gửi quá nhanh, chờ một chút nhé.', error_en: 'You are sending too fast. Wait a moment.' });
+    }
+    if (hasBannedWord(body)) {
+      return refuse(422, { error: 'Tin nhắn có từ không phù hợp.', error_en: 'That message has words that are not allowed.' });
+    }
+
+    const row: Record<string, string> = { sender_id: me, sender_name: name?.trim() || 'Người dùng', body };
+    if (roomOk) {
+      const subject = await supabase.from('subjects').select('id, archived_at').eq('id', room as string).maybeSingle();
+      if (subject.error) return refuse(500, failed);
+      if (!subject.data) return refuse(404, notFound);
+      if (isSubjectArchived(subject.data as { archived_at?: string | null })) return refuse(400, SUBJECT_ARCHIVED);
+      row.room_subject_id = room as string;
+    } else {
+      const found = await supabase.from('friendships').select('id, user_a, user_b, status').eq('id', friendship as string).maybeSingle();
+      if (found.error) return refuse(500, failed);
+      const f = found.data as FriendRow | null;
+      if (!f || f.status !== 'accepted' || (f.user_a !== me && f.user_b !== me)) return refuse(404, notFound);
+      const peer = f.user_a === me ? f.user_b : f.user_a;
+      const blocks = await supabase.from('chat_blocks').select('blocker_id')
+        .or(`and(blocker_id.eq.${me},blocked_id.eq.${peer}),and(blocker_id.eq.${peer},blocked_id.eq.${me})`).limit(1);
+      if (blocks.error) return refuse(500, failed);
+      if (((blocks.data as unknown[] | null) ?? []).length > 0) {
+        return refuse(403, { error: 'Không nhắn được cho người này.', error_en: 'You cannot message this person.' });
+      }
+      row.friendship_id = friendship as string;
+    }
+    return row;
+  }
 
   app.post('/api/chat/messages', { preHandler: [requireUser] }, async (request, reply) => {
     const supabase = app.supabase;
     if (!supabase) return reply.code(503).send(unavailable);
     const me = userId(request)!;
     const input = (request.body ?? {}) as { room_subject_id?: unknown; friendship_id?: unknown; body?: unknown };
-
-    const room = input.room_subject_id;
-    const friendship = input.friendship_id;
     const body = typeof input.body === 'string' ? input.body.trim() : '';
-    const roomOk = typeof room === 'string' && UUID_PATTERN.test(room);
-    const friendshipOk = typeof friendship === 'string' && UUID_PATTERN.test(friendship);
-    if (body.length < 1 || body.length > BODY_MAX || roomOk === friendshipOk) {
-      return reply.code(400).send(invalid);
-    }
 
-    const profile = await supabase.from('profiles').select('chat_banned, display_name').eq('id', me).maybeSingle();
-    if (profile.error) return reply.code(500).send(failed);
-    const { chat_banned: banned, display_name: name } = (profile.data ?? {}) as { chat_banned?: boolean; display_name?: string | null };
-    if (banned) return reply.code(403).send({ error: 'Tài khoản của bạn đã bị cấm trò chuyện.', error_en: 'You are not allowed to chat.' });
-
-    const recent = await supabase.from('chat_messages').select('id', { count: 'exact', head: true })
-      .eq('sender_id', me).gte('created_at', new Date(Date.now() - RATE_WINDOW_MS).toISOString());
-    if (recent.error) return reply.code(500).send(failed);
-    if ((recent.count ?? 0) >= RATE_LIMIT) {
-      return reply.code(429).send({ error: 'Bạn gửi quá nhanh, chờ một chút nhé.', error_en: 'You are sending too fast. Wait a moment.' });
-    }
-    if (hasBannedWord(body)) {
-      return reply.code(422).send({ error: 'Tin nhắn có từ không phù hợp.', error_en: 'That message has words that are not allowed.' });
-    }
-
-    const row: Record<string, string> = { sender_id: me, sender_name: name?.trim() || 'Người dùng', body };
-    if (roomOk) {
-      const subject = await supabase.from('subjects').select('id, archived_at').eq('id', room as string).maybeSingle();
-      if (subject.error) return reply.code(500).send(failed);
-      if (!subject.data) return reply.code(404).send(notFound);
-      if (isSubjectArchived(subject.data as { archived_at?: string | null })) return reply.code(400).send(SUBJECT_ARCHIVED);
-      row.room_subject_id = room as string;
-    } else {
-      const found = await supabase.from('friendships').select('id, user_a, user_b, status').eq('id', friendship as string).maybeSingle();
-      if (found.error) return reply.code(500).send(failed);
-      const f = found.data as FriendRow | null;
-      if (!f || f.status !== 'accepted' || (f.user_a !== me && f.user_b !== me)) return reply.code(404).send(notFound);
-      const peer = f.user_a === me ? f.user_b : f.user_a;
-      const blocks = await supabase.from('chat_blocks').select('blocker_id')
-        .or(`and(blocker_id.eq.${me},blocked_id.eq.${peer}),and(blocker_id.eq.${peer},blocked_id.eq.${me})`).limit(1);
-      if (blocks.error) return reply.code(500).send(failed);
-      if (((blocks.data as unknown[] | null) ?? []).length > 0) {
-        return reply.code(403).send({ error: 'Không nhắn được cho người này.', error_en: 'You cannot message this person.' });
-      }
-      row.friendship_id = friendship as string;
-    }
-
+    const row = await prepareRow(supabase, me, reply, { room: input.room_subject_id, friendship: input.friendship_id, body, kind: 'text' });
+    if (!row) return reply;
     const inserted = await supabase.from('chat_messages').insert(row).select('id').single();
     if (inserted.error || !inserted.data) return reply.code(500).send(failed);
     return reply.code(201).send({ id: (inserted.data as { id: string }).id });
+  });
+
+  // One request does it all (checks, upload, save), so a refused picture never reaches the store and a
+  // stored one always has its message. The raw image is the body; the target and caption ride in the query.
+  app.post('/api/chat/images', { preHandler: [requireUser], bodyLimit: CHAT_IMAGE_MAX }, async (request, reply) => {
+    const supabase = app.supabase;
+    const store = app.mediaStore;
+    if (!supabase || !store) return reply.code(503).send(unavailable);
+    const me = userId(request)!;
+    const image = request.body;
+    if (!Buffer.isBuffer(image)) return reply.code(415).send(notImage);
+    const type = sniffImageType(image);
+    if (!type) return reply.code(400).send(notImage);
+
+    const query = (request.query ?? {}) as { room_subject_id?: string; friendship_id?: string; caption?: string };
+    const caption = typeof query.caption === 'string' ? query.caption.trim() : '';
+    const row = await prepareRow(supabase, me, reply, { room: query.room_subject_id, friendship: query.friendship_id, body: caption, kind: 'image' });
+    if (!row) return reply;
+
+    const key = `chat/${me}/${randomUUID()}.${type === 'jpeg' ? 'jpg' : type}`;
+    try {
+      await store.put(key, image, IMAGE_MIME[type]);
+    } catch (err) {
+      request.log.error({ err }, 'Chat picture upload failed');
+      return reply.code(500).send(failed);
+    }
+    const imageUrl = store.publicUrl(key);
+    const inserted = await supabase.from('chat_messages').insert({ ...row, image_url: imageUrl }).select('id').single();
+    if (inserted.error || !inserted.data) {
+      await store.remove(key).catch((err: unknown) => request.log.warn({ err, key }, 'Orphaned chat picture was not removed'));
+      return reply.code(500).send(failed);
+    }
+    return reply.code(201).send({ id: (inserted.data as { id: string }).id, image_url: imageUrl });
   });
 
   // Blocking also ends any friendship between the two; the block hides their room messages from you.
