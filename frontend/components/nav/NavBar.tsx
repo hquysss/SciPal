@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { ArrowRight, ChevronDown, ChevronUp, CircleHelp, Gauge, LogOut, Menu, UserRound, X } from 'lucide-react';
+import { ArrowRight, ChevronDown, ChevronUp, CircleHelp, Gauge, LogOut, Menu, UserRound, Users, X } from 'lucide-react';
 import { useParams, usePathname, useRouter } from 'next/navigation';
 import { useLanguage } from '@scipal/hooks';
 import { LanguageToggle } from './LanguageToggle';
@@ -15,6 +15,7 @@ import type { SubjectSlug } from '@/lib/subject-config';
 import { createBrowserClient } from '@/lib/supabase';
 import { adoptAccountLevel, forgetAccountLevel, getShell, safeSessionStorage } from '@/lib/theme/shellTheme';
 import { countOpenSimulationRequests } from '@/features/authoring/simulationRequests/api';
+import { FRIENDS_CHANGED_EVENT, listFriends } from '@/features/friends/friendsApi';
 
 /** The admin entry: one link to the page with every admin tool, with the requests still waiting. */
 export function adminLinkLabel(lang: 'en' | 'vi', open: number): string {
@@ -73,7 +74,13 @@ export function pricingLink(lang: 'en' | 'vi') {
  * The main links after Home, Pricing and Subjects. On the desktop bar Profile is the account button (the
  * avatar), which keeps a full admin bar from overflowing at 1366px; the mobile menu lists it.
  */
-export function primaryLinks(lang: 'en' | 'vi', signedIn: boolean, place: 'desktop' | 'mobile', role: string | null = null) {
+/** "Cộng đồng (2)": friend requests waiting for an answer. */
+export function communityLabel(lang: 'en' | 'vi', pending: number) {
+  const base = lang === 'en' ? 'Community' : 'Cộng đồng';
+  return pending > 0 ? `${base} (${pending})` : base;
+}
+
+export function primaryLinks(lang: 'en' | 'vi', signedIn: boolean, place: 'desktop' | 'mobile', role: string | null = null, pendingFriends = 0) {
   const label = (en: string, vi: string) => (lang === 'en' ? en : vi);
   // Teachers and admins reach classes from their own menu.
   const isStudent = role !== null && role !== 'teacher' && role !== 'admin';
@@ -87,7 +94,7 @@ export function primaryLinks(lang: 'en' | 'vi', signedIn: boolean, place: 'deskt
           { href: '/progress', label: label('Progress', 'Tiến trình') },
           { href: '/games', label: label('Games', 'Game') },
           ...(isStudent ? [{ href: '/classes', label: label('My classes', 'Lớp của em') }] : []),
-          ...(place === 'mobile' ? [{ href: '/profile', label: label('Profile', 'Hồ sơ') }] : []),
+          ...(place === 'mobile' ? [{ href: '/community', label: communityLabel(lang, pendingFriends) }, { href: '/profile', label: label('Profile', 'Hồ sơ') }] : []),
         ]
       : []),
   ];
@@ -124,6 +131,7 @@ export function NavBar({ currentSubject }: NavBarProps) {
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [signingOut, setSigningOut] = useState(false);
   const [openRequests, setOpenRequests] = useState(0);
+  const [pendingFriends, setPendingFriends] = useState(0);
   const mobileMenuButtonRef = useRef<HTMLButtonElement>(null);
   const openNavTriggerRef = useRef<HTMLButtonElement>(null);
 
@@ -171,6 +179,25 @@ export function NavBar({ currentSubject }: NavBarProps) {
     return () => {
       live = false;
       window.removeEventListener('scipal:simulation-requests-changed', refresh);
+    };
+  }, [appRole, pathname]);
+
+  // Friend requests waiting for an answer; recounted on navigation and after the friends page acts.
+  useEffect(() => {
+    if (!appRole) {
+      setPendingFriends(0);
+      return;
+    }
+    let live = true;
+    const refresh = () =>
+      void listFriends().then((result) => {
+        if (live && result.ok) setPendingFriends(result.data.incoming.length);
+      });
+    refresh();
+    window.addEventListener(FRIENDS_CHANGED_EVENT, refresh);
+    return () => {
+      live = false;
+      window.removeEventListener(FRIENDS_CHANGED_EVENT, refresh);
     };
   }, [appRole, pathname]);
 
@@ -287,7 +314,7 @@ export function NavBar({ currentSubject }: NavBarProps) {
   const navLang = lang === 'en' ? 'en' : 'vi';
   const pricing = pricingLink(navLang);
   const links = primaryLinks(navLang, Boolean(appRole), 'desktop', appRole);
-  const mobileLinks = primaryLinks(navLang, Boolean(appRole), 'mobile', appRole);
+  const mobileLinks = primaryLinks(navLang, Boolean(appRole), 'mobile', appRole, pendingFriends);
   const { teacherLinks, adminLinks } = roleLinks(appRole, lang === 'en' ? 'en' : 'vi', openRequests);
   const teacherMenuOpen = openNavGroup === 'teacher';
   const accountMenuOpen = openNavGroup === 'account';
@@ -458,6 +485,11 @@ export function NavBar({ currentSubject }: NavBarProps) {
                 <Link href="/help" prefetch={false} onClick={() => setOpenNavGroup(null)} aria-current={pathname === '/help' ? 'page' : undefined} className={navStyles.menuItem}>
                   <CircleHelp aria-hidden="true" size={16} />
                   {lang === 'en' ? 'Help' : 'Hướng dẫn'}
+                </Link>
+                <Link href="/community" onClick={() => setOpenNavGroup(null)} aria-current={pathname === '/community' ? 'page' : undefined} className={navStyles.menuItem}>
+                  <Users aria-hidden="true" size={16} />
+                  {communityLabel(lang === 'en' ? 'en' : 'vi', pendingFriends)}
+                  {pendingFriends > 0 && <span aria-hidden="true" className="ml-auto h-2 w-2 rounded-full bg-danger" />}
                 </Link>
                 {appRole === 'student' && (
                   <Link href="/profile/plan" onClick={() => setOpenNavGroup(null)} aria-current={pathname === '/profile/plan' ? 'page' : undefined} className={navStyles.menuItem}>

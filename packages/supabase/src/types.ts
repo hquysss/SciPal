@@ -735,6 +735,7 @@ export interface Database {
           role: 'student' | 'teacher';
           avatar_url: string | null;
           cover_url: string | null;
+          chat_banned: boolean;
           preferred_education_level: EducationLevel | null;
           preferred_code_language: CodeLanguage | null;
           created_at: string;
@@ -745,6 +746,7 @@ export interface Database {
           role?: 'student' | 'teacher';
           avatar_url?: string | null;
           cover_url?: string | null;
+          chat_banned?: boolean;
           preferred_education_level?: EducationLevel | null;
           preferred_code_language?: CodeLanguage | null;
           created_at?: string;
@@ -755,6 +757,7 @@ export interface Database {
           role?: 'student' | 'teacher';
           avatar_url?: string | null;
           cover_url?: string | null;
+          chat_banned?: boolean;
           preferred_education_level?: EducationLevel | null;
           preferred_code_language?: CodeLanguage | null;
           created_at?: string;
@@ -1018,6 +1021,181 @@ export interface Database {
           {
             foreignKeyName: 'class_members_student_id_fkey';
             columns: ['student_id'];
+            isOneToOne: false;
+            referencedRelation: 'profiles';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
+      chat_messages: {
+        Row: {
+          id: string;
+          room_subject_id: string | null;
+          friendship_id: string | null;
+          sender_id: string;
+          sender_name: string;
+          body: string;
+          image_url: string | null;
+          created_at: string;
+          deleted_at: string | null;
+        };
+        Insert: {
+          id?: string;
+          room_subject_id?: string | null;
+          friendship_id?: string | null;
+          sender_id: string;
+          sender_name: string;
+          body: string;
+          image_url?: string | null;
+          created_at?: string;
+          deleted_at?: string | null;
+        };
+        Update: {
+          id?: string;
+          room_subject_id?: string | null;
+          friendship_id?: string | null;
+          sender_id?: string;
+          sender_name?: string;
+          body?: string;
+          image_url?: string | null;
+          created_at?: string;
+          deleted_at?: string | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'chat_messages_room_subject_id_fkey';
+            columns: ['room_subject_id'];
+            isOneToOne: false;
+            referencedRelation: 'subjects';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'chat_messages_friendship_id_fkey';
+            columns: ['friendship_id'];
+            isOneToOne: false;
+            referencedRelation: 'friendships';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'chat_messages_sender_id_fkey';
+            columns: ['sender_id'];
+            isOneToOne: false;
+            referencedRelation: 'profiles';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
+      chat_blocks: {
+        Row: {
+          blocker_id: string;
+          blocked_id: string;
+          created_at: string;
+        };
+        Insert: {
+          blocker_id: string;
+          blocked_id: string;
+          created_at?: string;
+        };
+        Update: {
+          blocker_id?: string;
+          blocked_id?: string;
+          created_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'chat_blocks_blocker_id_fkey';
+            columns: ['blocker_id'];
+            isOneToOne: false;
+            referencedRelation: 'profiles';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'chat_blocks_blocked_id_fkey';
+            columns: ['blocked_id'];
+            isOneToOne: false;
+            referencedRelation: 'profiles';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
+      chat_reports: {
+        Row: {
+          id: string;
+          message_id: string;
+          reporter_id: string;
+          reason: string;
+          created_at: string;
+          handled_at: string | null;
+        };
+        Insert: {
+          id?: string;
+          message_id: string;
+          reporter_id: string;
+          reason: string;
+          created_at?: string;
+          handled_at?: string | null;
+        };
+        Update: {
+          id?: string;
+          message_id?: string;
+          reporter_id?: string;
+          reason?: string;
+          created_at?: string;
+          handled_at?: string | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'chat_reports_message_id_fkey';
+            columns: ['message_id'];
+            isOneToOne: false;
+            referencedRelation: 'chat_messages';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'chat_reports_reporter_id_fkey';
+            columns: ['reporter_id'];
+            isOneToOne: false;
+            referencedRelation: 'profiles';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
+      friendships: {
+        Row: {
+          id: string;
+          user_a: string;
+          user_b: string;
+          requested_by: string;
+          status: 'pending' | 'accepted';
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_a: string;
+          user_b: string;
+          requested_by: string;
+          status?: 'pending' | 'accepted';
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_a?: string;
+          user_b?: string;
+          requested_by?: string;
+          status?: 'pending' | 'accepted';
+          created_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'friendships_user_a_fkey';
+            columns: ['user_a'];
+            isOneToOne: false;
+            referencedRelation: 'profiles';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'friendships_user_b_fkey';
+            columns: ['user_b'];
             isOneToOne: false;
             referencedRelation: 'profiles';
             referencedColumns: ['id'];

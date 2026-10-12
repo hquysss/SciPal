@@ -17,10 +17,12 @@ export async function authoringCall<T>(path: string, method: 'GET' | 'POST' | 'P
       data: { session },
     } = await createBrowserClient().auth.getSession();
     if (!session) return { ok: false, status: 401, error: { en: 'Your session expired. Sign in again.', vi: 'Phiên đăng nhập đã hết hạn. Hãy đăng nhập lại.' } };
+    // A file goes up as it is, with its own type; anything else is JSON.
+    const raw = typeof Blob !== 'undefined' && body instanceof Blob;
     const res = await fetch(`${API_BASE}${path}`, {
       method,
-      headers: { Authorization: `Bearer ${session.access_token}`, ...(body === undefined ? {} : { 'Content-Type': 'application/json' }) },
-      ...(body === undefined ? {} : { body: JSON.stringify(body) }),
+      headers: { Authorization: `Bearer ${session.access_token}`, ...(body === undefined ? {} : { 'Content-Type': raw ? body.type : 'application/json' }) },
+      ...(body === undefined ? {} : { body: raw ? body : JSON.stringify(body) }),
     });
     const data = res.status === 204 ? {} : ((await res.json().catch(() => ({}))) as Record<string, unknown>);
     if (res.ok) return { ok: true, data: data as T };

@@ -88,7 +88,7 @@ describe('primaryLinks', () => {
     const desktop = primaryLinks('vi', true, 'desktop').map((l) => l.href);
     const mobile = primaryLinks('vi', true, 'mobile').map((l) => l.href);
     expect(desktop).toEqual(['/lab', '/glossary', '/exam', '/tutor', '/progress', '/games']);
-    expect(mobile).toEqual(['/lab', '/glossary', '/exam', '/tutor', '/progress', '/games', '/profile']);
+    expect(mobile).toEqual(['/lab', '/glossary', '/exam', '/tutor', '/progress', '/games', '/community', '/profile']);
     expect(primaryLinks('vi', false, 'desktop').map((l) => l.href)).toEqual(['/lab', '/glossary', '/exam', '/tutor']);
   });
 
@@ -106,3 +106,20 @@ describe('primaryLinks', () => {
   });
 });
 
+
+describe('community link', () => {
+  it('shows how many friend requests wait, in both languages', async () => {
+    const { communityLabel } = await import('./NavBar');
+    expect(communityLabel('vi', 0)).toBe('Cộng đồng');
+    expect(communityLabel('vi', 2)).toBe('Cộng đồng (2)');
+    expect(communityLabel('en', 3)).toBe('Community (3)');
+  });
+
+  it('is in the signed-in mobile list only, with the waiting count', () => {
+    const hrefs = (links: { href: string }[]) => links.map((l) => l.href);
+    expect(hrefs(primaryLinks('vi', true, 'mobile', 'student'))).toContain('/community');
+    expect(hrefs(primaryLinks('vi', true, 'desktop', 'student'))).not.toContain('/community');
+    expect(hrefs(primaryLinks('vi', false, 'mobile'))).not.toContain('/community');
+    expect(primaryLinks('vi', true, 'mobile', 'student', 4).find((l) => l.href === '/community')?.label).toBe('Cộng đồng (4)');
+  });
+});
