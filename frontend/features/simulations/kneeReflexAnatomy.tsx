@@ -9,7 +9,7 @@ import { clone } from 'three/addons/utils/SkeletonUtils.js';
 import { reflexState } from './engines/kneeReflex';
 import type { ReflexSceneState } from './kneeReflexParts';
 
-const anatomyDecoder = new DRACOLoader().setDecoderPath('/models/knee-reflex/draco/').setWorkerLimit(2);
+const anatomyDecoder = new DRACOLoader().setDecoderPath('/models/draco/').setWorkerLimit(2);
 
 export function ReflexAnatomy({ palette, time }: ReflexSceneState) {
   const gltf = useLoader(GLTFLoader, '/models/knee-reflex/anatomy.glb', (loader) => {
