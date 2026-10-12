@@ -145,7 +145,7 @@ Realtime `postgres_changes` tôn trọng RLS nên người ngoài không nghe l�
 | Route | Việc |
 |---|---|
 | `POST /api/chat/messages` `{ room_subject_id \| friendship_id, body }` | Gửi tin. |
-| `POST /api/chat/blocks` `{ user_id }` / `DELETE /api/chat/blocks/:user_id` | Chặn / bỏ chặn. |
+| `POST /api/chat/blocks` `{ user_id }` | Chặn (bỏ chặn: ngoài phạm vi v1, chưa có chỗ nào trên giao diện dùng). |
 | `POST /api/chat/reports` `{ message_id, reason }` | Báo cáo tin. |
 | `GET /api/admin/chat/reports` | Báo cáo chưa xử lý, kèm nội dung tin. |
 | `DELETE /api/admin/chat/messages/:id` | Xoá mềm (`deleted_at`) và đánh dấu báo cáo đã xử lý. |
