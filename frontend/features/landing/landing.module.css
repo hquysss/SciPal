@@ -865,7 +865,7 @@
   min-width: 0;
   margin-top: 0.5rem;
   border-radius: var(--radius-card-lg);
-  padding: clamp(3.5rem, 7vw, 5rem) var(--landing-gutter);
+  padding: clamp(2.5rem, 5vw, 3.5rem) var(--landing-gutter);
   background: var(--surface-sunken);
   scroll-margin-top: 5rem;
 }
@@ -875,12 +875,26 @@
   margin-inline: auto;
 }
 
-.reviews > :nth-child(2) {
-  max-width: 43rem;
+.reviewsTitle {
+  margin: 0;
+  color: var(--ink);
+  font-size: clamp(1.6rem, 3vw, 2.25rem);
+  font-weight: 800;
+  line-height: 1.1;
+  letter-spacing: -0.03em;
 }
 
-.reviews > :nth-child(3) {
-  margin-top: 0;
+.reviewsGrid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.1fr) minmax(0, 0.9fr);
+  gap: clamp(1rem, 2.5vw, 1.75rem);
+  align-items: start;
+}
+
+@media (max-width: 56rem) {
+  .reviewsGrid {
+    grid-template-columns: minmax(0, 1fr);
+  }
 }
 
 /* ---------- footer ---------- */

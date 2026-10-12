@@ -160,7 +160,7 @@ export function PricingSection({
                     : t({ en: 'No auto-renewal; the plan runs to the end of the period you paid for.', vi: 'Không tự gia hạn; gói chạy tới hết kỳ đã trả.' })}
                 </p>
                 {catalog.checkoutOpen ? (
-                  <Link href={`/profile/payment-methods?audience=${audience}&interval=${interval}`} className={styles.paidAction}>
+                  <Link href={`/profile/payment-methods?plan=${paid.code}&interval=${interval}`} className={styles.paidAction}>
                     {t({ en: 'Upgrade now', vi: 'Nâng cấp ngay' })}
                     <ArrowRight aria-hidden="true" size={18} />
                   </Link>

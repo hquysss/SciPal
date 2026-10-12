@@ -585,11 +585,11 @@
   }
 }
 
-/* ---------- tickets (landing only): each plan is a ticket, details above the perforation, price on the stub.
-   After zeeshan_2112's Uiverse ticket, recoloured with theme tokens. The /pricing page keeps the plain cards. ---------- */
+/* ---------- tickets (landing and /pricing): each plan is a ticket, details above the perforation, price on the stub.
+   After zeeshan_2112's Uiverse ticket, recoloured with theme tokens. ---------- */
 
-.pricing .free,
-.pricing .paid {
+:is(.pricing, .pricingPage) .free,
+:is(.pricing, .pricingPage) .paid {
   display: block;
   gap: 0;
   border: 0;
@@ -602,12 +602,12 @@
 }
 
 /* The notches would show the spotlight and sweep as rectangles, and the ring would outline a plain box. */
-.pricing .paid::before,
-.pricing .paid::after {
+:is(.pricing, .pricingPage) .paid::before,
+:is(.pricing, .pricingPage) .paid::after {
   content: none;
 }
 
-.pricing .aura {
+:is(.pricing, .pricingPage) .aura {
   padding: 0;
   border-radius: 0;
   background: none;
