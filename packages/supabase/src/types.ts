@@ -1031,6 +1031,7 @@ export interface Database {
         Row: {
           id: string;
           room_subject_id: string | null;
+          community: boolean;
           friendship_id: string | null;
           sender_id: string;
           sender_name: string;
@@ -1042,6 +1043,7 @@ export interface Database {
         Insert: {
           id?: string;
           room_subject_id?: string | null;
+          community?: boolean;
           friendship_id?: string | null;
           sender_id: string;
           sender_name: string;
@@ -1053,6 +1055,7 @@ export interface Database {
         Update: {
           id?: string;
           room_subject_id?: string | null;
+          community?: boolean;
           friendship_id?: string | null;
           sender_id?: string;
           sender_name?: string;

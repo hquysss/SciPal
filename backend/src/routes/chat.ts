@@ -2,7 +2,6 @@ import { randomUUID } from 'node:crypto';
 import type { FastifyPluginAsync, FastifyReply, FastifyRequest } from 'fastify';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { hasBannedWord } from '../chat/wordFilter.js';
-import { isSubjectArchived, SUBJECT_ARCHIVED } from '../subjects/archived.js';
 import { orderPair } from './friends.js';
 import { sniffImageType } from './media.js';
 
@@ -54,16 +53,15 @@ export const chatRoutes: FastifyPluginAsync = async (app) => {
     supabase: SupabaseClient,
     me: string,
     reply: FastifyReply,
-    input: { room: unknown; friendship: unknown; body: string; kind: 'text' | 'image' },
-  ): Promise<Record<string, string> | null> {
+    input: { community: boolean; friendship: unknown; body: string; kind: 'text' | 'image' },
+  ): Promise<Record<string, string | boolean> | null> {
     const refuse = (code: number, payload: object): null => {
       void reply.code(code).send(payload);
       return null;
     };
-    const { room, friendship, body, kind } = input;
-    const roomOk = typeof room === 'string' && UUID_PATTERN.test(room);
+    const { community, friendship, body, kind } = input;
     const friendshipOk = typeof friendship === 'string' && UUID_PATTERN.test(friendship);
-    if (body.length < (kind === 'text' ? 1 : 0) || body.length > BODY_MAX || roomOk === friendshipOk) return refuse(400, invalid);
+    if (body.length < (kind === 'text' ? 1 : 0) || body.length > BODY_MAX || community === friendshipOk) return refuse(400, invalid);
     if (kind === 'image' && !friendshipOk) {
       return refuse(400, { error: 'Ảnh chỉ gửi được cho bạn bè.', error_en: 'Pictures can only be sent to friends.' });
     }
@@ -83,13 +81,9 @@ export const chatRoutes: FastifyPluginAsync = async (app) => {
       return refuse(422, { error: 'Tin nhắn có từ không phù hợp.', error_en: 'That message has words that are not allowed.' });
     }
 
-    const row: Record<string, string> = { sender_id: me, sender_name: name?.trim() || 'Người dùng', body };
-    if (roomOk) {
-      const subject = await supabase.from('subjects').select('id, archived_at').eq('id', room as string).maybeSingle();
-      if (subject.error) return refuse(500, failed);
-      if (!subject.data) return refuse(404, notFound);
-      if (isSubjectArchived(subject.data as { archived_at?: string | null })) return refuse(400, SUBJECT_ARCHIVED);
-      row.room_subject_id = room as string;
+    const row: Record<string, string | boolean> = { sender_id: me, sender_name: name?.trim() || 'Người dùng', body };
+    if (community) {
+      row.community = true;
     } else {
       const found = await supabase.from('friendships').select('id, user_a, user_b, status').eq('id', friendship as string).maybeSingle();
       if (found.error) return refuse(500, failed);
@@ -111,10 +105,10 @@ export const chatRoutes: FastifyPluginAsync = async (app) => {
     const supabase = app.supabase;
     if (!supabase) return reply.code(503).send(unavailable);
     const me = userId(request)!;
-    const input = (request.body ?? {}) as { room_subject_id?: unknown; friendship_id?: unknown; body?: unknown };
+    const input = (request.body ?? {}) as { community?: unknown; friendship_id?: unknown; body?: unknown };
     const body = typeof input.body === 'string' ? input.body.trim() : '';
 
-    const row = await prepareRow(supabase, me, reply, { room: input.room_subject_id, friendship: input.friendship_id, body, kind: 'text' });
+    const row = await prepareRow(supabase, me, reply, { community: input.community === true, friendship: input.friendship_id, body, kind: 'text' });
     if (!row) return reply;
     const inserted = await supabase.from('chat_messages').insert(row).select('id').single();
     if (inserted.error || !inserted.data) return reply.code(500).send(failed);
@@ -133,9 +127,9 @@ export const chatRoutes: FastifyPluginAsync = async (app) => {
     const type = sniffImageType(image);
     if (!type) return reply.code(400).send(notImage);
 
-    const query = (request.query ?? {}) as { room_subject_id?: string; friendship_id?: string; caption?: string };
+    const query = (request.query ?? {}) as { community?: string; friendship_id?: string; caption?: string };
     const caption = typeof query.caption === 'string' ? query.caption.trim() : '';
-    const row = await prepareRow(supabase, me, reply, { room: query.room_subject_id, friendship: query.friendship_id, body: caption, kind: 'image' });
+    const row = await prepareRow(supabase, me, reply, { community: query.community === 'true', friendship: query.friendship_id, body: caption, kind: 'image' });
     if (!row) return reply;
 
     const key = `chat/${me}/${randomUUID()}.${type === 'jpeg' ? 'jpg' : type}`;
@@ -154,7 +148,7 @@ export const chatRoutes: FastifyPluginAsync = async (app) => {
     return reply.code(201).send({ id: (inserted.data as { id: string }).id, image_url: imageUrl });
   });
 
-  // Blocking also ends any friendship between the two; the block hides their room messages from you.
+  // Blocking also ends any friendship between the two; the block hides their community-room messages from you.
   app.post('/api/chat/blocks', { preHandler: [requireUser] }, async (request, reply) => {
     const supabase = app.supabase;
     if (!supabase) return reply.code(503).send(unavailable);
@@ -213,7 +207,7 @@ export const chatRoutes: FastifyPluginAsync = async (app) => {
       return reply.code(400).send(invalid);
     }
 
-    const found = await supabase.from('chat_messages').select('id, sender_id, room_subject_id, friendship_id, deleted_at').eq('id', input.message_id).maybeSingle();
+    const found = await supabase.from('chat_messages').select('id, sender_id, community, friendship_id, deleted_at').eq('id', input.message_id).maybeSingle();
     if (found.error) return reply.code(500).send(failed);
     const message = found.data as { sender_id: string; friendship_id: string | null; deleted_at: string | null } | null;
     if (!message || message.deleted_at) return reply.code(404).send(notFound);

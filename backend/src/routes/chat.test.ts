@@ -3,12 +3,10 @@ import Fastify from 'fastify';
 import { chatRoutes } from './chat.js';
 import { fakeDb } from '../__tests__/fakeDb.js';
 import { orderPair } from './friends.js';
-import { SUBJECT_ARCHIVED } from '../subjects/archived.js';
 
 const ME = '11111111-1111-4111-8111-111111111111';
 const OTHER = '22222222-2222-4222-8222-222222222222';
 const THIRD = '33333333-3333-4333-8333-333333333333';
-const ROOM = '66666666-6666-4666-8666-666666666666';
 const FS = '44444444-4444-4444-8444-444444444444';
 const MSG = '77777777-7777-4777-8777-777777777777';
 
@@ -27,13 +25,13 @@ const post = (app: ReturnType<typeof build>, body: unknown) => app.inject({ meth
 
 describe('POST /api/chat/messages', () => {
   it('needs a user and supabase', async () => {
-    expect((await post(build({ user: null }), { room_subject_id: ROOM, body: 'hi' })).statusCode).toBe(401);
-    expect((await post(build({}), { room_subject_id: ROOM, body: 'hi' })).statusCode).toBe(503);
+    expect((await post(build({ user: null }), { community: true, body: 'hi' })).statusCode).toBe(401);
+    expect((await post(build({}), { community: true, body: 'hi' })).statusCode).toBe(503);
   });
 
   it('rejects a banned account without inserting', async () => {
     const db = fakeDb({ 'profiles.select': [{ data: { chat_banned: true, display_name: 'An' } }] });
-    const res = await post(build({ db }), { room_subject_id: ROOM, body: 'hi' });
+    const res = await post(build({ db }), { community: true, body: 'hi' });
     expect(res.statusCode).toBe(403);
     expect(db.calls.some((c) => c.op === 'insert')).toBe(false);
   });
@@ -41,43 +39,33 @@ describe('POST /api/chat/messages', () => {
   it('rejects empty, whitespace-only and 501-character bodies, and a missing or double target', async () => {
     const app = build({ db: fakeDb({}) });
     for (const body of ['', '   ', 'x'.repeat(501)]) {
-      expect((await post(app, { room_subject_id: ROOM, body })).statusCode).toBe(400);
+      expect((await post(app, { community: true, body })).statusCode).toBe(400);
     }
     expect((await post(app, { body: 'hi' })).statusCode).toBe(400);
-    expect((await post(app, { room_subject_id: ROOM, friendship_id: FS, body: 'hi' })).statusCode).toBe(400);
-    expect((await post(app, { room_subject_id: 'nope', body: 'hi' })).statusCode).toBe(400);
+    expect((await post(app, { community: true, friendship_id: FS, body: 'hi' })).statusCode).toBe(400);
+    expect((await post(app, { community: 'yes', body: 'hi' })).statusCode).toBe(400);
   });
 
   it('returns 429 after 10 messages in 10 seconds', async () => {
     const db = fakeDb({ 'profiles.select': [ok], 'chat_messages.select': [{ count: 10 }] });
-    expect((await post(build({ db }), { room_subject_id: ROOM, body: 'hi' })).statusCode).toBe(429);
+    expect((await post(build({ db }), { community: true, body: 'hi' })).statusCode).toBe(429);
   });
 
   it('returns 422 for a banned word', async () => {
     const db = fakeDb({ 'profiles.select': [ok], 'chat_messages.select': [{ count: 0 }] });
-    expect((await post(build({ db }), { room_subject_id: ROOM, body: 'fuck' })).statusCode).toBe(422);
+    expect((await post(build({ db }), { community: true, body: 'fuck' })).statusCode).toBe(422);
   });
 
-  it('room: 404 for an unknown subject, SUBJECT_ARCHIVED for an archived one', async () => {
-    const missing = fakeDb({ 'profiles.select': [ok], 'chat_messages.select': [{ count: 0 }], 'subjects.select': [{ data: null }] });
-    expect((await post(build({ db: missing }), { room_subject_id: ROOM, body: 'hi' })).statusCode).toBe(404);
-    const archived = fakeDb({ 'profiles.select': [ok], 'chat_messages.select': [{ count: 0 }], 'subjects.select': [{ data: { id: ROOM, archived_at: '2026-10-01T00:00:00Z' } }] });
-    const res = await post(build({ db: archived }), { room_subject_id: ROOM, body: 'hi' });
-    expect(res.statusCode).toBe(400);
-    expect(res.json()).toEqual(SUBJECT_ARCHIVED);
-  });
-
-  it('room: inserts a trimmed message with the sender name', async () => {
+  it('community room: inserts a trimmed message with the sender name', async () => {
     const db = fakeDb({
       'profiles.select': [{ data: { chat_banned: false, display_name: null } }],
       'chat_messages.select': [{ count: 0 }],
-      'subjects.select': [{ data: { id: ROOM, archived_at: null } }],
       'chat_messages.insert': [{ data: { id: MSG } }],
     });
-    const res = await post(build({ db }), { room_subject_id: ROOM, body: '  xin chào  ' });
+    const res = await post(build({ db }), { community: true, body: '  xin chào  ' });
     expect(res.statusCode).toBe(201);
     expect(res.json()).toEqual({ id: MSG });
-    expect(db.calls.find((c) => c.op === 'insert')!.chain[0]).toEqual(['insert', [{ room_subject_id: ROOM, sender_id: ME, sender_name: 'Người dùng', body: 'xin chào' }]]);
+    expect(db.calls.find((c) => c.op === 'insert')!.chain[0]).toEqual(['insert', [{ community: true, sender_id: ME, sender_name: 'Người dùng', body: 'xin chào' }]]);
   });
 
   const [a, b] = orderPair(ME, OTHER);
@@ -132,7 +120,7 @@ describe('POST /api/chat/blocks', () => {
 describe('POST /api/chat/reports', () => {
   const report = (db: ReturnType<typeof fakeDb>, body: unknown) =>
     build({ db }).inject({ method: 'POST', url: '/api/chat/reports', payload: body as object });
-  const msg = (over: object = {}) => ({ data: { id: MSG, sender_id: OTHER, room_subject_id: ROOM, friendship_id: null, deleted_at: null, ...over } });
+  const msg = (over: object = {}) => ({ data: { id: MSG, sender_id: OTHER, community: true, friendship_id: null, deleted_at: null, ...over } });
 
   it('rejects a missing or over-long reason and a malformed id', async () => {
     expect((await report(fakeDb({}), { message_id: MSG, reason: '' })).statusCode).toBe(400);
@@ -144,7 +132,7 @@ describe('POST /api/chat/reports', () => {
     expect((await report(fakeDb({ 'chat_messages.select': [{ data: null }] }), { message_id: MSG, reason: 'Spam' })).statusCode).toBe(404);
     expect((await report(fakeDb({ 'chat_messages.select': [msg({ deleted_at: '2026-10-12T00:00:00Z' })] }), { message_id: MSG, reason: 'Spam' })).statusCode).toBe(404);
     const dm = fakeDb({
-      'chat_messages.select': [msg({ room_subject_id: null, friendship_id: FS })],
+      'chat_messages.select': [msg({ community: false, friendship_id: FS })],
       'friendships.select': [{ data: { id: FS, user_a: OTHER, user_b: THIRD, status: 'accepted' } }],
     });
     expect((await report(dm, { message_id: MSG, reason: 'Spam' })).statusCode).toBe(404);
@@ -231,9 +219,9 @@ describe('POST /api/chat/images', () => {
     expect((await setup(ready()).send(`friendship_id=${FS}`, big)).statusCode).toBe(413);
   });
 
-  it('is for direct messages only: a room is refused', async () => {
+  it('is for direct messages only: the community room is refused', async () => {
     const s = setup(ready());
-    expect((await s.send(`room_subject_id=${ROOM}`)).statusCode).toBe(400);
+    expect((await s.send('community=true')).statusCode).toBe(400);
     expect(s.store.put).not.toHaveBeenCalled();
   });
 
