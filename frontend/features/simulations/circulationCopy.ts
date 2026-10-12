@@ -100,3 +100,22 @@ export const LOOPS = {
   },
 } as const satisfies Record<string, { label: Bilingual; route: Bilingual }>;
 export type LoopFocus = keyof typeof LOOPS;
+
+// Wording follows Biology 11, lesson 10, mục V and Hình 10.10 (điều hoà hoạt động tim mạch).
+export const SITUATION_COPY = {
+  normal: {
+    label: { vi: 'Huyết áp bình thường', en: 'Normal pressure' },
+    title: { vi: 'Huyết áp bình thường', en: 'Normal blood pressure' },
+    note: { vi: 'Thụ thể áp lực ở cung động mạch chủ và xoang động mạch cảnh báo huyết áp đang ở mức bình thường, nên trung khu điều hoà tim mạch ở hành não giữ xung trên dây giao cảm và dây đối giao cảm ở mức nền. Chọn một tình huống để xem cơ thể kéo huyết áp về mức bình thường như thế nào.', en: 'Receptors in the aortic arch and carotid sinus report a normal pressure, so the cardiovascular centre in the medulla keeps impulses on the sympathetic and parasympathetic nerves at their resting level. Choose a situation to see how the body pulls the pressure back to normal.' },
+  },
+  low: {
+    label: { vi: 'Huyết áp giảm', en: 'Pressure falls' },
+    title: { vi: 'Huyết áp giảm (mất máu, đứng dậy đột ngột)', en: 'Pressure falls (blood loss, standing up fast)' },
+    note: { vi: 'Thụ thể gửi ít xung hơn về hành não. Trung khu tăng tần số xung trên dây giao cảm và giảm xung trên dây đối giao cảm; tuyến trên thận tiết thêm adrenalin và noradrenalin. Tim đập nhanh, mạnh, mạch máu nhỏ co lại nên huyết áp tăng trở lại.', en: 'The receptors send fewer impulses to the medulla. The centre raises the impulse rate on the sympathetic nerve and lowers it on the parasympathetic nerve; the adrenal glands release more adrenaline and noradrenaline. The heart beats faster and harder, the small vessels narrow and the pressure rises again.' },
+  },
+  high: {
+    label: { vi: 'Huyết áp tăng cao', en: 'Pressure rises' },
+    title: { vi: 'Huyết áp tăng cao', en: 'Pressure rises' },
+    note: { vi: 'Thụ thể gửi nhiều xung hơn về hành não. Trung khu giảm xung trên dây giao cảm và tăng xung trên dây đối giao cảm, tuyến trên thận tiết ít hormone hơn. Tim đập chậm, yếu, mạch máu giãn nên huyết áp giảm về mức bình thường.', en: 'The receptors send more impulses to the medulla. The centre lowers the impulse rate on the sympathetic nerve and raises it on the parasympathetic nerve, and the adrenal glands release less hormone. The heart slows and weakens, the vessels widen and the pressure falls back toward normal.' },
+  },
+} as const satisfies Record<'normal' | 'low' | 'high', { label: Bilingual; title: Bilingual; note: Bilingual }>;

@@ -35,4 +35,6 @@ export const HEART_PART_PLACES: Readonly<Record<string, HeartPartPlace>> = {
   "Right inferior pulmonary vein.001": { group: "pulmonaryVeins", at: [-1.419,0.18,-1.916], min: [-1.919,-0.148,-2.198], max: [-0.978,0.438,-1.671], tip: [-1.822,0.297,-2.198] },
   "Left inferior pulmonary vein.001": { group: "pulmonaryVeins", at: [0.877,0.156,-1.874], min: [0.558,-0.188,-2.082], max: [1.165,0.367,-1.67], tip: [1.118,-0.072,-1.961] },
   "Left superior pulmonary vein.001": { group: "pulmonaryVeins", at: [0.93,1.052,-1.376], min: [0.614,0.829,-1.581], max: [1.315,1.321,-1.057], tip: [1.315,0.989,-1.454] },
+  "Anterior leaflet of right atrioventricular valve.001": { group: "tricuspid", at: [-1.005,-0.36,0.82], min: [-1.653,-0.64,0.229], max: [-0.27,0.274,1.624], tip: [-1.649,-0.466,0.803] },
+  "Anterior leaflet of left atrioventricular valve.001": { group: "mitral", at: [0.523,-0.78,-0.803], min: [-0.398,-1.903,-1.285], max: [1.353,0.218,-0.236], tip: [1.328,-1.851,-0.29] },
 };

@@ -89,6 +89,55 @@ for (const node of doc.nodes) {
   for (let i = 0; i < geometry.positions.length; i += 3) { point.fromArray(geometry.positions, i).applyMatrix4(pose); box.expandByPoint(point); }
   chosen.push({ name: node.name, group: part[0], role: part[2], geometry, pose, box });
 }
+
+// The source has no anterior leaflet for the tricuspid valve and none for the mitral valve (the leaflet that
+// faces the aortic valve). Each is added as a copy of a real leaflet turned about the axis of its valve:
+// the axis runs from the atrium to the ventricle, and the centre of the orifice is the circle through the
+// atrial edge of the leaflets that exist.
+const worldPoints = (part) => { const out = new Float32Array(part.geometry.positions.length); const v = new THREE.Vector3(); for (let i = 0; i < out.length; i += 3) v.fromArray(part.geometry.positions, i).applyMatrix4(part.pose).toArray(out, i); return out; };
+function addLeaflet({ group, atrium, ventricle, copy, turn, name, size = 1 }) {
+  const leaflets = chosen.filter((p) => p.group === group);
+  const axis = chosen.find((p) => p.group === ventricle).box.getCenter(new THREE.Vector3()).sub(chosen.find((p) => p.group === atrium).box.getCenter(new THREE.Vector3())).normalize();
+  const reference = Math.abs(axis.y) < 0.9 ? new THREE.Vector3(0, 1, 0) : new THREE.Vector3(1, 0, 0);
+  const u = reference.clone().cross(axis).normalize();
+  const v = axis.clone().cross(u);
+  const all = leaflets.map((leaflet) => ({ leaflet, points: worldPoints(leaflet) }));
+  // Atrial edge: the vertices least far along the axis.
+  const heights = all.flatMap(({ points }) => Array.from({ length: points.length / 3 }, (_, i) => new THREE.Vector3().fromArray(points, i * 3).dot(axis)));
+  const low = Math.min(...heights);
+  const high = Math.max(...heights);
+  const edge = [];
+  for (const { points } of all) for (let i = 0; i < points.length; i += 3) { const q = new THREE.Vector3().fromArray(points, i); if (q.dot(axis) < low + 0.25 * (high - low)) edge.push(q); }
+  const origin = edge.reduce((a, q) => a.add(q), new THREE.Vector3()).divideScalar(edge.length);
+  // Least-squares circle (Kåsa): x² + y² = 2ax + 2by + c.
+  const rows = edge.map((q) => { const d = q.clone().sub(origin); return [d.dot(u), d.dot(v)]; });
+  let sxx = 0, sxy = 0, syy = 0, sx = 0, sy = 0, sz = 0, sxz = 0, syz = 0;
+  for (const [x, y] of rows) { const z = x * x + y * y; sxx += x * x; sxy += x * y; syy += y * y; sx += x; sy += y; sz += z; sxz += x * z; syz += y * z; }
+  const n = rows.length;
+  const m = new THREE.Matrix3().set(sxx, sxy, sx, sxy, syy, sy, sx, sy, n);
+  const solved = new THREE.Vector3(sxz, syz, sz).applyMatrix3(m.clone().invert());
+  const centre = origin.clone().addScaledVector(u, solved.x / 2).addScaledVector(v, solved.y / 2);
+  const radius = Math.sqrt(solved.z + (solved.x / 2) ** 2 + (solved.y / 2) ** 2);
+  const angleOf = (points) => { const mean = new THREE.Vector3(); for (let i = 0; i < points.length; i += 3) mean.add(new THREE.Vector3().fromArray(points, i)); mean.divideScalar(points.length / 3).sub(centre); return Math.atan2(mean.dot(v), mean.dot(u)); };
+  const source = all.find(({ leaflet }) => leaflet.name === copy);
+  const angles = all.map(({ points }) => angleOf(points));
+  // Where the new leaflet goes: opposite the middle of the ones that exist (a mitral valve has two, 180° apart).
+  const sin = angles.reduce((a, t) => a + Math.sin(t), 0);
+  const cos = angles.reduce((a, t) => a + Math.cos(t), 0);
+  const target = turn ?? Math.atan2(sin, cos) + Math.PI;
+  const rotate = new THREE.Matrix4().makeRotationAxis(axis, target - angleOf(source.points));
+  const around = new THREE.Matrix4().makeTranslation(centre.x, centre.y, centre.z).multiply(rotate).multiply(new THREE.Matrix4().makeScale(size, size, size)).multiply(new THREE.Matrix4().makeTranslation(-centre.x, -centre.y, -centre.z));
+  const points = new Float32Array(source.points.length);
+  const q = new THREE.Vector3();
+  for (let i = 0; i < points.length; i += 3) q.fromArray(source.points, i).applyMatrix4(around).toArray(points, i);
+  const box = new THREE.Box3();
+  for (let i = 0; i < points.length; i += 3) box.expandByPoint(q.fromArray(points, i));
+  chosen.push({ name, group, role: 'valve', geometry: { positions: points, normals: null, indices: source.leaflet.geometry.indices }, pose: new THREE.Matrix4(), box });
+  if (process.env.DEBUG_VALVE) console.log(group, 'radius', radius.toFixed(4), 'angles', angles.map((t) => (t * 180 / Math.PI).toFixed(0)), '→', (target * 180 / Math.PI).toFixed(0));
+}
+addLeaflet({ group: 'tricuspid', atrium: 'rightAtrium', ventricle: 'rightVentricle', copy: 'Septal leaflet of right atrioventricular valve.001', name: 'Anterior leaflet of right atrioventricular valve.001' });
+addLeaflet({ group: 'mitral', atrium: 'leftAtrium', ventricle: 'leftVentricle', copy: 'Posterior leaflet of left atrioventricular valve.001', name: 'Anterior leaflet of left atrioventricular valve.001', size: 1.05 });
+
 if (INSPECT) {
   for (const part of chosen) console.log(part.group.padEnd(16), part.name.padEnd(60), part.geometry.positions.length / 3, part.box.min.toArray().map((v) => v.toFixed(3)).join(','), '..', part.box.max.toArray().map((v) => v.toFixed(3)).join(','));
   process.exit(0);

@@ -8,12 +8,14 @@ import { LOOPS, type LoopFocus } from './circulationCopy';
 import type { VesselKey } from './engines/vessels';
 import type { HeartLayer } from './circulationHeart';
 import { useCirculationClock } from './useCirculationClock';
+import { useRegulation, type Situation } from './useRegulation';
+import type { CirculationType } from './circulationKinds';
 import styles from './circulation.module.css';
 
 const Scene = lazy(() => import('./circulationScene').then((module) => ({ default: module.CirculationScene })));
 const NAME = { vi: 'Tuần hoàn máu 3D', en: 'Blood circulation 3D' };
 // Body view runs in real time; the heart is slowed so the valves can be followed.
-const VIEW_SPEED: Record<CirculationView, number> = { body: 1, heart: 0.25, vessels: 1 };
+const VIEW_SPEED: Record<CirculationView, number> = { body: 1, heart: 0.25, vessels: 1, types: 1, regulation: 1 };
 
 class SceneBoundary extends Component<{ readonly children: ReactNode; readonly fallback: ReactNode }, { failed: boolean }> {
   state = { failed: false };
@@ -31,16 +33,19 @@ export function CirculationView({ config, lang }: SimulationViewProps<'circulati
   const [focus, setFocus] = useState<LoopFocus>(config.loop);
   const [layer, setLayer] = useState<HeartLayer>('flow');
   const [vessel, setVessel] = useState<VesselKey>('capillary');
+  const [type, setType] = useState<CirculationType>('double4');
+  const [situation, setSituation] = useState<Situation>('normal');
   const [labels, setLabels] = useState(config.labels);
   const clock = useCirculationClock(speed, host);
+  const regulation = useRegulation(clock.time, clock.running, situation);
   useEffect(() => setMounted(true), []);
   const choose = (next: CirculationView) => { setView(next); setSpeed(VIEW_SPEED[next]); };
-  const panel = <CirculationControls lang={lang} view={view} onView={choose} heartRate={heartRate} onHeartRate={setHeartRate} speed={speed} onSpeed={setSpeed} focus={focus} onFocus={setFocus} layer={layer} onLayer={setLayer} vessel={vessel} onVessel={setVessel} labels={labels} onLabels={setLabels} clock={clock} />;
+  const panel = <CirculationControls lang={lang} view={view} onView={choose} heartRate={heartRate} onHeartRate={setHeartRate} speed={speed} onSpeed={setSpeed} focus={focus} onFocus={setFocus} layer={layer} onLayer={setLayer} vessel={vessel} onVessel={setVessel} type={type} onType={setType} situation={situation} onSituation={setSituation} regulation={regulation.shown} onResetRegulation={() => { regulation.reset(); setSituation('normal'); }} labels={labels} onLabels={setLabels} clock={clock} />;
   const loading = <div className={`${styles.stage} ${styles.loading}`} aria-busy="true"><p className="absolute left-4 top-4 rounded-lg bg-surface p-3 text-sm text-ink">{t({ vi: 'Đang tải mô hình 3D…', en: 'Loading the 3D model…' })}</p><div className={styles.panel}>{panel}</div></div>;
   const fallback = <div className={`${styles.stage} ${styles.loading}`}><div className={styles.panel}><p role="note" className="mb-3 rounded-lg bg-surface-sunken p-3 text-sm text-ink">{t({ vi: 'Trình duyệt này không mở được mô hình 3D. Bạn vẫn có thể chọn từng pha của chu kì tim bên dưới.', en: 'This browser cannot display 3D. You can still go through the phases of the cardiac cycle below.' })}</p>{panel}</div></div>;
   return <div ref={host} className="flex flex-col gap-2">
     {mounted ? <SceneBoundary fallback={fallback}>
-      <Suspense fallback={loading}><Scene view={view} heartRate={heartRate} focus={focus} layer={layer} vessel={vessel} onVessel={setVessel} labels={labels} time={clock.time} running={clock.running} stamp={clock.shownTime} lang={lang} panel={panel} /></Suspense>
+      <Suspense fallback={loading}><Scene view={view} heartRate={heartRate} focus={focus} layer={layer} vessel={vessel} onVessel={setVessel} type={type} situation={situation} regulation={regulation} labels={labels} time={clock.time} running={clock.running} stamp={clock.shownTime} lang={lang} panel={panel} /></Suspense>
     </SceneBoundary> : loading}
     <p className="text-xs leading-relaxed text-ink-muted">{t({ vi: 'Màu theo quy ước SGK: đỏ là máu giàu O₂, xanh là máu giàu CO₂. Sóng mạch và dòng máu được làm chậm để quan sát; các số đo huyết áp, vận tốc ở cảnh 3 là giá trị điển hình của người lớn khoẻ mạnh lúc nghỉ.', en: 'Textbook colours: red is oxygen-rich blood, blue is carbon dioxide-rich blood. The pulse wave and blood flow are slowed for observation; the pressures and speeds in view 3 are typical values for a healthy resting adult.' })}</p>
     <p className="text-xs text-ink-muted">{t({ vi: 'Model hệ tuần hoàn: ', en: 'Circulatory system model: ' })}<a className="underline" href="https://sketchfab.com/3d-models/circulatory-system-3584d5b2b97545cf965007c195899b7b" target="_blank" rel="noreferrer">“Circulatory System” – brianj.seely</a> · <a className="underline" href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noreferrer">CC BY 4.0</a>{t({ vi: ' (đã chỉnh sửa)', en: ' (modified)' })}</p>

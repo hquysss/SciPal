@@ -1,11 +1,14 @@
 'use client';
 
 import type { ReactNode } from 'react';
-import { Pause, Play } from 'lucide-react';
+import { Pause, Play, RotateCcw } from 'lucide-react';
 import { BUTTON, CheckField, PRIMARY_BUTTON, Slider } from './controls';
 import { CARDIAC_PHASES, cardiacState, cycleTimes, phaseWindow } from './engines/circulation';
 import { VESSELS, type VesselKey } from './engines/vessels';
-import { LOOPS, PHASES, type LoopFocus } from './circulationCopy';
+import { LOOPS, PHASES, SITUATION_COPY, type LoopFocus } from './circulationCopy';
+import { DIAGRAMS, TYPE_KEYS, TYPE_NAMES, type CirculationType } from './circulationKinds';
+import { SITUATIONS, type Situation } from './useRegulation';
+import type { Regulation } from './engines/regulation';
 import { VESSEL_NAMES } from './circulationVessels';
 import type { HeartLayer } from './circulationHeart';
 import type { useCirculationClock } from './useCirculationClock';
@@ -16,6 +19,8 @@ export const CIRCULATION_VIEWS = [
   { value: 'body', label: { vi: 'Toàn thân', en: 'Whole body' } },
   { value: 'heart', label: { vi: 'Tim', en: 'Heart' } },
   { value: 'vessels', label: { vi: 'Hệ mạch', en: 'Vessels' } },
+  { value: 'types', label: { vi: 'Các kiểu', en: 'Types' } },
+  { value: 'regulation', label: { vi: 'Điều hoà', en: 'Control' } },
 ] as const;
 export type CirculationView = (typeof CIRCULATION_VIEWS)[number]['value'];
 const SPEEDS = [1, 0.5, 0.25, 0.1] as const;
@@ -45,12 +50,21 @@ type Props = {
   readonly onLayer: (layer: HeartLayer) => void;
   readonly vessel: VesselKey;
   readonly onVessel: (vessel: VesselKey) => void;
+  readonly type: CirculationType;
+  readonly onType: (type: CirculationType) => void;
+  readonly situation: Situation;
+  readonly onSituation: (situation: Situation) => void;
+  readonly regulation: Regulation;
+  readonly onResetRegulation: () => void;
   readonly labels: boolean;
   readonly onLabels: (value: boolean) => void;
   readonly clock: ReturnType<typeof useCirculationClock>;
 };
 
-export function CirculationControls({ lang, view, onView, heartRate, onHeartRate, speed, onSpeed, focus, onFocus, layer, onLayer, vessel, onVessel, labels, onLabels, clock }: Props) {
+/** The textbook's arrows: up, down or unchanged from the resting level (0.5). */
+const trend = (value: number, up: string, down: string, same: string) => (value > 0.58 ? up : value < 0.42 ? down : same);
+
+export function CirculationControls({ lang, view, onView, heartRate, onHeartRate, speed, onSpeed, focus, onFocus, layer, onLayer, vessel, onVessel, type, onType, situation, onSituation, regulation, onResetRegulation, labels, onLabels, clock }: Props) {
   const t = pick(lang);
   const format = (value: number) => new Intl.NumberFormat(lang, { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(value);
   const times = cycleTimes(heartRate);
@@ -78,9 +92,9 @@ export function CirculationControls({ lang, view, onView, heartRate, onHeartRate
       </div>
     </div>
 
-    <Slider label={t({ vi: 'Nhịp tim', en: 'Heart rate' })} value={heartRate} min={40} max={180} step={1} unit={t({ vi: 'nhịp/phút', en: 'bpm' })} onChange={onHeartRate} />
+    {view !== 'regulation' && <Slider label={t({ vi: 'Nhịp tim', en: 'Heart rate' })} value={heartRate} min={40} max={180} step={1} unit={t({ vi: 'nhịp/phút', en: 'bpm' })} onChange={onHeartRate} />}
 
-    {view !== 'vessels' && <>
+    {(view === 'body' || view === 'heart') && <>
       <div>
         <p className="mb-1 text-xs font-semibold text-ink">{t({ vi: 'Một chu kì tim (bấm một pha để dừng ở đó)', en: 'One cardiac cycle (select a phase to hold it)' })}</p>
         <div className={styles.cycle}>
@@ -119,9 +133,38 @@ export function CirculationControls({ lang, view, onView, heartRate, onHeartRate
       <p className="rounded-lg bg-surface-sunken p-3 text-sm leading-relaxed text-ink-muted">{t({ vi: 'Lưu lượng máu qua mỗi loại mạch là như nhau (tim bơm bao nhiêu máu thì mạch nào cũng nhận chừng đó), nên vận tốc máu tỉ lệ nghịch với tổng tiết diện: v = Q ÷ S. Đổi nhịp tim để xem vận tốc thay đổi.', en: 'The same amount of blood passes every kind of vessel each second, so the speed of the blood is inversely proportional to the total cross-section: v = Q ÷ S. Change the heart rate to see the speeds change.' })}</p>
     </div>}
 
-    {view !== 'vessels' && <CheckField label={t({ vi: 'Hiện nhãn', en: 'Show labels' })} checked={labels} onChange={onLabels} />}
+    {view === 'types' && <div className="flex flex-col gap-2">
+      <div className="flex flex-wrap gap-2" role="group" aria-label={t({ vi: 'Kiểu hệ tuần hoàn', en: 'Kind of circulation' })}>
+        {TYPE_KEYS.map((key) => <button key={key} type="button" className={PRESSED} aria-pressed={type === key} onClick={() => onType(key)}>{t(TYPE_NAMES[key])}</button>)}
+      </div>
+      <dl className="flex flex-col gap-1 rounded-lg bg-surface-sunken p-3 text-sm text-ink">
+        {([[t({ vi: 'Đại diện', en: 'Animals' }), DIAGRAMS[type].animals], [t({ vi: 'Tim', en: 'Heart' }), DIAGRAMS[type].heart], [t({ vi: 'Mạch máu', en: 'Vessels' }), DIAGRAMS[type].vessels], [t({ vi: 'Vòng tuần hoàn', en: 'Circuits' }), DIAGRAMS[type].loops], [t({ vi: 'Áp lực, tốc độ', en: 'Pressure, speed' }), DIAGRAMS[type].pressure]] as const).map(([name, value]) => <div key={name}><dt className="text-xs text-ink-muted">{name}</dt><dd className="font-semibold">{t(value)}</dd></div>)}
+      </dl>
+      <p className="text-sm leading-relaxed text-ink-muted">{t(DIAGRAMS[type].note)}</p>
+    </div>}
+
+    {view === 'regulation' && <div className="flex flex-col gap-2">
+      <div className="flex flex-wrap items-center gap-2" role="group" aria-label={t({ vi: 'Tình huống', en: 'Situation' })}>
+        {SITUATIONS.map((key) => <button key={key} type="button" className={PRESSED} aria-pressed={situation === key} onClick={() => onSituation(key)}>{t(SITUATION_COPY[key].label)}</button>)}
+        <button type="button" className={BUTTON} onClick={onResetRegulation}><RotateCcw className="h-4 w-4" aria-hidden="true" />{t({ vi: 'Về lúc nghỉ', en: 'Reset' })}</button>
+      </div>
+      <dl className="flex flex-col gap-1 rounded-lg bg-surface-sunken p-3 text-sm text-ink" aria-live="off">
+        {([
+          [t({ vi: 'Huyết áp trung bình', en: 'Mean pressure' }), `${Math.round(regulation.pressure)} mmHg`],
+          [t({ vi: 'Nhịp tim', en: 'Heart rate' }), `${Math.round(regulation.heartRate)} ${t({ vi: 'nhịp/phút', en: 'bpm' })}`],
+          [t({ vi: 'Xung trên dây giao cảm', en: 'Sympathetic impulses' }), trend(regulation.sympathetic, t({ vi: 'tăng', en: 'up' }), t({ vi: 'giảm', en: 'down' }), t({ vi: 'bình thường', en: 'normal' }))],
+          [t({ vi: 'Xung trên dây đối giao cảm', en: 'Parasympathetic impulses' }), trend(regulation.vagus, t({ vi: 'tăng', en: 'up' }), t({ vi: 'giảm', en: 'down' }), t({ vi: 'bình thường', en: 'normal' }))],
+          [t({ vi: 'Adrenalin, noradrenalin', en: 'Adrenaline, noradrenaline' }), trend(regulation.hormone, t({ vi: 'tăng', en: 'up' }), t({ vi: 'giảm', en: 'down' }), t({ vi: 'bình thường', en: 'normal' }))],
+          [t({ vi: 'Mạch máu nhỏ', en: 'Small vessels' }), trend(regulation.tone, t({ vi: 'co lại', en: 'narrower' }), t({ vi: 'giãn ra', en: 'wider' }), t({ vi: 'bình thường', en: 'normal' }))],
+        ] as const).map(([name, value]) => <div key={name} className="grid grid-cols-[1fr_auto] items-baseline gap-3"><dt className="text-xs text-ink-muted">{name}</dt><dd className="whitespace-nowrap text-right font-mono font-semibold">{value}</dd></div>)}
+      </dl>
+    </div>}
+
+    {(view === 'body' || view === 'heart') && <CheckField label={t({ vi: 'Hiện nhãn', en: 'Show labels' })} checked={labels} onChange={onLabels} />}
     <p className="text-xs leading-relaxed text-ink-muted">{view === 'vessels'
       ? t({ vi: 'Bấm một cột trên biểu đồ hoặc một nút đoạn mạch để đọc giải thích.', en: 'Select a column of the chart or a vessel button to read about it.' })
+      : view === 'types' ? t({ vi: 'Đổi nhịp tim để xem máu chảy nhanh chậm khác nhau; màu máu theo quy ước SGK.', en: 'Change the heart rate to see the blood speed up or slow down; colours follow the textbook.' })
+      : view === 'regulation' ? t({ vi: 'Chọn một tình huống rồi theo dõi xung thần kinh (vàng) và hormone (hồng) chạy trên sơ đồ, nhịp tim và huyết áp đổi dần ở biểu đồ phía dưới.', en: 'Choose a situation, then watch the nerve impulses (yellow) and hormones (pink) run along the diagram while heart rate and pressure change in the chart below.' })
       : t({ vi: 'Chuột trái kéo để xoay. Giữ chuột phải kéo để di chuyển. Ctrl + cuộn hoặc chụm hai ngón để phóng to. Bấm vào nhãn để đọc giải thích.', en: 'Left-drag to rotate. Right-drag to pan. Ctrl + wheel or pinch to zoom. Select a label to read about it.' })}</p>
   </div>;
 }

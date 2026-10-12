@@ -36,5 +36,7 @@ This derivative model is shared under Creative Commons Attribution-ShareAlike 4.
 https://creativecommons.org/licenses/by-sa/4.0/. The licence applies to this asset, not to SciPal's
 application code.
 
+The source has no anterior leaflet for the tricuspid and mitral valves; the build adds each as a copy of an existing leaflet turned about the valve's axis (so those two leaflets are synthetic, not anatomy from the source).
+
 Rebuild with `node scripts/assets/build-heart.mjs <source-folder>` from the repository root; the folder
 must hold `cardiovascular.glb`. The script also writes `frontend/features/simulations/circulationHeartParts.ts`.
