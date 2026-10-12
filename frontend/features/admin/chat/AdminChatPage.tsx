@@ -28,7 +28,13 @@ export function AdminChatPageView({ state, onDelete, onBan }: {
     <ul className="flex flex-col gap-3">
       {state.reports.map((r) => (
         <li key={r.id} className="flex flex-col gap-2 rounded-xl border border-line bg-surface p-4">
-          <p className="whitespace-pre-wrap break-words text-ink">{r.body}</p>
+          {r.image_url?.startsWith('https://') && (
+            <a href={r.image_url} target="_blank" rel="noopener noreferrer" className="block w-fit overflow-hidden rounded-xl focus-visible:outline focus-visible:outline-2 focus-visible:outline-focus">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={r.image_url} alt={t({ en: 'Reported picture', vi: 'Ảnh bị báo cáo' })} loading="lazy" className="max-h-48 max-w-full object-cover" />
+            </a>
+          )}
+          {r.body && <p className="whitespace-pre-wrap break-words text-ink">{r.body}</p>}
           <p className="text-sm text-ink-muted">
             {r.sender_name || t({ en: 'User', vi: 'Người dùng' })} · {t({ en: 'Reason', vi: 'Lý do' })}: {r.reason}
           </p>

@@ -1,0 +1,102 @@
+/* The paper-plane send button: on hover the label slips away and the plane grows and tilts.
+   Colours come from the action tokens, so it follows the theme; motion is off for people who ask. */
+
+.send {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 2.75rem;
+  padding: 0.5em 1.1em;
+  border: 0;
+  border-radius: 999px;
+  font: inherit;
+  font-weight: 600;
+  color: var(--action-ink);
+  background: linear-gradient(to bottom, color-mix(in srgb, var(--action) 86%, var(--action-ink)), var(--action));
+  box-shadow: 0 5px 10px color-mix(in srgb, var(--ink) 20%, transparent);
+  cursor: pointer;
+  transition: transform 0.3s, box-shadow 0.3s, background 0.3s, padding 0.3s;
+}
+
+.send:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+
+.send:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
+.send:active:not(:disabled) {
+  transform: scale(0.95);
+  box-shadow: 0 2px 5px color-mix(in srgb, var(--ink) 20%, transparent);
+}
+
+.plane {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.9rem;
+  height: 1.9rem;
+  border-radius: 50%;
+  background-color: color-mix(in srgb, var(--action-ink) 20%, transparent);
+  transition: width 0.3s, height 0.3s, background-color 0.3s;
+}
+
+.plane svg {
+  width: 1.1rem;
+  height: 1.1rem;
+  transition: width 0.3s, height 0.3s, transform 0.3s;
+}
+
+.label {
+  display: block;
+  margin-left: 0.4em;
+  transition: opacity 0.3s, scale 0.3s;
+}
+
+/* Hover styles only where a pointer can hover, so a tap does not leave the button stuck open. */
+@media (hover: hover) {
+  .send:hover:not(:disabled) {
+    transform: translateY(-3px);
+    box-shadow: 0 8px 15px color-mix(in srgb, var(--ink) 28%, transparent);
+    background: var(--action-hover);
+  }
+
+  .send:hover:not(:disabled) .plane {
+    width: 3.2rem;
+    height: 2.2rem;
+    border-radius: 999px;
+    background-color: color-mix(in srgb, var(--action-ink) 28%, transparent);
+  }
+
+  .send:hover:not(:disabled) .plane svg {
+    width: 1.5rem;
+    height: 1.5rem;
+    transform: rotate(45deg);
+  }
+
+  .send:hover:not(:disabled) .label {
+    opacity: 0;
+    scale: 0;
+    width: 0;
+    margin-left: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .send,
+  .plane,
+  .plane svg,
+  .label {
+    transition: none;
+  }
+
+  .send:hover:not(:disabled),
+  .send:active:not(:disabled),
+  .send:hover:not(:disabled) .plane svg {
+    transform: none;
+  }
+}

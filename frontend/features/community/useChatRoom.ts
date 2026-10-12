@@ -6,7 +6,7 @@ import type { ChatMessage, ChatTarget } from './chatApi';
 
 const PAGE = 50;
 const KEEP = 200;
-const COLUMNS = 'id, sender_id, sender_name, body, created_at';
+const COLUMNS = 'id, sender_id, sender_name, body, image_url, created_at';
 
 /** Joins two batches by id, oldest first, keeping the newest KEEP. */
 export function mergeMessages(current: ChatMessage[], incoming: ChatMessage[]): ChatMessage[] {
@@ -18,7 +18,7 @@ export function mergeMessages(current: ChatMessage[], incoming: ChatMessage[]): 
 function asMessage(row: Record<string, unknown>): ChatMessage {
   return {
     id: String(row.id), sender_id: String(row.sender_id), sender_name: String(row.sender_name),
-    body: String(row.body), created_at: String(row.created_at),
+    body: String(row.body), image_url: typeof row.image_url === 'string' ? row.image_url : null, created_at: String(row.created_at),
   };
 }
 

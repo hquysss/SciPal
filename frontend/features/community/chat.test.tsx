@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ChatPaneView } from './ChatPane';
 import { mergeMessages } from './useChatRoom';
 import type { ChatMessage } from './chatApi';
@@ -10,8 +10,8 @@ vi.mock('@scipal/supabase', () => ({ createBrowserClient: () => ({}) }));
 
 afterEach(cleanup);
 
-const msg = (id: string, sender: string, at: string, body = `tin ${id}`): ChatMessage => ({
-  id, sender_id: sender, sender_name: `Tên ${sender}`, body, created_at: at,
+const msg = (id: string, sender: string, at: string, body = `tin ${id}`, image_url: string | null = null): ChatMessage => ({
+  id, sender_id: sender, sender_name: `Tên ${sender}`, body, created_at: at, image_url,
 });
 
 describe('mergeMessages', () => {
@@ -77,5 +77,72 @@ describe('ChatPaneView', () => {
     expect(h.onBlock).not.toHaveBeenCalled();
     fireEvent.click(screen.getByRole('button', { name: /Chắc chắn chặn/ }));
     expect(h.onBlock).toHaveBeenCalledWith('them');
+  });
+});
+
+describe('pictures in ChatPaneView', () => {
+  const file = (name: string, type: string, size = 100) => new File([new Uint8Array(size)], name, { type });
+  const pick = (f: File) => fireEvent.change(screen.getByLabelText('Đính kèm ảnh'), { target: { files: [f] } });
+
+  beforeEach(() => {
+    URL.createObjectURL = vi.fn(() => 'blob:preview');
+    URL.revokeObjectURL = vi.fn();
+  });
+
+  it('shows a picture in the bubble as a link to the full size, only for https URLs', () => {
+    const good = msg('1', 'them', '2026-10-12T10:00:00Z', '', 'https://m.test/chat/u/a.png');
+    const bad = msg('2', 'them', '2026-10-12T10:00:01Z', 'x', 'javascript:alert(1)');
+    render(<ChatPaneView messages={[good, bad]} meId="me" {...handlers()} />);
+    const pictures = screen.getAllByRole('img');
+    expect(pictures).toHaveLength(1);
+    expect(pictures[0].getAttribute('src')).toBe('https://m.test/chat/u/a.png');
+    const link = pictures[0].closest('a')!;
+    expect(link.getAttribute('href')).toBe('https://m.test/chat/u/a.png');
+    expect(link.getAttribute('rel')).toContain('noopener');
+  });
+
+  it('offers the attach button only where pictures are allowed', () => {
+    const { rerender } = render(<ChatPaneView messages={[]} meId="me" {...handlers()} />);
+    expect(screen.queryByLabelText('Đính kèm ảnh')).toBeNull();
+    rerender(<ChatPaneView messages={[]} meId="me" {...handlers()} onSendImage={vi.fn().mockResolvedValue(true)} />);
+    expect(screen.getByLabelText('Đính kèm ảnh')).toBeTruthy();
+  });
+
+  it('previews the chosen picture, sends it with the trimmed caption, then clears', async () => {
+    const onSendImage = vi.fn().mockResolvedValue(true);
+    render(<ChatPaneView messages={[]} meId="me" {...handlers()} onSendImage={onSendImage} />);
+    const send = screen.getByRole('button', { name: 'Gửi' }) as HTMLButtonElement;
+    expect(send.disabled).toBe(true);
+    const f = file('a.png', 'image/png');
+    pick(f);
+    expect(screen.getByAltText('Ảnh sắp gửi').getAttribute('src')).toBe('blob:preview');
+    expect(send.disabled).toBe(false);
+    fireEvent.change(screen.getByRole('textbox'), { target: { value: '  bài 3  ' } });
+    fireEvent.submit(screen.getByRole('textbox').closest('form')!);
+    expect(onSendImage).toHaveBeenCalledWith(f, 'bài 3');
+    await waitFor(() => expect(screen.queryByAltText('Ảnh sắp gửi')).toBeNull());
+  });
+
+  it('keeps the picture when sending fails, and lets you drop it', async () => {
+    const onSendImage = vi.fn().mockResolvedValue(false);
+    render(<ChatPaneView messages={[]} meId="me" {...handlers()} onSendImage={onSendImage} />);
+    pick(file('a.png', 'image/png'));
+    // act() waits for the failed send to settle, so a premature clear would show here.
+    await act(async () => { fireEvent.submit(screen.getByRole('textbox').closest('form')!); });
+    expect(onSendImage).toHaveBeenCalled();
+    expect(screen.getByAltText('Ảnh sắp gửi')).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'Bỏ ảnh' }));
+    expect(screen.queryByAltText('Ảnh sắp gửi')).toBeNull();
+  });
+
+  it('refuses a wrong type or a file over 1.5 MB before any upload', () => {
+    const onSendImage = vi.fn();
+    render(<ChatPaneView messages={[]} meId="me" {...handlers()} onSendImage={onSendImage} />);
+    pick(file('a.gif', 'image/gif'));
+    expect(screen.getByRole('alert').textContent).toContain('PNG, JPG hoặc WEBP');
+    pick(file('big.png', 'image/png', 1.5 * 1024 * 1024 + 1));
+    expect(screen.getByRole('alert').textContent).toContain('1,5 MB');
+    expect(screen.queryByAltText('Ảnh sắp gửi')).toBeNull();
+    expect(onSendImage).not.toHaveBeenCalled();
   });
 });

@@ -10,6 +10,7 @@ export type ChatReport = {
   body: string;
   sender_id: string;
   sender_name: string;
+  image_url: string | null;
 };
 
 export const listReports = (): Promise<ApiResult<{ reports: ChatReport[] }>> => authoringCall('/api/admin/chat/reports', 'GET');
