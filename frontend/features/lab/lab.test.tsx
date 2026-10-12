@@ -27,6 +27,7 @@ describe('the Lab catalogue', () => {
     expect(labItem('titration')?.subject).toBe('chemistry');
     expect(labItem('knee-reflex')?.subject).toBe('biology');
     expect(labItem('circulation-3d')?.subject).toBe('biology');
+    expect(labItem('skin-senses')?.subject).toBe('biology');
     expect(labItem('punnett')).toBeNull();
     expect(labItem('nope')).toBeNull();
   });

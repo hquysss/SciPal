@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState, type RefObject } from 'react';
+import { useOnScreen } from './useOnScreen';
 
 /**
  * The simulated time of the beating heart. It runs on its own while the view is on screen, at a
@@ -11,7 +12,7 @@ export function useCirculationClock(speed: number, host: RefObject<HTMLElement |
   const time = useRef(0);
   const [shownTime, setShownTime] = useState(0);
   const [playing, setPlaying] = useState(false);
-  const [active, setActive] = useState(true);
+  const active = useOnScreen(host);
   useEffect(() => {
     const media = window.matchMedia('(prefers-reduced-motion: reduce)');
     setPlaying(!media.matches);
@@ -19,14 +20,6 @@ export function useCirculationClock(speed: number, host: RefObject<HTMLElement |
     media.addEventListener('change', update);
     return () => media.removeEventListener('change', update);
   }, []);
-  useEffect(() => {
-    let visible = true;
-    const update = () => setActive(visible && !document.hidden);
-    const observer = new IntersectionObserver(([entry]) => { visible = entry?.isIntersecting ?? false; update(); });
-    if (host.current) observer.observe(host.current);
-    document.addEventListener('visibilitychange', update);
-    return () => { observer.disconnect(); document.removeEventListener('visibilitychange', update); };
-  }, [host]);
   useEffect(() => {
     if (!playing || !active) return;
     let frame = 0;
