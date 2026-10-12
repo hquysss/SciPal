@@ -32,7 +32,7 @@ describe('PricingSection (landing)', () => {
     expect(html).toContain('39.000 ₫');
     expect(html).toContain('200 lượt hỏi Giáo sư Quý mỗi tháng');
     expect(html).toContain('data-aura=""');
-    expect(html).toContain('href="/profile/payment-methods?audience=student&amp;interval=month"');
+    expect(html).toContain('href="/profile/payment-methods?plan=student_plus&amp;interval=month"');
     expect(html).not.toContain('Giáo viên Pro');
     expect(countRawColors(html).total).toBe(0);
   });
@@ -81,5 +81,5 @@ describe('LandingPage with pricing', () => {
 
 it('sends Upgrade now to payment methods with the selected audience and period', () => {
  const html = renderToStaticMarkup(<PricingSection catalog={catalog(true)} initialAudience="teacher" initialInterval="year" />);
- expect(html).toContain('href="/profile/payment-methods?audience=teacher&amp;interval=year"');
+ expect(html).toContain('href="/profile/payment-methods?plan=teacher_pro&amp;interval=year"');
 });

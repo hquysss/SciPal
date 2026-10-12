@@ -158,41 +158,45 @@ export function PricingPage({ plans, checkoutOpen, payosCheckoutOpen = checkoutO
 
           const body = (
             <>
-              <h2 id={`plan-${plan.code}`} className={shared.planName}>
-                {paid && <Sparkles aria-hidden="true" size={20} className={shared.spark} />}
-                {t(plan.name)}
-              </h2>
-              <p className={s.description}>{t(plan.description)}</p>
-              <p className={shared.price} key={`${audience}-${interval}`}>
-                <span className={`${shared.amount} ${paid ? shared.amountPaid : ''}`}>{formatVnd(price?.amountVnd ?? 0)}</span>
-                <span className={shared.per}>
-                  {paid ? `/ ${t(INTERVAL_NOUN[interval])}` : t({ en: 'forever', vi: 'mãi mãi' })}
-                </span>
-              </p>
-              {paid && interval !== 'month' && (
-                <p className={shared.note}>
-                  {t({ en: `Paid up front for ${INTERVAL_SPAN[interval].en}`, vi: `trả trước ${INTERVAL_SPAN[interval].vi}` })}
-                  {paidMonths !== null && paidMonths < INTERVAL_MONTHS[interval] && ` · ${t({ en: `the price of ${paidMonths} months`, vi: `bằng giá ${paidMonths} tháng` })}`}
+              <div className={shared.ticketMain}>
+                <h2 id={`plan-${plan.code}`} className={shared.planName}>
+                  {paid && <Sparkles aria-hidden="true" size={20} className={shared.spark} />}
+                  {t(plan.name)}
+                </h2>
+                <p className={s.description}>{t(plan.description)}</p>
+                <ul className={shared.limits}>
+                  {plan.limits.map((limit) => (
+                    <li key={limit.metric}>
+                      <Check aria-hidden="true" size={16} />
+                      <span>{limitText(limit, t)}</span>
+                    </li>
+                  ))}
+                  {(plan.perks ?? []).map((p, index) => (
+                    <li key={`perk-${index}`}>
+                      <Check aria-hidden="true" size={16} />
+                      <span>{t(p)}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+              <div className={shared.ticketStub}>
+                <p className={shared.price} key={`${audience}-${interval}`}>
+                  <span className={`${shared.amount} ${paid ? shared.amountPaid : ''}`}>{formatVnd(price?.amountVnd ?? 0)}</span>
+                  <span className={shared.per}>
+                    {paid ? `/ ${t(INTERVAL_NOUN[interval])}` : t({ en: 'forever', vi: 'mãi mãi' })}
+                  </span>
                 </p>
-              )}
-              {paid && perDay > 0 && (
-                <p className={s.perDay}>{t({ en: `About ${formatVnd(perDay)} a day`, vi: `Chỉ khoảng ${formatVnd(perDay)} mỗi ngày` })}</p>
-              )}
-              <ul className={shared.limits}>
-                {plan.limits.map((limit) => (
-                  <li key={limit.metric}>
-                    <Check aria-hidden="true" size={16} />
-                    <span>{limitText(limit, t)}</span>
-                  </li>
-                ))}
-                {(plan.perks ?? []).map((p, index) => (
-                  <li key={`perk-${index}`}>
-                    <Check aria-hidden="true" size={16} />
-                    <span>{t(p)}</span>
-                  </li>
-                ))}
-              </ul>
-              <div className={s.actions}>{action(plan, paid, price)}</div>
+                {paid && interval !== 'month' && (
+                  <p className={shared.note}>
+                    {t({ en: `Paid up front for ${INTERVAL_SPAN[interval].en}`, vi: `trả trước ${INTERVAL_SPAN[interval].vi}` })}
+                    {paidMonths !== null && paidMonths < INTERVAL_MONTHS[interval] && ` · ${t({ en: `the price of ${paidMonths} months`, vi: `bằng giá ${paidMonths} tháng` })}`}
+                  </p>
+                )}
+                {paid && perDay > 0 && (
+                  <p className={s.perDay}>{t({ en: `About ${formatVnd(perDay)} a day`, vi: `Chỉ khoảng ${formatVnd(perDay)} mỗi ngày` })}</p>
+                )}
+                <div className={s.actions}>{action(plan, paid, price)}</div>
+              </div>
             </>
           );
 

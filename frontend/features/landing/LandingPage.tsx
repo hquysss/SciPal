@@ -26,6 +26,7 @@ import { IntroCurtain, introPlayed } from './IntroCurtain';
 import { SubjectSpotlight } from './SubjectSpotlight';
 import type { Catalog } from '@/features/billing/billingApi';
 import { ReportProblemButton } from '@/features/problemReports/ReportProblem';
+import feedbackStyles from '@/features/website-feedback/feedback.module.css';
 import styles from './landing.module.css';
 
 const CONTACT_FACEBOOK_URL = 'https://www.facebook.com/nguoivietchimtayto/';
@@ -436,15 +437,15 @@ export function LandingPage({ level, catalog, onChangeLevel, pricing = null, sho
 
           {/* ---------- reviews ---------- */}
           <section className={styles.reviews} id="danh-gia" aria-labelledby="reviews-title">
-            <div className={styles.sectionHeading} data-landing-reveal>
-              <div>
-                <h2 id="reviews-title" className={styles.sectionTitle} data-clip>
-                  <ClipLines lines={[t({ en: 'Rate SciPal', vi: 'Bạn chấm SciPal mấy sao?' })]} />
-                </h2>
+            <h2 id="reviews-title" className={styles.reviewsTitle} data-landing-reveal>
+              {t({ en: 'Rate SciPal', vi: 'Bạn chấm SciPal mấy sao?' })}
+            </h2>
+            <div className={styles.reviewsGrid} data-landing-reveal>
+              <div className={feedbackStyles.compactForm}>
+                <WebsiteFeedbackForm onSaved={() => setReviewsVersion((v) => v + 1)} />
               </div>
+              <WebsiteFeedbackBoard key={reviewsVersion} compact />
             </div>
-            <WebsiteFeedbackForm onSaved={() => setReviewsVersion((v) => v + 1)} />
-            <WebsiteFeedbackBoard key={reviewsVersion} />
           </section>
         </main>
 

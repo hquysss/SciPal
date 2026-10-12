@@ -7,8 +7,25 @@ import { FeedbackStar } from './FeedbackStar';
 import styles from './feedback.module.css';
 const EASE = { easy: { vi: 'Dễ dùng', en: 'Easy to use' }, okay: { vi: 'Khá ổn', en: 'Mostly fine' }, hard: { vi: 'Còn khó dùng', en: 'Hard to use' } } as const;
 const DATES = { vi: new Intl.DateTimeFormat('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' }), en: new Intl.DateTimeFormat('en-GB', { timeZone: 'Asia/Ho_Chi_Minh' }) };
-export function FeedbackReviews({ data, identities = false, onPage }: { data: WebsiteFeedbackPage | PrivateWebsiteFeedbackPage; identities?: boolean; onPage: (page: number) => void }) {
+export function FeedbackReviews({ data, identities = false, compact = false, onPage }: { data: WebsiteFeedbackPage | PrivateWebsiteFeedbackPage; identities?: boolean; compact?: boolean; onPage: (page: number) => void }) {
   const { lang, t } = useLanguage();
+  if (compact) {
+    // The landing page shows the average and the latest few comments; the full table lives on /feedback.
+    const latest = [...data.reviews.filter(r => r.feedback), ...data.reviews.filter(r => !r.feedback)].slice(0, 3);
+    return <div className={styles.compactReviews}>
+      <p className={styles.compactAverage} aria-label={t({ vi: 'Điểm đánh giá trung bình', en: 'Average website rating' })}>
+        <strong>{data.average === null ? '—' : data.average.toLocaleString(lang === 'vi' ? 'vi-VN' : 'en-GB', { minimumFractionDigits: 1, maximumFractionDigits: 1 })}</strong><span>/ 5</span>
+        <span className={styles.compactStar}><FeedbackStar dim={data.total === 0} /></span>
+        <small>{data.total === 0 ? t({ vi: 'Chưa có đánh giá', en: 'No reviews yet' }) : t({ vi: `${data.total.toLocaleString('vi-VN')} đánh giá`, en: `${data.total.toLocaleString('en-GB')} reviews` })}</small>
+      </p>
+      {latest.length > 0 && <ul className={styles.compactList}>{latest.map(review => <li key={review.id}>
+        <span className={styles.rowStars} role="img" aria-label={t({ vi: `${review.rating} trên 5 sao`, en: `${review.rating} out of 5 stars` })}>{[1, 2, 3, 4, 5].map(s => <span key={s}><FeedbackStar dim={s > review.rating} /></span>)}</span>
+        <p>{review.feedback || t(EASE[review.usability])}</p>
+        <small>{DATES[lang].format(new Date(review.created_at))}</small>
+      </li>)}</ul>}
+      <a href="/feedback#reviews" className={styles.compactMore}>{t({ vi: 'Xem tất cả đánh giá', en: 'See all reviews' })} →</a>
+    </div>;
+  }
   const pages = Math.max(1, Math.ceil(data.total / data.page_size));
   return <div className={styles.reviewLayout}>
     <section className={styles.summary} aria-label={t({ vi: 'Điểm đánh giá trung bình', en: 'Average website rating' })}>
