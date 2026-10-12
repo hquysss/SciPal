@@ -60,9 +60,9 @@ export function getAvatarUrl(user: AuthUser | null): string | null {
   return typeof url === 'string' && url.startsWith('https://') ? url : null;
 }
 
-/** "Giáo sư Quý" in the main links, for everyone: a visitor gets a trial question, then signs in. */
+/** "Giáo sư AI" in the main links, for everyone: a visitor gets a trial question, then signs in. */
 export function tutorLink(lang: 'en' | 'vi') {
-  return { href: '/tutor', label: lang === 'en' ? 'Professor' : 'Giáo sư' };
+  return { href: '/tutor', label: lang === 'en' ? 'AI Professor' : 'Giáo sư AI' };
 }
 
 /** Pricing sits right after Home, for everyone (admins keep it to check the page). */
@@ -92,7 +92,7 @@ export function primaryLinks(lang: 'en' | 'vi', signedIn: boolean, place: 'deskt
     ...(signedIn
       ? [
           { href: '/progress', label: label('Progress', 'Tiến trình') },
-          { href: '/games', label: label('Games', 'Game') },
+          { href: '/games', label: label('Gamification', 'Gamification') },
           ...(isStudent ? [{ href: '/classes', label: label('My classes', 'Lớp của em') }] : []),
           ...(place === 'mobile' ? [{ href: '/community', label: communityLabel(lang, pendingFriends) }, { href: '/profile', label: label('Profile', 'Hồ sơ') }] : []),
         ]

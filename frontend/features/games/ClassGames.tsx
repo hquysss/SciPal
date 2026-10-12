@@ -38,7 +38,7 @@ export function ClassGames({ classId }: { classId: string }) {
   return (
     <section className="flex flex-col gap-3" aria-labelledby="games-heading">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <h2 id="games-heading" className="text-base font-semibold text-ink">{t({ en: 'Games', vi: 'Game' })}</h2>
+        <h2 id="games-heading" className="text-base font-semibold text-ink">{t({ en: 'Gamification', vi: 'Gamification' })}</h2>
         <Button type="button" onClick={() => setOpen(true)}>{t({ en: 'New game', vi: 'Tạo game' })}</Button>
       </div>
       {error && <Alert tone="danger">{t(error)}</Alert>}

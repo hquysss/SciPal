@@ -60,7 +60,7 @@ export default function PrivacyPage() {
           items={[
             { vi: 'Tài khoản: email, họ tên, mật khẩu (được mã hóa, SciPal không đọc được). Khi đăng nhập bằng Google: email, tên và ảnh đại diện mà Google chia sẻ.', en: 'Account: email, name, password (hashed; SciPal cannot read it). With Google sign-in: the email, name and profile picture Google shares.' },
             { vi: 'Việc học: cấp học đã chọn, tiến trình bài học, điểm và bài làm khi thi thử, lớp học tham gia.', en: 'Learning: chosen school level, lesson progress, exam answers and scores, classes joined.' },
-            { vi: 'Giáo sư Quý: câu hỏi và câu trả lời trong các cuộc trò chuyện của tài khoản, để bạn xem lại. Câu hỏi thử của khách chưa đăng nhập không được lưu.', en: 'Professor Quys: questions and answers in your account’s conversations, so you can come back to them. A visitor’s trial question is not stored.' },
+            { vi: 'Giáo sư AI: câu hỏi và câu trả lời trong các cuộc trò chuyện của tài khoản, để bạn xem lại. Câu hỏi thử của khách chưa đăng nhập không được lưu.', en: 'AI Professor: questions and answers in your account’s conversations, so you can come back to them. A visitor’s trial question is not stored.' },
             { vi: 'Thanh toán: mã đơn, gói, số tiền và trạng thái giao dịch. SciPal không nhận và không lưu số thẻ hay thông tin ngân hàng.', en: 'Payments: order code, plan, amount and status. SciPal never receives or stores card or bank details.' },
             { vi: 'Đăng ký nhận tin: email, các cấp học bạn quan tâm và trạng thái xác nhận. SciPal chỉ gửi email tin tức tới người đã bấm xác nhận, mỗi email có liên kết hủy đăng ký.', en: 'Newsletter: your e-mail, the school levels you follow and whether you confirmed. SciPal sends news e-mail only to people who confirmed, and every e-mail has an unsubscribe link.' },
             { vi: 'Khách dùng thử: một mã băm (HMAC) của địa chỉ IP để đếm lượt thử. SciPal không lưu địa chỉ IP gốc.', en: 'Trial visitors: a keyed hash (HMAC) of the IP address to count trials. SciPal does not store the IP address itself.' },
@@ -73,7 +73,7 @@ export default function PrivacyPage() {
           items={[
             { vi: 'Cho bạn đăng nhập, lưu tiến trình và hiện đúng bài học, lớp học của bạn.', en: 'To sign you in, keep your progress and show your lessons and classes.' },
             { vi: 'Chấm bài thi, tính điểm kinh nghiệm và hạn mức của gói.', en: 'To grade exams and count XP and plan limits.' },
-            { vi: 'Trả lời câu hỏi cho Giáo sư Quý.', en: 'To answer your Professor Quys questions.' },
+            { vi: 'Trả lời câu hỏi cho Giáo sư AI.', en: 'To answer your AI Professor questions.' },
             { vi: 'Gửi thông báo trong app và, nếu bạn đã đăng ký nhận tin, email về bài học và cấp học mới.', en: 'To send in-app notices and, if you signed up for the newsletter, e-mail about new lessons and levels.' },
             { vi: 'Xử lý thanh toán và hỗ trợ khi có sự cố.', en: 'To process payments and help when something goes wrong.' },
           ]}
@@ -88,7 +88,7 @@ export default function PrivacyPage() {
           items={[
             { vi: 'Supabase: cơ sở dữ liệu và đăng nhập.', en: 'Supabase: database and sign-in.' },
             { vi: 'Vercel: máy chủ chạy website và API.', en: 'Vercel: hosting for the website and API.' },
-            { vi: 'Google Gemini và OpenAI: tạo câu trả lời của Giáo sư Quý và hỗ trợ soạn bài. Chỉ nội dung câu hỏi và ngữ cảnh bài học được gửi đi, không kèm email hay tên của bạn.', en: 'Google Gemini and OpenAI: generate Professor Quys answers and help write lessons. Only the question and lesson context are sent, not your email or name.' },
+            { vi: 'Google Gemini và OpenAI: tạo câu trả lời của Giáo sư AI và hỗ trợ soạn bài. Chỉ nội dung câu hỏi và ngữ cảnh bài học được gửi đi, không kèm email hay tên của bạn.', en: 'Google Gemini and OpenAI: generate AI Professor answers and help write lessons. Only the question and lesson context are sent, not your email or name.' },
             { vi: 'payOS: xử lý thanh toán chuyển khoản/QR.', en: 'payOS: processes bank transfer / QR payments.' },
             { vi: 'Resend: gửi email xác nhận, thông báo và tin tức.', en: 'Resend: sends confirmation, notification and news e-mail.' },
             { vi: 'Google: chỉ khi bạn chọn đăng nhập bằng Google.', en: 'Google: only if you choose to sign in with Google.' },

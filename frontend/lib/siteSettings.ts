@@ -39,7 +39,7 @@ export const FEATURE_LABEL: Record<SiteFeature, { vi: string; en: string }> = {
   exam: { vi: 'Thi thử', en: 'Exams' },
   pricing: { vi: 'Bảng giá và thanh toán', en: 'Pricing and payments' },
   classes: { vi: 'Lớp học', en: 'Classes' },
-  tutor: { vi: 'Giáo sư Quý', en: 'Professor Quys' },
+  tutor: { vi: 'Giáo sư AI', en: 'AI Professor' },
   guest_trial: { vi: 'Dùng thử cho khách', en: 'Guest trials' },
 };
 

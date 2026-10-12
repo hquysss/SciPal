@@ -26,7 +26,7 @@ describe('LessonCompletionBar', () => {
 describe('TutorWidget', () => {
   it('mounts one widget with an English accessible label and tokens only', () => {
     const html = renderToStaticMarkup(<TutorProvider><TutorWidget /></TutorProvider>);
-    expect(html).toContain('aria-label="Open Professor Quys"');
+    expect(html).toContain('aria-label="Open the AI Professor"');
     expect(countRawColors(html).total).toBe(0);
     expect(html).not.toContain('var(--accent');
   });

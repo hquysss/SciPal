@@ -77,9 +77,9 @@ describe('role menus', () => {
 });
 
 describe('tutorLink', () => {
-  it('shows "Giáo sư" to everyone: visitors get a trial question', () => {
-    expect(tutorLink('vi')).toEqual({ href: '/tutor', label: 'Giáo sư' });
-    expect(tutorLink('en')).toEqual({ href: '/tutor', label: 'Professor' });
+  it('shows "Giáo sư AI" to everyone: visitors get a trial question', () => {
+    expect(tutorLink('vi')).toEqual({ href: '/tutor', label: 'Giáo sư AI' });
+    expect(tutorLink('en')).toEqual({ href: '/tutor', label: 'AI Professor' });
   });
 });
 

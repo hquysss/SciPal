@@ -39,7 +39,7 @@ export function AiTutorPanel({ id, visible = true, lessonId, lessonTitle, sugges
   const conversationId = session?.chat.conversationId ?? localConversationId;
   const fullPage = conversationId ? `/tutor?conversation=${conversationId}` : lessonId ? `/tutor?lesson=${lessonId}` : '/tutor';
   const questions = suggestions ?? (lessonTitle ? lessonQuestions(lessonTitle) : undefined);
-  const expandLabel = t({ en: 'Open on the Professor page', vi: 'Mở ở trang Giáo sư Quý' });
+  const expandLabel = t({ en: 'Open on the Professor page', vi: 'Mở ở trang Giáo sư AI' });
   useEffect(() => {
     if (!visible) return;
     const frame = requestAnimationFrame(() => (panel.current?.querySelector<HTMLElement>('textarea') ?? panel.current?.querySelector<HTMLElement>('button'))?.focus());
@@ -50,11 +50,11 @@ export function AiTutorPanel({ id, visible = true, lessonId, lessonTitle, sugges
     return () => { cancelAnimationFrame(frame); document.removeEventListener('keydown', escape); };
   }, [visible, onClose, signedIn]);
 
-  return <div ref={panel} id={id} data-visible={visible || undefined} inert={!visible} aria-hidden={!visible} role="dialog" aria-label={t({ en: 'Professor Quys', vi: 'Giáo sư Quý' })} className={styles.panel}>
+  return <div ref={panel} id={id} data-visible={visible || undefined} inert={!visible} aria-hidden={!visible} role="dialog" aria-label={t({ en: 'AI Professor', vi: 'Giáo sư AI' })} className={styles.panel}>
     <div className={styles.panelHeader} {...drag.handlers}>
       <TutorAvatarOnline size="2.5rem" />
       <div className="min-w-0 flex-1">
-        <p className="text-sm font-bold leading-tight text-ink">{t({ en: 'Professor Quys', vi: 'Giáo sư Quý' })}</p>
+        <p className="text-sm font-bold leading-tight text-ink">{t({ en: 'AI Professor', vi: 'Giáo sư AI' })}</p>
         <p className="truncate text-xs text-ink-muted">{session?.chat.streaming ? t({ en: 'Thinking…', vi: 'Thầy đang nghĩ…' }) : t({ en: 'Hints one step at a time', vi: 'Thầy gợi ý từng bước' })}</p>
         {lessonTitle && <p className="truncate text-xs font-semibold text-action">{t(lessonTitle)}</p>}
       </div>

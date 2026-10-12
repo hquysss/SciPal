@@ -39,7 +39,7 @@ describe('LandingPage', () => {
     const h1 = html.match(/<h1[\s\S]*?<\/h1>/)?.[0] ?? '';
     expect(h1).toContain(first);
     expect(h1).toContain(second);
-    expect(html).toContain('Học song ngữ Việt–Anh, để tiếng Anh trở thành ngôn ngữ thứ hai của bạn.');
+    expect(html).toContain('Học song ngữ Việt–Anh, hướng đến việc tiếng Anh trở thành ngôn ngữ thứ hai của bạn.');
     expect(html).toContain('Xem môn học');
     expect(html).toMatch(/<a[^>]*href="\/\?chooseLevel=1"[^>]*>[\s\S]*?Đổi cấp/);
     expect(html).toContain(`data-hero-stage="${level}"`);
@@ -64,7 +64,7 @@ describe('LandingPage', () => {
     const html = render('upper_secondary');
     const cta = html.match(/<section[^>]*aria-labelledby="start-title"[\s\S]*?<\/section>\s*<section[^>]*id="danh-gia"/)?.[0] ?? '';
     expect(cta).toContain('Mọi bài học đều miễn phí');
-    expect(cta).toMatch(/<a[^>]*href="\/tutor"[^>]*>[\s\S]*?Hỏi Giáo sư Quý/);
+    expect(cta).toMatch(/<a[^>]*href="\/tutor"[^>]*>[\s\S]*?Hỏi Giáo sư AI/);
     expect(cta).toContain('data-poll');
     expect(cta).toContain('data-cta-float');
   });
@@ -86,7 +86,7 @@ describe('LandingPage', () => {
     const html = render('upper_secondary');
     expect(html).toContain('Understand each lesson.');
     expect(html).toContain('Move forward step by step.');
-    expect(html).toContain('Learn in Vietnamese and English, so English becomes your second language.');
+    expect(html).toContain('Learn in Vietnamese and English, working towards English as your second language.');
     lang = 'vi';
   });
 

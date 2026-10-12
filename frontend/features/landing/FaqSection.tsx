@@ -10,8 +10,8 @@ export const FAQ: Array<{ q: Copy; a: Copy }> = [
   {
     q: { vi: 'Học trên SciPal có mất phí không?', en: 'Does learning on SciPal cost anything?' },
     a: {
-      vi: 'Mọi bài học đều miễn phí. Gói trả phí chỉ thêm lượt hỏi Giáo sư Quý, chấm đề thi thử và công cụ cho giáo viên.',
-      en: 'Every lesson is free. A paid plan only adds Professor Quys questions, graded practice exams and teacher tools.',
+      vi: 'Mọi bài học đều miễn phí. Gói trả phí chỉ thêm lượt hỏi Giáo sư AI, chấm đề thi thử và công cụ cho giáo viên.',
+      en: 'Every lesson is free. A paid plan only adds AI Professor questions, graded practice exams and teacher tools.',
     },
   },
   {
@@ -36,10 +36,10 @@ export const FAQ: Array<{ q: Copy; a: Copy }> = [
     },
   },
   {
-    q: { vi: 'Giáo sư Quý trả lời như thế nào?', en: 'How does Professor Quys answer?' },
+    q: { vi: 'Giáo sư AI trả lời như thế nào?', en: 'How does the AI Professor answer?' },
     a: {
-      vi: 'Giáo sư Quý gợi ý từng bước để bạn tự tìm ra lời giải, thay vì đưa đáp án ngay. Số lượt hỏi phụ thuộc vào gói của bạn.',
-      en: 'Professor Quys gives step-by-step hints so you work out the answer yourself instead of handing it over. How many questions you can ask depends on your plan.',
+      vi: 'Giáo sư AI gợi ý từng bước để bạn tự tìm ra lời giải, thay vì đưa đáp án ngay. Số lượt hỏi phụ thuộc vào gói của bạn.',
+      en: 'AI Professor gives step-by-step hints so you work out the answer yourself instead of handing it over. How many questions you can ask depends on your plan.',
     },
   },
   {

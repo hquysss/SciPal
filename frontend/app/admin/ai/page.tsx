@@ -25,8 +25,8 @@ export default async function AdminAiPage({ searchParams }: { searchParams: Prom
         </h1>
         <p className="mt-2 text-base text-ink-muted">
           <Bi
-            en="Professor Quys and automatic translation: service, model, daily limits, and what students asked. API keys stay in the backend environment."
-            vi="Giáo sư Quý và dịch tự động: dịch vụ, model, giới hạn mỗi ngày, và nội dung học sinh đã hỏi. API key chỉ nằm trong biến môi trường của backend."
+            en="AI Professor and automatic translation: service, model, daily limits, and what students asked. API keys stay in the backend environment."
+            vi="Giáo sư AI và dịch tự động: dịch vụ, model, giới hạn mỗi ngày, và nội dung học sinh đã hỏi. API key chỉ nằm trong biến môi trường của backend."
           />
         </p>
       </header>

@@ -60,7 +60,7 @@ const formOf = (s: AiSettingsSnapshot): Form => ({
   voiceEnabled: s.effective.voiceEnabled ?? true,
 });
 
-/** The admin's Professor Quys settings. API keys are never entered here: only whether each is set. */
+/** The admin's AI Professor settings. API keys are never entered here: only whether each is set. */
 export function AiSettingsForm({ initial }: { initial?: AiSettingsSnapshot }) {
   const { t } = useLanguage();
   const ids = useId();
@@ -217,8 +217,8 @@ export function AiSettingsForm({ initial }: { initial?: AiSettingsSnapshot }) {
 
         <label className="flex min-h-11 cursor-pointer items-center gap-3">
           <input type="checkbox" checked={form.enabled} onChange={(e) => setForm({ ...form, enabled: e.target.checked })} className="h-5 w-5 accent-[var(--action)]" />
-          <span className="text-base text-ink">{t({ en: 'Professor on for students', vi: 'Bật Giáo sư Quý cho học sinh' })}</span>
-          {!form.enabled && <span className="text-sm text-ink-muted">{t({ en: '— students see “taking a break”', vi: '— học sinh thấy “Giáo sư Quý đang tạm nghỉ”' })}</span>}
+          <span className="text-base text-ink">{t({ en: 'Professor on for students', vi: 'Bật Giáo sư AI cho học sinh' })}</span>
+          {!form.enabled && <span className="text-sm text-ink-muted">{t({ en: '— students see “taking a break”', vi: '— học sinh thấy “Giáo sư AI đang tạm nghỉ”' })}</span>}
         </label>
 
         <fieldset className="flex flex-col gap-2">
@@ -240,7 +240,7 @@ export function AiSettingsForm({ initial }: { initial?: AiSettingsSnapshot }) {
           <p className="text-xs text-ink-muted">
             {t({
               en: 'Applies to the Professor’s chat, translation and lesson AI, with Gemini and with OpenAI reasoning models (gpt-5, gpt-6, o3, o4-mini…). Voice chat is not affected.',
-              vi: 'Áp dụng cho chat của Giáo sư Quý, dịch và AI soạn bài, với Gemini và với model suy luận của OpenAI (gpt-5, gpt-6, o3, o4-mini…). Không ảnh hưởng nói chuyện bằng giọng nói.',
+              vi: 'Áp dụng cho chat của Giáo sư AI, dịch và AI soạn bài, với Gemini và với model suy luận của OpenAI (gpt-5, gpt-6, o3, o4-mini…). Không ảnh hưởng nói chuyện bằng giọng nói.',
             })}
           </p>
           {thinkingIgnored && (
@@ -318,7 +318,7 @@ export function AiSettingsForm({ initial }: { initial?: AiSettingsSnapshot }) {
           <p className="text-sm text-ink-muted">
             {t({
               en: 'Fills empty English when a lesson or question is saved. Uses the same service and model as the Professor.',
-              vi: 'Điền phần tiếng Anh còn trống khi lưu bài hoặc câu hỏi. Dùng cùng dịch vụ và model với Giáo sư Quý.',
+              vi: 'Điền phần tiếng Anh còn trống khi lưu bài hoặc câu hỏi. Dùng cùng dịch vụ và model với Giáo sư AI.',
             })}
           </p>
           <label className="flex min-h-11 cursor-pointer items-center gap-3">

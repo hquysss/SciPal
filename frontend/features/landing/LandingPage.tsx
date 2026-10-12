@@ -309,8 +309,8 @@ export function LandingPage({ level, catalog, onChangeLevel, pricing = null, sho
               <div className={styles.heroCopy}>
                 <p className={styles.heroSubline}>
                   {t({
-                    en: 'Learn in Vietnamese and English, so English becomes your second language.',
-                    vi: 'Học song ngữ Việt–Anh, để tiếng Anh trở thành ngôn ngữ thứ hai của bạn.',
+                    en: 'Learn in Vietnamese and English, working towards English as your second language.',
+                    vi: 'Học song ngữ Việt–Anh, hướng đến việc tiếng Anh trở thành ngôn ngữ thứ hai của bạn.',
                   })}
                 </p>
                 <div className={styles.heroActions}>
@@ -410,8 +410,8 @@ export function LandingPage({ level, catalog, onChangeLevel, pricing = null, sho
                 <h2 id="start-title" className={styles.finalTitle}>{t({ en: 'Ready?', vi: 'Sẵn sàng chưa?' })}</h2>
                 <p className={styles.finalLead}>
                   {t({
-                    en: 'Every lesson is free; a paid plan only adds Professor Quys questions, graded exams and teacher tools.',
-                    vi: 'Mọi bài học đều miễn phí; gói trả phí chỉ thêm lượt hỏi Giáo sư Quý, chấm đề và công cụ cho giáo viên.',
+                    en: 'Every lesson is free; a paid plan only adds AI Professor questions, graded exams and teacher tools.',
+                    vi: 'Mọi bài học đều miễn phí; gói trả phí chỉ thêm lượt hỏi Giáo sư AI, chấm đề và công cụ cho giáo viên.',
                   })}
                 </p>
               </div>
@@ -422,7 +422,7 @@ export function LandingPage({ level, catalog, onChangeLevel, pricing = null, sho
                 </Link>
                 <Link href="/tutor" className={styles.pillGhost}>
                   <Sparkles size={16} aria-hidden="true" />
-                  {t({ en: 'Ask Professor Quys', vi: 'Hỏi Giáo sư Quý' })}
+                  {t({ en: 'Ask the AI Professor', vi: 'Hỏi Giáo sư AI' })}
                 </Link>
               </div>
             </div>
@@ -452,14 +452,14 @@ export function LandingPage({ level, catalog, onChangeLevel, pricing = null, sho
                 <Image src="/logo.svg" width={32} height={32} alt="" aria-hidden="true" />
                 <strong>SciPal</strong>
               </Link>
-              <p>{t({ en: 'Learn in Vietnamese and English, so English becomes your second language.', vi: 'Học song ngữ Việt–Anh, để tiếng Anh trở thành ngôn ngữ thứ hai của bạn.' })}</p>
+              <p>{t({ en: 'Learn in Vietnamese and English, working towards English as your second language.', vi: 'Học song ngữ Việt–Anh, hướng đến việc tiếng Anh trở thành ngôn ngữ thứ hai của bạn.' })}</p>
             </div>
             <nav className={styles.footerCol} aria-label={t({ en: 'Learn', vi: 'Học tập' })}>
               <h3>{t({ en: 'Learn', vi: 'Học tập' })}</h3>
               <ul>
                 <li><Link href="/subjects">{t({ en: 'Subjects', vi: 'Môn học' })}</Link></li>
                 <li><Link href="/glossary">{t({ en: 'Glossary', vi: 'Từ điển thuật ngữ' })}</Link></li>
-                <li><Link href="/tutor">{t({ en: 'Professor Quys', vi: 'Giáo sư Quý' })}</Link></li>
+                <li><Link href="/tutor">{t({ en: 'AI Professor', vi: 'Giáo sư AI' })}</Link></li>
                 <li><Link href="/progress">{t({ en: 'My progress', vi: 'Tiến độ của tôi' })}</Link></li>
                 <li><Link href="/classes">{t({ en: 'Classes', vi: 'Lớp học' })}</Link></li>
               </ul>

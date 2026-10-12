@@ -48,7 +48,7 @@ export const STUDENT_GUIDES = [
   },
   {
     id: 'professor', audience: 'student', category: 'learn',
-    title: { en: 'Ask Professor Quys', vi: 'Hỏi Giáo sư Quý' },
+    title: { en: 'Ask the AI Professor', vi: 'Hỏi Giáo sư AI' },
     description: { en: 'Get a hint when a lesson or question has you stuck.', vi: 'Nhận gợi ý khi bạn chưa hiểu bài hoặc câu hỏi.' },
     visualSteps: [
       { en: 'Ask', vi: 'Hỏi' }, { en: 'Get a hint', vi: 'Nhận gợi ý' }, { en: 'Continue', vi: 'Học tiếp' },
@@ -59,7 +59,7 @@ export const STUDENT_GUIDES = [
       { en: 'Use the hints one step at a time, then ask about any step that remains unclear.', vi: 'Làm theo từng gợi ý rồi hỏi tiếp về bước bạn chưa rõ.' },
     ],
     note: { en: 'The Professor needs an internet connection. The tokens you can use depend on your plan.', vi: 'Giáo sư cần kết nối mạng. Số token có thể dùng phụ thuộc vào gói của bạn.' },
-    href: '/tutor', action: { en: 'Ask the Professor', vi: 'Mở Giáo sư Quý' },
+    href: '/tutor', action: { en: 'Ask the Professor', vi: 'Mở Giáo sư AI' },
   },
   {
     id: 'lab', audience: 'student', category: 'learn',
@@ -113,7 +113,7 @@ export const STUDENT_GUIDES = [
       { en: 'Choose', vi: 'Chọn game' }, { en: 'Play', vi: 'Chơi' }, { en: 'Review', vi: 'Xem điểm' },
     ],
     steps: [
-      { en: 'Open Games for public games, or open Classes to find a game assigned to your class.', vi: 'Mở Game để xem trò chơi công khai hoặc vào Lớp của em để tìm game được giao.' },
+      { en: 'Open Gamification for public games, or open Classes to find a game assigned to your class.', vi: 'Mở Gamification để xem trò chơi công khai hoặc vào Lớp của em để tìm game được giao.' },
       { en: 'Read the game instructions, then answer the quiz, match the terms or open Wordwall.', vi: 'Đọc hướng dẫn rồi làm câu đố, ghép thuật ngữ hoặc mở Wordwall.' },
       { en: 'Return to the game or class to review the recorded result. Wordwall records that you played, not an external score.', vi: 'Quay lại game hoặc lớp để xem kết quả đã ghi nhận. Wordwall chỉ ghi nhận lượt chơi, không lấy điểm từ trang ngoài.' },
     ],

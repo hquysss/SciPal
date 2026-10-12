@@ -7,12 +7,12 @@ type Bilingual = { vi: string; en: string };
 export type QuotaRow = { metric: QuotaMetric; mode: 'plan' | 'custom'; limit: string; expires: string };
 
 const METRIC_NAME: Record<QuotaMetric, Bilingual> = {
-  tutor_tokens: { vi: 'Token Giáo sư Quý', en: 'Professor tokens' },
+  tutor_tokens: { vi: 'Token Giáo sư AI', en: 'Professor tokens' },
   tutor_requests: { vi: 'Lượt Tutor', en: 'Tutor requests' },
   graded_exam_attempts: { vi: 'Lượt thi chấm điểm', en: 'Graded exam attempts' },
   import_files: { vi: 'Tệp nhập', en: 'Imported files' },
   author_ai_requests: { vi: 'Lượt AI soạn bài', en: 'Authoring AI requests' },
-  voice_minutes: { vi: 'Phút nói chuyện với Giáo sư Quý', en: 'Voice minutes with the Professor' },
+  voice_minutes: { vi: 'Phút nói chuyện với Giáo sư AI', en: 'Voice minutes with the Professor' },
   active_classes: { vi: 'Lớp đang hoạt động', en: 'Active classes' },
   students_per_class: { vi: 'Học sinh mỗi lớp', en: 'Students per class' },
   active_authored_exams: { vi: 'Đề tự soạn đang hoạt động', en: 'Active authored exams' },
