@@ -26,6 +26,11 @@ describe('heart GLB', () => {
     for (const group of ['rightAtrium', 'rightVentricle', 'leftAtrium', 'leftVentricle', 'tricuspid', 'mitral', 'aorticValve', 'pulmonaryValve', 'aorta', 'pulmonaryTrunk', 'pulmonaryVeins', 'superiorVenaCava', 'inferiorVenaCava']) expect(groups).toContain(group);
   });
 
+  it('has every leaflet: three on the tricuspid valve, two on the mitral valve, three on each arterial valve', () => {
+    const count = (group: string) => model.nodes.filter((node) => node.extras.group === group).length;
+    expect([count('tricuspid'), count('mitral'), count('aorticValve'), count('pulmonaryValve')]).toEqual([3, 2, 3, 3]);
+  });
+
   it('lists a place for every part of the file, and nothing else', () => {
     expect(Object.keys(HEART_PART_PLACES).sort()).toEqual(model.nodes.map((node) => node.name).sort());
   });

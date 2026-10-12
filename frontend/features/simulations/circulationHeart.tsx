@@ -19,8 +19,19 @@ export type HeartLayer = 'flow' | 'conduction';
 type Clock = { readonly time: RefObject<number>; readonly heartRate: number };
 
 const decoder = new DRACOLoader().setDecoderPath('/models/draco/').setWorkerLimit(2);
-/** Two long vessels run far below the heart; they are cut here. */
-const CLIP = [new THREE.Plane(new THREE.Vector3(0, 1, 0), 3)];
+/** The descending aorta and the inferior vena cava run far below the heart; they fade out here. */
+const FADE = { low: -3.4, high: -1.9 };
+const NL = String.fromCharCode(10);
+function fadeBelow(material: THREE.Material): void {
+  material.onBeforeCompile = (shader) => {
+    shader.vertexShader = shader.vertexShader
+      .replace('#include <common>', ['#include <common>', 'varying float vBelow;'].join(NL))
+      .replace('#include <begin_vertex>', ['#include <begin_vertex>', 'vec4 belowPoint = vec4(transformed, 1.0);', '#ifdef USE_INSTANCING', 'belowPoint = instanceMatrix * belowPoint;', '#endif', 'vBelow = (modelMatrix * belowPoint).y;'].join(NL));
+    shader.fragmentShader = shader.fragmentShader
+      .replace('#include <common>', ['#include <common>', 'varying float vBelow;'].join(NL))
+      .replace('#include <dithering_fragment>', ['#include <dithering_fragment>', `gl_FragColor.a *= smoothstep(${FADE.low.toFixed(1)}, ${FADE.high.toFixed(1)}, vBelow);`].join(NL));
+  };
+}
 
 const part = (name: string) => HEART_PART_PLACES[`${name}.001`] ?? HEART_PART_PLACES[name]!;
 const middleOf = (group: HeartGroup): Point3 => {
@@ -28,7 +39,7 @@ const middleOf = (group: HeartGroup): Point3 => {
   return [0, 1, 2].map((axis) => list.reduce((sum, p) => sum + p.at[axis]!, 0) / list.length) as unknown as Point3;
 };
 const mix = (a: Point3, b: Point3, amount: number): Point3 => [a[0] + (b[0] - a[0]) * amount, a[1] + (b[1] - a[1]) * amount, a[2] + (b[2] - a[2]) * amount];
-const clipped = (p: Point3): Point3 => [p[0], Math.max(p[1], -2.95), p[2]];
+const clipped = (p: Point3): Point3 => [p[0], Math.max(p[1], FADE.low + 0.1), p[2]];
 
 const BLUE: ReadonlySet<HeartGroup> = new Set<HeartGroup>(['rightAtrium', 'rightVentricle', 'pulmonaryTrunk', 'superiorVenaCava', 'inferiorVenaCava']);
 const TRICUSPID = middleOf('tricuspid');
@@ -99,7 +110,8 @@ function Model({ palette, clock }: { readonly palette: HeartPalette; readonly cl
       } else if (group === 'coronary') {
         material = new THREE.MeshStandardMaterial({ color: palette.artery, roughness: 0.5, transparent: true, opacity: 0.5, depthWrite: false });
       } else {
-        material = new THREE.MeshStandardMaterial({ color: colour, roughness: 0.5, transparent: true, opacity: 0.62, depthWrite: false, side: THREE.DoubleSide, clippingPlanes: CLIP });
+        material = new THREE.MeshStandardMaterial({ color: colour, roughness: 0.5, transparent: true, opacity: 0.62, depthWrite: false, side: THREE.DoubleSide });
+        fadeBelow(material);
       }
       object.material = material;
       const valve = centres.get(group);
@@ -199,9 +211,11 @@ function Blood({ route, color, clock }: { readonly route: RouteSpec; readonly co
     });
     if (mesh.current) mesh.current.instanceMatrix.needsUpdate = true;
   });
+  const material = useMemo(() => { const m = new THREE.MeshStandardMaterial({ color, emissive: new THREE.Color(color), emissiveIntensity: 0.8, roughness: 0.4, transparent: true }); fadeBelow(m); return m; }, [color]);
+  useEffect(() => () => material.dispose(), [material]);
   return <instancedMesh ref={mesh} args={[undefined, undefined, COUNT]} frustumCulled={false} renderOrder={5}>
     <sphereGeometry args={[0.09, 12, 8]} />
-    <meshStandardMaterial color={color} emissive={color} emissiveIntensity={0.8} roughness={0.4} />
+    <primitive object={material} attach="material" />
   </instancedMesh>;
 }
 

@@ -12,16 +12,20 @@ import { CirculationBody, bodyPoint } from './circulationBody';
 import { CirculationHeart, CONDUCTION_LABELS, FLOW_LABELS, HEART_ANCHORS, type HeartLayer } from './circulationHeart';
 import { CIRCULATION_LANDMARKS } from './circulationLandmarks';
 import { VesselChart } from './VesselChart';
+import { CirculationTypes } from './CirculationTypes';
+import { CirculationRegulation } from './CirculationRegulation';
+import { DIAGRAMS, type CirculationType } from './circulationKinds';
+import type { RegulationRun, Situation } from './useRegulation';
 import { VESSELS, bloodSpeed, type VesselKey } from './engines/vessels';
 import { VESSEL_NAMES, VESSEL_NOTES } from './circulationVessels';
-import { BODY_NOTES, BODY_PARTS, HEART_NOTES, HEART_PARTS, type BodyPart, type HeartPart, type LoopFocus } from './circulationCopy';
+import { BODY_NOTES, BODY_PARTS, HEART_NOTES, HEART_PARTS, SITUATION_COPY, type BodyPart, type HeartPart, type LoopFocus } from './circulationCopy';
 import type { CirculationView } from './CirculationControls';
 import { pick, type Bilingual, type Lang } from './types';
 import overlay from './simOverlay.module.css';
 import styles from './circulation.module.css';
 
 const TOKENS = { background: '--circ-background', artery: '--circ-artery', vein: '--circ-vein', wall: '--circ-wall', muscle: '--circ-muscle', septum: '--circ-septum', valve: '--circ-valve', signal: '--circ-signal', white: '--circ-white' } as const;
-const HOMES = { body: { theta: -Math.PI / 2, phi: 0.05, dist: 10.6 }, heart: { theta: -Math.PI / 2, phi: 0.05, dist: 13 }, vessels: { theta: -Math.PI / 2, phi: 0.05, dist: 10.6 } } as const;
+const HOMES = { body: { theta: -Math.PI / 2, phi: 0.05, dist: 10.6 }, heart: { theta: -Math.PI / 2, phi: 0.05, dist: 13 }, vessels: { theta: -Math.PI / 2, phi: 0.05, dist: 10.6 }, types: { theta: -Math.PI / 2, phi: 0.05, dist: 10.6 }, regulation: { theta: -Math.PI / 2, phi: 0.05, dist: 10.6 } } as const;
 
 type Anchor = { readonly key: string; readonly text: Bilingual; readonly note: Bilingual; readonly point: Point3; readonly label: Point3 };
 const besideBody = (part: BodyPart, label: readonly [number, number]): Anchor => {
@@ -71,6 +75,9 @@ export type CirculationSceneProps = {
   readonly layer: HeartLayer;
   readonly vessel: VesselKey;
   readonly onVessel: (vessel: VesselKey) => void;
+  readonly type: CirculationType;
+  readonly situation: Situation;
+  readonly regulation: RegulationRun;
   readonly labels: boolean;
   readonly time: RefObject<number>;
   readonly running: boolean;
@@ -79,7 +86,7 @@ export type CirculationSceneProps = {
   readonly panel: ReactNode;
 };
 
-export function CirculationScene({ view, heartRate, focus, layer, vessel, onVessel, labels: showLabels, time, running, stamp, lang, panel }: CirculationSceneProps) {
+export function CirculationScene({ view, heartRate, focus, layer, vessel, onVessel, type, situation, regulation, labels: showLabels, time, running, stamp, lang, panel }: CirculationSceneProps) {
   const t = pick(lang);
   const { host, orbit, target, fieldOfView, invalidate, handlers, reset, zoom } = useReflexCamera(HOMES[view]);
   const panelHost = useRef<HTMLDivElement>(null);
@@ -90,17 +97,20 @@ export function CirculationScene({ view, heartRate, focus, layer, vessel, onVess
   const store = useRef(new Map<string, HTMLSpanElement>());
   const [selected, setSelected] = useState<Anchor | null>(null);
   useEffect(() => setSelected(null), [view]);
-  const anchors = useMemo(() => !showLabels ? [] : view === 'body' ? BODY_ANCHORS : (layer === 'flow' ? FLOW_LABELS : CONDUCTION_LABELS).map(heartAnchor), [showLabels, view, layer]);
+  const anchors = useMemo(() => !showLabels || view === 'vessels' || view === 'types' || view === 'regulation' ? [] : view === 'body' ? BODY_ANCHORS : (layer === 'flow' ? FLOW_LABELS : CONDUCTION_LABELS).map(heartAnchor), [showLabels, view, layer]);
   const points = useMemo(() => anchors.map((a): [string, THREE.Vector3] => [a.key, new THREE.Vector3(...a.label)]), [anchors]);
-  const chart = view === 'vessels';
+  const chart = view === 'vessels' || view === 'types' || view === 'regulation';
   const shownVessel = VESSELS.find((v) => v.key === vessel)!;
-  const card: { readonly title: Bilingual; readonly note: Bilingual; readonly readout?: string } | null = chart
-    ? { title: VESSEL_NAMES[vessel], note: VESSEL_NOTES[vessel], readout: `${shownVessel.systolic === shownVessel.diastolic ? shownVessel.systolic : `${shownVessel.systolic}/${shownVessel.diastolic}`} mmHg · ${new Intl.NumberFormat(lang, { maximumFractionDigits: 2 }).format(bloodSpeed(shownVessel, heartRate))} cm/s · ${new Intl.NumberFormat(lang, { maximumFractionDigits: 1 }).format(shownVessel.area)} cm²` }
+  const number = (value: number, digits: number) => new Intl.NumberFormat(lang, { maximumFractionDigits: digits }).format(value);
+  const card: { readonly title: Bilingual; readonly note: Bilingual; readonly readout?: string } | null = view === 'vessels'
+    ? { title: VESSEL_NAMES[vessel], note: VESSEL_NOTES[vessel], readout: `${shownVessel.systolic === shownVessel.diastolic ? shownVessel.systolic : `${shownVessel.systolic}/${shownVessel.diastolic}`} mmHg · ${number(bloodSpeed(shownVessel, heartRate), 2)} cm/s · ${number(shownVessel.area, 1)} cm²` }
+    : view === 'types' ? { title: DIAGRAMS[type].name, note: DIAGRAMS[type].route, readout: t(DIAGRAMS[type].pressure) }
+    : view === 'regulation' ? { title: SITUATION_COPY[situation].title, note: SITUATION_COPY[situation].note, readout: `${number(regulation.shown.pressure, 0)} mmHg · ${number(regulation.shown.heartRate, 0)} ${t({ vi: 'nhịp/phút', en: 'bpm' })}` }
     : selected ? { title: selected.text, note: selected.note } : null;
-  const title = view === 'vessels' ? { vi: '03 / Huyết áp và vận tốc máu', en: '03 / Blood pressure and speed' } : view === 'body' ? { vi: '01 / Hệ tuần hoàn kép', en: '01 / Double circulation' } : { vi: '02 / Tim và chu kì tim', en: '02 / Heart and cardiac cycle' };
+  const title = view === 'regulation' ? { vi: '05 / Điều hoà hoạt động tim mạch', en: '05 / Control of the heart and vessels' } : view === 'types' ? { vi: '04 / Các kiểu hệ tuần hoàn', en: '04 / Kinds of circulation' } : view === 'vessels' ? { vi: '03 / Huyết áp và vận tốc máu', en: '03 / Blood pressure and speed' } : view === 'body' ? { vi: '01 / Hệ tuần hoàn kép', en: '01 / Double circulation' } : { vi: '02 / Tim và chu kì tim', en: '02 / Heart and cardiac cycle' };
   return <div className={styles.frame} style={screen.expanded ? { height: screen.height } : undefined}>
     <div ref={host} {...handlers} className={styles.stage} data-fullscreen={screen.expanded} data-panel-layout={frame.mode} role={screen.expanded ? 'dialog' : 'group'} aria-modal={screen.expanded || undefined} tabIndex={0} aria-label={t({ vi: 'Mô hình 3D hệ tuần hoàn', en: '3D model of the circulatory system' })}>
-      {palette && !chart && <Canvas dpr={[1, 1.5]} frameloop={running ? 'always' : 'demand'} camera={{ fov: 42, near: 0.1, far: 80 }} gl={{ antialias: true, localClippingEnabled: true }}>
+      {palette && !chart && <Canvas dpr={[1, 1.5]} frameloop={running ? 'always' : 'demand'} camera={{ fov: 42, near: 0.1, far: 80 }} gl={{ antialias: true }}>
         <color attach="background" args={[palette.background]} />
         <ambientLight intensity={1.1} />
         <directionalLight position={[-3, 6, 8]} intensity={1.8} />
@@ -111,7 +121,11 @@ export function CirculationScene({ view, heartRate, focus, layer, vessel, onVess
         <Rig orbit={orbit} target={target} labels={store} points={points} onInvalidate={(fn) => { invalidate.current = fn; }} />
         <Refresh stamp={stamp} heartRate={heartRate} focus={focus} layer={layer} />
       </Canvas>}
-      {chart && <div className={styles.chart} style={{ right: frame.right + 16, bottom: frame.bottom + 160 }}><VesselChart lang={lang} time={stamp} heartRate={heartRate} selected={vessel} onSelect={onVessel} /></div>}
+      {chart && <div className={styles.chart} style={{ right: frame.right + 16, bottom: frame.bottom + 160 }}>
+        {view === 'vessels' ? <VesselChart lang={lang} time={stamp} heartRate={heartRate} selected={vessel} onSelect={onVessel} />
+          : view === 'types' ? <CirculationTypes lang={lang} type={type} heartRate={heartRate} time={time} running={running} stamp={stamp} />
+          : <CirculationRegulation lang={lang} regulation={regulation} time={time} running={running} />}
+      </div>}
       <div className={styles.toolbar} onPointerDown={(event) => event.stopPropagation()} onKeyDown={(event) => event.stopPropagation()}>
         <span className={styles.title}>{t(title)}</span>
         <div className={overlay.tools}>
@@ -139,9 +153,10 @@ export function CirculationScene({ view, heartRate, focus, layer, vessel, onVess
         <p className="mt-1 text-sm leading-relaxed text-ink-muted">{t(card.note)}</p>
       </div>}
       <div className={styles.legend} aria-hidden="true" style={{ bottom: frame.bottom + 12 }}>
-        <span><i style={{ background: 'var(--circ-artery)' }} />{t({ vi: 'Máu giàu O₂', en: 'O₂-rich blood' })}</span>
-        <span><i style={{ background: 'var(--circ-vein)' }} />{t({ vi: 'Máu giàu CO₂', en: 'CO₂-rich blood' })}</span>
+        {view !== 'regulation' && <><span><i style={{ background: 'var(--circ-artery)' }} />{t({ vi: 'Máu giàu O₂', en: 'O₂-rich blood' })}</span>
+        <span><i style={{ background: 'var(--circ-vein)' }} />{t({ vi: 'Máu giàu CO₂', en: 'CO₂-rich blood' })}</span></>}
         {view === 'vessels' && <span><i style={{ background: 'var(--circ-white)' }} />{t({ vi: 'Huyết áp lúc này', en: 'Pressure now' })}</span>}
+        {view === 'regulation' && <><span><i style={{ background: 'var(--circ-signal)' }} />{t({ vi: 'Xung thần kinh', en: 'Nerve impulses' })}</span><span><i style={{ background: 'var(--circ-wall)' }} />{t({ vi: 'Hormone theo máu', en: 'Hormones in the blood' })}</span></>}
         {view === 'body' && <span><i style={{ background: 'var(--circ-white)' }} />{t({ vi: 'Sóng mạch', en: 'Pulse wave' })}</span>}
         {view === 'heart' && layer === 'conduction' && <span><i style={{ background: 'var(--circ-signal)' }} />{t({ vi: 'Xung điện', en: 'Electrical impulse' })}</span>}
       </div>
