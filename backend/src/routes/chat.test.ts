@@ -164,3 +164,34 @@ describe('POST /api/chat/reports', () => {
     expect(once.calls.find((c) => c.op === 'insert')!.chain[0]).toEqual(['insert', [{ message_id: MSG, reporter_id: ME, reason: 'Spam' }]]);
   });
 });
+
+describe('GET /api/chat/blocks and DELETE /api/chat/blocks/:user_id', () => {
+  it('lists the people you blocked, with their names', async () => {
+    const db = fakeDb({
+      'chat_blocks.select': [{ data: [{ blocked_id: OTHER }] }],
+      'profiles.select': [{ data: [{ id: OTHER, display_name: 'An', avatar_url: null }] }],
+    });
+    const res = await build({ db }).inject({ method: 'GET', url: '/api/chat/blocks' });
+    expect(res.statusCode).toBe(200);
+    expect(res.json()).toEqual({ blocked: [{ user_id: OTHER, display_name: 'An', avatar_url: null }] });
+    expect(db.calls[0].chain).toContainEqual(['eq', ['blocker_id', ME]]);
+  });
+
+  it('returns an empty list without asking for profiles', async () => {
+    const db = fakeDb({ 'chat_blocks.select': [{ data: [] }] });
+    const res = await build({ db }).inject({ method: 'GET', url: '/api/chat/blocks' });
+    expect(res.json()).toEqual({ blocked: [] });
+    expect(db.calls.some((c) => c.table === 'profiles')).toBe(false);
+  });
+
+  it('unblocks only your own block, and rejects a malformed id', async () => {
+    const db = fakeDb({});
+    const res = await build({ db }).inject({ method: 'DELETE', url: `/api/chat/blocks/${OTHER}` });
+    expect(res.statusCode).toBe(200);
+    const del = db.calls.find((c) => c.op === 'delete')!;
+    expect(del.table).toBe('chat_blocks');
+    expect(del.chain).toContainEqual(['eq', ['blocker_id', ME]]);
+    expect(del.chain).toContainEqual(['eq', ['blocked_id', OTHER]]);
+    expect((await build({ db: fakeDb({}) }).inject({ method: 'DELETE', url: '/api/chat/blocks/nope' })).statusCode).toBe(400);
+  });
+});

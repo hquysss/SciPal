@@ -10,6 +10,7 @@ import { EmptyState } from '@/components/ui/empty-state';
 import { Input } from '@/components/ui/input';
 import type { ApiResult } from '../authoring/apiClient';
 import { blockUser } from '../community/chatApi';
+import { BlockedList } from './BlockedList';
 import { ChatPane } from '../community/ChatPane';
 import {
   acceptRequest, listFriends, removeFriendship, searchUsers, sendRequest,
@@ -164,6 +165,7 @@ export function FriendsTabView({ state, onSearch, onSend, onAccept, onRemove, on
 export function FriendsTab({ dm = null, onDm }: { dm?: string | null; onDm?: (friendshipId: string | null) => void }) {
   const [state, setState] = useState<FriendsState>({ status: 'loading' });
   const [notice, setNotice] = useState<Bilingual | null>(null);
+  const [blockVersion, setBlockVersion] = useState(0);
   const { t } = useLanguage();
 
   const load = useCallback(async () => {
@@ -201,6 +203,7 @@ export function FriendsTab({ dm = null, onDm }: { dm?: string | null; onDm?: (fr
 
   const block = async (userId: string) => {
     if (!(await act(blockUser(userId)))) return;
+    setBlockVersion((v) => v + 1);
     setState((prev) => (prev.status === 'ready' && prev.results ? { ...prev, results: prev.results.filter((u) => u.user_id !== userId) } : prev));
   };
 
@@ -231,6 +234,7 @@ export function FriendsTab({ dm = null, onDm }: { dm?: string | null; onDm?: (fr
         onMessage={(id) => onDm?.(id)}
         onBlock={(id) => void block(id)}
       />
+      <BlockedList version={blockVersion} />
     </div>
   );
 }

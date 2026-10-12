@@ -14,3 +14,10 @@ export const blockUser = (userId: string): Promise<ApiResult<Record<string, neve
 
 export const reportMessage = (messageId: string, reason: string): Promise<ApiResult<Record<string, never>>> =>
   authoringCall('/api/chat/reports', 'POST', { message_id: messageId, reason });
+
+export type BlockedUser = { user_id: string; display_name: string | null; avatar_url: string | null };
+
+export const listBlocked = (): Promise<ApiResult<{ blocked: BlockedUser[] }>> => authoringCall('/api/chat/blocks', 'GET');
+
+export const unblockUser = (userId: string): Promise<ApiResult<Record<string, never>>> =>
+  authoringCall(`/api/chat/blocks/${encodeURIComponent(userId)}`, 'DELETE');

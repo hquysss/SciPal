@@ -106,6 +106,35 @@ export const chatRoutes: FastifyPluginAsync = async (app) => {
     return reply.code(201).send({});
   });
 
+  app.get('/api/chat/blocks', { preHandler: [requireUser] }, async (request, reply) => {
+    const supabase = app.supabase;
+    if (!supabase) return reply.code(503).send(unavailable);
+    const me = userId(request)!;
+    const blocks = await supabase.from('chat_blocks').select('blocked_id').eq('blocker_id', me).order('created_at', { ascending: false });
+    if (blocks.error) return reply.code(500).send(failed);
+    const ids = ((blocks.data ?? []) as Array<{ blocked_id: string }>).map((b) => b.blocked_id);
+    if (ids.length === 0) return reply.send({ blocked: [] });
+
+    const profiles = await supabase.from('profiles').select('id, display_name, avatar_url').in('id', ids);
+    if (profiles.error) return reply.code(500).send(failed);
+    const byId = new Map(((profiles.data ?? []) as Array<{ id: string; display_name: string | null; avatar_url: string | null }>).map((p) => [p.id, p]));
+    return reply.send({
+      blocked: ids.map((id) => ({ user_id: id, display_name: byId.get(id)?.display_name ?? null, avatar_url: byId.get(id)?.avatar_url ?? null })),
+    });
+  });
+
+  // Unblocking does not bring a friendship back; the two can ask each other again.
+  app.delete('/api/chat/blocks/:user_id', { preHandler: [requireUser] }, async (request, reply) => {
+    const supabase = app.supabase;
+    if (!supabase) return reply.code(503).send(unavailable);
+    const me = userId(request)!;
+    const target = (request.params as { user_id: string }).user_id;
+    if (!UUID_PATTERN.test(target)) return reply.code(400).send(invalid);
+    const { error } = await supabase.from('chat_blocks').delete().eq('blocker_id', me).eq('blocked_id', target);
+    if (error) return reply.code(500).send(failed);
+    return reply.send({});
+  });
+
   app.post('/api/chat/reports', { preHandler: [requireUser] }, async (request, reply) => {
     const supabase = app.supabase;
     if (!supabase) return reply.code(503).send(unavailable);
