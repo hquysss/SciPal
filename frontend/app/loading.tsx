@@ -1,9 +1,36 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Atom } from 'lucide-react';
 import { useLanguage } from '@scipal/hooks';
 import styles from './loading.module.css';
+
+// Three isometric slabs (the layers of a lesson) float one after another with a blinking light on each.
+// After Juanes200122's Uiverse server stack, redrawn small and coloured with theme tokens.
+const SLABS = [
+  { y: 150, tone: 'sun' },
+  { y: 108, tone: 'action' },
+  { y: 66, tone: 'sky' },
+] as const;
+const THICKNESS = 22;
+
+function Slab({ y, tone, index }: { y: number; tone: (typeof SLABS)[number]['tone']; index: number }) {
+  const top = `M100 ${y - 40} L180 ${y} L100 ${y + 40} L20 ${y} Z`;
+  const left = `M20 ${y} L100 ${y + 40} L100 ${y + 40 + THICKNESS} L20 ${y + THICKNESS} Z`;
+  const right = `M180 ${y} L100 ${y + 40} L100 ${y + 40 + THICKNESS} L180 ${y + THICKNESS} Z`;
+  const inner = `M100 ${y - 24} L148 ${y} L100 ${y + 24} L52 ${y} Z`;
+  return (
+    <g className={styles.slab} data-tone={tone} style={{ '--i': index } as React.CSSProperties}>
+      <path className={styles.slabLeft} d={left} />
+      <path className={styles.slabRight} d={right} />
+      <path className={styles.slabTop} d={top} />
+      <path className={styles.slabInner} d={inner} />
+      {[34, 46, 58].map((x, led) => (
+        <circle key={x} className={styles.led} style={{ '--l': led } as React.CSSProperties} cx={x} cy={y + (x - 20) / 2 + THICKNESS / 2} r="2.6" />
+      ))}
+    </g>
+  );
+}
+
 
 export default function Loading() {
   const { t } = useLanguage();
@@ -28,9 +55,12 @@ export default function Loading() {
       <div className={styles.glow} aria-hidden="true" />
 
       <section className={styles.content}>
-        <div className={styles.mark} aria-hidden="true">
-          <Atom size={31} strokeWidth={1.7} />
-        </div>
+        <svg className={styles.stack} viewBox="0 0 200 224" aria-hidden="true" focusable="false">
+          <ellipse className={styles.stackShadow} cx="100" cy="214" rx="62" ry="8" />
+          {SLABS.map((slab, index) => (
+            <Slab key={slab.tone} {...slab} index={index} />
+          ))}
+        </svg>
 
         <p className={styles.brand}>
           <span>SciPal</span>

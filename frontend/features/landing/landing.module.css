@@ -1149,8 +1149,3 @@
   }
 }
 
-/* ---------- newsletter sign-up (inside the subjects band) ---------- */
-
-.notify {
-  width: min(100%, 48rem);
-}

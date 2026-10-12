@@ -24,8 +24,8 @@ export const FAQ: Array<{ q: Copy; a: Copy }> = [
   {
     q: { vi: 'Hiện có những môn nào?', en: 'Which subjects are available now?' },
     a: {
-      vi: 'Hiện mở cấp THPT, bắt đầu với Tin học. Môn nào chưa có bài sẽ hiện “Đang biên soạn”, và bạn có thể đăng ký nhận tin để biết khi môn ra mắt.',
-      en: 'Upper secondary is open now, starting with Informatics. Subjects without lessons show “In preparation”, and you can sign up for news to hear when they open.',
+      vi: 'Hiện mở cấp THPT, bắt đầu với Tin học. Môn nào chưa có bài sẽ hiện “Đang biên soạn”.',
+      en: 'Upper secondary is open now, starting with Informatics. Subjects without lessons show “In preparation”.',
     },
   },
   {
