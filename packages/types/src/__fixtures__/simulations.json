@@ -26,6 +26,8 @@
     { "name": "knee reflex with an unknown view", "ok": false, "block": { "type": "interactive", "kind": "knee-reflex", "heading": { "vi": "A", "en": "A" }, "offline": true, "config": { "view": "wrong" } } },
     { "name": "circulation default", "ok": true, "block": { "type": "interactive", "kind": "circulation-3d", "heading": { "vi": "Tuần hoàn máu", "en": "Blood circulation" }, "offline": true, "config": {} } },
     { "name": "circulation heart view at exercise rate", "ok": true, "block": { "type": "interactive", "kind": "circulation-3d", "heading": { "vi": "A", "en": "A" }, "offline": true, "config": { "view": "heart", "heartRate": 150, "loop": "pulmonary", "labels": false } } },
+    { "name": "circulation vessels view", "ok": true, "block": { "type": "interactive", "kind": "circulation-3d", "heading": { "vi": "A", "en": "A" }, "offline": true, "config": { "view": "vessels" } } },
+    { "name": "circulation with an unknown view", "ok": false, "block": { "type": "interactive", "kind": "circulation-3d", "heading": { "vi": "A", "en": "A" }, "offline": true, "config": { "view": "brain" } } },
     { "name": "circulation with a fractional heart rate", "ok": false, "block": { "type": "interactive", "kind": "circulation-3d", "heading": { "vi": "A", "en": "A" }, "offline": true, "config": { "heartRate": 72.5 } } },
     { "name": "circulation with a heart rate too high", "ok": false, "block": { "type": "interactive", "kind": "circulation-3d", "heading": { "vi": "A", "en": "A" }, "offline": true, "config": { "heartRate": 200 } } },
     { "name": "circulation with an unknown loop", "ok": false, "block": { "type": "interactive", "kind": "circulation-3d", "heading": { "vi": "A", "en": "A" }, "offline": true, "config": { "loop": "portal" } } },

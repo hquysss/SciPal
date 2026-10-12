@@ -58,3 +58,13 @@ export function cardiacState(time: number, bpm: number) {
 }
 
 export type CardiacState = ReturnType<typeof cardiacState>;
+
+/**
+ * How far the aortic pressure is between its diastolic (0) and systolic (1) value: it climbs while
+ * the ventricles push blood in and drains away during the rest of the cycle.
+ */
+export function arterialPulse(time: number, bpm: number) {
+  const { ventricular } = cycleTimes(bpm);
+  const since = cardiacState(time, bpm).sinceEjection;
+  return since < ventricular ? Math.sin((Math.PI / 2) * (since / ventricular)) : Math.exp(-(since - ventricular) / 0.25);
+}

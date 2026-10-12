@@ -429,7 +429,7 @@ interface InteractiveLike {
 
 const MESSAGES: Record<string, Message> = {
   'knee-reflex': { en: 'Playback speed 0.5–2; choose the body or reflex circuit view.', vi: 'Tốc độ phát 0,5–2; chọn cảnh toàn thân hoặc cung phản xạ.' },
-  'circulation-3d': { en: 'Heart rate 40–180 beats per minute (whole numbers); choose the body or heart view and a loop.', vi: 'Nhịp tim 40–180 nhịp/phút (số nguyên); chọn cảnh toàn thân hoặc tim và vòng tuần hoàn.' },
+  'circulation-3d': { en: 'Heart rate 40–180 beats per minute (whole numbers); choose the body, heart or vessels view and a loop.', vi: 'Nhịp tim 40–180 nhịp/phút (số nguyên); chọn cảnh toàn thân, tim hoặc hệ mạch và vòng tuần hoàn.' },
   'algorithm-sim': { en: 'Check the algorithm, the values (2–32 whole numbers) and the target.', vi: 'Kiểm tra thuật toán, dãy số (2–32 số nguyên) và giá trị cần tìm.' },
   'function-graph': { en: 'Check the expression, the parameters and the axes.', vi: 'Kiểm tra biểu thức, tham số và khoảng trục.' },
   motion: { en: 'Speed 0–100 m/s, angle 0–90°, acceleration −20–20 m/s², g 1–25, time 1–30 s.', vi: 'Vận tốc 0–100 m/s, góc 0–90°, gia tốc −20–20 m/s², g 1–25, thời gian 1–30 s.' },
