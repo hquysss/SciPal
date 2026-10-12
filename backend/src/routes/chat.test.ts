@@ -117,42 +117,6 @@ describe('POST /api/chat/blocks', () => {
   });
 });
 
-describe('POST /api/chat/reports', () => {
-  const report = (db: ReturnType<typeof fakeDb>, body: unknown) =>
-    build({ db }).inject({ method: 'POST', url: '/api/chat/reports', payload: body as object });
-  const msg = (over: object = {}) => ({ data: { id: MSG, sender_id: OTHER, community: true, friendship_id: null, deleted_at: null, ...over } });
-
-  it('rejects a missing or over-long reason and a malformed id', async () => {
-    expect((await report(fakeDb({}), { message_id: MSG, reason: '' })).statusCode).toBe(400);
-    expect((await report(fakeDb({}), { message_id: MSG, reason: 'x'.repeat(301) })).statusCode).toBe(400);
-    expect((await report(fakeDb({}), { message_id: 'nope', reason: 'Spam' })).statusCode).toBe(400);
-  });
-
-  it('404s a missing or deleted message, and a DM the caller is not in', async () => {
-    expect((await report(fakeDb({ 'chat_messages.select': [{ data: null }] }), { message_id: MSG, reason: 'Spam' })).statusCode).toBe(404);
-    expect((await report(fakeDb({ 'chat_messages.select': [msg({ deleted_at: '2026-10-12T00:00:00Z' })] }), { message_id: MSG, reason: 'Spam' })).statusCode).toBe(404);
-    const dm = fakeDb({
-      'chat_messages.select': [msg({ community: false, friendship_id: FS })],
-      'friendships.select': [{ data: { id: FS, user_a: OTHER, user_b: THIRD, status: 'accepted' } }],
-    });
-    expect((await report(dm, { message_id: MSG, reason: 'Spam' })).statusCode).toBe(404);
-  });
-
-  it('refuses to report your own message', async () => {
-    const db = fakeDb({ 'chat_messages.select': [msg({ sender_id: ME })] });
-    expect((await report(db, { message_id: MSG, reason: 'Spam' })).statusCode).toBe(400);
-  });
-
-  it('409s a second report of the same message, 201s the first', async () => {
-    const twice = fakeDb({ 'chat_messages.select': [msg()], 'chat_reports.insert': [{ error: { code: '23505' } }] });
-    expect((await report(twice, { message_id: MSG, reason: 'Spam' })).statusCode).toBe(409);
-    const once = fakeDb({ 'chat_messages.select': [msg()], 'chat_reports.insert': [{}] });
-    const res = await report(once, { message_id: MSG, reason: ' Spam ' });
-    expect(res.statusCode).toBe(201);
-    expect(once.calls.find((c) => c.op === 'insert')!.chain[0]).toEqual(['insert', [{ message_id: MSG, reporter_id: ME, reason: 'Spam' }]]);
-  });
-});
-
 describe('GET /api/chat/blocks and DELETE /api/chat/blocks/:user_id', () => {
   it('lists the people you blocked, with their names', async () => {
     const db = fakeDb({
@@ -287,7 +251,7 @@ describe('class chat', () => {
   });
 
   it('lets the teacher write without being a member', async () => {
-    const db = base({ 'class_rooms.select': [{ data: { id: CLASS, teacher_id: ME } }], 'chat_messages.insert': [{ data: { id: MSG } }] });
+    const db = base({ 'class_rooms.select': [{ data: { id: CLASS, name: 'x', teacher_id: ME } }], 'chat_messages.insert': [{ data: { id: MSG } }] });
     expect((await sendTo(db)).statusCode).toBe(201);
     expect(db.calls.some((c) => c.table === 'class_members')).toBe(false);
   });
@@ -310,22 +274,76 @@ describe('class chat', () => {
     const rooms = db.calls.find((c) => c.table === 'class_rooms')!;
     expect(rooms.chain).toContainEqual(['or', [`teacher_id.eq.${ME},id.in.(c1)`]]);
   });
+});
 
-  it('only a member or the teacher may report a class message', async () => {
-    const message = { data: { id: MSG, sender_id: OTHER, community: false, friendship_id: null, class_id: CLASS, deleted_at: null } };
-    const outsider = fakeDb({
-      'chat_messages.select': [message],
-      'class_rooms.select': [{ data: { id: CLASS, teacher_id: THIRD } }],
-      'class_members.select': [{ data: null }],
+describe('POST /api/chat/reports (a whole conversation)', () => {
+  const report = (db: ReturnType<typeof fakeDb>, body: unknown) =>
+    build({ db }).inject({ method: 'POST', url: '/api/chat/reports', payload: body as object });
+  const recent = { data: [
+    { id: 'm2', sender_id: OTHER, sender_name: 'An', body: 'tin hai', image_url: null, created_at: '2026-10-12T10:01:00Z' },
+    { id: 'm1', sender_id: ME, sender_name: 'Bình', body: 'tin một', image_url: null, created_at: '2026-10-12T10:00:00Z' },
+  ] };
+  const insertedRow = (db: ReturnType<typeof fakeDb>) => db.calls.find((c) => c.table === 'chat_reports' && c.op === 'insert')!.chain[0][1][0];
+
+  it('needs exactly one conversation and a reason of 1 to 300 characters', async () => {
+    const app = build({ db: fakeDb({}) });
+    const send = (payload: object) => app.inject({ method: 'POST', url: '/api/chat/reports', payload });
+    expect((await send({ reason: 'Spam' })).statusCode).toBe(400);
+    expect((await send({ community: true, class_id: CLASS, reason: 'Spam' })).statusCode).toBe(400);
+    expect((await send({ community: true, reason: '' })).statusCode).toBe(400);
+    expect((await send({ community: true, reason: 'x'.repeat(301) })).statusCode).toBe(400);
+    expect((await send({ class_id: 'nope', reason: 'Spam' })).statusCode).toBe(400);
+  });
+
+  it('community: keeps the latest messages, oldest first, as evidence', async () => {
+    const db = fakeDb({ 'chat_messages.select': [recent], 'chat_reports.insert': [{}] });
+    const res = await report(db, { community: true, reason: ' Spam ' });
+    expect(res.statusCode).toBe(201);
+    expect(insertedRow(db)).toEqual({
+      reporter_id: ME, reason: 'Spam', conversation_key: 'community', label: 'Cộng đồng',
+      snapshot: [
+        { id: 'm1', sender_id: ME, sender_name: 'Bình', body: 'tin một', image_url: null, created_at: '2026-10-12T10:00:00Z' },
+        { id: 'm2', sender_id: OTHER, sender_name: 'An', body: 'tin hai', image_url: null, created_at: '2026-10-12T10:01:00Z' },
+      ],
     });
-    const post404 = await build({ db: outsider }).inject({ method: 'POST', url: '/api/chat/reports', payload: { message_id: MSG, reason: 'Spam' } });
-    expect(post404.statusCode).toBe(404);
+    const read = db.calls.find((c) => c.table === 'chat_messages')!;
+    expect(read.chain).toContainEqual(['eq', ['community', true]]);
+    expect(read.chain).toContainEqual(['is', ['deleted_at', null]]);
+    expect(read.chain).toContainEqual(['limit', [30]]);
+  });
+
+  it('refuses to report a conversation with no messages', async () => {
+    const db = fakeDb({ 'chat_messages.select': [{ data: [] }] });
+    expect((await report(db, { community: true, reason: 'Spam' })).statusCode).toBe(400);
+    expect(db.calls.some((c) => c.op === 'insert')).toBe(false);
+  });
+
+  it('class: only the teacher or a member; labelled with the class name', async () => {
+    const outsider = fakeDb({ 'class_rooms.select': [{ data: { id: CLASS, name: '10A', teacher_id: THIRD } }], 'class_members.select': [{ data: null }] });
+    expect((await report(outsider, { class_id: CLASS, reason: 'Spam' })).statusCode).toBe(404);
     const member = fakeDb({
-      'chat_messages.select': [message],
-      'class_rooms.select': [{ data: { id: CLASS, teacher_id: THIRD } }],
+      'class_rooms.select': [{ data: { id: CLASS, name: '10A', teacher_id: THIRD } }],
       'class_members.select': [{ data: { class_id: CLASS } }],
+      'chat_messages.select': [recent],
       'chat_reports.insert': [{}],
     });
-    expect((await build({ db: member }).inject({ method: 'POST', url: '/api/chat/reports', payload: { message_id: MSG, reason: 'Spam' } })).statusCode).toBe(201);
+    expect((await report(member, { class_id: CLASS, reason: 'Spam' })).statusCode).toBe(201);
+    expect(insertedRow(member)).toMatchObject({ conversation_key: `class:${CLASS}`, label: '10A' });
+  });
+
+  it('direct chat: only a member of an accepted friendship', async () => {
+    const [a, b] = orderPair(ME, OTHER);
+    const row = (over: object = {}) => ({ data: { id: FS, user_a: a, user_b: b, status: 'accepted', ...over } });
+    for (const bad of [{ data: null }, row({ status: 'pending' }), row({ user_a: OTHER, user_b: THIRD })]) {
+      expect((await report(fakeDb({ 'friendships.select': [bad] }), { friendship_id: FS, reason: 'Spam' })).statusCode).toBe(404);
+    }
+    const ok = fakeDb({ 'friendships.select': [row()], 'chat_messages.select': [recent], 'chat_reports.insert': [{}] });
+    expect((await report(ok, { friendship_id: FS, reason: 'Spam' })).statusCode).toBe(201);
+    expect(insertedRow(ok)).toMatchObject({ conversation_key: `friendship:${FS}`, label: 'Tin nhắn riêng' });
+  });
+
+  it('409s a second open report of the same conversation', async () => {
+    const db = fakeDb({ 'chat_messages.select': [recent], 'chat_reports.insert': [{ error: { code: '23505' } }] });
+    expect((await report(db, { community: true, reason: 'Spam' })).statusCode).toBe(409);
   });
 });

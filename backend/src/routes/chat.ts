@@ -13,6 +13,7 @@ const BODY_MAX = 500;
 const RATE_LIMIT = 10;
 const RATE_WINDOW_MS = 10_000;
 const REASON_MAX = 300;
+const SNAPSHOT_SIZE = 30;
 const CHAT_IMAGE_MAX = 1.5 * 1024 * 1024;
 const IMAGE_MIME = { png: 'image/png', jpeg: 'image/jpeg', webp: 'image/webp' } as const;
 
@@ -45,15 +46,15 @@ export const chatRoutes: FastifyPluginAsync = async (app) => {
     if (!userId(request)) return reply.code(401).send(unauthorized);
   };
 
-  /** Whether the user teaches or belongs to the class; null when the lookup failed. */
-  async function inClass(supabase: SupabaseClient, me: string, classId: string): Promise<boolean | null> {
-    const room = await supabase.from('class_rooms').select('id, teacher_id').eq('id', classId).maybeSingle();
+  /** The class and whether the user teaches or belongs to it; null when the lookup failed, ok false when it is not theirs. */
+  async function inClass(supabase: SupabaseClient, me: string, classId: string): Promise<{ ok: boolean; name: string } | null> {
+    const room = await supabase.from('class_rooms').select('id, name, teacher_id').eq('id', classId).maybeSingle();
     if (room.error) return null;
-    const found = room.data as { teacher_id: string } | null;
-    if (!found) return false;
-    if (found.teacher_id === me) return true;
+    const found = room.data as { name: string; teacher_id: string } | null;
+    if (!found) return { ok: false, name: '' };
+    if (found.teacher_id === me) return { ok: true, name: found.name };
     const member = await supabase.from('class_members').select('class_id').eq('class_id', classId).eq('student_id', me).maybeSingle();
-    return member.error ? null : Boolean(member.data);
+    return member.error ? null : { ok: Boolean(member.data), name: found.name };
   }
 
   /**
@@ -97,9 +98,9 @@ export const chatRoutes: FastifyPluginAsync = async (app) => {
     if (community) {
       row.community = true;
     } else if (classOk) {
-      const allowed = await inClass(supabase, me, classId as string);
-      if (allowed === null) return refuse(500, failed);
-      if (!allowed) return refuse(404, notFound);
+      const room = await inClass(supabase, me, classId as string);
+      if (!room) return refuse(500, failed);
+      if (!room.ok) return refuse(404, notFound);
       row.class_id = classId as string;
     } else {
       const found = await supabase.from('friendships').select('id, user_a, user_b, status').eq('id', friendship as string).maybeSingle();
@@ -227,37 +228,55 @@ export const chatRoutes: FastifyPluginAsync = async (app) => {
     return reply.send({});
   });
 
+  // A report is about the whole conversation. It keeps the latest messages, so the evidence is still there
+  // if the conversation is removed afterwards (unfriending or blocking deletes a direct chat).
   app.post('/api/chat/reports', { preHandler: [requireUser] }, async (request, reply) => {
     const supabase = app.supabase;
     if (!supabase) return reply.code(503).send(unavailable);
     const me = userId(request)!;
-    const input = (request.body ?? {}) as { message_id?: unknown; reason?: unknown };
+    const input = (request.body ?? {}) as { community?: unknown; class_id?: unknown; friendship_id?: unknown; reason?: unknown };
     const reason = typeof input.reason === 'string' ? input.reason.trim() : '';
-    if (typeof input.message_id !== 'string' || !UUID_PATTERN.test(input.message_id) || reason.length < 1 || reason.length > REASON_MAX) {
+    const community = input.community === true;
+    const classId = typeof input.class_id === 'string' && UUID_PATTERN.test(input.class_id) ? input.class_id : null;
+    const friendshipId = typeof input.friendship_id === 'string' && UUID_PATTERN.test(input.friendship_id) ? input.friendship_id : null;
+    if (reason.length < 1 || reason.length > REASON_MAX || [community, classId, friendshipId].filter(Boolean).length !== 1) {
       return reply.code(400).send(invalid);
     }
 
-    const found = await supabase.from('chat_messages').select('id, sender_id, community, class_id, friendship_id, deleted_at').eq('id', input.message_id).maybeSingle();
-    if (found.error) return reply.code(500).send(failed);
-    const message = found.data as { sender_id: string; class_id: string | null; friendship_id: string | null; deleted_at: string | null } | null;
-    if (!message || message.deleted_at) return reply.code(404).send(notFound);
-    // A class message can only be reported by its teacher or a member; a DM only by someone who could read it.
-    if (message.class_id) {
-      const allowed = await inClass(supabase, me, message.class_id);
-      if (allowed === null) return reply.code(500).send(failed);
-      if (!allowed) return reply.code(404).send(notFound);
-    }
-    if (message.friendship_id) {
-      const friendship = await supabase.from('friendships').select('id, user_a, user_b, status').eq('id', message.friendship_id).maybeSingle();
-      if (friendship.error) return reply.code(500).send(failed);
-      const f = friendship.data as FriendRow | null;
+    let key = 'community';
+    let label = 'Cộng đồng';
+    let column = 'community';
+    let value: string | boolean = true;
+    if (classId) {
+      const room = await inClass(supabase, me, classId);
+      if (!room) return reply.code(500).send(failed);
+      if (!room.ok) return reply.code(404).send(notFound);
+      key = `class:${classId}`;
+      label = room.name;
+      column = 'class_id';
+      value = classId;
+    } else if (friendshipId) {
+      const found = await supabase.from('friendships').select('id, user_a, user_b, status').eq('id', friendshipId).maybeSingle();
+      if (found.error) return reply.code(500).send(failed);
+      const f = found.data as FriendRow | null;
       if (!f || f.status !== 'accepted' || (f.user_a !== me && f.user_b !== me)) return reply.code(404).send(notFound);
+      key = `friendship:${friendshipId}`;
+      label = 'Tin nhắn riêng';
+      column = 'friendship_id';
+      value = friendshipId;
     }
-    if (message.sender_id === me) return reply.code(400).send(invalid);
 
-    const inserted = await supabase.from('chat_reports').insert({ message_id: input.message_id, reporter_id: me, reason });
+    const latest = await supabase.from('chat_messages').select('id, sender_id, sender_name, body, image_url, created_at')
+      .eq(column, value).is('deleted_at', null).order('created_at', { ascending: false }).limit(SNAPSHOT_SIZE);
+    if (latest.error) return reply.code(500).send(failed);
+    const snapshot = ((latest.data ?? []) as unknown[]).reverse();
+    if (snapshot.length === 0) {
+      return reply.code(400).send({ error: 'Cuộc trò chuyện chưa có tin nhắn nào để báo cáo.', error_en: 'There are no messages to report yet.' });
+    }
+
+    const inserted = await supabase.from('chat_reports').insert({ reporter_id: me, reason, conversation_key: key, label, snapshot });
     if (inserted.error?.code === '23505') {
-      return reply.code(409).send({ error: 'Bạn đã báo cáo tin này rồi.', error_en: 'You already reported this message.' });
+      return reply.code(409).send({ error: 'Bạn đã báo cáo cuộc trò chuyện này, chúng tôi đang xem xét.', error_en: 'You already reported this chat; we are looking at it.' });
     }
     if (inserted.error) return reply.code(500).send(failed);
     return reply.code(201).send({});

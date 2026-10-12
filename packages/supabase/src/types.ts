@@ -1134,27 +1134,36 @@ export interface Database {
       chat_reports: {
         Row: {
           id: string;
-          message_id: string;
+          message_id: string | null;
           reporter_id: string;
           reason: string;
           created_at: string;
           handled_at: string | null;
+          conversation_key: string | null;
+          label: string | null;
+          snapshot: unknown;
         };
         Insert: {
           id?: string;
-          message_id: string;
+          message_id?: string | null;
           reporter_id: string;
           reason: string;
           created_at?: string;
           handled_at?: string | null;
+          conversation_key?: string | null;
+          label?: string | null;
+          snapshot?: unknown;
         };
         Update: {
           id?: string;
-          message_id?: string;
+          message_id?: string | null;
           reporter_id?: string;
           reason?: string;
           created_at?: string;
           handled_at?: string | null;
+          conversation_key?: string | null;
+          label?: string | null;
+          snapshot?: unknown;
         };
         Relationships: [
           {
