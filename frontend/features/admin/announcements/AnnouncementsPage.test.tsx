@@ -1,13 +1,20 @@
 // @vitest-environment jsdom
-import { afterEach, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { AnnouncementsPage } from './AnnouncementsPage';
 
 const api = vi.hoisted(() => ({ fetchAnnouncements: vi.fn(), sendAnnouncement: vi.fn() }));
+const accountsApi = vi.hoisted(() => ({ listAccounts: vi.fn() }));
 vi.mock('@/features/newsletter/newsletterApi', async (importOriginal) => ({ ...(await importOriginal<typeof import('@/features/newsletter/newsletterApi')>()), ...api }));
+vi.mock('@/features/admin/accountsApi', () => accountsApi);
 vi.mock('@scipal/hooks', () => ({ useLanguage: () => ({ lang: 'vi', t: (v: { vi: string; en: string }) => v.vi }) }));
 vi.mock('@/components/nav/PageBreadcrumb', () => ({ PageBreadcrumb: () => null }));
-afterEach(() => { cleanup(); api.fetchAnnouncements.mockReset(); api.sendAnnouncement.mockReset(); });
+const ACCOUNTS = [
+  { id: '11111111-1111-4111-8111-111111111111', display_name: 'Lan Nguyen', email: 'lan@gmail.com', app_role: 'teacher', created_at: null, last_sign_in_at: null },
+  { id: '22222222-2222-4222-8222-222222222222', display_name: 'An Tran', email: 'an@gmail.com', app_role: 'student', created_at: null, last_sign_in_at: null },
+];
+beforeEach(() => { accountsApi.listAccounts.mockResolvedValue(ACCOUNTS); });
+afterEach(() => { cleanup(); api.fetchAnnouncements.mockReset(); api.sendAnnouncement.mockReset(); accountsApi.listAccounts.mockReset(); });
 
 const loaded = (emailReady = true) => ({
   ok: true,
@@ -31,7 +38,7 @@ it('confirms the recipient counts, then sends once with one request id', async (
   fireEvent.click(screen.getByRole('button', { name: 'Gửi' }));
   await screen.findByText('Đã gửi: 42 thông báo trong app, 3 email.');
   expect(api.sendAnnouncement).toHaveBeenCalledTimes(1);
-  expect(api.sendAnnouncement.mock.calls[0]?.[0]).toMatchObject({ title_vi: 'Có bài mới', send_app: true, send_email: true, level: '' });
+  expect(api.sendAnnouncement.mock.calls[0]?.[0]).toMatchObject({ title_vi: 'Có bài mới', send_app: true, send_email: true, level: '', audience: { mode: 'all' } });
   expect(api.sendAnnouncement.mock.calls[0]?.[0].client_request_id).toMatch(/^[0-9a-f-]{36}$/);
 });
 
@@ -40,4 +47,34 @@ it('warns and blocks e-mail while the service is not configured', async () => {
   render(<AnnouncementsPage />);
   await waitFor(() => expect(screen.getByText(/Dịch vụ email chưa được cấu hình/)).toBeTruthy());
   expect((screen.getByRole('checkbox', { name: /Email, tới/ }) as HTMLInputElement).disabled).toBe(true);
+});
+
+it('sends the bell only to the accounts picked by search', async () => {
+  api.fetchAnnouncements.mockResolvedValue(loaded());
+  api.sendAnnouncement.mockResolvedValue({ ok: true, data: { announcement: { id: 'a', app_count: 1, email_count: 0 } } });
+  render(<AnnouncementsPage />);
+  await screen.findByText(/42 tài khoản · 3 đã xác nhận/);
+  fireEvent.change(screen.getByLabelText('Tiêu đề (tiếng Việt)'), { target: { value: 'Chào' } });
+  fireEvent.change(screen.getByLabelText('Tiêu đề (tiếng Anh)'), { target: { value: 'Hi' } });
+  fireEvent.click(screen.getByRole('radio', { name: 'Chọn tài khoản' }));
+  await waitFor(() => expect((screen.getByLabelText('Tìm tài khoản theo tên hoặc email') as HTMLInputElement).disabled).toBe(false));
+  expect((screen.getByRole('button', { name: 'Gửi thông báo' }) as HTMLButtonElement).disabled).toBe(true);
+  fireEvent.change(screen.getByLabelText('Tìm tài khoản theo tên hoặc email'), { target: { value: 'lan' } });
+  fireEvent.click(await screen.findByRole('button', { name: /Lan Nguyen/ }));
+  expect(screen.getByText('Đã chọn 1/200 tài khoản.')).toBeTruthy();
+  fireEvent.click(screen.getByRole('button', { name: 'Gửi thông báo' }));
+  await screen.findByText(/Sẽ gửi tới 1 tài khoản \(chuông thông báo\)/);
+  fireEvent.click(screen.getByRole('button', { name: 'Gửi' }));
+  await screen.findByText('Đã gửi thông báo');
+  expect(api.sendAnnouncement.mock.calls[0]?.[0].audience).toEqual({ mode: 'users', user_ids: ['11111111-1111-4111-8111-111111111111'] });
+});
+
+it('counts the accounts of the chosen roles', async () => {
+  api.fetchAnnouncements.mockResolvedValue(loaded());
+  render(<AnnouncementsPage />);
+  await screen.findByText(/42 tài khoản · 3 đã xác nhận/);
+  fireEvent.click(screen.getByRole('radio', { name: 'Theo vai trò' }));
+  await screen.findByRole('checkbox', { name: /Giáo viên \(1\)/ });
+  fireEvent.click(screen.getByRole('checkbox', { name: /Giáo viên \(1\)/ }));
+  expect(screen.getByRole('checkbox', { name: /Thông báo trong app, tới 1 tài khoản/ })).toBeTruthy();
 });

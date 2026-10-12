@@ -19,3 +19,9 @@ it('has no invented average when no reviews exist', () => {
   const html = renderToStaticMarkup(<FeedbackReviews data={{ ...data, total: 0, average: null, distribution: [0,0,0,0,0], reviews: [] }} onPage={() => {}} />);
   expect(html).toContain('Chưa có đánh giá'); expect(html).not.toContain('4,2');
 });
+it('compact: shows the average card with the satisfied share and a bar, and no identity', () => {
+  const html = renderToStaticMarkup(<FeedbackReviews data={data} compact onPage={() => {}} />);
+  expect(html).toContain('4,2'); expect(html).toContain('81% hài lòng'); expect(html).toContain('width:84.8%');
+  expect(html).toContain('Từ 21 đánh giá'); expect(html).toContain('href="/feedback#reviews"');
+  expect(html).not.toContain('Private Account'); expect(html).not.toContain('<script>');
+});

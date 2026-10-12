@@ -1,5 +1,6 @@
 'use client';
 import type { CSSProperties } from 'react';
+import { Star, TrendingUp } from 'lucide-react';
 import { useLanguage } from '@scipal/hooks';
 import type { WebsiteFeedbackPage, PrivateWebsiteFeedbackPage } from '@scipal/types';
 import { Button } from '@/components/ui/button';
@@ -11,13 +12,21 @@ export function FeedbackReviews({ data, identities = false, compact = false, onP
   const { lang, t } = useLanguage();
   if (compact) {
     // The landing page shows the average and the latest few comments; the full table lives on /feedback.
+    const satisfied = data.total ? Math.round(((data.distribution[3] ?? 0) + (data.distribution[4] ?? 0)) / data.total * 100) : 0;
     const latest = [...data.reviews.filter(r => r.feedback), ...data.reviews.filter(r => !r.feedback)].slice(0, 3);
     return <div className={styles.compactReviews}>
-      <p className={styles.compactAverage} aria-label={t({ vi: 'Điểm đánh giá trung bình', en: 'Average website rating' })}>
-        <strong>{data.average === null ? '—' : data.average.toLocaleString(lang === 'vi' ? 'vi-VN' : 'en-GB', { minimumFractionDigits: 1, maximumFractionDigits: 1 })}</strong><span>/ 5</span>
-        <span className={styles.compactStar}><FeedbackStar dim={data.total === 0} /></span>
-        <small>{data.total === 0 ? t({ vi: 'Chưa có đánh giá', en: 'No reviews yet' }) : t({ vi: `${data.total.toLocaleString('vi-VN')} đánh giá`, en: `${data.total.toLocaleString('en-GB')} reviews` })}</small>
-      </p>
+      <section className={styles.ratingCard} aria-label={t({ vi: 'Điểm đánh giá trung bình', en: 'Average website rating' })}>
+        <div className={styles.ratingTitle}>
+          <span className={styles.ratingIcon} aria-hidden="true"><Star size={16} fill="currentColor" /></span>
+          <p>{t({ vi: 'Điểm trung bình', en: 'Average rating' })}</p>
+          {data.total > 0 && <p className={styles.ratingPercent}><TrendingUp size={18} aria-hidden="true" />{t({ vi: `${satisfied}% hài lòng`, en: `${satisfied}% satisfied` })}</p>}
+        </div>
+        <p className={styles.ratingValue}>
+          {data.average === null ? '—' : data.average.toLocaleString(lang === 'vi' ? 'vi-VN' : 'en-GB', { minimumFractionDigits: 1, maximumFractionDigits: 1 })}<span> / 5</span>
+        </p>
+        <div className={styles.ratingRange} aria-hidden="true"><div style={{ width: `${data.average === null ? 0 : Math.round(data.average / 5 * 1000) / 10}%` } as CSSProperties} /></div>
+        <small>{data.total === 0 ? t({ vi: 'Chưa có đánh giá', en: 'No reviews yet' }) : t({ vi: `Từ ${data.total.toLocaleString('vi-VN')} đánh giá`, en: `From ${data.total.toLocaleString('en-GB')} reviews` })}</small>
+      </section>
       {latest.length > 0 && <ul className={styles.compactList}>{latest.map(review => <li key={review.id}>
         <span className={styles.rowStars} role="img" aria-label={t({ vi: `${review.rating} trên 5 sao`, en: `${review.rating} out of 5 stars` })}>{[1, 2, 3, 4, 5].map(s => <span key={s}><FeedbackStar dim={s > review.rating} /></span>)}</span>
         <p>{review.feedback || t(EASE[review.usability])}</p>

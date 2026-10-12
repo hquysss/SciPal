@@ -52,18 +52,72 @@
   animation: content-enter 650ms cubic-bezier(0.2, 0.7, 0.25, 1) both;
 }
 
-.mark {
-  display: grid;
-  width: 68px;
-  height: 68px;
-  place-items: center;
+.stack {
+  display: block;
+  width: 132px;
+  height: auto;
   margin: 0 auto;
-  border: 1px solid var(--line);
-  border-radius: 22px;
-  background: var(--surface-sunken);
-  color: var(--action);
-  box-shadow: 0 12px 28px color-mix(in srgb, var(--action) 12%, transparent);
-  animation: mark-float 2.8s ease-in-out infinite;
+  overflow: visible;
+}
+
+.stackShadow {
+  fill: color-mix(in srgb, var(--ink) 16%, transparent);
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: stack-shadow 2.4s ease-in-out infinite;
+}
+
+.slab {
+  --tone: var(--action);
+  animation: slab-float 2.4s ease-in-out infinite;
+  animation-delay: calc(var(--i) * -0.4s);
+}
+
+.slab[data-tone='sun'] { --tone: var(--sun); }
+.slab[data-tone='action'] { --tone: var(--action); }
+.slab[data-tone='sky'] { --tone: var(--sky); }
+
+.slabTop {
+  fill: color-mix(in srgb, var(--tone) 28%, var(--surface));
+  stroke: color-mix(in srgb, var(--tone) 55%, var(--surface));
+  stroke-width: 1.5;
+  stroke-linejoin: round;
+}
+
+.slabInner {
+  fill: color-mix(in srgb, var(--tone) 55%, var(--surface));
+}
+
+.slabLeft {
+  fill: color-mix(in srgb, var(--tone) 78%, var(--ink));
+}
+
+.slabRight {
+  fill: color-mix(in srgb, var(--tone) 55%, var(--ink));
+}
+
+.led {
+  fill: var(--surface);
+  animation: led-blink 0.9s steps(1, end) infinite;
+  animation-delay: calc(var(--l) * 0.3s);
+}
+
+@keyframes slab-float {
+  0%,
+  100% { transform: translateY(0); }
+  50% { transform: translateY(-9px); }
+}
+
+@keyframes stack-shadow {
+  0%,
+  100% { transform: scaleX(1); opacity: 1; }
+  50% { transform: scaleX(0.82); opacity: 0.6; }
+}
+
+@keyframes led-blink {
+  0%,
+  100% { opacity: 1; }
+  50% { opacity: 0.25; }
 }
 
 .brand {
@@ -176,17 +230,6 @@
   }
 }
 
-@keyframes mark-float {
-  0%,
-  100% {
-    transform: translateY(0);
-  }
-
-  50% {
-    transform: translateY(-4px);
-  }
-}
-
 @keyframes glow-breathe {
   from {
     opacity: 0.55;
@@ -228,7 +271,9 @@
 @media (prefers-reduced-motion: reduce) {
   .glow,
   .content,
-  .mark,
+  .stackShadow,
+  .slab,
+  .led,
   .loadingDots span {
     animation: none;
   }
