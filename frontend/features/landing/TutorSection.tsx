@@ -8,7 +8,7 @@ import type { EducationLevel } from './educationLevel';
 import { TutorDemoCard } from './TutorDemoCard';
 import styles from './sections.module.css';
 
-/** Professor Quys showcase. The try button appears once a tutor page exists and its href is passed in. */
+/** AI Professor showcase. The try button appears once a tutor page exists and its href is passed in. */
 export function TutorSection({ href, level = 'upper_secondary' }: { href?: string; level?: EducationLevel }) {
   const { t } = useLanguage();
 
@@ -21,7 +21,7 @@ export function TutorSection({ href, level = 'upper_secondary' }: { href?: strin
         <p className={styles.sectionLead}>
           {t({
             en: 'Stuck on a step? The Professor answers with a hint, so you work out the rest yourself.',
-            vi: 'Bí ở bước nào, hỏi ngay: Giáo sư Quý gợi ý để bạn tự tìm ra phần còn lại.',
+            vi: 'Bí ở bước nào, hỏi ngay: Giáo sư AI gợi ý để bạn tự tìm ra phần còn lại.',
           })}
         </p>
         {href && (

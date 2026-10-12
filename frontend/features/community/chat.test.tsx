@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ChatPaneView } from './ChatPane';
 import { mergeMessages } from './useChatRoom';
@@ -30,12 +30,12 @@ describe('mergeMessages', () => {
 const handlers = () => ({ onSend: vi.fn().mockResolvedValue(true), onReport: vi.fn(), onBlock: vi.fn() });
 
 describe('ChatPaneView', () => {
-  it('is a log; others show their name and get Báo cáo and Chặn, your own do not', () => {
+  it('is a log; others show their name and get Chặn, your own do not, and no message has its own Báo cáo', () => {
     render(<ChatPaneView messages={[msg('1', 'me', '2026-10-12T10:00:00Z'), msg('2', 'them', '2026-10-12T10:00:01Z')]} meId="me" {...handlers()} />);
     expect(screen.getByRole('log')).toBeTruthy();
     expect(screen.getByText('Tên them')).toBeTruthy();
     expect(screen.queryByText('Tên me')).toBeNull();
-    expect(screen.getAllByRole('button', { name: 'Báo cáo' })).toHaveLength(1);
+    expect(screen.queryByRole('button', { name: 'Báo cáo' })).toBeNull();
     expect(screen.getAllByRole('button', { name: 'Chặn' })).toHaveLength(1);
   });
 
@@ -62,12 +62,14 @@ describe('ChatPaneView', () => {
     expect(box.value).toBe('xin chào');
   });
 
-  it('reports with one of the fixed reasons', () => {
+  it('reports the whole conversation from the top bar, with one of the fixed reasons', () => {
     const h = handlers();
-    render(<ChatPaneView messages={[msg('2', 'them', '2026-10-12T10:00:01Z')]} meId="me" {...h} />);
+    render(<ChatPaneView messages={[msg('1', 'them', '2026-10-12T10:00:00Z'), msg('2', 'them', '2026-10-12T10:00:01Z')]} meId="me" {...h} title="Lớp 10A" />);
+    expect(screen.getAllByRole('button', { name: 'Báo cáo' })).toHaveLength(1);
     fireEvent.click(screen.getByRole('button', { name: 'Báo cáo' }));
     fireEvent.click(screen.getByRole('button', { name: 'Spam' }));
-    expect(h.onReport).toHaveBeenCalledWith('2', 'Spam');
+    expect(h.onReport).toHaveBeenCalledTimes(1);
+    expect(h.onReport).toHaveBeenCalledWith('Spam');
   });
 
   it('blocks only on the second click, since there is no undo', () => {
@@ -89,16 +91,20 @@ describe('pictures in ChatPaneView', () => {
     URL.revokeObjectURL = vi.fn();
   });
 
-  it('shows a picture in the bubble as a link to the full size, only for https URLs', () => {
+  it('shows a picture small, opens it large on click, and only for https URLs', () => {
     const good = msg('1', 'them', '2026-10-12T10:00:00Z', '', 'https://m.test/chat/u/a.png');
     const bad = msg('2', 'them', '2026-10-12T10:00:01Z', 'x', 'javascript:alert(1)');
     render(<ChatPaneView messages={[good, bad]} meId="me" {...handlers()} />);
-    const pictures = screen.getAllByRole('img');
-    expect(pictures).toHaveLength(1);
-    expect(pictures[0].getAttribute('src')).toBe('https://m.test/chat/u/a.png');
-    const link = pictures[0].closest('a')!;
-    expect(link.getAttribute('href')).toBe('https://m.test/chat/u/a.png');
-    expect(link.getAttribute('rel')).toContain('noopener');
+    expect(screen.getAllByRole('img')).toHaveLength(1);
+    expect(screen.queryByRole('dialog')).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: 'Phóng to ảnh' }));
+    const dialog = screen.getByRole('dialog');
+    expect(within(dialog).getByRole('img').getAttribute('src')).toBe('https://m.test/chat/u/a.png');
+    const original = within(dialog).getByRole('link', { name: 'Mở ảnh gốc' });
+    expect(original.getAttribute('href')).toBe('https://m.test/chat/u/a.png');
+    expect(original.getAttribute('rel')).toContain('noopener');
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Đóng' }));
+    expect(screen.queryByRole('dialog')).toBeNull();
   });
 
   it('offers the attach button only where pictures are allowed', () => {
@@ -144,5 +150,47 @@ describe('pictures in ChatPaneView', () => {
     expect(screen.getByRole('alert').textContent).toContain('1,5 MB');
     expect(screen.queryByAltText('Ảnh sắp gửi')).toBeNull();
     expect(onSendImage).not.toHaveBeenCalled();
+  });
+});
+
+describe('messenger layout', () => {
+  it('shows the title, subtitle and a back button that goes back', () => {
+    const onBack = vi.fn();
+    render(<ChatPaneView messages={[]} meId="me" {...handlers()} title="Lớp 10A" subtitle="Cả lớp cùng thấy" onBack={onBack} />);
+    expect(screen.getByRole('heading', { name: 'Lớp 10A' })).toBeTruthy();
+    expect(screen.getByText('Cả lớp cùng thấy')).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'Quay lại' }));
+    expect(onBack).toHaveBeenCalled();
+  });
+
+  it('names the sender once per run in a group chat, and never in a two-person chat', () => {
+    const run = [msg('1', 'them', '2026-10-12T03:00:00Z'), msg('2', 'them', '2026-10-12T03:01:00Z')];
+    const { unmount } = render(<ChatPaneView messages={run} meId="me" {...handlers()} showNames />);
+    expect(screen.getAllByText('Tên them')).toHaveLength(1);
+    unmount();
+    render(<ChatPaneView messages={run} meId="me" {...handlers()} showNames={false} />);
+    expect(screen.queryByText('Tên them')).toBeNull();
+  });
+
+  it('puts a time label before a conversation', () => {
+    render(<ChatPaneView messages={[msg('1', 'them', '2026-10-12T03:00:00Z')]} meId="me" {...handlers()} now={new Date('2026-10-12T05:00:00Z')} />);
+    expect(screen.getByText('10:00')).toBeTruthy();
+  });
+
+  it('shows that a message is being sent, and ignores a second send meanwhile', async () => {
+    let finish: (ok: boolean) => void = () => {};
+    const onSend = vi.fn(() => new Promise<boolean>((resolve) => { finish = resolve; }));
+    render(<ChatPaneView messages={[]} meId="me" {...handlers()} onSend={onSend} />);
+    const box = screen.getByRole('textbox') as HTMLInputElement;
+    fireEvent.change(box, { target: { value: 'chào' } });
+    fireEvent.submit(box.closest('form')!);
+    const sending = await screen.findByRole('button', { name: 'Đang gửi…' });
+    expect((sending as HTMLButtonElement).disabled).toBe(true);
+    expect(sending.getAttribute('aria-busy')).toBe('true');
+    fireEvent.submit(box.closest('form')!);
+    expect(onSend).toHaveBeenCalledTimes(1);
+    await act(async () => { finish(true); });
+    expect((screen.getByRole('button', { name: 'Gửi' }) as HTMLButtonElement).disabled).toBe(true); // box is empty again
+    expect(box.value).toBe('');
   });
 });

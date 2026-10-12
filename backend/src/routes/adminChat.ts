@@ -1,6 +1,7 @@
 import type { FastifyPluginAsync, FastifyReply, FastifyRequest } from 'fastify';
 
-// Moderation for community chat: open reports, soft-deleting a message, banning an account from chat.
+// Moderation for community chat: open reports (each about a whole conversation, with the messages that
+// were there when it was reported), soft-deleting a message, banning an account from chat.
 
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const unavailable = { error: 'Dịch vụ trò chuyện chưa sẵn sàng.', error_en: 'Chat is not available yet.' };
@@ -8,8 +9,8 @@ const failed = { error: 'Chưa xử lý được. Thử lại sau nhé.', error_
 const notFound = { error: 'Không tìm thấy.', error_en: 'Not found.' };
 const invalid = { error: 'Yêu cầu không hợp lệ.', error_en: 'That request is not valid.' };
 
-type MessageEmbed = { body?: string; sender_id?: string; sender_name?: string; image_url?: string | null };
-type ReportRow = { id: string; message_id: string; reason: string; created_at: string; chat_messages: MessageEmbed | MessageEmbed[] | null };
+type Evidence = { id: string; sender_id: string; sender_name: string; body: string; image_url: string | null; created_at: string };
+type ReportRow = { id: string; reason: string; created_at: string; label: string | null; snapshot: Evidence[] | null };
 
 export const adminChatRoutes: FastifyPluginAsync = async (app) => {
   const requireAdmin = async (request: FastifyRequest, reply: FastifyReply) => {
@@ -35,32 +36,47 @@ export const adminChatRoutes: FastifyPluginAsync = async (app) => {
   app.get('/api/admin/chat/reports', { preHandler: [requireAdmin] }, async (_request, reply) => {
     if (!app.supabase) return reply.code(503).send(unavailable);
     const { data, error } = await app.supabase.from('chat_reports')
-      .select('id, message_id, reason, created_at, chat_messages(body, sender_id, sender_name, image_url)')
-      .is('handled_at', null).order('created_at', { ascending: false }).limit(200);
+      .select('id, reason, created_at, label, snapshot')
+      .is('handled_at', null).not('conversation_key', 'is', null).order('created_at', { ascending: false }).limit(100);
     if (error) return reply.code(500).send(failed);
-    const reports = ((data ?? []) as ReportRow[]).map((r) => {
-      const message = Array.isArray(r.chat_messages) ? r.chat_messages[0] : r.chat_messages;
-      return {
-        id: r.id, message_id: r.message_id, reason: r.reason, created_at: r.created_at,
-        body: message?.body ?? '', sender_id: message?.sender_id ?? '', sender_name: message?.sender_name ?? '',
-        image_url: message?.image_url ?? null,
-      };
-    });
+    const rows = (data ?? []) as ReportRow[];
+    const ids = rows.flatMap((r) => (r.snapshot ?? []).map((m) => m.id));
+
+    // The snapshot keeps what was said; this only marks which of those messages an admin has since removed.
+    let removed = new Set<string>();
+    if (ids.length > 0) {
+      const gone = await app.supabase.from('chat_messages').select('id').in('id', ids).not('deleted_at', 'is', null);
+      if (gone.error) return reply.code(500).send(failed);
+      removed = new Set(((gone.data ?? []) as Array<{ id: string }>).map((m) => m.id));
+    }
+    const reports = rows.map((r) => ({
+      id: r.id, reason: r.reason, created_at: r.created_at, label: r.label ?? '',
+      messages: (r.snapshot ?? []).map((m) => ({ ...m, deleted: removed.has(m.id) })),
+    }));
     return reply.send({ reports });
+  });
+
+  app.post('/api/admin/chat/reports/:id/resolve', { preHandler: [requireAdmin] }, async (request, reply) => {
+    if (!app.supabase) return reply.code(503).send(unavailable);
+    const id = (request.params as { id: string }).id;
+    if (!UUID_PATTERN.test(id)) return reply.code(404).send(notFound);
+    const { data, error } = await app.supabase.from('chat_reports').update({ handled_at: new Date().toISOString() })
+      .eq('id', id).is('handled_at', null).select('id');
+    if (error) return reply.code(500).send(failed);
+    if (((data as unknown[] | null) ?? []).length === 0) return reply.code(404).send(notFound);
+    return reply.send({});
   });
 
   app.delete('/api/admin/chat/messages/:id', { preHandler: [requireAdmin] }, async (request, reply) => {
     if (!app.supabase) return reply.code(503).send(unavailable);
     const id = (request.params as { id: string }).id;
     if (!UUID_PATTERN.test(id)) return reply.code(404).send(notFound);
-    const now = new Date().toISOString();
-    const removed = await app.supabase.from('chat_messages').update({ deleted_at: now }).eq('id', id).is('deleted_at', null).select('id, image_url');
+    const removed = await app.supabase.from('chat_messages').update({ deleted_at: new Date().toISOString() })
+      .eq('id', id).is('deleted_at', null).select('id, image_url');
     if (removed.error) return reply.code(500).send(failed);
     const rows = (removed.data ?? []) as Array<{ image_url: string | null }>;
     if (rows.length === 0) return reply.code(404).send(notFound);
     await removePicture(request, rows[0].image_url);
-    const closed = await app.supabase.from('chat_reports').update({ handled_at: now }).eq('message_id', id).is('handled_at', null);
-    if (closed.error) return reply.code(500).send(failed);
     return reply.send({});
   });
 

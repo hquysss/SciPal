@@ -49,7 +49,7 @@ export function TutorWidget() {
   const suggestions = session.lesson ? lessonQuestions(session.lesson.title) : LANDING_QUESTIONS[activeLevel];
   return <LevelScope level={activeLevel} className={styles.scope}><div data-tutor-scope>
     <button ref={trigger} type="button" disabled={!online} aria-haspopup="dialog" aria-expanded={visible} aria-controls={opened ? 'scipal-professor-panel' : undefined}
-      aria-label={t({ en: 'Open Professor Quys', vi: 'Mở Giáo sư Quý' })}
+      aria-label={t({ en: 'Open the AI Professor', vi: 'Mở Giáo sư AI' })}
       title={online ? t({ en: 'Ask the Professor', vi: 'Hỏi thầy' }) : t({ en: 'Needs an internet connection', vi: 'Cần kết nối mạng' })}
       className={styles.trigger} data-open={visible || undefined} data-answering={session.chat.streaming || undefined}
       {...drag.handlers}

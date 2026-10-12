@@ -1031,6 +1031,8 @@ export interface Database {
         Row: {
           id: string;
           room_subject_id: string | null;
+          community: boolean;
+          class_id: string | null;
           friendship_id: string | null;
           sender_id: string;
           sender_name: string;
@@ -1042,6 +1044,8 @@ export interface Database {
         Insert: {
           id?: string;
           room_subject_id?: string | null;
+          community?: boolean;
+          class_id?: string | null;
           friendship_id?: string | null;
           sender_id: string;
           sender_name: string;
@@ -1053,6 +1057,8 @@ export interface Database {
         Update: {
           id?: string;
           room_subject_id?: string | null;
+          community?: boolean;
+          class_id?: string | null;
           friendship_id?: string | null;
           sender_id?: string;
           sender_name?: string;
@@ -1062,6 +1068,13 @@ export interface Database {
           deleted_at?: string | null;
         };
         Relationships: [
+          {
+            foreignKeyName: 'chat_messages_class_id_fkey';
+            columns: ['class_id'];
+            isOneToOne: false;
+            referencedRelation: 'class_rooms';
+            referencedColumns: ['id'];
+          },
           {
             foreignKeyName: 'chat_messages_room_subject_id_fkey';
             columns: ['room_subject_id'];
@@ -1121,27 +1134,36 @@ export interface Database {
       chat_reports: {
         Row: {
           id: string;
-          message_id: string;
+          message_id: string | null;
           reporter_id: string;
           reason: string;
           created_at: string;
           handled_at: string | null;
+          conversation_key: string | null;
+          label: string | null;
+          snapshot: unknown;
         };
         Insert: {
           id?: string;
-          message_id: string;
+          message_id?: string | null;
           reporter_id: string;
           reason: string;
           created_at?: string;
           handled_at?: string | null;
+          conversation_key?: string | null;
+          label?: string | null;
+          snapshot?: unknown;
         };
         Update: {
           id?: string;
-          message_id?: string;
+          message_id?: string | null;
           reporter_id?: string;
           reason?: string;
           created_at?: string;
           handled_at?: string | null;
+          conversation_key?: string | null;
+          label?: string | null;
+          snapshot?: unknown;
         };
         Relationships: [
           {

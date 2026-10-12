@@ -177,7 +177,7 @@ export function AccountSettings({ currentRole = 'student', educationPreference, 
                   <span>{t({ en: 'My plan', vi: 'Gói của tôi' })}</span>
                 </div>
                 <div className={rowHint}>
-                  {t({ en: 'Your plan and how many Professor Quys and exam turns are left', vi: 'Gói đang dùng và số lượt Giáo sư Quý, lượt thi còn lại' })}
+                  {t({ en: 'Your plan and how many AI Professor and exam turns are left', vi: 'Gói đang dùng và số lượt Giáo sư AI, lượt thi còn lại' })}
                 </div>
               </div>
               <Link href="/profile/plan" className={buttonVariants({ variant: 'outline', className: 'self-start sm:self-auto' })}>

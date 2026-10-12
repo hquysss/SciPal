@@ -33,7 +33,7 @@ describe('AiSettingsForm', () => {
     expect(control(html, 'Model')).toContain('placeholder="gemini-3.8-flash"');
     expect(control(html, 'Token mỗi học sinh mỗi ngày')).toContain('value="60000"');
     expect(html).toContain('1.000–600.000 token');
-    expect(html).toContain('Bật Giáo sư Quý cho học sinh');
+    expect(html).toContain('Bật Giáo sư AI cho học sinh');
     expect(html).toContain('Thử kết nối');
     expect(html).toMatch(/>4<[\s\S]*>25<[\s\S]*>2</);
     expect(countRawColors(html).total).toBe(0);

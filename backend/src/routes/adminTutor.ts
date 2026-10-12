@@ -1,6 +1,6 @@
 import type { FastifyPluginAsync, FastifyReply, FastifyRequest } from 'fastify';
 
-// Admins read every student's Professor Quys conversations (/admin/ai, tab "Hội thoại") to check the
+// Admins read every student's AI Professor conversations (/admin/ai, tab "Hội thoại") to check the
 // tutor's quality. Read only: nothing here changes or deletes a conversation.
 
 const PAGE = 30;

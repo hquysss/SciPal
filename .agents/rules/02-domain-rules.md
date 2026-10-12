@@ -49,7 +49,7 @@ Mọi phần tử trong `lessons.blocks` (JSONB) bắt buộc phải thỏa mãn
 - Không sửa cấu hình alias `react` trong `mobile/tsconfig.json` (bắt buộc giữ để giải quyết xung đột kiểu giữa React 18 của Expo và React 19 của Web).
 
 ## 8. Giọng văn giao diện (UI Copy)
-- Tên trợ lý AI là **Giáo sư Quý** (EN: **Professor Quys**, gọi tắt "the Professor"). Không dùng "gia sư" hay "tutor" trong chữ hiển thị.
-- Xưng hô: trong khu Giáo sư Quý (chat, giọng nói, hỏi thử cho khách, lỗi hiện trong các khung đó) dùng **thầy ↔ em**; mọi chỗ khác gọi người dùng là **bạn**. Giáo viên nói về học sinh ("12/30 em đã làm") là ngoại lệ tự nhiên.
+- Tên trợ lý AI là **Giáo sư AI** (EN: **AI Professor**, gọi tắt "the Professor"). Không dùng "gia sư" hay "tutor" trong chữ hiển thị.
+- Xưng hô: trong khu Giáo sư AI (chat, giọng nói, hỏi thử cho khách, lỗi hiện trong các khung đó) dùng **thầy ↔ em**; mọi chỗ khác gọi người dùng là **bạn**. Giáo viên nói về học sinh ("12/30 em đã làm") là ngoại lệ tự nhiên.
 - Thông báo cho học sinh: câu ngắn, chủ động, nói lý do rồi việc cần làm ("Chưa lưu được. Kiểm tra kết nối rồi thử lại nhé."). Tránh "Vui lòng", câu bị động kiểu "đã được ghi nhận", và gạch dài (—) nối câu tiếng Việt.
 - Tiếng Anh viết "email", không viết "e-mail".

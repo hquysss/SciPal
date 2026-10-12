@@ -3,12 +3,10 @@ import Fastify from 'fastify';
 import { chatRoutes } from './chat.js';
 import { fakeDb } from '../__tests__/fakeDb.js';
 import { orderPair } from './friends.js';
-import { SUBJECT_ARCHIVED } from '../subjects/archived.js';
 
 const ME = '11111111-1111-4111-8111-111111111111';
 const OTHER = '22222222-2222-4222-8222-222222222222';
 const THIRD = '33333333-3333-4333-8333-333333333333';
-const ROOM = '66666666-6666-4666-8666-666666666666';
 const FS = '44444444-4444-4444-8444-444444444444';
 const MSG = '77777777-7777-4777-8777-777777777777';
 
@@ -27,13 +25,13 @@ const post = (app: ReturnType<typeof build>, body: unknown) => app.inject({ meth
 
 describe('POST /api/chat/messages', () => {
   it('needs a user and supabase', async () => {
-    expect((await post(build({ user: null }), { room_subject_id: ROOM, body: 'hi' })).statusCode).toBe(401);
-    expect((await post(build({}), { room_subject_id: ROOM, body: 'hi' })).statusCode).toBe(503);
+    expect((await post(build({ user: null }), { community: true, body: 'hi' })).statusCode).toBe(401);
+    expect((await post(build({}), { community: true, body: 'hi' })).statusCode).toBe(503);
   });
 
   it('rejects a banned account without inserting', async () => {
     const db = fakeDb({ 'profiles.select': [{ data: { chat_banned: true, display_name: 'An' } }] });
-    const res = await post(build({ db }), { room_subject_id: ROOM, body: 'hi' });
+    const res = await post(build({ db }), { community: true, body: 'hi' });
     expect(res.statusCode).toBe(403);
     expect(db.calls.some((c) => c.op === 'insert')).toBe(false);
   });
@@ -41,43 +39,33 @@ describe('POST /api/chat/messages', () => {
   it('rejects empty, whitespace-only and 501-character bodies, and a missing or double target', async () => {
     const app = build({ db: fakeDb({}) });
     for (const body of ['', '   ', 'x'.repeat(501)]) {
-      expect((await post(app, { room_subject_id: ROOM, body })).statusCode).toBe(400);
+      expect((await post(app, { community: true, body })).statusCode).toBe(400);
     }
     expect((await post(app, { body: 'hi' })).statusCode).toBe(400);
-    expect((await post(app, { room_subject_id: ROOM, friendship_id: FS, body: 'hi' })).statusCode).toBe(400);
-    expect((await post(app, { room_subject_id: 'nope', body: 'hi' })).statusCode).toBe(400);
+    expect((await post(app, { community: true, friendship_id: FS, body: 'hi' })).statusCode).toBe(400);
+    expect((await post(app, { community: 'yes', body: 'hi' })).statusCode).toBe(400);
   });
 
   it('returns 429 after 10 messages in 10 seconds', async () => {
     const db = fakeDb({ 'profiles.select': [ok], 'chat_messages.select': [{ count: 10 }] });
-    expect((await post(build({ db }), { room_subject_id: ROOM, body: 'hi' })).statusCode).toBe(429);
+    expect((await post(build({ db }), { community: true, body: 'hi' })).statusCode).toBe(429);
   });
 
   it('returns 422 for a banned word', async () => {
     const db = fakeDb({ 'profiles.select': [ok], 'chat_messages.select': [{ count: 0 }] });
-    expect((await post(build({ db }), { room_subject_id: ROOM, body: 'fuck' })).statusCode).toBe(422);
+    expect((await post(build({ db }), { community: true, body: 'fuck' })).statusCode).toBe(422);
   });
 
-  it('room: 404 for an unknown subject, SUBJECT_ARCHIVED for an archived one', async () => {
-    const missing = fakeDb({ 'profiles.select': [ok], 'chat_messages.select': [{ count: 0 }], 'subjects.select': [{ data: null }] });
-    expect((await post(build({ db: missing }), { room_subject_id: ROOM, body: 'hi' })).statusCode).toBe(404);
-    const archived = fakeDb({ 'profiles.select': [ok], 'chat_messages.select': [{ count: 0 }], 'subjects.select': [{ data: { id: ROOM, archived_at: '2026-10-01T00:00:00Z' } }] });
-    const res = await post(build({ db: archived }), { room_subject_id: ROOM, body: 'hi' });
-    expect(res.statusCode).toBe(400);
-    expect(res.json()).toEqual(SUBJECT_ARCHIVED);
-  });
-
-  it('room: inserts a trimmed message with the sender name', async () => {
+  it('community room: inserts a trimmed message with the sender name', async () => {
     const db = fakeDb({
       'profiles.select': [{ data: { chat_banned: false, display_name: null } }],
       'chat_messages.select': [{ count: 0 }],
-      'subjects.select': [{ data: { id: ROOM, archived_at: null } }],
       'chat_messages.insert': [{ data: { id: MSG } }],
     });
-    const res = await post(build({ db }), { room_subject_id: ROOM, body: '  xin chào  ' });
+    const res = await post(build({ db }), { community: true, body: '  xin chào  ' });
     expect(res.statusCode).toBe(201);
     expect(res.json()).toEqual({ id: MSG });
-    expect(db.calls.find((c) => c.op === 'insert')!.chain[0]).toEqual(['insert', [{ room_subject_id: ROOM, sender_id: ME, sender_name: 'Người dùng', body: 'xin chào' }]]);
+    expect(db.calls.find((c) => c.op === 'insert')!.chain[0]).toEqual(['insert', [{ community: true, sender_id: ME, sender_name: 'Người dùng', body: 'xin chào' }]]);
   });
 
   const [a, b] = orderPair(ME, OTHER);
@@ -126,42 +114,6 @@ describe('POST /api/chat/blocks', () => {
     expect(del.table).toBe('friendships');
     expect(del.chain).toContainEqual(['eq', ['user_a', a]]);
     expect(del.chain).toContainEqual(['eq', ['user_b', b]]);
-  });
-});
-
-describe('POST /api/chat/reports', () => {
-  const report = (db: ReturnType<typeof fakeDb>, body: unknown) =>
-    build({ db }).inject({ method: 'POST', url: '/api/chat/reports', payload: body as object });
-  const msg = (over: object = {}) => ({ data: { id: MSG, sender_id: OTHER, room_subject_id: ROOM, friendship_id: null, deleted_at: null, ...over } });
-
-  it('rejects a missing or over-long reason and a malformed id', async () => {
-    expect((await report(fakeDb({}), { message_id: MSG, reason: '' })).statusCode).toBe(400);
-    expect((await report(fakeDb({}), { message_id: MSG, reason: 'x'.repeat(301) })).statusCode).toBe(400);
-    expect((await report(fakeDb({}), { message_id: 'nope', reason: 'Spam' })).statusCode).toBe(400);
-  });
-
-  it('404s a missing or deleted message, and a DM the caller is not in', async () => {
-    expect((await report(fakeDb({ 'chat_messages.select': [{ data: null }] }), { message_id: MSG, reason: 'Spam' })).statusCode).toBe(404);
-    expect((await report(fakeDb({ 'chat_messages.select': [msg({ deleted_at: '2026-10-12T00:00:00Z' })] }), { message_id: MSG, reason: 'Spam' })).statusCode).toBe(404);
-    const dm = fakeDb({
-      'chat_messages.select': [msg({ room_subject_id: null, friendship_id: FS })],
-      'friendships.select': [{ data: { id: FS, user_a: OTHER, user_b: THIRD, status: 'accepted' } }],
-    });
-    expect((await report(dm, { message_id: MSG, reason: 'Spam' })).statusCode).toBe(404);
-  });
-
-  it('refuses to report your own message', async () => {
-    const db = fakeDb({ 'chat_messages.select': [msg({ sender_id: ME })] });
-    expect((await report(db, { message_id: MSG, reason: 'Spam' })).statusCode).toBe(400);
-  });
-
-  it('409s a second report of the same message, 201s the first', async () => {
-    const twice = fakeDb({ 'chat_messages.select': [msg()], 'chat_reports.insert': [{ error: { code: '23505' } }] });
-    expect((await report(twice, { message_id: MSG, reason: 'Spam' })).statusCode).toBe(409);
-    const once = fakeDb({ 'chat_messages.select': [msg()], 'chat_reports.insert': [{}] });
-    const res = await report(once, { message_id: MSG, reason: ' Spam ' });
-    expect(res.statusCode).toBe(201);
-    expect(once.calls.find((c) => c.op === 'insert')!.chain[0]).toEqual(['insert', [{ message_id: MSG, reporter_id: ME, reason: 'Spam' }]]);
   });
 });
 
@@ -231,9 +183,10 @@ describe('POST /api/chat/images', () => {
     expect((await setup(ready()).send(`friendship_id=${FS}`, big)).statusCode).toBe(413);
   });
 
-  it('is for direct messages only: a room is refused', async () => {
+  it('is for direct messages only: the community room is refused', async () => {
     const s = setup(ready());
-    expect((await s.send(`room_subject_id=${ROOM}`)).statusCode).toBe(400);
+    expect((await s.send('community=true')).statusCode).toBe(400);
+    expect((await s.send('class_id=88888888-8888-4888-8888-888888888888')).statusCode).toBe(400);
     expect(s.store.put).not.toHaveBeenCalled();
   });
 
@@ -270,5 +223,127 @@ describe('POST /api/chat/images', () => {
     const broken = setup({ ...ready(), 'chat_messages.insert': [{ data: null, error: { message: 'boom' } }] });
     expect((await broken.send(`friendship_id=${FS}`)).statusCode).toBe(500);
     expect(broken.store.remove).toHaveBeenCalledWith(broken.store.put.mock.calls[0][0]);
+  });
+});
+
+const CLASS = '88888888-8888-4888-8888-888888888888';
+
+describe('class chat', () => {
+  const base = (extra: Record<string, any[]>) => fakeDb({ 'profiles.select': [ok], 'chat_messages.select': [{ count: 0 }], ...extra });
+  const sendTo = (db: ReturnType<typeof fakeDb>) => post(build({ db }), { class_id: CLASS, body: 'chào cả lớp' });
+
+  it('404s a class that does not exist, and one you are not in', async () => {
+    expect((await sendTo(base({ 'class_rooms.select': [{ data: null }] }))).statusCode).toBe(404);
+    const outsider = base({ 'class_rooms.select': [{ data: { id: CLASS, teacher_id: OTHER } }], 'class_members.select': [{ data: null }] });
+    expect((await sendTo(outsider)).statusCode).toBe(404);
+    expect(outsider.calls.some((c) => c.op === 'insert')).toBe(false);
+  });
+
+  it('lets a member write to the class', async () => {
+    const db = base({
+      'class_rooms.select': [{ data: { id: CLASS, teacher_id: OTHER } }],
+      'class_members.select': [{ data: { class_id: CLASS } }],
+      'chat_messages.insert': [{ data: { id: MSG } }],
+    });
+    const res = await sendTo(db);
+    expect(res.statusCode).toBe(201);
+    expect(db.calls.find((c) => c.op === 'insert')!.chain[0]).toEqual(['insert', [{ class_id: CLASS, sender_id: ME, sender_name: 'An', body: 'chào cả lớp' }]]);
+  });
+
+  it('lets the teacher write without being a member', async () => {
+    const db = base({ 'class_rooms.select': [{ data: { id: CLASS, name: 'x', teacher_id: ME } }], 'chat_messages.insert': [{ data: { id: MSG } }] });
+    expect((await sendTo(db)).statusCode).toBe(201);
+    expect(db.calls.some((c) => c.table === 'class_members')).toBe(false);
+  });
+
+  it('needs exactly one target', async () => {
+    const app = build({ db: fakeDb({}) });
+    expect((await post(app, { class_id: CLASS, community: true, body: 'hi' })).statusCode).toBe(400);
+    expect((await post(app, { class_id: CLASS, friendship_id: FS, body: 'hi' })).statusCode).toBe(400);
+    expect((await post(app, { class_id: 'nope', body: 'hi' })).statusCode).toBe(400);
+  });
+
+  it('lists the classes you teach or belong to', async () => {
+    const db = fakeDb({
+      'class_members.select': [{ data: [{ class_id: 'c1' }] }],
+      'class_rooms.select': [{ data: [{ id: 'c1', name: '10A' }, { id: 'c2', name: 'Tin 11' }] }],
+    });
+    const res = await build({ db }).inject({ method: 'GET', url: '/api/chat/classes' });
+    expect(res.statusCode).toBe(200);
+    expect(res.json()).toEqual({ classes: [{ id: 'c1', name: '10A' }, { id: 'c2', name: 'Tin 11' }] });
+    const rooms = db.calls.find((c) => c.table === 'class_rooms')!;
+    expect(rooms.chain).toContainEqual(['or', [`teacher_id.eq.${ME},id.in.(c1)`]]);
+  });
+});
+
+describe('POST /api/chat/reports (a whole conversation)', () => {
+  const report = (db: ReturnType<typeof fakeDb>, body: unknown) =>
+    build({ db }).inject({ method: 'POST', url: '/api/chat/reports', payload: body as object });
+  const recent = { data: [
+    { id: 'm2', sender_id: OTHER, sender_name: 'An', body: 'tin hai', image_url: null, created_at: '2026-10-12T10:01:00Z' },
+    { id: 'm1', sender_id: ME, sender_name: 'Bình', body: 'tin một', image_url: null, created_at: '2026-10-12T10:00:00Z' },
+  ] };
+  const insertedRow = (db: ReturnType<typeof fakeDb>) => db.calls.find((c) => c.table === 'chat_reports' && c.op === 'insert')!.chain[0][1][0];
+
+  it('needs exactly one conversation and a reason of 1 to 300 characters', async () => {
+    const app = build({ db: fakeDb({}) });
+    const send = (payload: object) => app.inject({ method: 'POST', url: '/api/chat/reports', payload });
+    expect((await send({ reason: 'Spam' })).statusCode).toBe(400);
+    expect((await send({ community: true, class_id: CLASS, reason: 'Spam' })).statusCode).toBe(400);
+    expect((await send({ community: true, reason: '' })).statusCode).toBe(400);
+    expect((await send({ community: true, reason: 'x'.repeat(301) })).statusCode).toBe(400);
+    expect((await send({ class_id: 'nope', reason: 'Spam' })).statusCode).toBe(400);
+  });
+
+  it('community: keeps the latest messages, oldest first, as evidence', async () => {
+    const db = fakeDb({ 'chat_messages.select': [recent], 'chat_reports.insert': [{}] });
+    const res = await report(db, { community: true, reason: ' Spam ' });
+    expect(res.statusCode).toBe(201);
+    expect(insertedRow(db)).toEqual({
+      reporter_id: ME, reason: 'Spam', conversation_key: 'community', label: 'Cộng đồng',
+      snapshot: [
+        { id: 'm1', sender_id: ME, sender_name: 'Bình', body: 'tin một', image_url: null, created_at: '2026-10-12T10:00:00Z' },
+        { id: 'm2', sender_id: OTHER, sender_name: 'An', body: 'tin hai', image_url: null, created_at: '2026-10-12T10:01:00Z' },
+      ],
+    });
+    const read = db.calls.find((c) => c.table === 'chat_messages')!;
+    expect(read.chain).toContainEqual(['eq', ['community', true]]);
+    expect(read.chain).toContainEqual(['is', ['deleted_at', null]]);
+    expect(read.chain).toContainEqual(['limit', [30]]);
+  });
+
+  it('refuses to report a conversation with no messages', async () => {
+    const db = fakeDb({ 'chat_messages.select': [{ data: [] }] });
+    expect((await report(db, { community: true, reason: 'Spam' })).statusCode).toBe(400);
+    expect(db.calls.some((c) => c.op === 'insert')).toBe(false);
+  });
+
+  it('class: only the teacher or a member; labelled with the class name', async () => {
+    const outsider = fakeDb({ 'class_rooms.select': [{ data: { id: CLASS, name: '10A', teacher_id: THIRD } }], 'class_members.select': [{ data: null }] });
+    expect((await report(outsider, { class_id: CLASS, reason: 'Spam' })).statusCode).toBe(404);
+    const member = fakeDb({
+      'class_rooms.select': [{ data: { id: CLASS, name: '10A', teacher_id: THIRD } }],
+      'class_members.select': [{ data: { class_id: CLASS } }],
+      'chat_messages.select': [recent],
+      'chat_reports.insert': [{}],
+    });
+    expect((await report(member, { class_id: CLASS, reason: 'Spam' })).statusCode).toBe(201);
+    expect(insertedRow(member)).toMatchObject({ conversation_key: `class:${CLASS}`, label: '10A' });
+  });
+
+  it('direct chat: only a member of an accepted friendship', async () => {
+    const [a, b] = orderPair(ME, OTHER);
+    const row = (over: object = {}) => ({ data: { id: FS, user_a: a, user_b: b, status: 'accepted', ...over } });
+    for (const bad of [{ data: null }, row({ status: 'pending' }), row({ user_a: OTHER, user_b: THIRD })]) {
+      expect((await report(fakeDb({ 'friendships.select': [bad] }), { friendship_id: FS, reason: 'Spam' })).statusCode).toBe(404);
+    }
+    const ok = fakeDb({ 'friendships.select': [row()], 'chat_messages.select': [recent], 'chat_reports.insert': [{}] });
+    expect((await report(ok, { friendship_id: FS, reason: 'Spam' })).statusCode).toBe(201);
+    expect(insertedRow(ok)).toMatchObject({ conversation_key: `friendship:${FS}`, label: 'Tin nhắn riêng' });
+  });
+
+  it('409s a second open report of the same conversation', async () => {
+    const db = fakeDb({ 'chat_messages.select': [recent], 'chat_reports.insert': [{ error: { code: '23505' } }] });
+    expect((await report(db, { community: true, reason: 'Spam' })).statusCode).toBe(409);
   });
 });

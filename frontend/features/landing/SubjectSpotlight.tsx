@@ -148,10 +148,10 @@ export function SubjectSpotlight({ level, catalog }: { level: EducationLevel; ca
                 directions="/mascots/kamran-directions.webp"
                 reactions="/mascots/kamran-reactions.webp"
                 size={180}
-                ariaLabel={t({ en: 'Say hello to Professor Quys', vi: 'Chào Giáo sư Quý' })}
+                ariaLabel={t({ en: 'Say hello to the AI Professor', vi: 'Chào Giáo sư AI' })}
               />
               <figcaption className={styles.glassCaption}>
-                <strong>{t({ en: 'Professor Quys', vi: 'Giáo sư Quý' })}</strong>
+                <strong>{t({ en: 'AI Professor', vi: 'Giáo sư AI' })}</strong>
                 <span>{t({ en: 'Your AI tutor', vi: 'Gia sư AI của bạn' })}</span>
               </figcaption>
             </div>

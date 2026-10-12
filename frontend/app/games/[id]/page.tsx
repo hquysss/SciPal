@@ -11,7 +11,7 @@ export default async function GameRoute({ params }: { params: Promise<{ id: stri
   const { id } = await params;
   return (
     <main className="mx-auto flex w-full max-w-3xl flex-col gap-6 px-4 pb-20 pt-6 sm:px-6 sm:pt-8">
-      <PageBreadcrumb items={[{ href: '/', label: { en: 'Home', vi: 'Trang chủ' } }, { href: '/games', label: { en: 'Games', vi: 'Game' } }, { label: { en: 'Play', vi: 'Chơi' } }]} />
+      <PageBreadcrumb items={[{ href: '/', label: { en: 'Home', vi: 'Trang chủ' } }, { href: '/games', label: { en: 'Gamification', vi: 'Gamification' } }, { label: { en: 'Play', vi: 'Chơi' } }]} />
       <GamePlayer id={id} />
     </main>
   );

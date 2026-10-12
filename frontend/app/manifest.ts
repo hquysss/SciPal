@@ -19,7 +19,7 @@ export default function manifest(): MetadataRoute.Manifest {
     id: '/',
     name: 'SciPal',
     short_name: 'SciPal',
-    description: 'Học song ngữ Việt–Anh, để tiếng Anh trở thành ngôn ngữ thứ hai của bạn · Learn in Vietnamese and English, so English becomes your second language.',
+    description: 'Học song ngữ Việt–Anh, hướng đến việc tiếng Anh trở thành ngôn ngữ thứ hai của bạn · Learn in Vietnamese and English, working towards English as your second language.',
     lang: 'vi',
     dir: 'ltr',
     categories: ['education'],
@@ -38,16 +38,16 @@ export default function manifest(): MetadataRoute.Manifest {
     // Long-press the app icon (or right-click it on Windows) to jump straight in.
     shortcuts: [
       { name: 'Môn học · Subjects', short_name: 'Môn học', description: 'Chọn môn và học bài · Pick a subject and learn', url: '/subjects', icons: shortcutIcon },
-      { name: 'Giáo sư Quý · Professor Quys', short_name: 'Giáo sư Quý', description: 'Hỏi Giáo sư Quý từng bước · Ask Professor Quys step by step', url: '/tutor', icons: shortcutIcon },
+      { name: 'Giáo sư AI · AI Professor', short_name: 'Giáo sư AI', description: 'Hỏi Giáo sư AI từng bước · Ask the AI Professor step by step', url: '/tutor', icons: shortcutIcon },
       { name: 'Từ điển · Glossary', short_name: 'Từ điển', description: 'Tra thuật ngữ Anh – Việt · Look up English–Vietnamese terms', url: '/glossary', icons: shortcutIcon },
       { name: 'Thi thử · Practice exams', short_name: 'Thi thử', description: 'Làm đề thi thử · Take a practice exam', url: '/exam', icons: shortcutIcon },
     ],
     screenshots: [
       { src: '/screenshots/wide-home.png', sizes: '1280x720', type: 'image/png', form_factor: 'wide', label: 'Trang chủ SciPal' },
-      { src: '/screenshots/wide-tutor.png', sizes: '1280x720', type: 'image/png', form_factor: 'wide', label: 'Giáo sư Quý gợi ý từng bước' },
+      { src: '/screenshots/wide-tutor.png', sizes: '1280x720', type: 'image/png', form_factor: 'wide', label: 'Giáo sư AI gợi ý từng bước' },
       { src: '/screenshots/wide-pricing.png', sizes: '1280x720', type: 'image/png', form_factor: 'wide', label: 'Bảng giá' },
       { src: '/screenshots/narrow-home.png', sizes: '540x960', type: 'image/png', form_factor: 'narrow', label: 'SciPal trên điện thoại' },
-      { src: '/screenshots/narrow-tutor.png', sizes: '540x960', type: 'image/png', form_factor: 'narrow', label: 'Giáo sư Quý trên điện thoại' },
+      { src: '/screenshots/narrow-tutor.png', sizes: '540x960', type: 'image/png', form_factor: 'narrow', label: 'Giáo sư AI trên điện thoại' },
     ],
   };
 }

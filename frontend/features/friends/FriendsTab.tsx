@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useState, type FormEvent, type ReactNode } from 'react';
-import { ArrowLeft, Search } from 'lucide-react';
+import { Search } from 'lucide-react';
 import { useLanguage } from '@scipal/hooks';
 import { Alert } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
@@ -210,15 +210,13 @@ export function FriendsTab({ dm = null, onDm }: { dm?: string | null; onDm?: (fr
   if (dm) {
     const friend = state.status === 'ready' ? state.friends.find((f) => f.id === dm) : undefined;
     return (
-      <div className="flex flex-col gap-3">
-        <div className="flex items-center gap-2">
-          <Button type="button" variant="ghost" onClick={() => onDm?.(null)}>
-            <ArrowLeft aria-hidden="true" />{t({ en: 'Friends', vi: 'Bạn bè' })}
-          </Button>
-          {friend && <h2 className="min-w-0 truncate text-lg font-bold text-ink">{friend.display_name?.trim() || t({ en: 'User', vi: 'Người dùng' })}</h2>}
-        </div>
-        <ChatPane key={dm} target={{ friendship_id: dm }} onBlocked={() => { onDm?.(null); void load(); }} />
-      </div>
+      <ChatPane
+        key={dm}
+        target={{ friendship_id: dm }}
+        title={friend?.display_name?.trim() || t({ en: 'User', vi: 'Người dùng' })}
+        onBack={() => onDm?.(null)}
+        onBlocked={() => { onDm?.(null); void load(); }}
+      />
     );
   }
 
