@@ -13,7 +13,7 @@ const person = (id: string, name: string | null): FriendEntry => ({ id, user_id:
 const ready = (patch: Partial<Extract<FriendsState, { status: 'ready' }>> = {}): FriendsState => ({
   status: 'ready', friends: [], incoming: [], outgoing: [], results: null, ...patch,
 });
-const handlers = () => ({ onSearch: vi.fn(), onSend: vi.fn(), onAccept: vi.fn(), onRemove: vi.fn() });
+const handlers = () => ({ onSearch: vi.fn(), onSend: vi.fn(), onAccept: vi.fn(), onRemove: vi.fn(), onMessage: vi.fn(), onBlock: vi.fn() });
 
 describe('FriendsTabView', () => {
   it('invites you to search when there are no friends yet', () => {
@@ -66,5 +66,22 @@ describe('FriendsTabView', () => {
     fireEvent.change(box, { target: { value: ' an ' } });
     fireEvent.submit(box.closest('form')!);
     expect(h.onSearch).toHaveBeenCalledWith('an');
+  });
+
+  it('opens a chat with a friend by the row id', () => {
+    const h = handlers();
+    render(<FriendsTabView state={ready({ friends: [person('f1', 'Bình')] })} {...h} />);
+    fireEvent.click(screen.getByRole('button', { name: 'Nhắn tin' }));
+    expect(h.onMessage).toHaveBeenCalledWith('f1');
+  });
+
+  it('blocks a search result only on the second click, since there is no undo', () => {
+    const h = handlers();
+    const found: SearchUser = { user_id: 'x', display_name: 'Xuân', avatar_url: null, relation: 'none', friendship_id: null };
+    render(<FriendsTabView state={ready({ results: [found] })} {...h} />);
+    fireEvent.click(screen.getByRole('button', { name: 'Chặn' }));
+    expect(h.onBlock).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole('button', { name: /Chắc chắn chặn/ }));
+    expect(h.onBlock).toHaveBeenCalledWith('x');
   });
 });

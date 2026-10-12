@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import { Bi } from '@/components/ui/bilingual';
-import { FriendsTab } from '@/features/friends/FriendsTab';
+import { CommunityPage } from '@/features/community/CommunityPage';
 import { pageTitle } from '@/lib/pageTitle';
 
 export const metadata: Metadata = { ...pageTitle('Community', 'Cộng đồng') };
@@ -16,10 +16,10 @@ export default function CommunityRoute() {
           <Bi en="Community" vi="Cộng đồng" />
         </h1>
         <p className="max-w-prose text-sm text-ink-muted sm:text-base">
-          <Bi en="Find classmates and keep your friends in one place." vi="Tìm bạn cùng lớp và giữ danh sách bạn bè ở một chỗ." />
+          <Bi en="Chat with classmates and keep your friends in one place." vi="Trò chuyện với bạn học và giữ danh sách bạn bè ở một chỗ." />
         </p>
       </header>
-      <FriendsTab />
+      <CommunityPage />
     </main>
   );
 }
