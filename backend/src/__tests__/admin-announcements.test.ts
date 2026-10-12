@@ -12,9 +12,11 @@ const ok = (data: unknown = null) => mockQuery({ data, error: null });
 const payload = { client_request_id: REQUEST_ID, title_vi: 'Có bài mới', title_en: 'New lessons', body_vi: 'Xem ngay', body_en: 'Take a look', link: '/subjects', send_app: true, send_email: true };
 const stored = { id: 'ann-1', ...payload, level: null, app_count: 0, email_count: 0, created_at: '2026-10-12T00:00:00Z' };
 
-async function build(user: object | null, tables: Record<string, MockBuilder | MockBuilder[]>) {
+async function build(user: object | null, tables: Record<string, MockBuilder | MockBuilder[]>, users: Array<{ id: string; app_metadata?: { app_role?: string } }> = []) {
   const app = Fastify();
-  app.decorate('supabase', mockSupabase(tables) as never);
+  const supabase = mockSupabase(tables) as unknown as { auth: unknown };
+  supabase.auth = { admin: { listUsers: async () => ({ data: { users }, error: null }) } };
+  app.decorate('supabase', supabase as never);
   app.addHook('onRequest', async (req) => {
     if (user) (req as any).user = user;
   });
@@ -116,6 +118,43 @@ describe('admin announcements', () => {
     const body = (await app.inject({ method: 'GET', url: '/api/admin/announcements' })).json();
     expect(body.audience).toMatchObject({ accounts: 42, confirmed: 2, pending: 1, unsubscribed: 0, confirmedByLevel: { primary: 2, lower_secondary: 0, upper_secondary: 1 } });
     expect(body.emailReady).toBe(true);
+    await app.close();
+  });
+
+  const U1 = '11111111-1111-4111-8111-111111111111';
+  const U2 = '22222222-2222-4222-8222-222222222222';
+  const U3 = '33333333-3333-4333-8333-333333333333';
+
+  it('sends the bell only to the chosen accounts that have a profile', async () => {
+    const notifications = ok();
+    const profiles = ok([{ id: U1 }]);
+    const app = await build(admin, { announcements: [ok(null), ok(stored), ok(null)], profiles, notifications });
+    const res = await app.inject({ method: 'POST', url: '/api/admin/announcements', payload: { ...payload, send_email: false, audience: { mode: 'users', user_ids: [U1, U2] } } });
+    expect(res.statusCode).toBe(201);
+    expect(profiles.inCalls).toEqual([['id', [U1, U2]]]);
+    expect(notifications.inserted[0]).toEqual([{ user_id: U1, kind: 'announcement', title_en: 'New lessons', title_vi: 'Có bài mới', link: '/subjects' }]);
+    expect(res.json().announcement.app_count).toBe(1);
+    await app.close();
+  });
+
+  it('sends the bell to the accounts of the chosen roles (a missing role counts as student)', async () => {
+    const notifications = ok();
+    const profiles = ok([{ id: U1 }, { id: U3 }]);
+    const users = [{ id: U1, app_metadata: { app_role: 'teacher' } }, { id: U2, app_metadata: { app_role: 'admin' } }, { id: U3 }];
+    const app = await build(admin, { announcements: [ok(null), ok(stored), ok(null)], profiles, notifications }, users);
+    const res = await app.inject({ method: 'POST', url: '/api/admin/announcements', payload: { ...payload, send_email: false, audience: { mode: 'role', roles: ['teacher', 'student'] } } });
+    expect(res.statusCode).toBe(201);
+    expect(profiles.inCalls).toEqual([['id', [U1, U3]]]);
+    expect(res.json().announcement.app_count).toBe(2);
+    await app.close();
+  });
+
+  it('refuses an empty, oversized or malformed audience', async () => {
+    const app = await build(admin, {});
+    const many = Array.from({ length: 201 }, (_, i) => `00000000-0000-4000-8000-${String(i).padStart(12, '0')}`);
+    for (const audience of [{ mode: 'users', user_ids: [] }, { mode: 'users', user_ids: ['nope'] }, { mode: 'users', user_ids: many }, { mode: 'role', roles: [] }, { mode: 'role', roles: ['owner'] }, { mode: 'everyone' }]) {
+      expect((await app.inject({ method: 'POST', url: '/api/admin/announcements', payload: { ...payload, audience } })).statusCode).toBe(400);
+    }
     await app.close();
   });
 });

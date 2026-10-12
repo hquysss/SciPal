@@ -8,6 +8,9 @@ import { Button } from '@/components/ui/button';
 import { Field } from '@/components/ui/field';
 import { INPUT_CLASS, Input } from '@/components/ui/input';
 import { useConfirmDialog } from '@/components/ui/confirm-dialog';
+import { listAccounts, type Account } from '@/features/admin/accountsApi';
+import { ALL_ACCOUNTS, AudiencePicker, targetCount, type Target } from './AudiencePicker';
+import { SendToast } from './SendToast';
 import {
   NEWSLETTER_LEVELS,
   fetchAnnouncements,
@@ -31,6 +34,8 @@ export function AnnouncementsPage() {
   const [loadError, setLoadError] = useState<Bilingual | null>(null);
   const [form, setForm] = useState(EMPTY);
   const [busy, setBusy] = useState(false);
+  const [target, setTarget] = useState<Target>(ALL_ACCOUNTS);
+  const [accounts, setAccounts] = useState<Account[] | null>(null);
   const [notice, setNotice] = useState<{ tone: 'success' | 'warning' | 'danger'; text: Bilingual } | null>(null);
   const requestId = useRef<string>(crypto.randomUUID());
   const locked = useRef(false);
@@ -42,17 +47,20 @@ export function AnnouncementsPage() {
   }, []);
   useEffect(() => {
     void load();
+    // Roles and the picker's search need the account list; without it the notice can still go to everyone.
+    void listAccounts().then(setAccounts, () => undefined);
   }, [load]);
 
   const set = <K extends keyof typeof EMPTY>(key: K, value: (typeof EMPTY)[K]) => setForm((f) => ({ ...f, [key]: value }));
   const audience = data?.audience;
+  const appTarget = targetCount(target, accounts, audience?.accounts ?? 0);
   const emailTarget = audience ? (form.level ? audience.confirmedByLevel[form.level] : audience.confirmed) : 0;
 
   async function submit(event: FormEvent) {
     event.preventDefault();
     if (locked.current || !audience) return;
     const parts: string[] = [];
-    if (form.send_app) parts.push(t({ vi: `${audience.accounts} tài khoản (chuông thông báo)`, en: `${audience.accounts} accounts (bell)` }));
+    if (form.send_app) parts.push(t({ vi: `${appTarget} tài khoản (chuông thông báo)`, en: `${appTarget} accounts (bell)` }));
     if (form.send_email) parts.push(t({ vi: `${emailTarget} người đăng ký (email)`, en: `${emailTarget} subscribers (e-mail)` }));
     const confirmed = await ask({
       title: t({ vi: 'Gửi thông báo này?', en: 'Send this announcement?' }),
@@ -64,7 +72,12 @@ export function AnnouncementsPage() {
     locked.current = true;
     setBusy(true);
     setNotice(null);
-    const result = await sendAnnouncement({ client_request_id: requestId.current, ...form, link: form.link.trim() });
+    const result = await sendAnnouncement({
+      client_request_id: requestId.current,
+      ...form,
+      link: form.link.trim(),
+      audience: target.mode === 'users' ? { mode: 'users', user_ids: target.picked.map((a) => a.id) } : target.mode === 'role' ? { mode: 'role', roles: target.roles } : { mode: 'all' },
+    });
     locked.current = false;
     setBusy(false);
     if (!result.ok) {
@@ -90,11 +103,12 @@ export function AnnouncementsPage() {
           },
     );
     setForm(EMPTY);
+    setTarget(ALL_ACCOUNTS);
     requestId.current = crypto.randomUUID();
     void load();
   }
 
-  const canSend = form.title_vi.trim() && form.title_en.trim() && (form.send_app || form.send_email) && !busy && audience;
+  const canSend = form.title_vi.trim() && form.title_en.trim() && (form.send_app || form.send_email) && !busy && audience && (!form.send_app || appTarget > 0);
 
   return (
     <main className="mx-auto flex w-full max-w-4xl flex-col gap-6 px-4 pb-20 pt-8 sm:px-6">
@@ -103,8 +117,8 @@ export function AnnouncementsPage() {
         <h1 className="text-3xl font-extrabold tracking-tight text-ink">{t({ vi: 'Thông báo', en: 'Announcements' })}</h1>
         <p className="mt-2 text-base text-ink-muted">
           {t({
-            vi: 'Thông báo trong app hiện ở chuông của mọi tài khoản (chỉ tiêu đề). Email chỉ gửi cho người đã đăng ký nhận tin và xác nhận.',
-            en: 'In-app notices appear in every account’s bell (title only). E-mail goes only to people who signed up for the newsletter and confirmed.',
+            vi: 'Thông báo trong app hiện ở chuông của các tài khoản bạn chọn (chỉ tiêu đề). Email chỉ gửi cho người đã đăng ký nhận tin và xác nhận.',
+            en: 'In-app notices appear in the bell of the accounts you choose (title only). E-mail goes only to people who signed up for the newsletter and confirmed.',
           })}
         </p>
       </header>
@@ -154,14 +168,15 @@ export function AnnouncementsPage() {
           <legend className="mb-1 text-sm font-semibold text-ink">{t({ vi: 'Gửi qua', en: 'Send through' })}</legend>
           <label className="flex min-h-11 items-center gap-3 text-sm text-ink">
             <input type="checkbox" className="h-5 w-5" checked={form.send_app} onChange={(e) => set('send_app', e.target.checked)} />
-            {t({ vi: `Thông báo trong app, tới ${audience?.accounts ?? 0} tài khoản`, en: `In-app notice, to ${audience?.accounts ?? 0} accounts` })}
+            {t({ vi: `Thông báo trong app, tới ${appTarget} tài khoản`, en: `In-app notice, to ${appTarget} accounts` })}
           </label>
           <label className="flex min-h-11 items-center gap-3 text-sm text-ink">
             <input type="checkbox" className="h-5 w-5" checked={form.send_email} disabled={data ? !data.emailReady : false} onChange={(e) => set('send_email', e.target.checked)} />
             {t({ vi: `Email, tới ${emailTarget} người đã xác nhận nhận tin`, en: `E-mail, to ${emailTarget} confirmed subscribers` })}
           </label>
         </fieldset>
-        {notice && <Alert tone={notice.tone}>{t(notice.text)}</Alert>}
+        {form.send_app && <AudiencePicker target={target} onChange={setTarget} accounts={accounts} total={audience?.accounts ?? 0} />}
+        {notice?.tone === 'success' ? <SendToast title={t({ vi: 'Đã gửi thông báo', en: 'Announcement sent' })} text={t(notice.text)} onClose={() => setNotice(null)} /> : notice && <Alert tone={notice.tone}>{t(notice.text)}</Alert>}
         <div>
           <Button type="submit" disabled={!canSend}>{busy ? t({ vi: 'Đang gửi…', en: 'Sending…' }) : t({ vi: 'Gửi thông báo', en: 'Send announcement' })}</Button>
         </div>

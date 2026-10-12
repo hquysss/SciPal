@@ -75,6 +75,7 @@ export type AnnouncementInput = {
   level: NewsletterLevel | '';
   send_app: boolean;
   send_email: boolean;
+  audience?: { mode: 'all' } | { mode: 'role'; roles: string[] } | { mode: 'users'; user_ids: string[] };
 };
 
 export const fetchAnnouncements = () =>
