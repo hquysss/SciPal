@@ -1,140 +1,161 @@
 'use client';
 
-import { useMemo, useRef, type RefObject } from 'react';
-import { useFrame } from '@react-three/fiber';
+import { useEffect, useMemo, useRef, type RefObject } from 'react';
+import { useFrame, useLoader } from '@react-three/fiber';
 import * as THREE from 'three';
-import { cardiacState, type CardiacState } from './engines/circulation';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { DRACOLoader } from 'three/addons/loaders/DRACOLoader.js';
+import { cardiacState } from './engines/circulation';
+import { HEART_PART_PLACES, type HeartGroup } from './circulationHeartParts';
+import type { HeartPart } from './circulationCopy';
 import type { Point3 } from './kneeReflexParts';
 
-// A teaching diagram of the heart seen from the front, as in the textbook figure: the right heart
-// (blue blood) on the viewer's left, the left heart (red blood) on the right. Chambers squeeze in
-// turn, the valves open and close with the phases, blood waits behind a closed valve, and the
-// electrical impulse runs through the conduction system.
+// The heart from real anatomy (public/models/circulation/heart.glb): the four chambers squeeze in turn,
+// the leaflets of the four valves part and close with the phases, blood cells wait behind a closed
+// valve, and the electrical impulse runs through the conduction system.
 
 export type HeartPalette = Readonly<Record<'artery' | 'vein' | 'wall' | 'muscle' | 'septum' | 'valve' | 'signal' | 'white', string>>;
 export type HeartLayer = 'flow' | 'conduction';
 type Clock = { readonly time: RefObject<number>; readonly heartRate: number };
 
-const CHAMBERS = {
-  rightAtrium: { at: [-0.82, 0.78, 0] as Point3, size: [0.62, 0.52, 0.48] as Point3, blood: 'vein', squeeze: 'atria' },
-  leftAtrium: { at: [0.78, 0.86, -0.12] as Point3, size: [0.58, 0.48, 0.44] as Point3, blood: 'artery', squeeze: 'atria' },
-  rightVentricle: { at: [-0.58, -0.55, 0.12] as Point3, size: [0.66, 0.92, 0.5] as Point3, blood: 'vein', squeeze: 'ventricles' },
-  leftVentricle: { at: [0.58, -0.62, 0] as Point3, size: [0.72, 1.05, 0.56] as Point3, blood: 'artery', squeeze: 'ventricles' },
-} as const;
+const decoder = new DRACOLoader().setDecoderPath('/models/draco/').setWorkerLimit(2);
+/** Two long vessels run far below the heart; they are cut here. */
+const CLIP = [new THREE.Plane(new THREE.Vector3(0, 1, 0), 3)];
 
-const vectors = (points: readonly Point3[]) => points.map((p) => new THREE.Vector3(...p));
-const VESSELS: ReadonlyArray<{ readonly blood: 'artery' | 'vein'; readonly radius: number; readonly points: readonly Point3[] }> = [
-  { blood: 'vein', radius: 0.16, points: [[-0.98, 2.8, 0], [-0.94, 1.9, 0], [-0.86, 1.2, 0.02]] },
-  { blood: 'vein', radius: 0.17, points: [[-1.05, -2.4, -0.42], [-1.02, -0.9, -0.38], [-0.96, 0.32, -0.12]] },
-  { blood: 'vein', radius: 0.15, points: [[-0.12, 0.42, 0.36], [-0.06, 1.3, 0.4], [0, 1.72, 0.36]] },
-  { blood: 'vein', radius: 0.11, points: [[0, 1.72, 0.36], [-0.8, 1.92, 0.26], [-2.0, 1.86, 0.1]] },
-  { blood: 'vein', radius: 0.11, points: [[0, 1.72, 0.36], [0.8, 1.96, 0.26], [2.0, 1.86, 0.1]] },
-  { blood: 'artery', radius: 0.17, points: [[0.16, 0.36, 0], [0.15, 1.3, -0.06], [0.36, 2.26, -0.26], [0.86, 2.1, -0.56], [0.96, 0.5, -0.72], [0.96, -2.4, -0.72]] },
-  { blood: 'artery', radius: 0.1, points: [[-2.0, 1.1, -0.42], [-1.2, 1.06, -0.46], [-0.55, 1.0, -0.42], [0.35, 0.95, -0.25]] },
-  { blood: 'artery', radius: 0.1, points: [[2.0, 1.12, -0.36], [1.5, 1.02, -0.26], [1.2, 0.95, -0.18]] },
-];
-
-// Each route runs from a vein to an artery. `ring` is the atrioventricular valve, `exit` the arterial
-// valve; blood waits behind whichever is closed.
-type RouteSpec = { readonly blood: 'artery' | 'vein'; readonly points: readonly Point3[]; readonly enter: number; readonly ring: number; readonly exit: number };
-const RIGHT_TAIL: Point3[] = [[-0.68, 0.16, 0.08], [-0.62, -0.62, 0.14], [-0.44, -1.06, 0.2], [-0.22, -0.4, 0.3], [-0.12, 0.42, 0.36], [-0.06, 1.3, 0.4], [0, 1.72, 0.36]];
-const LEFT_TAIL: Point3[] = [[0.64, 0.16, 0], [0.62, -0.7, 0.04], [0.42, -1.28, 0.08], [0.16, -0.42, 0.04], [0.16, 0.36, 0], [0.15, 1.3, -0.06], [0.36, 2.26, -0.26], [0.86, 2.1, -0.56], [0.96, 0.5, -0.72], [0.96, -2.4, -0.72]];
-const ROUTES: readonly RouteSpec[] = [
-  { blood: 'vein', points: [[-0.98, 2.8, 0], [-0.94, 1.9, 0], [-0.86, 1.2, 0.02], [-0.8, 0.72, 0.06], ...RIGHT_TAIL, [-0.8, 1.92, 0.26], [-2.0, 1.86, 0.1]], enter: 2, ring: 4, exit: 8 },
-  { blood: 'vein', points: [[-1.05, -2.4, -0.42], [-1.02, -0.9, -0.38], [-0.96, 0.32, -0.12], [-0.84, 0.66, 0.02], ...RIGHT_TAIL, [0.8, 1.96, 0.26], [2.0, 1.86, 0.1]], enter: 2, ring: 4, exit: 8 },
-  { blood: 'artery', points: [[-2.0, 1.1, -0.42], [-1.2, 1.06, -0.46], [-0.55, 1.0, -0.42], [0.35, 0.95, -0.25], [0.66, 0.9, -0.12], ...LEFT_TAIL], enter: 3, ring: 5, exit: 9 },
-  { blood: 'artery', points: [[2.0, 1.12, -0.36], [1.5, 1.02, -0.26], [1.2, 0.95, -0.18], [0.82, 0.88, -0.1], ...LEFT_TAIL], enter: 2, ring: 4, exit: 8 },
-];
-
-const CONDUCTION: Readonly<Record<'atria' | 'his' | 'left' | 'right', readonly Point3[]>> = {
-  atria: [[-0.86, 1.22, 0.32], [-0.3, 1.0, 0.34], [0.4, 1.02, 0.3], [0.9, 0.9, 0.3]],
-  his: [[-0.16, 0.3, 0.3], [0, -0.05, 0.3], [0, -0.45, 0.3]],
-  left: [[0, -0.45, 0.3], [0.18, -1.15, 0.36], [0.62, -1.36, 0.36], [1.02, -0.86, 0.32], [1.14, -0.2, 0.28]],
-  right: [[0, -0.45, 0.3], [-0.16, -1.05, 0.4], [-0.6, -1.2, 0.42], [-1.0, -0.8, 0.38], [-1.08, -0.2, 0.32]],
+const part = (name: string) => HEART_PART_PLACES[`${name}.001`] ?? HEART_PART_PLACES[name]!;
+const middleOf = (group: HeartGroup): Point3 => {
+  const list = Object.values(HEART_PART_PLACES).filter((p) => p.group === group);
+  return [0, 1, 2].map((axis) => list.reduce((sum, p) => sum + p.at[axis]!, 0) / list.length) as unknown as Point3;
 };
-export const SINOATRIAL: Point3 = [-0.86, 1.22, 0.32];
-export const ATRIOVENTRICULAR: Point3 = [-0.16, 0.3, 0.3];
+const mix = (a: Point3, b: Point3, amount: number): Point3 => [a[0] + (b[0] - a[0]) * amount, a[1] + (b[1] - a[1]) * amount, a[2] + (b[2] - a[2]) * amount];
+const clipped = (p: Point3): Point3 => [p[0], Math.max(p[1], -2.95), p[2]];
 
-export const HEART_ANCHORS = {
-  rightAtrium: { point: [-0.9, 0.82, 0.42], label: [-2.25, 0.95, 0.3] },
-  rightVentricle: { point: [-0.75, -0.7, 0.5], label: [-2.2, -0.75, 0.3] },
-  leftAtrium: { point: [1.0, 0.84, 0.28], label: [2.3, 0.5, 0.3] },
-  leftVentricle: { point: [0.85, -0.75, 0.48], label: [2.25, -0.85, 0.3] },
-  tricuspid: { point: [-0.68, 0.16, 0.3], label: [-2.2, 0.1, 0.4] },
-  mitral: { point: [0.64, 0.16, 0.3], label: [2.25, -0.05, 0.4] },
-  pulmonaryValve: { point: [-0.12, 0.42, 0.5], label: [-1.05, -1.75, 0.8] },
-  aorticValve: { point: [0.16, 0.36, 0.18], label: [1.15, -1.95, 0.8] },
-  aorta: { point: [0.6, 2.26, -0.4], label: [1.55, 2.75, 0] },
-  pulmonaryArtery: { point: [-0.5, 1.86, 0.3], label: [-0.95, 2.75, 0.3] },
-  venaCava: { point: [-0.97, 2.3, 0.1], label: [-2.3, 2.3, 0.2] },
-  pulmonaryVeins: { point: [1.6, 1.06, -0.3], label: [2.4, 1.5, 0] },
-  sinoatrial: { point: SINOATRIAL, label: [-2.25, 1.65, 0.4] },
-  atrioventricular: { point: ATRIOVENTRICULAR, label: [-2.0, -0.2, 0.6] },
-  his: { point: [0, -0.3, 0.3], label: [-0.2, -2.05, 0.8] },
-  purkinje: { point: [1.02, -0.86, 0.32], label: [2.25, -1.45, 0.4] },
-} as const satisfies Record<string, { point: Point3; label: Point3 }>;
-export const FLOW_LABELS = ['rightAtrium', 'rightVentricle', 'leftAtrium', 'leftVentricle', 'tricuspid', 'mitral', 'pulmonaryValve', 'aorticValve', 'aorta', 'pulmonaryArtery', 'venaCava', 'pulmonaryVeins'] as const;
-export const CONDUCTION_LABELS = ['rightAtrium', 'rightVentricle', 'leftAtrium', 'leftVentricle', 'sinoatrial', 'atrioventricular', 'his', 'purkinje'] as const;
+const BLUE: ReadonlySet<HeartGroup> = new Set<HeartGroup>(['rightAtrium', 'rightVentricle', 'pulmonaryTrunk', 'superiorVenaCava', 'inferiorVenaCava']);
+const TRICUSPID = middleOf('tricuspid');
+const MITRAL = middleOf('mitral');
+const AORTIC = middleOf('aorticValve');
+const PULMONARY = middleOf('pulmonaryValve');
+const RA = part('Right atrium');
+const RV = part('Right ventricle');
+const LA = part('Left atrium');
+const LV = part('Left ventricle');
 
-function Chamber({ name, palette, clock }: { readonly name: keyof typeof CHAMBERS; readonly palette: HeartPalette; readonly clock: Clock }) {
-  const spec = CHAMBERS[name];
-  const group = useRef<THREE.Group>(null);
-  const thick = name === 'leftVentricle' ? 1.18 : name === 'rightVentricle' ? 1.1 : 1.06;
-  useFrame(() => {
-    const squeeze = cardiacState(clock.time.current, clock.heartRate)[spec.squeeze];
-    group.current?.scale.setScalar(1 - squeeze * (spec.squeeze === 'ventricles' ? 0.13 : 0.1));
-  });
-  return <group ref={group} position={[...spec.at]}>
-    <mesh scale={[spec.size[0] * thick, spec.size[1] * thick, spec.size[2] * thick]}>
-      <sphereGeometry args={[1, 40, 28]} />
-      <meshStandardMaterial color={palette.wall} roughness={0.55} transparent opacity={0.26} depthWrite={false} side={THREE.DoubleSide} />
-    </mesh>
-    <mesh scale={[...spec.size]}>
-      <sphereGeometry args={[1, 40, 28]} />
-      <meshStandardMaterial color={palette[spec.blood]} roughness={0.5} transparent opacity={0.3} depthWrite={false} />
-    </mesh>
-  </group>;
-}
+// Where the impulse starts, pauses, and spreads (placed relative to the chambers of the model).
+const SINOATRIAL: Point3 = mix(RA.at, part('Superior vena cava').at, 0.45);
+const ATRIOVENTRICULAR: Point3 = (() => { const p = mix(TRICUSPID, MITRAL, 0.3); return [p[0], p[1] + 0.35, p[2]] as Point3; })();
+const APEX: Point3 = [(RV.at[0] + LV.at[0]) / 2, Math.min(RV.min[1], LV.min[1]) + 0.3, (RV.at[2] + LV.at[2]) / 2];
+const HIS_END: Point3 = mix(ATRIOVENTRICULAR, APEX, 0.45);
+const wall = (v: typeof LV): Point3 => { const side = Math.sign(v.at[0] - HIS_END[0]); return [v.at[0] + side * (v.max[0] - v.min[0]) * 0.32, v.at[1] + (v.max[1] - v.min[1]) * 0.15, v.at[2] + (v.max[2] - v.min[2]) * 0.2]; };
+const CONDUCTION: Readonly<Record<'atria' | 'his' | 'left' | 'right', readonly Point3[]>> = {
+  atria: [SINOATRIAL, RA.at, mix(RA.at, LA.at, 0.5), LA.at],
+  his: [ATRIOVENTRICULAR, HIS_END],
+  left: [HIS_END, [APEX[0] + (LV.at[0] - APEX[0]) * 0.4, APEX[1], APEX[2]], wall(LV)],
+  right: [HIS_END, [APEX[0] + (RV.at[0] - APEX[0]) * 0.4, APEX[1], APEX[2]], wall(RV)],
+};
 
-function Vessel({ points, radius, color }: { readonly points: readonly Point3[]; readonly radius: number; readonly color: string }) {
-  const curve = useMemo(() => new THREE.CatmullRomCurve3(vectors(points)), [points]);
-  return <mesh><tubeGeometry args={[curve, 64, radius, 16, false]} /><meshStandardMaterial color={color} roughness={0.45} transparent opacity={0.38} depthWrite={false} /></mesh>;
-}
+const label = (point: Point3, x: number, y: number): { point: Point3; label: Point3 } => ({ point, label: [x, y, point[2] + 0.6] });
+export const HEART_ANCHORS: Record<HeartPart, { readonly point: Point3; readonly label: Point3 }> = {
+  venaCava: label(part('Superior vena cava').at, -4.2, 3.2),
+  sinoatrial: label(SINOATRIAL, -4.2, 2.5),
+  rightAtrium: label(RA.at, -4.2, 1.4),
+  tricuspid: label(TRICUSPID, -4.2, 0.3),
+  atrioventricular: label(ATRIOVENTRICULAR, -4.2, 0.3),
+  rightVentricle: label(RV.at, -4.2, -0.8),
+  pulmonaryValve: label(PULMONARY, -4.2, -1.9),
+  his: label(HIS_END, -4.2, -1.9),
+  aorta: label(part('Aortic arch').at, 4.2, 3.2),
+  pulmonaryArtery: label(part('Pulmonary trunk').at, 4.2, 2.3),
+  pulmonaryVeins: label(part('Left superior pulmonary vein').at, 4.2, 1.4),
+  leftAtrium: label(LA.at, 4.2, 0.5),
+  mitral: label(MITRAL, 4.2, -0.4),
+  leftVentricle: label(LV.at, 4.2, -1.3),
+  aorticValve: label(AORTIC, 4.2, -2.2),
+  purkinje: label(CONDUCTION.left[2]!, 4.2, -2.2),
+};
+export const FLOW_LABELS = ['venaCava', 'rightAtrium', 'tricuspid', 'rightVentricle', 'pulmonaryValve', 'aorta', 'pulmonaryArtery', 'pulmonaryVeins', 'leftAtrium', 'mitral', 'leftVentricle', 'aorticValve'] as const;
+export const CONDUCTION_LABELS = ['sinoatrial', 'rightAtrium', 'atrioventricular', 'his', 'rightVentricle', 'leftAtrium', 'leftVentricle', 'purkinje'] as const;
 
-/** A valve: leaflets hinged on a ring that swing into the flow when open and lie flat when shut. */
-function Valve({ at, tilt = 0, width, palette, clock, kind }: { readonly at: Point3; readonly tilt?: number; readonly width: number; readonly palette: HeartPalette; readonly clock: Clock; readonly kind: 'atrioventricular' | 'semilunar' }) {
-  const leaves = useRef<Array<THREE.Group | null>>([]);
-  const angle = useRef(0);
+type Shape = { readonly object: THREE.Object3D; readonly group: HeartGroup; readonly base: THREE.Vector3; readonly outward: THREE.Vector3 };
+
+function Model({ palette, clock }: { readonly palette: HeartPalette; readonly clock: Clock }) {
+  const gltf = useLoader(GLTFLoader, '/models/circulation/heart.glb', (loader) => { loader.setDRACOLoader(decoder); });
+  const opening = useRef(new Map<HeartGroup, number>());
   const last = useRef(0);
+  const { instance, shapes } = useMemo(() => {
+    const scene = gltf.scene.clone(true);
+    const list: Shape[] = [];
+    const centres = new Map<HeartGroup, THREE.Vector3>();
+    for (const group of ['tricuspid', 'mitral', 'aorticValve', 'pulmonaryValve'] as const) centres.set(group, new THREE.Vector3(...middleOf(group)));
+    scene.traverse((object) => {
+      if (!(object instanceof THREE.Mesh)) return;
+      const group = object.userData.group as HeartGroup;
+      const blue = BLUE.has(group);
+      const colour = new THREE.Color(blue ? palette.vein : palette.artery);
+      let material: THREE.MeshStandardMaterial;
+      if (group === 'rightAtrium' || group === 'rightVentricle' || group === 'leftAtrium' || group === 'leftVentricle') {
+        material = new THREE.MeshStandardMaterial({ color: colour.lerp(new THREE.Color(palette.wall), 0.18), roughness: 0.55, transparent: true, opacity: 0.3, depthWrite: false, side: THREE.DoubleSide });
+      } else if (group === 'tricuspid' || group === 'mitral' || group === 'aorticValve' || group === 'pulmonaryValve') {
+        material = new THREE.MeshStandardMaterial({ color: palette.valve, roughness: 0.5, side: THREE.DoubleSide, emissive: new THREE.Color(palette.valve), emissiveIntensity: 0.12 });
+      } else if (group === 'coronary') {
+        material = new THREE.MeshStandardMaterial({ color: palette.artery, roughness: 0.5, transparent: true, opacity: 0.5, depthWrite: false });
+      } else {
+        material = new THREE.MeshStandardMaterial({ color: colour, roughness: 0.5, transparent: true, opacity: 0.62, depthWrite: false, side: THREE.DoubleSide, clippingPlanes: CLIP });
+      }
+      object.material = material;
+      const valve = centres.get(group);
+      list.push({ object, group, base: object.position.clone(), outward: valve ? object.position.clone().sub(valve).normalize() : new THREE.Vector3() });
+    });
+    return { instance: scene, shapes: list };
+  }, [gltf.scene, palette]);
   useFrame(() => {
-    const state = cardiacState(clock.time.current, clock.heartRate);
-    const open = kind === 'atrioventricular' ? state.atrioventricularOpen : state.semilunarOpen;
-    const dt = Math.min(0.1, Math.abs(clock.time.current - last.current));
-    last.current = clock.time.current;
-    const target = open ? 1 : 0;
-    angle.current += (target - angle.current) * (dt === 0 ? 1 : Math.min(1, dt * 40));
-    // Atrioventricular leaflets swing down into the ventricle, arterial ones up into the artery.
-    const swing = angle.current * 1.25 * (kind === 'atrioventricular' ? 1 : -1);
-    leaves.current.forEach((leaf, i) => { if (leaf) leaf.rotation.z = (i === 0 ? -1 : 1) * swing; });
+    const now = clock.time.current;
+    const dt = Math.min(0.1, Math.abs(now - last.current));
+    last.current = now;
+    const state = cardiacState(now, clock.heartRate);
+    const follow = dt === 0 ? 1 : Math.min(1, dt * 40);
+    for (const group of ['tricuspid', 'mitral', 'aorticValve', 'pulmonaryValve'] as const) {
+      const open = group === 'tricuspid' || group === 'mitral' ? state.atrioventricularOpen : state.semilunarOpen;
+      const before = opening.current.get(group) ?? 0;
+      opening.current.set(group, before + ((open ? 1 : 0) - before) * follow);
+    }
+    for (const shape of shapes) {
+      if (shape.group === 'rightAtrium' || shape.group === 'leftAtrium') shape.object.scale.setScalar(1 - state.atria * 0.1);
+      else if (shape.group === 'rightVentricle' || shape.group === 'leftVentricle') shape.object.scale.setScalar(1 - state.ventricles * 0.14);
+      else if (shape.group === 'tricuspid' || shape.group === 'mitral' || shape.group === 'aorticValve' || shape.group === 'pulmonaryValve') {
+        const open = opening.current.get(shape.group) ?? 0;
+        shape.object.position.copy(shape.base).addScaledVector(shape.outward, open * 0.28);
+        shape.object.scale.setScalar(1 - open * 0.3);
+      }
+    }
   });
-  const half = width / 2;
-  return <group position={[...at]} rotation={[0, 0, tilt]}>
-    <mesh rotation={[Math.PI / 2, 0, 0]}><torusGeometry args={[half, 0.025, 8, 32]} /><meshStandardMaterial color={palette.valve} roughness={0.6} /></mesh>
-    {[-1, 1].map((side, i) => (
-      <group key={side} position={[side * half, 0, 0]} ref={(el) => { leaves.current[i] = el; }}>
-        <mesh position={[-side * half / 2, 0, 0]}><boxGeometry args={[half, 0.03, width * 0.8]} /><meshStandardMaterial color={palette.valve} roughness={0.6} /></mesh>
-      </group>
-    ))}
-  </group>;
+  useEffect(() => { decoder.dispose(); }, [gltf]);
+  useEffect(() => () => {
+    instance.traverse((object) => { if (object instanceof THREE.Mesh) (object.material as THREE.Material).dispose(); });
+  }, [instance]);
+  return <primitive object={instance} dispose={null} />;
 }
+
+// Each route runs from a vein to an artery. `enter` is the atrium, `ring` the atrioventricular valve and
+// `exit` the arterial valve: blood waits behind whichever of the two valves is closed.
+type RouteSpec = { readonly blood: 'artery' | 'vein'; readonly points: readonly Point3[]; readonly enter: number; readonly ring: number; readonly exit: number };
+const right = (start: readonly Point3[], end: readonly Point3[]): RouteSpec => ({ blood: 'vein', points: [...start, RA.at, TRICUSPID, RV.at, PULMONARY, part('Pulmonary trunk').at, part('Bifurcation of pulmonary trunk').at, ...end], enter: start.length, ring: start.length + 1, exit: start.length + 3 });
+const left = (vein: string, end: readonly Point3[]): RouteSpec => ({ blood: 'artery', points: [part(vein).tip, part(vein).at, LA.at, MITRAL, LV.at, AORTIC, part('Ascending aorta').at, part('Aortic arch').at, ...end], enter: 2, ring: 3, exit: 5 });
+const ROUTES: readonly RouteSpec[] = [
+  right([clipped(part('Superior vena cava').tip), part('Superior vena cava').at], [part('Left pulmonary artery').tip]),
+  right([clipped(part('Inferior vena cava (thoracic part)').tip), clipped(part('Inferior vena cava (thoracic part)').at)], [part('Right pulmonary artery').tip]),
+  left('Left superior pulmonary vein', [part('Aortic arch').tip]),
+  left('Right superior pulmonary vein', [part('Thoracic aorta').at, clipped(part('Thoracic aorta').tip)]),
+  left('Left inferior pulmonary vein', [part('Aortic arch').tip]),
+  left('Right inferior pulmonary vein', [part('Thoracic aorta').at, clipped(part('Thoracic aorta').tip)]),
+];
 
 type Particle = { s: number; offset: THREE.Vector3 };
-const COUNT = 34;
+const COUNT = 24;
 /** Blood cells moving along their route at the pace each phase allows. */
 function Blood({ route, color, clock }: { readonly route: RouteSpec; readonly color: string; readonly clock: Clock }) {
   const mesh = useRef<THREE.InstancedMesh>(null);
   const data = useMemo(() => {
-    const curve = new THREE.CatmullRomCurve3(vectors(route.points));
+    const curve = new THREE.CatmullRomCurve3(route.points.map((p) => new THREE.Vector3(...p)));
     const length = curve.getLength();
     const mark = (index: number) => {
       const target = new THREE.Vector3(...route.points[index]!);
@@ -143,7 +164,7 @@ function Blood({ route, color, clock }: { readonly route: RouteSpec; readonly co
       for (let i = 0; i <= 600; i++) { const d = curve.getPointAt(i / 600).distanceTo(target); if (d < distance) { distance = d; best = i / 600; } }
       return best;
     };
-    const random = (i: number) => { const x = Math.sin(i * 12.9898 + route.points.length * 78.233) * 43758.5453; return x - Math.floor(x); };
+    const random = (i: number) => { const x = Math.sin(i * 12.9898 + route.points.length * 78.233 + route.points[0]![1] * 31.7) * 43758.5453; return x - Math.floor(x); };
     const particles: Particle[] = Array.from({ length: COUNT }, (_, i) => ({ s: i / COUNT, offset: new THREE.Vector3(random(i) - 0.5, random(i + 40) - 0.5, random(i + 80) - 0.5).multiplyScalar(2) }));
     return { curve, length, enter: mark(route.enter), ring: mark(route.ring), exit: mark(route.exit), particles };
   }, [route]);
@@ -154,68 +175,59 @@ function Blood({ route, color, clock }: { readonly route: RouteSpec; readonly co
     const now = clock.time.current;
     const dt = last.current === null ? 0 : Math.min(0.1, Math.max(0, now - last.current));
     last.current = now;
-    const state: CardiacState = cardiacState(now, clock.heartRate);
+    const state = cardiacState(now, clock.heartRate);
     const gap = 0.012;
     for (const p of data.particles) {
       let speed: number;
       let stop = Infinity;
       if (p.s < data.ring) {
-        speed = p.s < data.enter ? 1 : state.phase === 'atrial' ? 2.4 : 1.2;
+        speed = p.s < data.enter ? 1.4 : state.phase === 'atrial' ? 3.4 : 1.8;
         if (!state.atrioventricularOpen) stop = data.ring - gap;
       } else if (p.s < data.exit) {
-        speed = state.semilunarOpen ? 5 : 0.9;
+        speed = state.semilunarOpen ? 7 : 1.4;
         if (!state.semilunarOpen) stop = data.exit - gap;
-      } else speed = 2.6;
+      } else speed = 3.6;
       if (p.s < stop) p.s = Math.min(stop, p.s + (speed * dt) / data.length);
       if (p.s >= 1) p.s -= 1;
     }
     data.particles.forEach((p, i) => {
       data.curve.getPointAt(Math.max(0, Math.min(1, p.s)), point);
-      const spread = p.s > data.enter && p.s < data.exit ? 0.2 : 0.05;
+      const spread = p.s > data.enter && p.s < data.exit ? 0.34 : 0.06;
       point.addScaledVector(p.offset, spread);
       matrix.makeTranslation(point.x, point.y, point.z);
       mesh.current?.setMatrixAt(i, matrix);
     });
     if (mesh.current) mesh.current.instanceMatrix.needsUpdate = true;
   });
-  return <instancedMesh ref={mesh} args={[undefined, undefined, COUNT]} frustumCulled={false}>
-    <sphereGeometry args={[0.055, 12, 8]} />
-    <meshStandardMaterial color={color} emissive={color} emissiveIntensity={0.55} roughness={0.4} />
+  return <instancedMesh ref={mesh} args={[undefined, undefined, COUNT]} frustumCulled={false} renderOrder={5}>
+    <sphereGeometry args={[0.09, 12, 8]} />
+    <meshStandardMaterial color={color} emissive={color} emissiveIntensity={0.8} roughness={0.4} />
   </instancedMesh>;
 }
 
-/** A conduction pathway that lights up where the impulse is. */
+/** A conduction pathway that lights up where the impulse is, drawn over the muscle. */
 function Pathway({ points, color, progress }: { readonly points: readonly Point3[]; readonly color: string; readonly progress: () => number }) {
-  const curve = useMemo(() => new THREE.CatmullRomCurve3(vectors(points)), [points]);
+  const curve = useMemo(() => new THREE.CatmullRomCurve3(points.map((p) => new THREE.Vector3(...p))), [points]);
   const uniforms = useMemo(() => ({ tone: { value: new THREE.Color(color) }, progress: { value: -1 } }), [color]);
   useFrame(() => { uniforms.progress.value = progress(); });
-  return <mesh><tubeGeometry args={[curve, 64, 0.028, 8, false]} /><shaderMaterial uniforms={uniforms} toneMapped={false}
+  return <mesh renderOrder={10}><tubeGeometry args={[curve, 64, 0.05, 8, false]} /><shaderMaterial uniforms={uniforms} toneMapped={false} depthTest={false} transparent
     vertexShader={'varying vec2 vUv; void main(){vUv=uv; gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0);}'}
-    fragmentShader={'uniform vec3 tone; uniform float progress; varying vec2 vUv; void main(){float lit=step(0.0,progress)*(smoothstep(progress-0.25,progress,vUv.x)*step(vUv.x,progress+0.02)+0.35*step(vUv.x,progress)); gl_FragColor=vec4(mix(tone*0.4,vec3(1.0),clamp(lit,0.0,1.0)),1.0);\n#include <colorspace_fragment>\n}'}
+    fragmentShader={'uniform vec3 tone; uniform float progress; varying vec2 vUv; void main(){float lit=step(0.0,progress)*(smoothstep(progress-0.25,progress,vUv.x)*step(vUv.x,progress+0.02)+0.35*step(vUv.x,progress)); gl_FragColor=vec4(mix(tone*0.55,vec3(1.0),clamp(lit,0.0,1.0)),1.0);\n#include <colorspace_fragment>\n}'}
   /></mesh>;
 }
 
 function Node({ at, color, active }: { readonly at: Point3; readonly color: string; readonly active: () => number }) {
   const mesh = useRef<THREE.Mesh>(null);
-  useFrame(() => {
-    const value = active();
-    if (mesh.current) mesh.current.scale.setScalar(value >= 0 ? 1.5 : 1);
-  });
-  return <mesh ref={mesh} position={[...at]}><sphereGeometry args={[0.07, 16, 12]} /><meshBasicMaterial color={color} toneMapped={false} /></mesh>;
+  useFrame(() => { mesh.current?.scale.setScalar(active() >= 0 ? 1.6 : 1); });
+  return <mesh ref={mesh} position={[...at]} renderOrder={11}><sphereGeometry args={[0.13, 16, 12]} /><meshBasicMaterial color={color} toneMapped={false} depthTest={false} /></mesh>;
 }
 
 export function CirculationHeart({ palette, time, heartRate, layer }: { readonly palette: HeartPalette; readonly time: RefObject<number>; readonly heartRate: number; readonly layer: HeartLayer }) {
   const clock = useMemo(() => ({ time, heartRate }), [time, heartRate]);
   const conduction = () => cardiacState(time.current, heartRate).conduction;
   return <group>
-    {(Object.keys(CHAMBERS) as Array<keyof typeof CHAMBERS>).map((name) => <Chamber key={name} name={name} palette={palette} clock={clock} />)}
-    <mesh position={[0, -0.25, 0.04]} rotation={[0, 0, 0.06]}><boxGeometry args={[0.12, 2.5, 0.8]} /><meshStandardMaterial color={palette.septum} roughness={0.7} transparent opacity={0.55} /></mesh>
-    {VESSELS.map((vessel, i) => <Vessel key={i} points={vessel.points} radius={vessel.radius} color={palette[vessel.blood]} />)}
-    <Valve at={[-0.68, 0.16, 0.08]} width={0.5} palette={palette} clock={clock} kind="atrioventricular" />
-    <Valve at={[0.64, 0.16, 0]} width={0.48} palette={palette} clock={clock} kind="atrioventricular" />
-    <Valve at={[-0.12, 0.42, 0.36]} width={0.3} palette={palette} clock={clock} kind="semilunar" />
-    <Valve at={[0.16, 0.36, 0]} width={0.32} palette={palette} clock={clock} kind="semilunar" />
-    {layer === 'flow' && ROUTES.map((route, i) => <Blood key={i} route={route} color={palette[route.blood]} clock={clock} />)}
+    <Model palette={palette} clock={clock} />
+    {layer === 'flow' && ROUTES.map((route, i) => <Blood key={i} route={route} color={route.blood === 'artery' ? palette.artery : palette.vein} clock={clock} />)}
     {layer === 'conduction' && <group>
       <Pathway points={CONDUCTION.atria} color={palette.signal} progress={() => conduction().atria} />
       <Pathway points={CONDUCTION.his} color={palette.signal} progress={() => conduction().his} />
