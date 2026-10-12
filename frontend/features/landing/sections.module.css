@@ -732,3 +732,200 @@
     display: none;
   }
 }
+
+/* ---------- features strip: 3D glass cards (after Smit-Prajapati's Uiverse card, recoloured with theme tokens) ---------- */
+
+.featureGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(16.5rem, 1fr));
+  gap: clamp(1rem, 2.5vw, 1.75rem);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.featureGrid > li {
+  display: flex;
+  justify-content: center;
+  perspective: 1000px;
+}
+
+.featureCard {
+  position: relative;
+  display: block;
+  width: 100%;
+  max-width: 20rem;
+  min-height: 20rem;
+  border-radius: 2.5rem;
+  background: linear-gradient(135deg, var(--action) 0%, color-mix(in srgb, var(--action) 45%, var(--sun)) 100%);
+  color: var(--ink);
+  text-decoration: none;
+  transform-style: preserve-3d;
+  box-shadow: 0 1.5rem 1.5rem -0.5rem color-mix(in srgb, var(--ink) 22%, transparent);
+  transition: transform 500ms ease-in-out, box-shadow 500ms ease-in-out;
+}
+
+.featureCard:focus-visible {
+  outline: 3px solid var(--focus);
+  outline-offset: 4px;
+}
+
+.featureGlass {
+  position: absolute;
+  inset: 0.5rem;
+  border-radius: 2.2rem;
+  border-top-right-radius: 100%;
+  border-bottom: 1px solid var(--surface);
+  border-left: 1px solid var(--surface);
+  background: linear-gradient(0deg, color-mix(in srgb, var(--surface) 35%, transparent) 0%, color-mix(in srgb, var(--surface) 85%, transparent) 100%);
+  transform: translate3d(0, 0, 25px);
+  transform-style: preserve-3d;
+}
+
+.featureLogo {
+  position: absolute;
+  top: 0;
+  right: 0;
+  transform-style: preserve-3d;
+}
+
+.featureCircle {
+  position: absolute;
+  display: grid;
+  aspect-ratio: 1;
+  place-content: center;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--surface) 20%, transparent);
+  box-shadow: -10px 10px 20px 0 color-mix(in srgb, var(--ink) 14%, transparent);
+  -webkit-backdrop-filter: blur(5px);
+  backdrop-filter: blur(5px);
+  transition: transform 500ms ease-in-out;
+}
+
+.featureCircle:nth-child(1) { width: 7.4rem; top: 0.5rem; right: 0.5rem; transform: translate3d(0, 0, 20px); }
+.featureCircle:nth-child(2) { width: 6.1rem; top: 0.6rem; right: 0.6rem; transform: translate3d(0, 0, 40px); transition-delay: 0.4s; }
+.featureCircle:nth-child(3) { width: 4.85rem; top: 0.95rem; right: 0.95rem; transform: translate3d(0, 0, 60px); transition-delay: 0.8s; }
+.featureCircle:nth-child(4) { width: 3.6rem; top: 1.25rem; right: 1.25rem; transform: translate3d(0, 0, 80px); transition-delay: 1.2s; }
+.featureCircle:nth-child(5) { width: 2.6rem; top: 1.6rem; right: 1.6rem; transform: translate3d(0, 0, 100px); transition-delay: 1.6s; background: var(--action); color: var(--action-ink); }
+
+.featureContent {
+  position: relative;
+  display: block;
+  padding: 8.25rem 1.75rem 0 1.9rem;
+  transform: translate3d(0, 0, 26px);
+}
+
+.featureTitle {
+  display: block;
+  color: var(--ink);
+  font-size: 1.25rem;
+  font-weight: 800;
+  line-height: 1.2;
+}
+
+.featureText {
+  display: block;
+  margin-top: 1rem;
+  color: var(--ink-muted);
+  font-size: 0.9375rem;
+  line-height: 1.5;
+}
+
+.featureMore {
+  position: absolute;
+  right: 2rem;
+  bottom: 1.6rem;
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  color: var(--action);
+  font-size: 0.8125rem;
+  font-weight: 800;
+  transform: translate3d(0, 0, 26px);
+  transition: transform 200ms ease-in-out;
+}
+
+@media (hover: hover) and (pointer: fine) and (prefers-reduced-motion: no-preference) {
+  .featureCard:hover,
+  .featureCard:focus-visible {
+    transform: rotate3d(1, 1, 0, 30deg);
+    box-shadow: 30px 50px 25px -40px color-mix(in srgb, var(--ink) 30%, transparent), 0 25px 30px 0 color-mix(in srgb, var(--ink) 12%, transparent);
+  }
+
+  .featureCard:hover .featureCircle:nth-child(2),
+  .featureCard:focus-visible .featureCircle:nth-child(2) { transform: translate3d(0, 0, 60px); }
+  .featureCard:hover .featureCircle:nth-child(3),
+  .featureCard:focus-visible .featureCircle:nth-child(3) { transform: translate3d(0, 0, 80px); }
+  .featureCard:hover .featureCircle:nth-child(4),
+  .featureCard:focus-visible .featureCircle:nth-child(4) { transform: translate3d(0, 0, 100px); }
+  .featureCard:hover .featureCircle:nth-child(5),
+  .featureCard:focus-visible .featureCircle:nth-child(5) { transform: translate3d(0, 0, 120px); }
+  .featureCard:hover .featureMore,
+  .featureCard:focus-visible .featureMore { transform: translate3d(0, 0, 50px); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .featureCard,
+  .featureCircle,
+  .featureMore {
+    transition: none;
+  }
+}
+
+/* ---------- FAQ ---------- */
+
+.faqList {
+  display: grid;
+  max-width: 52rem;
+  border-top: 1px solid var(--line);
+}
+
+.faqItem {
+  border-bottom: 1px solid var(--line);
+}
+
+.faqQuestion {
+  display: flex;
+  min-height: 3.5rem;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding-block: 0.875rem;
+  color: var(--ink);
+  font-size: 1.0625rem;
+  font-weight: 700;
+  cursor: pointer;
+  list-style: none;
+}
+
+.faqQuestion::-webkit-details-marker {
+  display: none;
+}
+
+.faqQuestion:focus-visible {
+  outline: 3px solid var(--focus);
+  outline-offset: 2px;
+}
+
+.faqQuestion svg {
+  flex: none;
+  transition: rotate 250ms ease;
+}
+
+.faqItem[open] .faqQuestion svg {
+  rotate: 180deg;
+}
+
+.faqAnswer {
+  margin: 0;
+  padding: 0 2.5rem 1.25rem 0;
+  color: var(--ink-muted);
+  font-size: 1rem;
+  line-height: 1.65;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .faqQuestion svg {
+    transition: none;
+  }
+}

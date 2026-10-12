@@ -14,6 +14,8 @@ const isPublicPath = (path: string): boolean => {
   if (path === '/api/guest/trial' || path === '/api/tutor/guest') return true;
   // Visitors can report a problem; the handler limits them by a hash of their address.
   if (path === '/api/problem-reports') return true;
+  // Newsletter sign-up; confirm and unsubscribe check a signed token in the body.
+  if (path.startsWith('/api/newsletter/')) return true;
   if (path.startsWith('/api/exam/')) return true;
   // Lesson practice works for visitors too; checking gives no XP.
   if (path.startsWith('/api/practice/')) return true;

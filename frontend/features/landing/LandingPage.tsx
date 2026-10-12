@@ -6,6 +6,10 @@ import Link from 'next/link';
 import { ArrowRight, Atom, BookOpen, Braces, Dna, FlaskConical, Globe, Lightbulb, Mail, Sigma, Sparkles } from 'lucide-react';
 import { useLanguage } from '@scipal/hooks';
 import { DemandPollBanner } from '@/features/survey/DemandPollBanner';
+import { NewsletterSignup } from '@/features/newsletter/NewsletterSignup';
+import { fetchWebsiteFeedback } from '@/features/website-feedback/api';
+import { WebsiteFeedbackBoard } from '@/features/website-feedback/WebsiteFeedbackBoard';
+import { WebsiteFeedbackForm } from '@/features/website-feedback/WebsiteFeedbackForm';
 import { SubjectMarquee } from '@/features/subjects/SubjectMarquee';
 import { applyShellLevel, getShell } from '@/lib/theme/shellTheme';
 import type { EducationLevel } from './educationLevel';
@@ -14,6 +18,8 @@ import { HeroStage } from './hero/HeroStage';
 import { HowItWorks } from './HowItWorks';
 import { TutorSection } from './TutorSection';
 import { PricingSection } from './PricingSection';
+import { FeaturesSection } from './FeaturesSection';
+import { FaqSection } from './FaqSection';
 import { InstallAppSection } from './InstallAppSection';
 import { useCountUp, useInView } from './countUp';
 import { IntroCurtain, introPlayed } from './IntroCurtain';
@@ -250,23 +256,40 @@ export function LandingPage({ level, catalog, onChangeLevel, pricing = null, sho
   const pageRef = useRef<HTMLDivElement>(null);
   const [intro] = useState(() => showIntro && !introPlayed());
   const [ready, setReady] = useState(!intro);
+  const [reviewsVersion, setReviewsVersion] = useState(0);
   const [titleFirst, titleSecond] = HERO_TITLE[level];
   const liveSubjects = catalog?.kind === 'ready'
     ? catalog.subjects.filter((subject) => subject.education_level === level && subject.status === 'active').length
     : null;
 
+  const [rating, setRating] = useState<{ average: number; total: number } | null>(null);
+
   useEffect(() => {
     applyShellLevel(getShell(), level);
   }, [level]);
+  useEffect(() => {
+    const controller = new AbortController();
+    fetchWebsiteFeedback(1, false, controller.signal)
+      .then((page) => setRating(page.average !== null && page.total > 0 ? { average: page.average, total: page.total } : null))
+      .catch(() => undefined);
+    return () => controller.abort();
+  }, []);
   useRevealOnScroll(pageRef);
   useClipReveal(pageRef);
   useScrollProgress(pageRef);
 
-  const stats: Array<{ value: number; suffix?: string; label: Copy }> = [
+  const publishedLessons = catalog?.kind === 'ready' ? catalog.lessons ?? 0 : 0;
+  const stats: Array<{ value: number; suffix?: string; text?: string; label: Copy }> = [
     ...(liveSubjects ? [{ value: liveSubjects, label: { en: 'Subjects open now', vi: 'Môn đang mở' } }] : []),
+    ...(publishedLessons > 0 ? [{ value: publishedLessons, label: { en: 'Lessons published', vi: 'Bài học đã xuất bản' } }] : []),
     { value: LEVEL_GRADES[level], label: { en: 'Grades at this level', vi: 'Khối lớp trong cấp' } },
-    { value: 2, label: { en: 'Languages in every lesson', vi: 'Ngôn ngữ trong mỗi bài' } },
-    { value: 100, suffix: '%', label: { en: 'Free lessons', vi: 'Bài học miễn phí' } },
+    ...(rating
+      ? [{
+          value: rating.average,
+          text: rating.average.toLocaleString(lang === 'vi' ? 'vi-VN' : 'en-GB', { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + ' / 5',
+          label: { en: `Average of ${rating.total} reviews`, vi: `Điểm trung bình từ ${rating.total} đánh giá` },
+        }]
+      : []),
   ];
 
   return (
@@ -341,14 +364,19 @@ export function LandingPage({ level, catalog, onChangeLevel, pricing = null, sho
             <div className={styles.subjectGrid} data-landing-reveal data-subject-grid>
               <SubjectMarquee level={level} catalog={catalog} />
             </div>
+            <div className={styles.notify} data-landing-reveal>
+              <NewsletterSignup level={level} />
+            </div>
           </section>
 
           {/* ---------- existing feature sections on a lifted sheet ---------- */}
           <div className={styles.sheet}>
             <HowItWorks level={level} />
             <TutorSection href="/tutor" level={level} />
+            <FeaturesSection />
             <InstallAppSection />
             {pricing && <PricingSection catalog={pricing} />}
+            <FaqSection />
           </div>
 
           {/* ---------- stats ---------- */}
@@ -362,7 +390,7 @@ export function LandingPage({ level, catalog, onChangeLevel, pricing = null, sho
                 <div key={stat.label.en} className={styles.stat} data-landing-reveal>
                   <dt className={styles.srOnly}>{t(stat.label)}</dt>
                   <dd>
-                    <StatValue value={stat.value} suffix={stat.suffix} />
+                    {stat.text ? <span className={styles.statValue}>{stat.text}</span> : <StatValue value={stat.value} suffix={stat.suffix} />}
                     <span className={styles.statLabel} aria-hidden="true">{t(stat.label)}</span>
                   </dd>
                 </div>
@@ -385,8 +413,8 @@ export function LandingPage({ level, catalog, onChangeLevel, pricing = null, sho
                 <h2 id="start-title" className={styles.finalTitle}>{t({ en: 'Ready?', vi: 'Sẵn sàng chưa?' })}</h2>
                 <p className={styles.finalLead}>
                   {t({
-                    en: 'Every lesson is free. Pick a subject and start today.',
-                    vi: 'Mọi bài học đều miễn phí. Chọn một môn và bắt đầu ngay hôm nay.',
+                    en: 'Every lesson is free; a paid plan only adds Professor Quys questions, graded exams and teacher tools.',
+                    vi: 'Mọi bài học đều miễn phí; gói trả phí chỉ thêm lượt hỏi Giáo sư Quý, chấm đề và công cụ cho giáo viên.',
                   })}
                 </p>
               </div>
@@ -405,6 +433,19 @@ export function LandingPage({ level, catalog, onChangeLevel, pricing = null, sho
               <DemandPollBanner />
             </div>
           </section>
+
+          {/* ---------- reviews ---------- */}
+          <section className={styles.reviews} id="danh-gia" aria-labelledby="reviews-title">
+            <div className={styles.sectionHeading} data-landing-reveal>
+              <div>
+                <h2 id="reviews-title" className={styles.sectionTitle} data-clip>
+                  <ClipLines lines={[t({ en: 'Rate SciPal', vi: 'Bạn chấm SciPal mấy sao?' })]} />
+                </h2>
+              </div>
+            </div>
+            <WebsiteFeedbackForm onSaved={() => setReviewsVersion((v) => v + 1)} />
+            <WebsiteFeedbackBoard key={reviewsVersion} />
+          </section>
         </main>
 
         <footer className={styles.footer}>
@@ -422,11 +463,15 @@ export function LandingPage({ level, catalog, onChangeLevel, pricing = null, sho
                 <li><Link href="/subjects">{t({ en: 'Subjects', vi: 'Môn học' })}</Link></li>
                 <li><Link href="/glossary">{t({ en: 'Glossary', vi: 'Từ điển thuật ngữ' })}</Link></li>
                 <li><Link href="/tutor">{t({ en: 'Professor Quys', vi: 'Giáo sư Quý' })}</Link></li>
+                <li><Link href="/progress">{t({ en: 'My progress', vi: 'Tiến độ của tôi' })}</Link></li>
+                <li><Link href="/classes">{t({ en: 'Classes', vi: 'Lớp học' })}</Link></li>
               </ul>
             </nav>
             <nav className={styles.footerCol} aria-label={t({ en: 'Contact SciPal', vi: 'Liên hệ SciPal' })}>
               <h3>{t({ en: 'Contact us', vi: 'Liên hệ' })}</h3>
               <ul>
+                <li><Link href="/help">{t({ en: 'Help center', vi: 'Trung tâm trợ giúp' })}</Link></li>
+                {pricing && <li><Link href="/pricing">{t({ en: 'Pricing', vi: 'Bảng giá' })}</Link></li>}
                 <li>
                   <a href={CONTACT_FACEBOOK_URL} target="_blank" rel="noopener noreferrer">
                     <Image src="/facebook-icon.svg" width={16} height={16} alt="" aria-hidden="true" />
@@ -448,8 +493,11 @@ export function LandingPage({ level, catalog, onChangeLevel, pricing = null, sho
               <Link href="/privacy" className={styles.footerPolicy}>
                 {t({ en: 'Privacy', vi: 'Quyền riêng tư' })}
               </Link>
+              <Link href="/terms" className={styles.footerPolicy}>
+                {t({ en: 'Terms', vi: 'Điều khoản' })}
+              </Link>
               <ReportProblemButton className={styles.footerPolicy} />
-              <Link href="/feedback" className={styles.footerPolicy}>{t({ en: 'Review SciPal', vi: 'Đánh giá SciPal' })}</Link>
+              <Link href="#danh-gia" className={styles.footerPolicy}>{t({ en: 'Review SciPal', vi: 'Đánh giá SciPal' })}</Link>
             </p>
           </div>
         </footer>

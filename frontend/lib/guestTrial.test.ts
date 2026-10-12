@@ -10,7 +10,7 @@ describe('routeAccess', () => {
   });
 
   it('keeps the landing page, sign-in and the tutor page open', () => {
-    for (const path of ['/', '/login', '/tutor', '/auth/callback', '/privacy', '/offline']) expect(routeAccess(path), path).toEqual({ kind: 'public' });
+    for (const path of ['/', '/login', '/tutor', '/auth/callback', '/privacy', '/terms', '/newsletter/confirm', '/newsletter/unsubscribe', '/offline']) expect(routeAccess(path), path).toEqual({ kind: 'public' });
   });
 
   it('needs an account for personal and paying pages', () => {

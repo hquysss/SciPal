@@ -75,7 +75,7 @@ export type InformaticsAvailability =
   | { kind: 'error' };
 
 export type LandingCatalog =
-  | { kind: 'ready'; subjects: LandingSubject[] }
+  | { kind: 'ready'; subjects: LandingSubject[]; /** Published lessons across every subject. */ lessons?: number }
   | { kind: 'error' };
 
 export interface LandingData {
@@ -134,10 +134,11 @@ export async function getLandingData(
     (catalogResult.data ?? []) as CatalogSubjectRow[],
     publishedResult.data ?? [],
   );
+  const lessons = (publishedResult.data ?? []).length;
   const subject = subjects.find((item) => item.slug === 'informatics' && item.education_level === 'upper_secondary') ?? null;
   if (!subject || subject.status !== 'active' || SUBJECT_CONFIG.informatics.status !== 'active') {
     return {
-      catalog: { kind: 'ready', subjects },
+      catalog: { kind: 'ready', subjects, lessons },
       informatics: classifyInformatics(subject, null, false),
     };
   }
@@ -154,12 +155,12 @@ export async function getLandingData(
       .maybeSingle();
 
     return {
-      catalog: { kind: 'ready', subjects },
+      catalog: { kind: 'ready', subjects, lessons },
       informatics: classifyInformatics(subject, lessonResult.data, lessonResult.error !== null),
     };
   } catch {
     return {
-      catalog: { kind: 'ready', subjects },
+      catalog: { kind: 'ready', subjects, lessons },
       informatics: { kind: 'error' },
     };
   }

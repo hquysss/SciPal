@@ -133,7 +133,7 @@ describe('getLandingData', () => {
     const result = await getLandingData({ get: () => undefined });
 
     expect(result).toEqual({
-      catalog: { kind: 'ready', subjects: [informaticsSubject] },
+      catalog: { kind: 'ready', subjects: [informaticsSubject], lessons: 1 },
       informatics: { kind: 'available', lesson: publishedLesson },
     });
     expect(client.from).toHaveBeenNthCalledWith(1, 'subjects');
@@ -165,7 +165,7 @@ describe('getLandingData', () => {
     setupSupabase({ data: [], error: null }, { data: null, error: noError });
     const emptyCatalog = await getLandingData({ get: () => undefined });
     expect(emptyCatalog).toEqual({
-      catalog: { kind: 'ready', subjects: [] },
+      catalog: { kind: 'ready', subjects: [], lessons: 1 },
       informatics: { kind: 'empty' },
     });
   });
@@ -177,7 +177,7 @@ describe('getLandingData', () => {
     );
 
     await expect(getLandingData({ get: () => undefined })).resolves.toEqual({
-      catalog: { kind: 'ready', subjects: [informaticsSubject] },
+      catalog: { kind: 'ready', subjects: [informaticsSubject], lessons: 1 },
       informatics: { kind: 'error' },
     });
   });

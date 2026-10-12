@@ -93,28 +93,32 @@ export function PricingSection({
       <div className={styles.plans}>
         {free && (
           <article className={styles.free} aria-labelledby={`landing-${free.code}`}>
-            <h3 id={`landing-${free.code}`} className={styles.planName}>{t(free.name)}</h3>
-            <p className={styles.price}>
-              <span className={styles.amount}>{formatVnd(0)}</span>
-              <span className={styles.per}>{t({ en: 'forever', vi: 'mãi mãi' })}</span>
-            </p>
-            <ul className={styles.limits}>
-              {free.limits.map((l, index) => (
-                <li key={l.metric} style={item(index)}>
-                  <Check aria-hidden="true" size={16} />
-                  <span>{limitText(l, t)}</span>
-                </li>
-              ))}
-              {(free.perks ?? []).map((p, index) => (
-                <li key={`perk-${index}`} style={item(free.limits.length + index)}>
-                  <Check aria-hidden="true" size={16} />
-                  <span>{t(p)}</span>
-                </li>
-              ))}
-            </ul>
-            <Link href="/subjects" className={styles.freeAction}>
-              {t({ en: 'Learn for free', vi: 'Học miễn phí' })}
-            </Link>
+            <div className={styles.ticketMain}>
+              <h3 id={`landing-${free.code}`} className={styles.planName}>{t(free.name)}</h3>
+              <ul className={styles.limits}>
+                {free.limits.map((l, index) => (
+                  <li key={l.metric} style={item(index)}>
+                    <Check aria-hidden="true" size={16} />
+                    <span>{limitText(l, t)}</span>
+                  </li>
+                ))}
+                {(free.perks ?? []).map((p, index) => (
+                  <li key={`perk-${index}`} style={item(free.limits.length + index)}>
+                    <Check aria-hidden="true" size={16} />
+                    <span>{t(p)}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+            <div className={styles.ticketStub}>
+              <p className={styles.price}>
+                <span className={styles.amount}>{formatVnd(0)}</span>
+                <span className={styles.per}>{t({ en: 'forever', vi: 'mãi mãi' })}</span>
+              </p>
+              <Link href="/subjects" className={styles.freeAction}>
+                {t({ en: 'Learn for free', vi: 'Học miễn phí' })}
+              </Link>
+            </div>
           </article>
         )}
 
@@ -125,43 +129,47 @@ export function PricingSection({
             </span>
             <article className={styles.paid} aria-labelledby={`landing-${paid.code}`} onPointerMove={tilt} onPointerLeave={untilt}>
               <span className={styles.badge}>{t({ en: 'Recommended', vi: 'Khuyên dùng' })}</span>
-              <h3 id={`landing-${paid.code}`} className={styles.planName}>
-                <Sparkles aria-hidden="true" size={20} className={styles.spark} />
-                {t(paid.name)}
-              </h3>
-              <p className={styles.price} key={`${audience}-${interval}`}>
-                <CountingPrice amount={price?.amountVnd ?? 0} run={inView} className={`${styles.amount} ${styles.amountPaid}`} />
-                <span className={styles.per}>{`/ ${t(INTERVAL_NOUN[interval])}`}</span>
-              </p>
-              <p className={styles.note}>
-                {interval !== 'month'
-                  ? `${t({ en: `Paid up front for ${INTERVAL_SPAN[interval].en}`, vi: `trả trước ${INTERVAL_SPAN[interval].vi}` })}${paidMonths !== null && paidMonths < INTERVAL_MONTHS[interval] ? ` · ${t({ en: `the price of ${paidMonths} months`, vi: `bằng giá ${paidMonths} tháng` })}` : ''}`
-                  : t({ en: 'No auto-renewal; the plan runs to the end of the period you paid for.', vi: 'Không tự gia hạn; gói chạy tới hết kỳ đã trả.' })}
-              </p>
-              <ul className={styles.limits}>
-                {paid.limits.map((l, index) => (
-                  <li key={l.metric} style={item(index + 1)}>
-                    <Check aria-hidden="true" size={16} />
-                    <span>{limitText(l, t)}</span>
-                  </li>
-                ))}
-                {(paid.perks ?? []).map((p, index) => (
-                  <li key={`perk-${index}`} style={item(paid.limits.length + index + 1)}>
-                    <Check aria-hidden="true" size={16} />
-                    <span>{t(p)}</span>
-                  </li>
-                ))}
-              </ul>
-              {catalog.checkoutOpen ? (
-                <Link href={`/profile/payment-methods?audience=${audience}&interval=${interval}`} className={styles.paidAction}>
-                  {t({ en: 'Upgrade now', vi: 'Nâng cấp ngay' })}
-                  <ArrowRight aria-hidden="true" size={18} />
-                </Link>
-              ) : (
-                <span className={`${styles.paidAction} ${styles.soon}`} aria-disabled="true">
-                  {t({ en: 'Coming soon', vi: 'Sắp mở bán' })}
-                </span>
-              )}
+              <div className={styles.ticketMain}>
+                <h3 id={`landing-${paid.code}`} className={styles.planName}>
+                  <Sparkles aria-hidden="true" size={20} className={styles.spark} />
+                  {t(paid.name)}
+                </h3>
+                <ul className={styles.limits}>
+                  {paid.limits.map((l, index) => (
+                    <li key={l.metric} style={item(index + 1)}>
+                      <Check aria-hidden="true" size={16} />
+                      <span>{limitText(l, t)}</span>
+                    </li>
+                  ))}
+                  {(paid.perks ?? []).map((p, index) => (
+                    <li key={`perk-${index}`} style={item(paid.limits.length + index + 1)}>
+                      <Check aria-hidden="true" size={16} />
+                      <span>{t(p)}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+              <div className={styles.ticketStub}>
+                <p className={styles.price} key={`${audience}-${interval}`}>
+                  <CountingPrice amount={price?.amountVnd ?? 0} run={inView} className={`${styles.amount} ${styles.amountPaid}`} />
+                  <span className={styles.per}>{`/ ${t(INTERVAL_NOUN[interval])}`}</span>
+                </p>
+                <p className={styles.note}>
+                  {interval !== 'month'
+                    ? `${t({ en: `Paid up front for ${INTERVAL_SPAN[interval].en}`, vi: `trả trước ${INTERVAL_SPAN[interval].vi}` })}${paidMonths !== null && paidMonths < INTERVAL_MONTHS[interval] ? ` · ${t({ en: `the price of ${paidMonths} months`, vi: `bằng giá ${paidMonths} tháng` })}` : ''}`
+                    : t({ en: 'No auto-renewal; the plan runs to the end of the period you paid for.', vi: 'Không tự gia hạn; gói chạy tới hết kỳ đã trả.' })}
+                </p>
+                {catalog.checkoutOpen ? (
+                  <Link href={`/profile/payment-methods?audience=${audience}&interval=${interval}`} className={styles.paidAction}>
+                    {t({ en: 'Upgrade now', vi: 'Nâng cấp ngay' })}
+                    <ArrowRight aria-hidden="true" size={18} />
+                  </Link>
+                ) : (
+                  <span className={`${styles.paidAction} ${styles.soon}`} aria-disabled="true">
+                    {t({ en: 'Coming soon', vi: 'Sắp mở bán' })}
+                  </span>
+                )}
+              </div>
             </article>
           </div>
         )}

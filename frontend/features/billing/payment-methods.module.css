@@ -1,40 +1,15 @@
-/* The selected plan as a slip torn from the notebook: ruled paper, a sun → coral → sky top edge
-   (the same three colours as the line under page titles) and a perforated bottom edge. */
+/* The selected plan as a ticket: the plan above the perforation, the price on the stub. The notches,
+   perforation and paper colours come from ticketMain / ticketStub in the shared pricing module. */
 .slip {
-  position: relative;
-  padding: 1.75rem 1.25rem 2.25rem;
-  background-color: var(--surface);
-  background-image: repeating-linear-gradient(
-    to bottom,
-    transparent 0,
-    transparent calc(1.75rem - 1px),
-    var(--line) calc(1.75rem - 1px),
-    var(--line) 1.75rem
-  );
-  background-position: 0 1.75rem;
-  border: 1px solid var(--line);
-  border-bottom: 0;
-  border-radius: 1rem 1rem 0 0;
-  /* Perforation: a row of punched holes along the bottom edge. */
-  mask: radial-gradient(circle 5px at 50% 100%, transparent 98%, #000) bottom / 16px 100% repeat-x;
+  filter: drop-shadow(0 0.9rem 0.9rem color-mix(in srgb, var(--ink) 14%, transparent));
 }
 
-.slip::before {
-  content: '';
-  position: absolute;
-  inset: 0 0 auto;
-  height: 6px;
-  border-radius: 1rem 1rem 0 0;
-  background: linear-gradient(to right, var(--sun), var(--coral), var(--sky));
-}
-
-.row {
+.slip .stub {
   display: flex;
+  flex-wrap: wrap;
   align-items: baseline;
   justify-content: space-between;
-  gap: 1rem;
-  min-height: 1.75rem;
-  line-height: 1.75rem;
+  gap: 0.25rem 1rem;
 }
 
 .price {
@@ -43,12 +18,4 @@
   letter-spacing: -0.02em;
   font-variant-numeric: tabular-nums;
   color: var(--ink);
-}
-
-@media print {
-  .slip { background-image: none; mask: none; border-bottom: 1px solid var(--line); }
-}
-
-@media (prefers-contrast: more) {
-  .slip { mask: none; border-bottom: 1px solid var(--edge); border-color: var(--edge); }
 }

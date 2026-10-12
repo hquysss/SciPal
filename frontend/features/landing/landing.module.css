@@ -857,6 +857,32 @@
   min-width: 0;
 }
 
+/* ---------- reviews ---------- */
+
+.reviews {
+  display: grid;
+  gap: clamp(1.5rem, 3vw, 2.5rem);
+  min-width: 0;
+  margin-top: 0.5rem;
+  border-radius: var(--radius-card-lg);
+  padding: clamp(3.5rem, 7vw, 5rem) var(--landing-gutter);
+  background: var(--surface-sunken);
+  scroll-margin-top: 5rem;
+}
+
+.reviews > * {
+  width: min(100%, 80rem);
+  margin-inline: auto;
+}
+
+.reviews > :nth-child(2) {
+  max-width: 43rem;
+}
+
+.reviews > :nth-child(3) {
+  margin-top: 0;
+}
+
 /* ---------- footer ---------- */
 
 .footer {
@@ -1107,4 +1133,10 @@
   .coachTilt {
     transition: none;
   }
+}
+
+/* ---------- newsletter sign-up (inside the subjects band) ---------- */
+
+.notify {
+  width: min(100%, 48rem);
 }

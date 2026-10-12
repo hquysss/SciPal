@@ -584,3 +584,88 @@
     filter: blur(40px);
   }
 }
+
+/* ---------- tickets (landing only): each plan is a ticket, details above the perforation, price on the stub.
+   After zeeshan_2112's Uiverse ticket, recoloured with theme tokens. The /pricing page keeps the plain cards. ---------- */
+
+.pricing .free,
+.pricing .paid {
+  display: block;
+  gap: 0;
+  border: 0;
+  border-radius: 0;
+  padding: 0;
+  overflow: visible;
+  background: none;
+  box-shadow: none;
+  filter: drop-shadow(0 1.1rem 1rem color-mix(in srgb, var(--ink) 16%, transparent));
+}
+
+/* The notches would show the spotlight and sweep as rectangles, and the ring would outline a plain box. */
+.pricing .paid::before,
+.pricing .paid::after {
+  content: none;
+}
+
+.pricing .aura {
+  padding: 0;
+  border-radius: 0;
+  background: none;
+  box-shadow: none;
+}
+
+.ticketMain,
+.ticketStub {
+  --notch: 0.9rem;
+  position: relative;
+  display: grid;
+  align-content: start;
+  gap: 1rem;
+  padding-inline: clamp(1.4rem, 3vw, 2rem);
+}
+
+.ticketMain {
+  --paper: var(--surface);
+  padding-top: clamp(1.4rem, 3vw, 2rem);
+  padding-bottom: 1.5rem;
+  border-radius: 1.25rem 1.25rem 0 0;
+  background:
+    radial-gradient(circle at bottom left, transparent var(--notch), var(--paper) calc(var(--notch) + 1px)) left bottom / 51% 100% no-repeat,
+    radial-gradient(circle at bottom right, transparent var(--notch), var(--paper) calc(var(--notch) + 1px)) right bottom / 51% 100% no-repeat;
+  color: var(--ink);
+}
+
+.ticketStub {
+  --paper: var(--surface-sunken);
+  gap: 0.75rem;
+  padding-top: 1.5rem;
+  padding-bottom: clamp(1.4rem, 3vw, 1.75rem);
+  border-radius: 0 0 1.25rem 1.25rem;
+  background:
+    radial-gradient(circle at top left, transparent var(--notch), var(--paper) calc(var(--notch) + 1px)) left top / 51% 100% no-repeat,
+    radial-gradient(circle at top right, transparent var(--notch), var(--paper) calc(var(--notch) + 1px)) right top / 51% 100% no-repeat;
+  color: var(--ink);
+}
+
+.paid .ticketStub {
+  --paper: color-mix(in srgb, var(--action) 12%, var(--surface));
+}
+
+/* The perforation, between the notches. */
+.ticketStub::before {
+  content: '';
+  position: absolute;
+  top: -1px;
+  left: calc(var(--notch) + 0.5rem);
+  right: calc(var(--notch) + 0.5rem);
+  border-top: 2px dashed color-mix(in srgb, var(--ink) 25%, transparent);
+}
+
+.ticketStub .note {
+  margin: 0;
+}
+
+.ticketStub .freeAction,
+.ticketStub .paidAction {
+  width: 100%;
+}
