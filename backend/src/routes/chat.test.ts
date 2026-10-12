@@ -103,3 +103,64 @@ describe('POST /api/chat/messages', () => {
     expect(db.calls.find((c) => c.op === 'insert')!.chain[0]).toEqual(['insert', [{ friendship_id: FS, sender_id: ME, sender_name: 'An', body: 'hi' }]]);
   });
 });
+
+describe('POST /api/chat/blocks', () => {
+  const block = (db: ReturnType<typeof fakeDb>, user_id: unknown) =>
+    build({ db }).inject({ method: 'POST', url: '/api/chat/blocks', payload: { user_id } });
+
+  it('rejects yourself and a malformed id, and 404s an unknown account', async () => {
+    expect((await block(fakeDb({}), ME)).statusCode).toBe(400);
+    expect((await block(fakeDb({}), 'nope')).statusCode).toBe(400);
+    expect((await block(fakeDb({ 'profiles.select': [{ data: null }] }), OTHER)).statusCode).toBe(404);
+  });
+
+  it('records the block and ends the friendship between the two', async () => {
+    const db = fakeDb({ 'profiles.select': [{ data: { id: OTHER } }] });
+    const res = await block(db, OTHER);
+    expect(res.statusCode).toBe(201);
+    const upsert = db.calls.find((c) => c.op === 'upsert')!;
+    expect(upsert.table).toBe('chat_blocks');
+    expect(upsert.chain[0][1][0]).toEqual({ blocker_id: ME, blocked_id: OTHER });
+    const [a, b] = orderPair(ME, OTHER);
+    const del = db.calls.find((c) => c.op === 'delete')!;
+    expect(del.table).toBe('friendships');
+    expect(del.chain).toContainEqual(['eq', ['user_a', a]]);
+    expect(del.chain).toContainEqual(['eq', ['user_b', b]]);
+  });
+});
+
+describe('POST /api/chat/reports', () => {
+  const report = (db: ReturnType<typeof fakeDb>, body: unknown) =>
+    build({ db }).inject({ method: 'POST', url: '/api/chat/reports', payload: body as object });
+  const msg = (over: object = {}) => ({ data: { id: MSG, sender_id: OTHER, room_subject_id: ROOM, friendship_id: null, deleted_at: null, ...over } });
+
+  it('rejects a missing or over-long reason and a malformed id', async () => {
+    expect((await report(fakeDb({}), { message_id: MSG, reason: '' })).statusCode).toBe(400);
+    expect((await report(fakeDb({}), { message_id: MSG, reason: 'x'.repeat(301) })).statusCode).toBe(400);
+    expect((await report(fakeDb({}), { message_id: 'nope', reason: 'Spam' })).statusCode).toBe(400);
+  });
+
+  it('404s a missing or deleted message, and a DM the caller is not in', async () => {
+    expect((await report(fakeDb({ 'chat_messages.select': [{ data: null }] }), { message_id: MSG, reason: 'Spam' })).statusCode).toBe(404);
+    expect((await report(fakeDb({ 'chat_messages.select': [msg({ deleted_at: '2026-10-12T00:00:00Z' })] }), { message_id: MSG, reason: 'Spam' })).statusCode).toBe(404);
+    const dm = fakeDb({
+      'chat_messages.select': [msg({ room_subject_id: null, friendship_id: FS })],
+      'friendships.select': [{ data: { id: FS, user_a: OTHER, user_b: THIRD, status: 'accepted' } }],
+    });
+    expect((await report(dm, { message_id: MSG, reason: 'Spam' })).statusCode).toBe(404);
+  });
+
+  it('refuses to report your own message', async () => {
+    const db = fakeDb({ 'chat_messages.select': [msg({ sender_id: ME })] });
+    expect((await report(db, { message_id: MSG, reason: 'Spam' })).statusCode).toBe(400);
+  });
+
+  it('409s a second report of the same message, 201s the first', async () => {
+    const twice = fakeDb({ 'chat_messages.select': [msg()], 'chat_reports.insert': [{ error: { code: '23505' } }] });
+    expect((await report(twice, { message_id: MSG, reason: 'Spam' })).statusCode).toBe(409);
+    const once = fakeDb({ 'chat_messages.select': [msg()], 'chat_reports.insert': [{}] });
+    const res = await report(once, { message_id: MSG, reason: ' Spam ' });
+    expect(res.statusCode).toBe(201);
+    expect(once.calls.find((c) => c.op === 'insert')!.chain[0]).toEqual(['insert', [{ message_id: MSG, reporter_id: ME, reason: 'Spam' }]]);
+  });
+});

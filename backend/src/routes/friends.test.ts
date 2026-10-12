@@ -201,3 +201,15 @@ describe('POST /api/friends/:id/accept and DELETE /api/friends/:id', () => {
     expect(db.calls.find((c) => c.op === 'delete')!.chain).toContainEqual(['eq', ['id', ROW]]);
   });
 });
+
+describe('POST /api/friends/request and blocks', () => {
+  it('refuses with 403 when either side blocked the other, without inserting', async () => {
+    const db = fakeDb({
+      'profiles.select': [{ data: { id: OTHER } }],
+      'chat_blocks.select': [{ data: [{ blocker_id: OTHER }] }],
+    });
+    const res = await build({ db }).inject({ method: 'POST', url: '/api/friends/request', payload: { user_id: OTHER } });
+    expect(res.statusCode).toBe(403);
+    expect(db.calls.some((c) => c.op === 'insert')).toBe(false);
+  });
+});

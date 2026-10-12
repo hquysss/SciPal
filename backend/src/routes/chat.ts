@@ -1,6 +1,7 @@
 import type { FastifyPluginAsync, FastifyReply, FastifyRequest } from 'fastify';
 import { hasBannedWord } from '../chat/wordFilter.js';
 import { isSubjectArchived, SUBJECT_ARCHIVED } from '../subjects/archived.js';
+import { orderPair } from './friends.js';
 
 // Community chat. Browsers read messages through RLS and Realtime; every write is checked and made
 // here with the service role.
@@ -9,6 +10,7 @@ const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{
 const BODY_MAX = 500;
 const RATE_LIMIT = 10;
 const RATE_WINDOW_MS = 10_000;
+const REASON_MAX = 300;
 
 const unauthorized = { error: 'Phiên đăng nhập không hợp lệ.', error_en: 'Sign in again.' };
 const unavailable = { error: 'Dịch vụ trò chuyện chưa sẵn sàng.', error_en: 'Chat is not available yet.' };
@@ -82,5 +84,56 @@ export const chatRoutes: FastifyPluginAsync = async (app) => {
     const inserted = await supabase.from('chat_messages').insert(row).select('id').single();
     if (inserted.error || !inserted.data) return reply.code(500).send(failed);
     return reply.code(201).send({ id: (inserted.data as { id: string }).id });
+  });
+
+  // Blocking also ends any friendship between the two; the block hides their room messages from you.
+  app.post('/api/chat/blocks', { preHandler: [requireUser] }, async (request, reply) => {
+    const supabase = app.supabase;
+    if (!supabase) return reply.code(503).send(unavailable);
+    const me = userId(request)!;
+    const target = (request.body as { user_id?: unknown } | null)?.user_id;
+    if (typeof target !== 'string' || !UUID_PATTERN.test(target) || target === me) return reply.code(400).send(invalid);
+
+    const profile = await supabase.from('profiles').select('id').eq('id', target).maybeSingle();
+    if (profile.error) return reply.code(500).send(failed);
+    if (!profile.data) return reply.code(404).send(notFound);
+
+    const block = await supabase.from('chat_blocks').upsert({ blocker_id: me, blocked_id: target }, { onConflict: 'blocker_id,blocked_id', ignoreDuplicates: true });
+    if (block.error) return reply.code(500).send(failed);
+    const [a, b] = orderPair(me, target);
+    const unfriend = await supabase.from('friendships').delete().eq('user_a', a).eq('user_b', b);
+    if (unfriend.error) return reply.code(500).send(failed);
+    return reply.code(201).send({});
+  });
+
+  app.post('/api/chat/reports', { preHandler: [requireUser] }, async (request, reply) => {
+    const supabase = app.supabase;
+    if (!supabase) return reply.code(503).send(unavailable);
+    const me = userId(request)!;
+    const input = (request.body ?? {}) as { message_id?: unknown; reason?: unknown };
+    const reason = typeof input.reason === 'string' ? input.reason.trim() : '';
+    if (typeof input.message_id !== 'string' || !UUID_PATTERN.test(input.message_id) || reason.length < 1 || reason.length > REASON_MAX) {
+      return reply.code(400).send(invalid);
+    }
+
+    const found = await supabase.from('chat_messages').select('id, sender_id, room_subject_id, friendship_id, deleted_at').eq('id', input.message_id).maybeSingle();
+    if (found.error) return reply.code(500).send(failed);
+    const message = found.data as { sender_id: string; friendship_id: string | null; deleted_at: string | null } | null;
+    if (!message || message.deleted_at) return reply.code(404).send(notFound);
+    // A DM can only be reported by someone who could read it.
+    if (message.friendship_id) {
+      const friendship = await supabase.from('friendships').select('id, user_a, user_b, status').eq('id', message.friendship_id).maybeSingle();
+      if (friendship.error) return reply.code(500).send(failed);
+      const f = friendship.data as FriendRow | null;
+      if (!f || f.status !== 'accepted' || (f.user_a !== me && f.user_b !== me)) return reply.code(404).send(notFound);
+    }
+    if (message.sender_id === me) return reply.code(400).send(invalid);
+
+    const inserted = await supabase.from('chat_reports').insert({ message_id: input.message_id, reporter_id: me, reason });
+    if (inserted.error?.code === '23505') {
+      return reply.code(409).send({ error: 'Bạn đã báo cáo tin này rồi.', error_en: 'You already reported this message.' });
+    }
+    if (inserted.error) return reply.code(500).send(failed);
+    return reply.code(201).send({});
   });
 };

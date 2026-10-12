@@ -112,6 +112,12 @@ export const friendRoutes: FastifyPluginAsync = async (app) => {
     const profile = await app.supabase.from('profiles').select('id').eq('id', target).maybeSingle();
     if (profile.error) return reply.code(500).send(failed);
     if (!profile.data) return reply.code(404).send(notFound);
+    const blocks = await app.supabase.from('chat_blocks').select('blocker_id')
+      .or(`and(blocker_id.eq.${me},blocked_id.eq.${target}),and(blocker_id.eq.${target},blocked_id.eq.${me})`).limit(1);
+    if (blocks.error) return reply.code(500).send(failed);
+    if (((blocks.data as unknown[] | null) ?? []).length > 0) {
+      return reply.code(403).send({ error: 'Không thể kết bạn với người này.', error_en: 'You cannot add this person.' });
+    }
 
     const [a, b] = orderPair(me, target);
     const existing = await app.supabase.from('friendships').select(ROW_COLUMNS).eq('user_a', a).eq('user_b', b).maybeSingle();
