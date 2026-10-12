@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import {
-  BookA, Bot, ClipboardCheck, FlaskConical, FolderTree, Library, NotebookPen, ReceiptText, Settings2, ToggleRight, Users, type LucideIcon } from 'lucide-react';
+  BookA, Bot, ClipboardCheck, Megaphone, FlaskConical, FolderTree, Library, NotebookPen, ReceiptText, Settings2, ToggleRight, Users, type LucideIcon } from 'lucide-react';
 import { useLanguage } from '@scipal/hooks';
 import { countOpenSimulationRequests } from '@/features/authoring/simulationRequests/api';
 
@@ -43,6 +43,7 @@ export const ADMIN_GROUPS: Group[] = [
     title: { vi: 'Hệ thống', en: 'System' },
     tools: [
       { href: '/admin/ai', label: { vi: 'Cài đặt AI', en: 'AI settings' }, hint: { vi: 'Giáo sư Quý, dịch tự động, hội thoại', en: 'Professor, translation, conversations' }, Icon: Bot },
+      { href: '/admin/announcements', label: { vi: 'Thông báo', en: 'Announcements' }, hint: { vi: 'Gửi thông báo trong app và email tới người nhận tin', en: 'Send in-app notices and e-mail to subscribers' }, Icon: Megaphone },
       { href: '/admin/feedback', label: { vi: 'Đánh giá website', en: 'Website reviews' }, hint: { vi: 'Sao trung bình, góp ý và tài khoản gửi', en: 'Average stars, comments and sending accounts' }, Icon: ClipboardCheck },
       { href: '/admin/site', label: { vi: 'Bật/tắt tính năng', en: 'Site switches' }, hint: { vi: 'Đăng ký, từ điển, thi thử, bảng giá…', en: 'Sign-up, glossary, exams, pricing…' }, Icon: ToggleRight },
     ],

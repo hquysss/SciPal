@@ -9,6 +9,7 @@ import { Alert } from '@/components/ui/alert';
 import { buttonVariants } from '@/components/ui/button';
 import { cancelRenewal, fetchMyPlan, formatVnd, startCheckout, type Catalog } from './billingApi';
 import { INTERVAL_NOUN, INTERVAL_SPAN, canAutoRenew } from './intervals';
+import ticket from '@/features/landing/pricing.module.css';
 import slip from './payment-methods.module.css';
 type Provider = 'payos' | 'vnpay' | 'momo';
 type Props = {
@@ -66,13 +67,13 @@ export function PaymentMethodsView({ catalog, account, accountStatus, onCancel, 
   {!catalog && <Alert tone="danger"><p>{t({ vi: 'Chưa tải được các cổng thanh toán. Thử lại sau nhé.', en: 'Payment providers could not be loaded. Try again later.' })}</p>{onRetry && <button type="button" onClick={onRetry} className={buttonVariants({ variant: 'outline' })}>{t({ vi: 'Thử lại', en: 'Try again' })}</button>}</Alert>}
 
   {chosenPlan && chosenPrice && <section className={slip.slip} aria-label={t({vi:'Gói đã chọn',en:'Selected plan'})}>
-   <p className="text-sm leading-7 text-ink-muted">{t({vi:'Bạn đang mua',en:'You are buying'})}</p>
-   <div className={slip.row}>
-    <p className="min-w-0 truncate text-lg font-extrabold tracking-tight text-ink">{t(chosenPlan.name)}</p>
-    <p className={slip.price}>{formatVnd(chosenPrice.amountVnd)}</p>
+   <div className={ticket.ticketMain}>
+    <p className="text-sm text-ink-muted">{t({vi:'Bạn đang mua',en:'You are buying'})}</p>
+    <p className="min-w-0 text-xl font-extrabold tracking-tight text-ink">{t(chosenPlan.name)}</p>
+    <Link href={`/pricing?audience=${chosenPlan.audience}&interval=${chosenPrice.interval}`} className="inline-flex min-h-11 w-fit items-center text-sm font-semibold text-action underline-offset-4 hover:underline">{t({vi:'Đổi gói hoặc chu kỳ',en:'Change plan or period'})}</Link>
    </div>
-   <div className={slip.row}>
-    <Link href={`/pricing?audience=${chosenPlan.audience}&interval=${chosenPrice.interval}`} className="text-sm font-semibold text-action underline-offset-4 hover:underline">{t({vi:'Đổi gói hoặc chu kỳ',en:'Change plan or period'})}</Link>
+   <div className={`${ticket.ticketStub} ${slip.stub}`}>
+    <p className={slip.price}>{formatVnd(chosenPrice.amountVnd)}</p>
     <p className="text-sm text-ink-muted">{t({vi:`cho ${INTERVAL_SPAN[chosenPrice.interval].vi}`,en:`for ${INTERVAL_SPAN[chosenPrice.interval].en}`})}</p>
    </div>
   </section>}
