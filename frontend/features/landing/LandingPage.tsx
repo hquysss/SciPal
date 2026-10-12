@@ -6,7 +6,6 @@ import Link from 'next/link';
 import { ArrowRight, Atom, BookOpen, Braces, Dna, FlaskConical, Globe, Lightbulb, Mail, Sigma, Sparkles } from 'lucide-react';
 import { useLanguage } from '@scipal/hooks';
 import { DemandPollBanner } from '@/features/survey/DemandPollBanner';
-import { NewsletterSignup } from '@/features/newsletter/NewsletterSignup';
 import { fetchWebsiteFeedback } from '@/features/website-feedback/api';
 import { WebsiteFeedbackBoard } from '@/features/website-feedback/WebsiteFeedbackBoard';
 import { WebsiteFeedbackForm } from '@/features/website-feedback/WebsiteFeedbackForm';
@@ -364,9 +363,6 @@ export function LandingPage({ level, catalog, onChangeLevel, pricing = null, sho
             </div>
             <div className={styles.subjectGrid} data-landing-reveal data-subject-grid>
               <SubjectMarquee level={level} catalog={catalog} />
-            </div>
-            <div className={styles.notify} data-landing-reveal>
-              <NewsletterSignup level={level} />
             </div>
           </section>
 

@@ -36,11 +36,6 @@ async function post(path: string, body: unknown, withSession = false): Promise<{
   }
 }
 
-export async function subscribeNewsletter(input: { email: string; levels: NewsletterLevel[]; locale: 'vi' | 'en' }) {
-  const result = await post('/api/newsletter/subscribe', input, true);
-  return result.ok ? ({ ok: true, confirmed: result.data.confirmed === true } as const) : result;
-}
-
 /** The pages behind the links in the e-mails. */
 export const sendNewsletterToken = (action: 'confirm' | 'unsubscribe', token: string) => post(`/api/newsletter/${action}`, { token });
 
