@@ -21,7 +21,7 @@ import overlay from './simOverlay.module.css';
 import styles from './circulation.module.css';
 
 const TOKENS = { background: '--circ-background', artery: '--circ-artery', vein: '--circ-vein', wall: '--circ-wall', muscle: '--circ-muscle', septum: '--circ-septum', valve: '--circ-valve', signal: '--circ-signal', white: '--circ-white' } as const;
-const HOMES = { body: { theta: -Math.PI / 2, phi: 0.05, dist: 10.6 }, heart: { theta: -Math.PI / 2, phi: 0.05, dist: 8 }, vessels: { theta: -Math.PI / 2, phi: 0.05, dist: 10.6 } } as const;
+const HOMES = { body: { theta: -Math.PI / 2, phi: 0.05, dist: 10.6 }, heart: { theta: -Math.PI / 2, phi: 0.05, dist: 13 }, vessels: { theta: -Math.PI / 2, phi: 0.05, dist: 10.6 } } as const;
 
 type Anchor = { readonly key: string; readonly text: Bilingual; readonly note: Bilingual; readonly point: Point3; readonly label: Point3 };
 const besideBody = (part: BodyPart, label: readonly [number, number]): Anchor => {
@@ -100,7 +100,7 @@ export function CirculationScene({ view, heartRate, focus, layer, vessel, onVess
   const title = view === 'vessels' ? { vi: '03 / Huyết áp và vận tốc máu', en: '03 / Blood pressure and speed' } : view === 'body' ? { vi: '01 / Hệ tuần hoàn kép', en: '01 / Double circulation' } : { vi: '02 / Tim và chu kì tim', en: '02 / Heart and cardiac cycle' };
   return <div className={styles.frame} style={screen.expanded ? { height: screen.height } : undefined}>
     <div ref={host} {...handlers} className={styles.stage} data-fullscreen={screen.expanded} data-panel-layout={frame.mode} role={screen.expanded ? 'dialog' : 'group'} aria-modal={screen.expanded || undefined} tabIndex={0} aria-label={t({ vi: 'Mô hình 3D hệ tuần hoàn', en: '3D model of the circulatory system' })}>
-      {palette && !chart && <Canvas dpr={[1, 1.5]} frameloop={running ? 'always' : 'demand'} camera={{ fov: 42, near: 0.1, far: 80 }} gl={{ antialias: true }}>
+      {palette && !chart && <Canvas dpr={[1, 1.5]} frameloop={running ? 'always' : 'demand'} camera={{ fov: 42, near: 0.1, far: 80 }} gl={{ antialias: true, localClippingEnabled: true }}>
         <color attach="background" args={[palette.background]} />
         <ambientLight intensity={1.1} />
         <directionalLight position={[-3, 6, 8]} intensity={1.8} />

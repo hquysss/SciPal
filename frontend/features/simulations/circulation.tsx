@@ -42,8 +42,9 @@ export function CirculationView({ config, lang }: SimulationViewProps<'circulati
     {mounted ? <SceneBoundary fallback={fallback}>
       <Suspense fallback={loading}><Scene view={view} heartRate={heartRate} focus={focus} layer={layer} vessel={vessel} onVessel={setVessel} labels={labels} time={clock.time} running={clock.running} stamp={clock.shownTime} lang={lang} panel={panel} /></Suspense>
     </SceneBoundary> : loading}
-    <p className="text-xs leading-relaxed text-ink-muted">{t({ vi: 'Màu theo quy ước SGK: đỏ là máu giàu O₂, xanh là máu giàu CO₂. Sóng mạch và dòng máu được làm chậm để quan sát; tim ở cảnh 2 là sơ đồ, không theo tỉ lệ thực.', en: 'Textbook colours: red is oxygen-rich blood, blue is carbon dioxide-rich blood. The pulse wave and blood flow are slowed for observation; the heart in view 2 is a diagram, not to scale.' })}</p>
+    <p className="text-xs leading-relaxed text-ink-muted">{t({ vi: 'Màu theo quy ước SGK: đỏ là máu giàu O₂, xanh là máu giàu CO₂. Sóng mạch và dòng máu được làm chậm để quan sát; các số đo huyết áp, vận tốc ở cảnh 3 là giá trị điển hình của người lớn khoẻ mạnh lúc nghỉ.', en: 'Textbook colours: red is oxygen-rich blood, blue is carbon dioxide-rich blood. The pulse wave and blood flow are slowed for observation; the pressures and speeds in view 3 are typical values for a healthy resting adult.' })}</p>
     <p className="text-xs text-ink-muted">{t({ vi: 'Model hệ tuần hoàn: ', en: 'Circulatory system model: ' })}<a className="underline" href="https://sketchfab.com/3d-models/circulatory-system-3584d5b2b97545cf965007c195899b7b" target="_blank" rel="noreferrer">“Circulatory System” – brianj.seely</a> · <a className="underline" href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noreferrer">CC BY 4.0</a>{t({ vi: ' (đã chỉnh sửa)', en: ' (modified)' })}</p>
+    <p className="text-xs text-ink-muted">{t({ vi: 'Model tim: ', en: 'Heart model: ' })}<a className="underline" href="/models/circulation/README.md" target="_blank" rel="noreferrer">BodyParts3D / Z-Anatomy · CC BY-SA 4.0</a>{t({ vi: ' (đã chỉnh sửa)', en: ' (modified)' })}</p>
   </div>;
 }
 
