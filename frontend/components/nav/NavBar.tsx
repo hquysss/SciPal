@@ -62,7 +62,7 @@ export function getAvatarUrl(user: AuthUser | null): string | null {
 
 /** "Giáo sư AI" in the main links, for everyone: a visitor gets a trial question, then signs in. */
 export function tutorLink(lang: 'en' | 'vi') {
-  return { href: '/tutor', label: lang === 'en' ? 'AI Professor' : 'Giáo sư AI' };
+  return { href: '/tutor', label: lang === 'en' ? 'Professor' : 'Giáo sư' };
 }
 
 /** Pricing sits right after Home, for everyone (admins keep it to check the page). */
