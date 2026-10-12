@@ -10,6 +10,7 @@ vi.mock('next/navigation', () => ({
 }));
 vi.mock('@scipal/hooks', () => ({ useLanguage: () => ({ lang: 'vi', t: (o: { vi: string }) => o.vi }) }));
 vi.mock('./CommunityRoom', () => ({ CommunityRoom: () => <div>community-content</div> }));
+vi.mock('./ClassesTab', () => ({ ClassesTab: ({ classId }: { classId: string | null }) => <div>classes-content class={String(classId)}</div> }));
 vi.mock('../friends/FriendsTab', () => ({ FriendsTab: ({ dm }: { dm: string | null }) => <div>friends-content dm={String(dm)}</div> }));
 
 afterEach(() => { cleanup(); nav.query = ''; nav.replace.mockClear(); });
@@ -28,5 +29,16 @@ describe('CommunityPage', () => {
     render(<CommunityPage />);
     expect(screen.getByRole('tab', { name: 'Bạn bè' }).getAttribute('aria-selected')).toBe('true');
     expect(screen.getByText('friends-content dm=abc')).toBeTruthy();
+  });
+
+  it('has a Lớp học tab for class chats, and opens a class from the URL', () => {
+    render(<CommunityPage />);
+    fireEvent.click(screen.getByRole('tab', { name: 'Lớp học' }));
+    expect(nav.replace).toHaveBeenCalledWith('/community?tab=classes');
+    cleanup();
+    nav.query = 'tab=classes&class=c1';
+    render(<CommunityPage />);
+    expect(screen.getByRole('tab', { name: 'Lớp học' }).getAttribute('aria-selected')).toBe('true');
+    expect(screen.getByText('classes-content class=c1')).toBeTruthy();
   });
 });

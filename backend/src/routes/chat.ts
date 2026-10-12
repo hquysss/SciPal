@@ -45,6 +45,17 @@ export const chatRoutes: FastifyPluginAsync = async (app) => {
     if (!userId(request)) return reply.code(401).send(unauthorized);
   };
 
+  /** Whether the user teaches or belongs to the class; null when the lookup failed. */
+  async function inClass(supabase: SupabaseClient, me: string, classId: string): Promise<boolean | null> {
+    const room = await supabase.from('class_rooms').select('id, teacher_id').eq('id', classId).maybeSingle();
+    if (room.error) return null;
+    const found = room.data as { teacher_id: string } | null;
+    if (!found) return false;
+    if (found.teacher_id === me) return true;
+    const member = await supabase.from('class_members').select('class_id').eq('class_id', classId).eq('student_id', me).maybeSingle();
+    return member.error ? null : Boolean(member.data);
+  }
+
   /**
    * Everything a message must pass before it is stored. On a refusal it sends the reply itself and returns
    * null; otherwise it returns the row to insert. A picture is for direct messages only and may have no words.
@@ -53,15 +64,16 @@ export const chatRoutes: FastifyPluginAsync = async (app) => {
     supabase: SupabaseClient,
     me: string,
     reply: FastifyReply,
-    input: { community: boolean; friendship: unknown; body: string; kind: 'text' | 'image' },
+    input: { community: boolean; classId: unknown; friendship: unknown; body: string; kind: 'text' | 'image' },
   ): Promise<Record<string, string | boolean> | null> {
     const refuse = (code: number, payload: object): null => {
       void reply.code(code).send(payload);
       return null;
     };
-    const { community, friendship, body, kind } = input;
+    const { community, classId, friendship, body, kind } = input;
+    const classOk = typeof classId === 'string' && UUID_PATTERN.test(classId);
     const friendshipOk = typeof friendship === 'string' && UUID_PATTERN.test(friendship);
-    if (body.length < (kind === 'text' ? 1 : 0) || body.length > BODY_MAX || community === friendshipOk) return refuse(400, invalid);
+    if (body.length < (kind === 'text' ? 1 : 0) || body.length > BODY_MAX || [community, classOk, friendshipOk].filter(Boolean).length !== 1) return refuse(400, invalid);
     if (kind === 'image' && !friendshipOk) {
       return refuse(400, { error: 'Ảnh chỉ gửi được cho bạn bè.', error_en: 'Pictures can only be sent to friends.' });
     }
@@ -84,6 +96,11 @@ export const chatRoutes: FastifyPluginAsync = async (app) => {
     const row: Record<string, string | boolean> = { sender_id: me, sender_name: name?.trim() || 'Người dùng', body };
     if (community) {
       row.community = true;
+    } else if (classOk) {
+      const allowed = await inClass(supabase, me, classId as string);
+      if (allowed === null) return refuse(500, failed);
+      if (!allowed) return refuse(404, notFound);
+      row.class_id = classId as string;
     } else {
       const found = await supabase.from('friendships').select('id, user_a, user_b, status').eq('id', friendship as string).maybeSingle();
       if (found.error) return refuse(500, failed);
@@ -105,10 +122,10 @@ export const chatRoutes: FastifyPluginAsync = async (app) => {
     const supabase = app.supabase;
     if (!supabase) return reply.code(503).send(unavailable);
     const me = userId(request)!;
-    const input = (request.body ?? {}) as { community?: unknown; friendship_id?: unknown; body?: unknown };
+    const input = (request.body ?? {}) as { community?: unknown; class_id?: unknown; friendship_id?: unknown; body?: unknown };
     const body = typeof input.body === 'string' ? input.body.trim() : '';
 
-    const row = await prepareRow(supabase, me, reply, { community: input.community === true, friendship: input.friendship_id, body, kind: 'text' });
+    const row = await prepareRow(supabase, me, reply, { community: input.community === true, classId: input.class_id, friendship: input.friendship_id, body, kind: 'text' });
     if (!row) return reply;
     const inserted = await supabase.from('chat_messages').insert(row).select('id').single();
     if (inserted.error || !inserted.data) return reply.code(500).send(failed);
@@ -127,9 +144,9 @@ export const chatRoutes: FastifyPluginAsync = async (app) => {
     const type = sniffImageType(image);
     if (!type) return reply.code(400).send(notImage);
 
-    const query = (request.query ?? {}) as { community?: string; friendship_id?: string; caption?: string };
+    const query = (request.query ?? {}) as { community?: string; class_id?: string; friendship_id?: string; caption?: string };
     const caption = typeof query.caption === 'string' ? query.caption.trim() : '';
-    const row = await prepareRow(supabase, me, reply, { community: query.community === 'true', friendship: query.friendship_id, body: caption, kind: 'image' });
+    const row = await prepareRow(supabase, me, reply, { community: query.community === 'true', classId: query.class_id, friendship: query.friendship_id, body: caption, kind: 'image' });
     if (!row) return reply;
 
     const key = `chat/${me}/${randomUUID()}.${type === 'jpeg' ? 'jpg' : type}`;
@@ -166,6 +183,19 @@ export const chatRoutes: FastifyPluginAsync = async (app) => {
     const unfriend = await supabase.from('friendships').delete().eq('user_a', a).eq('user_b', b);
     if (unfriend.error) return reply.code(500).send(failed);
     return reply.code(201).send({});
+  });
+
+  app.get('/api/chat/classes', { preHandler: [requireUser] }, async (request, reply) => {
+    const supabase = app.supabase;
+    if (!supabase) return reply.code(503).send(unavailable);
+    const me = userId(request)!;
+    const joined = await supabase.from('class_members').select('class_id').eq('student_id', me);
+    if (joined.error) return reply.code(500).send(failed);
+    const ids = ((joined.data ?? []) as Array<{ class_id: string }>).map((c) => c.class_id);
+    const rooms = await supabase.from('class_rooms').select('id, name')
+      .or(ids.length ? `teacher_id.eq.${me},id.in.(${ids.join(',')})` : `teacher_id.eq.${me}`).order('name');
+    if (rooms.error) return reply.code(500).send(failed);
+    return reply.send({ classes: ((rooms.data ?? []) as Array<{ id: string; name: string }>).map((c) => ({ id: c.id, name: c.name })) });
   });
 
   app.get('/api/chat/blocks', { preHandler: [requireUser] }, async (request, reply) => {
@@ -207,11 +237,16 @@ export const chatRoutes: FastifyPluginAsync = async (app) => {
       return reply.code(400).send(invalid);
     }
 
-    const found = await supabase.from('chat_messages').select('id, sender_id, community, friendship_id, deleted_at').eq('id', input.message_id).maybeSingle();
+    const found = await supabase.from('chat_messages').select('id, sender_id, community, class_id, friendship_id, deleted_at').eq('id', input.message_id).maybeSingle();
     if (found.error) return reply.code(500).send(failed);
-    const message = found.data as { sender_id: string; friendship_id: string | null; deleted_at: string | null } | null;
+    const message = found.data as { sender_id: string; class_id: string | null; friendship_id: string | null; deleted_at: string | null } | null;
     if (!message || message.deleted_at) return reply.code(404).send(notFound);
-    // A DM can only be reported by someone who could read it.
+    // A class message can only be reported by its teacher or a member; a DM only by someone who could read it.
+    if (message.class_id) {
+      const allowed = await inClass(supabase, me, message.class_id);
+      if (allowed === null) return reply.code(500).send(failed);
+      if (!allowed) return reply.code(404).send(notFound);
+    }
     if (message.friendship_id) {
       const friendship = await supabase.from('friendships').select('id, user_a, user_b, status').eq('id', message.friendship_id).maybeSingle();
       if (friendship.error) return reply.code(500).send(failed);

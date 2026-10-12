@@ -1032,6 +1032,7 @@ export interface Database {
           id: string;
           room_subject_id: string | null;
           community: boolean;
+          class_id: string | null;
           friendship_id: string | null;
           sender_id: string;
           sender_name: string;
@@ -1044,6 +1045,7 @@ export interface Database {
           id?: string;
           room_subject_id?: string | null;
           community?: boolean;
+          class_id?: string | null;
           friendship_id?: string | null;
           sender_id: string;
           sender_name: string;
@@ -1056,6 +1058,7 @@ export interface Database {
           id?: string;
           room_subject_id?: string | null;
           community?: boolean;
+          class_id?: string | null;
           friendship_id?: string | null;
           sender_id?: string;
           sender_name?: string;
@@ -1065,6 +1068,13 @@ export interface Database {
           deleted_at?: string | null;
         };
         Relationships: [
+          {
+            foreignKeyName: 'chat_messages_class_id_fkey';
+            columns: ['class_id'];
+            isOneToOne: false;
+            referencedRelation: 'class_rooms';
+            referencedColumns: ['id'];
+          },
           {
             foreignKeyName: 'chat_messages_room_subject_id_fkey';
             columns: ['room_subject_id'];

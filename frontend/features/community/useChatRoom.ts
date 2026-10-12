@@ -23,12 +23,11 @@ function asMessage(row: Record<string, unknown>): ChatMessage {
 }
 
 /**
- * The latest messages of the community room or a direct chat, kept current over Supabase Realtime. RLS decides
+ * The latest messages of the community room, a class or a direct chat, kept current over Supabase Realtime. RLS decides
  * what is readable and who hears new rows, so nothing here filters for privacy.
  */
 export function useChatRoom(target: ChatTarget): { messages: ChatMessage[]; status: 'loading' | 'ready' | 'error' } {
-  const column = 'community' in target ? 'community' : 'friendship_id';
-  const id = 'community' in target ? 'true' : target.friendship_id;
+  const [column, id] = 'community' in target ? ['community', 'true'] : 'class_id' in target ? ['class_id', target.class_id] : ['friendship_id', target.friendship_id];
   const [state, setState] = useState<{ status: 'loading' | 'ready' | 'error'; messages: ChatMessage[] }>({ status: 'loading', messages: [] });
 
   useEffect(() => {
