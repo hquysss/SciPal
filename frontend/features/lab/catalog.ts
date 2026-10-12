@@ -118,6 +118,13 @@ export const LAB_ITEMS: readonly LabItem[] = [
     grades: { en: 'Grade 11', vi: 'Lớp 11' },
   },
   {
+    kind: 'skin-senses',
+    name: { en: 'Skin and senses', vi: 'Da và cảm giác' },
+    subject: 'biology',
+    blurb: { en: 'Prick, press, cool or warm a 3D slice of skin, watch its receptors fire, then follow the withdrawal reflex.', vi: 'Chạm, ấn, áp đá hay vật nóng lên lát cắt da 3D, xem thụ thể phát xung và theo dõi phản xạ rụt tay.' },
+    grades: { en: 'Grade 11', vi: 'Lớp 11' },
+  },
+  {
     kind: 'algorithm-sim',
     name: { en: 'Algorithm steps', vi: 'Thuật toán từng bước' },
     subject: 'informatics',

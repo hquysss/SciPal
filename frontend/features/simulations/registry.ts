@@ -1,6 +1,7 @@
 import type { BuiltInSimulationKind } from '@scipal/types';
 import { kneeReflexModule } from './kneeReflex';
 import { circulationModule } from './circulation';
+import { skinModule } from './skin';
 import { algorithmModule } from './algorithm';
 import { functionGraphModule } from './functionGraph';
 import { graph3dModule } from './graph3d';
@@ -21,6 +22,7 @@ import type { SimulationModule } from './types';
 export const simulationModules: { [K in BuiltInSimulationKind]: SimulationModule<K> } = {
   'knee-reflex': kneeReflexModule,
   'circulation-3d': circulationModule,
+  'skin-senses': skinModule,
   'algorithm-sim': algorithmModule,
   'function-graph': functionGraphModule,
   probability: probabilityModule,

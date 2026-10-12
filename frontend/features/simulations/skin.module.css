@@ -1,0 +1,46 @@
+.stage {
+  --skin-background: #15202a;
+  --skin-artery: #e0384f;
+  --skin-nerve: #7fb2f0;
+  --skin-signal: #ffd166;
+  --skin-motor: #ff7a59;
+  --skin-tool: #f2c4a8;
+  --skin-ice: #bfe8ff;
+  --skin-hot: #ff6b2c;
+  --skin-thorn: #6b8f3a;
+  --skin-broken: #ff4d6d;
+  --skin-bone: #e9dfc8;
+  --skin-muscle: #c8545e;
+  --skin-cord: #f3eee6;
+  --skin-grey: #9aa3ad;
+  --skin-white: #eef3f8;
+  position: relative;
+  width: 100%;
+  height: clamp(540px, 72vh, 760px);
+  background: var(--skin-background);
+  border-radius: 14px;
+  overflow: hidden;
+  touch-action: pan-y;
+}
+.stage canvas { display: block; }
+.stage:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+.frame { position: relative; width: 100%; }
+.stage[data-panel-layout='bottom'] { height: 720px; }
+.stage[data-fullscreen='true'], .stage:fullscreen { position: fixed; inset: 0; z-index: 200; height: 100dvh; border-radius: 0; }
+.toolbar { position: absolute; top: 12px; left: 16px; right: 16px; z-index: 5; display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.title { min-width: 0; color: var(--skin-white); font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.panel { position: absolute; top: 68px; bottom: 16px; right: 16px; z-index: 4; width: 320px; overflow: auto; overscroll-behavior: contain; padding: 14px; border-radius: 12px; }
+.stage[data-panel-layout='bottom'] .panel { top: auto; bottom: 16px; left: 16px; right: 16px; width: auto; height: 280px; }
+.loading { min-height: 540px; }
+.info { position: absolute; left: 16px; z-index: 3; width: fit-content; max-width: 440px; max-height: 38%; overflow: auto; padding: 10px 12px; }
+.chart { position: absolute; top: 56px; left: 16px; z-index: 1; display: flex; align-items: center; justify-content: center; min-height: 0; }
+.label { position: absolute; top: 0; left: 0; max-width: 160px; pointer-events: none; visibility: hidden; z-index: 2; }
+.labelButton { min-height: 36px; min-width: 36px; pointer-events: auto; }
+.legend { position: absolute; bottom: 12px; left: 16px; right: 16px; display: flex; flex-wrap: wrap; gap: 8px 16px; font-size: 11px; color: var(--skin-white); pointer-events: none; }
+.legend span { display: inline-flex; align-items: center; gap: 6px; }
+.legend i { width: 18px; height: 4px; border-radius: 2px; }
+@media (max-width: 520px) {
+  .label { font-size: 10px; max-width: 100px; }
+  .loading .panel { top: auto; bottom: 16px; left: 16px; right: 16px; width: auto; height: 280px; }
+}
+@media (pointer: fine) { .stage { touch-action: none; } }

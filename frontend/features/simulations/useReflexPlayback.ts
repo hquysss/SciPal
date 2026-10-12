@@ -1,13 +1,14 @@
 'use client';
 
 import { useEffect, useRef, useState, type RefObject } from 'react';
+import { useOnScreen } from './useOnScreen';
 import { REFLEX_DURATION } from './engines/kneeReflex';
 
 export function useReflexPlayback(speed: number, host: RefObject<HTMLElement | null>) {
   const time = useRef(0);
   const [shownTime, setShownTime] = useState(0);
   const [playing, setPlaying] = useState(false);
-  const [active, setActive] = useState(true);
+  const active = useOnScreen(host);
   const reduced = useRef(false);
   useEffect(() => {
     const media = window.matchMedia('(prefers-reduced-motion: reduce)');
@@ -16,14 +17,6 @@ export function useReflexPlayback(speed: number, host: RefObject<HTMLElement | n
     media.addEventListener('change', update);
     return () => media.removeEventListener('change', update);
   }, []);
-  useEffect(() => {
-    let visible = true;
-    const update = () => setActive(visible && !document.hidden);
-    const observer = new IntersectionObserver(([entry]) => { visible = entry?.isIntersecting ?? false; update(); });
-    if (host.current) observer.observe(host.current);
-    document.addEventListener('visibilitychange', update);
-    return () => { observer.disconnect(); document.removeEventListener('visibilitychange', update); };
-  }, [host]);
   useEffect(() => {
     if (!playing || !active) return;
     let frame = 0;

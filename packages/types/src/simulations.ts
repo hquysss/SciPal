@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { CirculationConfig } from './circulation.js';
+import { SkinSensesConfig } from './skin.js';
 import { KneeReflexConfig } from './kneeReflex.js';
 import { GRAPH_PARAMETER_NAME, MAX_GRAPH_EXPRESSION, parseGraphExpression } from './graphExpression.js';
 
@@ -303,6 +304,7 @@ const LabeledDiagramConfig = z.object({
 export const SIMULATION_CONFIGS = {
   'knee-reflex': KneeReflexConfig,
   'circulation-3d': CirculationConfig,
+  'skin-senses': SkinSensesConfig,
   'algorithm-sim': AlgorithmConfig,
   'function-graph': FunctionGraphConfig,
   motion: MotionConfig,
@@ -327,6 +329,7 @@ export const LEGACY_SIMULATION_KINDS = ['geometry-3d', 'experiment', 'bio-diagra
 export const SIMULATION_KINDS = [
   'knee-reflex',
   'circulation-3d',
+  'skin-senses',
   'algorithm-sim',
   'function-graph',
   'motion',
@@ -430,6 +433,7 @@ interface InteractiveLike {
 const MESSAGES: Record<string, Message> = {
   'knee-reflex': { en: 'Playback speed 0.5–2; choose the body or reflex circuit view.', vi: 'Tốc độ phát 0,5–2; chọn cảnh toàn thân hoặc cung phản xạ.' },
   'circulation-3d': { en: 'Heart rate 40–180 beats per minute (whole numbers); choose the body, heart or vessels view and a loop.', vi: 'Nhịp tim 40–180 nhịp/phút (số nguyên); chọn cảnh toàn thân, tim hoặc hệ mạch và vòng tuần hoàn.' },
+  'skin-senses': { en: 'Choose the receptors or reflex arc view and one stimulus: touch, pressure, pain, cold or heat.', vi: 'Chọn cảnh thụ thể hoặc cung phản xạ và một kích thích: chạm, ấn mạnh, đau, lạnh hoặc nóng.' },
   'algorithm-sim': { en: 'Check the algorithm, the values (2–32 whole numbers) and the target.', vi: 'Kiểm tra thuật toán, dãy số (2–32 số nguyên) và giá trị cần tìm.' },
   'function-graph': { en: 'Check the expression, the parameters and the axes.', vi: 'Kiểm tra biểu thức, tham số và khoảng trục.' },
   motion: { en: 'Speed 0–100 m/s, angle 0–90°, acceleration −20–20 m/s², g 1–25, time 1–30 s.', vi: 'Vận tốc 0–100 m/s, góc 0–90°, gia tốc −20–20 m/s², g 1–25, thời gian 1–30 s.' },
