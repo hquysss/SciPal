@@ -1,4 +1,4 @@
-import { storedQuestionData, validateQuestionInput, type QuestionType } from '@scipal/types';
+import { EXAM_QUESTION_TYPES, QUESTION_TYPES, storedQuestionData, validateQuestionInput, type QuestionType } from '@scipal/types';
 import type { QuestionPayload } from './api';
 
 type Bilingual = { en: string; vi: string };
@@ -14,6 +14,9 @@ export interface QuestionDraft {
     items?: Array<{ id: string; text: Bilingual; correct: boolean }>;
     answer_key?: string;
     rubric?: Bilingual;
+    /** Writing: the English answer shown after checking, and the terms the answer should use. */
+    sample_answer?: string;
+    key_terms?: string[];
     explanation?: Bilingual;
     /** A figure under the question, uploaded to SciPal. */
     image?: { url: string; alt?: Bilingual };
@@ -27,12 +30,17 @@ export const QUESTION_TYPE_LABEL: Record<QuestionType, Bilingual> = {
   mc: { en: 'Multiple choice', vi: 'Trắc nghiệm' },
   truefalse: { en: 'True / false', vi: 'Đúng / sai' },
   short: { en: 'Short answer', vi: 'Trả lời ngắn' },
+  writing: { en: 'English writing', vi: 'Viết tiếng Anh' },
 };
+
+/** The types a question may take where it lives: writing is for lesson practice only. */
+export const questionTypesFor = (usage: 'practice' | 'exam'): readonly QuestionType[] => (usage === 'practice' ? QUESTION_TYPES : EXAM_QUESTION_TYPES);
 
 /** Answer fields of a fresh question of this type. */
 function answerFields(type: QuestionType): Omit<QuestionDraft['data'], 'stem' | 'explanation' | 'rubric'> {
   if (type === 'mc') return { options: ['a', 'b', 'c', 'd'].map((id) => ({ id, text: blank() })), answer: 'a' };
   if (type === 'truefalse') return { items: ['1', '2', '3', '4'].map((id) => ({ id, text: blank(), correct: true })) };
+  if (type === 'writing') return { sample_answer: '', key_terms: [] };
   return { answer_key: '' };
 }
 
@@ -64,12 +72,18 @@ export function nextChoiceId(ids: string[], numeric: boolean): string {
 
 const written = (text: Bilingual | undefined) => !!text && (text.vi.trim() !== '' || text.en.trim() !== '');
 
+/** Key terms as sent: trimmed, without blanks or repeats; left out when there are none. */
+function keyTermsField(terms: string[] | undefined): { key_terms?: string[] } {
+  const clean = [...new Set((terms ?? []).map((term) => term.trim()).filter(Boolean))];
+  return clean.length ? { key_terms: clean } : {};
+}
+
 /** Where a question lives: a lesson's practice part, or the exam bank (with an optional grade). */
 export type QuestionContext = { subjectId: string } & ({ usage: 'practice'; lessonId: string } | { usage: 'exam'; grade: number | null });
 
 /** What the API receives: only this type's fields; an unwritten explanation or note is left out. */
 export function questionInput(draft: QuestionDraft, ctx: QuestionContext): QuestionPayload {
-  const { stem, options, answer, items, answer_key, rubric, explanation, image, source } = draft.data;
+  const { stem, options, answer, items, answer_key, rubric, sample_answer, key_terms, explanation, image, source } = draft.data;
   const extra = {
     ...(written(explanation) ? { explanation } : {}),
     ...(image?.url ? { image } : {}),
@@ -80,7 +94,9 @@ export function questionInput(draft: QuestionDraft, ctx: QuestionContext): Quest
       ? { stem, options, answer, ...extra }
       : draft.type === 'truefalse'
         ? { stem, items, ...extra }
-        : { stem, answer_key, ...(written(rubric) ? { rubric } : {}), ...extra };
+        : draft.type === 'writing'
+          ? { stem, sample_answer, ...keyTermsField(key_terms), ...extra }
+          : { stem, answer_key, ...(written(rubric) ? { rubric } : {}), ...extra };
   const place = ctx.usage === 'practice' ? { usage: 'practice' as const, lesson_id: ctx.lessonId } : { usage: 'exam' as const, grade: ctx.grade };
   return { ...place, subject_id: ctx.subjectId, type: draft.type, difficulty: draft.difficulty, data };
 }

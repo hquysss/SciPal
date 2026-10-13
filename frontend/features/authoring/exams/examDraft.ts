@@ -1,5 +1,5 @@
 import { buildLayout, EXAM_TEMPLATES, layoutQuestionIds } from '@scipal/types';
-import type { ExamFormat, ExamSection, QuestionType, SectionKind, TemplateKey } from '@scipal/types';
+import type { ExamFormat, ExamSection, ExamQuestionType, QuestionType, SectionKind, TemplateKey } from '@scipal/types';
 
 type Bilingual = { en: string; vi: string };
 
@@ -193,10 +193,10 @@ export const removeQuestion = (ids: string[], id: string) => ids.filter((x) => x
 export const swapQuestion = (ids: string[], oldId: string, newId: string) => ids.map((x) => (x === oldId ? newId : x));
 
 export function examTotals(rows: Array<{ type: string; difficulty: number }>) {
-  const byType: Record<QuestionType, number> = { mc: 0, truefalse: 0, short: 0 };
+  const byType: Record<ExamQuestionType, number> = { mc: 0, truefalse: 0, short: 0 };
   const byDifficulty: Record<1 | 2 | 3, number> = { 1: 0, 2: 0, 3: 0 };
   for (const row of rows) {
-    if (row.type in byType) byType[row.type as QuestionType] += 1;
+    if (row.type in byType) byType[row.type as ExamQuestionType] += 1;
     if (row.difficulty in byDifficulty) byDifficulty[row.difficulty as 1 | 2 | 3] += 1;
   }
   return { byType, byDifficulty, total: rows.length };

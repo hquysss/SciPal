@@ -3,7 +3,7 @@
 import { MathText } from '@/components/math/MathText';
 import { useEffect, useId, useState } from 'react';
 import { useLanguage } from '@scipal/hooks';
-import { QUESTION_TYPES, type QuestionStatus, type QuestionType } from '@scipal/types';
+import { EXAM_QUESTION_TYPES, type ExamQuestionType, type QuestionStatus } from '@scipal/types';
 import { Button } from '@/components/ui/button';
 import { Dialog } from '@/components/ui/dialog';
 import { EmptyState } from '@/components/ui/empty-state';
@@ -102,7 +102,7 @@ export function QuestionBank({ subjects }: { subjects: AuthoringSubjectOption[] 
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
         {select('subject', { en: 'Subject', vi: 'Môn học' }, filters.subject_id ?? '', (v) => setFilter({ subject_id: v || undefined }), subjects.map((s) => [s.id, t({ en: s.name_en, vi: s.name_vi })]), { en: 'Choose…', vi: 'Chọn môn…' })}
         {select('grade', { en: 'Grade', vi: 'Lớp' }, String(filters.grade ?? ''), (v) => setFilter({ grade: v ? Number(v) : undefined }), (subject?.grades ?? []).map((g) => [String(g), String(g)]), { en: 'All', vi: 'Tất cả' })}
-        {select('type', { en: 'Type', vi: 'Dạng câu' }, filters.type ?? '', (v) => setFilter({ type: (v || undefined) as QuestionType | undefined }), QUESTION_TYPES.map((type) => [type, t(QUESTION_TYPE_LABEL[type])]), { en: 'All', vi: 'Tất cả' })}
+        {select('type', { en: 'Type', vi: 'Dạng câu' }, filters.type ?? '', (v) => setFilter({ type: (v || undefined) as ExamQuestionType | undefined }), EXAM_QUESTION_TYPES.map((type) => [type, t(QUESTION_TYPE_LABEL[type])]), { en: 'All', vi: 'Tất cả' })}
         {select('difficulty', { en: 'Difficulty', vi: 'Mức độ' }, String(filters.difficulty ?? ''), (v) => setFilter({ difficulty: v ? (Number(v) as 1 | 2 | 3) : undefined }), [1, 2, 3].map((d) => [String(d), t(DIFFICULTY_LABEL[d]!)]), { en: 'All', vi: 'Tất cả' })}
         {select('status', { en: 'Status', vi: 'Trạng thái' }, filters.status ?? '', (v) => setFilter({ status: (v || undefined) as QuestionStatus | undefined }), (Object.keys(STATUS_LABEL) as QuestionStatus[]).map((s) => [s, t(STATUS_LABEL[s])]), { en: 'All', vi: 'Tất cả' })}
       </div>

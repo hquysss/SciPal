@@ -3,7 +3,7 @@
 import { MathText } from '@/components/math/MathText';
 import { useEffect, useId, useState } from 'react';
 import { useLanguage } from '@scipal/hooks';
-import type { QuestionType } from '@scipal/types';
+import type { ExamQuestionType } from '@scipal/types';
 import { Button } from '@/components/ui/button';
 import { listQuestions, type AuthorQuestion } from '../practice/api';
 import { withPage } from '../practice/QuestionPicker';
@@ -15,7 +15,7 @@ interface BankBrowserProps {
   /** Questions already in the exam. */
   excludeIds: string[];
   /** Only questions of this type (a section of a structured exam takes one kind). */
-  type?: QuestionType;
+  type?: ExamQuestionType;
   onAdd: (rows: AuthorQuestion[]) => void;
 }
 

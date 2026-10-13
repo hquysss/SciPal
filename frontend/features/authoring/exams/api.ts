@@ -1,4 +1,4 @@
-import type { ExamFormat, ExamSection, QuestionType } from '@scipal/types';
+import type { ExamFormat, ExamQuestionType, ExamSection } from '@scipal/types';
 import { authoringCall } from '../apiClient';
 
 export type ExamStatus = 'draft' | 'pending_review' | 'published' | 'class_only';
@@ -54,12 +54,12 @@ export interface DrawRequest {
   subject_id: string;
   grade?: number;
   exclude_ids?: string[];
-  counts: Array<{ type: QuestionType; difficulty: 1 | 2 | 3; n: number }>;
+  counts: Array<{ type: ExamQuestionType; difficulty: 1 | 2 | 3; n: number }>;
 }
 
 export interface DrawResult {
   question_ids: string[];
-  shortfalls: Array<{ type: QuestionType; difficulty: number; wanted: number; got: number }>;
+  shortfalls: Array<{ type: ExamQuestionType; difficulty: number; wanted: number; got: number }>;
 }
 
 const path = (id: string, action = '') => `/api/authoring/exams/${encodeURIComponent(id)}${action}`;

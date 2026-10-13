@@ -62,6 +62,9 @@ export const QUESTION_USAGES = ['practice', 'exam'] as const;
 export type QuestionUsage = (typeof QUESTION_USAGES)[number];
 export const QUESTION_TYPES = ['mc', 'truefalse', 'short', 'writing'] as const;
 export type QuestionType = (typeof QUESTION_TYPES)[number];
+/** Types an exam may hold; a writing question is for lesson practice only. */
+export const EXAM_QUESTION_TYPES = ['mc', 'truefalse', 'short'] as const satisfies readonly QuestionType[];
+export type ExamQuestionType = (typeof EXAM_QUESTION_TYPES)[number];
 export const QUESTION_STATUSES = ['draft', 'pending_review', 'published'] as const;
 export type QuestionStatus = (typeof QUESTION_STATUSES)[number];
 

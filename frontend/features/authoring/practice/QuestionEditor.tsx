@@ -4,7 +4,7 @@ import { Media } from '@/components/media/Media';
 import { useContext, useId, useRef, useState } from 'react';
 import { Plus, Trash2 } from 'lucide-react';
 import { useLanguage } from '@scipal/hooks';
-import { QUESTION_TYPES, questionIncomplete, validateQuestionInput, type QuestionType } from '@scipal/types';
+import { questionIncomplete, validateQuestionInput, type QuestionType } from '@scipal/types';
 import { buttonVariants } from '@/components/ui/button';
 import { MathText } from '@/components/math/MathText';
 import { hasMath } from '@/lib/mathText';
@@ -24,6 +24,7 @@ import {
   emptyQuestion,
   nextChoiceId,
   questionInput,
+  questionTypesFor,
   type QuestionContext,
   switchQuestionType,
   type QuestionDraft,
@@ -129,7 +130,7 @@ export function QuestionEditor({ context, question, initial, onSaved, onCancel }
     <div className="flex flex-col gap-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div role="radiogroup" aria-label={t({ en: 'Question type', vi: 'Dạng câu hỏi' })} className="inline-flex flex-wrap rounded-lg border border-line bg-surface-sunken p-0.5">
-          {QUESTION_TYPES.map((type: QuestionType) => (
+          {questionTypesFor(context.usage).map((type: QuestionType) => (
             <button
               key={type}
               type="button"
@@ -259,6 +260,41 @@ export function QuestionEditor({ context, question, initial, onSaved, onCancel }
         </>
       )}
 
+      {draft.type === 'writing' && (
+        <>
+          <div className="flex flex-col gap-1">
+            <label htmlFor={`${ids}-sample`} className={LABEL}>
+              {t({ en: 'Sample answer (English)', vi: 'Câu trả lời mẫu (tiếng Anh)' })}
+            </label>
+            <textarea
+              id={`${ids}-sample`}
+              lang="en"
+              rows={3}
+              maxLength={1000}
+              value={data.sample_answer ?? ''}
+              onChange={(e) => setData({ sample_answer: e.target.value })}
+              className={TEXTAREA}
+            />
+            <p className="text-xs text-ink-muted">
+              {t({ en: 'Learners see it after they check their answer; the AI Professor compares with it.', vi: 'Học sinh thấy câu này sau khi kiểm tra; Giáo sư AI dựa vào đây để nhận xét.' })}
+            </p>
+          </div>
+          <div className="flex flex-col gap-1">
+            <label htmlFor={`${ids}-terms`} className={LABEL}>
+              {t({ en: 'Key terms to use (comma separated, optional)', vi: 'Thuật ngữ cần dùng (cách nhau bởi dấu phẩy, không bắt buộc)' })}
+            </label>
+            <input
+              id={`${ids}-terms`}
+              lang="en"
+              value={(data.key_terms ?? []).join(',')}
+              onChange={(e) => setData({ key_terms: e.target.value.split(',') })}
+              placeholder="loop, repeat, condition"
+              className={INPUT}
+            />
+          </div>
+        </>
+      )}
+
       <MathPreview draft={draft} lang={lang} />
 
       {textField({ en: 'Explanation shown after checking (optional)', vi: 'Lời giải thích hiện sau khi kiểm tra (không bắt buộc)' }, data.explanation, (v) =>
@@ -381,6 +417,8 @@ export function QuestionView({ question }: { question: AuthorQuestion }) {
     items?: Array<{ id: string; text: Bilingual }>;
     image?: { url: string; alt?: Bilingual };
     source?: string;
+    sample_answer?: string;
+    key_terms?: string[];
   };
   const note =
     question.status === 'published'
@@ -404,6 +442,18 @@ export function QuestionView({ question }: { question: AuthorQuestion }) {
             </li>
           ))}
         </ul>
+      )}
+      {question.type === 'writing' && (
+        <>
+          <p className="text-ink">
+            {t({ en: 'Sample answer', vi: 'Câu trả lời mẫu' })}: <span lang="en">{data.sample_answer}</span>
+          </p>
+          {!!data.key_terms?.length && (
+            <p className="text-ink-muted">
+              {t({ en: 'Key terms', vi: 'Thuật ngữ cần dùng' })}: <span lang="en">{data.key_terms.join(', ')}</span>
+            </p>
+          )}
+        </>
       )}
       {data.source && <p className="text-xs text-ink-muted">{t({ en: 'Source', vi: 'Nguồn' })}: {data.source}</p>}
     </div>

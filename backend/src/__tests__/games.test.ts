@@ -85,6 +85,19 @@ describe('playing', () => {
     expect(res.body).not.toContain('"answer');
   });
 
+  it('leaves English writing questions out of a quiz game (they cannot be scored)', async () => {
+    const Q3 = '55555555-5555-4555-8555-555555555553';
+    const rows = ok([
+      { id: Q1, type: 'mc', difficulty: 1, data: { stem: { vi: 'a', en: 'a' }, options: [{ id: 'x', text: { vi: 'x', en: 'x' } }, { id: 'y', text: { vi: 'y', en: 'y' } }], answer: 'x' } },
+      { id: Q3, type: 'writing', difficulty: 1, data: { stem: { vi: 'c', en: 'c' }, sample_answer: 'A loop repeats.' } },
+    ]);
+    const withQ3 = ok({ id: LESSON, subject_id: 'sub-1', status: 'published', blocks: [{ type: 'quiz', question_id: Q1 }, { type: 'quiz', question_id: Q3 }] });
+    const app = await build(student, { games: ok(game()), class_members: ok({ student_id: 'student-1' }), lessons: withQ3, questions: rows, game_plays: ok({ id: PLAY }) });
+    const res = await app.inject({ method: 'POST', url: `/api/games/${GAME}/start` });
+    expect(res.json().questions.map((q: { id: string }) => q.id)).toEqual([Q1]);
+    expect(res.body).not.toContain('A loop repeats.');
+  });
+
   it('submit is scored by the server and closes the play', async () => {
     const plays = [ok({ id: PLAY, game_id: GAME, user_id: 'student-1', right_order: [], started_at: new Date().toISOString(), finished_at: null }), ok([{ id: PLAY }])];
     const app = await build(student, { games: ok(game()), class_members: ok({ student_id: 'student-1' }), lessons: lesson, questions, game_plays: plays });
