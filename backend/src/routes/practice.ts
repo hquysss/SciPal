@@ -54,6 +54,8 @@ const isAdmin = (user: PracticeUser | undefined) => user?.app_metadata?.app_role
 const mayPreview = (user: PracticeUser | undefined, createdBy: string | null) => isAdmin(user) || (!!user?.id && user.id === createdBy);
 
 const normalize = (value: string) => value.normalize('NFC').trim().replace(/\s+/g, ' ').toLowerCase();
+// A short numeric answer: a decimal comma is the same number as a decimal point (0,12 = 0.12).
+const normalizeShort = (value: string) => normalize(value).replace(/(\d),(?=\d)/g, '$1.');
 const escapeRegExp = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
 /**
@@ -130,8 +132,8 @@ export function checkPracticeAnswer(row: Pick<PracticeRow, 'type' | 'data'>, res
     return withExplanation({ correct: missing.length === 0, writing: { used, missing, sample_answer: sample } });
   }
   const key = typeof data.answer_key === 'string' ? data.answer_key : typeof data.answer === 'string' ? data.answer : '';
-  const given = normalize(response.short_answer ?? '');
-  return withExplanation({ correct: given !== '' && given === normalize(key) });
+  const given = normalizeShort(response.short_answer ?? '');
+  return withExplanation({ correct: given !== '' && given === normalizeShort(key) });
 }
 
 const FeedbackBody = z
