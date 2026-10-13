@@ -15,6 +15,7 @@ insert into public.terms (id) values
   ('20000000-0000-4000-8000-000000000002');
 
 \ir ../migrations/20261013120000_user_terms_ipa.sql
+\ir ../migrations/20261013160000_user_terms_review.sql
 
 set role service_role;
 insert into public.user_terms (user_id, term_id) values
@@ -46,3 +47,12 @@ reset role;
 select set_config('request.jwt.claim.sub', '', false);
 
 select ipa from public.terms limit 0;
+
+-- A newly saved term is due at once, with a fresh schedule.
+do $$
+begin
+  if exists (select 1 from public.user_terms where due_at > now() or ease <> 2.5 or reps <> 0) then
+    raise exception 'A saved term should start due now with ease 2.5 and no reps';
+  end if;
+end;
+$$;

@@ -1,5 +1,6 @@
 import type { FastifyPluginAsync, FastifyReply, FastifyRequest } from 'fastify';
 import { isSubjectArchived, readSubjectArchived, SUBJECT_ARCHIVED } from '../subjects/archived.js';
+import { nextReview, REVIEW_GRADES, type ReviewGrade, type ReviewState } from '../terms/review.js';
 
 // Glossary terms written by staff. An admin's term is published at once; a teacher's is 'pending'
 // until an admin approves it or turns it down with a reason. A review only changes a term that is
@@ -17,6 +18,9 @@ const TEXT_MAX = 1000;
 const BATCH_MAX = 200;
 const IPA_MAX = 80;
 const SAVE_MAX = 200;
+/** XP for a due card graded Hard or Good, and the most a learner earns from reviews in a (UTC) day. */
+const REVIEW_XP = 2;
+const REVIEW_XP_DAILY = 40;
 
 const COLUMNS =
   'id, subject_id, term_en, term_vi, part_of_speech, definition_en, definition_vi, example_en, example_vi, ipa, kind, image_url, image_alt_en, image_alt_vi, image_credit, status, created_by, review_note, reviewed_at, created_at, subjects(slug, name_en, name_vi)';
@@ -180,6 +184,70 @@ export const termRoutes: FastifyPluginAsync = async (app) => {
       return reply.code(500).send({ error: 'Chưa bỏ được thuật ngữ khỏi sổ từ.', error_en: 'The term could not be removed from your word list.' });
     }
     return reply.code(204).send();
+  });
+
+  // The learner grades a due card of their word list. The server sets when it is due again and
+  // awards XP: only for a due card, never for "again", up to a daily cap. The update is conditioned
+  // on the card still being due, so a double submit is graded (and paid) once.
+  app.post('/api/me/terms/:termId/review', { preHandler: [requireUser] }, async (request, reply) => {
+    const supabase = app.supabase;
+    if (!supabase) return reply.code(503).send(unavailable);
+    const { termId } = request.params as { termId: string };
+    const grade = ((request.body ?? {}) as { grade?: unknown }).grade;
+    if (!(REVIEW_GRADES as readonly unknown[]).includes(grade)) {
+      return reply.code(400).send({ error: 'Hãy chọn Quên, Khó hoặc Nhớ.', error_en: 'Choose Again, Hard or Good.' });
+    }
+    const missing = { error: 'Thuật ngữ này không có trong sổ từ.', error_en: 'This term is not in your word list.' };
+    if (!ID.test(termId)) return reply.code(404).send(missing);
+    const userId = getUser(request)!.id!;
+    const failed = { error: 'Chưa lưu được lượt ôn.', error_en: 'The review could not be saved.' };
+    const { data, error } = await supabase
+      .from('user_terms')
+      .select('interval_days, ease, reps, lapses, due_at, terms(subject_id)')
+      .eq('user_id', userId)
+      .eq('term_id', termId)
+      .maybeSingle();
+    if (error) {
+      request.log.error({ err: error }, 'Review read failed');
+      return reply.code(500).send(failed);
+    }
+    if (!data) return reply.code(404).send(missing);
+    const row = data as ReviewState & { terms: unknown };
+    const now = new Date();
+    const next = nextReview({ interval_days: row.interval_days, ease: row.ease, reps: row.reps, lapses: row.lapses }, grade as ReviewGrade, now);
+    const { data: graded, error: saveError } = await supabase
+      .from('user_terms')
+      .update(next)
+      .eq('user_id', userId)
+      .eq('term_id', termId)
+      .lte('due_at', now.toISOString())
+      .select('term_id');
+    if (saveError) {
+      request.log.error({ err: saveError }, 'Review save failed');
+      return reply.code(500).send(failed);
+    }
+    if (!Array.isArray(graded) || graded.length === 0) {
+      return reply.code(409).send({ error: 'Thẻ này chưa đến hạn ôn.', error_en: 'This card is not due yet.' });
+    }
+
+    let xpEarned = 0;
+    const subjectId = one(row.terms as { subject_id?: string } | null)?.subject_id;
+    if (grade !== 'again' && subjectId) {
+      const dayStart = `${now.toISOString().slice(0, 10)}T00:00:00.000Z`;
+      const { count, error: countError } = await supabase
+        .from('xp_log')
+        .select('id', { count: 'exact', head: true })
+        .eq('user_id', userId)
+        .eq('reason', 'word_review')
+        .gte('created_at', dayStart);
+      // ponytail: count-then-insert, two parallel reviews at the cap can pass it by one card (2 XP).
+      if (!countError && (count ?? 0) * REVIEW_XP < REVIEW_XP_DAILY) {
+        const { error: xpError } = await supabase.from('xp_log').insert({ user_id: userId, subject_id: subjectId, delta: REVIEW_XP, reason: 'word_review' });
+        if (xpError) request.log.warn({ err: xpError }, 'Review XP insert failed');
+        else xpEarned = REVIEW_XP;
+      }
+    }
+    return reply.send({ due_at: next.due_at, xp_earned: xpEarned });
   });
 
   app.post('/api/authoring/terms', { preHandler: [requireStaff] }, async (request, reply) => {
