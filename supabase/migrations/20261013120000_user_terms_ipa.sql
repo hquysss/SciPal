@@ -17,3 +17,6 @@ create policy "user_terms: own read" on public.user_terms for select using (auth
 
 grant select on public.user_terms to authenticated;
 grant all on public.user_terms to service_role;
+-- Supabase grants every new table to anon and authenticated by default; only the backend writes here.
+revoke all on public.user_terms from anon;
+revoke insert, update, delete, truncate on public.user_terms from authenticated;
