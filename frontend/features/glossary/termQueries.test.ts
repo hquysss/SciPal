@@ -1,10 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { getAllTerms } from './termQueries';
 
-const { read } = vi.hoisted(() => ({ read: vi.fn() }));
+const { read, columns } = vi.hoisted(() => ({ read: vi.fn(), columns: [] as string[] }));
 vi.mock('@scipal/supabase', () => ({
   createBrowserClient: () => ({
-    from: () => ({ select: () => ({ order: () => read() }) }),
+    from: () => ({ select: (c: string) => { columns.push(c); return { order: () => read() }; } }),
   }),
 }));
 
@@ -37,6 +37,12 @@ describe('glossary database reads', () => {
       example_en: null, example_vi: null,
       subject_slug: 'biology', subject_name_en: 'Biology', subject_name_vi: 'Sinh học', subject_order: 16,
     }]);
+  });
+
+  it('reads the IPA', async () => {
+    read.mockResolvedValue({ data: [], error: null });
+    await getAllTerms();
+    expect(columns.at(-1)).toContain('ipa');
   });
 
   it('reads newly added terms on the next request', async () => {

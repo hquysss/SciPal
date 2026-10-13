@@ -9,6 +9,7 @@ export interface TermItem {
   definition_vi: string;
   example_en: string | null;
   example_vi: string | null;
+  ipa: string | null;
   /** The subject the term belongs to. */
   subject_slug: string | null;
   subject_name_en: string | null;
@@ -21,7 +22,7 @@ export async function getAllTerms(subjectSlug?: string): Promise<TermItem[]> {
   const supabase = createBrowserClient();
   let query = supabase
     .from('terms')
-    .select('id, term_en, term_vi, part_of_speech, definition_en, definition_vi, example_en, example_vi, subjects!inner(slug, name_en, name_vi, sort_order)')
+    .select('id, term_en, term_vi, part_of_speech, definition_en, definition_vi, example_en, example_vi, ipa, subjects!inner(slug, name_en, name_vi, sort_order)')
     .order('term_en');
 
   if (subjectSlug) {
