@@ -12,8 +12,13 @@ describe('termSheet', () => {
   it('reads columns in template order when there is no header, and quoted CSV', () => {
     const csv = 'khoá chính,primary key,"Trường, duy nhất","A ""unique"" field",,,noun';
     expect(rowsFromCells(cellsFromText(csv))[0]).toEqual({
-      term_vi: 'khoá chính', term_en: 'primary key', definition_vi: 'Trường, duy nhất', definition_en: 'A "unique" field', example_vi: '', example_en: '', part_of_speech: 'noun',
+      term_vi: 'khoá chính', term_en: 'primary key', definition_vi: 'Trường, duy nhất', definition_en: 'A "unique" field', example_vi: '', example_en: '', part_of_speech: 'noun', ipa: '',
     });
+  });
+
+  it('reads an IPA column when the file has one', () => {
+    const pasted = 'Thuật ngữ (EN)\tThuật ngữ (VI)\tIPA\nloop\tvòng lặp\t/luːp/\n';
+    expect(rowsFromCells(cellsFromText(pasted))[0]).toEqual(expect.objectContaining({ term_en: 'loop', ipa: '/luːp/' }));
   });
 
   it('knows common header names', () => {
@@ -21,6 +26,9 @@ describe('termSheet', () => {
     expect(headerKey('Ví dụ (EN)')).toBe('example_en');
     expect(headerKey('Từ loại')).toBe('part_of_speech');
     expect(headerKey('Ghi chú')).toBeNull();
+    expect(headerKey('IPA')).toBe('ipa');
+    expect(headerKey('Phiên âm')).toBe('ipa');
+    expect(headerKey('Pronunciation')).toBe('ipa');
   });
 
   it('marks a row missing a language', () => {

@@ -138,6 +138,9 @@ export function TermForm({ subjects, isAdmin, onSaved }: { subjects: SubjectOpti
         <Field id="term-pos" label={{ en: 'Part of speech (optional)', vi: 'Từ loại (không bắt buộc)' }}>
           {(id) => <input id={id} value={draft.part_of_speech} onChange={set('part_of_speech')} maxLength={40} placeholder="noun" className={INPUT} />}
         </Field>
+        <Field id="term-ipa" label={{ en: 'IPA (optional)', vi: 'Phiên âm IPA (không bắt buộc)' }}>
+          {(id) => <input id={id} value={draft.ipa ?? ''} onChange={set('ipa')} maxLength={80} placeholder="ˈæl.ɡə.rɪ.ðəm" lang="en" className={INPUT} />}
+        </Field>
       </div>
 
       <fieldset className="flex flex-col gap-3 rounded-lg border border-line p-3">

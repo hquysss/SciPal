@@ -21,6 +21,7 @@ export interface StaffTerm {
   image_alt_en: string | null;
   image_alt_vi: string | null;
   image_credit: string | null;
+  ipa: string | null;
   status: TermStatus;
   review_note: string | null;
   created_at: string;
@@ -43,11 +44,12 @@ export type TermDraft = {
   image_alt_en?: string;
   image_alt_vi?: string;
   image_credit?: string;
+  ipa?: string;
 };
 
 export type SubjectOption = { id: string; name_en: string; name_vi: string };
 
-export const EMPTY_DRAFT: TermDraft = { subject_id: '', term_en: '', term_vi: '', part_of_speech: '', definition_en: '', definition_vi: '', example_en: '', example_vi: '', kind: 'word', image_url: '', image_alt_en: '', image_alt_vi: '', image_credit: '' };
+export const EMPTY_DRAFT: TermDraft = { subject_id: '', term_en: '', term_vi: '', part_of_speech: '', definition_en: '', definition_vi: '', example_en: '', example_vi: '', kind: 'word', image_url: '', image_alt_en: '', image_alt_vi: '', image_credit: '', ipa: '' };
 
 export const createTerm = (draft: TermDraft) => authoringCall<{ term: StaffTerm }>('/api/authoring/terms', 'POST', draft);
 export type BatchResult = { index: number; ok: true; id: string } | { index: number; ok: false; error: string; error_en: string };

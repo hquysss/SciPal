@@ -56,6 +56,12 @@ describe('staff glossary', () => {
     expect(termFormProblem({ ...ready, image_url: 'https://m/a.jpg', image_alt_en: 'Bay', image_alt_vi: 'Vịnh' })).toBeNull();
   });
 
+  it('the form has an optional IPA field', () => {
+    const html = renderToStaticMarkup(<TermForm subjects={SUBJECTS} isAdmin onSaved={() => {}} />);
+    expect(html).toMatch(/<input id="term-ipa"[^>]*maxLength="80"/i);
+    expect(html).toContain('for="term-ipa"');
+  });
+
   it('the form offers word or place and a photo', () => {
     const html = renderToStaticMarkup(<TermForm subjects={SUBJECTS} isAdmin={false} onSaved={() => {}} />);
     expect(html).toContain('Địa danh');
