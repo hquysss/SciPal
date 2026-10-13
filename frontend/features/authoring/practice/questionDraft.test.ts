@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { draftFromQuestion, draftProblem, emptyQuestion, questionInput, switchQuestionType, type QuestionDraft } from './questionDraft';
+import { draftFromQuestion, draftProblem, emptyQuestion, questionInput, questionTypesFor, switchQuestionType, type QuestionDraft } from './questionDraft';
 
 const ctx = { usage: 'practice' as const, subjectId: '11111111-1111-4111-8111-111111111111', lessonId: '22222222-2222-4222-8222-222222222222' };
 const examCtx = { usage: 'exam' as const, subjectId: '11111111-1111-4111-8111-111111111111', grade: 11 };
@@ -10,11 +10,12 @@ function filled(type: QuestionDraft['type']): QuestionDraft {
   draft.data.options?.forEach((o, i) => (o.text = { vi: `PA ${i + 1}`, en: `Option ${i + 1}` }));
   draft.data.items?.forEach((it, i) => (it.text = { vi: `Ý ${i + 1}`, en: `Item ${i + 1}` }));
   if (type === 'short') draft.data.answer_key = 'Hà Nội';
+  if (type === 'writing') draft.data.sample_answer = 'A loop repeats code.';
   return draft;
 }
 
 describe('question drafts', () => {
-  it.each(['mc', 'truefalse', 'short'] as const)('starts a %s question that is valid once its text is written', (type) => {
+  it.each(['mc', 'truefalse', 'short', 'writing'] as const)('starts a %s question that is valid once its text is written', (type) => {
     expect(draftProblem(emptyQuestion(type), ctx)).not.toBeNull();
     expect(draftProblem(filled(type), ctx)).toBeNull();
   });
@@ -65,6 +66,32 @@ describe('question drafts', () => {
   it('reopens a saved question for editing', () => {
     const draft = draftFromQuestion({ type: 'short', difficulty: 2, data: { stem: { vi: 'A', en: 'B' }, answer_key: 'x' } });
     expect(draft).toEqual({ type: 'short', difficulty: 2, data: { stem: { vi: 'A', en: 'B' }, answer_key: 'x' } });
+  });
+});
+
+describe('writing question drafts', () => {
+  it('sends the sample answer and the key terms, trimmed and without blanks or repeats', () => {
+    const draft = filled('writing');
+    draft.data.key_terms = [' loop ', '', 'repeat', 'loop'];
+    const input = questionInput(draft, ctx);
+    expect(input).toMatchObject({ type: 'writing', data: { sample_answer: 'A loop repeats code.', key_terms: ['loop', 'repeat'] } });
+    expect(input.data).not.toHaveProperty('answer_key');
+  });
+
+  it('leaves key terms out when there are none', () => {
+    expect(questionInput(filled('writing'), ctx).data).not.toHaveProperty('key_terms');
+  });
+
+  it('drops the sample answer and key terms when the type changes', () => {
+    const draft = { ...filled('writing'), data: { ...filled('writing').data, key_terms: ['loop'] } };
+    const mc = switchQuestionType(draft, 'mc');
+    expect(mc.data).not.toHaveProperty('sample_answer');
+    expect(mc.data).not.toHaveProperty('key_terms');
+  });
+
+  it('offers writing for lesson practice only', () => {
+    expect(questionTypesFor('practice')).toContain('writing');
+    expect(questionTypesFor('exam')).not.toContain('writing');
   });
 });
 

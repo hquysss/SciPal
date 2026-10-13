@@ -42,16 +42,29 @@ export const ShortDataSchema = z.object({
   ...StoredExtras,
 });
 
+/** An English answer the learner writes or says; checked for key terms, then the AI Professor comments. */
+export const WritingDataSchema = z.object({
+  stem: BilingualText,
+  sample_answer: z.string(),   // server-side only; shown after the learner checks
+  key_terms: z.array(z.string()).optional(),
+  explanation: BilingualText.optional(),
+  ...StoredExtras,
+});
+
 export type MCData        = z.infer<typeof MCDataSchema>;
 export type TrueFalseData = z.infer<typeof TrueFalseDataSchema>;
 export type ShortData     = z.infer<typeof ShortDataSchema>;
+export type WritingData   = z.infer<typeof WritingDataSchema>;
 
 // ── Authoring ────────────────────────────────────────────────────────────────
 
 export const QUESTION_USAGES = ['practice', 'exam'] as const;
 export type QuestionUsage = (typeof QUESTION_USAGES)[number];
-export const QUESTION_TYPES = ['mc', 'truefalse', 'short'] as const;
+export const QUESTION_TYPES = ['mc', 'truefalse', 'short', 'writing'] as const;
 export type QuestionType = (typeof QUESTION_TYPES)[number];
+/** Types an exam may hold; a writing question is for lesson practice only. */
+export const EXAM_QUESTION_TYPES = ['mc', 'truefalse', 'short'] as const satisfies readonly QuestionType[];
+export type ExamQuestionType = (typeof EXAM_QUESTION_TYPES)[number];
 export const QUESTION_STATUSES = ['draft', 'pending_review', 'published'] as const;
 export type QuestionStatus = (typeof QUESTION_STATUSES)[number];
 
@@ -59,6 +72,9 @@ export const MAX_QUESTION_TEXT = 2000;
 export const MAX_CHOICE_TEXT = 500;
 export const MAX_CHOICES = 10;
 export const MAX_SHORT_ANSWER = 500;
+export const MAX_WRITING_ANSWER = 1000;
+export const MAX_KEY_TERMS = 8;
+export const MAX_KEY_TERM = 60;
 export const MAX_SOURCE = 300;
 const CHOICE_ID = /^[A-Za-z0-9_-]{1,20}$/;
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -96,6 +112,14 @@ const ShortAnswerData = z.object({
   ...Extras,
 });
 
+const WritingQuestionData = z.object({
+  stem: Text(MAX_QUESTION_TEXT),
+  sample_answer: z.string().trim().min(1).max(MAX_WRITING_ANSWER),
+  key_terms: z.array(z.string().trim().min(1).max(MAX_KEY_TERM)).max(MAX_KEY_TERMS).optional(),
+  explanation: OptionalText(MAX_QUESTION_TEXT).optional(),
+  ...Extras,
+});
+
 const Base = {
   usage: z.enum(QUESTION_USAGES),
   subject_id: z.string().regex(UUID),
@@ -108,6 +132,7 @@ const AuthorQuestionSchema = z.discriminatedUnion('type', [
   z.object({ ...Base, type: z.literal('mc'), data: McData }),
   z.object({ ...Base, type: z.literal('truefalse'), data: TrueFalseData }),
   z.object({ ...Base, type: z.literal('short'), data: ShortAnswerData }),
+  z.object({ ...Base, type: z.literal('writing'), data: WritingQuestionData }),
 ]);
 
 export type AuthorQuestionInput = z.infer<typeof AuthorQuestionSchema>;
@@ -119,6 +144,8 @@ const FIELD_NAMES: Record<string, Message> = {
   items: { en: 'statements', vi: 'các ý' },
   answer: { en: 'answer', vi: 'đáp án' },
   answer_key: { en: 'answer', vi: 'đáp án' },
+  sample_answer: { en: 'sample answer', vi: 'câu trả lời mẫu' },
+  key_terms: { en: 'key terms', vi: 'thuật ngữ cần dùng' },
   explanation: { en: 'explanation', vi: 'lời giải thích' },
   rubric: { en: 'marking note', vi: 'hướng dẫn chấm' },
   usage: { en: 'question pool', vi: 'loại câu hỏi' },
@@ -148,6 +175,9 @@ export function validateQuestionInput(value: unknown, opts: { mediaBase?: string
     return { ok: false, message: { en: `Check the ${name.en}.`, vi: `Kiểm tra lại ${name.vi}.` } };
   }
   const question = parsed.data;
+  if (question.type === 'writing' && question.usage !== 'practice') {
+    return { ok: false, message: { en: 'This type is for lesson practice only.', vi: 'Dạng này chỉ dùng cho Tự luyện.' } };
+  }
   if (question.data.image && 'mediaBase' in opts && !isLessonMediaUrl(question.data.image.url, opts.mediaBase)) {
     return { ok: false, message: { en: 'Upload the image to SciPal.', vi: 'Ảnh phải được tải lên SciPal.' } };
   }
@@ -242,6 +272,7 @@ export const PracticeResponseSchema = z
     selected_option: z.string().max(20).optional(),
     items: z.array(z.object({ id: z.string().max(20), selected: z.boolean() })).max(MAX_CHOICES).optional(),
     short_answer: z.string().max(MAX_SHORT_ANSWER).optional(),
+    writing_answer: z.string().max(MAX_WRITING_ANSWER).optional(),
   })
   .strict();
 export type PracticeResponse = z.infer<typeof PracticeResponseSchema>;
@@ -251,4 +282,6 @@ export interface PracticeCheckResult {
   correct: boolean;
   items?: Array<{ id: string; correct: boolean }>;
   explanation?: Message;
+  /** A writing answer: the key terms it used and missed, and the sample answer to compare with. */
+  writing?: { used: string[]; missing: string[]; sample_answer: string };
 }

@@ -6,7 +6,7 @@ import { useEffect, useId, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { ArrowDown, ArrowUp, Pencil, Shuffle, Trash2 } from 'lucide-react';
 import { useLanguage } from '@scipal/hooks';
-import { layoutQuestionIds, type ExamSection, type SectionKind } from '@scipal/types';
+import { layoutQuestionIds, type ExamQuestionType, type ExamSection, type SectionKind } from '@scipal/types';
 import { Alert } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Dialog } from '@/components/ui/dialog';
@@ -133,7 +133,8 @@ export function ExamBuilder({ exam, subjects, isAdmin, initialQuestions = [] }: 
   const pickFormat = async (next: FormatChoice) => {
     if (next === choice) return;
     if (layoutHasGroupWork(layout) && !(await askFormatChange())) return;
-    const kinds: Record<string, SectionKind> = Object.fromEntries(Object.values(rows).map((row) => [row.id, row.type]));
+    // An exam never holds a writing question (practice only, also refused by the database).
+    const kinds: Record<string, SectionKind> = Object.fromEntries(Object.values(rows).map((row) => [row.id, row.type as SectionKind]));
     const { unassigned: left, ...patch } = switchFormat(form, unassigned, next, kinds);
     change(patch);
     setUnassigned(left);
@@ -143,7 +144,7 @@ export function ExamBuilder({ exam, subjects, isAdmin, initialQuestions = [] }: 
 
   const placeUnassigned = (id: string) => {
     const row = rows[id];
-    const placed = layout && row ? placeQuestion(layout, id, row.type) : null;
+    const placed = layout && row ? placeQuestion(layout, id, row.type as SectionKind) : null;
     if (!placed) return;
     change({ layout: placed });
     setUnassigned((old) => old.filter((x) => x !== id));
@@ -226,7 +227,7 @@ export function ExamBuilder({ exam, subjects, isAdmin, initialQuestions = [] }: 
       subject_id: form.subject_id,
       grade: form.grade,
       exclude_ids: form.question_ids,
-      counts: [{ type: row.type, difficulty: row.difficulty as 1 | 2 | 3, n: 1 }],
+      counts: [{ type: row.type as ExamQuestionType, difficulty: row.difficulty as 1 | 2 | 3, n: 1 }],
     });
     if (!res.ok) return setMessage({ text: res.error, tone: 'danger' });
     const [next] = res.data.question_ids;
@@ -398,7 +399,7 @@ export function ExamBuilder({ exam, subjects, isAdmin, initialQuestions = [] }: 
                 <ol className="flex flex-col gap-2">
                   {unassigned.map((id, i) => {
                     const row = rows[id];
-                    const fits = !!row && placeQuestion(layout, id, row.type) !== null;
+                    const fits = !!row && placeQuestion(layout, id, row.type as SectionKind) !== null;
                     return (
                       <li key={id} className="flex flex-col gap-2 rounded-lg border border-line bg-surface p-3 sm:flex-row sm:items-center">
                         <div className="min-w-0 flex-1">

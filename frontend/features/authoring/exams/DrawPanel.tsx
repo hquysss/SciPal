@@ -3,13 +3,13 @@
 import { useId, useState } from 'react';
 import { Trash2 } from 'lucide-react';
 import { useLanguage } from '@scipal/hooks';
-import { QUESTION_TYPES, type QuestionType } from '@scipal/types';
+import { EXAM_QUESTION_TYPES, type ExamQuestionType } from '@scipal/types';
 import { Button } from '@/components/ui/button';
 import { QUESTION_TYPE_LABEL } from '../practice/questionDraft';
 import { drawExamQuestions, type DrawResult } from './api';
 import { DIFFICULTY_LABEL } from './QuestionBank';
 
-type Row = { type: QuestionType; difficulty: 1 | 2 | 3; n: number };
+type Row = { type: ExamQuestionType; difficulty: 1 | 2 | 3; n: number };
 const SELECT = 'min-h-11 rounded-lg border border-edge bg-surface px-2 text-sm text-ink';
 
 interface DrawPanelProps {
@@ -48,8 +48,8 @@ export function DrawPanel({ subjectId, grade, excludeIds, onDrawn }: DrawPanelPr
             <legend className="sr-only">{t({ en: `Row ${i + 1}`, vi: `Dòng ${i + 1}` })}</legend>
             <label className="flex flex-col gap-1 text-xs font-semibold text-ink" htmlFor={`${ids}-type-${i}`}>
               {t({ en: 'Type', vi: 'Dạng' })}
-              <select id={`${ids}-type-${i}`} value={row.type} onChange={(e) => set(i, { type: e.target.value as QuestionType })} className={SELECT}>
-                {QUESTION_TYPES.map((type) => (
+              <select id={`${ids}-type-${i}`} value={row.type} onChange={(e) => set(i, { type: e.target.value as ExamQuestionType })} className={SELECT}>
+                {EXAM_QUESTION_TYPES.map((type) => (
                   <option key={type} value={type}>
                     {t(QUESTION_TYPE_LABEL[type])}
                   </option>

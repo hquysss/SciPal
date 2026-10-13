@@ -1,4 +1,5 @@
 import type { PracticeCheckResult, PracticeResponse, PublicPracticeQuestion } from '@scipal/types';
+import { authoringCall, type ApiResult } from '@/features/authoring/apiClient';
 import { getAccessToken } from '../../lib/session';
 
 // Lesson practice (Tự luyện): open to visitors. The server holds the answers and decides; a
@@ -51,3 +52,7 @@ export async function checkPractice(questionId: string, response: PracticeRespon
     return { ok: false, error: UNREACHABLE };
   }
 }
+
+/** The AI Professor's comments on an English writing answer (signed in; paid from the Professor's tokens). */
+export const writingFeedback = (questionId: string, answer: string, language: 'vi' | 'en'): Promise<ApiResult<{ feedback: string; remaining: number | null }>> =>
+  authoringCall('/api/practice/writing-feedback', 'POST', { question_id: questionId, answer, language });

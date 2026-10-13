@@ -67,6 +67,27 @@ describe('QuestionView', () => {
 });
 
 describe('QuestionEditor for exams', () => {
+  it('offers an English writing question in lesson practice only', () => {
+    const practice = renderToStaticMarkup(<QuestionEditor {...ctx} initial={emptyQuestion('mc')} onSaved={() => {}} />);
+    expect(practice).toContain('Viết tiếng Anh');
+    const exam = renderToStaticMarkup(<QuestionEditor context={{ usage: 'exam', subjectId: '11111111-1111-4111-8111-111111111111', grade: 10 }} initial={emptyQuestion('mc')} onSaved={() => {}} />);
+    expect(exam).not.toContain('Viết tiếng Anh');
+  });
+
+  it('asks a writing question for its English sample answer and key terms', () => {
+    const html = renderToStaticMarkup(<QuestionEditor {...ctx} initial={emptyQuestion('writing')} onSaved={() => {}} />);
+    expect(html).toContain('Câu trả lời mẫu (tiếng Anh)');
+    expect(html).toContain('Thuật ngữ cần dùng');
+    expect(html).toMatch(/<textarea[^>]*lang="en"/);
+    expect(countRawColors(html).total).toBe(0);
+  });
+
+  it('shows a shared writing question with its sample answer and key terms', () => {
+    const html = renderToStaticMarkup(<QuestionView question={row({ type: 'writing', data: { stem: { vi: 'Giải thích vòng lặp', en: 'Explain a loop' }, sample_answer: 'A loop repeats code.', key_terms: ['loop', 'repeat'] } })} />);
+    expect(html).toContain('A loop repeats code.');
+    expect(html).toContain('loop, repeat');
+  });
+
   it('asks for a grade only for an exam question', () => {
     const exam = renderToStaticMarkup(<QuestionEditor context={{ usage: 'exam', subjectId: '11111111-1111-4111-8111-111111111111', grade: 10 }} initial={emptyQuestion('mc')} onSaved={() => {}} />);
     expect(exam).toMatch(/<label[^>]*>Lớp<\/label>/);
