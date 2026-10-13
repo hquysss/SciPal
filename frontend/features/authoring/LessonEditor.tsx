@@ -10,6 +10,7 @@ import { Badge } from '@/components/ui/badge';
 import { buttonVariants } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { LessonPartsView } from '@/features/lessons/LessonPartsView';
+import { useTermIndex } from '@/features/lessons/useTermIndex';
 import { joinLessonParts, splitLessonParts, updatePart, type BlocksUpdate, type LessonPart } from '@/features/lessons/lessonParts';
 import type { LessonStatus } from './authoringQueries';
 import { lessonStatusLabel, lessonStatusTone, publishBoxAfterSave } from './lessonStatus';
@@ -115,6 +116,7 @@ export function LessonEditor({
   const canEditContent = canReview ? status === 'draft' || status === 'published' : status === 'draft' || status === 'rejected';
   const quizIds = useMemo(() => parts.practice.flatMap((b) => (b.type === 'quiz' ? [b.question_id] : [])), [parts.practice]);
   const practice = usePracticeQuestionRows(lessonId, subjectId, quizIds);
+  const termIndex = useTermIndex(subjectId);
   // The preview shows questions as learners get them: built field by field, no answers.
   const practicePreview = useMemo(
     () => ({ ok: true as const, questions: quizIds.flatMap((id) => (practice.rows[id] ? [toPublicPracticeQuestion(practice.rows[id]!)] : [])) }),
@@ -758,7 +760,7 @@ export function LessonEditor({
             {parts[activePart].length === 0 ? (
               <p className="py-16 text-center text-sm text-ink-muted">{t({ en: 'Nothing in this part yet.', vi: 'Phần này chưa có nội dung.' })}</p>
             ) : (
-              <LessonPartsView blocks={blocks} part={activePart} lang={previewLang} practice={practicePreview} />
+              <LessonPartsView blocks={blocks} part={activePart} lang={previewLang} practice={practicePreview} termIndex={termIndex} />
             )}
           </div>
         </aside>
