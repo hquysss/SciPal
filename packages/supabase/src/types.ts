@@ -531,6 +531,9 @@ export interface Database {
           image_alt_vi: string | null;
           image_credit: string | null;
           ipa: string | null;
+          status: 'pending' | 'published' | 'rejected';
+          /** Lessons tag core terms by themselves. */
+          core: boolean;
         };
         Insert: {
           id?: string;
@@ -550,6 +553,8 @@ export interface Database {
           image_alt_vi?: string | null;
           image_credit?: string | null;
           ipa?: string | null;
+          status?: 'pending' | 'published' | 'rejected';
+          core?: boolean;
         };
         Update: {
           id?: string;
@@ -569,6 +574,8 @@ export interface Database {
           image_alt_vi?: string | null;
           image_credit?: string | null;
           ipa?: string | null;
+          status?: 'pending' | 'published' | 'rejected';
+          core?: boolean;
         };
         Relationships: [
           {

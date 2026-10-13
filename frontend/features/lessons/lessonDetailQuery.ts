@@ -11,6 +11,8 @@ export interface LessonDetail {
   title_vi: string;
   /** Where the lesson comes from (e.g. the textbook), when its author wrote it. */
   source?: string | null;
+  /** False when a teacher switched off the automatic tagging of core terms in this lesson. */
+  auto_terms: boolean;
   grade: number;
   blocks: Block[];
   topics: {
@@ -56,7 +58,7 @@ export async function getLessonDetail(subjectSlug: string, lessonSlug: string): 
     const { data, error } = await supabase
       .from('lessons')
       .select(`
-        id, slug, title_en, title_vi, source, grade, blocks,
+        id, slug, title_en, title_vi, source, auto_terms, grade, blocks,
         topics!inner(name_en, name_vi),
         subjects!inner(slug, name_en, name_vi, icon, accent_color)
       `)

@@ -120,3 +120,21 @@ begin
 end;
 $$;
 reset role;
+
+-- Core terms (20261014120000): nothing is core at first, and a lesson tags terms unless switched off.
+create table if not exists public.lessons (id uuid primary key default gen_random_uuid());
+insert into public.lessons default values;
+\ir ../migrations/20261014120000_core_terms.sql
+do $$
+begin
+  if exists (select 1 from public.terms where core) then
+    raise exception 'No term should be core until an admin marks it';
+  end if;
+  if exists (select 1 from public.lessons where not auto_terms) then
+    raise exception 'A lesson should tag terms automatically until it is switched off';
+  end if;
+end;
+$$;
+
+-- The stand-in lessons table is only for this check: lessons_columns.sql creates the real shape next.
+drop table public.lessons;

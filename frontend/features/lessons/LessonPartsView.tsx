@@ -1,8 +1,9 @@
 'use client';
 
-import { useState, type ReactNode } from 'react';
+import { useMemo, useState, type ReactNode } from 'react';
 import { useLanguage } from '@scipal/hooks';
 import type { Block } from '@scipal/types';
+import { autoTagBlocks, type TermIndexEntry } from '@/components/blocks/autoTerms';
 import { BlockRenderer } from '@/components/blocks/BlockRenderer';
 import { LessonSheet } from '@/components/blocks/LessonSheet';
 import { termIdsOfBlocks } from '@/components/blocks/remarkTerm';
@@ -28,6 +29,8 @@ interface LessonPartsProps {
   practice?: PracticeLoad;
   /** Lets the learner reload the questions after a failed load. */
   lessonId?: string;
+  /** The subject's terms: their first use in the lesson text is tagged for the learner (Bài học only, never Tự luyện). */
+  termIndex?: TermIndexEntry[];
 }
 
 /** The learner's steps: the lesson with its simulations on one page, then Tự luyện. */
@@ -39,12 +42,14 @@ const STEPS: readonly Step[] = ['lesson', 'practice'];
  * wrote them) → Tự luyện; a step without blocks is skipped. The editor previews one of its two
  * parts at a time through `part`.
  */
-export function LessonPartsView({ blocks, completion, part, sheet, lang, practice, lessonId }: LessonPartsProps) {
+export function LessonPartsView({ blocks: written, completion, part, sheet, lang, practice, lessonId, termIndex }: LessonPartsProps) {
   const { t, lang: readerLang } = useLanguage();
   // Owned here, above the tabs, so answers and verdicts survive switching parts during the visit.
   const practiceState = usePracticeState();
   const [reloaded, setReloaded] = useState<PracticeLoad | null>(null);
   const practiceLoad = reloaded ?? practice;
+  // The teacher's own tags stay; the subject's other terms are tagged on top, once each.
+  const blocks = useMemo(() => autoTagBlocks(written, termIndex ?? []), [written, termIndex]);
   const parts = splitLessonParts(blocks);
   const steps: Record<Step, Block[]> = {
     lesson: parts.lesson,

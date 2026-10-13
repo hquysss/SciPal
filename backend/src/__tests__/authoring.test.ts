@@ -148,6 +148,21 @@ describe('authoring lesson status', () => {
     await app.close();
   });
 
+  it('switches automatic term tagging off and on for a lesson, and refuses anything but true or false', async () => {
+    const row = () => mockQuery({ data: { id: LESSON_ID, created_by: teacher.id, status: 'draft', updated_at: STAMP }, error: null });
+    const write = mockQuery({ data: { id: LESSON_ID, status: 'draft' }, error: null });
+    const app = await buildAuthoringApp(admin, { lessons: [row(), write, row(), row(), row()] });
+    const url = `/api/authoring/lessons/${LESSON_ID}`;
+    const off = await app.inject({ method: 'PATCH', url, payload: { expected_updated_at: STAMP, auto_terms: false } });
+    expect(off.statusCode).toBe(200);
+    expect(write.updated[0]).toMatchObject({ auto_terms: false });
+    for (const auto_terms of ['no', 0, null]) {
+      const bad = await app.inject({ method: 'PATCH', url, payload: { expected_updated_at: STAMP, auto_terms } });
+      expect(bad.statusCode, String(auto_terms)).toBe(400);
+    }
+    await app.close();
+  });
+
   it('moves a lesson to another topic of its own subject and grade, and refuses any other', async () => {
     const SUBJECT = '33333333-3333-4333-8333-333333333333';
     const OTHER_SUBJECT = '44444444-4444-4444-8444-444444444444';

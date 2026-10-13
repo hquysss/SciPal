@@ -17,6 +17,8 @@ export interface AuthoringLessonData {
   title_vi: string;
   title_en: string;
   source?: string | null;
+  /** Whether the lesson tags core terms by itself; absent before the migration, meaning on. */
+  auto_terms?: boolean;
   grade: number;
   status: LessonStatus;
   review_note: string | null;
