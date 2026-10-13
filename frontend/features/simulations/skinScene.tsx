@@ -4,12 +4,12 @@ import { useCallback, useEffect, useMemo, useRef, useState, type RefObject, type
 import { Eye, EyeOff, Maximize2, Minimize2, Minus, Plus, RotateCcw, X } from 'lucide-react';
 import { Canvas, useThree } from '@react-three/fiber';
 import * as THREE from 'three';
-import { Rig, usePalette } from './scene3d';
+import { Rig, usePalette, type Orbit } from './scene3d';
 import { useReflexCamera } from './reflexCamera';
 import { useReflexFrame, useReflexFullscreen } from './useReflexFrame';
-import { Rod, type Point3 } from './kneeReflexParts';
+import type { Point3 } from './kneeReflexParts';
 import { RECEPTOR_PLACES, SkinBody } from './skinBody';
-import { SkinArm, SLICE_AT } from './SkinArm';
+import { SkinArm } from './SkinArm';
 import { REFLEX_PARTS, RECEPTORS, impulseRate, reflexState, type ReflexPart, type Stimulus } from './engines/skin';
 import { REFLEX_COPY, REFLEX_FEELING, SKIN_PARTS, STIMULUS_COPY, type ReflexStimulus, type SkinPart } from './skinCopy';
 import { ARM_LANDMARKS as A } from './skinArmLandmarks';
@@ -22,8 +22,8 @@ import styles from './skin.module.css';
 const TOKENS = { background: '--skin-background', artery: '--skin-artery', nerve: '--skin-nerve', signal: '--skin-signal', motor: '--skin-motor', broken: '--skin-broken', tool: '--skin-tool', ice: '--skin-ice', hot: '--skin-hot', thorn: '--skin-thorn', highlight: '--skin-highlight', bone: '--skin-bone', muscle: '--skin-muscle', cord: '--skin-cord', grey: '--skin-grey', white: '--skin-white' } as const;
 const HOMES = { receptors: { theta: -Math.PI / 2 + 0.35, phi: 0.18, dist: 15 }, reflex: { theta: -Math.PI / 2 + 0.45, phi: 0.08, dist: 14 } } as const;
 
-/** `zoom` is how close the camera comes when the label is chosen. */
-type Anchor = { readonly key: string; readonly text: Bilingual; readonly note: Bilingual; readonly point: Point3; readonly label: Point3; readonly zoom?: number };
+/** `view` is where the camera goes when the label is chosen (it keeps its direction if only `dist` is given). */
+type Anchor = { readonly key: string; readonly text: Bilingual; readonly note: Bilingual; readonly point: Point3; readonly label: Point3; readonly view?: Partial<Orbit> };
 // Source units → scene units, as in scripts/assets/build-skin.mjs.
 const scene = (x: number, y: number, z: number): Point3 => [(x + 1320) / 300, (y + 11) / 300, (z - 215) / 300];
 const PART_POINTS: Record<SkinPart, Point3> = {
@@ -47,13 +47,24 @@ const ANCHORS: readonly Anchor[] = [
   { key: 'sweat', text: SKIN_PARTS.sweat.title, note: SKIN_PARTS.sweat.note, point: PART_POINTS.sweat, label: [4.3, 0.3, 1.2] },
 ];
 
-const REFLEX_POINTS: Record<ReflexPart, Point3> = { receptor: A.fingertip, afferent: A.sensory[5]!.at, centre: SLICE_AT, efferent: A.motor[A.motor.length - 3]!.at, effector: A.biceps };
+/** Close enough to see the cut face of the cord, which is about 0.1 wide. */
+const CAMERA_LIMITS = { min: 0.25, max: 18 };
+/** Down onto the cut face from the front and the right side, where the roots come in. */
+const FROM_ABOVE = { theta: -Math.PI / 2 - 0.35, phi: 1.05, dist: 0.4 };
+const REFLEX_POINTS: Record<ReflexPart, Point3> = { receptor: A.fingertip, afferent: A.sensory[5]!.at, centre: A.slice, efferent: A.motor[A.motor.length - 3]!.at, effector: A.biceps };
 const REFLEX_LABELS: Record<ReflexPart, Point3> = { receptor: [-4.2, -3.0, 1.2], afferent: [-4.2, -1.4, 1.2], effector: [-4.2, 0.6, 1.2], efferent: [-4.2, 2.0, 1.2], centre: [4.4, -1.6, 1.2] };
 const REFLEX_ANCHORS: readonly Anchor[] = [
-  ...REFLEX_PARTS.map((part, i): Anchor => ({ key: part, text: { vi: `${i + 1}. ${REFLEX_COPY[part].title.vi}`, en: `${i + 1}. ${REFLEX_COPY[part].title.en}` }, note: REFLEX_COPY[part].here, point: REFLEX_POINTS[part], label: REFLEX_LABELS[part], zoom: part === 'centre' ? 4.2 : 6 })),
-  { key: 'slice', text: { vi: 'Lát cắt tuỷ sống C7 (phóng to ×9)', en: 'Spinal cord slice at C7 (×9)' }, note: { vi: 'Mặt cắt ngang tuỷ sống ở đốt cổ thứ 7, phóng to 9 lần. Chất xám hình chữ H ở giữa: sừng sau (phía trên) nhận xung từ rễ sau và hạch gai, sừng trước (phía dưới) chứa neuron vận động, gửi xung ra rễ trước. Chất trắng bao quanh.', en: 'A cross-section of the spinal cord at the seventh neck vertebra, enlarged 9 times. The H-shaped grey matter: the posterior horn (top) receives impulses from the dorsal root and ganglion; the anterior horn (bottom) holds motor neurons that send impulses out of the ventral root. White matter surrounds it.' }, point: SLICE_AT, label: [4.6, 1.1, 1.2], zoom: 4.2 },
+  ...REFLEX_PARTS.map((part, i): Anchor => ({ key: part, text: { vi: `${i + 1}. ${REFLEX_COPY[part].title.vi}`, en: `${i + 1}. ${REFLEX_COPY[part].title.en}` }, note: REFLEX_COPY[part].here, point: REFLEX_POINTS[part], label: REFLEX_LABELS[part], view: part === 'centre' ? FROM_ABOVE : { dist: 6 } })),
+  { key: 'section', text: { vi: 'Lát cắt tuỷ sống ở C7', en: 'Spinal cord cut at C7' }, note: { vi: 'Tuỷ sống được cắt ngang ở đốt cổ thứ 7 để thấy bên trong (tuỷ thật chỉ rộng khoảng 1,3 cm). Chất xám hình chữ H ở giữa: sừng sau (phía lưng) nhận xung từ rễ sau và hạch gai, sừng trước (phía bụng) chứa neuron vận động, gửi xung ra rễ trước. Chất trắng bao quanh.', en: 'The spinal cord is cut across at the seventh neck vertebra to show the inside (the real cord is only about 1.3 cm wide). The H-shaped grey matter: the posterior horn (toward the back) receives impulses from the dorsal root and ganglion; the anterior horn (toward the front) holds motor neurons that send impulses out of the ventral root. White matter surrounds it.' }, point: A.slice, label: [4.6, 1.1, 1.2], view: FROM_ABOVE },
   { key: 'brain', text: { vi: 'Não', en: 'Brain' }, note: { vi: 'Một số neuron trung gian chuyển thông tin lên não gây cảm giác đau. Thông tin tới não sau khi tay đã rụt lại.', en: 'Some interneurons pass the news up to the brain, which then feels the pain. It arrives after the hand has already pulled back.' }, point: A.brain, label: [3.4, 4.6, 0.6] },
 ];
+
+/** A hairline from a part to its label, as thin up close as from afar. */
+function Leader({ from, to, color }: { readonly from: Point3; readonly to: Point3; readonly color: string }) {
+  const geometry = useMemo(() => new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(...from), new THREE.Vector3(...to)]), [from, to]);
+  useEffect(() => () => geometry.dispose(), [geometry]);
+  return <lineSegments geometry={geometry}><lineBasicMaterial color={color} transparent opacity={0.5} /></lineSegments>;
+}
 
 function Refresh({ stamp, deps }: { readonly stamp: number; readonly deps: string }) {
   const { invalidate } = useThree();
@@ -95,7 +106,7 @@ export type SkinSceneProps = {
 
 export function SkinScene({ view, stimulus, intensity, appliedAt, reflexStimulus, reflexStartedAt, broken, labels: showLabels, time, running, stamp, lang, panel }: SkinSceneProps) {
   const t = pick(lang);
-  const { host, orbit, target, fieldOfView, invalidate, handlers, reset, zoom, focus } = useReflexCamera(HOMES[view]);
+  const { host, orbit, target, fieldOfView, invalidate, handlers, reset, zoom, focus } = useReflexCamera(HOMES[view], CAMERA_LIMITS);
   const panelHost = useRef<HTMLDivElement>(null);
   const [panelVisible, setPanelVisible] = useState(true);
   const frame = useReflexFrame(host, panelHost, panelVisible);
@@ -107,7 +118,7 @@ export function SkinScene({ view, stimulus, intensity, appliedAt, reflexStimulus
   useEffect(() => { setSelected(null); setHovered(null); }, [view]);
   const highlight = hovered ?? selected?.key ?? null;
   useEffect(() => { if (host.current) host.current.style.cursor = hovered ? 'pointer' : ''; }, [hovered, host]);
-  const choose = (a: Anchor) => { setSelected(a); setHovered(null); setPanelVisible(true); focus(a.point, a.zoom ?? 6); };
+  const choose = (a: Anchor) => { setSelected(a); setHovered(null); setPanelVisible(true); focus(a.point, a.view ?? { dist: 6 }); };
   const pickPart = useCallback((key: string) => { const a = (view === 'reflex' ? REFLEX_ANCHORS : ANCHORS).find((anchor) => anchor.key === key); if (a) choose(a); },
     // eslint-disable-next-line react-hooks/exhaustive-deps -- choose only reads setters and the camera
     [view]);
@@ -123,18 +134,18 @@ export function SkinScene({ view, stimulus, intensity, appliedAt, reflexStimulus
     : reflex.withdrawal > 0 ? { vi: 'Cơ hai đầu co, tay rụt lại', en: 'The biceps contracts and the hand pulls back' }
     : { vi: 'Xung thần kinh đang truyền', en: 'The impulse is travelling' };
   const card: { readonly title: Bilingual; readonly note: Bilingual; readonly readout?: string } | null = selected ? { title: selected.text, note: selected.note, readout: flat ? t(status) : undefined }
-    : flat ? { title: { vi: 'Phản xạ rụt tay', en: 'Withdrawal reflex' }, note: { vi: 'Bấm nhãn số để đọc từng bộ phận. Lát cắt tuỷ sống ở đốt cổ C7 được phóng to bên cạnh.', en: 'Select a numbered label to read about each part. A slice of the spinal cord at C7 is shown enlarged beside it.' }, readout: t(status) }
+    : flat ? { title: { vi: 'Phản xạ rụt tay', en: 'Withdrawal reflex' }, note: { vi: 'Bấm nhãn số để đọc từng bộ phận. Bấm "Lát cắt tuỷ sống ở C7" để nhìn sát mặt cắt.', en: 'Select a numbered label to read about each part. Select "Spinal cord cut at C7" for a close look at the cut face.' }, readout: t(status) }
     : { title: STIMULUS_COPY[stimulus].receptor, note: STIMULUS_COPY[stimulus].note, readout: `${t(STIMULUS_COPY[stimulus].kind)} · ${rate === 0 ? t({ vi: `dưới ngưỡng ${RECEPTORS[stimulus].threshold}/100`, en: `below the ${RECEPTORS[stimulus].threshold}/100 threshold` }) : `${new Intl.NumberFormat(lang, { maximumFractionDigits: 1 }).format(rate)} ${t({ vi: 'xung/giây', en: 'per second' })}`}` };
   const title = flat ? { vi: '02 / Cung phản xạ rụt tay', en: '02 / Withdrawal reflex arc' } : { vi: '01 / Thụ thể cảm giác ở da', en: '01 / Sensory receptors in the skin' };
   return <div className={styles.frame} style={screen.expanded ? { height: screen.height } : undefined}>
     <div ref={host} {...handlers} className={styles.stage} data-fullscreen={screen.expanded} data-panel-layout={frame.mode} role={screen.expanded ? 'dialog' : 'group'} aria-modal={screen.expanded || undefined} tabIndex={0} aria-label={t({ vi: 'Mô hình 3D lát cắt da', en: '3D model of a slice of skin' })}>
-      {palette && <Canvas dpr={[1, 1.5]} frameloop={running ? 'always' : 'demand'} camera={{ fov: 42, near: 0.1, far: 80 }} gl={{ antialias: true }}>
+      {palette && <Canvas dpr={[1, 1.5]} frameloop={running ? 'always' : 'demand'} camera={{ fov: 42, near: 0.02, far: 80 }} gl={{ antialias: true }}>
         <color attach="background" args={[palette.background]} />
         <ambientLight intensity={1.1} />
         <directionalLight position={[-3, 6, 8]} intensity={1.8} />
         <directionalLight position={[4, 2, -5]} intensity={0.8} />
         {flat ? <SkinArm palette={palette} time={time} startedAt={reflexStartedAt} broken={broken} stimulus={reflexStimulus} highlight={highlight} onHover={setHovered} onPick={pickPart} /> : <SkinBody palette={palette} clock={{ time }} stimulus={stimulus} intensity={intensity} appliedAt={appliedAt} highlight={highlight} onHover={setHovered} onPick={pickPart} />}
-        {anchors.map((a) => <Rod key={a.key} from={a.point} to={a.label} radius={0.008} color={palette.white} opacity={0.5} />)}
+        {anchors.map((a) => <Leader key={a.key} from={a.point} to={a.label} color={palette.white} />)}
         <Fit right={frame.right} bottom={frame.bottom} fieldOfView={fieldOfView} />
         <Rig orbit={orbit} target={target} labels={store} points={points} onInvalidate={(fn) => { invalidate.current = fn; }} />
         <Refresh stamp={stamp} deps={`${highlight}-${view}-${stimulus}-${intensity}-${appliedAt}-${reflexStartedAt}-${[...broken].join()}-${reflexStimulus}`} />

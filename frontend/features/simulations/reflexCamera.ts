@@ -13,8 +13,8 @@ export function panReflexTarget(target: THREE.Vector3, orbit: Orbit, drag: Drag)
 }
 
 const LIMITS = { min: 4.2, max: 18 };
-export function useReflexCamera(home: Orbit) {
-  const base = useOrbit(home, LIMITS);
+export function useReflexCamera(home: Orbit, limits = LIMITS) {
+  const base = useOrbit(home, limits);
   const target = useMemo(() => new THREE.Vector3(0, 0.15, 0), []);
   const fieldOfView = useRef(42);
   const rightDrag = useRef<{ id: number; x: number; y: number } | null>(null);
@@ -25,8 +25,8 @@ export function useReflexCamera(home: Orbit) {
     return () => window.removeEventListener('blur', clear);
   }, []);
   const reset = () => { target.set(0, 0.15, 0); base.reset(); };
-  /** Looks at `point` from `dist` away, keeping the current direction. */
-  const focus = (point: readonly [number, number, number], dist: number) => { target.set(...point); base.move({ dist }); };
+  /** Looks at `point`; `view` sets the distance and, if given, the direction. */
+  const focus = (point: readonly [number, number, number], view: Partial<Orbit>) => { target.set(...point); base.move(view); };
   const end = (event: PointerEvent<HTMLDivElement>) => {
     if (rightDrag.current?.id === event.pointerId) rightDrag.current = null;
     base.handlers.onPointerUp(event);

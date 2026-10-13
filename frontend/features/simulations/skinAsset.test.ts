@@ -17,7 +17,7 @@ const read = (file: string) => {
 
 describe.each([
   ['public/models/skin/skin.glb', /iqcenter.*CC BY 4\.0/, ['surface', 'epidermis', 'dermis', 'fat', 'hair', 'sweat', 'nerve']],
-  ['public/models/skin/arm.glb', /BodyParts3D.*CC BY-SA 4\.0/, ['bone', 'biceps', 'sensory', 'motor', 'dorsalRoot', 'ventralRoot', 'cord', 'posteriorHorn', 'anteriorHorn', 'slice-posteriorHorn']],
+  ['public/models/skin/arm.glb', /BodyParts3D.*CC BY-SA 4\.0/, ['bone', 'biceps', 'sensory', 'motor', 'dorsalRoot', 'ventralRoot', 'cord', 'posteriorHorn', 'anteriorHorn', 'section', 'sectionGrey']],
 ])('%s', (file, licence, parts) => {
   const { bytes, jsonLength, model } = read(file);
   it('is complete, credited and within a 1.5 MB budget', () => {
