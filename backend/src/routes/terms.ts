@@ -19,6 +19,7 @@ const TEXT_MAX = 1000;
 const BATCH_MAX = 200;
 const IPA_MAX = 80;
 const SAVE_MAX = 200;
+const CORE_MAX = 500;
 /** XP for a due card graded Hard or Good, and the most a learner earns from reviews in a (UTC) day. */
 const REVIEW_XP = 2;
 const REVIEW_XP_DAILY = 40;
@@ -428,6 +429,27 @@ export const termRoutes: FastifyPluginAsync = async (app) => {
     const { data: existing } = await supabase.from('terms').select('id, status').eq('id', id).maybeSingle();
     return existing ? reply.code(409).send(conflict) : reply.code(404).send(notFound);
   }
+
+  // Which terms the lessons tag by themselves. An admin marks single terms or a whole subject; only
+  // published terms count, since only those can be tagged.
+  app.post('/api/admin/terms/core', { preHandler: [requireAdmin] }, async (request, reply) => {
+    const supabase = app.supabase;
+    if (!supabase) return reply.code(503).send(unavailable);
+    const { term_ids, subject_id, core } = (request.body ?? {}) as { term_ids?: unknown; subject_id?: unknown; core?: unknown };
+    const byIds = Array.isArray(term_ids) && term_ids.length >= 1 && term_ids.length <= CORE_MAX && term_ids.every((id) => typeof id === 'string' && ID.test(id));
+    const bySubject = typeof subject_id === 'string' && ID.test(subject_id);
+    if (typeof core !== 'boolean' || byIds === bySubject || (term_ids !== undefined && !byIds) || (subject_id !== undefined && !bySubject)) {
+      return reply.code(400).send({ error: `Chọn từ 1 đến ${CORE_MAX} thuật ngữ, hoặc một môn, và đặt bật hoặc tắt.`, error_en: `Choose 1 to ${CORE_MAX} terms, or one subject, and set on or off.` });
+    }
+    let update = supabase.from('terms').update({ core }).eq('status', 'published');
+    update = byIds ? update.in('id', term_ids as string[]) : update.eq('subject_id', subject_id as string);
+    const { data, error } = await update.select('id');
+    if (error) {
+      request.log.error({ err: error }, 'Core term update failed');
+      return reply.code(500).send({ error: 'Chưa lưu được thuật ngữ cốt lõi.', error_en: 'The core terms could not be saved.' });
+    }
+    return reply.send({ updated: Array.isArray(data) ? data.length : 0 });
+  });
 
   app.post('/api/admin/terms/:id/approve', { preHandler: [requireAdmin] }, async (request, reply) =>
     review(request, reply, { status: 'published', review_note: null }),

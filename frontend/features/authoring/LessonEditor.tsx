@@ -11,6 +11,7 @@ import { buttonVariants } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { LessonPartsView } from '@/features/lessons/LessonPartsView';
 import { useTermIndex } from '@/features/lessons/useTermIndex';
+import { AutoTermsSwitch } from './editor/AutoTermsSwitch';
 import { joinLessonParts, splitLessonParts, updatePart, type BlocksUpdate, type LessonPart } from '@/features/lessons/lessonParts';
 import type { LessonStatus } from './authoringQueries';
 import { lessonStatusLabel, lessonStatusTone, publishBoxAfterSave } from './lessonStatus';
@@ -49,6 +50,8 @@ interface LessonEditorProps {
   initialTitleVi: string;
   initialTitleEn?: string;
   initialSource?: string | null;
+  /** Whether the lesson tags its subject's core terms by itself (on unless a teacher turned it off). */
+  initialAutoTerms?: boolean;
   /** The lesson's topic and the topics it may move to (same subject and grade); no list, no picker. */
   initialTopicId?: string;
   topics?: Array<{ id: string; name_en: string; name_vi: string }>;
@@ -71,6 +74,7 @@ export function LessonEditor({
   initialTitleVi,
   initialTitleEn = '',
   initialSource = '',
+  initialAutoTerms = true,
   initialTopicId,
   topics = [],
   initialBlocks,
@@ -84,6 +88,7 @@ export function LessonEditor({
   const [titleVi, setTitleVi] = useState(initialTitleVi);
   const [titleEn, setTitleEn] = useState(initialTitleEn);
   const [source, setSource] = useState(initialSource ?? '');
+  const [autoTerms, setAutoTerms] = useState(initialAutoTerms);
   const [topicId, setTopicId] = useState(initialTopicId);
   const [parts, setParts] = useState(() => splitLessonParts(initialBlocks));
   const blocks = useMemo(() => joinLessonParts(parts), [parts]);
@@ -129,8 +134,8 @@ export function LessonEditor({
 
   // The latest values, so the autosaver (created once) always saves what is on screen, and every
   // request sends the lesson version the previous save returned.
-  const latest = useRef({ titleVi, titleEn, source, topicId, blocks, updatedAt, status });
-  latest.current = { ...latest.current, titleVi, titleEn, source, topicId, blocks };
+  const latest = useRef({ titleVi, titleEn, source, autoTerms, topicId, blocks, updatedAt, status });
+  latest.current = { ...latest.current, titleVi, titleEn, source, autoTerms, topicId, blocks };
 
   // ── Automatic translation ─────────────────────────────────────────────────────────────────
   const autoRef = useRef(autoTranslate);
@@ -221,7 +226,7 @@ export function LessonEditor({
   const saveDraft = useCallback(async (): Promise<SaveOutcome> => {
     await translateLesson('autosave');
     const { titleVi: vi, titleEn: en, blocks: content, updatedAt: version } = latest.current;
-    const body: Record<string, unknown> = { blocks: content, expected_updated_at: version, source: latest.current.source, ...(latest.current.topicId ? { topic_id: latest.current.topicId } : {}) };
+    const body: Record<string, unknown> = { blocks: content, expected_updated_at: version, source: latest.current.source, auto_terms: latest.current.autoTerms, ...(latest.current.topicId ? { topic_id: latest.current.topicId } : {}) };
     // The API refuses empty titles; keep saving the blocks while a title is being typed.
     if (vi.trim()) body.title_vi = vi;
     if (en.trim()) body.title_en = en;
@@ -274,6 +279,7 @@ export function LessonEditor({
           title_vi: latest.current.titleVi,
           title_en: latest.current.titleEn,
           source: latest.current.source,
+          auto_terms: latest.current.autoTerms,
           ...(latest.current.topicId ? { topic_id: latest.current.topicId } : {}),
           blocks: latest.current.blocks,
           expected_updated_at: latest.current.updatedAt,
@@ -327,6 +333,7 @@ export function LessonEditor({
           title_vi: latest.current.titleVi,
           title_en: latest.current.titleEn,
           source: latest.current.source,
+          auto_terms: latest.current.autoTerms,
           ...(latest.current.topicId ? { topic_id: latest.current.topicId } : {}),
           blocks: latest.current.blocks,
           expected_updated_at: latest.current.updatedAt,
@@ -562,6 +569,14 @@ export function LessonEditor({
               placeholder={t({ en: 'e.g. Physics 11 textbook, Kết nối tri thức', vi: 'Ví dụ: SGK Vật lí 11 – Kết nối tri thức' })}
             />
           </label>
+          <AutoTermsSwitch
+            checked={autoTerms}
+            disabled={!canEditContent}
+            onChange={(value) => {
+              setAutoTerms(value);
+              changed();
+            }}
+          />
         </div>
       </header>
 
@@ -760,7 +775,7 @@ export function LessonEditor({
             {parts[activePart].length === 0 ? (
               <p className="py-16 text-center text-sm text-ink-muted">{t({ en: 'Nothing in this part yet.', vi: 'Phần này chưa có nội dung.' })}</p>
             ) : (
-              <LessonPartsView blocks={blocks} part={activePart} lang={previewLang} practice={practicePreview} termIndex={termIndex} />
+              <LessonPartsView blocks={blocks} part={activePart} lang={previewLang} practice={practicePreview} termIndex={autoTerms ? termIndex : []} />
             )}
           </div>
         </aside>

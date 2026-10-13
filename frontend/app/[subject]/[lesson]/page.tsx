@@ -50,7 +50,8 @@ export default async function LessonPage({
   // One request for the Tự luyện questions (answers stay on the server); a failure offers a retry.
   const [practice, termIndex] = await Promise.all([
     lesson.blocks.some((block) => block.type === 'quiz') ? fetchLessonPractice(lesson.id) : { ok: true as const, questions: [] },
-    getSubjectTermIndex(subjectSlug),
+    // A lesson that switched tagging off does not even read the terms.
+    lesson.auto_terms === false ? [] : getSubjectTermIndex(subjectSlug),
   ]);
 
   return (

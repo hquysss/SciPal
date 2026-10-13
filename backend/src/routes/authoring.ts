@@ -514,6 +514,7 @@ export const authoringRoutes: FastifyPluginAsync = async (app) => {
           title_en: titleEn,
           title_vi: titleVi,
           ...(asSource(body.source) !== undefined ? { source: asSource(body.source) } : {}),
+          ...(typeof body.auto_terms === 'boolean' ? { auto_terms: body.auto_terms } : {}),
           blocks: parsedBlocks.data,
           status: 'pending_review',
           review_note: null,
@@ -674,6 +675,10 @@ export const authoringRoutes: FastifyPluginAsync = async (app) => {
         const source = asSource(body.source);
         if (source === undefined) return reply.code(400).send({ error: 'Nguồn tối đa 300 ký tự.', error_en: 'The source is at most 300 characters.' });
         updateData.source = source;
+      }
+      if (body.auto_terms !== undefined) {
+        if (typeof body.auto_terms !== 'boolean') return reply.code(400).send({ error: 'Đánh dấu thuật ngữ chỉ có bật hoặc tắt.', error_en: 'Term tagging is either on or off.' });
+        updateData.auto_terms = body.auto_terms;
       }
       if (body.topic_id !== undefined) {
         const topicId = asText(body.topic_id, 64);

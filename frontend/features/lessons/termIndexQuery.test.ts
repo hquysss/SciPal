@@ -5,7 +5,10 @@ import { subjectTermIndex } from './termIndexQuery';
 function client(result: { data?: unknown; error?: unknown }) {
   const seen: Record<string, unknown[]> = {};
   const chain: any = {};
-  for (const m of ['select', 'eq', 'order', 'limit']) chain[m] = (...a: unknown[]) => ((seen[m] = a), chain);
+  const eqs: unknown[][] = [];
+  seen.eqs = eqs;
+  for (const m of ['select', 'order', 'limit']) chain[m] = (...a: unknown[]) => ((seen[m] = a), chain);
+  chain.eq = (...a: unknown[]) => (eqs.push(a), chain);
   chain.then = (ok: (v: unknown) => unknown) => Promise.resolve({ data: null, error: null, ...result }).then(ok);
   return { seen, from: (table: string) => ((seen.from = [table]), chain) };
 }
@@ -15,7 +18,7 @@ describe('subjectTermIndex', () => {
     const c = client({ data: [{ id: 'a', term_en: 'loop', term_vi: 'vòng lặp', subjects: { slug: 'informatics' } }] });
     expect(await subjectTermIndex(c as never, 'informatics')).toEqual([{ id: 'a', term_en: 'loop', term_vi: 'vòng lặp' }]);
     expect(c.seen.from).toEqual(['terms']);
-    expect(c.seen.eq).toEqual(['subjects.slug', 'informatics']);
+    expect(c.seen.eqs).toEqual([['subjects.slug', 'informatics'], ['core', true]]);
   });
 
   it('is empty, never an error, when the read fails: the lesson still shows', async () => {
