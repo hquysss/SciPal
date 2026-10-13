@@ -56,3 +56,20 @@ begin
   end if;
 end;
 $$;
+
+-- FSRS (20261013220000): a card on a schedule carries over, a card never reviewed stays new.
+update public.user_terms set interval_days = 10, reps = 3, due_at = '2026-10-20T00:00:00Z'
+where user_id = '00000000-0000-4000-8000-000000000002';
+\ir ../migrations/20261013220000_user_terms_fsrs.sql
+do $$
+begin
+  if not exists (select 1 from public.user_terms where user_id = '00000000-0000-4000-8000-000000000002'
+                 and stability = 10 and difficulty = 5 and last_review = '2026-10-10T00:00:00Z') then
+    raise exception 'A scheduled card should carry over with stability 10, difficulty 5, last review 10 days before due';
+  end if;
+  if exists (select 1 from public.user_terms where user_id = '00000000-0000-4000-8000-000000000001'
+             and (stability is not null or difficulty is not null or last_review is not null)) then
+    raise exception 'A card never reviewed should stay new';
+  end if;
+end;
+$$;

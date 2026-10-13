@@ -107,7 +107,7 @@ describe('my word list', () => {
     await app.close();
   });
 
-  const card = { interval_days: 0, ease: 2.5, reps: 0, lapses: 0, due_at: '2026-01-01T00:00:00Z', terms: { subject_id: 'sub-1' } };
+  const card = { stability: null, difficulty: null, last_review: null, reps: 0, lapses: 0, due_at: '2026-01-01T00:00:00Z', terms: { subject_id: 'sub-1' } };
 
   it('grading a due card schedules it on the server and earns 2 XP', async () => {
     const read = mockQuery({ data: card, error: null });
@@ -121,7 +121,8 @@ describe('my word list', () => {
     expect(Date.parse(res.json().due_at) - Date.now()).toBeGreaterThan(86_000_000);
     expect(res.json().xp_earned).toBe(2);
     expect(read.eqCalls).toEqual([['user_id', 'student-1'], ['term_id', A]]);
-    expect(write.updated[0]).toMatchObject({ interval_days: 1, reps: 1, ease: 2.5, lapses: 0 });
+    expect(write.updated[0]).toMatchObject({ interval_days: 4, reps: 1, lapses: 0, stability: 3.7145, difficulty: 5.1618 });
+    expect(String(read.selectArgs[0]?.[0])).toContain('stability');
     expect(write.eqCalls).toEqual([['user_id', 'student-1'], ['term_id', A]]);
     expect(write.lteCalls[0]?.[0]).toBe('due_at');
     expect(log.inserted[0]).toEqual({ user_id: 'student-1', subject_id: 'sub-1', delta: 2, reason: 'word_review' });
