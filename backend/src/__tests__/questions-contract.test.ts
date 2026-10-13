@@ -66,3 +66,16 @@ describe('practice questions migration contract', () => {
     expect(sql).toContain('revoke execute on function public.sync_lesson_practice_questions() from public, anon, authenticated');
   });
 });
+
+describe('writing questions migration contract', () => {
+  const writing = () => readFileSync('../supabase/migrations/20261013200000_writing_questions.sql', 'utf8').toLowerCase();
+
+  it('allows the writing type next to the others', () => {
+    expect(writing()).toContain('drop constraint if exists questions_type_check');
+    expect(writing()).toMatch(/check \(type in \('mc', 'truefalse', 'short', 'writing'\)\)/);
+  });
+
+  it('keeps writing questions out of exams in the database too', () => {
+    expect(writing()).toMatch(/check \(type <> 'writing' or usage = 'practice'\)/);
+  });
+});

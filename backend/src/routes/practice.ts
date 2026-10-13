@@ -1,5 +1,12 @@
-import type { FastifyPluginAsync, FastifyRequest } from 'fastify';
+import type { FastifyPluginAsync, FastifyReply, FastifyRequest } from 'fastify';
+import { z } from 'zod';
+import { BillingRepositoryError, createBillingRepository } from '../billing/repository.js';
+import { periodOf } from '../billing/quotaPeriod.js';
+import { resolveTutorSettings } from '../tutor/settings.js';
+import { tokensUsed } from '../tutor/tokens.js';
+import { WRITING_HOLD_TOKENS, writingFeedbackMessage, writingFeedbackSystemPrompt } from '../tutor/writingFeedback.js';
 import {
+  MAX_WRITING_ANSWER,
   PracticeResponseSchema,
   toPublicPracticeQuestion,
   type PracticeCheckResult,
@@ -10,7 +17,9 @@ import { MAX_LESSON_QUESTIONS, quizQuestionIds } from '../authoring/quizReferenc
 // Practice in a lesson's Tự luyện part. Learners (signed in or not) load the questions of a
 // published lesson without answers and check one answer at a time; the server decides and says
 // only right or wrong (per statement for true/false), plus the explanation. Nothing is stored
-// and no XP is given. Exam questions are never served or checked here.
+// and no XP is given. Exam questions are never served or checked here. A writing answer (English,
+// written or spoken) is checked for its key terms; a signed-in learner may then ask the AI
+// Professor to comment on it, paid from the Professor's token quota.
 
 interface PracticeUser {
   id?: string;
@@ -46,6 +55,26 @@ const isAdmin = (user: PracticeUser | undefined) => user?.app_metadata?.app_role
 const mayPreview = (user: PracticeUser | undefined, createdBy: string | null) => isAdmin(user) || (!!user?.id && user.id === createdBy);
 
 const normalize = (value: string) => value.normalize('NFC').trim().replace(/\s+/g, ' ').toLowerCase();
+const escapeRegExp = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+/**
+ * The key terms an English answer uses, as whole words in any case; the last word may take an
+ * s/es/ed/ing ending ("loops", "repeated").
+ */
+export function keyTermsUsed(answer: string, terms: string[]): { used: string[]; missing: string[] } {
+  const text = normalize(answer);
+  const used: string[] = [];
+  const missing: string[] = [];
+  for (const term of terms) {
+    const words = normalize(term).split(' ').map(escapeRegExp).join('\\s+');
+    const found = words !== '' && new RegExp(`(^|[^\\p{L}\\p{N}])${words}(s|es|ed|ing)?($|[^\\p{L}\\p{N}])`, 'u').test(text);
+    (found ? used : missing).push(term);
+  }
+  return { used, missing };
+}
+
+const keyTermsOf = (data: Record<string, unknown>) =>
+  Array.isArray(data.key_terms) ? data.key_terms.filter((t): t is string => typeof t === 'string' && t.trim() !== '') : [];
 
 function explanationOf(data: Record<string, unknown>): { en: string; vi: string } | undefined {
   const e = data.explanation as { en?: unknown; vi?: unknown } | undefined;
@@ -58,19 +87,23 @@ export function responseProblem(row: Pick<PracticeRow, 'type' | 'data'>, respons
   const data = (row.data ?? {}) as Record<string, unknown>;
   const others = (keys: Array<keyof PracticeResponse>) => keys.some((key) => response[key] !== undefined);
   if (row.type === 'mc') {
-    if (others(['items', 'short_answer']) || !response.selected_option) return msg('Hãy chọn một phương án.', 'Choose an option.');
+    if (others(['items', 'short_answer', 'writing_answer']) || !response.selected_option) return msg('Hãy chọn một phương án.', 'Choose an option.');
     return null;
   }
   if (row.type === 'truefalse') {
     const ids = new Set((Array.isArray(data.items) ? data.items : []).map((item: { id?: unknown }) => String(item?.id)));
     const given = response.items ?? [];
-    if (others(['selected_option', 'short_answer']) || given.length === 0) return msg('Hãy chọn Đúng hoặc Sai cho ít nhất một ý.', 'Mark at least one statement true or false.');
+    if (others(['selected_option', 'short_answer', 'writing_answer']) || given.length === 0) return msg('Hãy chọn Đúng hoặc Sai cho ít nhất một ý.', 'Mark at least one statement true or false.');
     if (given.some((item) => !ids.has(item.id)) || new Set(given.map((item) => item.id)).size !== given.length) {
       return msg('Câu trả lời không khớp với các ý của câu hỏi.', 'The answer does not match the statements.');
     }
     return null;
   }
-  if (others(['selected_option', 'items']) || !normalize(response.short_answer ?? '')) return msg('Hãy nhập câu trả lời.', 'Type an answer.');
+  if (row.type === 'writing') {
+    if (others(['selected_option', 'items', 'short_answer']) || !normalize(response.writing_answer ?? '')) return msg('Hãy viết câu trả lời bằng tiếng Anh.', 'Write your answer in English.');
+    return null;
+  }
+  if (others(['selected_option', 'items', 'writing_answer']) || !normalize(response.short_answer ?? '')) return msg('Hãy nhập câu trả lời.', 'Type an answer.');
   return null;
 }
 
@@ -92,12 +125,79 @@ export function checkPracticeAnswer(row: Pick<PracticeRow, 'type' | 'data'>, res
     });
     return withExplanation({ correct: items.length > 0 && items.every((item) => item.correct), items });
   }
+  if (row.type === 'writing') {
+    const { used, missing } = keyTermsUsed(response.writing_answer ?? '', keyTermsOf(data));
+    const sample = typeof data.sample_answer === 'string' ? data.sample_answer : '';
+    return withExplanation({ correct: missing.length === 0, writing: { used, missing, sample_answer: sample } });
+  }
   const key = typeof data.answer_key === 'string' ? data.answer_key : typeof data.answer === 'string' ? data.answer : '';
   const given = normalize(response.short_answer ?? '');
   return withExplanation({ correct: given !== '' && given === normalize(key) });
 }
 
+const FeedbackBody = z
+  .object({
+    question_id: z.string().regex(ID),
+    answer: z.string().trim().min(1).max(MAX_WRITING_ANSWER),
+    language: z.enum(['vi', 'en']),
+  })
+  .strict();
+
+const FEEDBACK_FAILED = msg(
+  'Giáo sư AI chưa nhận xét được lúc này. Lần này không bị trừ token, em thử lại sau nhé.',
+  'The Professor could not comment right now. No tokens were used, try again later.',
+);
+
 export const practiceRoutes: FastifyPluginAsync = async (app) => {
+  /**
+   * A practice question the caller may use: published and in a published lesson, or the author's
+   * (or an admin's) own while previewing. Otherwise the reply is sent here and null comes back.
+   */
+  async function servableQuestion(
+    request: FastifyRequest,
+    reply: FastifyReply,
+    questionId: string,
+    failure: { error: string; error_en: string },
+  ): Promise<PracticeRow | null> {
+    const supabase = app.supabase!;
+    const user = getUser(request);
+    const { data, error } = await supabase.from('questions').select(COLUMNS).eq('id', questionId).maybeSingle();
+    if (error) {
+      request.log.error({ err: error, questionId }, 'Failed to load practice question');
+      reply.code(500).send(failure);
+      return null;
+    }
+    const row = data as PracticeRow | null;
+    // Exam questions, and anything not published, answer "unavailable" alike: nothing to probe.
+    if (!row || row.usage !== 'practice') {
+      reply.code(404).send(unavailable);
+      return null;
+    }
+    if (!mayPreview(user, row.created_by)) {
+      if (row.status !== 'published') {
+        reply.code(404).send(unavailable);
+        return null;
+      }
+      const { data: lessons, error: lessonError } = await supabase
+        .from('lessons')
+        .select('id')
+        .eq('status', 'published')
+        // jsonb containment: postgrest-js sends a JS array as a Postgres array literal, so pass JSON.
+        .contains('blocks', JSON.stringify([{ type: 'quiz', question_id: row.id }]))
+        .limit(1);
+      if (lessonError) {
+        request.log.error({ err: lessonError, questionId: row.id }, 'Failed to find the lesson of a practice question');
+        reply.code(500).send(failure);
+        return null;
+      }
+      if ((lessons ?? []).length === 0) {
+        reply.code(404).send(unavailable);
+        return null;
+      }
+    }
+    return row;
+  }
+
   app.get('/api/practice/lessons/:lessonId/questions', async (request, reply) => {
     const { lessonId } = request.params as { lessonId: string };
     if (!ID.test(lessonId)) return reply.code(404).send(lessonNotFound);
@@ -139,36 +239,91 @@ export const practiceRoutes: FastifyPluginAsync = async (app) => {
     }
     const parsed = PracticeResponseSchema.safeParse(body.response);
     if (!parsed.success) return reply.code(400).send(msg('Câu trả lời không đúng định dạng.', 'The answer is not in a valid format.'));
-    const supabase = app.supabase;
-    if (!supabase) return reply.code(503).send(serviceDown);
-    const user = getUser(request);
-
-    const { data, error } = await supabase.from('questions').select(COLUMNS).eq('id', body.question_id).maybeSingle();
-    if (error) {
-      request.log.error({ err: error, questionId: body.question_id }, 'Failed to load practice question');
-      return reply.code(500).send(msg('Không chấm được câu trả lời.', 'Could not check the answer.'));
-    }
-    const row = data as PracticeRow | null;
-    // Exam questions, and anything not published, answer "unavailable" alike: nothing to probe.
-    if (!row || row.usage !== 'practice') return reply.code(404).send(unavailable);
-    if (!mayPreview(user, row.created_by)) {
-      if (row.status !== 'published') return reply.code(404).send(unavailable);
-      const { data: lessons, error: lessonError } = await supabase
-        .from('lessons')
-        .select('id')
-        .eq('status', 'published')
-        // jsonb containment: postgrest-js sends a JS array as a Postgres array literal, so pass JSON.
-        .contains('blocks', JSON.stringify([{ type: 'quiz', question_id: row.id }]))
-        .limit(1);
-      if (lessonError) {
-        request.log.error({ err: lessonError, questionId: row.id }, 'Failed to find the lesson of a practice question');
-        return reply.code(500).send(msg('Không chấm được câu trả lời.', 'Could not check the answer.'));
-      }
-      if ((lessons ?? []).length === 0) return reply.code(404).send(unavailable);
-    }
+    if (!app.supabase) return reply.code(503).send(serviceDown);
+    const row = await servableQuestion(request, reply, body.question_id, msg('Không chấm được câu trả lời.', 'Could not check the answer.'));
+    if (!row) return reply;
 
     const problem = responseProblem(row, parsed.data);
     if (problem) return reply.code(400).send(problem);
     return reply.send(checkPracticeAnswer(row, parsed.data));
+  });
+
+  // The AI Professor's comment on a writing answer. Tokens are held before asking, counted for
+  // what the model used once it answered, and given back on any failure. Admins are not counted.
+  // ponytail: not added to the Professor's daily cap (that sums tutor_messages); the plan quota applies.
+  app.post('/api/practice/writing-feedback', { bodyLimit: CHECK_BODY_LIMIT }, async (request, reply) => {
+    const user = getUser(request);
+    if (!user?.id) return reply.code(401).send(msg('Đăng nhập để Giáo sư AI nhận xét bài viết.', "Sign in to get the Professor's comments."));
+    const parsed = FeedbackBody.safeParse(request.body);
+    if (!parsed.success) return reply.code(400).send(msg('Hãy viết câu trả lời (tối đa 1000 ký tự).', 'Write an answer (up to 1000 characters).'));
+    const input = parsed.data;
+    const supabase = app.supabase;
+    if (!supabase) return reply.code(503).send(serviceDown);
+    const row = await servableQuestion(request, reply, input.question_id, FEEDBACK_FAILED);
+    if (!row) return reply;
+    if (row.type !== 'writing') return reply.code(400).send(msg('Câu này không phải câu viết tiếng Anh.', 'This is not an English writing question.'));
+
+    const billing = createBillingRepository((name, args) => supabase.rpc(name, args));
+    let hold: { operationId: string; units: number; remaining: number } | null = null;
+    if (!isAdmin(user)) {
+      const operationId = crypto.randomUUID();
+      try {
+        const r = await billing.reserveQuota(user.id, 'tutor_tokens', operationId, WRITING_HOLD_TOKENS, operationId);
+        hold = { operationId, units: WRITING_HOLD_TOKENS, remaining: r.remaining };
+      } catch (err) {
+        if (err instanceof BillingRepositoryError && err.code === 'QUOTA_EXCEEDED') {
+          const quota = await billing
+            .getEffectiveQuotas(user.id, new Date())
+            .then((qs) => qs.find((q) => q.metric === 'tutor_tokens'))
+            .catch(() => undefined);
+          const monthly = periodOf(quota?.kind) === 'month';
+          return reply.code(429).send({
+            code: 'QUOTA_EXCEEDED',
+            ...(monthly
+              ? msg('Em đã dùng hết token Giáo sư AI tháng này.', "You have used this month's Professor tokens.")
+              : msg('Em đã dùng hết token Giáo sư AI hôm nay.', "You have used today's Professor tokens.")),
+            remaining: 0,
+            resetsAt: quota?.resetsAt ?? null,
+          });
+        }
+        request.log.error({ err }, 'Failed to hold tokens for writing feedback');
+        return reply.code(503).send(msg('Chưa kiểm tra được hạn mức Giáo sư AI. Thử lại sau nhé.', 'Could not check your Professor tokens. Try again later.'));
+      }
+    }
+    const settle = async (outcome: 'commit' | 'release', used?: number) => {
+      if (!hold) return;
+      await billing.settleQuota(hold.operationId, outcome, used).catch((err) => request.log.error({ err, outcome }, 'Failed to settle writing feedback tokens'));
+    };
+
+    const data = (row.data ?? {}) as Record<string, unknown>;
+    const stem = data.stem as { en?: string; vi?: string } | undefined;
+    const system = writingFeedbackSystemPrompt(input.language);
+    const content = writingFeedbackMessage({
+      stem: (input.language === 'en' ? stem?.en || stem?.vi : stem?.vi || stem?.en) ?? '',
+      sample: typeof data.sample_answer === 'string' ? data.sample_answer : '',
+      keyTerms: keyTermsOf(data),
+      answer: input.answer,
+    });
+    const settings = app.tutorSettings ? await app.tutorSettings.get() : resolveTutorSettings(null, process.env);
+    let feedback = '';
+    let reported: number | undefined;
+    try {
+      for await (const chunk of app.aiProvider.chat([{ role: 'user', content }], system, { provider: settings.provider, model: settings.model, effort: settings.reasoningEffort }, (u) => {
+        reported = u.total;
+      })) {
+        feedback += chunk;
+      }
+    } catch (err) {
+      request.log.error({ err }, 'Writing feedback provider failed');
+      feedback = '';
+    }
+    feedback = feedback.trim();
+    if (!feedback) {
+      await settle('release');
+      return reply.code(502).send(FEEDBACK_FAILED);
+    }
+    const used = tokensUsed(reported, system + content, feedback);
+    await settle('commit', used);
+    return reply.send({ feedback: feedback.slice(0, 4000), remaining: hold ? Math.max(0, hold.remaining + hold.units - used) : null });
   });
 };
