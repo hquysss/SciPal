@@ -4,6 +4,7 @@ import { Media } from '@/components/media/Media';
 import Link from 'next/link';
 import { Bookmark, BookmarkCheck, Volume2 } from 'lucide-react';
 import { useSavedTerms } from '@/features/glossary/savedTerms';
+import { speakTerm } from '@/features/glossary/pronunciation';
 import type { LessonTerm } from './LessonTermsContext';
 
 type Bilingual = { en: string; vi: string };
@@ -42,16 +43,15 @@ export function TermCard({ term, lang, compact = false, glossaryLink = true, sav
           {(place || term.part_of_speech) && (
             <span className="text-xs text-ink-muted">· {place ? t({ en: 'place', vi: 'địa danh' }) : term.part_of_speech}</span>
           )}
-          {term.audio_url && (
-            <button
-              type="button"
-              onClick={() => void new Audio(term.audio_url!).play().catch(() => {})}
-              aria-label={t({ en: `Listen: ${term.term_en}`, vi: `Nghe: ${term.term_en}` })}
-              className="inline-flex h-8 w-8 items-center justify-center rounded-full text-ink-muted hover:bg-surface-sunken hover:text-ink focus-visible:outline focus-visible:outline-2 focus-visible:outline-focus"
-            >
-              <Volume2 aria-hidden="true" className="h-4 w-4" />
-            </button>
-          )}
+          {/* The recording when there is one, else the browser's English voice. */}
+          <button
+            type="button"
+            onClick={() => void (term.audio_url ? new Audio(term.audio_url).play().catch(() => {}) : speakTerm(term.term_en, 'en'))}
+            aria-label={t({ en: `Listen: ${term.term_en}`, vi: `Nghe: ${term.term_en}` })}
+            className="inline-flex h-8 w-8 items-center justify-center rounded-full text-ink-muted hover:bg-surface-sunken hover:text-ink focus-visible:outline focus-visible:outline-2 focus-visible:outline-focus"
+          >
+            <Volume2 aria-hidden="true" className="h-4 w-4" />
+          </button>
           {saveable && (
             <button
               type="button"

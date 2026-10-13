@@ -41,7 +41,7 @@ describe('my word list', () => {
   it('saves only published terms of live subjects', async () => {
     const terms = mockQuery({ data: [{ id: A, subjects: { archived_at: null } }], error: null });
     const { table } = savedTable();
-    const app = await build(student, { terms, user_terms: table });
+    const app = await build(student, { terms, dictionary_entries: mockQuery({ data: [], error: null }), user_terms: table });
     const res = await app.inject({ method: 'POST', url: '/api/me/terms', payload: { term_ids: [A, B] } });
     expect(res.statusCode).toBe(200);
     expect(res.json().saved).toEqual([A]);
@@ -50,10 +50,24 @@ describe('my word list', () => {
     await app.close();
   });
 
+  it('saves a dictionary entry the same way, keyed by entry', async () => {
+    const terms = mockQuery({ data: [{ id: A, subjects: { archived_at: null } }], error: null });
+    const entries = mockQuery({ data: [{ id: B, subjects: { archived_at: null } }], error: null });
+    const termRows = savedTable();
+    const entryRows = savedTable();
+    const app = await build(student, { terms, dictionary_entries: entries, user_terms: [termRows.table, entryRows.table] });
+    const res = await app.inject({ method: 'POST', url: '/api/me/terms', payload: { term_ids: [A, B] } });
+    expect(res.json().saved).toEqual([A, B]);
+    expect(entries.inCalls).toEqual([['id', [B]]]);
+    expect(entryRows.table.inserted[0]).toEqual([{ user_id: 'student-1', entry_id: B }]);
+    expect(entryRows.options[0]).toMatchObject({ onConflict: 'user_id,entry_id', ignoreDuplicates: true });
+    await app.close();
+  });
+
   it('drops terms of an archived subject', async () => {
     const terms = mockQuery({ data: [{ id: A, subjects: { archived_at: '2026-10-01' } }], error: null });
     const { table } = savedTable();
-    const app = await build(student, { terms, user_terms: table });
+    const app = await build(student, { terms, dictionary_entries: mockQuery({ data: [], error: null }), user_terms: table });
     const res = await app.inject({ method: 'POST', url: '/api/me/terms', payload: { term_ids: [A] } });
     expect(res.json().saved).toEqual([]);
     expect(table.inserted).toHaveLength(0);
@@ -84,10 +98,8 @@ describe('my word list', () => {
     const res = await app.inject({ method: 'DELETE', url: `/api/me/terms/${A}` });
     expect(res.statusCode).toBe(204);
     expect(table.deleteCalls).toBe(1);
-    expect(table.eqCalls).toEqual([
-      ['user_id', 'student-1'],
-      ['term_id', A],
-    ]);
+    expect(table.eqCalls).toEqual([['user_id', 'student-1']]);
+    expect(table.orCalls).toEqual([`term_id.eq.${A},entry_id.eq.${A}`]);
     await app.close();
   });
 
@@ -120,14 +132,29 @@ describe('my word list', () => {
     expect(res.statusCode).toBe(200);
     expect(Date.parse(res.json().due_at) - Date.now()).toBeGreaterThan(86_000_000);
     expect(res.json().xp_earned).toBe(2);
-    expect(read.eqCalls).toEqual([['user_id', 'student-1'], ['term_id', A]]);
+    expect(read.eqCalls).toEqual([['user_id', 'student-1']]);
+    expect(read.orCalls).toEqual([`term_id.eq.${A},entry_id.eq.${A}`]);
     expect(write.updated[0]).toMatchObject({ interval_days: 4, reps: 1, lapses: 0, stability: 3.7145, difficulty: 5.1618 });
     expect(String(read.selectArgs[0]?.[0])).toContain('stability');
-    expect(write.eqCalls).toEqual([['user_id', 'student-1'], ['term_id', A]]);
+    expect(write.eqCalls).toEqual([['user_id', 'student-1']]);
+    expect(write.orCalls).toEqual([`term_id.eq.${A},entry_id.eq.${A}`]);
     expect(write.lteCalls[0]?.[0]).toBe('due_at');
     expect(log.inserted[0]).toEqual({ user_id: 'student-1', subject_id: 'sub-1', delta: 2, reason: 'word_review' });
     expect(res.json().new_streak).toBe(1);
     expect(streakWrite.inserted[0]).toMatchObject({ user_id: 'student-1', subject_id: 'sub-1', current_streak: 1 });
+    await app.close();
+  });
+
+  it('a dictionary entry card earns XP in its subject', async () => {
+    const log = mockQuery({ data: null, error: null });
+    const app = await build(student, {
+      user_terms: [mockQuery({ data: { ...card, terms: null, dictionary_entries: { subject_id: 'sub-2' } }, error: null }), mockQuery({ data: [{ term_id: null }], error: null })],
+      xp_log: [mockQuery({ data: null, error: null, count: 0 }), log],
+      streaks: [mockQuery({ data: null, error: null }), mockQuery({ data: null, error: null })],
+    });
+    const res = await app.inject({ method: 'POST', url: `/api/me/terms/${A}/review`, payload: { grade: 'good' } });
+    expect(res.json().xp_earned).toBe(2);
+    expect(log.inserted[0]).toMatchObject({ subject_id: 'sub-2' });
     await app.close();
   });
 

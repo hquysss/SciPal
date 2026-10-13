@@ -581,15 +581,53 @@ export interface Database {
         ];
       };
       user_terms: {
-        Row: { user_id: string; term_id: string; created_at: string; due_at: string; interval_days: number; ease: number; reps: number; lapses: number };
-        Insert: { user_id: string; term_id: string; created_at?: string; due_at?: string; interval_days?: number; ease?: number; reps?: number; lapses?: number };
-        Update: { user_id?: string; term_id?: string; created_at?: string; due_at?: string; interval_days?: number; ease?: number; reps?: number; lapses?: number };
+        Row: {
+          id: string; user_id: string; term_id: string | null; entry_id: string | null; created_at: string; due_at: string;
+          interval_days: number; ease: number; reps: number; lapses: number; stability: number | null; difficulty: number | null; last_review: string | null;
+        };
+        Insert: {
+          id?: string; user_id: string; term_id?: string | null; entry_id?: string | null; created_at?: string; due_at?: string;
+          interval_days?: number; ease?: number; reps?: number; lapses?: number; stability?: number | null; difficulty?: number | null; last_review?: string | null;
+        };
+        Update: {
+          id?: string; user_id?: string; term_id?: string | null; entry_id?: string | null; created_at?: string; due_at?: string;
+          interval_days?: number; ease?: number; reps?: number; lapses?: number; stability?: number | null; difficulty?: number | null; last_review?: string | null;
+        };
         Relationships: [
           {
             foreignKeyName: 'user_terms_term_id_fkey';
             columns: ['term_id'];
             isOneToOne: false;
             referencedRelation: 'terms';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'user_terms_entry_id_fkey';
+            columns: ['entry_id'];
+            isOneToOne: false;
+            referencedRelation: 'dictionary_entries';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
+      dictionary_entries: {
+        Row: {
+          id: string; subject_id: string; source_lang: 'en' | 'vi'; query: string; term_en: string; term_vi: string; ipa: string | null;
+          part_of_speech: string | null; definition_en: string; definition_vi: string; example_en: string | null; example_vi: string | null;
+          created_by: string | null; created_at: string;
+        };
+        Insert: {
+          id?: string; subject_id: string; source_lang: 'en' | 'vi'; query: string; term_en: string; term_vi: string; ipa?: string | null;
+          part_of_speech?: string | null; definition_en: string; definition_vi: string; example_en?: string | null; example_vi?: string | null;
+          created_by?: string | null; created_at?: string;
+        };
+        Update: Partial<Database['public']['Tables']['dictionary_entries']['Insert']>;
+        Relationships: [
+          {
+            foreignKeyName: 'dictionary_entries_subject_id_fkey';
+            columns: ['subject_id'];
+            isOneToOne: false;
+            referencedRelation: 'subjects';
             referencedColumns: ['id'];
           },
         ];

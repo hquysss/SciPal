@@ -73,3 +73,50 @@ begin
   end if;
 end;
 $$;
+
+-- Quick dictionary (20261014090000): anyone reads entries, nobody but the backend writes them; the
+-- word list keeps a term or an entry, exactly one, once per learner.
+insert into public.subjects (id) values ('30000000-0000-4000-8000-000000000001');
+\ir ../migrations/20261014090000_dictionary_entries.sql
+set role service_role;
+insert into public.dictionary_entries (id, subject_id, source_lang, query, term_en, term_vi, definition_en, definition_vi)
+values ('40000000-0000-4000-8000-000000000001', '30000000-0000-4000-8000-000000000001', 'en', 'repeat', 'repeat', 'lặp lại', 'Do again.', 'Làm lại.');
+insert into public.user_terms (user_id, entry_id)
+values ('00000000-0000-4000-8000-000000000001', '40000000-0000-4000-8000-000000000001');
+reset role;
+do $$
+begin
+  begin
+    insert into public.user_terms (user_id, entry_id)
+    values ('00000000-0000-4000-8000-000000000001', '40000000-0000-4000-8000-000000000001');
+    raise exception 'An entry should be saved once per learner';
+  exception when unique_violation then null;
+  end;
+  begin
+    insert into public.user_terms (user_id, term_id, entry_id)
+    values ('00000000-0000-4000-8000-000000000002', '20000000-0000-4000-8000-000000000002', '40000000-0000-4000-8000-000000000001');
+    raise exception 'A word list row should hold a term or an entry, not both';
+  exception when check_violation then null;
+  end;
+  begin
+    insert into public.user_terms (user_id) values ('00000000-0000-4000-8000-000000000002');
+    raise exception 'A word list row should hold a term or an entry';
+  exception when check_violation then null;
+  end;
+end;
+$$;
+set role anon;
+do $$
+begin
+  if (select count(*) from public.dictionary_entries) <> 1 then
+    raise exception 'A visitor should read dictionary entries';
+  end if;
+  begin
+    insert into public.dictionary_entries (subject_id, source_lang, query, term_en, term_vi, definition_en, definition_vi)
+    values ('30000000-0000-4000-8000-000000000001', 'en', 'x', 'x', 'x', 'x', 'x');
+    raise exception 'A visitor must not write dictionary entries';
+  exception when insufficient_privilege then null;
+  end;
+end;
+$$;
+reset role;

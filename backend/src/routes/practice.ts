@@ -1,7 +1,6 @@
 import type { FastifyPluginAsync, FastifyReply, FastifyRequest } from 'fastify';
 import { z } from 'zod';
-import { BillingRepositoryError, createBillingRepository } from '../billing/repository.js';
-import { periodOf } from '../billing/quotaPeriod.js';
+import { holdTutorTokens } from '../tutor/quotaHold.js';
 import { resolveTutorSettings } from '../tutor/settings.js';
 import { tokensUsed } from '../tutor/tokens.js';
 import { WRITING_HOLD_TOKENS, writingFeedbackMessage, writingFeedbackSystemPrompt } from '../tutor/writingFeedback.js';
@@ -263,37 +262,9 @@ export const practiceRoutes: FastifyPluginAsync = async (app) => {
     if (!row) return reply;
     if (row.type !== 'writing') return reply.code(400).send(msg('Câu này không phải câu viết tiếng Anh.', 'This is not an English writing question.'));
 
-    const billing = createBillingRepository((name, args) => supabase.rpc(name, args));
-    let hold: { operationId: string; units: number; remaining: number } | null = null;
-    if (!isAdmin(user)) {
-      const operationId = crypto.randomUUID();
-      try {
-        const r = await billing.reserveQuota(user.id, 'tutor_tokens', operationId, WRITING_HOLD_TOKENS, operationId);
-        hold = { operationId, units: WRITING_HOLD_TOKENS, remaining: r.remaining };
-      } catch (err) {
-        if (err instanceof BillingRepositoryError && err.code === 'QUOTA_EXCEEDED') {
-          const quota = await billing
-            .getEffectiveQuotas(user.id, new Date())
-            .then((qs) => qs.find((q) => q.metric === 'tutor_tokens'))
-            .catch(() => undefined);
-          const monthly = periodOf(quota?.kind) === 'month';
-          return reply.code(429).send({
-            code: 'QUOTA_EXCEEDED',
-            ...(monthly
-              ? msg('Em đã dùng hết token Giáo sư AI tháng này.', "You have used this month's Professor tokens.")
-              : msg('Em đã dùng hết token Giáo sư AI hôm nay.', "You have used today's Professor tokens.")),
-            remaining: 0,
-            resetsAt: quota?.resetsAt ?? null,
-          });
-        }
-        request.log.error({ err }, 'Failed to hold tokens for writing feedback');
-        return reply.code(503).send(msg('Chưa kiểm tra được hạn mức Giáo sư AI. Thử lại sau nhé.', 'Could not check your Professor tokens. Try again later.'));
-      }
-    }
-    const settle = async (outcome: 'commit' | 'release', used?: number) => {
-      if (!hold) return;
-      await billing.settleQuota(hold.operationId, outcome, used).catch((err) => request.log.error({ err, outcome }, 'Failed to settle writing feedback tokens'));
-    };
+    const held = await holdTutorTokens(supabase, { ...user, id: user.id }, WRITING_HOLD_TOKENS, request.log);
+    if (!held.ok) return reply.code(held.status).send(held.body);
+    const { hold } = held;
 
     const data = (row.data ?? {}) as Record<string, unknown>;
     const stem = data.stem as { en?: string; vi?: string } | undefined;
@@ -319,11 +290,11 @@ export const practiceRoutes: FastifyPluginAsync = async (app) => {
     }
     feedback = feedback.trim();
     if (!feedback) {
-      await settle('release');
+      await hold.settle('release');
       return reply.code(502).send(FEEDBACK_FAILED);
     }
     const used = tokensUsed(reported, system + content, feedback);
-    await settle('commit', used);
-    return reply.send({ feedback: feedback.slice(0, 4000), remaining: hold ? Math.max(0, hold.remaining + hold.units - used) : null });
+    await hold.settle('commit', used);
+    return reply.send({ feedback: feedback.slice(0, 4000), remaining: hold.remainingAfter(used) });
   });
 };
