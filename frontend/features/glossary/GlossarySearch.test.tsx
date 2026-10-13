@@ -47,6 +47,11 @@ describe('Glossary', () => {
     expect(html).toMatch(/<span lang="en"[^>]*>\/ˈæl\.ɡə\.rɪ\.ðəm\/<\/span>/);
   });
 
+  it('a signed-in learner can start a review from the glossary', () => {
+    const html = renderToStaticMarkup(<GlossarySearch terms={[TERM]} />);
+    expect(html).toMatch(/<a[^>]*href="\/review"[^>]*>.*?Review words<\/a>/);
+  });
+
   it('counts only listed terms in My words', () => {
     saved.ids = new Set(['t1', 'gone']);
     const html = renderToStaticMarkup(<GlossarySearch terms={[TERM]} />);

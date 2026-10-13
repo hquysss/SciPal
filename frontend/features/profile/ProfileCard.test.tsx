@@ -37,7 +37,7 @@ describe('ProfileCard', () => {
 
   it('has shortcuts to learning, progress, the tutor and the plan', () => {
     const html = render('student');
-    for (const href of ['/subjects', '/progress', '/glossary?filter=saved', '/tutor', '/profile/plan']) expect(html).toContain(`href="${href}"`);
+    for (const href of ['/subjects', '/progress', '/glossary?filter=saved', '/review', '/tutor', '/profile/plan']) expect(html).toContain(`href="${href}"`);
   });
 
   it('keeps the teaching and review tools for staff', () => {
