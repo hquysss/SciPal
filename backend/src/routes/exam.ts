@@ -144,7 +144,8 @@ async function loadExamQuestions(
   return { kind: 'ok', value: (data ?? []) as ExamQuestionRow[] };
 }
 
-const normalizeShortAnswer = (value: string) => value.normalize('NFC').trim().replace(/\s+/g, ' ').toLowerCase();
+// A decimal comma is the same number as a decimal point (0,12 = 0.12).
+const normalizeShortAnswer = (value: string) => value.normalize('NFC').trim().replace(/\s+/g, ' ').toLowerCase().replace(/(\d),(?=\d)/g, '$1.');
 
 /** Server-side check of one answer against the stored key. */
 export function isCorrectAnswer(question: Pick<ExamQuestionRow, 'type' | 'data'>, answer: ExamAnswer): boolean {
