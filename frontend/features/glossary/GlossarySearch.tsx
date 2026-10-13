@@ -1,6 +1,7 @@
 'use client';
+import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
-import { Bookmark, BookmarkCheck, ChevronDown, Link2, Search, Volume2, X } from 'lucide-react';
+import { Bookmark, BookmarkCheck, ChevronDown, Link2, Repeat, Search, Volume2, X } from 'lucide-react';
 import { useLanguage } from '@scipal/hooks';
 import { EmptyState } from '../../components/ui/empty-state';
 import { PAGE_SIZE, filterTerms, shownToReach, termSubjects } from './termFilter';
@@ -38,7 +39,7 @@ export function GlossarySearch({ terms }: { terms: TermItem[] }) {
   const { lang, t } = useLanguage();
   const [query, setQuery] = useState('');
   const [activeFilter, setActiveFilter] = useState('all');
-  const { ids: saved, failed: saveFailed, save, unsave } = useSavedTerms();
+  const { ids: saved, failed: saveFailed, signedIn, save, unsave } = useSavedTerms();
   const [copied, setCopied] = useState<string | null>(null);
   const [allSubjects, setAllSubjects] = useState(false);
   const [speechError, setSpeechError] = useState<'en' | 'vi' | 'unsupported' | null>(null);
@@ -147,6 +148,12 @@ export function GlossarySearch({ terms }: { terms: TermItem[] }) {
           {t({ en: 'My words', vi: 'Sổ từ của tôi' })}
           <span className="text-xs opacity-80">{savedCount}</span>
         </button>
+        {signedIn && (
+          <Link href="/review" className={chipClass(false)}>
+            <Repeat aria-hidden="true" className="h-4 w-4" />
+            {t({ en: 'Review words', vi: 'Ôn từ' })}
+          </Link>
+        )}
         <span aria-hidden="true" className="mx-1 h-6 w-px bg-line" />
         <div id="glossary-subjects" role="group" aria-label={t({ en: 'Subjects', vi: 'Môn học' })} className="contents">
           {shownSubjects.map((sub) => (

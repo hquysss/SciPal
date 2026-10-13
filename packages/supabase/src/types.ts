@@ -581,9 +581,9 @@ export interface Database {
         ];
       };
       user_terms: {
-        Row: { user_id: string; term_id: string; created_at: string };
-        Insert: { user_id: string; term_id: string; created_at?: string };
-        Update: { user_id?: string; term_id?: string; created_at?: string };
+        Row: { user_id: string; term_id: string; created_at: string; due_at: string; interval_days: number; ease: number; reps: number; lapses: number };
+        Insert: { user_id: string; term_id: string; created_at?: string; due_at?: string; interval_days?: number; ease?: number; reps?: number; lapses?: number };
+        Update: { user_id?: string; term_id?: string; created_at?: string; due_at?: string; interval_days?: number; ease?: number; reps?: number; lapses?: number };
         Relationships: [
           {
             foreignKeyName: 'user_terms_term_id_fkey';
