@@ -135,3 +135,6 @@ begin
   end if;
 end;
 $$;
+
+-- The stand-in lessons table is only for this check: lessons_columns.sql creates the real shape next.
+drop table public.lessons;
