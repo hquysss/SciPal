@@ -8,9 +8,9 @@ import { TermCard } from './TermCard';
 import { TermMark } from './TermMark';
 
 vi.mock('@scipal/hooks', () => ({ useLanguage: () => ({ lang: 'vi', t: (o: { vi: string }) => o.vi }) }));
-const store = vi.hoisted(() => ({ ids: new Set<string>(), save: vi.fn(), unsave: vi.fn() }));
+const store = vi.hoisted(() => ({ ids: new Set<string>(), failed: null as string | null, save: vi.fn(), unsave: vi.fn() }));
 vi.mock('@/features/glossary/savedTerms', () => ({
-  useSavedTerms: () => ({ ids: store.ids, signedIn: true, ready: true, save: store.save, unsave: store.unsave }),
+  useSavedTerms: () => ({ ids: store.ids, failed: store.failed, signedIn: true, ready: true, save: store.save, unsave: store.unsave }),
 }));
 
 const WORD_ID = '11111111-1111-4111-8111-111111111111';
@@ -45,6 +45,7 @@ afterEach(() => {
   store.save.mockReset();
   store.unsave.mockReset();
   store.ids = new Set();
+  store.failed = null;
   vi.useRealTimers();
 });
 
@@ -231,11 +232,21 @@ describe('TermCard', () => {
     expect(screen.getByRole('button', { name: 'Bỏ khỏi sổ từ: thuật toán' }).getAttribute('aria-pressed')).toBe('true');
   });
 
-  it('says so when saving fails', async () => {
-    store.save.mockResolvedValue(false);
+  it('the bookmark calls the store', () => {
     render(<TermCard term={WORD} lang="vi" />);
     fireEvent.click(screen.getByRole('button', { name: 'Lưu vào sổ từ: thuật toán' }));
     expect(store.save).toHaveBeenCalledWith(WORD_ID);
-    expect((await screen.findByRole('status')).textContent).toBe('Chưa lưu được. Thử lại nhé.');
+  });
+
+  it('says so when this term failed to save, however the save started', () => {
+    store.failed = WORD_ID;
+    render(<TermCard term={WORD} lang="vi" />);
+    expect(screen.getByRole('status').textContent).toBe('Chưa lưu được. Thử lại nhé.');
+  });
+
+  it('says nothing for a teacher note', () => {
+    store.failed = WORD_ID;
+    render(<TermCard term={WORD} lang="vi" saveable={false} />);
+    expect(screen.queryByRole('status')).toBeNull();
   });
 });

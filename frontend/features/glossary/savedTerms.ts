@@ -8,12 +8,14 @@ import { authoringCall } from '@/features/authoring/apiClient';
 // Signed in: kept on the account (user_terms). Guest: kept in this browser, as the glossary always
 // did; on sign-in those terms move up to the account once and leave the browser only when that worked.
 
-export type SavedTermsState = { ids: ReadonlySet<string>; signedIn: boolean; ready: boolean };
+/** `failed`: the term whose last save or removal did not go through, so every card showing it can say so. */
+export type SavedTermsState = { ids: ReadonlySet<string>; signedIn: boolean; ready: boolean; failed: string | null };
 
 const KEY = 'scipal-saved-terms';
 /** The server takes at most this many ids per request (SAVE_MAX in backend routes/terms.ts). */
 const CHUNK = 200;
-const INITIAL: SavedTermsState = { ids: new Set(), signedIn: false, ready: false };
+const ID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const INITIAL: SavedTermsState = { ids: new Set(), signedIn: false, ready: false, failed: null };
 
 let state = INITIAL;
 const listeners = new Set<() => void>();
@@ -44,8 +46,9 @@ function writeLocal(ids: ReadonlySet<string>) {
   }
 }
 
+/** Sends the browser's terms to the account; ids that are not term ids are dropped, so they cannot block it. */
 async function moveLocalUp(local: Set<string>): Promise<boolean> {
-  const ids = [...local];
+  const ids = [...local].filter((id) => ID.test(id));
   for (let start = 0; start < ids.length; start += CHUNK) {
     const res = await authoringCall<{ saved: string[] }>('/api/me/terms', 'POST', { term_ids: ids.slice(start, start + CHUNK) });
     if (!res.ok) return false;
@@ -69,10 +72,13 @@ function load(): Promise<void> {
       return;
     }
     const local = readLocal();
-    if (local.size > 0 && (await moveLocalUp(local))) writeLocal(new Set());
+    const moved = local.size === 0 || (await moveLocalUp(local));
+    if (moved && local.size > 0) writeLocal(new Set());
     const { data, error } = await supabase.from('user_terms').select('term_id');
     if (mine !== generation) return;
-    const ids = error ? state.ids : new Set(((data ?? []) as Array<{ term_id: string }>).map((row) => row.term_id));
+    const ids = error ? new Set(state.ids) : new Set(((data ?? []) as Array<{ term_id: string }>).map((row) => row.term_id));
+    // Not moved yet (tried again on the next load): still the learner's words, so still shown.
+    if (!moved) local.forEach((id) => ids.add(id));
     set({ ids, signedIn: true, ready: true });
   })();
   return loading;
@@ -107,24 +113,28 @@ function update(id: string, keep: boolean) {
 /** Saves a term; true when it is in the list afterwards. */
 async function save(id: string): Promise<boolean> {
   await (loading ?? load());
+  set({ failed: null });
   if (state.ids.has(id)) return true;
   update(id, true);
   if (!state.signedIn) return true;
   const res = await authoringCall<{ saved: string[] }>('/api/me/terms', 'POST', { term_ids: [id] });
   if (res.ok && res.data.saved?.includes(id)) return true;
   update(id, false);
+  set({ failed: id });
   return false;
 }
 
 /** Takes a term out of the list; true when it is gone afterwards. */
 async function unsave(id: string): Promise<boolean> {
   await (loading ?? load());
+  set({ failed: null });
   if (!state.ids.has(id)) return true;
   update(id, false);
   if (!state.signedIn) return true;
   const res = await authoringCall<Record<string, never>>(`/api/me/terms/${encodeURIComponent(id)}`, 'DELETE');
   if (res.ok) return true;
   update(id, true);
+  set({ failed: id });
   return false;
 }
 

@@ -26,6 +26,9 @@ vi.mock('@/features/authoring/apiClient', () => ({ authoringCall: mocks.call }))
 import { resetSavedTermsForTest, useSavedTerms } from './savedTerms';
 
 const KEY = 'scipal-saved-terms';
+const U1 = '11111111-1111-4111-8111-111111111111';
+const U2 = '22222222-2222-4222-8222-222222222222';
+const U3 = '33333333-3333-4333-8333-333333333333';
 const ok = (data: unknown) => ({ ok: true, data });
 const fail = (status: number) => ({ ok: false, status, error: { en: 'x', vi: 'x' } });
 
@@ -75,22 +78,34 @@ describe('useSavedTerms', () => {
   });
 
   it("moves the browser's terms up once on sign-in", async () => {
-    window.localStorage.setItem(KEY, JSON.stringify(['a', 'b']));
+    window.localStorage.setItem(KEY, JSON.stringify([U1, U2]));
     mocks.session = { access_token: 't' };
-    mocks.call.mockResolvedValue(ok({ saved: ['a'] }));
-    mocks.rows = [{ term_id: 'a' }];
+    mocks.call.mockResolvedValue(ok({ saved: [U1] }));
+    mocks.rows = [{ term_id: U1 }];
     const { result } = await ready();
-    expect(mocks.call).toHaveBeenCalledWith('/api/me/terms', 'POST', { term_ids: ['a', 'b'] });
-    expect(result.current.ids.has('a')).toBe(true);
+    expect(mocks.call).toHaveBeenCalledWith('/api/me/terms', 'POST', { term_ids: [U1, U2] });
+    expect(result.current.ids.has(U1)).toBe(true);
     expect(window.localStorage.getItem(KEY)).toBeNull();
   });
 
-  it("keeps the browser's terms when the move fails", async () => {
-    window.localStorage.setItem(KEY, JSON.stringify(['a', 'b']));
+  it("keeps the browser's terms, and shows them, when the move fails", async () => {
+    window.localStorage.setItem(KEY, JSON.stringify([U1, U2]));
     mocks.session = { access_token: 't' };
+    mocks.rows = [{ term_id: U3 }];
     mocks.call.mockResolvedValue(fail(0));
+    const { result } = await ready();
+    expect(JSON.parse(window.localStorage.getItem(KEY)!)).toEqual([U1, U2]);
+    expect([...result.current.ids].sort()).toEqual([U1, U2, U3]);
+  });
+
+  it('moves only well-formed ids, so a stray one cannot block the move', async () => {
+    const id = '11111111-1111-4111-8111-111111111111';
+    window.localStorage.setItem(KEY, JSON.stringify(['not-an-id', id]));
+    mocks.session = { access_token: 't' };
+    mocks.call.mockResolvedValue(ok({ saved: [id] }));
     await ready();
-    expect(JSON.parse(window.localStorage.getItem(KEY)!)).toEqual(['a', 'b']);
+    expect(mocks.call).toHaveBeenCalledWith('/api/me/terms', 'POST', { term_ids: [id] });
+    expect(window.localStorage.getItem(KEY)).toBeNull();
   });
 
   it('undoes a save the server refused', async () => {
@@ -101,6 +116,21 @@ describe('useSavedTerms', () => {
       expect(await result.current.save('c')).toBe(false);
     });
     expect(result.current.ids.has('c')).toBe(false);
+  });
+
+  it('remembers which term failed, for every card showing it, until the next try', async () => {
+    mocks.session = { access_token: 't' };
+    const { result } = await ready();
+    mocks.call.mockResolvedValue(fail(401));
+    await act(async () => {
+      await result.current.save('c');
+    });
+    expect(result.current.failed).toBe('c');
+    mocks.call.mockResolvedValue(ok({ saved: ['c'] }));
+    await act(async () => {
+      await result.current.save('c');
+    });
+    expect(result.current.failed).toBeNull();
   });
 
   it('a refused id is not kept', async () => {

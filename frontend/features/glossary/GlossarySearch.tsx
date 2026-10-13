@@ -38,8 +38,7 @@ export function GlossarySearch({ terms }: { terms: TermItem[] }) {
   const { lang, t } = useLanguage();
   const [query, setQuery] = useState('');
   const [activeFilter, setActiveFilter] = useState('all');
-  const { ids: saved, save, unsave } = useSavedTerms();
-  const [saveFailed, setSaveFailed] = useState<string | null>(null);
+  const { ids: saved, failed: saveFailed, save, unsave } = useSavedTerms();
   const [copied, setCopied] = useState<string | null>(null);
   const [allSubjects, setAllSubjects] = useState(false);
   const [speechError, setSpeechError] = useState<'en' | 'vi' | 'unsupported' | null>(null);
@@ -91,11 +90,7 @@ export function GlossarySearch({ terms }: { terms: TermItem[] }) {
 
   const savedCount = terms.filter((term) => saved.has(term.id)).length;
 
-  const toggleSaved = async (id: string) => {
-    setSaveFailed(null);
-    const done = saved.has(id) ? await unsave(id) : await save(id);
-    if (!done) setSaveFailed(id);
-  };
+  const toggleSaved = (id: string) => (saved.has(id) ? unsave(id) : save(id));
 
   const copyLink = async (id: string) => {
     const url = `${window.location.origin}${window.location.pathname}#${id}`;

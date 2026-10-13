@@ -6,9 +6,9 @@ import { GlossarySearch } from './GlossarySearch';
 vi.mock('@scipal/hooks', () => ({
   useLanguage: () => ({ lang: 'vi', t: (o: { en: string; vi: string }) => o.vi }),
 }));
-const store = vi.hoisted(() => ({ save: vi.fn(), unsave: vi.fn() }));
+const store = vi.hoisted(() => ({ failed: null as string | null, save: vi.fn(), unsave: vi.fn() }));
 vi.mock('./savedTerms', () => ({
-  useSavedTerms: () => ({ ids: new Set<string>(), signedIn: true, ready: true, save: store.save, unsave: store.unsave }),
+  useSavedTerms: () => ({ ids: new Set<string>(), failed: store.failed, signedIn: true, ready: true, save: store.save, unsave: store.unsave }),
 }));
 vi.mock('./pronunciation', () => ({ speakTerm: vi.fn(), warmSpeech: vi.fn() }));
 
@@ -30,11 +30,16 @@ describe('GlossarySearch word list', () => {
     expect(screen.getByRole('button', { name: /Sổ từ của tôi/ }).getAttribute('aria-pressed')).toBe('true');
   });
 
-  it('the bookmark saves through the store and reports a failure', async () => {
-    store.save.mockResolvedValue(false);
+  it('the bookmark saves through the store', () => {
     render(<GlossarySearch terms={[TERM]} />);
     fireEvent.click(screen.getByRole('button', { name: 'Lưu thuật toán' }));
     expect(store.save).toHaveBeenCalledWith('t1');
-    expect(await screen.findByText('Chưa lưu được. Thử lại nhé.')).toBeTruthy();
+  });
+
+  it("reports the store's failure on that term", () => {
+    store.failed = 't1';
+    render(<GlossarySearch terms={[TERM]} />);
+    store.failed = null;
+    expect(screen.getByText('Chưa lưu được. Thử lại nhé.')).toBeTruthy();
   });
 });

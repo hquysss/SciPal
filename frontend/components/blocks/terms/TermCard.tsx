@@ -2,7 +2,6 @@
 
 import { Media } from '@/components/media/Media';
 import Link from 'next/link';
-import { useState } from 'react';
 import { Bookmark, BookmarkCheck, Volume2 } from 'lucide-react';
 import { useSavedTerms } from '@/features/glossary/savedTerms';
 import type { LessonTerm } from './LessonTermsContext';
@@ -11,13 +10,8 @@ type Bilingual = { en: string; vi: string };
 
 /** A term's content: the popover body, and one entry of the end-of-lesson list (`compact`). */
 export function TermCard({ term, lang, compact = false, glossaryLink = true, saveable = true }: { term: LessonTerm; lang: 'en' | 'vi'; compact?: boolean; glossaryLink?: boolean; saveable?: boolean }) {
-  const { ids, save, unsave } = useSavedTerms();
-  const [failed, setFailed] = useState(false);
+  const { ids, failed, save, unsave } = useSavedTerms();
   const saved = ids.has(term.id);
-  const toggle = async () => {
-    setFailed(false);
-    if (!(saved ? await unsave(term.id) : await save(term.id))) setFailed(true);
-  };
   const t = (text: Bilingual) => text[lang];
   const name = lang === 'en' ? term.term_en : term.term_vi;
   const other = lang === 'en' ? term.term_vi : term.term_en;
@@ -61,7 +55,7 @@ export function TermCard({ term, lang, compact = false, glossaryLink = true, sav
           {saveable && (
             <button
               type="button"
-              onClick={() => void toggle()}
+              onClick={() => void (saved ? unsave(term.id) : save(term.id))}
               aria-pressed={saved}
               aria-label={saved ? t({ en: `Remove from my words: ${term.term_en}`, vi: `Bỏ khỏi sổ từ: ${term.term_vi}` }) : t({ en: `Save to my words: ${term.term_en}`, vi: `Lưu vào sổ từ: ${term.term_vi}` })}
               className={`inline-flex h-8 w-8 items-center justify-center rounded-full hover:bg-surface-sunken hover:text-ink focus-visible:outline focus-visible:outline-2 focus-visible:outline-focus ${saved ? 'text-action' : 'text-ink-muted'}`}
@@ -70,7 +64,7 @@ export function TermCard({ term, lang, compact = false, glossaryLink = true, sav
             </button>
           )}
         </div>
-        {failed && (
+        {saveable && failed === term.id && (
           <p role="status" className="text-sm font-semibold text-ink">
             {t({ en: 'Not saved. Try again.', vi: 'Chưa lưu được. Thử lại nhé.' })}
           </p>
