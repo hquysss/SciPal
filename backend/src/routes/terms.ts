@@ -204,7 +204,7 @@ export const termRoutes: FastifyPluginAsync = async (app) => {
     const failed = { error: 'Chưa lưu được lượt ôn.', error_en: 'The review could not be saved.' };
     const { data, error } = await supabase
       .from('user_terms')
-      .select('interval_days, ease, reps, lapses, due_at, terms(subject_id)')
+      .select('stability, difficulty, last_review, reps, lapses, due_at, terms(subject_id)')
       .eq('user_id', userId)
       .eq('term_id', termId)
       .maybeSingle();
@@ -215,7 +215,11 @@ export const termRoutes: FastifyPluginAsync = async (app) => {
     if (!data) return reply.code(404).send(missing);
     const row = data as ReviewState & { terms: unknown };
     const now = new Date();
-    const next = nextReview({ interval_days: row.interval_days, ease: row.ease, reps: row.reps, lapses: row.lapses }, grade as ReviewGrade, now);
+    const next = nextReview(
+      { stability: row.stability, difficulty: row.difficulty, last_review: row.last_review, reps: row.reps, lapses: row.lapses },
+      grade as ReviewGrade,
+      now,
+    );
     const { data: graded, error: saveError } = await supabase
       .from('user_terms')
       .update(next)
