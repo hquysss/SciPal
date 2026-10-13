@@ -1125,3 +1125,5 @@ $$;
 \ir billing_interval_cases.sql
 
 \ir tutor_token_cases.sql
+
+\ir user_terms_cases.sql
