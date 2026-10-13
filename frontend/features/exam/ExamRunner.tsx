@@ -9,6 +9,7 @@ import type { ExamSection } from '@scipal/types';
 import { AnswerPalette, type AnswerPaletteSection } from './AnswerPalette';
 import { forgetExamAttempt, startExamAttempt } from './examAttempt';
 import { ExamStart } from './ExamStart';
+import { useShuffledOptions } from '../../lib/useShuffledOptions';
 import { createBrowserClient } from '../../lib/supabase';
 import { Alert } from '../../components/ui/alert';
 import { buttonVariants } from '../../components/ui/button';
@@ -347,6 +348,7 @@ export function ExamRunner({
   }, [timeLeft, result, started, handleSubmit]);
 
   const currentQ = questions[currentIndex];
+  const shuffledOptions = useShuffledOptions(currentQ?.id ?? '', currentQ && currentQ.type !== 'truefalse' && currentQ.type !== 'short' ? (currentQ.data.options ?? []) : []);
   const place = places[currentIndex] ?? null;
   const pick = (text: Bilingual) => pickText(text, lang);
   const minutes = Math.floor(Math.max(0, timeLeft) / 60);
@@ -547,7 +549,7 @@ export function ExamRunner({
 
             {/* Options list */}
             <div className="grid gap-2 md:grid-cols-2">
-              {(currentQ.type === 'truefalse' || currentQ.type === 'short' ? [] : currentQ.data.options ?? []).map((opt, optIndex) => {
+              {shuffledOptions.map((opt, optIndex) => {
                 const letter = String.fromCharCode(65 + optIndex);
                 const isSelected = answers[currentIndex]?.option === opt.id;
                 return (

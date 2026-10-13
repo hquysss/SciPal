@@ -50,7 +50,8 @@ export function LessonPartsView({ blocks, completion, part, sheet, lang, practic
     lesson: parts.lesson,
     practice: parts.practice,
   };
-  const present = STEPS.filter((p) => steps[p].length > 0);
+  // The learner's page always shows Tự luyện (an empty one says it is not ready); the editor decides by blocks.
+  const present = STEPS.filter((p) => steps[p].length > 0 || (p === 'practice' && !!lessonId));
   const [active, setActive] = useState<Step>(present[0] ?? 'lesson');
   const step = present.includes(active) ? active : (present[0] ?? 'lesson');
   const shownBlocks = part ? parts[part] : steps[step];
