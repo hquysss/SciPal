@@ -20,10 +20,11 @@ export type LessonTerm = {
   image_alt_en: string | null;
   image_alt_vi: string | null;
   image_credit: string | null;
+  ipa: string | null;
 };
 
 const COLUMNS =
-  'id, kind, term_en, term_vi, part_of_speech, definition_en, definition_vi, example_en, example_vi, audio_url, image_url, image_alt_en, image_alt_vi, image_credit';
+  'id, kind, term_en, term_vi, part_of_speech, definition_en, definition_vi, example_en, example_vi, audio_url, image_url, image_alt_en, image_alt_vi, image_credit, ipa';
 
 type LessonTerms = { terms: Map<string, LessonTerm>; loaded: boolean; lang: 'en' | 'vi' };
 

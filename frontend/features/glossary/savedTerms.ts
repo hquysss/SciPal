@@ -56,14 +56,15 @@ async function moveLocalUp(local: Set<string>): Promise<boolean> {
 function load(): Promise<void> {
   const mine = ++generation;
   loading = (async () => {
-    const supabase = createBrowserClient();
+    let supabase: ReturnType<typeof createBrowserClient> | null = null;
     let signedIn = false;
     try {
+      supabase = createBrowserClient();
       signedIn = !!(await supabase.auth.getSession()).data.session;
     } catch {
-      /* treated as a guest */
+      /* no client or no session: treated as a guest */
     }
-    if (!signedIn) {
+    if (!supabase || !signedIn) {
       if (mine === generation) set({ ids: readLocal(), signedIn: false, ready: true });
       return;
     }
@@ -81,10 +82,14 @@ function subscribe(listener: () => void) {
   listeners.add(listener);
   if (!loading) {
     void load();
-    const { data } = createBrowserClient().auth.onAuthStateChange((event) => {
-      if (event === 'SIGNED_IN' || event === 'SIGNED_OUT') void load();
-    });
-    unsubscribeAuth = () => data.subscription.unsubscribe();
+    try {
+      const { data } = createBrowserClient().auth.onAuthStateChange((event) => {
+        if (event === 'SIGNED_IN' || event === 'SIGNED_OUT') void load();
+      });
+      unsubscribeAuth = () => data.subscription.unsubscribe();
+    } catch {
+      /* no client: stays a guest list */
+    }
   }
   return () => {
     listeners.delete(listener);

@@ -27,6 +27,7 @@ export function noteAsTerm(key: string, note: Notes[string]): LessonTerm {
     image_alt_vi: note.image?.alt.vi ?? null,
     image_alt_en: note.image?.alt.en.trim() || note.image?.alt.vi || null,
     image_credit: null,
+    ipa: null,
   };
 }
 

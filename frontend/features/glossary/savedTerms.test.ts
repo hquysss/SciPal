@@ -4,18 +4,22 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mocks = vi.hoisted(() => ({
   session: null as null | { access_token: string },
+  broken: false,
   rows: [] as Array<{ term_id: string }>,
   call: vi.fn(),
 }));
 
 vi.mock('@scipal/supabase', () => ({
-  createBrowserClient: () => ({
+  createBrowserClient: () => {
+    if (mocks.broken) throw new Error('no Supabase URL');
+    return {
     auth: {
       getSession: async () => ({ data: { session: mocks.session } }),
       onAuthStateChange: () => ({ data: { subscription: { unsubscribe: () => {} } } }),
     },
     from: () => ({ select: async () => ({ data: mocks.rows, error: null }) }),
-  }),
+    };
+  },
 }));
 vi.mock('@/features/authoring/apiClient', () => ({ authoringCall: mocks.call }));
 
@@ -35,6 +39,7 @@ beforeEach(() => {
   resetSavedTermsForTest();
   window.localStorage.clear();
   mocks.session = null;
+  mocks.broken = false;
   mocks.rows = [];
   mocks.call.mockReset();
 });
@@ -53,6 +58,12 @@ describe('useSavedTerms', () => {
     expect(result.current.ids.has('a')).toBe(true);
     expect(result.current.signedIn).toBe(false);
     expect(mocks.call).not.toHaveBeenCalled();
+  });
+
+  it('without a Supabase client it works as a guest list', async () => {
+    mocks.broken = true;
+    const { result } = await ready();
+    expect(result.current.signedIn).toBe(false);
   });
 
   it('a signed-in learner reads the list from the server', async () => {
