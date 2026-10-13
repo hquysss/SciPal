@@ -61,6 +61,16 @@ describe('writing glossary terms', () => {
     await app.close();
   });
 
+  it('keeps the IPA without slashes', async () => {
+    const insert = mockQuery({ data: { id: TERM_ID, status: 'published' }, error: null });
+    const app = await build(admin, { terms: insert });
+    const res = await app.inject({ method: 'POST', url: '/api/authoring/terms', payload: { ...valid, ipa: ' /ˈæl.ɡə.rɪ.ðəm/ ' } });
+    expect(res.statusCode).toBe(201);
+    expect((insert.inserted[0] as { ipa: string }).ipa).toBe('ˈæl.ɡə.rɪ.ðəm');
+    expect((await app.inject({ method: 'POST', url: '/api/authoring/terms', payload: { ...valid, ipa: 'a'.repeat(81) } })).statusCode).toBe(400);
+    await app.close();
+  });
+
   it('only staff can write terms', async () => {
     const app = await build(student, { terms: mockQuery({ data: null, error: null }) });
     expect((await app.inject({ method: 'POST', url: '/api/authoring/terms', payload: valid })).statusCode).toBe(403);

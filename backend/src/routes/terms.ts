@@ -15,9 +15,11 @@ const ID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const TERM_MAX = 120;
 const TEXT_MAX = 1000;
 const BATCH_MAX = 200;
+const IPA_MAX = 80;
+const SAVE_MAX = 200;
 
 const COLUMNS =
-  'id, subject_id, term_en, term_vi, part_of_speech, definition_en, definition_vi, example_en, example_vi, kind, image_url, image_alt_en, image_alt_vi, image_credit, status, created_by, review_note, reviewed_at, created_at, subjects(slug, name_en, name_vi)';
+  'id, subject_id, term_en, term_vi, part_of_speech, definition_en, definition_vi, example_en, example_vi, ipa, kind, image_url, image_alt_en, image_alt_vi, image_credit, status, created_by, review_note, reviewed_at, created_at, subjects(slug, name_en, name_vi)';
 const KINDS = ['word', 'place'] as const;
 const CREDIT_MAX = 200;
 
@@ -52,6 +54,7 @@ type TermInput = {
   image_alt_en: string | null;
   image_alt_vi: string | null;
   image_credit: string | null;
+  ipa: string | null;
 };
 
 /**
@@ -92,6 +95,9 @@ function readTerm(body: Record<string, unknown>, imageBase: string | null): { te
     }
   }
   if (credit.length > CREDIT_MAX) return { error: 'Nguồn ảnh tối đa 200 ký tự.', error_en: 'The image credit is up to 200 characters.' };
+  // Written with or without the slashes; stored without them.
+  const ipa = text(body.ipa).replace(/^\/+|\/+$/g, '').trim();
+  if (ipa.length > IPA_MAX) return { error: 'IPA tối đa 80 ký tự.', error_en: 'IPA is up to 80 characters.' };
   return {
     term: {
       subject_id: subjectId,
@@ -107,6 +113,7 @@ function readTerm(body: Record<string, unknown>, imageBase: string | null): { te
       image_alt_en: imageUrl ? altEn : null,
       image_alt_vi: imageUrl ? altVi : null,
       image_credit: imageUrl && credit ? credit : null,
+      ipa: ipa || null,
     },
   };
 }
@@ -126,6 +133,54 @@ export const termRoutes: FastifyPluginAsync = async (app) => {
       return reply.code(403).send({ error: 'Chỉ admin mới duyệt được thuật ngữ.', error_en: 'Only admins can review terms.' });
     }
   };
+
+  const requireUser = async (request: FastifyRequest, reply: FastifyReply) => {
+    if (!getUser(request)?.id) return reply.code(401).send({ error: 'Hãy đăng nhập để lưu sổ từ.', error_en: 'Sign in to keep your word list.' });
+  };
+
+  // The learner's word list. Ids that are not published terms of a live subject are skipped without
+  // an error (a list kept in a browser may name terms removed since); saving one twice is a no-op.
+  app.post('/api/me/terms', { preHandler: [requireUser] }, async (request, reply) => {
+    const supabase = app.supabase;
+    if (!supabase) return reply.code(503).send(unavailable);
+    const ids = ((request.body ?? {}) as { term_ids?: unknown }).term_ids;
+    if (!Array.isArray(ids) || ids.length === 0 || ids.length > SAVE_MAX || !ids.every((id) => typeof id === 'string' && ID.test(id))) {
+      return reply.code(400).send({ error: `Gửi từ 1 đến ${SAVE_MAX} thuật ngữ mỗi lượt.`, error_en: `Send 1 to ${SAVE_MAX} terms at a time.` });
+    }
+    const failed = { error: 'Chưa lưu được sổ từ.', error_en: 'The word list could not be saved.' };
+    const { data, error } = await supabase.from('terms').select('id, subjects!inner(archived_at)').in('id', [...new Set(ids as string[])]).eq('status', 'published');
+    if (error) {
+      request.log.error({ err: error }, 'Word list term check failed');
+      return reply.code(500).send(failed);
+    }
+    const saved = ((data ?? []) as Array<{ id: string; subjects: unknown }>)
+      .filter((row) => !isSubjectArchived(one(row.subjects as { archived_at?: string | null } | null)))
+      .map((row) => row.id);
+    if (saved.length > 0) {
+      const userId = getUser(request)!.id!;
+      const { error: saveError } = await supabase
+        .from('user_terms')
+        .upsert(saved.map((term_id) => ({ user_id: userId, term_id })), { onConflict: 'user_id,term_id', ignoreDuplicates: true });
+      if (saveError) {
+        request.log.error({ err: saveError }, 'Word list save failed');
+        return reply.code(500).send(failed);
+      }
+    }
+    return reply.send({ saved });
+  });
+
+  app.delete('/api/me/terms/:termId', { preHandler: [requireUser] }, async (request, reply) => {
+    const supabase = app.supabase;
+    if (!supabase) return reply.code(503).send(unavailable);
+    const { termId } = request.params as { termId: string };
+    if (!ID.test(termId)) return reply.code(204).send();
+    const { error } = await supabase.from('user_terms').delete().eq('user_id', getUser(request)!.id!).eq('term_id', termId);
+    if (error) {
+      request.log.error({ err: error }, 'Word list delete failed');
+      return reply.code(500).send({ error: 'Chưa bỏ được thuật ngữ khỏi sổ từ.', error_en: 'The term could not be removed from your word list.' });
+    }
+    return reply.code(204).send();
+  });
 
   app.post('/api/authoring/terms', { preHandler: [requireStaff] }, async (request, reply) => {
     const supabase = app.supabase;
