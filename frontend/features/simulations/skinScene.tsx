@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useRef, useState, type RefObject, type ReactNode } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type RefObject, type ReactNode } from 'react';
 import { Eye, EyeOff, Maximize2, Minimize2, Minus, Plus, RotateCcw, X } from 'lucide-react';
 import { Canvas, useThree } from '@react-three/fiber';
 import * as THREE from 'three';
@@ -19,10 +19,11 @@ import { pick, type Bilingual, type Lang } from './types';
 import overlay from './simOverlay.module.css';
 import styles from './skin.module.css';
 
-const TOKENS = { background: '--skin-background', artery: '--skin-artery', nerve: '--skin-nerve', signal: '--skin-signal', motor: '--skin-motor', broken: '--skin-broken', tool: '--skin-tool', ice: '--skin-ice', hot: '--skin-hot', thorn: '--skin-thorn', bone: '--skin-bone', muscle: '--skin-muscle', cord: '--skin-cord', grey: '--skin-grey', white: '--skin-white' } as const;
+const TOKENS = { background: '--skin-background', artery: '--skin-artery', nerve: '--skin-nerve', signal: '--skin-signal', motor: '--skin-motor', broken: '--skin-broken', tool: '--skin-tool', ice: '--skin-ice', hot: '--skin-hot', thorn: '--skin-thorn', highlight: '--skin-highlight', bone: '--skin-bone', muscle: '--skin-muscle', cord: '--skin-cord', grey: '--skin-grey', white: '--skin-white' } as const;
 const HOMES = { receptors: { theta: -Math.PI / 2 + 0.35, phi: 0.18, dist: 15 }, reflex: { theta: -Math.PI / 2 + 0.45, phi: 0.08, dist: 14 } } as const;
 
-type Anchor = { readonly key: string; readonly text: Bilingual; readonly note: Bilingual; readonly point: Point3; readonly label: Point3 };
+/** `zoom` is how close the camera comes when the label is chosen. */
+type Anchor = { readonly key: string; readonly text: Bilingual; readonly note: Bilingual; readonly point: Point3; readonly label: Point3; readonly zoom?: number };
 // Source units → scene units, as in scripts/assets/build-skin.mjs.
 const scene = (x: number, y: number, z: number): Point3 => [(x + 1320) / 300, (y + 11) / 300, (z - 215) / 300];
 const PART_POINTS: Record<SkinPart, Point3> = {
@@ -49,7 +50,8 @@ const ANCHORS: readonly Anchor[] = [
 const REFLEX_POINTS: Record<ReflexPart, Point3> = { receptor: A.fingertip, afferent: A.sensory[5]!.at, centre: SLICE_AT, efferent: A.motor[A.motor.length - 3]!.at, effector: A.biceps };
 const REFLEX_LABELS: Record<ReflexPart, Point3> = { receptor: [-4.2, -3.0, 1.2], afferent: [-4.2, -1.4, 1.2], effector: [-4.2, 0.6, 1.2], efferent: [-4.2, 2.0, 1.2], centre: [4.4, -1.6, 1.2] };
 const REFLEX_ANCHORS: readonly Anchor[] = [
-  ...REFLEX_PARTS.map((part, i): Anchor => ({ key: part, text: { vi: `${i + 1}. ${REFLEX_COPY[part].title.vi}`, en: `${i + 1}. ${REFLEX_COPY[part].title.en}` }, note: REFLEX_COPY[part].here, point: REFLEX_POINTS[part], label: REFLEX_LABELS[part] })),
+  ...REFLEX_PARTS.map((part, i): Anchor => ({ key: part, text: { vi: `${i + 1}. ${REFLEX_COPY[part].title.vi}`, en: `${i + 1}. ${REFLEX_COPY[part].title.en}` }, note: REFLEX_COPY[part].here, point: REFLEX_POINTS[part], label: REFLEX_LABELS[part], zoom: part === 'centre' ? 4.2 : 6 })),
+  { key: 'slice', text: { vi: 'Lát cắt tuỷ sống C7 (phóng to ×9)', en: 'Spinal cord slice at C7 (×9)' }, note: { vi: 'Mặt cắt ngang tuỷ sống ở đốt cổ thứ 7, phóng to 9 lần. Chất xám hình chữ H ở giữa: sừng sau (phía trên) nhận xung từ rễ sau và hạch gai, sừng trước (phía dưới) chứa neuron vận động, gửi xung ra rễ trước. Chất trắng bao quanh.', en: 'A cross-section of the spinal cord at the seventh neck vertebra, enlarged 9 times. The H-shaped grey matter: the posterior horn (top) receives impulses from the dorsal root and ganglion; the anterior horn (bottom) holds motor neurons that send impulses out of the ventral root. White matter surrounds it.' }, point: SLICE_AT, label: [4.6, 1.1, 1.2], zoom: 4.2 },
   { key: 'brain', text: { vi: 'Não', en: 'Brain' }, note: { vi: 'Một số neuron trung gian chuyển thông tin lên não gây cảm giác đau. Thông tin tới não sau khi tay đã rụt lại.', en: 'Some interneurons pass the news up to the brain, which then feels the pain. It arrives after the hand has already pulled back.' }, point: A.brain, label: [3.4, 4.6, 0.6] },
 ];
 
@@ -93,7 +95,7 @@ export type SkinSceneProps = {
 
 export function SkinScene({ view, stimulus, intensity, appliedAt, reflexStimulus, reflexStartedAt, broken, labels: showLabels, time, running, stamp, lang, panel }: SkinSceneProps) {
   const t = pick(lang);
-  const { host, orbit, target, fieldOfView, invalidate, handlers, reset, zoom } = useReflexCamera(HOMES[view]);
+  const { host, orbit, target, fieldOfView, invalidate, handlers, reset, zoom, focus } = useReflexCamera(HOMES[view]);
   const panelHost = useRef<HTMLDivElement>(null);
   const [panelVisible, setPanelVisible] = useState(true);
   const frame = useReflexFrame(host, panelHost, panelVisible);
@@ -101,7 +103,14 @@ export function SkinScene({ view, stimulus, intensity, appliedAt, reflexStimulus
   const palette = usePalette(host, TOKENS);
   const store = useRef(new Map<string, HTMLSpanElement>());
   const [selected, setSelected] = useState<Anchor | null>(null);
-  useEffect(() => setSelected(null), [view]);
+  const [hovered, setHovered] = useState<string | null>(null);
+  useEffect(() => { setSelected(null); setHovered(null); }, [view]);
+  const highlight = hovered ?? selected?.key ?? null;
+  useEffect(() => { if (host.current) host.current.style.cursor = hovered ? 'pointer' : ''; }, [hovered, host]);
+  const choose = (a: Anchor) => { setSelected(a); setHovered(null); setPanelVisible(true); focus(a.point, a.zoom ?? 6); };
+  const pickPart = useCallback((key: string) => { const a = (view === 'reflex' ? REFLEX_ANCHORS : ANCHORS).find((anchor) => anchor.key === key); if (a) choose(a); },
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- choose only reads setters and the camera
+    [view]);
   const flat = view === 'reflex';
   const anchors = useMemo(() => (!showLabels ? [] : flat ? REFLEX_ANCHORS : ANCHORS), [showLabels, flat]);
   const points = useMemo(() => anchors.map((a): [string, THREE.Vector3] => [a.key, new THREE.Vector3(...a.label)]), [anchors]);
@@ -124,11 +133,11 @@ export function SkinScene({ view, stimulus, intensity, appliedAt, reflexStimulus
         <ambientLight intensity={1.1} />
         <directionalLight position={[-3, 6, 8]} intensity={1.8} />
         <directionalLight position={[4, 2, -5]} intensity={0.8} />
-        {flat ? <SkinArm palette={palette} time={time} startedAt={reflexStartedAt} broken={broken} stimulus={reflexStimulus} /> : <SkinBody palette={palette} clock={{ time }} stimulus={stimulus} intensity={intensity} appliedAt={appliedAt} />}
+        {flat ? <SkinArm palette={palette} time={time} startedAt={reflexStartedAt} broken={broken} stimulus={reflexStimulus} highlight={highlight} onHover={setHovered} onPick={pickPart} /> : <SkinBody palette={palette} clock={{ time }} stimulus={stimulus} intensity={intensity} appliedAt={appliedAt} highlight={highlight} onHover={setHovered} onPick={pickPart} />}
         {anchors.map((a) => <Rod key={a.key} from={a.point} to={a.label} radius={0.008} color={palette.white} opacity={0.5} />)}
         <Fit right={frame.right} bottom={frame.bottom} fieldOfView={fieldOfView} />
         <Rig orbit={orbit} target={target} labels={store} points={points} onInvalidate={(fn) => { invalidate.current = fn; }} />
-        <Refresh stamp={stamp} deps={`${view}-${stimulus}-${intensity}-${appliedAt}-${reflexStartedAt}-${[...broken].join()}-${reflexStimulus}`} />
+        <Refresh stamp={stamp} deps={`${highlight}-${view}-${stimulus}-${intensity}-${appliedAt}-${reflexStartedAt}-${[...broken].join()}-${reflexStimulus}`} />
       </Canvas>}
       <div className={styles.toolbar} onPointerDown={(event) => event.stopPropagation()} onKeyDown={(event) => event.stopPropagation()}>
         <span className={styles.title}>{t(title)}</span>
@@ -144,7 +153,7 @@ export function SkinScene({ view, stimulus, intensity, appliedAt, reflexStimulus
           ))}
         </div>
       </div>
-      {anchors.map((a) => <span key={a.key} className={styles.label} ref={(el) => { if (el) store.current.set(a.key, el); else store.current.delete(a.key); }}><button type="button" className={`${overlay.chip} ${styles.labelButton}`} aria-pressed={selected?.key === a.key} onPointerDown={(event) => event.stopPropagation()} onKeyDown={(event) => event.stopPropagation()} onClick={() => { setSelected(a); setPanelVisible(true); }}>{t(a.text)}</button></span>)}
+      {anchors.map((a) => <span key={a.key} className={styles.label} ref={(el) => { if (el) store.current.set(a.key, el); else store.current.delete(a.key); }}><button type="button" className={`${overlay.chip} ${styles.labelButton}`} aria-pressed={selected?.key === a.key} onPointerDown={(event) => event.stopPropagation()} onKeyDown={(event) => event.stopPropagation()} onPointerEnter={() => setHovered(a.key)} onPointerLeave={() => setHovered(null)} onFocus={() => setHovered(a.key)} onBlur={() => setHovered(null)} onClick={() => choose(a)}>{t(a.text)}</button></span>)}
       {panelVisible && <div ref={panelHost} className={`${overlay.card} ${styles.panel}`} role="region" aria-label={t({ vi: 'Bảng điều khiển da và cảm giác', en: 'Skin and senses controls' })} onPointerDown={(event) => event.stopPropagation()} onKeyDown={(event) => event.stopPropagation()}>
         {panel}
       </div>}

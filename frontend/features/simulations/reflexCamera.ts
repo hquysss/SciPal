@@ -25,6 +25,8 @@ export function useReflexCamera(home: Orbit) {
     return () => window.removeEventListener('blur', clear);
   }, []);
   const reset = () => { target.set(0, 0.15, 0); base.reset(); };
+  /** Looks at `point` from `dist` away, keeping the current direction. */
+  const focus = (point: readonly [number, number, number], dist: number) => { target.set(...point); base.move({ dist }); };
   const end = (event: PointerEvent<HTMLDivElement>) => {
     if (rightDrag.current?.id === event.pointerId) rightDrag.current = null;
     base.handlers.onPointerUp(event);
@@ -58,5 +60,5 @@ export function useReflexCamera(home: Orbit) {
       else base.handlers.onKeyDown(event);
     },
   };
-  return { ...base, target, fieldOfView, reset, handlers };
+  return { ...base, target, fieldOfView, reset, focus, handlers };
 }

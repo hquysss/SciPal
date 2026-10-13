@@ -6,15 +6,16 @@ import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { DRACOLoader } from 'three/addons/loaders/DRACOLoader.js';
 import { reflexState, type ReflexPart } from './engines/skin';
+import { paintHighlight, pickHandlers, type Picking } from './skinHighlight';
 import { ARM_LANDMARKS as A } from './skinArmLandmarks';
 import type { ReflexStimulus } from './skinCopy';
-import type { Point3 } from './kneeReflexParts';
+import { Rod, type Point3 } from './kneeReflexParts';
 
 // The withdrawal reflex on a real arm (public/models/skin/arm.glb): the impulse runs from the fingertip up
 // the median nerve to the spinal cord, crosses to a motor neuron and comes back down the musculocutaneous
 // nerve to the biceps, which bends the elbow. A slice of the cord at C7 is shown enlarged beside the neck.
 
-export type ArmPalette = Readonly<Record<'bone' | 'muscle' | 'nerve' | 'signal' | 'motor' | 'broken' | 'cord' | 'grey' | 'thorn' | 'hot' | 'white', string>>;
+export type ArmPalette = Readonly<Record<'bone' | 'muscle' | 'nerve' | 'signal' | 'motor' | 'broken' | 'cord' | 'grey' | 'thorn' | 'hot' | 'highlight' | 'white', string>>;
 
 const decoder = new DRACOLoader().setDecoderPath('/models/draco/').setWorkerLimit(2);
 /** Elbow flexion at the end of the withdrawal, radians (negative turns the forearm forward). */
@@ -43,9 +44,19 @@ const bendPoint = (p: Point3, weight: number, angle: number, out: THREE.Vector3)
 };
 const smoothstep = (a: number, b: number, x: number) => { const t = Math.min(1, Math.max(0, (x - a) / (b - a))); return t * t * (3 - 2 * t); };
 const weightAt = (y: number) => 1 - smoothstep(A.elbow[1] - 0.12, A.elbow[1] + 0.12, y);
-const toSlice = (p: Point3) => new THREE.Vector3(...p).sub(new THREE.Vector3(...A.slice)).applyEuler(SLICE_TURN).multiplyScalar(ENLARGE).add(new THREE.Vector3(...SLICE_AT));
+/** A point of the cord in the coordinates of the enlarged slice, which always faces the viewer. */
+const toSlice = (p: Point3) => new THREE.Vector3(...p).sub(new THREE.Vector3(...A.slice)).applyEuler(SLICE_TURN).multiplyScalar(ENLARGE);
 
 const COLOURS: Record<string, keyof ArmPalette> = { bone: 'bone', spine: 'bone', biceps: 'muscle', flexor: 'muscle', sensory: 'nerve', motor: 'motor', plexus: 'nerve', dorsalRoot: 'nerve', ventralRoot: 'motor', cord: 'cord', posteriorHorn: 'grey', anteriorHorn: 'grey' };
+/** The reflex part (the scene's label key) each part of the model belongs to; bones, the plexus and the vertebrae have none. */
+const keyOf = (part: string, name: string): string | undefined => {
+  if (part.startsWith('slice-')) return 'slice';
+  if (part === 'sensory') return /digital/i.test(name) ? 'receptor' : 'afferent';
+  return ({ dorsalRoot: 'afferent', posteriorHorn: 'centre', anteriorHorn: 'centre', cord: 'centre', motor: 'efferent', ventralRoot: 'efferent', biceps: 'effector' } as Record<string, string>)[part];
+};
+/** What else lights a slice part: the reflex part it shows. */
+const SLICE_ALSO: Record<string, readonly string[]> = { 'slice-dorsalRoot': ['afferent'], 'slice-posteriorHorn': ['centre'], 'slice-anteriorHorn': ['centre'], 'slice-cord': ['centre'], 'slice-ventralRoot': ['efferent'] };
+const BEHIND: ReadonlySet<string> = new Set(['centre']);
 const OPACITY: Record<string, number> = { spine: 0.35, cord: 0.45, flexor: 0.55, biceps: 0.85 };
 
 function useArm(palette: ArmPalette, uniforms: Uniforms) {
@@ -64,6 +75,9 @@ function useArm(palette: ArmPalette, uniforms: Uniforms) {
       if (!inSlice) bendable(material, uniforms);
       if (part === 'biceps' && !inSlice) biceps.push(material);
       const mesh = new THREE.Mesh(child.geometry, material);
+      const key = keyOf(raw, child.name);
+      if (key) mesh.userData.key = key;
+      if (SLICE_ALSO[raw]) mesh.userData.also = SLICE_ALSO[raw];
       mesh.renderOrder = opacity !== undefined && opacity < 1 ? 2 : 0;
       (inSlice ? slice : main).add(mesh);
     }
@@ -90,9 +104,11 @@ function tubeWithBend(points: readonly THREE.Vector3[], radius: number) {
   return geometry;
 }
 
-type Props = { readonly palette: ArmPalette; readonly time: RefObject<number>; readonly startedAt: number | null; readonly broken: ReadonlySet<ReflexPart>; readonly stimulus: ReflexStimulus };
+type Props = Picking & { readonly palette: ArmPalette; readonly time: RefObject<number>; readonly startedAt: number | null; readonly broken: ReadonlySet<ReflexPart>; readonly stimulus: ReflexStimulus };
 
-export function SkinArm({ palette, time, startedAt, broken, stimulus }: Props) {
+export function SkinArm({ palette, time, startedAt, broken, stimulus, highlight, onHover, onPick }: Props) {
+  const lit = useMemo(() => new THREE.Color(palette.highlight), [palette.highlight]);
+  const handlers = useMemo(() => pickHandlers({ highlight, onHover, onPick }, BEHIND), [highlight, onHover, onPick]);
   const uniforms = useMemo<Uniforms>(() => ({ uBendAngle: { value: 0 }, uElbow: { value: ELBOW.clone() } }), []);
   const arm = useArm(palette, uniforms);
   const tubes = useMemo(() => {
@@ -122,6 +138,7 @@ export function SkinArm({ palette, time, startedAt, broken, stimulus }: Props) {
   const dot = useRef<THREE.Mesh>(null);
   const brainDot = useRef<THREE.Mesh>(null);
   const sliceDot = useRef<THREE.Mesh>(null);
+  const sliceFrame = useRef<THREE.Group>(null);
   const fingertip = useRef<THREE.Mesh>(null);
   const brain = useRef<THREE.Mesh>(null);
   const scratch = useMemo(() => new THREE.Vector3(), []);
@@ -133,7 +150,10 @@ export function SkinArm({ palette, time, startedAt, broken, stimulus }: Props) {
   }, [curves]);
   const motorInSlice = useMemo(() => new THREE.CatmullRomCurve3(A.motor.slice(0, 2).map((p) => new THREE.Vector3(...p.at))).getLength() / curves.motor.getLength(), [curves]);
 
-  useFrame(() => {
+  useFrame(({ camera }) => {
+    paintHighlight(arm.main, highlight, lit);
+    paintHighlight(arm.slice, highlight, lit);
+    sliceFrame.current?.quaternion.copy(camera.quaternion);
     const state = reflexState(startedAt === null ? -1 : time.current - startedAt, broken);
     const angle = FLEX * state.withdrawal;
     uniforms.uBendAngle.value = angle;
@@ -168,26 +188,40 @@ export function SkinArm({ palette, time, startedAt, broken, stimulus }: Props) {
       (fingertip.current.material as THREE.MeshBasicMaterial).color.set(broken.has('receptor') ? palette.broken : palette.signal);
       (fingertip.current.material as THREE.MeshBasicMaterial).opacity = broken.has('receptor') ? 0.9 : 0.35 + 0.6 * lit;
     }
-    if (brain.current) (brain.current.material as THREE.MeshStandardMaterial).emissiveIntensity = state.felt ? 0.9 : 0.05;
+    if (brain.current) {
+      const material = brain.current.material as THREE.MeshStandardMaterial;
+      material.emissive.set(state.felt ? palette.signal : palette.highlight);
+      material.emissiveIntensity = state.felt ? 0.9 : highlight === 'brain' ? 0.5 : 0.05;
+    }
     const squeeze = p.effector > 0 && !state.blockedAt ? Math.sin(Math.min(1, p.effector) * Math.PI) : 0;
-    for (const material of arm.biceps) material.emissive.set(broken.has('effector') ? palette.broken : palette.motor).multiplyScalar(broken.has('effector') ? 0.6 : squeeze * 0.8);
+    // The contraction (or a damaged muscle) shows over the highlight.
+    if (squeeze > 0 || broken.has('effector')) for (const material of arm.biceps) { material.emissive.set(broken.has('effector') ? palette.broken : palette.motor).multiplyScalar(broken.has('effector') ? 0.6 : squeeze * 0.8); material.emissiveIntensity = 1; }
+    if (fingertip.current && highlight === 'receptor' && !broken.has('receptor')) { (fingertip.current.material as THREE.MeshBasicMaterial).color.set(palette.highlight); (fingertip.current.material as THREE.MeshBasicMaterial).opacity = 0.75; }
   });
 
   const [fx, fy, fz] = A.fingertip;
   return <group>
-    <primitive object={arm.main} />
-    {tubes.main.map((mesh, i) => <primitive key={`m${i}`} object={mesh} />)}
-    <group position={[...SLICE_AT]} rotation={SLICE_TURN} scale={ENLARGE}>
-      <group position={[-A.slice[0], -A.slice[1], -A.slice[2]]}><primitive object={arm.slice} /></group>
+    <group {...handlers}>
+      <primitive object={arm.main} />
     </group>
-    {tubes.slice.map((mesh, i) => <primitive key={`s${i}`} object={mesh} />)}
-    <mesh ref={brain} position={[...A.brain]} scale={[0.55, 0.48, 0.65]}>
+    {tubes.main.map((mesh, i) => <primitive key={`m${i}`} object={mesh} />)}
+    {/* The C7 slice, enlarged and turned to face the viewer, joined to the cord by a line. */}
+    <Rod from={A.cord} to={SLICE_AT} radius={0.012} color={palette.white} opacity={0.45} />
+    <group ref={sliceFrame} position={[...SLICE_AT]}>
+      <mesh position={[-0.7, 0, -0.6]}><circleGeometry args={[1.65, 48]} /><meshBasicMaterial color={palette.white} transparent opacity={0.07} depthWrite={false} /></mesh>
+      <mesh position={[-0.7, 0, -0.6]}><ringGeometry args={[1.62, 1.68, 64]} /><meshBasicMaterial color={palette.white} transparent opacity={0.5} depthWrite={false} /></mesh>
+      <group rotation={SLICE_TURN} scale={ENLARGE}>
+        <group position={[-A.slice[0], -A.slice[1], -A.slice[2]]} {...handlers}><primitive object={arm.slice} /></group>
+      </group>
+      {tubes.slice.map((mesh, i) => <primitive key={`s${i}`} object={mesh} />)}
+      <mesh ref={sliceDot} visible={false} renderOrder={8}><sphereGeometry args={[0.12, 14, 10]} /><meshBasicMaterial color={palette.white} toneMapped={false} depthTest={false} /></mesh>
+    </group>
+    <mesh ref={brain} position={[...A.brain]} userData={{ key: 'brain' }} {...handlers} scale={[0.55, 0.48, 0.65]}>
       <sphereGeometry args={[1, 32, 20]} />
       <meshStandardMaterial color={palette.bone} emissive={palette.signal} emissiveIntensity={0.05} transparent opacity={0.3} depthWrite={false} roughness={0.6} />
     </mesh>
     <mesh ref={fingertip} position={[fx, fy, fz]}><sphereGeometry args={[0.12, 16, 12]} /><meshBasicMaterial color={palette.signal} transparent opacity={0.35} depthWrite={false} toneMapped={false} /></mesh>
     <mesh ref={dot} visible={false} renderOrder={8}><sphereGeometry args={[0.11, 14, 10]} /><meshBasicMaterial color={palette.white} toneMapped={false} depthTest={false} /></mesh>
-    <mesh ref={sliceDot} visible={false} renderOrder={8}><sphereGeometry args={[0.12, 14, 10]} /><meshBasicMaterial color={palette.white} toneMapped={false} depthTest={false} /></mesh>
     <mesh ref={brainDot} visible={false} renderOrder={8}><sphereGeometry args={[0.09, 14, 10]} /><meshBasicMaterial color={palette.white} toneMapped={false} depthTest={false} /></mesh>
     {/* The stimulus just under the fingertip; it stays where it is when the hand pulls away. */}
     {stimulus === 'pain'
