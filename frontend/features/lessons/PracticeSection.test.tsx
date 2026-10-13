@@ -6,6 +6,8 @@ import { PracticeSection, practiceSummary, responseOf, withResult, type Practice
 
 vi.mock('@scipal/hooks', () => ({ useLanguage: () => ({ lang: 'vi', t: (o: { vi: string }) => o.vi }) }));
 vi.mock('../../lib/supabase', () => ({ createBrowserClient: () => ({}) }));
+vi.mock('../../lib/session', () => ({ getAccessToken: async () => undefined }));
+const writing: PublicPracticeQuestion = { id: 'q4', type: 'writing', difficulty: 1, data: { stem: { vi: 'Giải thích vòng lặp bằng tiếng Anh.', en: 'Explain a loop.' } } };
 
 const questions: PublicPracticeQuestion[] = [
   { id: 'q1', type: 'mc', difficulty: 1, data: { stem: { vi: '2 + 2 bằng?', en: '2 + 2 is?' }, options: [{ id: 'a', text: { vi: 'Ba', en: 'Three' } }, { id: 'b', text: { vi: 'Bốn', en: 'Four' } }] } },
@@ -80,6 +82,26 @@ describe('PracticeSection', () => {
     expect(failed).toContain('Chưa tải được câu tự luyện');
     expect(failed).toContain('Thử lại');
     expect(render({ load: { ok: true, questions: [] } })).toContain('chưa sẵn sàng');
+  });
+});
+
+describe('an English writing question', () => {
+  it('gets an English text box instead of the one-line answer', () => {
+    const html = render({ load: { ok: true, questions: [writing] } });
+    expect(html).toMatch(/<textarea[^>]*lang="en"/);
+    expect(html).toContain('Viết câu trả lời bằng tiếng Anh');
+  });
+
+  it('shows the key terms instead of a right/wrong line', () => {
+    const results: Record<string, PracticeCheckResult> = { q4: { correct: false, writing: { used: ['loop'], missing: ['condition'], sample_answer: 'A loop repeats.' } } };
+    const html = render({ load: { ok: true, questions: [writing] }, state: state({ answers: { q4: { writing_answer: 'A loop' } }, results }) });
+    expect(html).toContain('Còn thiếu');
+    expect(html).not.toContain('Chưa đúng');
+  });
+
+  it('sends the writing answer, or nothing when empty', () => {
+    expect(responseOf(writing, { writing_answer: '  ' })).toBeNull();
+    expect(responseOf(writing, { writing_answer: 'A loop repeats.' })).toEqual({ writing_answer: 'A loop repeats.' });
   });
 });
 

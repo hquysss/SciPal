@@ -8,6 +8,7 @@ import { buttonVariants } from '@/components/ui/button';
 import { MathText } from '@/components/math/MathText';
 import { QuestionFigure, QuestionSource } from '@/components/math/QuestionFigure';
 import { checkPractice, type PracticeLoad } from './practiceApi';
+import { WritingAnswer } from './WritingAnswer';
 
 type Bilingual = { en: string; vi: string };
 
@@ -51,6 +52,7 @@ export function practiceSummary(ids: string[], results: Record<string, PracticeC
 export function responseOf(question: PublicPracticeQuestion, answer: PracticeResponse | undefined): PracticeResponse | null {
   if (question.type === 'mc') return answer?.selected_option ? { selected_option: answer.selected_option } : null;
   if (question.type === 'truefalse') return answer?.items?.length ? { items: answer.items } : null;
+  if (question.type === 'writing') return answer?.writing_answer?.trim() ? { writing_answer: answer.writing_answer } : null;
   return answer?.short_answer?.trim() ? { short_answer: answer.short_answer } : null;
 }
 
@@ -152,6 +154,30 @@ function QuestionCard({ number, question, answer, result, onAnswer, onResult, t,
   const itemVerdict = (itemId: string) => result?.items?.find((it) => it.id === itemId);
   const picked = (itemId: string) => answer?.items?.find((it) => it.id === itemId)?.selected;
 
+  const checkRow = (
+    <div className="mt-4 flex flex-wrap items-center gap-3">
+      <button type="button" disabled={!response || checking} onClick={check} className={buttonVariants({ variant: result ? 'outline' : 'default' })}>
+        {checking ? t({ en: 'Checking…', vi: 'Đang kiểm tra…' }) : result ? t({ en: 'Check again', vi: 'Kiểm tra lại' }) : t({ en: 'Check', vi: 'Kiểm tra' })}
+      </button>
+      <div aria-live="polite" className="text-sm">
+        {result &&
+          !result.writing &&
+          (result.correct ? (
+            <span className="inline-flex items-center gap-1.5 font-semibold text-success">
+              <CircleCheck aria-hidden="true" className="h-5 w-5" />
+              {t({ en: 'Correct!', vi: 'Đúng rồi!' })}
+            </span>
+          ) : (
+            <span className="inline-flex items-center gap-1.5 font-semibold text-danger">
+              <CircleX aria-hidden="true" className="h-5 w-5" />
+              {t({ en: 'Not quite — change your answer and try again.', vi: 'Chưa đúng. Sửa câu trả lời rồi thử lại.' })}
+            </span>
+          ))}
+        {error && <span className="text-danger">{t(error)}</span>}
+      </div>
+    </div>
+  );
+
   return (
     <section aria-labelledby={stemId} className={CARD}>
       <p className="text-xs font-bold uppercase tracking-wide text-ink-muted">{t({ en: `Question ${number}`, vi: `Câu ${number}` })}</p>
@@ -247,26 +273,19 @@ function QuestionCard({ number, question, answer, result, onAnswer, onResult, t,
         </div>
       )}
 
-      <div className="mt-4 flex flex-wrap items-center gap-3">
-        <button type="button" disabled={!response || checking} onClick={check} className={buttonVariants({ variant: result ? 'outline' : 'default' })}>
-          {checking ? t({ en: 'Checking…', vi: 'Đang kiểm tra…' }) : result ? t({ en: 'Check again', vi: 'Kiểm tra lại' }) : t({ en: 'Check', vi: 'Kiểm tra' })}
-        </button>
-        <div aria-live="polite" className="text-sm">
-          {result &&
-            (result.correct ? (
-              <span className="inline-flex items-center gap-1.5 font-semibold text-success">
-                <CircleCheck aria-hidden="true" className="h-5 w-5" />
-                {t({ en: 'Correct!', vi: 'Đúng rồi!' })}
-              </span>
-            ) : (
-              <span className="inline-flex items-center gap-1.5 font-semibold text-danger">
-                <CircleX aria-hidden="true" className="h-5 w-5" />
-                {t({ en: 'Not quite — change your answer and try again.', vi: 'Chưa đúng. Sửa câu trả lời rồi thử lại.' })}
-              </span>
-            ))}
-          {error && <span className="text-danger">{t(error)}</span>}
-        </div>
-      </div>
+      {question.type === 'writing' && (
+        <WritingAnswer
+          questionId={question.id}
+          value={answer?.writing_answer ?? ''}
+          onChange={(text) => answerWith({ writing_answer: text })}
+          result={result}
+          t={t}
+          lang={lang}
+          actions={checkRow}
+        />
+      )}
+
+      {question.type !== 'writing' && checkRow}
       {result?.explanation && (
         <p className="mt-3 rounded-lg bg-surface-sunken px-3 py-2 text-sm text-ink">
           <MathText text={t(result.explanation)} />
