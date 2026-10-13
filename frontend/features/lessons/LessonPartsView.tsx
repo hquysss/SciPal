@@ -8,6 +8,7 @@ import { LessonSheet } from '@/components/blocks/LessonSheet';
 import { termIdsOfBlocks } from '@/components/blocks/remarkTerm';
 import { LessonTermsProvider } from '@/components/blocks/terms/LessonTermsContext';
 import { buttonVariants } from '@/components/ui/button';
+import { SelectionLookup } from '@/features/dictionary/SelectionLookup';
 import { PART_LABEL, splitLessonParts, type LessonPart } from './lessonParts';
 import { LessonTermsSection } from './LessonTermsSection';
 import { PracticeSection, usePracticeState } from './PracticeSection';
@@ -58,9 +59,10 @@ export function LessonPartsView({ blocks, completion, part, sheet, lang, practic
   const tabbed = !part && present.length > 1;
   // Every term either language tags, loaded once; the list at the end of Bài học shows the reading language's.
   const termIds = [...new Set([...termIdsOfBlocks(blocks, 'vi'), ...termIdsOfBlocks(blocks, 'en')])];
+  // The learner's page can look up any selected word; the editor's preview (no lesson id) cannot.
   const wrap = (node: ReactNode) => (
     <LessonTermsProvider ids={termIds} lang={lang}>
-      {node}
+      {lessonId ? <SelectionLookup lessonId={lessonId}>{node}</SelectionLookup> : node}
     </LessonTermsProvider>
   );
 

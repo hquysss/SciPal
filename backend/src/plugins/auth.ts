@@ -17,6 +17,8 @@ const isPublicPath = (path: string): boolean => {
   // Newsletter sign-up; confirm and unsubscribe check a signed token in the body.
   if (path.startsWith('/api/newsletter/')) return true;
   if (path.startsWith('/api/exam/')) return true;
+  // Visitors look up glossary terms and kept entries; only a signed-in learner asks the AI.
+  if (path === '/api/dictionary/lookup') return true;
   // Lesson practice works for visitors too; checking gives no XP.
   if (path.startsWith('/api/practice/')) return true;
   return false;

@@ -153,24 +153,40 @@ export const termRoutes: FastifyPluginAsync = async (app) => {
       return reply.code(400).send({ error: `Gửi từ 1 đến ${SAVE_MAX} thuật ngữ mỗi lượt.`, error_en: `Send 1 to ${SAVE_MAX} terms at a time.` });
     }
     const failed = { error: 'Chưa lưu được sổ từ.', error_en: 'The word list could not be saved.' };
-    const { data, error } = await supabase.from('terms').select('id, subjects!inner(archived_at)').in('id', [...new Set(ids as string[])]).eq('status', 'published');
+    const wanted = [...new Set(ids as string[])];
+    const live = (rows: unknown) =>
+      ((rows ?? []) as Array<{ id: string; subjects: unknown }>)
+        .filter((row) => !isSubjectArchived(one(row.subjects as { archived_at?: string | null } | null)))
+        .map((row) => row.id);
+    const { data, error } = await supabase.from('terms').select('id, subjects!inner(archived_at)').in('id', wanted).eq('status', 'published');
     if (error) {
       request.log.error({ err: error }, 'Word list term check failed');
       return reply.code(500).send(failed);
     }
-    const saved = ((data ?? []) as Array<{ id: string; subjects: unknown }>)
-      .filter((row) => !isSubjectArchived(one(row.subjects as { archived_at?: string | null } | null)))
-      .map((row) => row.id);
-    if (saved.length > 0) {
-      const userId = getUser(request)!.id!;
+    const termIds = live(data);
+    // Ids that are not glossary terms may be dictionary entries the learner looked up.
+    const others = wanted.filter((id) => !termIds.includes(id));
+    let entryIds: string[] = [];
+    if (others.length > 0) {
+      const { data: entries, error: entryError } = await supabase.from('dictionary_entries').select('id, subjects!inner(archived_at)').in('id', others);
+      if (entryError) {
+        request.log.error({ err: entryError }, 'Word list entry check failed');
+        return reply.code(500).send(failed);
+      }
+      entryIds = live(entries);
+    }
+    const userId = getUser(request)!.id!;
+    for (const [column, list] of [['term_id', termIds], ['entry_id', entryIds]] as const) {
+      if (list.length === 0) continue;
       const { error: saveError } = await supabase
         .from('user_terms')
-        .upsert(saved.map((term_id) => ({ user_id: userId, term_id })), { onConflict: 'user_id,term_id', ignoreDuplicates: true });
+        .upsert(list.map((id) => ({ user_id: userId, [column]: id })), { onConflict: `user_id,${column}`, ignoreDuplicates: true });
       if (saveError) {
         request.log.error({ err: saveError }, 'Word list save failed');
         return reply.code(500).send(failed);
       }
     }
+    const saved = [...termIds, ...entryIds];
     return reply.send({ saved });
   });
 
@@ -179,7 +195,7 @@ export const termRoutes: FastifyPluginAsync = async (app) => {
     if (!supabase) return reply.code(503).send(unavailable);
     const { termId } = request.params as { termId: string };
     if (!ID.test(termId)) return reply.code(204).send();
-    const { error } = await supabase.from('user_terms').delete().eq('user_id', getUser(request)!.id!).eq('term_id', termId);
+    const { error } = await supabase.from('user_terms').delete().eq('user_id', getUser(request)!.id!).or(`term_id.eq.${termId},entry_id.eq.${termId}`);
     if (error) {
       request.log.error({ err: error }, 'Word list delete failed');
       return reply.code(500).send({ error: 'Chưa bỏ được thuật ngữ khỏi sổ từ.', error_en: 'The term could not be removed from your word list.' });
@@ -204,16 +220,16 @@ export const termRoutes: FastifyPluginAsync = async (app) => {
     const failed = { error: 'Chưa lưu được lượt ôn.', error_en: 'The review could not be saved.' };
     const { data, error } = await supabase
       .from('user_terms')
-      .select('stability, difficulty, last_review, reps, lapses, due_at, terms(subject_id)')
+      .select('stability, difficulty, last_review, reps, lapses, due_at, terms(subject_id), dictionary_entries(subject_id)')
       .eq('user_id', userId)
-      .eq('term_id', termId)
+      .or(`term_id.eq.${termId},entry_id.eq.${termId}`)
       .maybeSingle();
     if (error) {
       request.log.error({ err: error }, 'Review read failed');
       return reply.code(500).send(failed);
     }
     if (!data) return reply.code(404).send(missing);
-    const row = data as ReviewState & { terms: unknown };
+    const row = data as ReviewState & { terms: unknown; dictionary_entries: unknown };
     const now = new Date();
     const next = nextReview(
       { stability: row.stability, difficulty: row.difficulty, last_review: row.last_review, reps: row.reps, lapses: row.lapses },
@@ -224,9 +240,9 @@ export const termRoutes: FastifyPluginAsync = async (app) => {
       .from('user_terms')
       .update(next)
       .eq('user_id', userId)
-      .eq('term_id', termId)
+      .or(`term_id.eq.${termId},entry_id.eq.${termId}`)
       .lte('due_at', now.toISOString())
-      .select('term_id');
+      .select('id');
     if (saveError) {
       request.log.error({ err: saveError }, 'Review save failed');
       return reply.code(500).send(failed);
@@ -236,7 +252,7 @@ export const termRoutes: FastifyPluginAsync = async (app) => {
     }
 
     let xpEarned = 0;
-    const subjectId = one(row.terms as { subject_id?: string } | null)?.subject_id;
+    const subjectId = (one(row.terms as { subject_id?: string } | null) ?? one(row.dictionary_entries as { subject_id?: string } | null))?.subject_id;
     if (grade !== 'again' && subjectId) {
       const dayStart = `${now.toISOString().slice(0, 10)}T00:00:00.000Z`;
       const { count, error: countError } = await supabase

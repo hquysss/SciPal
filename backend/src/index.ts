@@ -44,6 +44,7 @@ import { authorAiRoutes } from './routes/authorAi.js';
 import { createSettingsStore } from './tutor/settings.js';
 import { questionRoutes } from './routes/questions.js';
 import { practiceRoutes } from './routes/practice.js';
+import { dictionaryRoutes } from './routes/dictionary.js';
 import { profileRoutes } from './routes/profile.js';
 import { gameRoutes } from './routes/games.js';
 
@@ -96,6 +97,7 @@ await app.register(billingVnpayRoutes);
 await app.register(billingReconciliationRoutes);
 await app.register(authorAiRoutes);
 await app.register(practiceRoutes);
+await app.register(dictionaryRoutes);
 await app.register(gameRoutes);
 
 app.get('/health', async () => ({ status: 'ok' }));

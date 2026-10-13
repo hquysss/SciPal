@@ -13,6 +13,9 @@ vi.mock('@/features/glossary/savedTerms', () => ({
   useSavedTerms: () => ({ ids: store.ids, failed: store.failed, signedIn: true, ready: true, save: store.save, unsave: store.unsave }),
 }));
 
+const speak = vi.hoisted(() => vi.fn());
+vi.mock('@/features/glossary/pronunciation', () => ({ speakTerm: speak }));
+
 const WORD_ID = '11111111-1111-4111-8111-111111111111';
 const PLACE_ID = '22222222-2222-4222-8222-222222222222';
 const GONE_ID = '33333333-3333-4333-8333-333333333333';
@@ -220,6 +223,12 @@ describe('TermMark', () => {
 });
 
 describe('TermCard', () => {
+  it('reads the English word aloud with the browser voice when the term has no recording', () => {
+    render(<TermCard term={WORD} lang="vi" />);
+    fireEvent.click(screen.getByRole('button', { name: 'Nghe: algorithm' }));
+    expect(speak).toHaveBeenCalledWith('algorithm', 'en');
+  });
+
   it('shows the IPA in English', () => {
     render(<TermCard term={{ ...WORD, ipa: 'ˈæl.ɡə.rɪ.ðəm' }} lang="vi" />);
     const ipa = screen.getByText('/ˈæl.ɡə.rɪ.ðəm/');

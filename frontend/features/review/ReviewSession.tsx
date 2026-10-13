@@ -10,6 +10,7 @@ import { speakTerm } from '@/features/glossary/pronunciation';
 
 /** A due card of the learner's word list, with the term it shows. */
 export type ReviewCard = {
+  /** The saved word's id: a glossary term or a dictionary entry the learner looked up. */
   term_id: string;
   term_en: string;
   term_vi: string;

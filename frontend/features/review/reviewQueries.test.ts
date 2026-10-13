@@ -32,6 +32,15 @@ describe('getReviewDeck', () => {
     expect(c.calls[2]!.gt).toEqual(['due_at', '2026-10-13T12:00:00.000Z']);
   });
 
+  it('deals looked-up dictionary entries too, keyed by entry, and skips words no longer readable', async () => {
+    const entry = { term_id: null, entry_id: 'e', due_at: row.due_at, terms: null, dictionary_entries: { ...row.terms, term_en: 'repeat' } };
+    const gone = { term_id: 'b', entry_id: null, due_at: row.due_at, terms: null, dictionary_entries: null };
+    const c = client([{ data: [entry, gone] }, { count: 2 }, { data: [] }]);
+    const deck = await getReviewDeck(c as never, new Date('2026-10-13T12:00:00Z'));
+    expect(deck.cards).toEqual([{ term_id: 'e', ...row.terms, term_en: 'repeat' }]);
+    expect(String(c.calls[0]!.select![0])).toContain('dictionary_entries(');
+  });
+
   it('an empty word list has no words and nothing next', async () => {
     const deck = await getReviewDeck(client([{ data: [] }, { count: 0 }, { data: [] }]) as never, new Date());
     expect(deck).toEqual({ cards: [], hasWords: false, nextDue: null });
