@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Timer, Trophy } from 'lucide-react';
 import { useLanguage } from '@scipal/hooks';
+import { useShuffledOptions } from '@/lib/useShuffledOptions';
 import { Alert } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -46,6 +47,7 @@ function QuizPlay({ questions, onSubmit, busy, draft }: { questions: QuizQuestio
   const [i, setI] = useState(0);
   const [answers, setAnswers] = useState<Record<string, QuizResponse>>({});
   const q = questions[i]!;
+  const options = useShuffledOptions(q.id, q.data.options ?? []);
   const set = (r: QuizResponse) => setAnswers((a) => ({ ...a, [q.id]: r }));
   const a = answers[q.id] ?? {};
   const body = { answers: Object.entries(answers).map(([question_id, response]) => ({ question_id, response })) };
@@ -59,7 +61,7 @@ function QuizPlay({ questions, onSubmit, busy, draft }: { questions: QuizQuestio
       <p className="whitespace-pre-wrap text-lg font-semibold text-ink">{t(q.data.stem)}</p>
       {q.type === 'mc' && (
         <div className="flex flex-col gap-2">
-          {q.data.options?.map((o) => (
+          {options.map((o) => (
             <button key={o.id} type="button" aria-pressed={a.selected_option === o.id} onClick={() => set({ selected_option: o.id })} className={choice(a.selected_option === o.id)}>{t(o.text)}</button>
           ))}
         </div>

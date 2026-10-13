@@ -490,6 +490,7 @@ export async function createExamWorkbookTemplate(format: ExamFormat = 'generic')
     ['Trắc nghiệm (mc)', 'Các lựa chọn ở Question items; đúng một lựa chọn có correct = TRUE.'],
     ['Đúng/Sai (truefalse)', 'Mỗi nhận định một dòng ở Question items; correct = TRUE nếu nhận định đúng.'],
     ['Trả lời ngắn (short)', 'Điền đáp án ở answer_key; không thêm dòng Question items.'],
+    ['Câu tự luyện', 'Câu hỏi mà bài Word dùng qua [QUIZ:question_key] trở thành câu Tự luyện của bài, không vào đề thi. Học sinh thấy theo 3 phần: I trắc nghiệm (mc), II đúng/sai (truefalse), III trả lời ngắn (short); thứ tự lựa chọn được xáo mỗi lượt. Chỉ cần điền loại câu đúng, không cần xếp phần.'],
     ['Đề thi', 'Exams khai báo đề (lớp, thời gian 5–300 phút); Exam sections chọn loại câu, độ khó và số câu, lấy lần lượt từ câu hỏi cùng môn trong tệp.'],
     ['Dạng đề', 'Exams.format: generic (đề thường), thptqg hoặc dgnl_hcm. Mẫu cũ không có format vẫn là đề thường.'],
     ['Phần thi THPTQG/ĐGNL', 'Exam sections: mỗi phần một dòng; điền section_key, title_vi/title_en, type, count, max_points. difficulty dùng cho đề thường; với đề có nhóm câu có thể để trống. Tổng điểm: THPTQG 10, ĐGNL 1200.'],

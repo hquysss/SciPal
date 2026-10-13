@@ -47,7 +47,7 @@ export default async function LessonPage({
   const subject = lesson.subjects;
   const level = levelOfGrade(lesson.grade);
   // One request for the Tự luyện questions (answers stay on the server); a failure offers a retry.
-  const practice = lesson.blocks.some((block) => block.type === 'quiz') ? await fetchLessonPractice(lesson.id) : undefined;
+  const practice = lesson.blocks.some((block) => block.type === 'quiz') ? await fetchLessonPractice(lesson.id) : { ok: true as const, questions: [] };
 
   return (
     <LevelScope level={level} className="flex-1">

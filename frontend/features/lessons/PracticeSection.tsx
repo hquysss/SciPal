@@ -7,6 +7,7 @@ import type { PracticeCheckResult, PracticeResponse, PublicPracticeQuestion } fr
 import { buttonVariants } from '@/components/ui/button';
 import { MathText } from '@/components/math/MathText';
 import { QuestionFigure, QuestionSource } from '@/components/math/QuestionFigure';
+import { useShuffledOptions } from '@/lib/useShuffledOptions';
 import { checkPractice, type PracticeLoad } from './practiceApi';
 import { WritingAnswer } from './WritingAnswer';
 
@@ -67,7 +68,16 @@ interface PracticeSectionProps {
   lang?: 'en' | 'vi';
 }
 
-const CARD = 'rounded-xl border border-line bg-surface p-4 sm:p-5';
+const PART_ORDER =['mc', 'truefalse', 'short', 'writing'] as const;
+const ROMAN = ['I', 'II', 'III', 'IV'];
+const PART_TITLE: Record<(typeof PART_ORDER)[number], Bilingual> = {
+  mc: { en: 'Multiple choice', vi: 'Trắc nghiệm nhiều phương án lựa chọn' },
+  truefalse: { en: 'True / false', vi: 'Trắc nghiệm đúng sai' },
+  short: { en: 'Short answer', vi: 'Trắc nghiệm trả lời ngắn' },
+  writing: { en: 'Write in English', vi: 'Viết tiếng Anh' },
+};
+
+const CARD ='rounded-xl border border-line bg-surface p-4 sm:p-5';
 
 /** The Tự luyện part: every question with its own check, then this visit's score. */
 export function PracticeSection({ load, state, onAnswer, onResult, onRetry, lang }: PracticeSectionProps) {
@@ -96,20 +106,31 @@ export function PracticeSection({ load, state, onAnswer, onResult, onRetry, lang
     load.questions.map((q) => q.id),
     state.results,
   );
+  // Laid out like an exam paper: one part per question type, numbering continuous across parts.
+  const numbered = load.questions.map((question, i) => ({ question, number: i + 1 }));
+  const parts = PART_ORDER.map((type) => ({ type, items: numbered.filter((n) => n.question.type === type) })).filter((p) => p.items.length > 0);
   return (
     <div className="flex flex-col gap-5">
-      {load.questions.map((question, i) => (
-        <QuestionCard
-          key={question.id}
-          number={i + 1}
-          question={question}
-          answer={state.answers[question.id]}
-          result={state.results[question.id]}
-          onAnswer={(answer) => onAnswer(question.id, answer)}
-          onResult={(result, checked) => onResult(question.id, result, checked)}
-          t={t}
-          lang={shownLang}
-        />
+      {parts.map(({ type, items }, index) => (
+        <div key={type} className="flex flex-col gap-4">
+          <h2 className="border-b border-line pb-2 text-lg font-bold text-ink">
+            {t({ en: `Part ${ROMAN[index]}. `, vi: `Phần ${ROMAN[index]}. ` })}
+            {t(PART_TITLE[type])}
+          </h2>
+          {items.map(({ question, number }) => (
+            <QuestionCard
+              key={question.id}
+              number={number}
+              question={question}
+              answer={state.answers[question.id]}
+              result={state.results[question.id]}
+              onAnswer={(answer) => onAnswer(question.id, answer)}
+              onResult={(result, checked) => onResult(question.id, result, checked)}
+              t={t}
+              lang={shownLang}
+            />
+          ))}
+        </div>
       ))}
       <p aria-live="polite" className="text-center text-lg font-bold text-ink">
         {summary.checked > 0 && t({ en: `Correct ${summary.right}/${summary.total}`, vi: `Đúng ${summary.right}/${summary.total}` })}
@@ -135,6 +156,7 @@ function QuestionCard({ number, question, answer, result, onAnswer, onResult, t,
   const [error, setError] = useState<Bilingual | null>(null);
   const response = responseOf(question, answer);
   const { data } = question;
+  const options = useShuffledOptions(question.id, 'options' in data ? data.options : []);
   const stemId = `${id}-stem`;
 
   const check = async () => {
@@ -193,7 +215,7 @@ function QuestionCard({ number, question, answer, result, onAnswer, onResult, t,
       {'options' in data && (
         <fieldset className="mt-3 flex flex-col gap-2">
           <legend className="sr-only">{t({ en: 'Choose one option', vi: 'Chọn một phương án' })}</legend>
-          {data.options.map((option) => (
+          {options.map((option) => (
             <label
               key={option.id}
               className="flex min-h-11 cursor-pointer items-center gap-3 rounded-lg border border-line px-3 py-2 text-ink transition-colors hover:bg-surface-sunken has-[:checked]:border-accent"
