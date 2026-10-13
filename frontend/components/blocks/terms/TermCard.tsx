@@ -2,13 +2,16 @@
 
 import { Media } from '@/components/media/Media';
 import Link from 'next/link';
-import { Volume2 } from 'lucide-react';
+import { Bookmark, BookmarkCheck, Volume2 } from 'lucide-react';
+import { useSavedTerms } from '@/features/glossary/savedTerms';
 import type { LessonTerm } from './LessonTermsContext';
 
 type Bilingual = { en: string; vi: string };
 
 /** A term's content: the popover body, and one entry of the end-of-lesson list (`compact`). */
-export function TermCard({ term, lang, compact = false, glossaryLink = true }: { term: LessonTerm; lang: 'en' | 'vi'; compact?: boolean; glossaryLink?: boolean }) {
+export function TermCard({ term, lang, compact = false, glossaryLink = true, saveable = true }: { term: LessonTerm; lang: 'en' | 'vi'; compact?: boolean; glossaryLink?: boolean; saveable?: boolean }) {
+  const { ids, failed, save, unsave } = useSavedTerms();
+  const saved = ids.has(term.id);
   const t = (text: Bilingual) => text[lang];
   const name = lang === 'en' ? term.term_en : term.term_vi;
   const other = lang === 'en' ? term.term_vi : term.term_en;
@@ -31,6 +34,11 @@ export function TermCard({ term, lang, compact = false, glossaryLink = true }: {
           <span lang={lang === 'en' ? 'vi' : 'en'} className="text-sm text-ink-muted">
             {other}
           </span>
+          {term.ipa && (
+            <span lang="en" className="text-sm text-ink-muted">
+              /{term.ipa}/
+            </span>
+          )}
           {(place || term.part_of_speech) && (
             <span className="text-xs text-ink-muted">· {place ? t({ en: 'place', vi: 'địa danh' }) : term.part_of_speech}</span>
           )}
@@ -44,7 +52,23 @@ export function TermCard({ term, lang, compact = false, glossaryLink = true }: {
               <Volume2 aria-hidden="true" className="h-4 w-4" />
             </button>
           )}
+          {saveable && (
+            <button
+              type="button"
+              onClick={() => void (saved ? unsave(term.id) : save(term.id))}
+              aria-pressed={saved}
+              aria-label={saved ? t({ en: `Remove from my words: ${term.term_en}`, vi: `Bỏ khỏi sổ từ: ${term.term_vi}` }) : t({ en: `Save to my words: ${term.term_en}`, vi: `Lưu vào sổ từ: ${term.term_vi}` })}
+              className={`inline-flex h-8 w-8 items-center justify-center rounded-full hover:bg-surface-sunken hover:text-ink focus-visible:outline focus-visible:outline-2 focus-visible:outline-focus ${saved ? 'text-action' : 'text-ink-muted'}`}
+            >
+              {saved ? <BookmarkCheck aria-hidden="true" className="h-4 w-4" /> : <Bookmark aria-hidden="true" className="h-4 w-4" />}
+            </button>
+          )}
         </div>
+        {saveable && failed === term.id && (
+          <p role="status" className="text-sm font-semibold text-ink">
+            {t({ en: 'Not saved. Try again.', vi: 'Chưa lưu được. Thử lại nhé.' })}
+          </p>
+        )}
         <p className={`text-sm leading-6 text-ink ${compact ? 'line-clamp-3' : ''}`}>{definition}</p>
         {!compact && example && (
           <p className="text-sm italic leading-6 text-ink-muted">

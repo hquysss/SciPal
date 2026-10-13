@@ -3,9 +3,15 @@ import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-libra
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { countRawColors } from '../../../lib/theme/rawColors';
 import { LessonTermsProvider, type LessonTerm } from './LessonTermsContext';
+import { NotesContext, NoteMark } from './NoteMark';
+import { TermCard } from './TermCard';
 import { TermMark } from './TermMark';
 
 vi.mock('@scipal/hooks', () => ({ useLanguage: () => ({ lang: 'vi', t: (o: { vi: string }) => o.vi }) }));
+const store = vi.hoisted(() => ({ ids: new Set<string>(), failed: null as string | null, save: vi.fn(), unsave: vi.fn() }));
+vi.mock('@/features/glossary/savedTerms', () => ({
+  useSavedTerms: () => ({ ids: store.ids, failed: store.failed, signedIn: true, ready: true, save: store.save, unsave: store.unsave }),
+}));
 
 const WORD_ID = '11111111-1111-4111-8111-111111111111';
 const PLACE_ID = '22222222-2222-4222-8222-222222222222';
@@ -15,7 +21,7 @@ const WORD: LessonTerm = {
   id: WORD_ID, kind: 'word', term_en: 'algorithm', term_vi: 'thuật toán', part_of_speech: 'noun',
   definition_en: 'Steps to solve a problem.', definition_vi: 'Dãy bước giải một bài toán.',
   example_en: null, example_vi: 'Thuật toán sắp xếp.', audio_url: null,
-  image_url: null, image_alt_en: null, image_alt_vi: null, image_credit: null,
+  image_url: null, image_alt_en: null, image_alt_vi: null, image_credit: null, ipa: null,
 };
 const PLACE: LessonTerm = {
   ...WORD, id: PLACE_ID, kind: 'place', term_en: 'Ha Long Bay', term_vi: 'Vịnh Hạ Long', part_of_speech: null,
@@ -28,10 +34,18 @@ vi.mock('@scipal/supabase', () => ({
   createBrowserClient: () => ({ from: () => ({ select: () => ({ in: (...a: unknown[]) => query(...a) }) }) }),
 }));
 
-beforeEach(() => query.mockResolvedValue({ data: [WORD, PLACE], error: null }));
+beforeEach(() => {
+  query.mockResolvedValue({ data: [WORD, PLACE], error: null });
+  store.save.mockResolvedValue(true);
+  store.unsave.mockResolvedValue(true);
+});
 afterEach(() => {
   cleanup();
   query.mockReset();
+  store.save.mockReset();
+  store.unsave.mockReset();
+  store.ids = new Set();
+  store.failed = null;
   vi.useRealTimers();
 });
 
@@ -169,5 +183,70 @@ describe('TermMark', () => {
     fireEvent.keyDown(button, { key: 'Enter' });
     fireEvent.click(button); // browsers turn Enter on a button into a click
     await waitFor(() => expect(screen.getByRole('dialog')).toBeTruthy());
+  });
+
+  it('a tap saves the term to my words', async () => {
+    lesson([WORD_ID, PLACE_ID]);
+    fireEvent.click(await screen.findByRole('button', { name: 'thuật toán' }));
+    expect(store.save).toHaveBeenCalledWith(WORD_ID);
+  });
+
+  it('hover alone does not save', async () => {
+    lesson([WORD_ID, PLACE_ID]);
+    const button = await screen.findByRole('button', { name: 'thuật toán' });
+    vi.useFakeTimers();
+    fireEvent.pointerEnter(button, { pointerType: 'mouse' });
+    act(() => vi.advanceTimersByTime(200));
+    expect(screen.getByRole('dialog')).toBeTruthy();
+    expect(store.save).not.toHaveBeenCalled();
+  });
+
+  it("a teacher's note is never saved and has no bookmark", () => {
+    const notes = { k: { term: { vi: 'mẹo', en: 'tip' }, definition: { vi: 'Ghi chú', en: 'A note' } } };
+    render(
+      <div data-app-shell="">
+        <LessonTermsProvider ids={[]}>
+          <NotesContext.Provider value={{ notes: notes as never, lang: 'vi' }}>
+            <NoteMark noteKey="k">mẹo</NoteMark>
+          </NotesContext.Provider>
+        </LessonTermsProvider>
+      </div>,
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'mẹo' }));
+    expect(screen.getByRole('dialog')).toBeTruthy();
+    expect(store.save).not.toHaveBeenCalled();
+    expect(screen.queryByRole('button', { name: /sổ từ/ })).toBeNull();
+  });
+});
+
+describe('TermCard', () => {
+  it('shows the IPA in English', () => {
+    render(<TermCard term={{ ...WORD, ipa: 'ˈæl.ɡə.rɪ.ðəm' }} lang="vi" />);
+    const ipa = screen.getByText('/ˈæl.ɡə.rɪ.ðəm/');
+    expect(ipa.getAttribute('lang')).toBe('en');
+  });
+
+  it('the bookmark shows whether the term is saved', () => {
+    store.ids = new Set([WORD_ID]);
+    render(<TermCard term={WORD} lang="vi" />);
+    expect(screen.getByRole('button', { name: 'Bỏ khỏi sổ từ: thuật toán' }).getAttribute('aria-pressed')).toBe('true');
+  });
+
+  it('the bookmark calls the store', () => {
+    render(<TermCard term={WORD} lang="vi" />);
+    fireEvent.click(screen.getByRole('button', { name: 'Lưu vào sổ từ: thuật toán' }));
+    expect(store.save).toHaveBeenCalledWith(WORD_ID);
+  });
+
+  it('says so when this term failed to save, however the save started', () => {
+    store.failed = WORD_ID;
+    render(<TermCard term={WORD} lang="vi" />);
+    expect(screen.getByRole('status').textContent).toBe('Chưa lưu được. Thử lại nhé.');
+  });
+
+  it('says nothing for a teacher note', () => {
+    store.failed = WORD_ID;
+    render(<TermCard term={WORD} lang="vi" saveable={false} />);
+    expect(screen.queryByRole('status')).toBeNull();
   });
 });

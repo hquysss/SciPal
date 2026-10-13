@@ -5,10 +5,10 @@ import { useLanguage } from '@scipal/hooks';
 import { EmptyState } from '../../components/ui/empty-state';
 import { PAGE_SIZE, filterTerms, shownToReach, termSubjects } from './termFilter';
 import { speakTerm, warmSpeech } from './pronunciation';
+import { useSavedTerms } from './savedTerms';
 import type { TermItem } from './termQueries';
 
 const TERM_TONES = ['var(--sun)', 'var(--sky)', 'var(--coral)'];
-const SAVED_KEY = 'scipal-saved-terms';
 const SAVED = 'saved';
 
 // Subjects shown before "+n more": the ones with the most terms.
@@ -21,24 +21,6 @@ const chipClass = (active: boolean) =>
 
 const iconButton =
   'inline-flex min-h-11 min-w-11 items-center justify-center rounded-lg text-ink-muted hover:bg-surface-sunken hover:text-ink focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus';
-
-/** Saved terms live in this browser only (a per-viewer convenience, not account data). */
-function readSaved(): Set<string> {
-  try {
-    const raw = window.localStorage.getItem(SAVED_KEY);
-    return new Set(raw ? (JSON.parse(raw) as string[]) : []);
-  } catch {
-    return new Set();
-  }
-}
-
-function writeSaved(ids: Set<string>) {
-  try {
-    window.localStorage.setItem(SAVED_KEY, JSON.stringify([...ids]));
-  } catch {
-    /* storage blocked: keep for this visit only */
-  }
-}
 
 function ListenButton({ text, lang, onListen }: { text: string; lang: 'en' | 'vi'; onListen: (text: string, lang: 'en' | 'vi') => void }) {
   const { t } = useLanguage();
@@ -56,7 +38,7 @@ export function GlossarySearch({ terms }: { terms: TermItem[] }) {
   const { lang, t } = useLanguage();
   const [query, setQuery] = useState('');
   const [activeFilter, setActiveFilter] = useState('all');
-  const [saved, setSaved] = useState<Set<string>>(() => new Set());
+  const { ids: saved, failed: saveFailed, save, unsave } = useSavedTerms();
   const [copied, setCopied] = useState<string | null>(null);
   const [allSubjects, setAllSubjects] = useState(false);
   const [speechError, setSpeechError] = useState<'en' | 'vi' | 'unsupported' | null>(null);
@@ -90,9 +72,10 @@ export function GlossarySearch({ terms }: { terms: TermItem[] }) {
   }, []);
 
   useEffect(() => {
-    setSaved(readSaved());
-    const q = new URLSearchParams(window.location.search).get('q');
+    const params = new URLSearchParams(window.location.search);
+    const q = params.get('q');
     if (q) setQuery(q);
+    if (params.get('filter') === SAVED) setActiveFilter(SAVED);
   }, []);
 
   const subjects = useMemo(() => termSubjects(terms), [terms]);
@@ -105,15 +88,9 @@ export function GlossarySearch({ terms }: { terms: TermItem[] }) {
   const showSaved = activeFilter === SAVED;
   const filtered = filterTerms(terms, { query, subject: showSaved ? 'all' : activeFilter, saved: showSaved ? saved : null });
 
-  const toggleSaved = (id: string) => {
-    setSaved((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      writeSaved(next);
-      return next;
-    });
-  };
+  const savedCount = terms.filter((term) => saved.has(term.id)).length;
+
+  const toggleSaved = (id: string) => (saved.has(id) ? unsave(id) : save(id));
 
   const copyLink = async (id: string) => {
     const url = `${window.location.origin}${window.location.pathname}#${id}`;
@@ -167,8 +144,8 @@ export function GlossarySearch({ terms }: { terms: TermItem[] }) {
         </button>
         <button type="button" aria-pressed={showSaved} onClick={() => setActiveFilter(SAVED)} className={chipClass(showSaved)}>
           <BookmarkCheck aria-hidden="true" className="h-4 w-4" />
-          {t({ en: 'Saved', vi: 'Đã lưu' })}
-          <span className="text-xs opacity-80">{saved.size}</span>
+          {t({ en: 'My words', vi: 'Sổ từ của tôi' })}
+          <span className="text-xs opacity-80">{savedCount}</span>
         </button>
         <span aria-hidden="true" className="mx-1 h-6 w-px bg-line" />
         <div id="glossary-subjects" role="group" aria-label={t({ en: 'Subjects', vi: 'Môn học' })} className="contents">
@@ -223,6 +200,11 @@ export function GlossarySearch({ terms }: { terms: TermItem[] }) {
           const main = lang === 'en' ? term.term_en : term.term_vi;
           const other = lang === 'en' ? term.term_vi : term.term_en;
           const isSaved = saved.has(term.id);
+          const ipa = term.ipa ? (
+            <span lang="en" className="text-sm text-ink-muted">
+              /{term.ipa}/
+            </span>
+          ) : null;
           return (
             <article
               key={term.id}
@@ -234,8 +216,10 @@ export function GlossarySearch({ terms }: { terms: TermItem[] }) {
               <div className="mb-3 flex items-start justify-between gap-4">
                 <div className="flex flex-wrap items-center gap-x-1 gap-y-1">
                   <h2 className="text-xl font-bold text-ink">{main}</h2>
+                  {lang === 'en' && ipa}
                   <ListenButton text={main} lang={lang} onListen={(text, language) => void listen(text, language)} />
                   <span className="text-sm font-medium text-ink-muted">{other}</span>
+                  {lang === 'vi' && ipa}
                   <ListenButton text={other} lang={lang === 'en' ? 'vi' : 'en'} onListen={(text, language) => void listen(text, language)} />
                 </div>
 
@@ -247,7 +231,7 @@ export function GlossarySearch({ terms }: { terms: TermItem[] }) {
                   )}
                   <button
                     type="button"
-                    onClick={() => toggleSaved(term.id)}
+                    onClick={() => void toggleSaved(term.id)}
                     aria-pressed={isSaved}
                     aria-label={`${isSaved ? t({ en: 'Remove from saved', vi: 'Bỏ lưu' }) : t({ en: 'Save', vi: 'Lưu' })} ${main}`}
                     className={`${iconButton} ${isSaved ? 'text-action' : ''}`}
@@ -264,6 +248,11 @@ export function GlossarySearch({ terms }: { terms: TermItem[] }) {
                   </button>
                 </div>
               </div>
+              {saveFailed === term.id && (
+                <p role="status" className="-mt-2 mb-2 text-sm font-semibold text-ink">
+                  {t({ en: 'Not saved. Try again.', vi: 'Chưa lưu được. Thử lại nhé.' })}
+                </p>
+              )}
               {copied === term.id && (
                 <p role="status" className="-mt-2 mb-2 text-sm font-semibold text-action">
                   {t({ en: 'Link copied', vi: 'Đã sao chép link' })}

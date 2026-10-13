@@ -16,7 +16,7 @@ export type TermFilter = {
   /** A subject slug, or 'all'. */
   subject: string;
   /** Saved term ids when showing saved terms only; null for every term. */
-  saved: Set<string> | null;
+  saved: ReadonlySet<string> | null;
 };
 
 export function filterTerms(terms: TermItem[], { query, subject, saved }: TermFilter): TermItem[] {

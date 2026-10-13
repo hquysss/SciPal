@@ -16,12 +16,13 @@ export const SHEET_COLUMNS: Array<{ key: Key; header: string }> = [
   { key: 'example_vi', header: 'Ví dụ (VI)' },
   { key: 'example_en', header: 'Ví dụ (EN)' },
   { key: 'part_of_speech', header: 'Từ loại' },
+  { key: 'ipa', header: 'IPA' },
 ];
 
 export const MAX_SHEET_ROWS = 1000;
 export const MAX_SHEET_BYTES = 5 * 1024 * 1024;
 
-export const EMPTY_ROW: SheetRow = { term_vi: '', term_en: '', definition_vi: '', definition_en: '', example_vi: '', example_en: '', part_of_speech: '' };
+export const EMPTY_ROW: SheetRow = { term_vi: '', term_en: '', definition_vi: '', definition_en: '', example_vi: '', example_en: '', part_of_speech: '', ipa: '' };
 
 const fold = (s: string) => s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/đ/g, 'd').toLowerCase().replace(/[^a-z]/g, '');
 
@@ -30,6 +31,7 @@ export function headerKey(header: string): Key | null {
   const h = fold(header);
   if (!h) return null;
   if (h.includes('tuloai') || h.includes('partofspeech') || h === 'pos') return 'part_of_speech';
+  if (h === 'ipa' || h.includes('phienam') || h.includes('pronunciation')) return 'ipa';
   const en = /(en|anh|english)$/.test(h) || h.includes('tienganh') || h.includes('english');
   const vi = /(vi|viet|vietnamese)$/.test(h) || h.includes('tiengviet') || h.includes('vietnamese');
   const lang = en && !vi ? 'en' : vi && !en ? 'vi' : null;

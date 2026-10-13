@@ -14,6 +14,8 @@ export function LessonTermsSection({ ids, blocks = [] }: { ids: string[]; blocks
   const lesson = useLessonTerms();
   const headingId = useId();
   const own = lesson ? noteKeysOfBlocks(blocks, lesson.lang).map(({ block, key }) => noteAsTerm(key, block.notes![key])) : [];
+  // The teacher's own popovers are not glossary terms, so they cannot go in the word list.
+  const ownIds = new Set(own.map((t) => t.id));
   const seen = new Set<string>();
   const terms = lesson
     ? [...ids.flatMap((id) => lesson.terms.get(id) ?? []), ...own].filter((t) => {
@@ -31,7 +33,7 @@ export function LessonTermsSection({ ids, blocks = [] }: { ids: string[]; blocks
       <ul className="grid gap-3 sm:grid-cols-2">
         {terms.map((term) => (
           <li key={term.id} className="rounded-xl border border-line bg-surface p-3">
-            <TermCard term={term} lang={lesson.lang} compact />
+            <TermCard term={term} lang={lesson.lang} compact saveable={!ownIds.has(term.id)} />
           </li>
         ))}
       </ul>

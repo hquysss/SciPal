@@ -50,6 +50,19 @@ describe('Từ vựng trong bài', () => {
     expect(countRawColors(list.outerHTML).total).toBe(0);
   });
 
+  it("offers a bookmark for glossary terms only, not the teacher's notes", async () => {
+    const withNote: Block = {
+      type: 'theory',
+      content: { vi: `{term:${A}:thuật toán} và {note:tip1:mẹo}`, en: '' },
+      notes: { tip1: { term: { vi: 'mẹo', en: 'tip' }, definition: { vi: 'Ghi chú', en: 'A note' } } },
+    } as Block;
+    render(<LessonPartsView blocks={[withNote]} />);
+    const list = await section();
+    await waitFor(() => expect(within(list).getAllByRole('listitem')).toHaveLength(2));
+    expect(within(list).getByRole('button', { name: 'Lưu vào sổ từ: thuật toán' })).toBeTruthy();
+    expect(within(list).queryByRole('button', { name: 'Lưu vào sổ từ: mẹo' })).toBeNull();
+  });
+
   it('asks once for the tags of both languages', async () => {
     render(<LessonPartsView blocks={[theory(`{term:${A}:a}`, `{term:${B}:b}`)]} />);
     await section();

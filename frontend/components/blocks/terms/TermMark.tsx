@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useId, useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
+import { useSavedTerms } from '@/features/glossary/savedTerms';
 import { useLessonTerms } from './LessonTermsContext';
 import { TermCard } from './TermCard';
 import type { LessonTerm } from './LessonTermsContext';
@@ -21,6 +22,7 @@ let closeOpen: (() => void) | null = null;
  */
 export function TermMark({ termId, note, children }: { termId: string; note?: { term: LessonTerm; lang: 'en' | 'vi' }; children: ReactNode }) {
   const lesson = useLessonTerms();
+  const { save } = useSavedTerms();
   // A note carries its own words (written in the lesson); a term comes from the glossary.
   const term = note?.term ?? lesson?.terms.get(termId);
   const lang = note?.lang ?? lesson?.lang;
@@ -131,7 +133,12 @@ export function TermMark({ termId, note, children }: { termId: string; note?: { 
         aria-controls={open ? popoverId : undefined}
         onPointerEnter={hoverIn}
         onPointerLeave={hoverOut}
-        onClick={() => (open && pinned ? close() : show(true))}
+        onClick={() => {
+          if (open && pinned) return close();
+          show(true);
+          // Looking a glossary term up on purpose puts it in the learner's word list; a hover does not.
+          if (!note) void save(term.id);
+        }}
         onBlur={focusOut}
         className="inline cursor-help rounded-sm p-0 font-[inherit] text-accent-ink underline decoration-accent decoration-dotted decoration-2 underline-offset-4 hover:bg-[color-mix(in_srgb,var(--accent)_12%,transparent)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
       >
@@ -152,7 +159,7 @@ export function TermMark({ termId, note, children }: { termId: string; note?: { 
             onPointerLeave={hoverOut}
             className="z-50 max-h-[70vh] overflow-y-auto rounded-xl border border-line bg-surface p-4 text-left shadow-lg focus:outline-none"
           >
-            <TermCard term={term} lang={lang} glossaryLink={!note} />
+            <TermCard term={term} lang={lang} glossaryLink={!note} saveable={!note} />
           </div>,
           host,
         )}

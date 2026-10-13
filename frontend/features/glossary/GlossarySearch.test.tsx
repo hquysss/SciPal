@@ -7,6 +7,10 @@ import { GlossarySearch } from './GlossarySearch';
 vi.mock('@scipal/hooks', () => ({
   useLanguage: () => ({ lang: 'en', t: (o: { en: string; vi: string }) => o.en }),
 }));
+const saved = vi.hoisted(() => ({ ids: new Set<string>() }));
+vi.mock('./savedTerms', () => ({
+  useSavedTerms: () => ({ ids: saved.ids, signedIn: true, ready: true, save: async () => true, unsave: async () => true }),
+}));
 
 describe('Glossary', () => {
   it('header is bilingual and uses tokens only', () => {
@@ -27,7 +31,7 @@ describe('Glossary', () => {
   const TERM = {
     id: 't1', term_en: 'algorithm', term_vi: 'thuật toán', part_of_speech: 'noun',
     definition_en: 'Steps', definition_vi: 'Các bước', example_en: null, example_vi: null, subject_slug: 'informatics',
-    subject_name_en: 'Informatics', subject_name_vi: 'Tin học', subject_order: 1,
+    subject_name_en: 'Informatics', subject_name_vi: 'Tin học', subject_order: 1, ipa: null as string | null,
   };
 
   it('offers only subjects that have terms, with their counts, plus saved terms', () => {
@@ -35,7 +39,19 @@ describe('Glossary', () => {
     expect(html).toContain('Informatics');
     expect(html).not.toContain('>Chemistry');
     expect(html).toMatch(/Informatics[^<]*<span[^>]*>1<\/span>/);
-    expect(html).toContain('Saved');
+    expect(html).toContain('My words');
+  });
+
+  it('shows the IPA next to the English term', () => {
+    const html = renderToStaticMarkup(<GlossarySearch terms={[{ ...TERM, ipa: 'ˈæl.ɡə.rɪ.ðəm' }]} />);
+    expect(html).toMatch(/<span lang="en"[^>]*>\/ˈæl\.ɡə\.rɪ\.ðəm\/<\/span>/);
+  });
+
+  it('counts only listed terms in My words', () => {
+    saved.ids = new Set(['t1', 'gone']);
+    const html = renderToStaticMarkup(<GlossarySearch terms={[TERM]} />);
+    saved.ids = new Set();
+    expect(html).toMatch(/My words<span[^>]*>1<\/span>/);
   });
 
   it('keeps the chips to one row: the five busiest subjects, the rest behind "+n more"', () => {

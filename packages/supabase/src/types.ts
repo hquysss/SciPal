@@ -530,6 +530,7 @@ export interface Database {
           image_alt_en: string | null;
           image_alt_vi: string | null;
           image_credit: string | null;
+          ipa: string | null;
         };
         Insert: {
           id?: string;
@@ -548,6 +549,7 @@ export interface Database {
           image_alt_en?: string | null;
           image_alt_vi?: string | null;
           image_credit?: string | null;
+          ipa?: string | null;
         };
         Update: {
           id?: string;
@@ -566,6 +568,7 @@ export interface Database {
           image_alt_en?: string | null;
           image_alt_vi?: string | null;
           image_credit?: string | null;
+          ipa?: string | null;
         };
         Relationships: [
           {
@@ -573,6 +576,20 @@ export interface Database {
             columns: ['subject_id'];
             isOneToOne: false;
             referencedRelation: 'subjects';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
+      user_terms: {
+        Row: { user_id: string; term_id: string; created_at: string };
+        Insert: { user_id: string; term_id: string; created_at?: string };
+        Update: { user_id?: string; term_id?: string; created_at?: string };
+        Relationships: [
+          {
+            foreignKeyName: 'user_terms_term_id_fkey';
+            columns: ['term_id'];
+            isOneToOne: false;
+            referencedRelation: 'terms';
             referencedColumns: ['id'];
           },
         ];
