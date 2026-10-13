@@ -1,13 +1,14 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { createRequire } from 'node:module';
+import { pathToFileURL } from 'node:url';
 import * as THREE from '../../frontend/node_modules/three/build/three.module.js';
 
 // Prepares the arm for the withdrawal reflex in the skin-senses simulation from the human-anatomy files
 // skeleton.glb, muscular.glb and nervous.glb (BodyParts3D / Z-Anatomy, CC BY-SA; GLB export by JMK712, see
 // frontend/public/models/skin/README.md). It keeps the right arm's bones, the elbow flexors, the median and
 // musculocutaneous nerves with the brachial plexus, and the cervical spinal cord with its horns, roots and
-// ganglion (cut to C4–T1). Each vertex gets a weight `_BEND`: 1 for what turns with the forearm when the
+// ganglion (cut to C7–T1, where the cord is cut across). Each vertex gets a weight `_BEND`: 1 for what turns with the forearm when the
 // elbow bends, 0 for what stays. It also writes the paths an impulse takes through the reflex arc.
 // Run from the repository root: node scripts/assets/build-arm-reflex.mjs [source-folder]
 
@@ -17,8 +18,7 @@ const SCALE = 8;
 const ORIGIN = new THREE.Vector3(-0.12, 1.15, -0.03);
 const ELBOW = new THREE.Vector3(-0.222, 1.1, -0.018);
 const CORD = { low: 1.39, high: 1.53 };
-const LEVEL = 1.455; // C7: the slice shown enlarged
-const SLAB = 0.003;
+const LEVEL = 1.455; // C7: the cord is cut here to show the cross-section
 const require = createRequire(path.resolve('package.json'));
 const modules = process.env.ASSET_MODULES ?? 'node_modules/.pnpm';
 const pnpmDir = (name) => {
@@ -26,6 +26,8 @@ const pnpmDir = (name) => {
   if (!dir) throw new Error(`Missing ${name} in ${modules}`);
   return path.resolve(modules, dir, 'node_modules', name);
 };
+const { MeshoptSimplifier } = await import(pathToFileURL(path.join(pnpmDir('meshoptimizer'), 'index.js')).href);
+await MeshoptSimplifier.ready;
 
 const wrapper = path.resolve('frontend/node_modules/three/examples/jsm/libs/draco/gltf/draco_wasm_wrapper.js');
 const decoderFile = path.join(source, 'draco-decoder.cjs');
@@ -75,7 +77,7 @@ function decode(file, primitive) {
 const PARTS = [
   ['skeleton-final.glb', /^(Humerus|Clavicle|Scapula)\.r\.001$/, 'bone', 'arm'],
   ['skeleton-final.glb', /^(Radius|Ulna|(Scaphoid|Lunate|Triquetrum|Pisiform|Trapezium|Trapezoid|Capitate|Hamate) bone|.*metacarpal bone|.*phalanx of .* finger of hand)\.r\.001$/, 'bone', 'forearm'],
-  ['skeleton-final.glb', /^Vertebra (C[3-7]|T[1-3])\.001$/, 'spine', 'arm'],
+  ['skeleton-final.glb', /^Vertebra (C7|T[1-3])\.001$/, 'spine', 'arm'],
   ['muscular.glb', /^(Long|Short) head of biceps brachii\.r\.001$/, 'biceps', 'smooth'],
   ['muscular.glb', /^Brachialis muscle\.r\.001$/, 'flexor', 'smooth'],
   ['nervous.glb', /^(Median nerve|Proper palmar digital branches of median nerve|Common palmar digital branches of median nerve)\.r\.001$/, 'sensory', 'smooth'],
@@ -112,16 +114,13 @@ for (const [file, pattern, part, bend] of PARTS) {
       }
       return Uint32Array.from(list);
     };
-    if (bend === 'cord') {
-      chosen.push({ name: node.name, part, bend, positions, indices: cut(CORD.low, CORD.high) });
-      // A thin slice at C7 for the enlarged cross-section (the right half and the middle only).
-      chosen.push({ name: `${node.name} (C7 slice)`, part: `slice-${part}`, bend, positions, indices: cut(LEVEL - SLAB, LEVEL + SLAB) });
-    } else chosen.push({ name: node.name, part, bend, positions, indices });
+    if (bend === 'cord') chosen.push({ name: node.name, part, bend, positions, indices: cut(CORD.low, CORD.high), cut });
+    else chosen.push({ name: node.name, part, bend, positions, indices });
   }
 }
 
 // Paths through the reflex arc, from the real meshes (world metres, before scaling).
-const pointsOf = (pattern) => chosen.filter((c) => pattern.test(c.name) && !c.part.startsWith('slice-')).flatMap((c) => { const out = []; const used = new Set(c.indices); for (const i of used) out.push(new THREE.Vector3().fromArray(c.positions, i * 3)); return out; });
+const pointsOf = (pattern) => chosen.filter((c) => pattern.test(c.name)).flatMap((c) => { const out = []; const used = new Set(c.indices); for (const i of used) out.push(new THREE.Vector3().fromArray(c.positions, i * 3)); return out; });
 const centre = (list) => list.reduce((s, p) => s.add(p), new THREE.Vector3()).divideScalar(Math.max(1, list.length));
 const slice = (list, y, half = 0.004, filter = () => true) => centre(list.filter((p) => Math.abs(p.y - y) < half && filter(p)));
 const byHeight = (list, step) => {
@@ -138,8 +137,101 @@ const right = (p) => p.x < 0;
 const ganglion = slice(pointsOf(/^Spinal ganglion\.r/), LEVEL, 0.006);
 const dorsalRoot = slice(pointsOf(/^Posterior root of spinal nerve\.r/), LEVEL, 0.006);
 const ventralRoot = slice(pointsOf(/^Anterior root of spinal nerve\.r/), LEVEL, 0.006);
-const posteriorHorn = slice(pointsOf(/^Posterior horn/), LEVEL, 0.004, right);
-const anteriorHorn = slice(pointsOf(/^Anterior horn/), LEVEL, 0.004, right);
+
+// The cross-section at C7 comes from "Spinothalamic Tract 10/13/21" by aandp (CC BY 4.0, Sketchfab): a slab of
+// white matter whose grey matter is an H-shaped hole, filled here. It replaces the cord at C7 at the cord's own
+// size, and the cord above it is left out so the cut face shows.
+const section = (() => {
+  const dir = path.join(source, 'spinothalamic');
+  const doc = JSON.parse(fs.readFileSync(path.join(dir, 'scene.gltf')));
+  const bin = fs.readFileSync(path.join(dir, 'scene.bin'));
+  const read = (index) => {
+    const accessor = doc.accessors[index];
+    const view = doc.bufferViews[accessor.bufferView];
+    const start = bin.byteOffset + (view.byteOffset ?? 0) + (accessor.byteOffset ?? 0);
+    const count = accessor.count * (accessor.type === 'VEC3' ? 3 : 1);
+    const Type = accessor.componentType === 5126 ? Float32Array : accessor.componentType === 5125 ? Uint32Array : Uint16Array;
+    return new Type(bin.buffer.slice(start, start + count * Type.BYTES_PER_ELEMENT));
+  };
+  const primitive = doc.meshes[doc.nodes.find((node) => node.name === 'Object_10').mesh].primitives[0];
+  const raw = read(primitive.attributes.POSITION);
+  const triangles = Uint32Array.from(read(primitive.indices));
+  const [indices] = MeshoptSimplifier.simplify(triangles, raw, 3, Math.floor(triangles.length / 3 / 6) * 3, 0.002, []);
+  // Its own axes: `up` along the cord (the normal of the cut faces), `back` toward the posterior side.
+  const v = (i) => new THREE.Vector3().fromArray(raw, i * 3);
+  const up = new THREE.Vector3();
+  for (let t = 0; t < triangles.length; t += 3) {
+    const triangle = new THREE.Triangle(v(triangles[t]), v(triangles[t + 1]), v(triangles[t + 2]));
+    const n = triangle.getNormal(new THREE.Vector3()).multiplyScalar(triangle.getArea());
+    if (Math.abs(n.z) > 0.8 * n.length()) up.add(n.z < 0 ? n.negate() : n);
+  }
+  up.normalize();
+  const back = new THREE.Vector3(0, 1, 0).projectOnPlane(up).normalize();
+  const side = new THREE.Vector3().crossVectors(back, up);
+  const box = new THREE.Box3();
+  const local = (p) => new THREE.Vector3(p.dot(side), p.dot(up), p.dot(back));
+  for (let i = 0; i < raw.length / 3; i++) box.expandByPoint(local(v(i)));
+  const mid = box.getCenter(new THREE.Vector3());
+  // Fit it to the cord at C7.
+  const ring = pointsOf(/^White matter/).filter((p) => Math.abs(p.y - LEVEL) < 0.002);
+  const cordBox = new THREE.Box3().setFromPoints(ring);
+  const scale = (cordBox.max.x - cordBox.min.x) / (box.max.x - box.min.x);
+  const height = (box.max.y - box.min.y) * scale;
+  const toWorld = (l) => new THREE.Vector3(cordBox.getCenter(new THREE.Vector3()).x + (l.x - mid.x) * scale, LEVEL - (box.max.y - l.y) * scale, cordBox.getCenter(new THREE.Vector3()).z - (l.z - mid.z) * scale);
+  const positions = new Float32Array(raw.length);
+  for (let i = 0; i < raw.length / 3; i++) toWorld(local(v(i))).toArray(positions, i * 3);
+  // The hole, traced where the middle of the slab cuts the mesh, becomes a solid of grey matter.
+  const segments = [];
+  const h = mid.y;
+  for (let t = 0; t < triangles.length; t += 3) {
+    const corner = [0, 1, 2].map((j) => local(v(triangles[t + j])));
+    const hits = [];
+    for (let j = 0; j < 3; j++) {
+      const a = corner[j], b = corner[(j + 1) % 3];
+      if ((a.y - h) * (b.y - h) < 0) hits.push(a.clone().lerp(b, (h - a.y) / (b.y - a.y)));
+    }
+    if (hits.length === 2) segments.push(hits);
+  }
+  const key = (p) => `${p.x.toFixed(5)},${p.z.toFixed(5)}`;
+  const links = new Map();
+  for (const [a, b] of segments) for (const [p, q] of [[a, b], [b, a]]) { if (!links.has(key(p))) links.set(key(p), []); links.get(key(p)).push(q); }
+  const seen = new Set();
+  const loops = [];
+  for (const [a] of segments) {
+    if (seen.has(key(a))) continue;
+    const loop = [a];
+    seen.add(key(a));
+    for (let at = a; ;) {
+      const next = (links.get(key(at)) ?? []).find((q) => !seen.has(key(q)));
+      if (!next) break;
+      seen.add(key(next)); loop.push(next); at = next;
+    }
+    if (loop.length > 20) loops.push(loop.map((p) => new THREE.Vector2(p.x, p.z)));
+  }
+  const area = (loop) => Math.abs(THREE.ShapeUtils.area(loop));
+  loops.sort((a, b) => area(b) - area(a));
+  const hole = loops[1].filter((_, i) => i % 3 === 0);
+  const solid = new THREE.ExtrudeGeometry(new THREE.Shape(hole), { depth: box.max.y - box.min.y, bevelEnabled: false, curveSegments: 1 });
+  const grey = solid.getAttribute('position');
+  const greyPositions = new Float32Array(grey.count * 3);
+  for (let i = 0; i < grey.count; i++) toWorld(new THREE.Vector3(grey.getX(i), box.min.y + grey.getZ(i), grey.getY(i))).toArray(greyPositions, i * 3);
+  const greyIndices = solid.index ? Uint32Array.from(solid.index.array) : Uint32Array.from({ length: grey.count }, (_, i) => i);
+  // The horns on the right side (−x), on the cut face, for the impulse paths.
+  const outline = hole.map((p) => toWorld(new THREE.Vector3(p.x, box.max.y, p.y)));
+  const centreZ = cordBox.getCenter(new THREE.Vector3()).z;
+  const rightSide = outline.filter((p) => p.x < cordBox.getCenter(new THREE.Vector3()).x - 0.001);
+  const lift = (p) => p.setY(LEVEL + 0.0005);
+  return {
+    parts: [
+      { name: 'Spinal cord cross-section at C7 (aandp)', part: 'section', bend: 'cord', positions, indices },
+      { name: 'Grey matter of the cross-section at C7', part: 'sectionGrey', bend: 'cord', positions: greyPositions, indices: greyIndices },
+    ],
+    bottom: LEVEL - height,
+    posteriorHorn: lift(centre(rightSide.filter((p) => p.z < centreZ - 0.001))),
+    anteriorHorn: lift(centre(rightSide.filter((p) => p.z > centreZ + 0.001))),
+  };
+})();
+const { posteriorHorn, anteriorHorn } = section;
 const roots = centre(pointsOf(/^Roots of brachial plexus\.r/));
 const inferiorTrunk = centre(pointsOf(/^Inferior trunk of brachial plexus\.r/));
 const superiorTrunk = centre(pointsOf(/^Superior trunk of brachial plexus\.r/));
@@ -148,6 +240,13 @@ const cordTop = slice(pointsOf(/^White matter/), CORD.high - 0.004, 0.004);
 const BRAIN = new THREE.Vector3(0, 1.68, -0.03);
 const medianUp = byHeight(median, 0.03).filter((p) => p.y < 1.385);
 const motorDown = byHeight(musculocutaneous, 0.03).reverse();
+
+// Cut the cord at the section; keep the roots that reach it.
+for (const item of chosen) {
+  if (['cord', 'posteriorHorn', 'anteriorHorn'].includes(item.part)) item.indices = item.cut(CORD.low, section.bottom);
+  else if (item.cut) item.indices = item.cut(CORD.low, LEVEL + 0.006);
+}
+chosen.push(...section.parts);
 
 const paths = {
   sensory: [fingertip, palm, ...medianUp, inferiorTrunk, roots, ganglion, dorsalRoot, posteriorHorn],
@@ -171,7 +270,7 @@ encoder.SetAttributeQuantization(EncoderModule.NORMAL, 10);
 encoder.SetAttributeQuantization(EncoderModule.GENERIC, 8);
 encoder.SetTrackEncodedProperties(true);
 const out = {
-  asset: { version: '2.0', generator: 'SciPal arm reflex preparation', copyright: 'BodyParts3D / DBCLS, Z-Anatomy; derivative CC BY-SA 4.0 (right arm, elbow flexors, arm nerves and cervical spinal cord; re-centred, scaled, bend weights)' },
+  asset: { version: '2.0', generator: 'SciPal arm reflex preparation', copyright: 'BodyParts3D / DBCLS, Z-Anatomy; derivative CC BY-SA 4.0 (right arm, elbow flexors, arm nerves and cervical spinal cord; re-centred, scaled, bend weights). C7 cross-section: "Spinothalamic Tract 10/13/21" by aandp, CC BY 4.0 (cut out, grey matter filled, scaled)' },
   scene: 0, scenes: [{ nodes: [] }], nodes: [], meshes: [], accessors: [], bufferViews: [], buffers: [],
   materials: [{ name: 'tissue', pbrMetallicRoughness: { baseColorFactor: [1, 1, 1, 1], metallicFactor: 0, roughnessFactor: 0.6 } }],
   extensionsUsed: ['KHR_draco_mesh_compression'], extensionsRequired: ['KHR_draco_mesh_compression'],

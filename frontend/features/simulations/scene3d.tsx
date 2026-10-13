@@ -146,7 +146,7 @@ export function useOrbit(home: Orbit, limits: { min: number; max: number }) {
     },
   };
 
-  return { host, orbit, invalidate, handlers, zoom, reset };
+  return { host, orbit, invalidate, handlers, zoom, reset, move };
 }
 
 /** Math coordinates (z up) to three.js (y up): (x, y, z) → (x, z, −y), a proper rotation. */
