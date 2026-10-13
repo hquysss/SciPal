@@ -14,7 +14,9 @@ Migration thêm vào `user_terms`: `due_at timestamptz not null default now()`, 
 
 `POST /api/me/terms/:termId/review { grade }` (cần đăng nhập; chỉ dòng của mình, không có → 404; grade sai → 400) trả `{ due_at, xp_earned }`. Chỉ chấm được thẻ đến hạn (`due_at <= now`, điều kiện nằm trong lệnh update nên bấm đúp chỉ tính một lần); thẻ chưa đến hạn → 409.
 
-**XP** (người dùng yêu cầu thêm): +2 XP vào `xp_log` (`reason = 'word_review'`, `subject_id` của thuật ngữ) cho mỗi thẻ đến hạn chấm Khó/Nhớ; Quên không có XP; tối đa 40 XP/ngày (theo ngày UTC). Không đổi streak.
+**XP** (người dùng yêu cầu thêm): +2 XP vào `xp_log` (`reason = 'word_review'`, `subject_id` của thuật ngữ) cho mỗi thẻ đến hạn chấm Khó/Nhớ; Quên không có XP; tối đa 40 XP/ngày (theo ngày UTC).
+
+**Streak** (người dùng yêu cầu thêm): mọi thẻ đến hạn được chấm, kể cả Quên, đánh dấu hôm nay là ngày học của môn đó (`touchStreak`, dùng chung với chấm bài học); trả `new_streak`.
 
 ## Giao diện `/review` — "Ôn từ" / "Review words"
 - Đọc qua RLS tối đa 20 thẻ `due_at <= now()` kèm thuật ngữ, sắp theo `due_at`.
@@ -25,7 +27,7 @@ Migration thêm vào `user_terms`: `due_at timestamptz not null default now()`, 
 - Lối vào: Profile ("Ôn từ") và cạnh chip "Sổ từ của tôi" ở `/glossary` khi đăng nhập, kèm số thẻ đến hạn.
 
 ## Ngoài phạm vi
-Streak, nhắc ôn, thống kê, thẻ chiều VI → EN.
+Nhắc ôn, thống kê, thẻ chiều VI → EN.
 
 ## Kiểm thử
 Unit `nextReview`; route review (401/400/404/200, chỉ theo `user_id`); trang ôn (lật, chấm, phím, lỗi, hết thẻ, khách); test SQL cột mới.

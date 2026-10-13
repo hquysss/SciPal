@@ -114,7 +114,8 @@ describe('my word list', () => {
     const write = mockQuery({ data: [{ term_id: A }], error: null });
     const today = mockQuery({ data: null, error: null, count: 0 });
     const log = mockQuery({ data: null, error: null });
-    const app = await build(student, { user_terms: [read, write], xp_log: [today, log] });
+    const streakWrite = mockQuery({ data: null, error: null });
+    const app = await build(student, { user_terms: [read, write], xp_log: [today, log], streaks: [mockQuery({ data: null, error: null }), streakWrite] });
     const res = await app.inject({ method: 'POST', url: `/api/me/terms/${A}/review`, payload: { grade: 'good' } });
     expect(res.statusCode).toBe(200);
     expect(Date.parse(res.json().due_at) - Date.now()).toBeGreaterThan(86_000_000);
@@ -124,6 +125,8 @@ describe('my word list', () => {
     expect(write.eqCalls).toEqual([['user_id', 'student-1'], ['term_id', A]]);
     expect(write.lteCalls[0]?.[0]).toBe('due_at');
     expect(log.inserted[0]).toEqual({ user_id: 'student-1', subject_id: 'sub-1', delta: 2, reason: 'word_review' });
+    expect(res.json().new_streak).toBe(1);
+    expect(streakWrite.inserted[0]).toMatchObject({ user_id: 'student-1', subject_id: 'sub-1', current_streak: 1 });
     await app.close();
   });
 
@@ -132,9 +135,11 @@ describe('my word list', () => {
     const app = await build(student, {
       user_terms: [mockQuery({ data: card, error: null }), mockQuery({ data: [{ term_id: A }], error: null })],
       xp_log: [mockQuery({ data: null, error: null, count: 0 }), log],
+      streaks: [mockQuery({ data: null, error: null }), mockQuery({ data: null, error: null })],
     });
     const res = await app.inject({ method: 'POST', url: `/api/me/terms/${A}/review`, payload: { grade: 'again' } });
     expect(res.json().xp_earned).toBe(0);
+    expect(res.json().new_streak).toBe(1);
     expect(log.inserted).toHaveLength(0);
     await app.close();
   });
@@ -144,6 +149,7 @@ describe('my word list', () => {
     const app = await build(student, {
       user_terms: [mockQuery({ data: card, error: null }), mockQuery({ data: [{ term_id: A }], error: null })],
       xp_log: [mockQuery({ data: null, error: null, count: 20 }), log],
+      streaks: [mockQuery({ data: null, error: null }), mockQuery({ data: null, error: null })],
     });
     const res = await app.inject({ method: 'POST', url: `/api/me/terms/${A}/review`, payload: { grade: 'good' } });
     expect(res.statusCode).toBe(200);
