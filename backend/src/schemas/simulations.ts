@@ -378,6 +378,73 @@ const BeforeAfterConfig = z
     }
   });
 
+/** One box of an organisation chart; `text` opens with it. */
+export type OrgChartNode = { label: { en: string; vi: string }; text: { en: string; vi: string }; children: OrgChartNode[] };
+type OrgChartNodeInput = { label: { en: string; vi: string }; text?: { en: string; vi: string }; children?: OrgChartNodeInput[] };
+export const ORG_CHART_MAX_DEPTH = 6;
+export const ORG_CHART_MAX_NODES = 40;
+
+const org = (vi: string, en: string, textVi = '', textEn = '', children: OrgChartNodeInput[] = []): OrgChartNodeInput => ({
+  label: { vi, en },
+  text: { vi: textVi, en: textEn },
+  children,
+});
+
+// Bộ máy nhà nước sau cải cách của Lê Thánh Tông, theo SGK Lịch sử 11 Kết nối tri thức, tr.65.
+const LE_THANH_TONG = org(
+  'Vua (Lê Thánh Tông)',
+  'The emperor (Le Thanh Tong)',
+  'Nắm mọi quyền hành và trực tiếp chỉ đạo các cơ quan chuyên môn. Xoá bỏ hầu hết các chức quan đại thần có quyền lực lớn, chỉ giữ lại một số ít để cùng bàn bạc công việc khi cần thiết.',
+  'Held all power and directed the specialist offices himself. He abolished most powerful high offices, keeping a few ministers to consult when needed.',
+  [
+    org('Trung ương', 'Central government', '', '', [
+      org('Lục Bộ', 'Six Ministries', 'Cơ quan chuyên môn quan trọng. Năm 1465, Lê Thánh Tông đưa lục Bộ trở thành cơ quan có quyền lực thực sự.', 'The key specialist offices. In 1465 Le Thanh Tong gave the Six Ministries real power.', [
+        org('Bộ Lại', 'Ministry of Personnel', 'Quản lí quan lại.', 'Officials.'),
+        org('Bộ Hộ', 'Ministry of Revenue', 'Hộ khẩu, ruộng đất, thuế khoá.', 'Households, land and taxes.'),
+        org('Bộ Lễ', 'Ministry of Rites', 'Lễ nghi, giáo dục, thi cử.', 'Rites, education and examinations.'),
+        org('Bộ Binh', 'Ministry of War', 'Quân đội, quốc phòng.', 'The army and defence.'),
+        org('Bộ Hình', 'Ministry of Justice', 'Luật pháp, xét xử.', 'Law and trials.'),
+        org('Bộ Công', 'Ministry of Works', 'Xây dựng, công trình.', 'Building and public works.'),
+      ]),
+      org('Lục Tự', 'Six Courts', 'Sáu Tự, giúp việc cho lục Bộ.', 'Six courts that assisted the Six Ministries.'),
+      org('Lục Khoa', 'Six Offices of Scrutiny', 'Sáu Khoa, theo dõi, giám sát hoạt động của lục Bộ.', 'Six offices that watched over and checked the Six Ministries.'),
+    ]),
+    org('Địa phương', 'Local government', '', '', [
+      org('13 đạo thừa tuyên và phủ Trung Đô', '13 provinces and Trung Do prefecture',
+          'Năm 1466, bỏ 5 đạo, chia đất nước thành 12 đạo thừa tuyên và phủ Trung Đô (Thăng Long); năm 1471 đặt thêm đạo thứ 13 là Quảng Nam. Đứng đầu mỗi đạo là Đô ty, Thừa ty và Hiến ty có quyền ngang nhau, cùng quản lí công việc chung.',
+          'In 1466 the 5 regions were replaced by 12 provinces and Trung Do prefecture (Thang Long); Quang Nam became the 13th province in 1471. Each was run jointly by three offices of equal rank.',
+          [
+            org('Đô ty', 'Military office', 'Phụ trách quân sự.', 'Military affairs.'),
+            org('Thừa ty', 'Civil office', 'Trông coi dân sự.', 'Civil affairs.'),
+            org('Hiến ty', 'Judicial office', 'Nắm quyền tư pháp.', 'Justice.'),
+            org('Phủ', 'Prefecture', 'Đơn vị dưới đạo thừa tuyên.', 'The unit below a province.', [
+              org('Huyện, châu', 'District', '', '', [
+                org('Xã', 'Commune', 'Đơn vị hành chính cơ sở.', 'The basic administrative unit.'),
+              ]),
+            ]),
+          ]),
+    ]),
+  ],
+);
+
+// The tree is built level by level instead of recursively, so its depth is bounded by the schema
+// itself and nothing deeper is ever walked; a node one level too deep fails with "depth".
+const orgLabel = z.object({ en: z.string().max(80), vi: z.string().min(1).max(80) });
+let orgChildren: z.ZodTypeAny = z.array(z.unknown()).max(0, { message: 'depth' }).default([]);
+for (let level = 1; level < ORG_CHART_MAX_DEPTH; level += 1) {
+  orgChildren = z.array(z.object({ label: orgLabel, text: Long(400).default({ vi: '', en: '' }), children: orgChildren })).max(12).default([]);
+}
+
+const countOrgNodes = (node: OrgChartNode): number => 1 + node.children.reduce((sum, child) => sum + countOrgNodes(child), 0);
+
+const OrgChartConfig = z
+  .object({
+    root: z.object({ label: orgLabel, text: Long(400).default({ vi: '', en: '' }), children: orgChildren }).default(LE_THANH_TONG),
+  })
+  .superRefine((c, ctx) => {
+    if (countOrgNodes(c.root as OrgChartNode) > ORG_CHART_MAX_NODES) ctx.addIssue({ code: 'custom', path: ['root'], message: 'count' });
+  }) as unknown as z.ZodType<{ root: OrgChartNode }, z.ZodTypeDef, unknown>;
+
 /** Every image a config points at, so each can be checked against the lesson-media bucket. */
 const imageUrls = (kind: string, data: unknown): string[] => {
   if (kind === 'labeled-diagram') {
@@ -416,6 +483,7 @@ export const SIMULATION_CONFIGS = {
   'history-map': HistoryMapConfig,
   'history-timeline': HistoryTimelineConfig,
   'before-after': BeforeAfterConfig,
+  'org-chart': OrgChartConfig,
 } as const;
 
 export type BuiltInSimulationKind = keyof typeof SIMULATION_CONFIGS;
@@ -444,6 +512,7 @@ export const SIMULATION_KINDS = [
   'history-map',
   'history-timeline',
   'before-after',
+  'org-chart',
   'embed',
   ...LEGACY_SIMULATION_KINDS,
 ] as const;
@@ -551,6 +620,7 @@ const MESSAGES: Record<string, Message> = {
   'history-map': { en: 'Check the map: 1–12 steps, up to 32 places, every point [longitude, latitude] inside the region.', vi: 'Kiểm tra bản đồ: 1–12 bước, tối đa 32 địa danh, mọi điểm [kinh độ, vĩ độ] nằm trong vùng bản đồ.' },
   'history-timeline': { en: 'Check the timeline: 1–16 events, each with a date and a title; every image uploaded to SciPal with a Vietnamese description.', vi: 'Kiểm tra trục thời gian: 1–16 mốc, mỗi mốc có thời gian và tiêu đề; mọi ảnh phải tải lên SciPal và có mô tả tiếng Việt.' },
   'before-after': { en: 'Upload both pictures to SciPal; each picture needs a Vietnamese description and its source.', vi: 'Hai ảnh phải tải lên SciPal; mỗi ảnh cần mô tả tiếng Việt và ghi nguồn.' },
+  'org-chart': { en: 'Check the chart: every box needs a Vietnamese name, at most 6 levels, 12 boxes under one box and 40 boxes in all.', vi: 'Kiểm tra sơ đồ: mỗi ô cần tên tiếng Việt, tối đa 6 cấp, 12 ô con dưới một ô và 40 ô cả sơ đồ.' },
 };
 
 /**

@@ -34,7 +34,7 @@ Biến lược đồ, sơ đồ, tranh ảnh tĩnh trong SGK thành trực quan 
 - Cần ảnh có nguồn rõ (ảnh SGK hoặc giấy phép mở). Ví dụ: cọc Bạch Đằng (Hình 3 Bài 7) ↔ bãi cọc ngày nay; tượng đài Lê Lợi, thành Tây Đô.
 
 ### 5. `org-chart` — sơ đồ tổ chức bấm mở từng cấp
-- `config`: cây nút (`label`, `text`, `children`), sâu tối đa 4, tối đa 40 nút; mở/đóng bằng `<details>`/`<summary>`.
+- `config`: `root` là cây ô (`label` cần `vi`, `text` hiện khi mở ô, `children` tối đa 12). Tối đa **6 cấp** (Lê Thánh Tông cần vua → địa phương → đạo → phủ → huyện, châu → xã) và 40 ô. Schema dựng sẵn 6 tầng thay vì đệ quy, nên độ sâu bị chặn ngay trong schema. Mở/đóng bằng `<details>`/`<summary>`, ban đầu chỉ mở ô gốc, có nút Mở hết / Thu gọn, số bộ phận con trên mỗi ô. Mẫu mặc định: bộ máy nhà nước sau cải cách Lê Thánh Tông (SGK tr.65). Đã làm; xem thử `/dev/org-chart`.
 - Dùng cho: bộ máy nhà nước Lê Thánh Tông (Bài 10), Minh Mạng (Bài 11).
 
 ### Dữ liệu lược đồ Lam Sơn (theo Hình 3 tr.53, Hình 4 tr.54)
@@ -51,7 +51,7 @@ Toạ độ lon/lat của các địa danh sẽ do đội nội dung đối chi�
 2. ✅ `history-timeline` + Hình 2 vào Bài 2: khối đã có trong `generate_lesson_2_su.py` và file xuất; ghi vào database bằng `export-lesson/chen-truc-thoi-gian-bai-2-su.sql` **sau khi** deploy code (trang bài đọc khối bằng `z.array(BlockSchema)`, kind lạ làm cả bài trống).
 3. Chú thích tranh biếm hoạ Bài 1, Bài 2 (`labeled-diagram`).
 4. ✅ `before-after` (khối xong; chưa có cặp ảnh thật có nguồn để gắn vào bài).
-5. `org-chart`.
+5. ✅ `org-chart` (khối xong; gắn vào Bài 10, 11 khi hai bài này được số hoá).
 6. Nhân bản đồ: Tây Sơn, Mỹ La-tinh, đế quốc (cần tài nguyên `world`), kháng chiến Bài 7.
 
 ## Kiểm thử
