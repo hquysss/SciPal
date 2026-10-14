@@ -65,30 +65,38 @@ export function tutorLink(lang: 'en' | 'vi') {
   return { href: '/tutor', label: lang === 'en' ? 'Professor' : 'Giáo sư' };
 }
 
-/** Pricing sits right after Home, for everyone (admins keep it to check the page). */
+/** Pricing sits in the "More" menu, for everyone (admins keep it to check the page). */
 export function pricingLink(lang: 'en' | 'vi') {
   return { href: '/pricing', label: lang === 'en' ? 'Pricing' : 'Bảng giá' };
 }
 
-/**
- * The main links after Home, Pricing and Subjects. On the desktop bar Profile is the account button (the
- * avatar), which keeps a full admin bar from overflowing at 1366px; the mobile menu lists it.
- */
 /** "Cộng đồng (2)": friend requests waiting for an answer. */
 export function communityLabel(lang: 'en' | 'vi', pending: number) {
   const base = lang === 'en' ? 'Community' : 'Cộng đồng';
   return pending > 0 ? `${base} (${pending})` : base;
 }
 
-export function primaryLinks(lang: 'en' | 'vi', signedIn: boolean, place: 'desktop' | 'mobile', role: string | null = null, pendingFriends = 0) {
+/** The main links after Home and Subjects: what a student opens every day. */
+export function primaryLinks(lang: 'en' | 'vi') {
+  const label = (en: string, vi: string) => (lang === 'en' ? en : vi);
+  return [
+    { href: '/lab', label: label('Lab', 'Thí nghiệm') },
+    { href: '/exam', label: label('Exams', 'Thi thử') },
+    tutorLink(lang),
+  ];
+}
+
+/**
+ * The "More" menu: reference and personal pages. On the desktop bar Profile and Community are in the account
+ * menu (the avatar), which keeps a full admin bar from overflowing at 1366px; the mobile menu lists them here.
+ */
+export function moreLinks(lang: 'en' | 'vi', signedIn: boolean, place: 'desktop' | 'mobile', role: string | null = null, pendingFriends = 0) {
   const label = (en: string, vi: string) => (lang === 'en' ? en : vi);
   // Teachers and admins reach classes from their own menu.
   const isStudent = role !== null && role !== 'teacher' && role !== 'admin';
   return [
-    { href: '/lab', label: label('Lab', 'Thí nghiệm') },
     { href: '/glossary', label: label('Glossary', 'Từ điển') },
-    { href: '/exam', label: label('Exams', 'Thi thử') },
-    tutorLink(lang),
+    pricingLink(lang),
     ...(signedIn
       ? [
           { href: '/progress', label: label('Progress', 'Tiến trình') },
@@ -125,7 +133,7 @@ export function NavBar({ currentSubject }: NavBarProps) {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [barHidden, setBarHidden] = useState(false);
   const [wideBar, setWideBar] = useState(false);
-  const [openNavGroup, setOpenNavGroup] = useState<'admin' | 'teacher' | 'account' | null>(null);
+  const [openNavGroup, setOpenNavGroup] = useState<'admin' | 'teacher' | 'account' | 'more' | null>(null);
   const [appRole, setAppRole] = useState<AppRole | null>(null);
   const [displayName, setDisplayName] = useState<string | null>(null);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
@@ -312,15 +320,18 @@ export function NavBar({ currentSubject }: NavBarProps) {
   const subjectsActive = pathname === '/subjects' || Boolean(currentSubject ?? params?.subject);
   const accountName = displayName ?? (lang === 'en' ? 'Account' : 'Tài khoản');
   const navLang = lang === 'en' ? 'en' : 'vi';
-  const pricing = pricingLink(navLang);
-  const links = primaryLinks(navLang, Boolean(appRole), 'desktop', appRole);
-  const mobileLinks = primaryLinks(navLang, Boolean(appRole), 'mobile', appRole, pendingFriends);
+  const links = primaryLinks(navLang);
+  const moreDesktop = moreLinks(navLang, Boolean(appRole), 'desktop', appRole);
+  const moreMobile = moreLinks(navLang, Boolean(appRole), 'mobile', appRole, pendingFriends);
+  const moreLabel = lang === 'en' ? 'More' : 'Thêm';
+  const moreMenuOpen = openNavGroup === 'more';
+  const moreRouteActive = moreDesktop.some((link) => pathname === link.href);
   const { teacherLinks, adminLinks } = roleLinks(appRole, lang === 'en' ? 'en' : 'vi', openRequests);
   const teacherMenuOpen = openNavGroup === 'teacher';
   const accountMenuOpen = openNavGroup === 'account';
   const teacherRouteActive = teacherLinks.some((link) => pathname === link.href || pathname.startsWith(`${link.href}/`));
   const adminRouteActive = pathname === '/admin' || pathname.startsWith('/admin/');
-  const toggleNavGroup = (group: 'admin' | 'teacher' | 'account', trigger: HTMLButtonElement) => {
+  const toggleNavGroup = (group: 'admin' | 'teacher' | 'account' | 'more', trigger: HTMLButtonElement) => {
     openNavTriggerRef.current = trigger;
     setOpenNavGroup((current) => current === group ? null : group);
   };
@@ -360,14 +371,6 @@ export function NavBar({ currentSubject }: NavBarProps) {
             {homeLinkLabel}
           </Link>
           <Link
-            href={pricing.href}
-            prefetch={pathname !== '/'}
-            aria-current={pathname === pricing.href ? 'page' : undefined}
-            className={navStyles.navLink}
-          >
-            {pricing.label}
-          </Link>
-          <Link
             href="/subjects"
             prefetch={pathname !== '/'}
             aria-current={pathname === '/subjects' ? 'page' : undefined}
@@ -387,6 +390,37 @@ export function NavBar({ currentSubject }: NavBarProps) {
               {link.label}
             </Link>
           ))}
+          <div className="relative" data-nav-group="more">
+            <button
+              type="button"
+              aria-expanded={moreMenuOpen}
+              aria-controls="desktop-more-navigation"
+              onClick={(event) => toggleNavGroup('more', event.currentTarget)}
+              data-active={moreRouteActive || undefined}
+              className={navStyles.navLink}
+            >
+              {moreLabel}
+              <ChevronDown aria-hidden="true" className={`h-4 w-4 transition-transform duration-150 motion-reduce:transition-none ${moreMenuOpen ? 'rotate-180' : ''}`} />
+            </button>
+            <div
+              id="desktop-more-navigation"
+              aria-hidden={!moreMenuOpen}
+              className={`${navStyles.dropdown} ${moreMenuOpen ? navStyles.dropdownOpen : ''}`}
+            >
+              {moreDesktop.map((link) => (
+                <Link
+                  key={link.href}
+                  href={link.href}
+                  prefetch={pathname !== '/'}
+                  onClick={() => setOpenNavGroup(null)}
+                  aria-current={pathname === link.href ? 'page' : undefined}
+                  className={`block rounded-lg px-3 py-2.5 text-sm font-semibold transition hover:bg-surface-sunken focus-visible:outline focus-visible:outline-2 focus-visible:outline-focus ${pathname === link.href ? 'bg-surface-sunken text-action' : 'text-ink'}`}
+                >
+                  {link.label}
+                </Link>
+              ))}
+            </div>
+          </div>
           {teacherLinks.length > 0 && (
             <div className="relative" data-nav-group="teacher">
               <button
@@ -558,15 +592,6 @@ export function NavBar({ currentSubject }: NavBarProps) {
               {homeLinkLabel}
             </Link>
             <Link
-              href={pricing.href}
-              prefetch={pathname !== '/'}
-              onClick={() => setMobileOpen(false)}
-              aria-current={pathname === pricing.href ? 'page' : undefined}
-              className={`block rounded-xl px-4 py-2 text-sm font-semibold transition hover:bg-surface-sunken focus-visible:outline focus-visible:outline-2 focus-visible:outline-focus ${pathname === pricing.href ? 'bg-surface-sunken text-action' : 'text-ink'}`}
-            >
-              {pricing.label}
-            </Link>
-            <Link
               href="/subjects"
               prefetch={pathname !== '/'}
               onClick={() => setMobileOpen(false)}
@@ -575,7 +600,20 @@ export function NavBar({ currentSubject }: NavBarProps) {
             >
               {subjectsLabel}
             </Link>
-            {mobileLinks.map((link) => (
+            {links.map((link) => (
+              <Link
+                key={link.href}
+                href={link.href}
+                prefetch={pathname !== '/'}
+                onClick={() => setMobileOpen(false)}
+                aria-current={pathname === link.href ? 'page' : undefined}
+                className={`block rounded-xl px-4 py-2 text-sm font-semibold transition hover:bg-surface-sunken focus-visible:outline focus-visible:outline-2 focus-visible:outline-focus ${pathname === link.href ? 'bg-surface-sunken text-action' : 'text-ink'}`}
+              >
+                {link.label}
+              </Link>
+            ))}
+            <p className="px-4 pb-1 pt-3 text-xs font-bold uppercase tracking-wide text-ink-muted">{moreLabel}</p>
+            {moreMobile.map((link) => (
               <Link
                 key={link.href}
                 href={link.href}
