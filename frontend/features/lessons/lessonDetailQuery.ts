@@ -1,7 +1,6 @@
 import { cookies } from 'next/headers';
 import { createServerClient } from '@scipal/supabase';
 import { BlockSchema, type Block } from '@scipal/types';
-import { z } from 'zod';
 import type { QueryOutcome } from './subjectPageQuery';
 
 export interface LessonDetail {
@@ -35,17 +34,28 @@ export type LessonDetailResult =
 
 const one = <T,>(value: T | T[]): T => (Array.isArray(value) ? value[0]! : value);
 
+// Content can reach the database before the code that knows a new block (e.g. a newer interactive
+// kind) is deployed, so one unknown block is dropped instead of emptying the whole lesson.
+function parseKnownBlocks(blocks: unknown): Block[] {
+  if (!Array.isArray(blocks)) return [];
+  return blocks.flatMap((block, index) => {
+    const parsed = BlockSchema.safeParse(block);
+    if (parsed.success) return [parsed.data];
+    console.warn(`Skipping lesson block ${index}: it does not match BlockSchema.`, parsed.error.issues);
+    return [];
+  });
+}
+
 export function classifyLessonDetail(outcome: QueryOutcome<Record<string, unknown> | null>): LessonDetailResult {
   if (outcome.error) return { kind: 'error' };
   if (!outcome.data) return { kind: 'not_found' };
 
   const row = outcome.data as unknown as Omit<LessonDetail, 'blocks'> & { blocks: unknown };
-  const parsedBlocks = z.array(BlockSchema).safeParse(row.blocks);
   return {
     kind: 'ok',
     lesson: {
       ...row,
-      blocks: parsedBlocks.success ? parsedBlocks.data : [],
+      blocks: parseKnownBlocks(row.blocks),
       topics: one(row.topics),
       subjects: one(row.subjects),
     },
