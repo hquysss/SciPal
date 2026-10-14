@@ -123,7 +123,7 @@ function DiagramView({ config, lang }: SimulationViewProps<'labeled-diagram'>) {
         {config.labels.map((label) => {
           const open = shown.has(label.id);
           return (
-            <span key={label.id} className="absolute" style={labelStyle(label)}>
+            <span key={label.id} className="group absolute" style={labelStyle(label)}>
               <button
                 type="button"
                 className={`${MARKER} left-0 top-0`}
@@ -138,13 +138,16 @@ function DiagramView({ config, lang }: SimulationViewProps<'labeled-diagram'>) {
                   })
                 }
               >
-                <span className={DOT} />
+                {!open && <span className="absolute h-4 w-4 rounded-full bg-accent opacity-60 motion-safe:animate-ping" aria-hidden="true" />}
+                <span className={`${DOT} relative transition-transform duration-200 group-hover:scale-125 ${open ? 'scale-125' : ''}`} />
               </button>
-              {open && (
-                <span className="absolute left-3 top-3 whitespace-nowrap rounded bg-surface px-2 py-0.5 text-sm font-semibold text-ink shadow" aria-hidden="true">
-                  {t(label.text)}
-                </span>
-              )}
+              {/* Shown on hover/focus, or kept open by a tap. Opens away from the nearer edge (centred in the middle third), so it stays on the image. */}
+              <span
+                className={`pointer-events-none absolute top-3 z-10 whitespace-nowrap rounded bg-surface px-2 py-0.5 text-sm font-semibold text-ink shadow transition duration-200 ease-out motion-reduce:transition-none ${label.x > 2 / 3 ? 'right-3 origin-top-right' : label.x < 1 / 3 ? 'left-3 origin-top-left' : 'left-0 -translate-x-1/2 origin-top'} ${open ? 'translate-y-0 scale-100 opacity-100' : 'invisible -translate-y-1 scale-90 opacity-0 group-focus-within:visible group-focus-within:translate-y-0 group-focus-within:scale-100 group-focus-within:opacity-100 group-hover:visible group-hover:translate-y-0 group-hover:scale-100 group-hover:opacity-100'}`}
+                aria-hidden="true"
+              >
+                {t(label.text)}
+              </span>
             </span>
           );
         })}

@@ -6,6 +6,10 @@ import { algorithmModule } from './algorithm';
 import { functionGraphModule } from './functionGraph';
 import { graph3dModule } from './graph3d';
 import { harmonic3dModule } from './harmonic3d';
+import { historyMapModule } from './historyMap';
+import { historyTimelineModule } from './historyTimeline';
+import { beforeAfterModule } from './beforeAfter';
+import { orgChartModule } from './orgChart';
 import { labeledDiagramModule } from './labeledDiagram';
 import { motionModule } from './motion';
 import { ohmCircuitModule } from './ohmCircuit';
@@ -37,4 +41,8 @@ export const simulationModules: { [K in BuiltInSimulationKind]: SimulationModule
   'ohm-circuit': ohmCircuitModule,
   punnett: punnettModule,
   'labeled-diagram': labeledDiagramModule,
+  'history-map': historyMapModule,
+  'history-timeline': historyTimelineModule,
+  'before-after': beforeAfterModule,
+  'org-chart': orgChartModule,
 };

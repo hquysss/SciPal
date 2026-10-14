@@ -69,6 +69,28 @@ export function responseOf(question: PublicPracticeQuestion, answer: PracticeRes
   return answer?.short_answer?.trim() ? { short_answer: answer.short_answer } : null;
 }
 
+type QuestionStatus = 'empty' | 'answered' | 'right' | 'wrong';
+const STATUS_ORDER: QuestionStatus[] = ['empty', 'answered', 'right', 'wrong'];
+const STATUS_TEXT: Record<QuestionStatus, Bilingual> = {
+  empty: { en: 'not answered', vi: 'chưa làm' },
+  answered: { en: 'answered, not checked', vi: 'đã làm, chưa kiểm tra' },
+  right: { en: 'right', vi: 'đúng' },
+  wrong: { en: 'not right', vi: 'chưa đúng' },
+};
+const STATUS_CLASS: Record<QuestionStatus, string> = {
+  empty: 'border-line bg-surface text-ink-muted hover:bg-surface-sunken',
+  answered: 'border-2 border-accent bg-[color-mix(in_srgb,var(--accent,var(--action))_22%,transparent)] text-ink',
+  right: 'border-success bg-success-surface text-success',
+  wrong: 'border-danger bg-danger-surface text-danger',
+};
+
+/** Where a question stands in this visit: the server's verdict wins over a plain answer. */
+export function questionStatus(question: PublicPracticeQuestion, state: PracticeState): QuestionStatus {
+  const result = state.results[question.id];
+  if (result) return result.correct ? 'right' : 'wrong';
+  return responseOf(question, state.answers[question.id]) ? 'answered' : 'empty';
+}
+
 interface PracticeSectionProps {
   load: PracticeLoad;
   state: PracticeState;
@@ -98,6 +120,8 @@ export function PracticeSection({ load, state, onAnswer, onResult, onRetry, onQu
   const shownLang = lang ?? (readerLang === 'en' ? 'en' : 'vi');
   const [activeId, setActiveId] = useState<string>();
   const [backward, setBackward] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState(false);
   const positionRef = useRef<HTMLParagraphElement>(null);
   const questions = load.ok ? load.questions : [];
   const activeIndex = Math.max(0, questions.findIndex((q) => q.id === (state.activeQuestionId ?? activeId)));
@@ -133,45 +157,98 @@ export function PracticeSection({ load, state, onAnswer, onResult, onRetry, onQu
     onQuestion?.(next.id);
     positionRef.current?.focus({ preventScroll: true });
   };
+  // Hand in the whole set: every answered question not checked yet goes to the server at once.
+  const pending = questions.flatMap((q) => {
+    const response = state.results[q.id] ? null : responseOf(q, state.answers[q.id]);
+    return response ? [{ id: q.id, response, checked: state.answers[q.id] }] : [];
+  });
+  const submitAll = async () => {
+    if (!pending.length || submitting) return;
+    setSubmitting(true);
+    setSubmitError(false);
+    const replies = await Promise.all(pending.map(async (p) => ({ ...p, res: await checkPractice(p.id, p.response) })));
+    setSubmitting(false);
+    for (const { id, res, checked } of replies) if (res.ok) onResult(id, res.result, checked);
+    setSubmitError(replies.some(({ res }) => !res.ok));
+  };
   return (
-    <div className="flex min-w-0 flex-col gap-4">
-      <div className="flex flex-col gap-2">
-        <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
-          <p ref={positionRef} tabIndex={-1} aria-live="polite" className="rounded text-lg font-bold tabular-nums text-ink focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus">
-            {t({ en: `Question ${activeIndex + 1} / ${questions.length}`, vi: `Câu ${activeIndex + 1} / ${questions.length}` })}
-          </p>
-          <span className="text-sm text-ink-muted">{t(PART_TITLE[question.type])}</span>
+    <div className="grid min-w-0 gap-6 lg:grid-cols-[minmax(0,1fr)_14rem] lg:items-start">
+      <div className="flex min-w-0 flex-col gap-4">
+        <div className="flex flex-col gap-2">
+          <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
+            <p ref={positionRef} tabIndex={-1} aria-live="polite" className="rounded text-lg font-bold tabular-nums text-ink focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus">
+              {t({ en: `Question ${activeIndex + 1} / ${questions.length}`, vi: `Câu ${activeIndex + 1} / ${questions.length}` })}
+            </p>
+            <span className="text-sm text-ink-muted">{t(PART_TITLE[question.type])}</span>
+          </div>
+          <div role="progressbar" aria-label={t({ en: 'Questions checked', vi: 'Câu đã kiểm tra' })} aria-valuemin={0} aria-valuemax={summary.total} aria-valuenow={summary.checked} className="h-1.5 overflow-hidden rounded-full bg-surface-sunken">
+            <div className={`${styles.progress} h-full origin-left rounded-full bg-accent`} style={{ transform: `scaleX(${summary.checked / summary.total})` }} />
+          </div>
         </div>
-        <div role="progressbar" aria-label={t({ en: 'Questions checked', vi: 'Câu đã kiểm tra' })} aria-valuemin={0} aria-valuemax={summary.total} aria-valuenow={summary.checked} className="h-1.5 overflow-hidden rounded-full bg-surface-sunken">
-          <div className={`${styles.progress} h-full origin-left rounded-full bg-accent`} style={{ transform: `scaleX(${summary.checked / summary.total})` }} />
+        <div key={question.id} className={styles.question} data-backward={backward}>
+          <QuestionCard
+            question={question}
+            options={options}
+            answer={state.answers[question.id]}
+            result={state.results[question.id]}
+            writingFeedback={state.writingFeedback?.[question.id]}
+            onWritingFeedback={onWritingFeedback ? (feedback) => onWritingFeedback(question.id, feedback) : undefined}
+            onAnswer={(answer) => onAnswer(question.id, answer)}
+            onResult={(result, checked) => onResult(question.id, result, checked)}
+            t={t}
+            lang={shownLang}
+          />
+        </div>
+        <nav aria-label={t({ en: 'Practice questions', vi: 'Các câu tự luyện' })} className="flex items-center justify-between gap-3">
+          <button type="button" disabled={activeIndex === 0} onClick={() => goTo(activeIndex - 1)} className={buttonVariants({ variant: 'outline' })}>
+            {t({ en: 'Previous question', vi: 'Câu trước' })}
+          </button>
+          <button type="button" disabled={activeIndex === questions.length - 1} onClick={() => goTo(activeIndex + 1)} className={buttonVariants()}>
+            {t({ en: 'Next question', vi: 'Câu tiếp' })}
+          </button>
+        </nav>
+        <div aria-live="polite" className="flex flex-wrap justify-between gap-2 text-sm tabular-nums text-ink-muted">
+          <span>{t({ en: `Checked ${summary.checked}/${summary.total}`, vi: `Đã kiểm tra ${summary.checked}/${summary.total}` })}</span>
+          {summary.checked > 0 && <span className="font-semibold text-ink">{t({ en: `Correct ${summary.right}/${summary.total}`, vi: `Đúng ${summary.right}/${summary.total}` })}</span>}
         </div>
       </div>
-      <div key={question.id} className={styles.question} data-backward={backward}>
-        <QuestionCard
-          question={question}
-          options={options}
-          answer={state.answers[question.id]}
-          result={state.results[question.id]}
-          writingFeedback={state.writingFeedback?.[question.id]}
-          onWritingFeedback={onWritingFeedback ? (feedback) => onWritingFeedback(question.id, feedback) : undefined}
-          onAnswer={(answer) => onAnswer(question.id, answer)}
-          onResult={(result, checked) => onResult(question.id, result, checked)}
-          t={t}
-          lang={shownLang}
-        />
-      </div>
-      <nav aria-label={t({ en: 'Practice questions', vi: 'Các câu tự luyện' })} className="flex items-center justify-between gap-3">
-        <button type="button" disabled={activeIndex === 0} onClick={() => goTo(activeIndex - 1)} className={buttonVariants({ variant: 'outline' })}>
-          {t({ en: 'Previous question', vi: 'Câu trước' })}
+      <aside aria-label={t({ en: 'Question status', vi: 'Trạng thái các câu' })} className={`${CARD} flex flex-col gap-4 lg:sticky lg:top-4`}>
+        <h3 className="text-sm font-semibold text-ink">{t({ en: 'Question status', vi: 'Trạng thái các câu' })}</h3>
+        <ol className="grid grid-cols-5 gap-2">
+          {questions.map((q, i) => {
+            const status = questionStatus(q, state);
+            return (
+              <li key={q.id}>
+                <button
+                  type="button"
+                  onClick={() => goTo(i)}
+                  aria-current={i === activeIndex ? 'step' : undefined}
+                  aria-label={t({ en: `Question ${i + 1}: ${STATUS_TEXT[status].en}`, vi: `Câu ${i + 1}: ${STATUS_TEXT[status].vi}` })}
+                  className={`flex h-11 w-full items-center justify-center rounded-lg border text-sm font-semibold tabular-nums transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus motion-reduce:transition-none ${STATUS_CLASS[status]} ${i === activeIndex ? 'ring-2 ring-accent ring-offset-2 ring-offset-surface' : ''}`}
+                >
+                  {i + 1}
+                </button>
+              </li>
+            );
+          })}
+        </ol>
+        <ul className="flex flex-col gap-1.5 text-xs text-ink-muted">
+          {STATUS_ORDER.map((status) => (
+            <li key={status} className="flex items-center gap-2">
+              <span aria-hidden="true" className={`h-3 w-3 shrink-0 rounded border ${STATUS_CLASS[status]}`} />
+              {t(STATUS_TEXT[status])}
+            </li>
+          ))}
+        </ul>
+        <button type="button" disabled={!pending.length || submitting} onClick={submitAll} className={buttonVariants()}>
+          {submitting ? t({ en: 'Submitting…', vi: 'Đang nộp…' }) : t({ en: `Submit all (${pending.length})`, vi: `Nộp bài (${pending.length} câu)` })}
         </button>
-        <button type="button" disabled={activeIndex === questions.length - 1} onClick={() => goTo(activeIndex + 1)} className={buttonVariants()}>
-          {t({ en: 'Next question', vi: 'Câu tiếp' })}
-        </button>
-      </nav>
-      <div aria-live="polite" className="flex flex-wrap justify-between gap-2 text-sm tabular-nums text-ink-muted">
-        <span>{t({ en: `Checked ${summary.checked}/${summary.total}`, vi: `Đã kiểm tra ${summary.checked}/${summary.total}` })}</span>
-        {summary.checked > 0 && <span className="font-semibold text-ink">{t({ en: `Correct ${summary.right}/${summary.total}`, vi: `Đúng ${summary.right}/${summary.total}` })}</span>}
-      </div>
+        <p aria-live="polite" className="text-xs text-ink-muted">
+          {submitError
+            ? <span className="text-danger">{t({ en: 'Some answers could not be checked. Try again.', vi: 'Một số câu chưa kiểm tra được. Hãy nộp lại.' })}</span>
+            : t({ en: 'Grades every answered question at once.', vi: 'Chấm cùng lúc mọi câu đã làm.' })}
+        </p>
+      </aside>
     </div>
   );
 }

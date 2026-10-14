@@ -1,0 +1,79 @@
+import { HISTORY_MAP_REGIONS, type HistoryMapRegion, type SimulationConfigByKind } from '@scipal/types';
+
+// Geometry shared by the 3D and flat history maps: an equirectangular projection around the
+// region's centre (x east, y north, in degrees of latitude, longitude scaled by cos of the middle
+// latitude so distances stay fair), the frame each step zooms to, and terrain height lookup.
+
+export type HistoryMap = SimulationConfigByKind['history-map'];
+export type LonLat = readonly [number, number];
+export type Bounds = { west: number; south: number; east: number; north: number };
+
+export const assetBase = (region: HistoryMapRegion) => `/models/history/${region}`;
+
+export function projection(region: HistoryMapRegion) {
+  const b = HISTORY_MAP_REGIONS[region];
+  const k = Math.cos((((b.north + b.south) / 2) * Math.PI) / 180);
+  const cx = (b.west + b.east) / 2;
+  const cy = (b.south + b.north) / 2;
+  return {
+    bounds: b as Bounds,
+    width: (b.east - b.west) * k,
+    height: b.north - b.south,
+    /** Plane coordinates, y north. */
+    toPlane: ([lon, lat]: LonLat): [number, number] => [(lon - cx) * k, lat - cy],
+    /** Texture coordinates: u east from the west edge, v south from the north edge, both 0–1. */
+    toUv: ([lon, lat]: LonLat): [number, number] => [(lon - b.west) / (b.east - b.west), (b.north - lat) / (b.north - b.south)],
+  };
+}
+
+const MIN_SPAN = 2.5;
+
+/** The box a step zooms to: what it adds (areas, marches, new places), padded; an empty step keeps the one before. */
+export function stepFrame(config: HistoryMap, index: number): Bounds {
+  for (let i = Math.min(index, config.steps.length - 1); i >= 0; i -= 1) {
+    const step = config.steps[i]!;
+    const points: LonLat[] = [
+      ...step.areas.flatMap((a) => a.points),
+      ...step.routes.flatMap((r) => r.points),
+      ...config.places.filter((p) => p.from === i && p.type !== 'area').map((p) => [p.lon, p.lat] as const),
+    ];
+    if (points.length === 0) continue;
+    const lons = points.map((p) => p[0]);
+    const lats = points.map((p) => p[1]);
+    const cx = (Math.min(...lons) + Math.max(...lons)) / 2;
+    const cy = (Math.min(...lats) + Math.max(...lats)) / 2;
+    const half = (span: number) => Math.max(span * 1.3, MIN_SPAN) / 2;
+    const hx = half(Math.max(...lons) - Math.min(...lons));
+    const hy = half(Math.max(...lats) - Math.min(...lats));
+    return { west: cx - hx, east: cx + hx, south: cy - hy, north: cy + hy };
+  }
+  return HISTORY_MAP_REGIONS[config.region];
+}
+
+/** A march split into pieces of at most `step` degrees, so it can follow the ground. */
+export function densify(points: readonly LonLat[], step = 0.04): LonLat[] {
+  const out: LonLat[] = [points[0]!];
+  for (let i = 1; i < points.length; i += 1) {
+    const [a, b] = [points[i - 1]!, points[i]!];
+    const n = Math.max(1, Math.ceil(Math.hypot(b[0] - a[0], b[1] - a[1]) / step));
+    for (let j = 1; j <= n; j += 1) out.push([a[0] + ((b[0] - a[0]) * j) / n, a[1] + ((b[1] - a[1]) * j) / n]);
+  }
+  return out;
+}
+
+/** Metres at (u, v), bilinear over a row-major grid whose row 0 is the north edge. */
+export function heightAt(heights: ArrayLike<number>, width: number, rows: number, u: number, v: number): number {
+  const x = Math.min(Math.max(u * width - 0.5, 0), width - 1);
+  const y = Math.min(Math.max(v * rows - 0.5, 0), rows - 1);
+  const x0 = Math.floor(x);
+  const y0 = Math.floor(y);
+  const x1 = Math.min(x0 + 1, width - 1);
+  const y1 = Math.min(y0 + 1, rows - 1);
+  const fx = x - x0;
+  const fy = y - y0;
+  const at = (xx: number, yy: number) => heights[yy * width + xx] ?? 0;
+  return (at(x0, y0) * (1 - fx) + at(x1, y0) * fx) * (1 - fy) + (at(x0, y1) * (1 - fx) + at(x1, y1) * fx) * fy;
+}
+
+/** Places shown at a step. */
+export const placesAt = (config: HistoryMap, index: number) => config.places.filter((p) => p.from <= index);

@@ -117,3 +117,26 @@ describe('one question at a time', () => {
     expect((screen.getByRole('textbox') as HTMLInputElement).value).toBe('20');
   });
 });
+
+describe('submitting the whole set', () => {
+  it('checks every answered, unchecked question in one go', async () => {
+    render(<Practice />);
+    fireEvent.click(screen.getByRole('radio', { name: 'Hai' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Câu tiếp' }));
+    fireEvent.change(screen.getByRole('textbox'), { target: { value: '4' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Nộp bài (2 câu)' }));
+    await screen.findByText('Đúng 2/2');
+    expect(api.check).toHaveBeenCalledTimes(2);
+    expect(screen.getByRole('button', { name: 'Nộp bài (0 câu)' })).toHaveProperty('disabled', true);
+    expect(screen.getByRole('button', { name: 'Câu 1: đúng' })).toBeTruthy();
+  });
+
+  it('shows the status of each question and jumps to it', () => {
+    render(<Practice />);
+    expect(screen.getByRole('button', { name: 'Câu 2: chưa làm' })).toBeTruthy();
+    fireEvent.click(screen.getByRole('radio', { name: 'Hai' }));
+    expect(screen.getByRole('button', { name: 'Câu 1: đã làm, chưa kiểm tra' }).getAttribute('aria-current')).toBe('step');
+    fireEvent.click(screen.getByRole('button', { name: 'Câu 2: chưa làm' }));
+    expect(screen.getByText('Nhập kết quả.')).toBeTruthy();
+  });
+});
