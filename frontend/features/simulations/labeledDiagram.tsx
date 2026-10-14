@@ -141,7 +141,8 @@ function DiagramView({ config, lang }: SimulationViewProps<'labeled-diagram'>) {
                 <span className={DOT} />
               </button>
               {open && (
-                <span className="absolute left-3 top-3 whitespace-nowrap rounded bg-surface px-2 py-0.5 text-sm font-semibold text-ink shadow" aria-hidden="true">
+                // Opens away from the nearer edge (centred in the middle third), so it stays on the image.
+                <span className={`absolute top-3 whitespace-nowrap rounded bg-surface px-2 py-0.5 text-sm font-semibold text-ink shadow ${label.x > 2 / 3 ? 'right-3' : label.x < 1 / 3 ? 'left-3' : 'left-0 -translate-x-1/2'}`} aria-hidden="true">
                   {t(label.text)}
                 </span>
               )}

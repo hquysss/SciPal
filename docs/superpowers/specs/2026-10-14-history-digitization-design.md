@@ -49,7 +49,7 @@ Toạ độ lon/lat của các địa danh sẽ do đội nội dung đối chi�
 ## Thứ tự
 1. ✅ `history-map` + tài nguyên địa hình Việt Nam + lược đồ Lam Sơn (mẫu chuẩn, là cấu hình mặc định). Xem thử: `/dev/history-map` (chỉ môi trường dev).
 2. ✅ `history-timeline` + Hình 2 vào Bài 2: khối đã có trong `generate_lesson_2_su.py` và file xuất; ghi vào database bằng `export-lesson/chen-truc-thoi-gian-bai-2-su.sql` **sau khi** deploy code (trang bài đọc khối bằng `z.array(BlockSchema)`, kind lạ làm cả bài trống).
-3. Chú thích tranh biếm hoạ Bài 1, Bài 2 (`labeled-diagram`).
+3. ✅ Chú thích tranh biếm hoạ Bài 1, Bài 2 (`labeled-diagram`): bản gốc phạm vi công cộng từ Wikimedia Commons (Carnavalet 1789; Keppler "Next!" 1904), đã ghi vào DB.
 4. ✅ `before-after` (khối xong; chưa có cặp ảnh thật có nguồn để gắn vào bài).
 5. ✅ `org-chart` (khối xong; gắn vào Bài 10, 11 khi hai bài này được số hoá).
 6. Nhân bản đồ: Tây Sơn, Mỹ La-tinh, đế quốc (cần tài nguyên `world`), kháng chiến Bài 7.
