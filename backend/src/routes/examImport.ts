@@ -42,6 +42,8 @@ const QuestionSchema = z.discriminatedUnion('type', [
     items: z.array(Choice.extend({ correct: z.boolean() })).min(1).max(10),
   }),
   z.object({ ...QuestionBase, type: z.literal('short'), answer: text(500), rubric: Bilingual.optional() }),
+  // Practice only: superRefine requires a lesson to use it.
+  z.object({ ...QuestionBase, type: z.literal('writing'), sample_answer: text(1000), key_terms: z.array(text(60)).max(8).optional() }),
 ]);
 
 const BlueprintSchema = z.object({
@@ -138,6 +140,9 @@ export const ExamImportSchema = z
       if (q.type === 'mc' && !q.options.some((o) => o.id === q.answer)) {
         ctx.addIssue({ code: 'custom', path: ['questions', i, 'answer'], message: `Đáp án của câu ${q.key} không có trong các lựa chọn.` });
       }
+      if (q.type === 'writing' && !usedBy.has(key)) {
+        ctx.addIssue({ code: 'custom', path: ['questions', i], message: `Câu ${q.key}: dạng viết tiếng Anh chỉ dùng cho Tự luyện, hãy gắn vào một bài bằng [QUIZ:${q.key}].` });
+      }
       // A lesson's question is a practice question: it must pass the same check as one written in the Studio.
       if (usedBy.has(key)) {
         const checked = validateQuestionInput({
@@ -170,6 +175,7 @@ export function questionData(q: ImportQuestion): Record<string, unknown> {
   const extra = { ...(q.explanation ? { explanation: q.explanation } : {}), ...(q.source ? { source: q.source } : {}) };
   if (q.type === 'mc') return { stem: q.stem, options: q.options, answer: q.answer, ...extra };
   if (q.type === 'truefalse') return { stem: q.stem, items: q.items, ...extra };
+  if (q.type === 'writing') return { stem: q.stem, sample_answer: q.sample_answer, ...(q.key_terms?.length ? { key_terms: q.key_terms } : {}), ...extra };
   return { stem: q.stem, answer: q.answer, ...(q.rubric ? { rubric: q.rubric } : {}), ...extra };
 }
 

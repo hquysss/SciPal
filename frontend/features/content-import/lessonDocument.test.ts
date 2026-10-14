@@ -159,7 +159,7 @@ describe('the Word template offered on the import page', () => {
     expect(result.ok).toBe(true);
     if (result.ok) {
       expect(result.lesson).toMatchObject({ subject_slug: 'informatics', grade: 11, topic: { vi: 'Thuật toán tìm kiếm', en: 'Search algorithms' } });
-      expect(result.lesson.blocks.map((b) => b.type)).toEqual(['theory', 'code', 'formula', 'interactive', 'quiz_ref', 'quiz_ref', 'quiz_ref']);
+      expect(result.lesson.blocks.map((b) => b.type)).toEqual(['theory', 'code', 'formula', 'interactive', 'quiz_ref', 'quiz_ref', 'quiz_ref', 'quiz_ref']);
     }
   });
 });
