@@ -9,6 +9,11 @@ import { writingFeedback } from './practiceApi';
 
 type Bilingual = { en: string; vi: string };
 
+export type WritingFeedbackState =
+  | { answer: string; status: 'pending' }
+  | { answer: string; status: 'done'; feedback: string }
+  | { answer: string; status: 'error'; error: Bilingual };
+
 const MAX = 1000;
 
 export const wordCount = (text: string) => text.trim().split(/\s+/).filter(Boolean).length;
@@ -39,6 +44,8 @@ interface WritingAnswerProps {
   lang: 'vi' | 'en';
   /** The Check button and its message, shown between the answer and what the check found. */
   actions?: ReactNode;
+  feedbackState?: WritingFeedbackState;
+  onFeedback?: (state: WritingFeedbackState) => void;
 }
 
 /**
@@ -46,7 +53,7 @@ interface WritingAnswerProps {
  * browser can listen, then the key terms the check found, the sample answer, and the AI
  * Professor's comments on request (signed-in learners, paid from the Professor's tokens).
  */
-export function WritingAnswer({ questionId, value, onChange, result, t, lang, actions }: WritingAnswerProps) {
+export function WritingAnswer({ questionId, value, onChange, result, t, lang, actions, feedbackState, onFeedback }: WritingAnswerProps) {
   const id = useId();
   const [canListen, setCanListen] = useState(false);
   const [listening, setListening] = useState(false);
@@ -56,9 +63,13 @@ export function WritingAnswer({ questionId, value, onChange, result, t, lang, ac
   valueRef.current = value;
 
   const [signedIn, setSignedIn] = useState<boolean | null>(null);
-  const [asking, setAsking] = useState(false);
-  const [feedback, setFeedback] = useState<string | null>(null);
-  const [feedbackError, setFeedbackError] = useState<Bilingual | null>(null);
+  const [localFeedback, setLocalFeedback] = useState<WritingFeedbackState>();
+  const storedFeedback = feedbackState ?? localFeedback;
+  const currentFeedback = storedFeedback?.answer === value ? storedFeedback : undefined;
+  const asking = currentFeedback?.status === 'pending';
+  const feedback = currentFeedback?.status === 'done' ? currentFeedback.feedback : null;
+  const feedbackError = currentFeedback?.status === 'error' ? currentFeedback.error : null;
+  const saveFeedback = onFeedback ?? setLocalFeedback;
 
   // Decided after mounting: the server render has no browser to ask.
   useEffect(() => setCanListen(recognitionClass() !== null), []);
@@ -72,8 +83,7 @@ export function WritingAnswer({ questionId, value, onChange, result, t, lang, ac
   }, []);
   // A new answer makes old comments stale.
   useEffect(() => {
-    setFeedback(null);
-    setFeedbackError(null);
+    setLocalFeedback(undefined);
   }, [value]);
 
   const listen = () => {
@@ -107,12 +117,10 @@ export function WritingAnswer({ questionId, value, onChange, result, t, lang, ac
 
   const ask = async () => {
     if (asking || !value.trim()) return;
-    setAsking(true);
-    setFeedbackError(null);
+    saveFeedback({ answer: value, status: 'pending' });
     const res = await writingFeedback(questionId, value, lang);
-    setAsking(false);
-    if (res.ok) setFeedback(res.data.feedback);
-    else setFeedbackError(res.error);
+    if (res.ok) saveFeedback({ answer: value, status: 'done', feedback: res.data.feedback });
+    else saveFeedback({ answer: value, status: 'error', error: res.error });
   };
 
   const writing = result?.writing;

@@ -1,0 +1,31 @@
+.question {
+  --practice-shift: 12px;
+  animation: question-enter 240ms cubic-bezier(.22, 1, .36, 1);
+}
+
+.question[data-backward='true'] {
+  --practice-shift: -12px;
+}
+
+.progress {
+  transition: transform 240ms cubic-bezier(.22, 1, .36, 1);
+}
+
+.result {
+  animation: result-enter 180ms ease-out;
+}
+
+@keyframes question-enter {
+  from { opacity: 0; transform: translateX(var(--practice-shift)); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes result-enter {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .question, .result { animation: none; }
+  .progress { transition: none; }
+}

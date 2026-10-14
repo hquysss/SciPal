@@ -75,6 +75,9 @@ Menu, popover hay dialog render qua portal phải gắn vào trong `[data-app-sh
 
 ### Trang bài học
 
+- Tự luyện hiển thị một câu tại một thời điểm, theo thứ tự bài học; tiêu đề ghi số câu và dạng câu. Điều hướng Câu trước/Câu tiếp giữ câu trả lời và kết quả của lượt học, kể cả khi chuyển tab Bài học. Thanh tiến độ đếm câu đã được backend kiểm tra; không tính XP ở client.
+- Chuyển câu dùng hướng tiến/lùi, trượt 12px và hiện rõ trong 240ms với easing `cubic-bezier(.22,1,.36,1)`; phản hồi kết quả hiện rõ và nhô 4px trong 180ms. Cơ chế tham khảo beui.dev `expandable-tabs`, triển khai bằng CSS, không thêm thư viện. Thanh tiến độ chuyển bằng `scaleX` trong 240ms; giảm chuyển động tắt toàn bộ các hiệu ứng này. Điều hướng chuyển focus về số câu; nút cao tối thiểu 44px, chỉ dùng token hiện có.
+
 - Nội dung bài nằm trên một tờ vở `surface` có dải lề màu môn (`--accent`) ở mép trái: component `LessonSheet` (class `sheet` trong `frontend/components/blocks/notebook.module.css`); nền đặc của tờ vở che hoạ tiết. Không gắn `data-pattern="off"` lên tờ vở — theme tô thuộc tính đó bằng `--paper`, đè mất `--surface`.
 - Khối lý thuyết tự kẻ dòng cách nhau `1.75rem` (class `rules`); bài Tiểu học kẻ ô li — chọn theo lớp của bài (`data-paper="squared"` trên `LessonSheet`), không theo cấp của người đọc. Mọi khoảng cách dọc trong khối là bội của `1.75rem` (`leading-7`, `mb-7`, tiêu đề `pt-7 leading-7`) để chữ ngồi trên dòng; từ dài không ngắt, công thức rộng, bảng và code cuộn trong khối chứ không kéo ngang trang. Khi in thì bỏ dòng kẻ.
 - Markdown được gán kiểu bằng `components` của `react-markdown` trong `TheoryRenderer` (không dùng plugin typography); bảng và `pre` cuộn ngang trong khối, link ngoài mở tab mới với `rel="noopener noreferrer"`.
