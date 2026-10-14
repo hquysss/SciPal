@@ -8,7 +8,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import * as THREE from 'three';
 import type { HistoryMapRegion } from '@scipal/types';
-import { assetBase, densify, heightAt, placesAt, projection, stepFrame, type HistoryMap, type LonLat } from './historyMapGeo';
+import { assetBase, densify, heightAt, namedAt, placesAt, projection, stepFrame, type HistoryMap, type LonLat } from './historyMapGeo';
 import { ViewButtons, VIEW_CLASS, useOrbit, usePalette, type Orbit } from './scene3d';
 import { pick, type Lang } from './types';
 import { PLACE_MARK, type Palette, MAP_TOKENS } from './historyMapStyle';
@@ -377,7 +377,7 @@ export default function HistoryMapScene({
             const text = (
               <>
                 {!area && <span aria-hidden="true" className={p.type === 'city' ? 'text-ink' : 'text-danger'}>{PLACE_MARK[p.type]} </span>}
-                {t(p.name)}
+                {namedAt(config, p, step) && t(p.name)}
               </>
             );
             const cls = `absolute left-0 top-0 select-none whitespace-nowrap ${area ? 'text-xs font-semibold uppercase italic tracking-wide text-ink-muted' : 'text-xs font-bold text-ink sm:text-sm'}`;
@@ -395,6 +395,7 @@ export default function HistoryMapScene({
                 tabIndex={-1}
                 aria-hidden="true"
                 className={`${cls} cursor-pointer underline decoration-dotted underline-offset-2`}
+                title={namedAt(config, p, step) ? undefined : t(p.name)}
                 style={style}
                 onPointerDown={(e) => e.stopPropagation()}
                 onClick={() => onSelect(i)}

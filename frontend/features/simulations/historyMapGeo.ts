@@ -77,3 +77,15 @@ export function heightAt(heights: ArrayLike<number>, width: number, rows: number
 
 /** Places shown at a step. */
 export const placesAt = (config: HistoryMap, index: number) => config.places.filter((p) => p.from <= index);
+
+/**
+ * Whether a place is labelled at a step. A battle from an earlier step keeps only its mark (its note still
+ * opens), unless a march of this step ends there, so maps of separate wars do not pile up names.
+ */
+export function namedAt(config: HistoryMap, place: HistoryMap['places'][number], index: number): boolean {
+  if (place.type !== 'battle' || place.from === index) return true;
+  return (config.steps[index]?.routes ?? []).some((r) => {
+    const [lon, lat] = r.points[r.points.length - 1]!;
+    return Math.abs(lon - place.lon) < 0.05 && Math.abs(lat - place.lat) < 0.05;
+  });
+}

@@ -5,7 +5,7 @@ import { JsonConfigEditor, issuePath, type ConfigIssue } from './jsonConfigEdito
 import { ChevronLeft, ChevronRight, Map as MapIcon, Mountain, Pause, Play, X } from 'lucide-react';
 import { HISTORY_MAP_REGIONS, HistoryMapConfig, type HistoryMapRegion } from '@scipal/types';
 import { BUTTON, PANEL } from './controls';
-import { assetBase, placesAt, projection, stepFrame, type HistoryMap } from './historyMapGeo';
+import { assetBase, namedAt, placesAt, projection, stepFrame, type HistoryMap } from './historyMapGeo';
 import { PLACE_MARK } from './historyMapStyle';
 import { pick, type Lang, type SimulationEditorProps, type SimulationModule, type SimulationViewProps } from './types';
 
@@ -126,7 +126,7 @@ export function FlatMap({ config, step, lang, description, onSelect }: { config:
             }}
           >
             {!area && <tspan style={{ fill: p.type === 'city' ? 'var(--ink)' : 'var(--danger)' }}>{PLACE_MARK[p.type]} </tspan>}
-            {t(p.name)}
+            {namedAt(config, p, step) ? t(p.name) : <title>{t(p.name)}</title>}
           </text>
         );
       })}
