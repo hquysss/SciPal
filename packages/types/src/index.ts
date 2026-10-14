@@ -7,3 +7,4 @@ export * from './billing.js';
 export * from './examFormat.js';
 export * from './examImportLayout.js';
 export * from './websiteFeedback.js';
+export * from './historyMap.js';

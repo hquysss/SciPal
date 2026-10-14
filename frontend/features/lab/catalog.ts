@@ -1,7 +1,7 @@
 import type { BuiltInSimulationKind } from '@scipal/types';
 
 // The Lab: every built-in simulation of Mathematics, Physics, Chemistry, Biology and Informatics,
-// open to play with on its own. The Punnett square and labelled diagram are lesson-only.
+// open to play with on its own. The Punnett square, labelled diagram and the history map and timeline are lesson-only.
 
 export type Bilingual = { en: string; vi: string };
 export type LabSubject = 'math' | 'physics' | 'chemistry' | 'biology' | 'informatics';
