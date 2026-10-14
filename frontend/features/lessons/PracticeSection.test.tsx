@@ -19,18 +19,29 @@ const render = (props: Partial<Parameters<typeof PracticeSection>[0]> = {}) =>
   renderToStaticMarkup(<PracticeSection load={{ ok: true, questions }} state={state()} onAnswer={() => {}} onResult={() => {}} {...props} />);
 
 describe('PracticeSection', () => {
-  it('asks each question with the input its type needs', () => {
+  it('shows only the first question and navigation instead of the whole paper', () => {
     const html = render();
     expect(html).toContain('2 + 2 bằng?');
-    expect(html.match(/type="radio"/g)).toHaveLength(2 + 2 * 2);
-    expect(html).toMatch(/<input[^>]*type="text"/);
-    expect(html.match(/Kiểm tra/g)!.length).toBe(3);
+    expect(html).not.toContain('Xét các ý');
+    expect(html).not.toContain('Thủ đô?');
+    expect(html.match(/type="radio"/g)).toHaveLength(2);
+    expect(html.match(/Kiểm tra/g)!.length).toBe(1);
+    expect(html).toContain('Câu 1 / 3');
+    expect(html).toContain('Câu trước');
+    expect(html).toContain('Câu tiếp');
     expect(html).not.toContain('Đúng 0/3');
     expect(countRawColors(html).total).toBe(0);
   });
 
+  it('uses the input required by each question type', () => {
+    const tf = render({ load: { ok: true, questions: [questions[1]!] } });
+    expect(tf.match(/type="radio"/g)).toHaveLength(4);
+    const short = render({ load: { ok: true, questions: [questions[2]!] } });
+    expect(short).toMatch(/<input[^>]*type="text"/);
+  });
+
   it('names each true/false group by its statement once, without repeating the text', () => {
-    const html = render();
+    const html = render({ load: { ok: true, questions: [questions[1]!] } });
     const groups = [...html.matchAll(/<span role="radiogroup"([^>]*)>/g)].map((m) => m[1]!);
     expect(groups).toHaveLength(2);
     for (const attrs of groups) {
@@ -71,8 +82,9 @@ describe('PracticeSection', () => {
     const html = render({ state: state({ answers: { q1: { selected_option: 'b' }, q2: { items: [{ id: '1', selected: true }] } }, results }) });
     expect(html).toContain('Đúng rồi');
     expect(html).toContain('Vì 2 + 2 = 4.');
-    expect(html).toContain('Chưa đúng');
-    expect(html).toMatch(/Ý hai[\s\S]*chưa trả lời/);
+    const tf = render({ load: { ok: true, questions: [questions[1]!] }, state: state({ answers: { q2: { items: [{ id: '1', selected: true }] } }, results }) });
+    expect(tf).toContain('Chưa đúng');
+    expect(tf).toMatch(/Ý hai[\s\S]*chưa trả lời/);
     expect(html).toContain('Đúng 1/3');
     expect(html).toContain('aria-live="polite"');
   });

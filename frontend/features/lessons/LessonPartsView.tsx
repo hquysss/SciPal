@@ -80,6 +80,8 @@ export function LessonPartsView({ blocks: written, completion, part, sheet, lang
           state={practiceState.state}
           onAnswer={practiceState.onAnswer}
           onResult={practiceState.onResult}
+          onQuestion={practiceState.onQuestion}
+          onWritingFeedback={practiceState.onWritingFeedback}
           onRetry={lessonId ? () => void fetchLessonPractice(lessonId).then(setReloaded) : undefined}
           lang={lang}
         />

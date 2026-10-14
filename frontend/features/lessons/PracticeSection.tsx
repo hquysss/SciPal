@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useId, useState } from 'react';
+import { useCallback, useId, useRef, useState } from 'react';
 import { CircleCheck, CircleX } from 'lucide-react';
 import { useLanguage } from '@scipal/hooks';
 import type { PracticeCheckResult, PracticeResponse, PublicPracticeQuestion } from '@scipal/types';
@@ -9,7 +9,8 @@ import { MathText } from '@/components/math/MathText';
 import { QuestionFigure, QuestionSource } from '@/components/math/QuestionFigure';
 import { useShuffledOptions } from '@/lib/useShuffledOptions';
 import { checkPractice, type PracticeLoad } from './practiceApi';
-import { WritingAnswer } from './WritingAnswer';
+import { WritingAnswer, type WritingFeedbackState } from './WritingAnswer';
+import styles from './practice.module.css';
 
 type Bilingual = { en: string; vi: string };
 
@@ -17,6 +18,8 @@ type Bilingual = { en: string; vi: string };
 export interface PracticeState {
   answers: Record<string, PracticeResponse>;
   results: Record<string, PracticeCheckResult>;
+  activeQuestionId?: string;
+  writingFeedback?: Record<string, WritingFeedbackState>;
 }
 
 /**
@@ -34,13 +37,22 @@ export function usePracticeState() {
   const onAnswer = useCallback((id: string, answer: PracticeResponse) => {
     setState((old) => {
       const { [id]: _stale, ...results } = old.results;
-      return { answers: { ...old.answers, [id]: answer }, results };
+      const { [id]: _oldFeedback, ...writingFeedback } = old.writingFeedback ?? {};
+      return { ...old, answers: { ...old.answers, [id]: answer }, results, writingFeedback };
     });
   }, []);
   const onResult = useCallback((id: string, result: PracticeCheckResult, checked: PracticeResponse | undefined) => {
     setState((old) => withResult(old, id, result, checked));
   }, []);
-  return { state, onAnswer, onResult };
+  const onQuestion = useCallback((id: string) => {
+    setState((old) => ({ ...old, activeQuestionId: id }));
+  }, []);
+  const onWritingFeedback = useCallback((id: string, feedback: WritingFeedbackState) => {
+    setState((old) => old.answers[id]?.writing_answer === feedback.answer
+      ? { ...old, writingFeedback: { ...old.writingFeedback, [id]: feedback } }
+      : old);
+  }, []);
+  return { state, onAnswer, onResult, onQuestion, onWritingFeedback };
 }
 
 /** Right answers of this visit over all questions (unanswered ones count in the total). */
@@ -64,12 +76,13 @@ interface PracticeSectionProps {
   /** `checked` is the answer object the verdict is for. */
   onResult: (id: string, result: PracticeCheckResult, checked: PracticeResponse | undefined) => void;
   onRetry?: () => void;
+  onQuestion?: (id: string) => void;
+  onWritingFeedback?: (id: string, feedback: WritingFeedbackState) => void;
   /** Read in this language instead of the reader's (the editor preview). */
   lang?: 'en' | 'vi';
 }
 
 const PART_ORDER =['mc', 'truefalse', 'short', 'writing'] as const;
-const ROMAN = ['I', 'II', 'III', 'IV'];
 const PART_TITLE: Record<(typeof PART_ORDER)[number], Bilingual> = {
   mc: { en: 'Multiple choice', vi: 'Trắc nghiệm nhiều phương án lựa chọn' },
   truefalse: { en: 'True / false', vi: 'Trắc nghiệm đúng sai' },
@@ -79,11 +92,17 @@ const PART_TITLE: Record<(typeof PART_ORDER)[number], Bilingual> = {
 
 const CARD ='rounded-xl border border-line bg-surface p-4 sm:p-5';
 
-/** The Tự luyện part: every question with its own check, then this visit's score. */
-export function PracticeSection({ load, state, onAnswer, onResult, onRetry, lang }: PracticeSectionProps) {
+export function PracticeSection({ load, state, onAnswer, onResult, onRetry, onQuestion, onWritingFeedback, lang }: PracticeSectionProps) {
   const { t: readerT, lang: readerLang } = useLanguage();
   const t = lang ? (text: Bilingual) => text[lang] || text.vi : readerT;
   const shownLang = lang ?? (readerLang === 'en' ? 'en' : 'vi');
+  const [activeId, setActiveId] = useState<string>();
+  const [backward, setBackward] = useState(false);
+  const positionRef = useRef<HTMLParagraphElement>(null);
+  const questions = load.ok ? load.questions : [];
+  const activeIndex = Math.max(0, questions.findIndex((q) => q.id === (state.activeQuestionId ?? activeId)));
+  const question = questions[activeIndex];
+  const options = useShuffledOptions(question?.id ?? '', question && 'options' in question.data ? question.data.options : []);
 
   if (!load.ok) {
     return (
@@ -98,7 +117,7 @@ export function PracticeSection({ load, state, onAnswer, onResult, onRetry, lang
       </div>
     );
   }
-  if (load.questions.length === 0) {
+  if (!question) {
     return <p className={`${CARD} text-sm text-ink-muted`}>{t({ en: 'The practice questions are not ready yet.', vi: 'Câu tự luyện của bài này chưa sẵn sàng.' })}</p>;
   }
 
@@ -106,57 +125,76 @@ export function PracticeSection({ load, state, onAnswer, onResult, onRetry, lang
     load.questions.map((q) => q.id),
     state.results,
   );
-  // Laid out like an exam paper: one part per question type, numbering continuous across parts.
-  const numbered = load.questions.map((question, i) => ({ question, number: i + 1 }));
-  const parts = PART_ORDER.map((type) => ({ type, items: numbered.filter((n) => n.question.type === type) })).filter((p) => p.items.length > 0);
+  const goTo = (index: number) => {
+    const next = questions[index];
+    if (!next) return;
+    setBackward(index < activeIndex);
+    setActiveId(next.id);
+    onQuestion?.(next.id);
+    positionRef.current?.focus({ preventScroll: true });
+  };
   return (
-    <div className="flex flex-col gap-5">
-      {parts.map(({ type, items }, index) => (
-        <div key={type} className="flex flex-col gap-4">
-          <h2 className="border-b border-line pb-2 text-lg font-bold text-ink">
-            {t({ en: `Part ${ROMAN[index]}. `, vi: `Phần ${ROMAN[index]}. ` })}
-            {t(PART_TITLE[type])}
-          </h2>
-          {items.map(({ question, number }) => (
-            <QuestionCard
-              key={question.id}
-              number={number}
-              question={question}
-              answer={state.answers[question.id]}
-              result={state.results[question.id]}
-              onAnswer={(answer) => onAnswer(question.id, answer)}
-              onResult={(result, checked) => onResult(question.id, result, checked)}
-              t={t}
-              lang={shownLang}
-            />
-          ))}
+    <div className="flex min-w-0 flex-col gap-4">
+      <div className="flex flex-col gap-2">
+        <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
+          <p ref={positionRef} tabIndex={-1} aria-live="polite" className="rounded text-lg font-bold tabular-nums text-ink focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus">
+            {t({ en: `Question ${activeIndex + 1} / ${questions.length}`, vi: `Câu ${activeIndex + 1} / ${questions.length}` })}
+          </p>
+          <span className="text-sm text-ink-muted">{t(PART_TITLE[question.type])}</span>
         </div>
-      ))}
-      <p aria-live="polite" className="text-center text-lg font-bold text-ink">
-        {summary.checked > 0 && t({ en: `Correct ${summary.right}/${summary.total}`, vi: `Đúng ${summary.right}/${summary.total}` })}
-      </p>
+        <div role="progressbar" aria-label={t({ en: 'Questions checked', vi: 'Câu đã kiểm tra' })} aria-valuemin={0} aria-valuemax={summary.total} aria-valuenow={summary.checked} className="h-1.5 overflow-hidden rounded-full bg-surface-sunken">
+          <div className={`${styles.progress} h-full origin-left rounded-full bg-accent`} style={{ transform: `scaleX(${summary.checked / summary.total})` }} />
+        </div>
+      </div>
+      <div key={question.id} className={styles.question} data-backward={backward}>
+        <QuestionCard
+          question={question}
+          options={options}
+          answer={state.answers[question.id]}
+          result={state.results[question.id]}
+          writingFeedback={state.writingFeedback?.[question.id]}
+          onWritingFeedback={onWritingFeedback ? (feedback) => onWritingFeedback(question.id, feedback) : undefined}
+          onAnswer={(answer) => onAnswer(question.id, answer)}
+          onResult={(result, checked) => onResult(question.id, result, checked)}
+          t={t}
+          lang={shownLang}
+        />
+      </div>
+      <nav aria-label={t({ en: 'Practice questions', vi: 'Các câu tự luyện' })} className="flex items-center justify-between gap-3">
+        <button type="button" disabled={activeIndex === 0} onClick={() => goTo(activeIndex - 1)} className={buttonVariants({ variant: 'outline' })}>
+          {t({ en: 'Previous question', vi: 'Câu trước' })}
+        </button>
+        <button type="button" disabled={activeIndex === questions.length - 1} onClick={() => goTo(activeIndex + 1)} className={buttonVariants()}>
+          {t({ en: 'Next question', vi: 'Câu tiếp' })}
+        </button>
+      </nav>
+      <div aria-live="polite" className="flex flex-wrap justify-between gap-2 text-sm tabular-nums text-ink-muted">
+        <span>{t({ en: `Checked ${summary.checked}/${summary.total}`, vi: `Đã kiểm tra ${summary.checked}/${summary.total}` })}</span>
+        {summary.checked > 0 && <span className="font-semibold text-ink">{t({ en: `Correct ${summary.right}/${summary.total}`, vi: `Đúng ${summary.right}/${summary.total}` })}</span>}
+      </div>
     </div>
   );
 }
 
 interface QuestionCardProps {
-  number: number;
   question: PublicPracticeQuestion;
+  options: Array<{ id: string; text: Bilingual }>;
   answer: PracticeResponse | undefined;
   result: PracticeCheckResult | undefined;
+  writingFeedback?: WritingFeedbackState;
+  onWritingFeedback?: (feedback: WritingFeedbackState) => void;
   onAnswer: (answer: PracticeResponse) => void;
   onResult: (result: PracticeCheckResult, checked: PracticeResponse | undefined) => void;
   t: (text: Bilingual) => string;
   lang: 'vi' | 'en';
 }
 
-function QuestionCard({ number, question, answer, result, onAnswer, onResult, t, lang }: QuestionCardProps) {
+function QuestionCard({ question, options, answer, result, writingFeedback, onWritingFeedback, onAnswer, onResult, t, lang }: QuestionCardProps) {
   const id = useId();
   const [checking, setChecking] = useState(false);
   const [error, setError] = useState<Bilingual | null>(null);
   const response = responseOf(question, answer);
   const { data } = question;
-  const options = useShuffledOptions(question.id, 'options' in data ? data.options : []);
   const stemId = `${id}-stem`;
 
   const check = async () => {
@@ -181,7 +219,7 @@ function QuestionCard({ number, question, answer, result, onAnswer, onResult, t,
       <button type="button" disabled={!response || checking} onClick={check} className={buttonVariants({ variant: result ? 'outline' : 'default' })}>
         {checking ? t({ en: 'Checking…', vi: 'Đang kiểm tra…' }) : result ? t({ en: 'Check again', vi: 'Kiểm tra lại' }) : t({ en: 'Check', vi: 'Kiểm tra' })}
       </button>
-      <div aria-live="polite" className="text-sm">
+      <div key={result ? String(result.correct) : 'unchecked'} aria-live="polite" className={`text-sm ${result ? styles.result : ''}`}>
         {result &&
           !result.writing &&
           (result.correct ? (
@@ -202,8 +240,7 @@ function QuestionCard({ number, question, answer, result, onAnswer, onResult, t,
 
   return (
     <section aria-labelledby={stemId} className={CARD}>
-      <p className="text-xs font-bold uppercase tracking-wide text-ink-muted">{t({ en: `Question ${number}`, vi: `Câu ${number}` })}</p>
-      <h3 id={stemId} className="mt-1 text-base font-semibold text-ink">
+      <h3 id={stemId} className="text-base font-semibold text-ink">
         <MathText text={t(data.stem)} />
       </h3>
       {data.image && (
@@ -218,7 +255,7 @@ function QuestionCard({ number, question, answer, result, onAnswer, onResult, t,
           {options.map((option) => (
             <label
               key={option.id}
-              className="flex min-h-11 cursor-pointer items-center gap-3 rounded-lg border border-line px-3 py-2 text-ink transition-colors hover:bg-surface-sunken has-[:checked]:border-accent"
+              className="flex min-h-11 cursor-pointer items-center gap-3 rounded-lg border border-edge px-3 py-2 text-ink transition-colors hover:bg-surface-sunken has-[:checked]:border-accent has-[:checked]:bg-surface-sunken motion-reduce:transition-none"
             >
               <input
                 type="radio"
@@ -304,6 +341,8 @@ function QuestionCard({ number, question, answer, result, onAnswer, onResult, t,
           t={t}
           lang={lang}
           actions={checkRow}
+          feedbackState={writingFeedback}
+          onFeedback={onWritingFeedback}
         />
       )}
 
