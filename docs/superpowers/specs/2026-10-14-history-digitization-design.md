@@ -30,7 +30,7 @@ Biến lược đồ, sơ đồ, tranh ảnh tĩnh trong SGK thành trực quan 
 - Chỉ là việc nội dung: tranh biếm hoạ nông dân Pháp (tr.8), công ti độc quyền (tr.16).
 
 ### 4. `before-after` — so sánh xưa ↔ nay
-- `config`: `before`, `after` (mỗi bên `image_url`, `alt`, `caption`, `source`). Thanh kéo bằng `<input type="range">` (bàn phím được).
+- `config`: `before`, `after` (mỗi bên `image_url`, `label` ngắn như "Năm 1288"/"Ngày nay", `alt`, `caption`, `source`). Có ảnh thì bắt buộc `alt.vi` và `source.vi`; ảnh phải ở kho lesson-media. Thanh kéo là `<input type="range">` phủ lên ảnh (kéo, chạm, phím mũi tên), thêm nút "Chỉ ảnh xưa / Mỗi bên một nửa / Chỉ ảnh nay". Ảnh "nay" quyết định khung, ảnh "xưa" phủ lên và bị cắt theo vạch chia. Đã làm; xem thử `/dev/before-after` (ảnh tạm của app, chỉ để thử thanh kéo).
 - Cần ảnh có nguồn rõ (ảnh SGK hoặc giấy phép mở). Ví dụ: cọc Bạch Đằng (Hình 3 Bài 7) ↔ bãi cọc ngày nay; tượng đài Lê Lợi, thành Tây Đô.
 
 ### 5. `org-chart` — sơ đồ tổ chức bấm mở từng cấp
@@ -50,7 +50,7 @@ Toạ độ lon/lat của các địa danh sẽ do đội nội dung đối chi�
 1. ✅ `history-map` + tài nguyên địa hình Việt Nam + lược đồ Lam Sơn (mẫu chuẩn, là cấu hình mặc định). Xem thử: `/dev/history-map` (chỉ môi trường dev).
 2. ✅ `history-timeline` + Hình 2 vào Bài 2: khối đã có trong `generate_lesson_2_su.py` và file xuất; ghi vào database bằng `export-lesson/chen-truc-thoi-gian-bai-2-su.sql` **sau khi** deploy code (trang bài đọc khối bằng `z.array(BlockSchema)`, kind lạ làm cả bài trống).
 3. Chú thích tranh biếm hoạ Bài 1, Bài 2 (`labeled-diagram`).
-4. `before-after`.
+4. ✅ `before-after` (khối xong; chưa có cặp ảnh thật có nguồn để gắn vào bài).
 5. `org-chart`.
 6. Nhân bản đồ: Tây Sơn, Mỹ La-tinh, đế quốc (cần tài nguyên `world`), kháng chiến Bài 7.
 

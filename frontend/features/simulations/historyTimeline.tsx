@@ -1,11 +1,10 @@
 'use client';
 
 import { useRef, useState, type KeyboardEvent } from 'react';
-import { ChevronLeft, ChevronRight, Copy } from 'lucide-react';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { SIMULATION_CONFIGS, type SimulationConfigByKind } from '@scipal/types';
-import { ImageDropZone } from '@/features/authoring/editor/editors/ImageEditor';
-import { BUTTON, FIELD, PANEL } from './controls';
-import { JsonConfigEditor } from './jsonConfigEditor';
+import { BUTTON, PANEL } from './controls';
+import { JsonConfigEditor, UploadLink } from './jsonConfigEditor';
 import { pick, type Lang, type SimulationEditorProps, type SimulationModule, type SimulationViewProps } from './types';
 
 type Timeline = SimulationConfigByKind['history-timeline'];
@@ -138,8 +137,6 @@ export function HistoryTimelineView({ config, lang }: SimulationViewProps<'histo
 
 /** JSON for the events, plus an upload box that hands back a link to paste into `image_url`. */
 function HistoryTimelineEditor({ config, onChange, lang }: SimulationEditorProps<'history-timeline'>) {
-  const t = pick(lang);
-  const [uploaded, setUploaded] = useState<string | null>(null);
   return (
     <JsonConfigEditor
       config={config}
@@ -151,17 +148,7 @@ function HistoryTimelineEditor({ config, onChange, lang }: SimulationEditorProps
         vi: 'events (1–16 mốc): when (thời gian), title, text, image? figure? (hình gốc trong sách, bấm mới hiện). Ảnh có dạng { "image_url", "alt": { "vi", "en" }, "caption" }; tải ảnh ở dưới rồi dán link vào.',
       }}
     >
-      <div className="mt-2 flex flex-col gap-2">
-        <ImageDropZone onImage={(image) => setUploaded(image.url)} />
-        {uploaded && (
-          <div className="flex items-center gap-2">
-            <input readOnly value={uploaded} aria-label={t({ en: 'Uploaded image link', vi: 'Link ảnh vừa tải' })} className={`${FIELD} font-mono text-xs`} onFocus={(e) => e.target.select()} />
-            <button type="button" className={BUTTON} aria-label={t({ en: 'Copy the link', vi: 'Chép link' })} onClick={() => void navigator.clipboard?.writeText(uploaded)}>
-              <Copy aria-hidden="true" className="h-4 w-4" />
-            </button>
-          </div>
-        )}
-      </div>
+      <UploadLink lang={lang} />
     </JsonConfigEditor>
   );
 }

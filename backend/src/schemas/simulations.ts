@@ -353,6 +353,31 @@ const HistoryTimelineConfig = z.object({
   figure: TimelineImage.optional(),
 });
 
+const ComparePicture = z.object({
+  /** Uploaded through /api/authoring/media; empty until the teacher adds it. */
+  image_url: z.string().url().max(1000).optional(),
+  /** Shown on the picture, e.g. "Năm 1288" or "Ngày nay". */
+  label: Long(40),
+  alt: Bilingual.default({ vi: '', en: '' }),
+  caption: Bilingual.default({ vi: '', en: '' }),
+  /** Where the picture comes from (book, archive, photographer, licence); required with a picture. */
+  source: Bilingual.default({ vi: '', en: '' }),
+});
+
+const BeforeAfterConfig = z
+  .object({
+    before: ComparePicture.default({ label: { vi: 'Xưa', en: 'Then' } }),
+    after: ComparePicture.default({ label: { vi: 'Nay', en: 'Now' } }),
+  })
+  .superRefine((c, ctx) => {
+    for (const side of ['before', 'after'] as const) {
+      const p = c[side];
+      if (!p.image_url) continue;
+      if (!p.alt.vi.trim()) ctx.addIssue({ code: 'custom', path: [side, 'alt', 'vi'], message: 'alt' });
+      if (!p.source.vi.trim()) ctx.addIssue({ code: 'custom', path: [side, 'source', 'vi'], message: 'source' });
+    }
+  });
+
 /** Every image a config points at, so each can be checked against the lesson-media bucket. */
 const imageUrls = (kind: string, data: unknown): string[] => {
   if (kind === 'labeled-diagram') {
@@ -362,6 +387,10 @@ const imageUrls = (kind: string, data: unknown): string[] => {
   if (kind === 'history-timeline') {
     const c = data as z.infer<typeof HistoryTimelineConfig>;
     return [...c.events.flatMap((e) => (e.image ? [e.image.image_url] : [])), ...(c.figure ? [c.figure.image_url] : [])];
+  }
+  if (kind === 'before-after') {
+    const c = data as z.infer<typeof BeforeAfterConfig>;
+    return [c.before.image_url, c.after.image_url].filter((url): url is string => Boolean(url));
   }
   return [];
 };
@@ -386,6 +415,7 @@ export const SIMULATION_CONFIGS = {
   'labeled-diagram': LabeledDiagramConfig,
   'history-map': HistoryMapConfig,
   'history-timeline': HistoryTimelineConfig,
+  'before-after': BeforeAfterConfig,
 } as const;
 
 export type BuiltInSimulationKind = keyof typeof SIMULATION_CONFIGS;
@@ -413,6 +443,7 @@ export const SIMULATION_KINDS = [
   'labeled-diagram',
   'history-map',
   'history-timeline',
+  'before-after',
   'embed',
   ...LEGACY_SIMULATION_KINDS,
 ] as const;
@@ -519,6 +550,7 @@ const MESSAGES: Record<string, Message> = {
   'labeled-diagram': { en: 'Upload the image to SciPal; up to 24 labels placed on the image.', vi: 'Ảnh phải tải lên SciPal; tối đa 24 nhãn nằm trên ảnh.' },
   'history-map': { en: 'Check the map: 1–12 steps, up to 32 places, every point [longitude, latitude] inside the region.', vi: 'Kiểm tra bản đồ: 1–12 bước, tối đa 32 địa danh, mọi điểm [kinh độ, vĩ độ] nằm trong vùng bản đồ.' },
   'history-timeline': { en: 'Check the timeline: 1–16 events, each with a date and a title; every image uploaded to SciPal with a Vietnamese description.', vi: 'Kiểm tra trục thời gian: 1–16 mốc, mỗi mốc có thời gian và tiêu đề; mọi ảnh phải tải lên SciPal và có mô tả tiếng Việt.' },
+  'before-after': { en: 'Upload both pictures to SciPal; each picture needs a Vietnamese description and its source.', vi: 'Hai ảnh phải tải lên SciPal; mỗi ảnh cần mô tả tiếng Việt và ghi nguồn.' },
 };
 
 /**

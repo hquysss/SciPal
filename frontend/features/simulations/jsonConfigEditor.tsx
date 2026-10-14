@@ -1,8 +1,10 @@
 'use client';
 
 import { useId, useState, type ReactNode } from 'react';
+import { Copy } from 'lucide-react';
 import type { z } from 'zod';
-import { FIELD } from './controls';
+import { ImageDropZone } from '@/features/authoring/editor/editors/ImageEditor';
+import { BUTTON, FIELD } from './controls';
 import { pick, type Bilingual, type Lang } from './types';
 
 export type ConfigIssue = { path: PropertyKey[]; message: string };
@@ -85,6 +87,25 @@ export function JsonConfigEditor<T>({
         </ul>
       )}
       {children}
+    </div>
+  );
+}
+
+/** Uploads a picture to lesson media and hands back its link, to paste into an `image_url`. */
+export function UploadLink({ lang }: { lang: Lang }) {
+  const t = pick(lang);
+  const [uploaded, setUploaded] = useState<string | null>(null);
+  return (
+    <div className="mt-2 flex flex-col gap-2">
+      <ImageDropZone onImage={(image) => setUploaded(image.url)} />
+      {uploaded && (
+        <div className="flex items-center gap-2">
+          <input readOnly value={uploaded} aria-label={t({ en: 'Uploaded image link', vi: 'Link ảnh vừa tải' })} className={`${FIELD} font-mono text-xs`} onFocus={(e) => e.target.select()} />
+          <button type="button" className={BUTTON} aria-label={t({ en: 'Copy the link', vi: 'Chép link' })} onClick={() => void navigator.clipboard?.writeText(uploaded)}>
+            <Copy aria-hidden="true" className="h-4 w-4" />
+          </button>
+        </div>
+      )}
     </div>
   );
 }
