@@ -243,17 +243,18 @@ function ribbon(points: THREE.Vector3[], halfWidth: number): THREE.BufferGeometr
   return geometry;
 }
 
-/** Short bright dashes on clear, repeating along a band: the light that runs along a march. */
-function flowTexture(): THREE.CanvasTexture {
-  const canvas = document.createElement('canvas');
-  canvas.width = 64;
-  canvas.height = 8;
-  const ctx = canvas.getContext('2d')!;
-  ctx.fillStyle = '#fff';
-  ctx.fillRect(0, 2, 14, 4);
-  const texture = new THREE.CanvasTexture(canvas);
+/**
+ * Short dashes on clear, repeating along a band: the light that runs along a march. Only an alpha
+ * pattern; the colour comes from the material (a theme token).
+ */
+function flowTexture(): THREE.DataTexture {
+  const [w, h] = [64, 8];
+  const data = new Uint8Array(w * h * 4);
+  for (let y = 2; y < 6; y += 1) for (let x = 0; x < 14; x += 1) data.fill(255, (y * w + x) * 4, (y * w + x) * 4 + 4);
+  const texture = new THREE.DataTexture(data, w, h);
   texture.wrapS = THREE.RepeatWrapping;
   texture.repeat.set(0.25, 1);
+  texture.needsUpdate = true;
   return texture;
 }
 

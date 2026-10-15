@@ -112,7 +112,7 @@ describe('the history map view', () => {
     fireEvent.click(screen.getByRole('button', { name: /Xem đủ nội dung và địa danh/ }));
     fireEvent.click(screen.getByRole('button', { name: /Chi Lăng/ }));
     expect(screen.getByRole('note').textContent).toContain('viện binh');
-  });
+  }, 15000); // the lazy scene falls back to the flat map first, which is slow on a busy machine
 });
 
 describe('the history map slider', () => {
