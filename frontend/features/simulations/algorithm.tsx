@@ -94,6 +94,14 @@ function AlgorithmView({ config, lang }: SimulationViewProps<'algorithm-sim'>) {
           <RotateCcw aria-hidden="true" className="h-4 w-4" />
         </button>
         <span className="ml-auto text-sm tabular-nums text-ink-muted">
+          {t({ en: 'Comparisons', vi: 'So sánh' })}: <span className="font-semibold text-ink">{step.compares}</span>
+          {!isSearch(config.algorithm) && (
+            <>
+              {' · '}
+              {t({ en: 'Swaps', vi: 'Đổi chỗ' })}: <span className="font-semibold text-ink">{step.swaps}</span>
+            </>
+          )}
+          {' · '}
           {t({ en: 'Step', vi: 'Bước' })} {at + 1}/{steps.length}
         </span>
       </div>

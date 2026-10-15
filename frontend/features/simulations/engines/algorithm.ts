@@ -16,6 +16,10 @@ export interface AlgorithmStep {
   /** Search result: the index found, or null when the target is not there. */
   found?: number | null;
   note: Bilingual;
+  /** Comparisons made so far, this step included. */
+  compares: number;
+  /** Swaps (or insertion shifts) made so far, this step included. */
+  swaps: number;
 }
 
 /** 32 values by bubble sort need at most ~1000 steps; this is a safety cap. */
@@ -24,8 +28,12 @@ export const MAX_ALGORITHM_STEPS = 2500;
 /** Every step of the algorithm on the configured values, computed once. */
 export function algorithmSteps(config: AlgorithmConfig): AlgorithmStep[] {
   const steps: AlgorithmStep[] = [];
-  const push = (step: AlgorithmStep) => {
-    if (steps.length < MAX_ALGORITHM_STEPS) steps.push({ ...step, values: [...step.values], done: [...step.done] });
+  let compares = 0;
+  let swaps = 0;
+  const push = (step: Omit<AlgorithmStep, 'compares' | 'swaps'>) => {
+    if (step.compare) compares += 1;
+    if (step.swap) swaps += 1;
+    if (steps.length < MAX_ALGORITHM_STEPS) steps.push({ ...step, values: [...step.values], done: [...step.done], compares, swaps });
   };
   const values = [...config.values];
   const n = values.length;
@@ -73,8 +81,10 @@ export function algorithmSteps(config: AlgorithmConfig): AlgorithmStep[] {
         push({ values, done: [], compare: [j - 1, j], note: { en: `Insert ${values[j]}.`, vi: `Chèn ${values[j]}.` } });
         while (j > 0 && values[j - 1]! > values[j]!) {
           [values[j - 1], values[j]] = [values[j]!, values[j - 1]!];
-          push({ values, done: [], swap: [j - 1, j], note: { en: 'Shift left.', vi: 'Dịch sang trái.' } });
           j -= 1;
+          // The loop compares again before every further shift.
+          if (j > 0) compares += 1;
+          push({ values, done: [], swap: [j, j + 1], note: { en: 'Shift left.', vi: 'Dịch sang trái.' } });
         }
       }
       push({ values, done: all(), note: { en: 'Sorted.', vi: 'Đã sắp xếp xong.' } });
