@@ -1,6 +1,6 @@
-/* The history map's one frame: the map fills it, and everything the reader uses (title, tools, time
-   slider, caption, place note) floats over it in frosted cards that share simOverlay.module.css.
-   Theme tokens only. */
+/* The history map's one frame: the map fills it, and everything the reader uses floats over it in
+   glass: the tools on top, and one panel below holding the title, time slider, caption, places and
+   legend, which the reader can hide to see the whole map. Theme tokens only. */
 
 .stage {
   position: relative;
@@ -49,13 +49,57 @@
 .toolRow { align-self: flex-end; display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 6px; }
 .toolRow button[aria-pressed='true'] { background: var(--accent, var(--action)); color: var(--action-ink); border-color: transparent; }
 
-.title { max-width: min(30rem, 78%); padding: 6px 12px; display: flex; flex-direction: column; gap: 1px; }
+.dock,
+.reveal,
+.note,
+.toolRow > button {
+  border: 1px solid color-mix(in srgb, var(--surface) 55%, transparent);
+  background: color-mix(in srgb, var(--surface) 66%, transparent);
+  color: var(--ink);
+  box-shadow: 0 8px 28px rgb(0 0 0 / 0.18), inset 0 1px 0 rgb(255 255 255 / 0.28);
+  -webkit-backdrop-filter: blur(16px) saturate(1.5);
+  backdrop-filter: blur(16px) saturate(1.5);
+}
+/* Without the blur the map would show straight through the text, so the glass turns near solid. */
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .dock, .reveal, .note, .toolRow > button { background: color-mix(in srgb, var(--surface) 94%, transparent); }
+}
+
+.head { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; }
+.title { min-width: 0; display: flex; flex-direction: column; gap: 1px; }
 .period { font-size: 11px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink-muted); font-variant-numeric: tabular-nums; }
 .headline { font-size: 14px; font-weight: 700; line-height: 1.25; }
 
-.bottom { display: flex; flex-direction: column; gap: 8px; align-items: stretch; max-height: 60%; }
-.note { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; padding: 8px 10px; font-size: 13px; line-height: 1.4; animation: rise 180ms ease-out; }
-.dock { display: flex; flex-direction: column; gap: 8px; padding: 10px 12px; min-height: 0; }
+.bottom { display: flex; flex-direction: column; gap: 8px; align-items: stretch; max-height: 64%; }
+.note { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; padding: 8px 10px; border-radius: 12px; font-size: 13px; line-height: 1.4; animation: rise 180ms ease-out; }
+.dock {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px 12px;
+  min-height: 0;
+  border-radius: 16px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  animation: rise 200ms ease-out;
+}
+/* The hidden panel shrinks to this pill: the stage and its title, tap to bring the panel back. */
+.reveal {
+  align-self: flex-start;
+  max-width: 100%;
+  min-height: 40px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 14px;
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  animation: rise 160ms ease-out;
+}
+.reveal:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+.revealTitle { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
 .controls { display: flex; align-items: center; gap: 6px; }
 .controls .tool { flex: none; }
@@ -77,7 +121,7 @@
   font-variant-numeric: tabular-nums;
   cursor: pointer;
 }
-.tick:hover { background: var(--surface-sunken); }
+.tick:hover { background: color-mix(in srgb, var(--surface-sunken) 70%, transparent); }
 .tick[aria-current='step'] { background: var(--accent, var(--action)); border-color: transparent; color: var(--action-ink); }
 .tick:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
 
@@ -89,7 +133,6 @@
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
-.captionText[data-open='true'] { max-height: 9.5rem; }
 .more { flex: none; }
 .places { display: flex; flex-wrap: wrap; gap: 6px; }
 .place {
@@ -100,7 +143,7 @@
   padding: 0 10px;
   border-radius: 8px;
   border: 1px solid var(--line);
-  background: var(--surface);
+  background: color-mix(in srgb, var(--surface) 70%, transparent);
   color: var(--ink);
   font-size: 12px;
   font-weight: 600;
@@ -184,7 +227,7 @@
 @keyframes rise { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
 
 @media (prefers-reduced-motion: reduce) {
-  .note, .flow, .flag, .flagGlow, .glow, .burst, .headFlag > span, .label[data-burst='true']::after { animation: none; }
+  .note, .dock, .reveal, .flow, .flag, .flagGlow, .glow, .burst, .headFlag > span, .label[data-burst='true']::after { animation: none; }
   /* The glow and the light stay, still: they help tell the marches apart. */
   .burst { display: none; }
 }

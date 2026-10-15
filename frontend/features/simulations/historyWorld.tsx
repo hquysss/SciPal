@@ -1,7 +1,7 @@
 'use client';
 
 import { memo, useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
-import { ChevronDown, ChevronLeft, ChevronRight, ChevronUp, Maximize2, Minimize2, Pause, Play, X } from 'lucide-react';
+import { ChevronDown, ChevronLeft, ChevronRight, ChevronUp, Maximize2, Minimize2, PanelBottomClose, PanelBottomOpen, Pause, Play, X } from 'lucide-react';
 import { HISTORY_WORLD_MAPS, type HistoryWorldMap } from '@scipal/types';
 import { FIELD, PANEL } from './controls';
 import overlay from './simOverlay.module.css';
@@ -74,6 +74,7 @@ export function HistoryWorldView({ config, lang }: SimulationViewProps<'history-
   const [outline, setOutline] = useState<Outline | null>(null);
   const [failed, setFailed] = useState(false);
   const [open, setOpen] = useState(false);
+  const [shown, setShown] = useState(true);
   const [selected, setSelected] = useState<string | null>(null);
   const [growing, setGrowing] = useState<Map<string, Growth>>(new Map());
   const stage = useRef<HTMLDivElement>(null);
@@ -231,17 +232,11 @@ export function HistoryWorldView({ config, lang }: SimulationViewProps<'history-
                 {screen.expanded ? <Minimize2 aria-hidden="true" className={ic} /> : <Maximize2 aria-hidden="true" className={ic} />}
               </button>
             </div>
-            <div className={`${overlay.card} ${frame.title}`}>
-              <span className={frame.period}>
-                {current.period} · <span className={styles.clock}>{yearAt(map, pos)}</span>
-              </span>
-              <span className={frame.headline}>{t(current.title)}</span>
-            </div>
           </div>
 
           <div className={frame.bottom}>
             {picked && (
-              <div role="note" className={`${overlay.card} ${frame.note}`}>
+              <div role="note" className={frame.note}>
                 <p>
                   <span className="font-bold">{t(picked.name)}. </span>
                   {describe(picked)}
@@ -251,97 +246,117 @@ export function HistoryWorldView({ config, lang }: SimulationViewProps<'history-
                 </button>
               </div>
             )}
-            <div className={`${overlay.card} ${frame.dock}`}>
-              <ul className={styles.legend} aria-label={t({ en: 'Legend', vi: 'Chú giải' })}>
-                {powers.map(({ power, count }) => (
-                  <li key={power}>
-                    <span aria-hidden="true" className={styles.swatch} style={{ background: map.colors[power] }} />
-                    {t(POWER_NAME[power])}
-                    <span className={styles.count}>{count}</span>
-                  </li>
-                ))}
-                {hasFree && (
-                  <li>
-                    <span aria-hidden="true" className={styles.swatch} style={{ background: 'var(--accent, var(--action))' }} />
-                    {t({ vi: 'Đã độc lập', en: 'Independent' })}
-                    <span className={styles.count}>{freeCount}</span>
-                  </li>
-                )}
-              </ul>
-
-              <div className={frame.controls}>
-                <button type="button" className={overlay.tool} aria-label={t({ en: 'Previous stage', vi: 'Giai đoạn trước' })} disabled={pos <= 0} onClick={() => go(Math.ceil(pos - 1e-6) - 1)}>
-                  <ChevronLeft aria-hidden="true" className={ic} />
-                </button>
-                <input
-                  type="range"
-                  min={0}
-                  max={last}
-                  step="any"
-                  value={pos}
-                  aria-label={t({ en: 'Stage', vi: 'Giai đoạn' })}
-                  aria-valuetext={`${current.period}: ${t(current.title)}`}
-                  onChange={(e) => slider.drag(Number(e.target.value))}
-                  className={frame.slider}
-                />
-                <button type="button" className={overlay.tool} aria-label={t({ en: 'Next stage', vi: 'Giai đoạn sau' })} disabled={pos >= last} onClick={() => go(Math.floor(pos + 1e-6) + 1)}>
-                  <ChevronRight aria-hidden="true" className={ic} />
-                </button>
-                <button
-                  type="button"
-                  className={`${overlay.tool} ${frame.play}`}
-                  aria-pressed={playing}
-                  onClick={play}
-                >
-                  {playing ? <Pause aria-hidden="true" className={ic} /> : <Play aria-hidden="true" className={ic} />}
-                  <span>{playing ? t({ en: 'Pause', vi: 'Dừng' }) : t({ en: 'Play', vi: 'Chạy' })}</span>
-                </button>
-              </div>
-
-              <ol className={frame.ticks} aria-label={t({ en: 'Stages', vi: 'Các giai đoạn' })}>
-                {map.steps.map((s, i) => (
-                  <li key={i}>
-                    <button type="button" aria-current={i === step ? 'step' : undefined} onClick={() => {
-                        setSelected(null);
-                        slider.jump(i);
-                      }} className={frame.tick}>
-                      {s.period}
-                    </button>
-                  </li>
-                ))}
-              </ol>
-
-              <div className={frame.caption}>
-                <div role="status" className={frame.captionText} data-open={open}>
-                  {t(current.text)}
-                </div>
-                <button
-                  type="button"
-                  className={`${overlay.tool} ${frame.more}`}
-                  aria-expanded={open}
-                  aria-label={open ? t({ en: 'Show less', vi: 'Thu gọn' }) : t({ en: 'Show the full text and countries', vi: 'Xem đủ nội dung và các nước' })}
-                  title={open ? t({ en: 'Show less', vi: 'Thu gọn' }) : t({ en: 'Show more', vi: 'Xem thêm' })}
-                  onClick={() => setOpen(!open)}
-                >
-                  {open ? <ChevronDown aria-hidden="true" className={ic} /> : <ChevronUp aria-hidden="true" className={ic} />}
-                </button>
-              </div>
-
-              {open && changed.length > 0 && (
-                <div className="flex flex-col gap-1.5">
-                  <p className="text-xs font-semibold text-ink-muted">{t({ en: 'Changed at this stage — tap for a note', vi: 'Thay đổi ở giai đoạn này — chạm để xem' })}</p>
-                  <div className={frame.places}>
-                    {changed.map((tr) => (
-                      <button key={tr.iso} type="button" className={frame.place} aria-pressed={selected === tr.iso} onClick={() => setSelected(selected === tr.iso ? null : tr.iso)}>
-                        <span aria-hidden="true" className={styles.swatch} style={{ background: fillOf(tr, tr.free ? 'free' : 'colony', map.colors) }} />
-                        {t(tr.name)}
-                        {tr.free && ` ${tr.free.year}`}
-                      </button>
-                    ))}
+            {!shown ? (
+              <button type="button" className={frame.reveal} aria-expanded={false} onClick={() => setShown(true)}>
+                <PanelBottomOpen aria-hidden="true" className={ic} />
+                <span className={frame.period}>{current.period}</span>
+                <span className={frame.revealTitle}>{t(current.title)}</span>
+                <span className="sr-only">{t({ en: '— show the panel', vi: '— hiện bảng thông tin' })}</span>
+              </button>
+            ) : (
+              <div className={frame.dock}>
+                <div className={frame.head}>
+                  <div className={frame.title}>
+                    <span className={frame.period}>
+                      {current.period} · <span className={styles.clock}>{yearAt(map, pos)}</span>
+                    </span>
+                    <span className={frame.headline}>{t(current.title)}</span>
                   </div>
+                  <button type="button" className={overlay.tool} aria-expanded={true} aria-label={t({ en: 'Hide the panel', vi: 'Ẩn bảng thông tin' })} title={t({ en: 'Hide the panel', vi: 'Ẩn bảng thông tin' })} onClick={() => setShown(false)}>
+                    <PanelBottomClose aria-hidden="true" className={ic} />
+                  </button>
                 </div>
-              )}
-            </div>
+                <ul className={styles.legend} aria-label={t({ en: 'Legend', vi: 'Chú giải' })}>
+                  {powers.map(({ power, count }) => (
+                    <li key={power}>
+                      <span aria-hidden="true" className={styles.swatch} style={{ background: map.colors[power] }} />
+                      {t(POWER_NAME[power])}
+                      <span className={styles.count}>{count}</span>
+                    </li>
+                  ))}
+                  {hasFree && (
+                    <li>
+                      <span aria-hidden="true" className={styles.swatch} style={{ background: 'var(--accent, var(--action))' }} />
+                      {t({ vi: 'Đã độc lập', en: 'Independent' })}
+                      <span className={styles.count}>{freeCount}</span>
+                    </li>
+                  )}
+                </ul>
+
+                <div className={frame.controls}>
+                  <button type="button" className={overlay.tool} aria-label={t({ en: 'Previous stage', vi: 'Giai đoạn trước' })} disabled={pos <= 0} onClick={() => go(Math.ceil(pos - 1e-6) - 1)}>
+                    <ChevronLeft aria-hidden="true" className={ic} />
+                  </button>
+                  <input
+                    type="range"
+                    min={0}
+                    max={last}
+                    step="any"
+                    value={pos}
+                    aria-label={t({ en: 'Stage', vi: 'Giai đoạn' })}
+                    aria-valuetext={`${current.period}: ${t(current.title)}`}
+                    onChange={(e) => slider.drag(Number(e.target.value))}
+                    className={frame.slider}
+                  />
+                  <button type="button" className={overlay.tool} aria-label={t({ en: 'Next stage', vi: 'Giai đoạn sau' })} disabled={pos >= last} onClick={() => go(Math.floor(pos + 1e-6) + 1)}>
+                    <ChevronRight aria-hidden="true" className={ic} />
+                  </button>
+                  <button
+                    type="button"
+                    className={`${overlay.tool} ${frame.play}`}
+                    aria-pressed={playing}
+                    onClick={play}
+                  >
+                    {playing ? <Pause aria-hidden="true" className={ic} /> : <Play aria-hidden="true" className={ic} />}
+                    <span>{playing ? t({ en: 'Pause', vi: 'Dừng' }) : t({ en: 'Play', vi: 'Chạy' })}</span>
+                  </button>
+                </div>
+
+                <ol className={frame.ticks} aria-label={t({ en: 'Stages', vi: 'Các giai đoạn' })}>
+                  {map.steps.map((s, i) => (
+                    <li key={i}>
+                      <button type="button" aria-current={i === step ? 'step' : undefined} onClick={() => {
+                          setSelected(null);
+                          slider.jump(i);
+                        }} className={frame.tick}>
+                        {s.period}
+                      </button>
+                    </li>
+                  ))}
+                </ol>
+
+                <div className={frame.caption}>
+                  <div role="status" className={frame.captionText} data-open={open}>
+                    {t(current.text)}
+                  </div>
+                  <button
+                    type="button"
+                    className={`${overlay.tool} ${frame.more}`}
+                    aria-expanded={open}
+                    aria-label={open ? t({ en: 'Show less', vi: 'Thu gọn' }) : t({ en: 'Show the full text and countries', vi: 'Xem đủ nội dung và các nước' })}
+                    title={open ? t({ en: 'Show less', vi: 'Thu gọn' }) : t({ en: 'Show more', vi: 'Xem thêm' })}
+                    onClick={() => setOpen(!open)}
+                  >
+                    {open ? <ChevronDown aria-hidden="true" className={ic} /> : <ChevronUp aria-hidden="true" className={ic} />}
+                  </button>
+                </div>
+
+                {open && changed.length > 0 && (
+                  <div className="flex flex-col gap-1.5">
+                    <p className="text-xs font-semibold text-ink-muted">{t({ en: 'Changed at this stage — tap for a note', vi: 'Thay đổi ở giai đoạn này — chạm để xem' })}</p>
+                    <div className={frame.places}>
+                      {changed.map((tr) => (
+                        <button key={tr.iso} type="button" className={frame.place} aria-pressed={selected === tr.iso} onClick={() => setSelected(selected === tr.iso ? null : tr.iso)}>
+                          <span aria-hidden="true" className={styles.swatch} style={{ background: fillOf(tr, tr.free ? 'free' : 'colony', map.colors) }} />
+                          {t(tr.name)}
+                          {tr.free && ` ${tr.free.year}`}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         </div>
       </div>

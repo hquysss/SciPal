@@ -109,10 +109,20 @@ describe('the history map view', () => {
     expect(screen.getByRole('status').textContent).toContain('Nguyễn Chích');
     fireEvent.click(screen.getByRole('button', { name: '1426–1428' }));
     expect(screen.getByRole('status').textContent).toContain('Hội thề Đông Quan');
-    fireEvent.click(screen.getByRole('button', { name: /Xem đủ nội dung và địa danh/ }));
+    fireEvent.click(screen.getByRole('button', { name: /Xem đủ nội dung, địa danh và chú giải/ }));
+    expect(screen.getByRole('list', { name: 'Chú giải' })).toBeTruthy();
     fireEvent.click(screen.getByRole('button', { name: /Chi Lăng/ }));
     expect(screen.getByRole('note').textContent).toContain('viện binh');
   }, 15000); // the lazy scene falls back to the flat map first, which is slow on a busy machine
+
+  it('hides the panel down to a pill that brings it back', async () => {
+    render(<HistoryMapView config={lamSon} lang="vi" />);
+    await screen.findByRole('img', { name: /1418–1423/ }, { timeout: 5000 });
+    fireEvent.click(screen.getByRole('button', { name: 'Ẩn bảng thông tin' }));
+    expect(screen.queryByRole('slider')).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: /hiện bảng thông tin/ }));
+    expect(screen.getByRole('slider', { name: 'Giai đoạn' })).toBeTruthy();
+  }, 15000);
 });
 
 describe('the history map slider', () => {
