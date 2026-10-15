@@ -109,8 +109,8 @@ Hiện tại camera chỉ trượt và phóng to theo giai đoạn, lúc nào c�
 
   | Vai trò | Màu |
   |---|---|
-  | phe ta | `#D92D2A` |
-  | quân địch | `#173B7A` |
+  | phe ta | `#E33836` (đỏ lấy từ lược đồ SGK) |
+  | quân địch | `#1E8FDC` (xanh lấy từ lược đồ SGK) |
   | viền ngà | `#FFF8E7` |
   | vùng ta | `#F4845F`, viền `#B72A26` |
   | vùng địch | `#64748B`, viền `#26364A` |
