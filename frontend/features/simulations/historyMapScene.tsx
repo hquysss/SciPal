@@ -141,6 +141,38 @@ function Terrain({ assets, config, step, palette }: { assets: Assets; config: Hi
 type Route = HistoryMap['steps'][number]['routes'][number];
 
 /** One march: a tube over the ground, dashed for a retreat, with an arrowhead at its tip. */
+/**
+ * A flat band along the march, lying on the ground like ink on a paper map (not a round tube): two
+ * vertices per point, offset sideways in the ground plane. Six indices per segment, so a draw range
+ * can grow it segment by segment.
+ */
+function ribbon(points: THREE.Vector3[], halfWidth: number): THREE.BufferGeometry {
+  const positions: number[] = [];
+  const index: number[] = [];
+  points.forEach((p, i) => {
+    const a = points[Math.max(i - 1, 0)]!;
+    const b = points[Math.min(i + 1, points.length - 1)]!;
+    const side = new THREE.Vector3(-(b.z - a.z), 0, b.x - a.x).normalize().multiplyScalar(halfWidth);
+    positions.push(p.x + side.x, p.y, p.z + side.z, p.x - side.x, p.y, p.z - side.z);
+    if (i > 0) {
+      const k = 2 * i;
+      index.push(k - 2, k - 1, k, k - 1, k + 1, k);
+    }
+  });
+  const geometry = new THREE.BufferGeometry();
+  geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+  geometry.setIndex(index);
+  return geometry;
+}
+
+/** A flat arrowhead pointing along +x in the ground plane. */
+function arrowHead(halfWidth: number): THREE.BufferGeometry {
+  const geometry = new THREE.BufferGeometry();
+  const w = halfWidth * 3.2;
+  geometry.setAttribute('position', new THREE.Float32BufferAttribute([w * 2.2, 0, 0, -w * 0.4, 0, w, -w * 0.4, 0, -w], 3));
+  return geometry;
+}
+
 function March({ route, index, progress, palette, toScene, radius }: { route: Route; index: number; progress: React.RefObject<number>; palette: Palette; toScene: ToScene; radius: number }) {
   const { invalidate } = useThree();
   const path = useMemo(() => densify(route.points).map((p) => toScene(p)), [route.points, toScene]);
@@ -153,13 +185,14 @@ function March({ route, index, progress, palette, toScene, radius }: { route: Ro
   const tubes = useMemo(
     () =>
       pieces.map(({ from, to }) => {
-        const curve = new THREE.CatmullRomCurve3(path.slice(from, to + 1), false, 'centripetal');
-        const segments = Math.max(2, (to - from) * 3);
-        return { from, to, core: new THREE.TubeGeometry(curve, segments, radius, 6), casing: new THREE.TubeGeometry(curve, segments, radius * 1.7, 6) };
+        const points = path.slice(from, to + 1);
+        return { from, to, core: ribbon(points, radius), casing: ribbon(points, radius * 1.8) };
       }),
     [pieces, path, radius],
   );
   useEffect(() => () => tubes.forEach((t) => (t.core.dispose(), t.casing.dispose())), [tubes]);
+  const headGeometry = useMemo(() => arrowHead(radius), [radius]);
+  useEffect(() => () => headGeometry.dispose(), [headGeometry]);
   const head = useRef<THREE.Mesh>(null);
   const meshes = useRef<Array<THREE.Mesh | null>>([]);
   const color = route.side === 'ours' ? palette.ours : palette.enemy;
@@ -172,7 +205,7 @@ function March({ route, index, progress, palette, toScene, radius }: { route: Ro
       for (const k of [2 * i, 2 * i + 1]) {
         const mesh = meshes.current[k];
         if (!mesh) continue;
-        const geometry = mesh.geometry as THREE.TubeGeometry;
+        const geometry = mesh.geometry as THREE.BufferGeometry;
         mesh.visible = local > 0;
         geometry.setDrawRange(0, Math.floor((geometry.index?.count ?? 0) * local / 6) * 6);
       }
@@ -183,7 +216,7 @@ function March({ route, index, progress, palette, toScene, radius }: { route: Ro
       const tip = path[Math.max(at, 1)]!;
       head.current.visible = p > 0;
       head.current.position.copy(tip);
-      head.current.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), tip.clone().sub(prev).normalize());
+      head.current.rotation.set(0, Math.atan2(-(tip.z - prev.z), tip.x - prev.x), 0);
     }
   });
   useEffect(() => invalidate(), [invalidate, color]);
@@ -192,17 +225,16 @@ function March({ route, index, progress, palette, toScene, radius }: { route: Ro
     <group>
       {tubes.map((t, i) => (
         <group key={i}>
-          <mesh ref={(m) => void (meshes.current[2 * i] = m)} geometry={t.casing}>
-            <meshBasicMaterial color={palette.casing} side={THREE.BackSide} />
+          <mesh ref={(m) => void (meshes.current[2 * i] = m)} geometry={t.casing} renderOrder={1}>
+            <meshBasicMaterial color={palette.casing} side={THREE.DoubleSide} depthTest={false} />
           </mesh>
-          <mesh ref={(m) => void (meshes.current[2 * i + 1] = m)} geometry={t.core}>
-            <meshBasicMaterial color={color} />
+          <mesh ref={(m) => void (meshes.current[2 * i + 1] = m)} geometry={t.core} renderOrder={2}>
+            <meshBasicMaterial color={color} side={THREE.DoubleSide} depthTest={false} />
           </mesh>
         </group>
       ))}
-      <mesh ref={head}>
-        <coneGeometry args={[radius * 3.2, radius * 7, 12]} />
-        <meshBasicMaterial color={color} />
+      <mesh ref={head} geometry={headGeometry} renderOrder={2}>
+        <meshBasicMaterial color={color} side={THREE.DoubleSide} depthTest={false} />
       </mesh>
     </group>
   );
