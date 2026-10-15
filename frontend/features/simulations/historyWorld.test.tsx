@@ -2,7 +2,7 @@
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { HistoryWorldView } from './historyWorld';
 import { WORLD_MAPS, changes, posOfYear, spreadDelays, stateAt, territoryState, yearAt } from './historyWorldData';
 
@@ -95,6 +95,35 @@ describe('HistoryWorldView', () => {
     const mid = Number(slider.value);
     expect(mid).toBeGreaterThan(0);
     expect(mid).toBeLessThan(1);
+  });
+
+  it('narrates each Vietnamese stage and advances when the voice ends', async () => {
+    const audio: Array<{ src: string; currentTime: number; onended: (() => void) | null; play: ReturnType<typeof vi.fn>; pause: ReturnType<typeof vi.fn> }> = [];
+    vi.stubGlobal('Audio', class {
+      src: string;
+      currentTime = 0;
+      onended: (() => void) | null = null;
+      play = vi.fn(() => Promise.resolve());
+      pause = vi.fn();
+
+      constructor(src: string) {
+        this.src = src;
+        audio.push(this);
+      }
+    });
+    render(<HistoryWorldView config={{ map: 'latin-america' }} lang="vi" />);
+    await screen.findByRole('img');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Thuyết minh' }));
+    expect(audio[0]?.src).toBe('/audio/history/latin-america-independence/01.vi.mp3');
+    expect(audio[0]?.play).toHaveBeenCalledOnce();
+
+    act(() => audio[0]?.onended?.());
+    expect(audio[1]?.src).toBe('/audio/history/latin-america-independence/02.vi.mp3');
+    expect(audio[1]?.play).toHaveBeenCalledOnce();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Dừng thuyết minh' }));
+    expect(audio[1]?.pause).toHaveBeenCalledOnce();
   });
 });
 

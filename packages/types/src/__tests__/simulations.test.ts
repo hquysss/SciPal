@@ -60,6 +60,28 @@ describe('defaults', () => {
     expect(simulationConfig('algorithm-sim', { data: [4, 8, 15, 16, 23, 42], target: 23 })).toMatchObject({ values: [4, 8, 15, 16, 23, 42], target: 23 });
   });
 
+  it('keeps local history narration and refuses remote audio', () => {
+    const narrated = simulationConfig('history-map', {
+      places: [],
+      steps: [{
+        period: '1418',
+        title: { vi: 'Khởi nghĩa', en: 'Uprising' },
+        text: { vi: 'Lê Lợi dựng cờ khởi nghĩa.', en: 'Le Loi raised the uprising.' },
+        narration: { vi: '/audio/history/lam-son/01.vi.mp3' },
+      }],
+    });
+    expect(narrated?.steps[0]?.narration?.vi).toBe('/audio/history/lam-son/01.vi.mp3');
+    expect(simulationConfig('history-map', {
+      places: [],
+      steps: [{
+        period: '1418',
+        title: { vi: 'Khởi nghĩa', en: 'Uprising' },
+        text: { vi: 'Lê Lợi dựng cờ khởi nghĩa.', en: 'Le Loi raised the uprising.' },
+        narration: { vi: 'https://evil.example/voice.mp3' },
+      }],
+    })).toBeNull();
+  });
+
   it('keeps what a teacher typed when the stored config does not validate yet', () => {
     const draft = simulationDraft('function-graph', { expression: 'k*x', xMin: 1, parameters: [] });
     expect(draft).toMatchObject({ expression: 'k*x', xMin: 1, parameters: [] });

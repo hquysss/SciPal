@@ -10,15 +10,20 @@ const PAUSE_MS = 1000;
  * `stepMs(target)` per step; back, a jump or a drag goes straight there; reduced motion jumps.
  * `onMove(prev, next)` hears every move, so a map can start what the slider just passed.
  */
-export function useTimelineGlide({ last, reduced, stepMs, onMove }: { last: number; reduced: boolean; stepMs: (target: number) => number; onMove?: (prev: number, next: number) => void }) {
+export function useTimelineGlide({ last, reduced, stepMs, onMove, narration }: { last: number; reduced: boolean; stepMs: (target: number) => number; onMove?: (prev: number, next: number) => void; narration?: readonly (string | undefined)[] }) {
   const [pos, setPos] = useState(0);
   const [playing, setPlaying] = useState(false);
   const posRef = useRef(0);
   const raf = useRef(0);
+  const audio = useRef<HTMLAudioElement | null>(null);
+  const audioStage = useRef(-1);
   const playingRef = useRef(false);
   playingRef.current = playing;
   const listener = useRef(onMove);
   listener.current = onMove;
+  const tracks = useRef(narration);
+  tracks.current = narration;
+  const narrated = Boolean(narration?.length && narration.every((track) => typeof track === 'string'));
 
   const move = (next: number) => {
     const prev = posRef.current;
@@ -28,7 +33,21 @@ export function useTimelineGlide({ last, reduced, stepMs, onMove }: { last: numb
   };
 
   const stop = () => cancelAnimationFrame(raf.current);
-  useEffect(() => () => cancelAnimationFrame(raf.current), []);
+  const stopAudio = (reset = true) => {
+    const current = audio.current;
+    if (!current) return;
+    current.onended = null;
+    current.pause();
+    if (reset) current.currentTime = 0;
+    if (reset) {
+      audio.current = null;
+      audioStage.current = -1;
+    }
+  };
+  useEffect(() => () => {
+    cancelAnimationFrame(raf.current);
+    stopAudio();
+  }, []);
 
   const glide = (target: number, done?: () => void) => {
     stop();
@@ -54,6 +73,7 @@ export function useTimelineGlide({ last, reduced, stepMs, onMove }: { last: numb
     const target = Math.min(Math.max(next, 0), last);
     setPlaying(false);
     playingRef.current = false;
+    stopAudio();
     if (target === Math.floor(posRef.current + 1e-6) + 1) glide(target);
     else {
       stop();
@@ -69,7 +89,35 @@ export function useTimelineGlide({ last, reduced, stepMs, onMove }: { last: numb
     stop();
     setPlaying(false);
     playingRef.current = false;
+    stopAudio();
     move(Math.min(Math.max(next, 0), last));
+  };
+
+  const playStage = (stage: number) => {
+    const src = tracks.current?.[stage];
+    if (!src) return;
+    if (posRef.current < stage - 1e-6) glide(stage);
+    const player = new Audio(src);
+    audio.current = player;
+    audioStage.current = stage;
+    player.onended = () => {
+      if (!playingRef.current || audio.current !== player) return;
+      audio.current = null;
+      audioStage.current = -1;
+      if (stage >= last) {
+        setPlaying(false);
+        playingRef.current = false;
+        return;
+      }
+      playStage(stage + 1);
+    };
+    void player.play().catch(() => {
+      if (audio.current !== player) return;
+      audio.current = null;
+      audioStage.current = -1;
+      setPlaying(false);
+      playingRef.current = false;
+    });
   };
 
   const play = () => {
@@ -77,10 +125,24 @@ export function useTimelineGlide({ last, reduced, stepMs, onMove }: { last: numb
       setPlaying(false);
       playingRef.current = false;
       stop();
+      stopAudio(false);
       return;
     }
     playingRef.current = true;
     setPlaying(true);
+    if (narrated) {
+      if (audio.current) {
+        if (posRef.current < audioStage.current - 1e-6) glide(audioStage.current);
+        void audio.current.play().catch(() => {
+          setPlaying(false);
+          playingRef.current = false;
+        });
+        return;
+      }
+      if (posRef.current >= last - 1e-6) move(0);
+      playStage(Math.min(Math.ceil(posRef.current - 1e-6), last));
+      return;
+    }
     if (posRef.current >= last - 1e-6) move(0);
     const next = () => {
       if (!playingRef.current) return;
@@ -97,5 +159,5 @@ export function useTimelineGlide({ last, reduced, stepMs, onMove }: { last: numb
 
   /** The step being shown: the one the slider is moving into. */
   const step = Math.min(Math.max(Math.ceil(pos - 1e-6), 0), last);
-  return { pos, step, playing, go, jump, drag, play };
+  return { pos, step, playing, narrated, go, jump, drag, play };
 }
