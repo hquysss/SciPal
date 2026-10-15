@@ -17,6 +17,19 @@ const finite = (min: number, max: number) => z.number().finite().min(min).max(ma
 
 export const ALGORITHMS = ['bubble-sort', 'selection-sort', 'insertion-sort', 'linear-search', 'binary-search'] as const;
 
+// Loop patterns of the complexity simulation, slowest-growing first, and the largest n each can draw.
+export const COMPLEXITY_PATTERNS = ['direct', 'halving', 'single-loop', 'divide-conquer', 'nested-loop', 'branching', 'permutations'] as const;
+export type ComplexityPattern = (typeof COMPLEXITY_PATTERNS)[number];
+export const COMPLEXITY_MAX_N: Record<ComplexityPattern, number> = {
+  direct: 32,
+  halving: 32,
+  'single-loop': 32,
+  'divide-conquer': 32,
+  'nested-loop': 32,
+  branching: 12,
+  permutations: 8,
+};
+
 // The seed lesson stored its list as `data`; read it as `values`.
 const AlgorithmConfig = z.preprocess(
   (raw) => {
