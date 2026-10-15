@@ -99,12 +99,13 @@ describe('readExamWorkbook', () => {
     expect(() => readExamWorkbook(wb)).toThrow(WorkbookError);
   });
 
-  it('reads all three question types and the exam with its sections', async () => {
+  it('reads every question type and the exam with its sections', async () => {
     const draft = readExamWorkbook(await loadTemplate(useExamples));
-    expect(draft.questions.map((q) => q.type)).toEqual(['mc', 'truefalse', 'short']);
+    expect(draft.questions.map((q) => q.type)).toEqual(['mc', 'truefalse', 'short', 'writing']);
     expect(draft.questions[0]).toMatchObject({ key: 'vd-nhi-phan', answer: 'A', options: [{ id: 'A' }, { id: 'B' }, { id: 'C' }, { id: 'D' }] });
     expect(draft.questions[1]).toMatchObject({ items: [{ id: 'a', correct: true }, { id: 'b', correct: false }] });
     expect(draft.questions[2]).toMatchObject({ answer: '3' });
+    expect(draft.questions[3]).toMatchObject({ key: 'vd-viet-anh', sample_answer: 'Binary search halves a sorted list at every step.', key_terms: ['sorted list', 'halves'] });
     expect(draft.blueprints).toEqual([{
       code: 'vd-de-on-tap',
       subject_slug: 'informatics',
@@ -183,6 +184,35 @@ describe('sectionShortfalls', () => {
     expect(sectionShortfalls(draft).size).toBe(0);
     const withoutShort = { ...draft, questions: draft.questions.filter((q) => q.type !== 'short') };
     expect(sectionShortfalls(withoutShort).get('vd-de-on-tap')).toEqual([{ index: 2, need: 1, have: 0 }]);
+  });
+});
+
+describe('writing questions', () => {
+  const writingRow = (values: Record<string, unknown>) => async () => {
+    const wb = await loadTemplate(useExamples);
+    setColumns(wb.getWorksheet('Questions')!, 5, { question_key: 'viet-2', subject_slug: 'informatics', type: 'writing', difficulty: 1, stem_vi: 'Viết', stem_en: 'Write', ...values });
+    return wb;
+  };
+
+  it('needs a sample answer, at most eight key terms and no option rows', async () => {
+    await expect(writingRow({ answer_key: '' })().then(readExamWorkbook)).rejects.toThrow(/answer_key/);
+    await expect(writingRow({ answer_key: 'ok', key_terms: 'a,b,c,d,e,f,g,h,i' })().then(readExamWorkbook)).rejects.toThrow(/key_terms/);
+    const draft = readExamWorkbook(await writingRow({ answer_key: 'ok', key_terms: '' })());
+    expect(draft.questions.at(-1)).toEqual({ key: 'viet-2', subject_slug: 'informatics', type: 'writing', difficulty: 1, stem: { vi: 'Viết', en: 'Write' }, sample_answer: 'ok' });
+  });
+
+  it('is never an exam section type', async () => {
+    const wb = await loadTemplate(useExamples);
+    setColumns(wb.getWorksheet('Exam sections')!, 2, { type: 'writing' });
+    expect(() => readExamWorkbook(wb)).toThrow(/mc, truefalse, short\./);
+  });
+
+  it('is flagged until a lesson uses it', async () => {
+    const { writingOutsidePractice } = await import('./examWorkbook');
+    const draft = readExamWorkbook(await loadTemplate(useExamples));
+    const lesson = { subject_slug: 'informatics', grade: 11, topic: { vi: 'c', en: 'c' }, title: { vi: 'b', en: 'b' }, blocks: [{ type: 'quiz_ref' as const, key: 'vd-viet-anh' }] };
+    expect(writingOutsidePractice({ ...draft, lessons: [] })).toEqual(['vd-viet-anh']);
+    expect(writingOutsidePractice({ ...draft, lessons: [lesson] } as never)).toEqual([]);
   });
 });
 

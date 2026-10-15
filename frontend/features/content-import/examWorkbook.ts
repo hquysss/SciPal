@@ -26,7 +26,13 @@ interface QuestionBase {
 export type DraftQuestion =
   | (QuestionBase & { type: 'mc'; options: Choice[]; answer: string })
   | (QuestionBase & { type: 'truefalse'; items: Array<Choice & { correct: boolean }> })
-  | (QuestionBase & { type: 'short'; answer: string; rubric?: Text });
+  | (QuestionBase & { type: 'short'; answer: string; rubric?: Text })
+  /** English answer written or spoken in lesson practice; never part of an exam. */
+  | (QuestionBase & { type: 'writing'; sample_answer: string; key_terms?: string[] });
+
+const MAX_WRITING_ANSWER = 1000;
+const MAX_KEY_TERMS = 8;
+const MAX_KEY_TERM = 60;
 
 export interface DraftBlueprint {
   code: string;
@@ -140,10 +146,13 @@ function bool(row: Row, key: string): boolean {
   throw new WorkbookError(`${at(row)}: ${key} chỉ nhận TRUE hoặc FALSE.`);
 }
 
-function questionType(row: Row, key: string): QuestionType {
+function questionType(row: Row, key: string): QuestionType;
+function questionType(row: Row, key: string, allowWriting: true): QuestionType | 'writing';
+function questionType(row: Row, key: string, allowWriting = false): QuestionType | 'writing' {
   const value = str(row, key).toLowerCase();
   if (value === 'mc' || value === 'truefalse' || value === 'short') return value;
-  throw new WorkbookError(`${at(row)}: ${key} phải là mc, truefalse hoặc short.`);
+  if (allowWriting && value === 'writing') return value;
+  throw new WorkbookError(`${at(row)}: ${key} phải là mc, truefalse, short${allowWriting ? ' hoặc writing' : ''}.`);
 }
 
 function optionalText(row: Row, vi: string, en: string): Text | undefined {
@@ -176,7 +185,7 @@ export function readExamWorkbook(workbook: Workbook): ExamImportDraft {
     const id = `${subject_slug}:${key}`;
     if (seenQuestions.has(id)) throw new WorkbookError(`${at(row)}: mã câu ${key} bị lặp trong môn ${subject_slug}.`);
     seenQuestions.add(id);
-    const type = questionType(row, 'type');
+    const type = questionType(row, 'type', true);
     const base = {
       key,
       subject_slug,
@@ -196,6 +205,15 @@ export function readExamWorkbook(workbook: Workbook): ExamImportDraft {
       if (items.length) throw new WorkbookError(`${at(row)}: câu trả lời ngắn ${key} không dùng sheet Question items.`);
       const rubric = optionalText(row, 'rubric_vi', 'rubric_en');
       return { ...base, type, answer: str(row, 'answer_key'), ...(rubric ? { rubric } : {}) };
+    }
+    if (type === 'writing') {
+      if (items.length) throw new WorkbookError(`${at(row)}: câu viết ${key} không dùng sheet Question items.`);
+      const sample = str(row, 'answer_key');
+      if (sample.length > MAX_WRITING_ANSWER) throw new WorkbookError(`${at(row)}: câu mẫu (answer_key) tối đa ${MAX_WRITING_ANSWER} ký tự.`);
+      const terms = str(row, 'key_terms', false).split(/[,;]/).map((term) => term.trim()).filter(Boolean);
+      if (terms.length > MAX_KEY_TERMS) throw new WorkbookError(`${at(row)}: key_terms tối đa ${MAX_KEY_TERMS} cụm.`);
+      if (terms.some((term) => term.length > MAX_KEY_TERM)) throw new WorkbookError(`${at(row)}: mỗi cụm trong key_terms tối đa ${MAX_KEY_TERM} ký tự.`);
+      return { ...base, type, sample_answer: sample, ...(terms.length ? { key_terms: terms } : {}) };
     }
     if (str(row, 'answer_key', false)) {
       throw new WorkbookError(`${at(row)}: câu ${type} đánh dấu đáp án bằng cột correct ở Question items, để trống answer_key.`);
@@ -407,6 +425,12 @@ export function unresolvedQuizRefs(draft: ContentImportDraft): Array<{ lesson: s
   );
 }
 
+/** Writing questions no lesson uses: they are practice-only, so they need a [QUIZ:key] in a lesson. */
+export function writingOutsidePractice(draft: ContentImportDraft): string[] {
+  const practice = practiceKeys(draft);
+  return draft.questions.filter((q) => q.type === 'writing' && !practice.has(`${q.subject_slug}:${q.key}`)).map((q) => q.key);
+}
+
 /** Question keys used twice in one lesson, or by a second lesson: each practice question belongs to one lesson. */
 export function quizRefConflicts(draft: ContentImportDraft): Array<{ lesson: string; key: string }> {
   const usedBy = new Set<string>();
@@ -454,10 +478,11 @@ export async function createExamWorkbookTemplate(format: ExamFormat = 'generic')
     }
   };
 
-  addSheet(SHEETS.questions.name, [...SHEETS.questions.headers, 'source'], [20, 16, 12, 11, 48, 48, 22, 36, 36, 30, 30, 30], [
-    ['vd-nhi-phan', 'informatics', 'mc', 1, 'Tìm kiếm nhị phân cần danh sách…', 'Binary search needs the list to be…', '', 'Chỉ danh sách đã sắp xếp mới chia đôi được.', 'Only a sorted list can be halved.', '', '', 'SGK Tin học 10'],
-    ['vd-dung-sai', 'informatics', 'truefalse', 2, 'Xét các nhận định về vòng lặp for:', 'Consider these statements about for loops:', '', '', '', '', '', ''],
-    ['vd-tra-loi-ngan', 'informatics', 'short', 2, 'range(2, 10, 3) có bao nhiêu phần tử?', 'How many elements does range(2, 10, 3) have?', '3', '', '', '', '', ''],
+  addSheet(SHEETS.questions.name, [...SHEETS.questions.headers, 'source', 'key_terms'], [20, 16, 12, 11, 48, 48, 22, 36, 36, 30, 30, 30, 30], [
+    ['vd-nhi-phan', 'informatics', 'mc', 1, 'Tìm kiếm nhị phân cần danh sách…', 'Binary search needs the list to be…', '', 'Chỉ danh sách đã sắp xếp mới chia đôi được.', 'Only a sorted list can be halved.', '', '', 'SGK Tin học 10', ''],
+    ['vd-dung-sai', 'informatics', 'truefalse', 2, 'Xét các nhận định về vòng lặp for:', 'Consider these statements about for loops:', '', '', '', '', '', '', ''],
+    ['vd-tra-loi-ngan', 'informatics', 'short', 2, 'range(2, 10, 3) có bao nhiêu phần tử?', 'How many elements does range(2, 10, 3) have?', '3', '', '', '', '', '', ''],
+    ['vd-viet-anh', 'informatics', 'writing', 2, 'Giải thích bằng tiếng Anh vì sao tìm kiếm nhị phân cần danh sách đã sắp xếp.', 'Explain in English why binary search needs a sorted list.', 'Binary search halves a sorted list at every step.', '', '', '', '', '', 'sorted list, halves'],
   ]);
   addSheet(SHEETS.items.name, SHEETS.items.headers, [16, 20, 10, 42, 42, 10], [
     ['informatics', 'vd-nhi-phan', 'A', 'Đã sắp xếp', 'Sorted', true],
@@ -490,7 +515,8 @@ export async function createExamWorkbookTemplate(format: ExamFormat = 'generic')
     ['Trắc nghiệm (mc)', 'Các lựa chọn ở Question items; đúng một lựa chọn có correct = TRUE.'],
     ['Đúng/Sai (truefalse)', 'Mỗi nhận định một dòng ở Question items; correct = TRUE nếu nhận định đúng.'],
     ['Trả lời ngắn (short)', 'Điền đáp án ở answer_key; không thêm dòng Question items.'],
-    ['Câu tự luyện', 'Câu hỏi mà bài Word dùng qua [QUIZ:question_key] trở thành câu Tự luyện của bài, không vào đề thi. Học sinh thấy theo 3 phần: I trắc nghiệm (mc), II đúng/sai (truefalse), III trả lời ngắn (short); thứ tự lựa chọn được xáo mỗi lượt. Chỉ cần điền loại câu đúng, không cần xếp phần.'],
+    ['Viết tiếng Anh (writing)', 'Chỉ dùng cho Tự luyện: bài Word phải gọi câu này qua [QUIZ:question_key], không vào đề thi. Điền câu mẫu tiếng Anh ở answer_key (tối đa 1000 ký tự) và các cụm bắt buộc ở key_terms, cách nhau bằng dấu phẩy (tối đa 8 cụm, mỗi cụm tối đa 60 ký tự; có thể bỏ trống). Học sinh viết hoặc nói, SciPal kiểm tra cụm từ rồi Giáo sư AI nhận xét. Không thêm dòng Question items.'],
+    ['Câu tự luyện', 'Câu hỏi mà bài Word dùng qua [QUIZ:question_key] trở thành câu Tự luyện của bài, không vào đề thi. Học sinh thấy theo các phần: I trắc nghiệm (mc), II đúng/sai (truefalse), III trả lời ngắn (short), IV viết (writing); thứ tự lựa chọn được xáo mỗi lượt. Chỉ cần điền loại câu đúng, không cần xếp phần.'],
     ['Đề thi', 'Exams khai báo đề (lớp, thời gian 5–300 phút); Exam sections chọn loại câu, độ khó và số câu, lấy lần lượt từ câu hỏi cùng môn trong tệp.'],
     ['Dạng đề', 'Exams.format: generic (đề thường), thptqg hoặc dgnl_hcm. Mẫu cũ không có format vẫn là đề thường.'],
     ['Phần thi THPTQG/ĐGNL', 'Exam sections: mỗi phần một dòng; điền section_key, title_vi/title_en, type, count, max_points. difficulty dùng cho đề thường; với đề có nhóm câu có thể để trống. Tổng điểm: THPTQG 10, ĐGNL 1200.'],

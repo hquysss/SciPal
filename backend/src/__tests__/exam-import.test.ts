@@ -375,6 +375,21 @@ describe('importing lessons from Word/PDF', () => {
     await app.close();
   });
 
+  it('stores an English writing question as practice, and refuses one no lesson uses', async () => {
+    const writing = { key: 'q1', subject_slug: 'informatics', type: 'writing' as const, difficulty: 2, stem: bi('Viết'), sample_answer: 'Binary search halves a list.', key_terms: ['halves'] };
+    const { tables } = lessonTables();
+    const app = await buildApp(teacher, tables);
+    const ok = await app.inject({ method: 'POST', url: '/api/authoring/content-import', payload: { lessons: [lesson()], questions: [writing], blueprints: [] } });
+    expect(ok.statusCode).toBe(201);
+    const [row] = (tables.questions as ReturnType<typeof mockQuery>).inserted[0] as Array<Record<string, unknown>>;
+    expect(row).toMatchObject({ type: 'writing', usage: 'practice', data: { sample_answer: 'Binary search halves a list.', key_terms: ['halves'] } });
+
+    const lonely = await app.inject({ method: 'POST', url: '/api/authoring/content-import', payload: { questions: [writing], blueprints: [] } });
+    expect(lonely.statusCode).toBe(400);
+    expect(lonely.json().error).toContain('Tự luyện');
+    await app.close();
+  });
+
   it('holds a question a lesson uses to the practice limits, and leaves exam-only questions alone', async () => {
     const app = await buildApp(teacher, lessonTables().tables);
     const long = { ...mc('q1'), stem: bi('x'.repeat(2500)) };

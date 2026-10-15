@@ -66,7 +66,8 @@ IMPORT_PARAGRAPHS = [
     "# Mẫu cho trang Nhập bài học & đề thi: mỗi tệp là một bài. Dòng bắt đầu bằng # là ghi chú.",
     "# subject là mã môn (informatics, math, physics, ...); grade là lớp 1–12; chủ đề chưa có sẽ được tạo mới.",
     "# [QUIZ:mã-câu] lấy câu hỏi có question_key đó trong tệp Excel nhập cùng lúc (cùng môn) làm câu Tự luyện của bài.",
-    "# Tự luyện hiển thị theo 3 phần như đề kiểm tra: I trắc nghiệm, II đúng/sai, III trả lời ngắn (tự xếp theo loại câu, thứ tự đáp án được xáo).",
+    "# Tự luyện hiển thị theo các phần như đề kiểm tra: I trắc nghiệm, II đúng/sai, III trả lời ngắn, IV viết tiếng Anh (tự xếp theo loại câu, thứ tự đáp án được xáo).",
+    "# Câu viết tiếng Anh (type writing) chỉ dùng cho Tự luyện: khai báo ở tệp Excel (câu mẫu ở answer_key, cụm bắt buộc ở key_terms) rồi gọi bằng [QUIZ:mã-câu] như các câu khác.",
     "# Mỗi mã câu chỉ dùng cho một bài, và câu đã dùng ở đây sẽ không vào đề thi.",
     "# Có thể để trống phần tiếng Anh rồi điền trong trang xem trước.",
     "subject: informatics",
@@ -80,6 +81,7 @@ IMPORT_PARAGRAPHS = [
     "[QUIZ:vd-nhi-phan]",
     "[QUIZ:vd-dung-sai]",
     "[QUIZ:vd-tra-loi-ngan]",
+    "[QUIZ:vd-viet-anh]",
 ]
 
 

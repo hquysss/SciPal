@@ -5,6 +5,7 @@ Vào **Phòng thi thử → Quản lý đề thi → Nhập đề từ Excel**. 
 ## Các sheet
 
 - `Questions`: mỗi dòng một câu hỏi với mã `key`, môn, dạng, độ khó, câu hỏi song ngữ và đáp án phía máy chủ.
+  - Dạng `writing` (viết tiếng Anh) chỉ dùng cho Tự luyện: câu mẫu ở `answer_key`, các cụm bắt buộc ở `key_terms` (cách nhau bằng dấu phẩy, tối đa 8 cụm). Bài Word phải gọi câu này bằng `[QUIZ:question_key]`; câu `writing` không gắn vào bài bị từ chối và không vào đề thi. Mẫu cũ không có cột `key_terms` vẫn đọc được.
 - `Question items`: các lựa chọn trắc nghiệm hoặc nhận định đúng/sai, nối bằng môn và `question_key`.
 - `Exams`: mã đề, môn, lớp, tiêu đề song ngữ, thời gian và `format` (`generic`, `thptqg`, `dgnl_hcm`). Bỏ trống format được hiểu là đề thường.
 - `Exam sections`: mỗi dòng một phần. Đề thường chọn câu theo dạng, độ khó và số lượng. THPTQG/ĐGNL dùng thêm `section_key`, `title_vi`, `title_en`, `max_points`; `count` phải bằng số câu trong các nhóm của phần.

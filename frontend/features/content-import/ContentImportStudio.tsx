@@ -12,6 +12,7 @@ import {
   setEnglish,
   unresolvedQuizRefs,
   quizRefConflicts,
+  writingOutsidePractice,
   WorkbookError,
   type ContentImportDraft,
   type DraftBlueprint,
@@ -352,7 +353,9 @@ function QuestionReviewCard({
     ? t({ en: 'Multiple choice', vi: 'Trắc nghiệm' })
     : question.type === 'truefalse'
       ? t({ en: 'True / False', vi: 'Đúng / Sai' })
-      : t({ en: 'Short answer', vi: 'Trả lời ngắn' });
+      : question.type === 'short'
+        ? t({ en: 'Short answer', vi: 'Trả lời ngắn' })
+        : t({ en: 'English writing', vi: 'Viết tiếng Anh' });
 
   return (
     <article className={CARD}>
@@ -417,6 +420,13 @@ function QuestionReviewCard({
         {question.type === 'short' && (
           <p className="rounded-xl bg-warning-surface px-3 py-2 text-xs leading-5 text-warning">
             {t({ en: 'Answer key', vi: 'Đáp án chấm' })}: <strong>{question.answer}</strong> ·{' '}
+            {t({ en: 'kept on the server only.', vi: 'chỉ lưu phía máy chủ.' })}
+          </p>
+        )}
+        {question.type === 'writing' && (
+          <p className="rounded-xl bg-warning-surface px-3 py-2 text-xs leading-5 text-warning">
+            {t({ en: 'Sample answer', vi: 'Câu mẫu' })}: <strong>{question.sample_answer}</strong>
+            {question.key_terms && <> · {t({ en: 'Key terms', vi: 'Cụm bắt buộc' })}: {question.key_terms.join(', ')}</>} ·{' '}
             {t({ en: 'kept on the server only.', vi: 'chỉ lưu phía máy chủ.' })}
           </p>
         )}
@@ -523,8 +533,9 @@ export function ContentImportStudio({ isAdmin }: { isAdmin: boolean }) {
   const unresolved = useMemo(() => unresolvedQuizRefs(draft), [draft]);
   const shortfalls = useMemo(() => sectionShortfalls(draft), [draft]);
   const conflicts = useMemo(() => quizRefConflicts(draft), [draft]);
+  const writingOnly = useMemo(() => writingOutsidePractice(draft), [draft]);
   const hasContent = draft.lessons.length + draft.questions.length + draft.blueprints.length > 0;
-  const canSave = hasContent && missing.length === 0 && unresolved.length === 0 && conflicts.length === 0 && shortfalls.size === 0;
+  const canSave = hasContent && missing.length === 0 && unresolved.length === 0 && conflicts.length === 0 && writingOnly.length === 0 && shortfalls.size === 0;
   const success = result?.status === 'success';
 
   const updateDraft = (update: (previous: ContentImportDraft) => ContentImportDraft) => {
@@ -818,6 +829,14 @@ export function ContentImportStudio({ isAdmin }: { isAdmin: boolean }) {
                   {conflicts.map((ref, i) => (
                     <li key={`${ref.lesson}:${ref.key}:${i}`}>{ref.lesson} → <code>{ref.key}</code></li>
                   ))}
+                </ul>
+              </div>
+            )}
+            {writingOnly.length > 0 && (
+              <div className="mt-3 rounded-xl bg-danger-surface px-3 py-2 text-sm text-danger" role="alert">
+                <p className="font-bold">{t({ en: 'Writing questions are for lesson practice only', vi: 'Câu viết tiếng Anh chỉ dùng cho Tự luyện, cần gắn vào một bài' })}</p>
+                <ul className="mt-1 list-inside list-disc">
+                  {writingOnly.map((key) => <li key={key}><code>{key}</code></li>)}
                 </ul>
               </div>
             )}
