@@ -104,7 +104,6 @@
 .controls { display: flex; align-items: center; gap: 6px; }
 .controls .tool { flex: none; }
 .slider { flex: 1; min-width: 0; height: 32px; accent-color: var(--accent, var(--action)); cursor: pointer; }
-.play { width: auto; padding: 0 12px; gap: 6px; font-size: 13px; font-weight: 700; }
 
 .ticks { display: flex; gap: 4px; overflow-x: auto; scrollbar-width: none; padding-bottom: 2px; }
 .ticks::-webkit-scrollbar { display: none; }
@@ -235,7 +234,5 @@
 @media (max-width: 520px) {
   .stage { height: clamp(30rem, 80vh, 40rem); }
   .hud { padding: 8px; }
-  .play span { display: none; }
-  .play { padding: 0; width: 36px; }
   .headline { font-size: 13px; }
 }

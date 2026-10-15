@@ -303,12 +303,13 @@ export function HistoryWorldView({ config, lang }: SimulationViewProps<'history-
                   </button>
                   <button
                     type="button"
-                    className={`${overlay.tool} ${frame.play}`}
+                    className={overlay.tool}
+                    aria-label={narrated ? (playing ? t({ en: 'Pause narration', vi: 'Dừng thuyết minh' }) : t({ en: 'Narrate', vi: 'Thuyết minh' })) : (playing ? t({ en: 'Pause', vi: 'Dừng' }) : t({ en: 'Play', vi: 'Chạy' }))}
+                    title={narrated ? (playing ? t({ en: 'Pause narration', vi: 'Dừng thuyết minh' }) : t({ en: 'Narrate', vi: 'Thuyết minh' })) : (playing ? t({ en: 'Pause', vi: 'Dừng' }) : t({ en: 'Play', vi: 'Chạy' }))}
                     aria-pressed={playing}
                     onClick={play}
                   >
                     {playing ? <Pause aria-hidden="true" className={ic} /> : <Play aria-hidden="true" className={ic} />}
-                    <span>{narrated ? (playing ? t({ en: 'Pause narration', vi: 'Dừng thuyết minh' }) : t({ en: 'Narrate', vi: 'Thuyết minh' })) : (playing ? t({ en: 'Pause', vi: 'Dừng' }) : t({ en: 'Play', vi: 'Chạy' }))}</span>
                   </button>
                 </div>
 
