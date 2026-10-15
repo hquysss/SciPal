@@ -1,7 +1,8 @@
 'use client';
 
 import { useState, type MouseEvent } from 'react';
-import { Check, Eye, EyeOff, Plus, X } from 'lucide-react';
+import { Check, Eye, EyeOff, Plus, X, ZoomIn } from 'lucide-react';
+import { Dialog } from '@/components/ui/dialog';
 import { ImageDropZone } from '@/features/authoring/editor/editors/ImageEditor';
 import { BUTTON, Field, FIELD, NumberField, PANEL, SelectField } from './controls';
 import { labelStyle, nearestLabel, type DiagramLabel } from './engines/diagram';
@@ -19,6 +20,7 @@ function fractionOf(event: MouseEvent<HTMLElement>): { x: number; y: number } {
 function DiagramImage({ url, alt, lang, onClick, children }: { url: string; alt: string; lang: Lang; onClick?: (e: MouseEvent<HTMLDivElement>) => void; children?: React.ReactNode }) {
   const t = pick(lang);
   const [broken, setBroken] = useState(false);
+  const [zoomed, setZoomed] = useState(false);
   if (broken) {
     return (
       <p role="alert" className="rounded-md border border-dashed border-edge bg-surface-sunken p-6 text-center text-sm text-ink-muted">
@@ -26,12 +28,35 @@ function DiagramImage({ url, alt, lang, onClick, children }: { url: string; alt:
       </p>
     );
   }
-  return (
-    <div className={`relative mx-auto w-full max-w-xl select-none ${onClick ? 'cursor-crosshair' : ''}`} onClick={onClick}>
+  // The editor places labels by clicking the image, so only the reader's view can be enlarged.
+  const zoomable = !onClick;
+  const picture = (large: boolean) => (
+    <div className={`relative mx-auto select-none ${large ? 'w-fit max-w-full' : 'w-full max-w-xl'} ${onClick ? 'cursor-crosshair' : ''}`} onClick={onClick}>
       {/* eslint-disable-next-line @next/next/no-img-element -- Storage images of unknown size */}
-      <img src={url} alt={alt} draggable={false} onError={() => setBroken(true)} className="block h-auto w-full rounded-md border border-line" />
+      <img src={url} alt={alt} draggable={false} onError={() => setBroken(true)} className={`block rounded-md border border-line ${large ? 'h-auto max-h-[78dvh] w-auto max-w-full' : 'h-auto w-full'}`} />
       {children}
+      {zoomable && !large && (
+        <button
+          type="button"
+          onClick={() => setZoomed(true)}
+          aria-label={t({ en: 'Enlarge the picture', vi: 'Phóng to ảnh' })}
+          title={t({ en: 'Enlarge the picture', vi: 'Phóng to ảnh' })}
+          className="absolute right-2 top-2 flex h-9 w-9 items-center justify-center rounded-full bg-surface/90 text-ink shadow transition hover:bg-surface focus-visible:outline focus-visible:outline-2 focus-visible:outline-focus"
+        >
+          <ZoomIn aria-hidden="true" className="h-4 w-4" />
+        </button>
+      )}
     </div>
+  );
+  return (
+    <>
+      {picture(false)}
+      {zoomable && (
+        <Dialog open={zoomed} onClose={() => setZoomed(false)} title={alt} closeLabel={t({ en: 'Close', vi: 'Đóng' })} className="max-w-[min(96vw,64rem)]">
+          {picture(true)}
+        </Dialog>
+      )}
+    </>
   );
 }
 

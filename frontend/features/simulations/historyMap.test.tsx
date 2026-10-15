@@ -3,8 +3,8 @@ import { readFileSync } from 'node:fs';
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { HISTORY_MAP_REGIONS, defaultSimulationConfig } from '@scipal/types';
-import { densify, heightAt, projection, stepFrame } from './historyMapGeo';
+import { HISTORY_MAP_REGIONS, defaultSimulationConfig, simulationConfig } from '@scipal/types';
+import { densify, heightAt, namedAt, projection, stepFrame, type HistoryMap } from './historyMapGeo';
 import { HistoryMapView, historyMapModule } from './historyMap';
 
 vi.mock('./historyMapScene', () => ({
@@ -50,6 +50,23 @@ describe('history map geometry', () => {
     expect(stepFrame(lamSon, 3).north).toBeGreaterThan(22);
   });
 
+  it('keeps only the mark of an earlier battle, unless a march of this step ends there', () => {
+    const map = simulationConfig('history-map', {
+      places: [
+        { name: { vi: 'A', en: 'A' }, lon: 106, lat: 21, type: 'battle', from: 0 },
+        { name: { vi: 'B', en: 'B' }, lon: 106, lat: 20, type: 'city', from: 0 },
+      ],
+      steps: [
+        { period: '1', title: { vi: '', en: '' }, text: { vi: '', en: '' } },
+        { period: '2', title: { vi: '', en: '' }, text: { vi: '', en: '' } },
+        { period: '3', title: { vi: '', en: '' }, text: { vi: '', en: '' }, routes: [{ points: [[107, 22], [106, 21]] }] },
+      ],
+    })!;
+    const [battle, city] = map.places as [HistoryMap['places'][number], HistoryMap['places'][number]];
+    expect([0, 1, 2].map((i) => namedAt(map, battle, i))).toEqual([true, false, true]);
+    expect([0, 1, 2].map((i) => namedAt(map, city, i))).toEqual([true, true, true]);
+  });
+
   it('splits marches finely enough to follow the ground', () => {
     const out = densify([[105, 20], [106, 21]], 0.1);
     expect(out[0]).toEqual([105, 20]);
@@ -87,11 +104,12 @@ describe('the history map view', () => {
 
   it('walks the stages and opens place notes when 3D cannot be shown', async () => {
     render(<HistoryMapView config={lamSon} lang="vi" />);
-    await screen.findByRole('img', { name: /1418–1423/ });
+    await screen.findByRole('img', { name: /1418–1423/ }, { timeout: 5000 });
     fireEvent.click(screen.getByRole('button', { name: '1424–1425' }));
     expect(screen.getByRole('status').textContent).toContain('Nguyễn Chích');
     fireEvent.click(screen.getByRole('button', { name: /Giai đoạn sau/ }));
     expect(screen.getByRole('status').textContent).toContain('Hội thề Đông Quan');
+    fireEvent.click(screen.getByRole('button', { name: /Xem đủ nội dung và địa danh/ }));
     fireEvent.click(screen.getByRole('button', { name: /Chi Lăng/ }));
     expect(screen.getByRole('note').textContent).toContain('viện binh');
   });

@@ -8,8 +8,9 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import * as THREE from 'three';
 import type { HistoryMapRegion } from '@scipal/types';
-import { assetBase, densify, heightAt, placesAt, projection, stepFrame, type HistoryMap, type LonLat } from './historyMapGeo';
-import { ViewButtons, VIEW_CLASS, useOrbit, usePalette, type Orbit } from './scene3d';
+import { assetBase, densify, heightAt, namedAt, placesAt, projection, stepFrame, type HistoryMap, type LonLat } from './historyMapGeo';
+import { usePalette } from './scene3d';
+import { clampView, type MapCamera } from './historyMapCamera';
 import { pick, type Lang } from './types';
 import { PLACE_MARK, type Palette, MAP_TOKENS } from './historyMapStyle';
 
@@ -18,7 +19,6 @@ const FOV = 40;
 const EXAGGERATION = 16;
 const METRES_PER_UNIT = 111_000;
 const SECONDS_PER_ROUTE = 1.1;
-const HOME: Orbit = { theta: -Math.PI / 2, phi: 0.78, dist: 1 };
 
 type Meta = { texture: [number, number]; heights: [number, number] };
 type Assets = { meta: Meta; heights: Uint16Array; relief: HTMLImageElement; land: HTMLImageElement };
@@ -141,7 +141,39 @@ function Terrain({ assets, config, step, palette }: { assets: Assets; config: Hi
 type Route = HistoryMap['steps'][number]['routes'][number];
 
 /** One march: a tube over the ground, dashed for a retreat, with an arrowhead at its tip. */
-function March({ route, index, progress, palette, toScene, radius }: { route: Route; index: number; progress: React.RefObject<number>; palette: Palette; toScene: ToScene; radius: number }) {
+/**
+ * A flat band along the march, lying on the ground like ink on a paper map (not a round tube): two
+ * vertices per point, offset sideways in the ground plane. Six indices per segment, so a draw range
+ * can grow it segment by segment.
+ */
+function ribbon(points: THREE.Vector3[], halfWidth: number): THREE.BufferGeometry {
+  const positions: number[] = [];
+  const index: number[] = [];
+  points.forEach((p, i) => {
+    const a = points[Math.max(i - 1, 0)]!;
+    const b = points[Math.min(i + 1, points.length - 1)]!;
+    const side = new THREE.Vector3(-(b.z - a.z), 0, b.x - a.x).normalize().multiplyScalar(halfWidth);
+    positions.push(p.x + side.x, p.y, p.z + side.z, p.x - side.x, p.y, p.z - side.z);
+    if (i > 0) {
+      const k = 2 * i;
+      index.push(k - 2, k - 1, k, k - 1, k + 1, k);
+    }
+  });
+  const geometry = new THREE.BufferGeometry();
+  geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+  geometry.setIndex(index);
+  return geometry;
+}
+
+/** A flat arrowhead pointing along +x in the ground plane. */
+function arrowHead(halfWidth: number): THREE.BufferGeometry {
+  const geometry = new THREE.BufferGeometry();
+  const w = halfWidth * 3.2;
+  geometry.setAttribute('position', new THREE.Float32BufferAttribute([w * 2.2, 0, 0, -w * 0.4, 0, w, -w * 0.4, 0, -w], 3));
+  return geometry;
+}
+
+function March({ route, index, progress, palette, toScene, radius, heads }: { route: Route; index: number; progress: React.RefObject<number>; palette: Palette; toScene: ToScene; radius: number; heads: React.RefObject<Array<THREE.Vector3 | null>> }) {
   const { invalidate } = useThree();
   const path = useMemo(() => densify(route.points).map((p) => toScene(p)), [route.points, toScene]);
   const pieces = useMemo(() => {
@@ -153,14 +185,17 @@ function March({ route, index, progress, palette, toScene, radius }: { route: Ro
   const tubes = useMemo(
     () =>
       pieces.map(({ from, to }) => {
-        const curve = new THREE.CatmullRomCurve3(path.slice(from, to + 1), false, 'centripetal');
-        const segments = Math.max(2, (to - from) * 3);
-        return { from, to, core: new THREE.TubeGeometry(curve, segments, radius, 6), casing: new THREE.TubeGeometry(curve, segments, radius * 1.7, 6) };
+        const points = path.slice(from, to + 1);
+        return { from, to, core: ribbon(points, radius), casing: ribbon(points, radius * 1.8) };
       }),
     [pieces, path, radius],
   );
   useEffect(() => () => tubes.forEach((t) => (t.core.dispose(), t.casing.dispose())), [tubes]);
+  const headGeometry = useMemo(() => arrowHead(radius), [radius]);
+  useEffect(() => () => headGeometry.dispose(), [headGeometry]);
   const head = useRef<THREE.Mesh>(null);
+  const tip = useMemo(() => new THREE.Vector3(), []);
+  const dirV = useMemo(() => new THREE.Vector3(), []);
   const meshes = useRef<Array<THREE.Mesh | null>>([]);
   const color = route.side === 'ours' ? palette.ours : palette.enemy;
 
@@ -172,18 +207,23 @@ function March({ route, index, progress, palette, toScene, radius }: { route: Ro
       for (const k of [2 * i, 2 * i + 1]) {
         const mesh = meshes.current[k];
         if (!mesh) continue;
-        const geometry = mesh.geometry as THREE.TubeGeometry;
+        const geometry = mesh.geometry as THREE.BufferGeometry;
         mesh.visible = local > 0;
         geometry.setDrawRange(0, Math.floor((geometry.index?.count ?? 0) * local / 6) * 6);
       }
     });
     if (head.current) {
-      const at = Math.min(Math.floor(p * last), last);
-      const prev = path[Math.max(at - 1, 0)]!;
-      const tip = path[Math.max(at, 1)]!;
+      // Walk along the path between its points, so the arrow (and a camera following it) glides.
+      const f = Math.min(Math.max(p * last, 0), last);
+      const i0 = Math.min(Math.floor(f), Math.max(last - 1, 0));
+      const a = path[i0]!;
+      const b = path[Math.min(i0 + 1, last)]!;
+      tip.copy(a).lerp(b, f - i0);
+      const dir = dirV.copy(b).sub(a);
+      if (dir.lengthSq() > 1e-12) head.current.rotation.set(0, Math.atan2(-dir.z, dir.x), 0);
       head.current.visible = p > 0;
       head.current.position.copy(tip);
-      head.current.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), tip.clone().sub(prev).normalize());
+      heads.current[index] = p > 0 ? tip : null;
     }
   });
   useEffect(() => invalidate(), [invalidate, color]);
@@ -192,17 +232,16 @@ function March({ route, index, progress, palette, toScene, radius }: { route: Ro
     <group>
       {tubes.map((t, i) => (
         <group key={i}>
-          <mesh ref={(m) => void (meshes.current[2 * i] = m)} geometry={t.casing}>
-            <meshBasicMaterial color={palette.casing} side={THREE.BackSide} />
+          <mesh ref={(m) => void (meshes.current[2 * i] = m)} geometry={t.casing} renderOrder={1}>
+            <meshBasicMaterial color={palette.casing} side={THREE.DoubleSide} depthTest={false} />
           </mesh>
-          <mesh ref={(m) => void (meshes.current[2 * i + 1] = m)} geometry={t.core}>
-            <meshBasicMaterial color={color} />
+          <mesh ref={(m) => void (meshes.current[2 * i + 1] = m)} geometry={t.core} renderOrder={2}>
+            <meshBasicMaterial color={color} side={THREE.DoubleSide} depthTest={false} />
           </mesh>
         </group>
       ))}
-      <mesh ref={head}>
-        <coneGeometry args={[radius * 3.2, radius * 7, 12]} />
-        <meshBasicMaterial color={color} />
+      <mesh ref={head} geometry={headGeometry} renderOrder={2}>
+        <meshBasicMaterial color={color} side={THREE.DoubleSide} depthTest={false} />
       </mesh>
     </group>
   );
@@ -212,70 +251,110 @@ function March({ route, index, progress, palette, toScene, radius }: { route: Ro
 type ToScene = (p: LonLat, height?: number) => THREE.Vector3;
 const LIFT = 0.03;
 
-/** Flies to the step's frame, keeps the camera above the ground and pins the labels; draws on demand. */
+/**
+ * The camera. It eases toward what the reader asked for (turn, tilt, zoom, slide) and toward where the
+ * story is: the frame of the step, or, while a march is drawn and the camera follows, the march's
+ * head, closer in. Everything is clamped to the region. Draws on demand and keeps drawing until it settles.
+ */
 function MapRig({
-  orbit,
+  camera: cam,
   frame,
+  bounds,
   reduced,
+  follow,
   progress,
   routes,
+  heads,
   labels,
   anchors,
   onInvalidate,
 }: {
-  orbit: React.RefObject<Orbit>;
+  camera: MapCamera;
   frame: { target: THREE.Vector3; span: [number, number] };
+  bounds: { halfW: number; halfH: number };
   reduced: boolean;
+  follow: boolean;
   progress: React.RefObject<number>;
   routes: number;
+  heads: React.RefObject<Array<THREE.Vector3 | null>>;
   labels: React.RefObject<Map<number, HTMLElement>>;
   anchors: Array<[number, THREE.Vector3]>;
   onInvalidate: (fn: () => void) => void;
 }) {
   const { camera, size, invalidate } = useThree();
-  const target = useRef<THREE.Vector3 | null>(null);
-  const base = useRef(0);
+  const now = useRef<{ theta: number; phi: number; dist: number; base: number; target: THREE.Vector3 } | null>(null);
+  const goal = useMemo(() => new THREE.Vector3(), []);
   const v = useMemo(() => new THREE.Vector3(), []);
   useEffect(() => onInvalidate(invalidate), [invalidate, onInvalidate]);
-  useEffect(() => invalidate(), [anchors, invalidate]);
+  useEffect(() => invalidate(), [anchors, follow, invalidate]);
 
-  const fit = (aspect: number) => (Math.max(frame.span[1], frame.span[0] / aspect) / (2 * Math.tan(((FOV / 2) * Math.PI) / 180))) * 1.05;
+  const tan = Math.tan(((FOV / 2) * Math.PI) / 180);
+  const fit = (aspect: number) => (Math.max(frame.span[1], frame.span[0] / aspect) / (2 * tan)) * 1.05;
 
   useEffect(() => {
-    if (reduced || !target.current) {
-      target.current = frame.target.clone();
-      base.current = fit(size.width / Math.max(size.height, 1));
-    }
+    heads.current.length = 0;
     progress.current = reduced ? routes : 0;
     invalidate();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [frame, reduced, routes]);
 
-  useFrame((_, dt) => {
-    const t = target.current;
-    if (!t) return;
-    const wantDist = fit(size.width / Math.max(size.height, 1));
+  useFrame((_, rawDt) => {
+    const dt = Math.min(rawDt, 0.1);
+    const aspect = size.width / Math.max(size.height, 1);
+    const view = cam.view.current;
+    const panLimit = Math.max(...frame.span) * 0.7;
+    cam.panLimit.current = panLimit;
+    const want = clampView(view, panLimit);
+    cam.view.current = want;
+    const base = fit(aspect);
+
+    // Where the story is: the head of the march being drawn, else the frame's centre.
+    const idx = Math.min(Math.floor(progress.current), routes - 1);
+    const head = follow && !reduced && routes > 0 && progress.current < routes ? heads.current[idx] : null;
+    goal.copy(head ?? frame.target);
+    if (head) goal.lerp(frame.target, 0.25); // stay loosely anchored to the stage's frame
+    const zoomIn = head ? 0.72 : 1;
+    goal.x += want.panX;
+    goal.z += want.panZ;
+    goal.x = Math.min(Math.max(goal.x, -bounds.halfW), bounds.halfW);
+    goal.z = Math.min(Math.max(goal.z, -bounds.halfH), bounds.halfH);
+
+    if (!now.current) now.current = { theta: want.theta, phi: want.phi, dist: want.dist, base: base * zoomIn, target: goal.clone() };
+    const c = now.current;
     let busy = false;
-    if (!reduced) {
-      const a = 1 - Math.exp(-Math.min(dt, 0.1) * 3);
-      if (t.distanceTo(frame.target) > 0.002 || Math.abs(base.current - wantDist) > 0.002) {
-        t.lerp(frame.target, a);
-        base.current += (wantDist - base.current) * a;
-        busy = true;
-      }
-      if (progress.current < routes) {
-        progress.current = Math.min(routes, progress.current + Math.min(dt, 0.1) / SECONDS_PER_ROUTE);
-        busy = true;
-      }
+    if (reduced) {
+      c.theta = want.theta;
+      c.phi = want.phi;
+      c.dist = want.dist;
+      c.base = base * zoomIn;
+      c.target.copy(goal);
     } else {
-      t.copy(frame.target);
-      base.current = wantDist;
+      // Critically damped easing: the view turns quickly, the target glides.
+      const fast = 1 - Math.exp(-dt * 9);
+      const slow = 1 - Math.exp(-dt * (head ? 3.2 : 2.4));
+      c.theta += (want.theta - c.theta) * fast;
+      c.phi += (want.phi - c.phi) * fast;
+      c.dist += (want.dist - c.dist) * fast;
+      c.base += (base * zoomIn - c.base) * slow;
+      c.target.lerp(goal, slow);
+      if (
+        Math.abs(want.theta - c.theta) > 0.0005 ||
+        Math.abs(want.phi - c.phi) > 0.0005 ||
+        Math.abs(want.dist - c.dist) > 0.0005 ||
+        Math.abs(base * zoomIn - c.base) > 0.002 ||
+        c.target.distanceTo(goal) > 0.0015
+      )
+        busy = true;
+      if (progress.current < routes) {
+        progress.current = Math.min(routes, progress.current + dt / SECONDS_PER_ROUTE);
+        busy = true;
+      }
     }
-    const { theta, dist } = orbit.current;
-    const phi = Math.min(Math.max(orbit.current.phi, 0.3), 1.5);
-    const d = base.current * dist;
-    camera.position.set(t.x + d * Math.cos(phi) * Math.cos(theta), t.y + d * Math.sin(phi), t.z - d * Math.cos(phi) * Math.sin(theta));
-    camera.lookAt(t);
+
+    const d = c.base * c.dist;
+    cam.worldPerPixel.current = (2 * d * tan) / Math.max(size.height, 1);
+    camera.position.set(c.target.x + d * Math.cos(c.phi) * Math.cos(c.theta), c.target.y + d * Math.sin(c.phi), c.target.z - d * Math.cos(c.phi) * Math.sin(c.theta));
+    camera.lookAt(c.target);
     camera.updateMatrixWorld();
     for (const [key, p] of anchors) {
       const el = labels.current.get(key);
@@ -295,25 +374,31 @@ export default function HistoryMapScene({
   step,
   lang,
   reduced,
-  description,
+  follow,
+  camera: cam,
   onSelect,
 }: {
   config: HistoryMap;
   step: number;
   lang: Lang;
   reduced: boolean;
-  description: string;
+  follow: boolean;
+  camera: MapCamera;
   onSelect: (index: number) => void;
 }) {
   const t = pick(lang);
   const assets = useAssets(config.region);
-  const { host, orbit, invalidate, handlers, zoom, reset } = useOrbit(HOME, { min: 0.3, max: 3 });
-  const palette = usePalette(host, MAP_TOKENS);
+  const palette = usePalette(cam.host, MAP_TOKENS);
   const labels = useRef(new Map<number, HTMLElement>());
   const progress = useRef(0);
+  const heads = useRef<Array<THREE.Vector3 | null>>([]);
+  const bounds = useMemo(() => {
+    const proj = projection(config.region);
+    return { halfW: proj.width / 2, halfH: proj.height / 2 };
+  }, [config.region]);
   const setInvalidate = useCallback((fn: () => void) => {
-    invalidate.current = fn;
-  }, [invalidate]);
+    cam.invalidate.current = fn;
+  }, [cam.invalidate]);
 
   const toScene = useMemo<ToScene>(() => {
     const { toUv, toPlane } = projection(config.region);
@@ -350,22 +435,14 @@ export default function HistoryMapScene({
   const routes = config.steps[step]?.routes ?? [];
 
   return (
-    <div className="flex flex-col gap-2">
-      <div
-        ref={host}
-        role="img"
-        aria-label={description}
-        tabIndex={0}
-        className={`${VIEW_CLASS} aspect-[4/3] touch-none`}
-        {...handlers}
-      >
+    <>
         {assets && palette ? (
           <Canvas frameloop="demand" dpr={[1, 2]} camera={{ fov: FOV, near: 0.02, far: 200 }} gl={{ antialias: true }}>
             <Terrain assets={assets} config={config} step={step} palette={palette} />
             {routes.map((route, i) => (
-              <March key={`${step}-${i}`} route={route} index={i} progress={progress} palette={palette} toScene={toScene} radius={Math.max(...frame.span) * 0.005} />
+              <March key={`${step}-${i}`} route={route} index={i} progress={progress} palette={palette} toScene={toScene} radius={Math.max(...frame.span) * 0.005} heads={heads} />
             ))}
-            <MapRig orbit={orbit} frame={frame} reduced={reduced} progress={progress} routes={routes.length} labels={labels} anchors={anchors} onInvalidate={setInvalidate} />
+            <MapRig camera={cam} frame={frame} bounds={bounds} reduced={reduced} follow={follow} progress={progress} routes={routes.length} heads={heads} labels={labels} anchors={anchors} onInvalidate={setInvalidate} />
           </Canvas>
         ) : (
           <div className="grid h-full place-items-center text-sm text-ink-muted">{t({ en: 'Loading the 3D map…', vi: 'Đang tải bản đồ 3D…' })}</div>
@@ -377,7 +454,7 @@ export default function HistoryMapScene({
             const text = (
               <>
                 {!area && <span aria-hidden="true" className={p.type === 'city' ? 'text-ink' : 'text-danger'}>{PLACE_MARK[p.type]} </span>}
-                {t(p.name)}
+                {namedAt(config, p, step) && t(p.name)}
               </>
             );
             const cls = `absolute left-0 top-0 select-none whitespace-nowrap ${area ? 'text-xs font-semibold uppercase italic tracking-wide text-ink-muted' : 'text-xs font-bold text-ink sm:text-sm'}`;
@@ -395,6 +472,7 @@ export default function HistoryMapScene({
                 tabIndex={-1}
                 aria-hidden="true"
                 className={`${cls} cursor-pointer underline decoration-dotted underline-offset-2`}
+                title={namedAt(config, p, step) ? undefined : t(p.name)}
                 style={style}
                 onPointerDown={(e) => e.stopPropagation()}
                 onClick={() => onSelect(i)}
@@ -407,16 +485,6 @@ export default function HistoryMapScene({
               </span>
             );
           })}
-      </div>
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <p className="text-xs text-ink-muted">
-          {t({
-            en: 'Drag to turn, pinch or Ctrl + scroll to zoom. With the map focused: arrow keys turn it, + and − zoom, 0 resets.',
-            vi: 'Kéo để xoay, chụm hai ngón hoặc Ctrl + cuộn để phóng to. Khi chọn bản đồ: phím mũi tên để xoay, + và − để phóng to, 0 để về ban đầu.',
-          })}
-        </p>
-        <ViewButtons lang={lang} onReset={reset} onZoom={zoom} />
-      </div>
-    </div>
+    </>
   );
 }
