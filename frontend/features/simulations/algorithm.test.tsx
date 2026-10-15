@@ -1,7 +1,8 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { cleanup, fireEvent, render, screen, within } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, within } from '@testing-library/react';
 import { algorithmModule } from './algorithm';
+import { raceRanks } from './algorithmRace';
 import { compareChip } from './algorithmStage';
 import { algorithmSteps, type AlgorithmStep } from './engines/algorithm';
 
@@ -73,6 +74,28 @@ describe('algorithm stage', () => {
       expect(document.querySelector<HTMLElement>(`[data-item="${id}"]`)!.style.transform).toBe(`translateX(${slot * 100}%)`);
     });
     expect(errors).not.toHaveBeenCalled();
+  });
+
+  it('races the three sorts on the same list, and a nearly sorted list goes to insertion sort', () => {
+    vi.useFakeTimers();
+    render(<View config={config([1, 2, 3, 5, 4])} lang="vi" />);
+    fireEvent.click(screen.getByRole('button', { name: 'Đua 3 cách sắp xếp' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Chạy' }));
+    for (let i = 0; i < 13; i += 1) act(() => vi.advanceTimersByTime(650));
+    expect(screen.getByRole('group', { name: 'Sắp xếp chèn' }).textContent).toContain('Hạng 1 · 7 bước');
+    expect(screen.getByRole('group', { name: 'Sắp xếp nổi bọt' }).textContent).toContain('Hạng 2 · 13 bước');
+    expect(screen.getByRole('group', { name: 'Sắp xếp chọn' }).textContent).toContain('Hạng 2 · 13 bước');
+    vi.useRealTimers();
+  });
+
+  it('offers the race only for sorting', () => {
+    render(<View config={config([4, 8, 1], 'linear-search', 8)} lang="vi" />);
+    expect(screen.queryByRole('button', { name: 'Đua 3 cách sắp xếp' })).toBeNull();
+  });
+
+  it('ranks the race by steps taken, ties sharing a place', () => {
+    expect(raceRanks([12, 20, 12])).toEqual([1, 3, 1]);
+    expect(raceRanks([5, 6, 7])).toEqual([1, 2, 3]);
   });
 
   it('flies swapped blocks, unless motion is reduced', () => {

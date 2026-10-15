@@ -11,6 +11,14 @@ export type Algorithm = (typeof ALGORITHMS)[number];
 type Bilingual = { en: string; vi: string };
 export type Chip = { text: Bilingual; tone: 'act' | 'keep' | 'found' };
 
+export const ALGORITHM_NAMES: Record<Algorithm, Bilingual> = {
+  'bubble-sort': { en: 'Bubble sort', vi: 'Sắp xếp nổi bọt' },
+  'selection-sort': { en: 'Selection sort', vi: 'Sắp xếp chọn' },
+  'insertion-sort': { en: 'Insertion sort', vi: 'Sắp xếp chèn' },
+  'linear-search': { en: 'Linear search', vi: 'Tìm kiếm tuần tự' },
+  'binary-search': { en: 'Binary search', vi: 'Tìm kiếm nhị phân' },
+};
+
 const relation = (a: number, b: number) => (a < b ? '<' : a > b ? '>' : '=');
 const say = (a: number, rel: string, b: number, verdict: Bilingual, tone: Chip['tone']): Chip => ({
   text: { vi: `${a} ${rel} ${b} · ${verdict.vi}`, en: `${a} ${rel} ${b} · ${verdict.en}` },
