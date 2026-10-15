@@ -110,7 +110,7 @@
 .place:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
 
 /* The history map's own colours, like the textbook's maps: the same in every theme. Red against
-   blue stays apart for colour-blind readers (sampled from the textbook maps, figs. 3 and 6, pp.53, 57); the ivory casing lifts both off the relief. *
+   blue stays apart for colour-blind readers (sampled from the textbook maps, figs. 3 and 6, pp.53, 57); the ivory casing lifts both off the relief. */
 .mapColors {
   --map-ours: #e33836; /* the red of the textbook's marches (Lam Sơn, Tây Sơn maps) */
   --map-enemy: #1e8fdc; /* the textbook's blue for the enemy */
