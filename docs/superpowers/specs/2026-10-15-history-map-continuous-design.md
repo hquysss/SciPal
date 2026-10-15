@@ -53,7 +53,7 @@ Phản hồi: "trục thời gian chạy dần".
   - nhảy 3 mốc thì mỗi đoạn có độ trễ tăng dần;
   - giảm chuyển động thì không có độ trễ.
 
-## Hiệu ứng tiến quân (chờ duyệt)
+## Hiệu ứng tiến quân (đã làm)
 Phản hồi: "2D thấy không có hiệu ứng gì hết" → "thêm hiệu ứng tiến quân vào".
 
 Hiện tại mũi tiến quân chỉ là đường kẻ dài dần ra, không có cảm giác quân đang đi. Thêm ba hiệu ứng, áp dụng cho bản 2D và cả bản 3D:

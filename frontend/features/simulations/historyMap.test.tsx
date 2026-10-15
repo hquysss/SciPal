@@ -4,8 +4,8 @@ import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { HISTORY_MAP_REGIONS, defaultSimulationConfig, simulationConfig } from '@scipal/types';
-import { areaGrowth, areaOrigins, densify, heightAt, marchProgress, namedAt, placeTimes, projection, stepFraction, stepFrame, yearsOf, type HistoryMap } from './historyMapGeo';
-import { HistoryMapView, historyMapModule } from './historyMap';
+import { areaGrowth, areaOrigins, bursting, densify, heightAt, marchProgress, namedAt, placeTimes, projection, stepFraction, stepFrame, yearsOf, type HistoryMap } from './historyMapGeo';
+import { FlatMap, HistoryMapView, historyMapModule } from './historyMap';
 
 vi.mock('./historyMapScene', () => ({
   default: () => {
@@ -135,6 +135,43 @@ describe('the history map slider', () => {
     await new Promise((r) => setTimeout(r, 300));
     expect(Number(slider.value)).toBeGreaterThan(k - 1 + 0.2);
     expect(Number(slider.value)).toBeLessThan(k);
+  });
+});
+
+describe('march effects on the flat map', () => {
+  const k = lamSon.steps.findIndex((st, i) => i > 0 && st.routes.length > 0);
+  const flat = (frac: number, reduced = false) =>
+    render(<FlatMap config={lamSon} step={k} frac={frac} reduced={reduced} lang="vi" description="" onSelect={() => {}} />).container;
+
+  it('carries a flag at the head of the march being drawn, and light along the way marched', () => {
+    const c = flat(0.2);
+    const drawing = [...c.querySelectorAll('[data-march]')].filter((m) => Number(m.getAttribute('data-done')) < 1);
+    expect(drawing).toHaveLength(1);
+    expect(drawing[0]!.querySelector('[data-flag]')).not.toBeNull();
+    expect(c.querySelectorAll('[data-flag]')).toHaveLength(1);
+    expect(c.querySelectorAll('[data-flow]').length).toBe(c.querySelectorAll('[data-march]').length);
+  });
+
+  it('drops the flag once every march has arrived', () => {
+    const c = flat(1);
+    expect(c.querySelectorAll('[data-flag]')).toHaveLength(0);
+    expect(c.querySelectorAll('[data-flow]').length).toBeGreaterThan(0);
+  });
+
+  it('flares a victory just after the march reaches it', () => {
+    const step = lamSon.steps.findIndex((_, i) => [...placeTimes(lamSon, i)].some(([j, at]) => lamSon.places[j]!.type === 'battle' && at > 0));
+    const [j, at] = [...placeTimes(lamSon, step)].find(([j, a]) => lamSon.places[j]!.type === 'battle' && a > 0)!;
+    const c = render(<FlatMap config={lamSon} step={step} frac={at + 0.01} lang="vi" description="" onSelect={() => {}} />).container;
+    expect(c.querySelector(`[data-burst="${j}"]`)).not.toBeNull();
+    expect(bursting(at + 0.5, at)).toBe(false);
+    expect(bursting(0, 0)).toBe(false);
+  });
+
+  it('shows no moving effects with reduced motion', () => {
+    const c = flat(0.2, true);
+    expect(c.querySelectorAll('[data-flow]')).toHaveLength(0);
+    expect(c.querySelector('[data-flag] circle')).toBeNull();
+    expect(c.querySelectorAll('[data-flag]')).toHaveLength(1);
   });
 });
 

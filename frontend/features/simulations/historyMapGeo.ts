@@ -145,3 +145,8 @@ export function placeTimes(config: HistoryMap, step: number): Map<number, number
 
 /** The years in a period, e.g. "1426–1427" → [1426, 1427]; none when it holds no year. */
 export const yearsOf = (period: string) => (period.match(/\d{3,4}/g) ?? []).map(Number);
+
+/** How long (as `frac`) a victory flares after a march reaches it. */
+const BURST = 0.12;
+/** Whether a place reached at `at` is flaring at `frac`: just after the slider passes it, never at the start. */
+export const bursting = (frac: number, at: number) => at > 0 && frac >= at && frac - at < BURST;

@@ -109,9 +109,60 @@
 .place[aria-pressed='true'] { background: var(--surface-sunken); border-color: var(--accent, var(--action)); }
 .place:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
 
+/* March effects: light running along the march, a flag at its head, a flare on a victory. */
+.flow {
+  fill: none;
+  stroke: var(--surface);
+  stroke-linecap: round;
+  stroke-opacity: 0.85;
+  animation: flow 1.1s linear infinite;
+}
+.flowSlow { animation-duration: 2.4s; }
+.flag { transform-box: fill-box; transform-origin: bottom; animation: step 0.55s ease-in-out infinite alternate; }
+.flagGlow { opacity: 0.35; transform-box: fill-box; transform-origin: center; animation: glow 0.55s ease-in-out infinite alternate; }
+.burst {
+  fill: none;
+  stroke: var(--danger);
+  stroke-width: 0.4;
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: burst 900ms ease-out forwards;
+}
+/* The same flare for the labels over the 3D map. */
+.label[data-burst='true']::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 2.6em;
+  height: 2.6em;
+  margin: -1.3em 0 0 -1.3em;
+  border-radius: 50%;
+  border: 3px solid var(--danger);
+  animation: burst 900ms ease-out forwards;
+  pointer-events: none;
+}
+.label { position: absolute; }
+.headFlag {
+  position: absolute;
+  left: 0;
+  top: 0;
+  pointer-events: none;
+  font-size: 20px;
+  line-height: 1;
+}
+.headFlag > span { display: block; animation: step 0.55s ease-in-out infinite alternate; filter: drop-shadow(0 1px 1px rgb(0 0 0 / 0.35)); }
+@keyframes flow { to { stroke-dashoffset: calc(var(--dash) * -1); } }
+@keyframes step { from { transform: translateY(0); } to { transform: translateY(-8%); } }
+@keyframes glow { from { opacity: 0.15; transform: scale(0.8); } to { opacity: 0.45; transform: scale(1.15); } }
+@keyframes burst { from { opacity: 1; transform: scale(0.3); } to { opacity: 0; transform: scale(2.2); } }
+
 @keyframes rise { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
 
-@media (prefers-reduced-motion: reduce) { .note { animation: none; } }
+@media (prefers-reduced-motion: reduce) {
+  .note, .flow, .flag, .flagGlow, .burst, .headFlag > span, .label[data-burst='true']::after { animation: none; }
+  .flow, .flagGlow, .burst { display: none; }
+}
 
 @media (max-width: 520px) {
   .stage { height: clamp(30rem, 80vh, 40rem); }

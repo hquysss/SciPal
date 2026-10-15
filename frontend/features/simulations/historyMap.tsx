@@ -9,7 +9,7 @@ import overlay from './simOverlay.module.css';
 import styles from './historyMap.module.css';
 import { useMapCamera } from './historyMapCamera';
 import { useReflexFullscreen } from './useReflexFrame';
-import { areaGrowth, areaOrigins, assetBase, marchProgress, namedAt, placeTimes, placesAt, projection, stepFraction, stepFrame, yearsOf, type HistoryMap } from './historyMapGeo';
+import { areaGrowth, areaOrigins, assetBase, bursting, marchProgress, namedAt, placeTimes, placesAt, projection, stepFraction, stepFrame, yearsOf, type HistoryMap } from './historyMapGeo';
 import { useTimelineGlide } from './useTimelineGlide';
 import { PLACE_MARK } from './historyMapStyle';
 import { pick, type Lang, type SimulationEditorProps, type SimulationModule, type SimulationViewProps } from './types';
@@ -44,7 +44,7 @@ export function useReducedMotion() {
 const CASING = { stroke: 'var(--surface)', strokeLinecap: 'round', strokeLinejoin: 'round' } as const;
 
 /** The same map drawn flat over the relief picture: the first paint, and the fallback without WebGL. */
-export function FlatMap({ config, step, frac = 1, lang, description, onSelect, className = 'aspect-[4/3] w-full', bare = false }: { config: HistoryMap; step: number; /** How far through `step` the slider is (marches drawn, areas spread). */ frac?: number; lang: Lang; description: string; onSelect: (index: number) => void; className?: string; bare?: boolean }) {
+export function FlatMap({ config, step, frac = 1, reduced = false, lang, description, onSelect, className = 'aspect-[4/3] w-full', bare = false }: { config: HistoryMap; step: number; /** How far through `step` the slider is (marches drawn, areas spread). */ frac?: number; /** No moving effects (flag, flow, bursts). */ reduced?: boolean; lang: Lang; description: string; onSelect: (index: number) => void; className?: string; bare?: boolean }) {
   const t = pick(lang);
   const id = useId().replace(/:/g, '');
   const proj = projection(config.region);
@@ -125,25 +125,51 @@ export function FlatMap({ config, step, frac = 1, lang, description, onSelect, c
         const head: [number, number] = [a[0] + (b[0] - a[0]) * (f - k), a[1] + (b[1] - a[1]) * (f - k)];
         const shown = done < 1 ? [...pts.slice(0, k + 1), head].map(pt).join(' ') : pts.map(pt).join(' ');
         const dash = r.dashed ? `${line * 3} ${line * 2.2}` : undefined;
+        const color = r.side === 'ours' ? 'var(--danger)' : 'var(--ink)';
+        const [hx, hy] = proj.toPlane(head);
         return (
           <g key={i} fill="none" data-march={i} data-done={done.toFixed(2)}>
             <polyline points={shown} style={{ ...CASING, strokeWidth: line * 2.4 }} />
             <polyline
               points={shown}
-              markerEnd={`url(#${id}-${r.side})`}
-              style={{ stroke: r.side === 'ours' ? 'var(--danger)' : 'var(--ink)', strokeWidth: line * 1.3, strokeDasharray: dash, strokeLinecap: 'round', strokeLinejoin: 'round' }}
+              markerEnd={done < 1 ? undefined : `url(#${id}-${r.side})`}
+              style={{ stroke: color, strokeWidth: line * 1.3, strokeDasharray: dash, strokeLinecap: 'round', strokeLinejoin: 'round' }}
             />
+            {/* Light running along the way already marched, like a column on the move. */}
+            {!reduced && (
+              <polyline
+                data-flow={i}
+                points={shown}
+                className={`${styles.flow} ${r.dashed ? styles.flowSlow : ''}`}
+                style={{ strokeWidth: line * 0.55, strokeDasharray: `${line * 1.2} ${line * 4.8}`, ['--dash' as string]: `${line * 6}` }}
+              />
+            )}
+            {/* The army's flag at the head of a march being drawn. */}
+            {done < 1 && (
+              <g data-flag={i} transform={`translate(${hx} ${-hy})`}>
+                {!reduced && <circle r={line * 3.2} className={styles.flagGlow} style={{ fill: color }} />}
+                {/* An inner group bobs, so the CSS animation does not replace the position above. */}
+                <g className={reduced ? undefined : styles.flag}>
+                  <line x1={0} y1={0} x2={0} y2={-line * 7} style={{ stroke: 'var(--ink)', strokeWidth: line * 0.6, strokeLinecap: 'round' }} />
+                  <path d={`M0 ${-line * 7} L${line * 4.5} ${-line * 5.6} L0 ${-line * 4.2} Z`} style={{ fill: color, stroke: 'var(--surface)', strokeWidth: line * 0.3 }} />
+                </g>
+              </g>
+            )}
           </g>
         );
       })}
       {placesAt(config, step).map((p) => {
         const i = config.places.indexOf(p);
-        if (frac < (times.get(i) ?? 0)) return null;
+        const at = times.get(i) ?? 0;
+        if (frac < at) return null;
         const [x, y] = proj.toPlane([p.lon, p.lat]);
         const area = p.type === 'area';
+        // A victory the march has just reached flares once before its name settles.
+        const burst = !reduced && p.type === 'battle' && bursting(frac, at);
         return (
+          <g key={i}>
+          {burst && <circle data-burst={i} cx={x} cy={-y} r={font * 1.6} className={styles.burst} />}
           <text
-            key={i}
             x={x}
             y={-y}
             textAnchor="middle"
@@ -164,6 +190,7 @@ export function FlatMap({ config, step, frac = 1, lang, description, onSelect, c
             {!area && <tspan style={{ fill: p.type === 'city' ? 'var(--ink)' : 'var(--danger)' }}>{PLACE_MARK[p.type]} </tspan>}
             {namedAt(config, p, step) ? t(p.name) : <title>{t(p.name)}</title>}
           </text>
+          </g>
         );
       })}
     </svg>
@@ -214,7 +241,7 @@ export function HistoryMapView({ config, lang }: SimulationViewProps<'history-ma
     .join(', ')}.`;
   const select = useCallback((i: number) => setSelected(i), []);
   const show3d = mounted && !flat;
-  const flatMap = (bare: boolean) => <FlatMap config={config} step={step} frac={frac} lang={lang} description={description} onSelect={select} className="h-full w-full" bare={bare} />;
+  const flatMap = (bare: boolean) => <FlatMap config={config} step={step} frac={frac} reduced={reduced} lang={lang} description={description} onSelect={select} className="h-full w-full" bare={bare} />;
   const notes = placesAt(config, step).filter((p) => p.note && (p.note.vi || p.note.en));
   const place = selected === null ? null : config.places[selected];
 

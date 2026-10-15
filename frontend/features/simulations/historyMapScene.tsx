@@ -8,11 +8,12 @@ import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import * as THREE from 'three';
 import type { HistoryMapRegion } from '@scipal/types';
-import { areaGrowth, areaOrigins, assetBase, densify, heightAt, marchProgress, namedAt, placeTimes, placesAt, projection, stepFraction, stepFrame, type HistoryMap, type LonLat } from './historyMapGeo';
+import { areaGrowth, areaOrigins, assetBase, bursting, densify, heightAt, marchProgress, namedAt, placeTimes, placesAt, projection, stepFraction, stepFrame, type HistoryMap, type LonLat } from './historyMapGeo';
 import { usePalette } from './scene3d';
 import { clampView, type MapCamera } from './historyMapCamera';
 import { pick, type Lang } from './types';
 import { PLACE_MARK, type Palette, MAP_TOKENS } from './historyMapStyle';
+import styles from './historyMap.module.css';
 
 const FOV = 40;
 /** Relief is exaggerated so hills read at the scale of a whole region. */
@@ -218,8 +219,14 @@ type Route = HistoryMap['steps'][number]['routes'][number];
  */
 function ribbon(points: THREE.Vector3[], halfWidth: number): THREE.BufferGeometry {
   const positions: number[] = [];
+  const uvs: number[] = [];
   const index: number[] = [];
+  let along = 0;
   points.forEach((p, i) => {
+    if (i > 0) along += p.distanceTo(points[i - 1]!);
+    // u runs along the march in units of the band's width, so stripes keep their shape.
+    const u = along / (halfWidth * 2);
+    uvs.push(u, 0, u, 1);
     const a = points[Math.max(i - 1, 0)]!;
     const b = points[Math.min(i + 1, points.length - 1)]!;
     const side = new THREE.Vector3(-(b.z - a.z), 0, b.x - a.x).normalize().multiplyScalar(halfWidth);
@@ -231,8 +238,23 @@ function ribbon(points: THREE.Vector3[], halfWidth: number): THREE.BufferGeometr
   });
   const geometry = new THREE.BufferGeometry();
   geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+  geometry.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
   geometry.setIndex(index);
   return geometry;
+}
+
+/** Short bright dashes on clear, repeating along a band: the light that runs along a march. */
+function flowTexture(): THREE.CanvasTexture {
+  const canvas = document.createElement('canvas');
+  canvas.width = 64;
+  canvas.height = 8;
+  const ctx = canvas.getContext('2d')!;
+  ctx.fillStyle = '#fff';
+  ctx.fillRect(0, 2, 14, 4);
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.wrapS = THREE.RepeatWrapping;
+  texture.repeat.set(0.25, 1);
+  return texture;
 }
 
 /** A flat arrowhead pointing along +x in the ground plane. */
@@ -243,7 +265,7 @@ function arrowHead(halfWidth: number): THREE.BufferGeometry {
   return geometry;
 }
 
-function March({ route, index, progress, palette, toScene, radius, heads }: { route: Route; index: number; progress: React.RefObject<number>; palette: Palette; toScene: ToScene; radius: number; heads: React.RefObject<Array<THREE.Vector3 | null>> }) {
+function March({ route, index, progress, palette, toScene, radius, heads, reduced }: { route: Route; index: number; progress: React.RefObject<number>; palette: Palette; toScene: ToScene; radius: number; heads: React.RefObject<Array<THREE.Vector3 | null>>; reduced: boolean }) {
   const { invalidate } = useThree();
   const path = useMemo(() => densify(route.points).map((p) => toScene(p)), [route.points, toScene]);
   const pieces = useMemo(() => {
@@ -256,11 +278,13 @@ function March({ route, index, progress, palette, toScene, radius, heads }: { ro
     () =>
       pieces.map(({ from, to }) => {
         const points = path.slice(from, to + 1);
-        return { from, to, core: ribbon(points, radius), casing: ribbon(points, radius * 1.8) };
+        return { from, to, core: ribbon(points, radius), casing: ribbon(points, radius * 1.8), flow: ribbon(points, radius * 0.45) };
       }),
     [pieces, path, radius],
   );
-  useEffect(() => () => tubes.forEach((t) => (t.core.dispose(), t.casing.dispose())), [tubes]);
+  useEffect(() => () => tubes.forEach((t) => (t.core.dispose(), t.casing.dispose(), t.flow.dispose())), [tubes]);
+  const flow = useMemo(() => flowTexture(), []);
+  useEffect(() => () => flow.dispose(), [flow]);
   const headGeometry = useMemo(() => arrowHead(radius), [radius]);
   useEffect(() => () => headGeometry.dispose(), [headGeometry]);
   const head = useRef<THREE.Mesh>(null);
@@ -269,16 +293,21 @@ function March({ route, index, progress, palette, toScene, radius, heads }: { ro
   const meshes = useRef<Array<THREE.Mesh | null>>([]);
   const color = route.side === 'ours' ? palette.ours : palette.enemy;
 
-  useFrame(() => {
+  useFrame((_, dt) => {
     const p = Math.min(Math.max(progress.current - index, 0), 1);
     const last = path.length - 1;
+    // The light keeps running (slower on a retreat), so the map draws on while a march is shown.
+    if (!reduced && p > 0) {
+      flow.offset.x -= Math.min(dt, 0.1) * (route.dashed ? 0.35 : 0.8);
+      invalidate();
+    }
     tubes.forEach((t, i) => {
       const local = Math.min(Math.max((p * last - t.from) / Math.max(t.to - t.from, 1), 0), 1);
-      for (const k of [2 * i, 2 * i + 1]) {
+      for (const k of [3 * i, 3 * i + 1, 3 * i + 2]) {
         const mesh = meshes.current[k];
         if (!mesh) continue;
         const geometry = mesh.geometry as THREE.BufferGeometry;
-        mesh.visible = local > 0;
+        mesh.visible = local > 0 && (k % 3 !== 2 || !reduced);
         geometry.setDrawRange(0, Math.floor((geometry.index?.count ?? 0) * local / 6) * 6);
       }
     });
@@ -302,11 +331,14 @@ function March({ route, index, progress, palette, toScene, radius, heads }: { ro
     <group>
       {tubes.map((t, i) => (
         <group key={i}>
-          <mesh ref={(m) => void (meshes.current[2 * i] = m)} geometry={t.casing} renderOrder={1}>
+          <mesh ref={(m) => void (meshes.current[3 * i] = m)} geometry={t.casing} renderOrder={1}>
             <meshBasicMaterial color={palette.casing} side={THREE.DoubleSide} depthTest={false} />
           </mesh>
-          <mesh ref={(m) => void (meshes.current[2 * i + 1] = m)} geometry={t.core} renderOrder={2}>
+          <mesh ref={(m) => void (meshes.current[3 * i + 1] = m)} geometry={t.core} renderOrder={2}>
             <meshBasicMaterial color={color} side={THREE.DoubleSide} depthTest={false} />
+          </mesh>
+          <mesh ref={(m) => void (meshes.current[3 * i + 2] = m)} geometry={t.flow} renderOrder={3} visible={!reduced}>
+            <meshBasicMaterial color={palette.casing} map={flow} transparent opacity={0.85} side={THREE.DoubleSide} depthTest={false} />
           </mesh>
         </group>
       ))}
@@ -340,6 +372,7 @@ function MapRig({
   onInvalidate,
   pos,
   step,
+  flags,
 }: {
   camera: MapCamera;
   frame: { target: THREE.Vector3; span: [number, number] };
@@ -350,10 +383,12 @@ function MapRig({
   routes: number;
   heads: React.RefObject<Array<THREE.Vector3 | null>>;
   labels: React.RefObject<Map<number, HTMLElement>>;
-  anchors: Array<[number, THREE.Vector3, number]>;
+  anchors: Array<[number, THREE.Vector3, number, boolean]>;
   onInvalidate: (fn: () => void) => void;
   pos: React.RefObject<number>;
   step: number;
+  /** The flag shown at the head of each march being drawn. */
+  flags: React.RefObject<Array<HTMLElement | null>>;
 }) {
   const { camera, size, invalidate } = useThree();
   const now = useRef<{ theta: number; phi: number; dist: number; base: number; target: THREE.Vector3 } | null>(null);
@@ -428,12 +463,28 @@ function MapRig({
     camera.position.set(c.target.x + d * Math.cos(c.phi) * Math.cos(c.theta), c.target.y + d * Math.sin(c.phi), c.target.z - d * Math.cos(c.phi) * Math.sin(c.theta));
     camera.lookAt(c.target);
     camera.updateMatrixWorld();
-    for (const [key, p, at] of anchors) {
+    // A flag rides the head of each march still being drawn.
+    flags.current.forEach((el, i) => {
+      if (!el) return;
+      const p = progress.current - i;
+      const head = heads.current[i];
+      if (!head || p <= 0 || p >= 1) {
+        el.style.visibility = 'hidden';
+        return;
+      }
+      v.copy(head).project(camera);
+      el.style.visibility = v.z > 1 ? 'hidden' : 'visible';
+      el.style.transform = `translate(${((v.x + 1) / 2) * size.width}px, ${((1 - v.y) / 2) * size.height}px) translate(-15%, -100%)`;
+    });
+    for (const [key, p, at, battle] of anchors) {
       const el = labels.current.get(key);
       if (!el) continue;
       v.copy(p).project(camera);
       // A new place waits until a march reaches it.
       const off = frac < at || v.z > 1 || Math.abs(v.x) > 1.02 || Math.abs(v.y) > 1.02;
+      // A victory the march has just reached flares once.
+      const flare = battle && !reduced && bursting(frac, at) ? 'true' : '';
+      if (el.dataset.burst !== flare) el.dataset.burst = flare;
       el.style.visibility = off ? 'hidden' : 'visible';
       el.style.transform = `translate(${((v.x + 1) / 2) * size.width}px, ${((1 - v.y) / 2) * size.height}px) translate(-50%, -50%)`;
     }
@@ -468,6 +519,7 @@ export default memo(function HistoryMapScene({
   const labels = useRef(new Map<number, HTMLElement>());
   const progress = useRef(0);
   const heads = useRef<Array<THREE.Vector3 | null>>([]);
+  const flags = useRef<Array<HTMLElement | null>>([]);
   const bounds = useMemo(() => {
     const proj = projection(config.region);
     return { halfW: proj.width / 2, halfH: proj.height / 2 };
@@ -506,7 +558,7 @@ export default memo(function HistoryMapScene({
   const places = placesAt(config, step);
   const anchors = useMemo(() => {
     const times = placeTimes(config, step);
-    return config.places.flatMap((p, i) => (p.from <= step ? [[i, toScene([p.lon, p.lat], p.type === 'area' ? 0.05 : undefined), times.get(i) ?? 0] as [number, THREE.Vector3, number]] : []));
+    return config.places.flatMap((p, i) => (p.from <= step ? [[i, toScene([p.lon, p.lat], p.type === 'area' ? 0.05 : undefined), times.get(i) ?? 0, p.type === 'battle'] as [number, THREE.Vector3, number, boolean]] : []));
   }, [config, toScene, step]);
   const routes = config.steps[step]?.routes ?? [];
 
@@ -516,13 +568,19 @@ export default memo(function HistoryMapScene({
           <Canvas frameloop="demand" dpr={[1, 2]} camera={{ fov: FOV, near: 0.02, far: 200 }} gl={{ antialias: true }}>
             <Terrain assets={assets} config={config} step={step} palette={palette} pos={pos} />
             {routes.map((route, i) => (
-              <March key={`${step}-${i}`} route={route} index={i} progress={progress} palette={palette} toScene={toScene} radius={Math.max(...frame.span) * 0.005} heads={heads} />
+              <March key={`${step}-${i}`} route={route} index={i} progress={progress} palette={palette} toScene={toScene} radius={Math.max(...frame.span) * 0.005} heads={heads} reduced={reduced} />
             ))}
-            <MapRig camera={cam} frame={frame} bounds={bounds} reduced={reduced} follow={follow} progress={progress} routes={routes.length} heads={heads} labels={labels} anchors={anchors} onInvalidate={setInvalidate} pos={pos} step={step} />
+            <MapRig camera={cam} frame={frame} bounds={bounds} reduced={reduced} follow={follow} progress={progress} routes={routes.length} heads={heads} labels={labels} anchors={anchors} onInvalidate={setInvalidate} pos={pos} step={step} flags={flags} />
           </Canvas>
         ) : (
           <div className="grid h-full place-items-center text-sm text-ink-muted">{t({ en: 'Loading the 3D map…', vi: 'Đang tải bản đồ 3D…' })}</div>
         )}
+        {assets &&
+          routes.map((r, i) => (
+            <span key={`flag-${step}-${i}`} ref={(el) => void (flags.current[i] = el)} aria-hidden="true" className={styles.headFlag} style={{ visibility: 'hidden', color: r.side === 'ours' ? 'var(--danger)' : 'var(--ink)' }}>
+              <span>⚑</span>
+            </span>
+          ))}
         {assets &&
           places.map((p) => {
             const i = config.places.indexOf(p);
@@ -533,7 +591,7 @@ export default memo(function HistoryMapScene({
                 {namedAt(config, p, step) && t(p.name)}
               </>
             );
-            const cls = `absolute left-0 top-0 select-none whitespace-nowrap ${area ? 'text-xs font-semibold uppercase italic tracking-wide text-ink-muted' : 'text-xs font-bold text-ink sm:text-sm'}`;
+            const cls = `${styles.label} absolute left-0 top-0 select-none whitespace-nowrap ${area ? 'text-xs font-semibold uppercase italic tracking-wide text-ink-muted' : 'text-xs font-bold text-ink sm:text-sm'}`;
             const style = { visibility: 'hidden' as const, textShadow: '0 0 3px var(--surface), 0 0 3px var(--surface), 0 0 2px var(--surface)' };
             const ref = (el: HTMLElement | null) => {
               if (el) labels.current.set(i, el);
