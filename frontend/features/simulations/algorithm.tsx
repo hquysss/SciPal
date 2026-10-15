@@ -1,13 +1,18 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import { Pause, Play, RotateCcw, SkipBack, SkipForward } from 'lucide-react';
+import { Check, Pause, Play, RotateCcw, SearchX, SkipBack, SkipForward } from 'lucide-react';
 import { ALGORITHMS } from '@scipal/types';
+import { AlgorithmStage } from './algorithmStage';
+import { useReducedMotion } from './animation';
 import { algorithmSteps } from './engines/algorithm';
 import { BUTTON, Field, FIELD, NumberField, PANEL, SelectField } from './controls';
 import { pick, type SimulationEditorProps, type SimulationModule, type SimulationViewProps } from './types';
+import styles from './algorithm.module.css';
 
-const NAMES: Record<(typeof ALGORITHMS)[number], { en: string; vi: string }> = {
+type Bilingual = { en: string; vi: string };
+
+const NAMES: Record<(typeof ALGORITHMS)[number], Bilingual> = {
   'bubble-sort': { en: 'Bubble sort', vi: 'Sắp xếp nổi bọt' },
   'selection-sort': { en: 'Selection sort', vi: 'Sắp xếp chọn' },
   'insertion-sort': { en: 'Insertion sort', vi: 'Sắp xếp chèn' },
@@ -15,16 +20,39 @@ const NAMES: Record<(typeof ALGORITHMS)[number], { en: string; vi: string }> = {
   'binary-search': { en: 'Binary search', vi: 'Tìm kiếm nhị phân' },
 };
 const isSearch = (a: string) => a.endsWith('search');
-const STEP_MS = 700;
+
+/** Milliseconds per step at each playing speed. */
+export const SPEEDS = { slow: 1100, medium: 650, fast: 220 } as const;
+type Speed = keyof typeof SPEEDS;
+const SPEED_NAMES: Record<Speed, Bilingual> = {
+  slow: { en: 'Slow', vi: 'Chậm' },
+  medium: { en: 'Medium', vi: 'Vừa' },
+  fast: { en: 'Fast', vi: 'Nhanh' },
+};
+
+/** A count that bumps each time it changes. */
+function Tally({ label, value }: { label: string; value: number }) {
+  return (
+    <span className="inline-flex min-h-8 items-center gap-1.5 rounded-full border border-line px-3 text-sm text-ink-muted">
+      {label}
+      <span key={value} className={`inline-block font-semibold tabular-nums text-ink ${styles.bump}`}>
+        {value}
+      </span>
+    </span>
+  );
+}
 
 function AlgorithmView({ config, lang }: SimulationViewProps<'algorithm-sim'>) {
   const t = pick(lang);
+  const reduced = useReducedMotion();
   const steps = useMemo(() => algorithmSteps(config), [config]);
   const [index, setIndex] = useState(0);
   const [playing, setPlaying] = useState(false);
+  const [speed, setSpeed] = useState<Speed>('medium');
   const at = Math.min(index, steps.length - 1);
   const step = steps[at]!;
-  const max = Math.max(...step.values.map(Math.abs), 1);
+  const finished = at === steps.length - 1;
+  const search = isSearch(config.algorithm);
 
   useEffect(() => {
     if (!playing) return;
@@ -32,40 +60,35 @@ function AlgorithmView({ config, lang }: SimulationViewProps<'algorithm-sim'>) {
       setPlaying(false);
       return;
     }
-    const timer = setTimeout(() => setIndex((i) => i + 1), STEP_MS);
+    const timer = setTimeout(() => setIndex((i) => i + 1), SPEEDS[speed]);
     return () => clearTimeout(timer);
-  }, [playing, at, steps.length]);
+  }, [playing, at, steps.length, speed]);
 
-  const highlight = (i: number) => {
-    if (step.found === i) return 'bg-success';
-    if (step.swap?.includes(i)) return 'bg-warning';
-    if (step.compare?.includes(i)) return 'bg-action';
-    if (step.done.includes(i)) return 'bg-success-surface border border-success';
-    if (step.range && (i < step.range[0] || i > step.range[1])) return 'bg-line';
-    return 'bg-accent';
-  };
+  const missing = search && step.found == null;
+  const summary: Bilingual | null = !finished
+    ? null
+    : !search
+      ? { vi: `Xong: ${step.compares} phép so sánh, ${step.swaps} lần đổi chỗ với ${step.values.length} số.`, en: `Done: ${step.compares} comparisons and ${step.swaps} swaps on ${step.values.length} numbers.` }
+      : missing
+        ? { vi: `Không có ${config.target}; đã so sánh ${step.compares} lần.`, en: `${config.target} is not there; ${step.compares} comparisons made.` }
+        : { vi: `Tìm thấy ${config.target} sau ${step.compares} lần so sánh.`, en: `Found ${config.target} after ${step.compares} comparisons.` };
 
   return (
     <div className={PANEL}>
       <p className="text-sm font-semibold text-ink">
         {t(NAMES[config.algorithm])}
-        {isSearch(config.algorithm) && <span className="font-normal text-ink-muted"> · {t({ en: 'target', vi: 'cần tìm' })}: {config.target}</span>}
+        {search && <span className="font-normal text-ink-muted"> · {t({ en: 'target', vi: 'cần tìm' })}: {config.target}</span>}
       </p>
-      <ol className="flex h-40 items-end gap-1" aria-label={t({ en: 'Values', vi: 'Dãy giá trị' })}>
-        {step.values.map((value, i) => (
-          <li key={i} className="flex min-w-0 flex-1 flex-col items-center justify-end gap-1">
-            <span
-              aria-hidden="true"
-              className={`w-full rounded-t transition-all ${highlight(i)}`}
-              style={{ height: `${Math.max(6, (Math.abs(value) / max) * 120)}px` }}
-            />
-            <span className="text-xs tabular-nums text-ink">{value}</span>
-          </li>
-        ))}
-      </ol>
+      <AlgorithmStage algorithm={config.algorithm} step={step} target={config.target} stepMs={SPEEDS[speed]} reduced={reduced} lang={lang} finished={finished} />
       <p aria-live="polite" className="min-h-10 text-sm text-ink">
         {t(step.note)}
       </p>
+      {summary && (
+        <p className={`flex items-center gap-2 rounded-lg border px-3 py-2 text-sm font-semibold text-ink ${styles.rise} ${missing ? 'border-warning bg-warning-surface' : 'border-success bg-success-surface'}`}>
+          {missing ? <SearchX aria-hidden="true" className="h-4 w-4 shrink-0" /> : <Check aria-hidden="true" className="h-4 w-4 shrink-0" />}
+          {t(summary)}
+        </p>
+      )}
       <div className="flex flex-wrap items-center gap-2">
         <button type="button" className={BUTTON} aria-label={t({ en: 'Previous step', vi: 'Bước trước' })} disabled={at === 0} onClick={() => setIndex(at - 1)}>
           <SkipBack aria-hidden="true" className="h-4 w-4" />
@@ -93,15 +116,26 @@ function AlgorithmView({ config, lang }: SimulationViewProps<'algorithm-sim'>) {
         >
           <RotateCcw aria-hidden="true" className="h-4 w-4" />
         </button>
-        <span className="ml-auto text-sm tabular-nums text-ink-muted">
-          {t({ en: 'Comparisons', vi: 'So sánh' })}: <span className="font-semibold text-ink">{step.compares}</span>
-          {!isSearch(config.algorithm) && (
-            <>
-              {' · '}
-              {t({ en: 'Swaps', vi: 'Đổi chỗ' })}: <span className="font-semibold text-ink">{step.swaps}</span>
-            </>
-          )}
-          {' · '}
+        <div role="group" aria-label={t({ en: 'Speed', vi: 'Tốc độ' })} className="ml-auto inline-flex rounded-lg border border-line p-0.5">
+          {(Object.keys(SPEEDS) as Speed[]).map((s) => (
+            <button
+              key={s}
+              type="button"
+              aria-pressed={speed === s}
+              onClick={() => setSpeed(s)}
+              className={`min-h-11 rounded-md px-3 text-sm font-semibold transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus ${
+                speed === s ? 'bg-[color-mix(in_oklch,var(--accent,var(--action))_16%,transparent)] text-ink' : 'text-ink-muted hover:bg-surface-sunken'
+              }`}
+            >
+              {t(SPEED_NAMES[s])}
+            </button>
+          ))}
+        </div>
+      </div>
+      <div className="flex flex-wrap items-center gap-2">
+        <Tally label={t({ en: 'Comparisons', vi: 'So sánh' })} value={step.compares} />
+        {!search && <Tally label={t({ en: 'Swaps', vi: 'Đổi chỗ' })} value={step.swaps} />}
+        <span className="text-sm tabular-nums text-ink-muted">
           {t({ en: 'Step', vi: 'Bước' })} {at + 1}/{steps.length}
         </span>
       </div>
