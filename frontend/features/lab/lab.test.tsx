@@ -52,6 +52,11 @@ describe('labVariants', () => {
     expect(labVariants(labItem('history-map')!, null)).toEqual([]);
   });
 
+  it('names a map in English even when its heading was written in Vietnamese only', () => {
+    const [variant] = labVariants(labItem('history-map')!, [{ ...usage(defaultSimulationConfig('history-map'), 'Khởi nghĩa Lam Sơn'), lesson: { en: 'Lam Son', vi: 'Bài' } }]);
+    expect(variant!.name).toEqual({ en: 'Lam Son', vi: 'Khởi nghĩa Lam Sơn' });
+  });
+
   it('gives every other simulation its default settings', () => {
     expect(labVariants(labItem('titration')!, null)).toEqual([{ id: 'default', name: labItem('titration')!.name, config: defaultSimulationConfig('titration') }]);
   });

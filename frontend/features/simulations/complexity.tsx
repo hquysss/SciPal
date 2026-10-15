@@ -84,11 +84,11 @@ function ComplexityView({ config, lang }: SimulationViewProps<'complexity-sim'>)
   const shownRef = useRef(shown);
   shownRef.current = shown;
 
-  // A new pattern or n starts over; with reduced motion it shows the whole count at once.
+  // With reduced motion the whole count shows at once; otherwise a new pattern or n starts over
+  // (set in the same click as the change, so no frame of the old run can land after it).
   useEffect(() => {
-    setPlaying(false);
     setShown(reduced ? total : 0);
-  }, [pattern, n, total, reduced]);
+  }, [reduced, total]);
 
   useEffect(() => {
     if (!playing) return;
@@ -99,12 +99,17 @@ function ComplexityView({ config, lang }: SimulationViewProps<'complexity-sim'>)
       return;
     }
     const left = total - from;
+    if (left === 0) {
+      setPlaying(false);
+      return;
+    }
     const duration = Math.min(MAX_PLAY_MS, left * STEP_MS);
     const explosive = EXPLOSIVE.has(pattern);
     const start = performance.now();
     let frame = 0;
     const tick = (now: number) => {
-      const u = Math.min(1, (now - start) / duration);
+      // A frame stamped just before Play would make u negative and count below the start.
+      const u = Math.min(1, Math.max(0, (now - start) / duration));
       // The explosive patterns start slow and then pour out, the way their counts grow.
       setShown(from + Math.floor(left * (explosive ? u ** 3 : u)));
       if (u < 1) frame = requestAnimationFrame(tick);
@@ -114,7 +119,12 @@ function ComplexityView({ config, lang }: SimulationViewProps<'complexity-sim'>)
     return () => cancelAnimationFrame(frame);
   }, [playing, pattern, total, reduced]);
 
+  const restart = () => {
+    setPlaying(false);
+    setShown(0);
+  };
   const choose = (next: ComplexityPattern) => {
+    restart();
     setPattern(next);
     setN((m) => clampN(next, m));
   };
@@ -196,26 +206,26 @@ function ComplexityView({ config, lang }: SimulationViewProps<'complexity-sim'>)
       {ratio && <p className="text-sm font-semibold text-ink">{ratio}</p>}
       <p className="text-sm text-ink">{t(WHY[pattern])}</p>
 
-      <Slider label={t({ en: 'Data size n', vi: 'Cỡ dữ liệu n' })} value={n} min={1} max={COMPLEXITY_MAX_N[pattern]} step={1} onChange={(m) => setN(clampN(pattern, m))} />
+      <Slider label={t({ en: 'Data size n', vi: 'Cỡ dữ liệu n' })} value={n} min={1} max={COMPLEXITY_MAX_N[pattern]} step={1} onChange={(m) => {
+          restart();
+          setN(clampN(pattern, m));
+        }} />
 
       <div className="flex flex-wrap items-center gap-2">
-        <button type="button" className={BUTTON} aria-label={t({ en: 'Previous step', vi: 'Bước trước' })} disabled={shown === 0} onClick={() => setShown(shown - 1)}>
+        <button type="button" className={BUTTON} aria-label={t({ en: 'Previous step', vi: 'Bước trước' })} disabled={playing || shown === 0} onClick={() => setShown(shown - 1)}>
           <SkipBack aria-hidden="true" className="h-4 w-4" />
         </button>
-        <button type="button" className={BUTTON} aria-label={playing ? t({ en: 'Pause', vi: 'Tạm dừng' }) : t({ en: 'Play', vi: 'Chạy' })} onClick={() => setPlaying((p) => !p)}>
+        <button type="button" className={BUTTON} aria-label={playing ? t({ en: 'Pause', vi: 'Tạm dừng' }) : t({ en: 'Play', vi: 'Chạy' })} onClick={() => setPlaying(!playing)}>
           {playing ? <Pause aria-hidden="true" className="h-4 w-4" /> : <Play aria-hidden="true" className="h-4 w-4" />}
         </button>
-        <button type="button" className={BUTTON} aria-label={t({ en: 'Next step', vi: 'Bước tiếp' })} disabled={shown >= total} onClick={() => setShown(shown + 1)}>
+        <button type="button" className={BUTTON} aria-label={t({ en: 'Next step', vi: 'Bước tiếp' })} disabled={playing || shown >= total} onClick={() => setShown(shown + 1)}>
           <SkipForward aria-hidden="true" className="h-4 w-4" />
         </button>
         <button
           type="button"
           className={BUTTON}
           aria-label={t({ en: 'Start again', vi: 'Làm lại' })}
-          onClick={() => {
-            setPlaying(false);
-            setShown(0);
-          }}
+          onClick={restart}
         >
           <RotateCcw aria-hidden="true" className="h-4 w-4" />
         </button>

@@ -41,85 +41,76 @@ function layout(pattern: ComplexityPattern, n: number, total: number, width: num
   }
 }
 
-function draw(ctx: CanvasRenderingContext2D, width: number, pattern: ComplexityPattern, n: number, ops: number[], shown: number, pal: Palette) {
+/** A rounded box where the canvas can round it (older Safari cannot), a plain one otherwise. */
+function shape(ctx: CanvasRenderingContext2D, box: Box, round: number) {
+  if (round > 0 && typeof ctx.roundRect === 'function') ctx.roundRect(box.x, box.y, box.w, box.h, round);
+  else ctx.rect(box.x, box.y, box.w, box.h);
+}
+
+/**
+ * Draws the field in at most a few fills: the empty cells, the operations already done, and the
+ * newest ones, which glow. One path per group keeps 40 320 operations inside a frame.
+ */
+export function drawField(ctx: CanvasRenderingContext2D, width: number, pattern: ComplexityPattern, n: number, ops: number[], shown: number, pal: Palette) {
   ctx.clearRect(0, 0, width, HEIGHT);
   const total = ops.length;
-  // The newest operations glow; everything already done stays lit but quieter.
-  const fresh = Math.max(1, Math.ceil(total / 120));
-  const paint = (k: number, box: Box, round: number) => {
-    const isNew = k >= shown - fresh;
-    ctx.globalAlpha = isNew ? 1 : 0.55;
-    ctx.shadowBlur = isNew ? 14 : 0;
-    ctx.fillStyle = pal.accent;
-    ctx.shadowColor = pal.accent;
+  const fresh = Math.max(0, shown - Math.max(1, Math.ceil(total / 120)));
+  const group = (from: number, to: number, boxOf: (k: number) => Box, round: number, color: string, alpha: number, glow: number) => {
+    if (to <= from) return;
+    ctx.globalAlpha = alpha;
+    ctx.shadowBlur = glow;
+    ctx.shadowColor = color;
+    ctx.fillStyle = color;
     ctx.beginPath();
-    ctx.roundRect(box.x, box.y, box.w, box.h, round);
+    for (let k = from; k < to; k += 1) shape(ctx, boxOf(k), round);
     ctx.fill();
   };
-  ctx.shadowBlur = 0;
+  const lit = (boxOf: (k: number) => Box, round: number) => {
+    group(0, fresh, boxOf, round, pal.accent, 0.55, 0);
+    group(fresh, shown, boxOf, round, pal.accent, 1, 14);
+  };
 
   if (pattern === 'halving') {
     const rowH = Math.min((HEIGHT - PAD * 2) / total, 30);
     const cell = (width - PAD * 2) / n;
-    for (let k = 0; k < total; k += 1) {
-      const y = PAD + k * rowH + rowH * 0.15;
-      ctx.globalAlpha = 1;
-      ctx.shadowBlur = 0;
-      ctx.fillStyle = pal.line;
-      ctx.beginPath();
-      ctx.roundRect(PAD, y, n * cell, rowH * 0.7, 4);
-      ctx.fill();
-      if (k < shown) paint(k, { x: PAD, y, w: (ops[k]! + 1) * cell, h: rowH * 0.7 }, 4);
-    }
-    ctx.globalAlpha = 1;
-    return;
-  }
-
-  if (pattern === 'branching') {
+    const row = (k: number, w: number): Box => ({ x: PAD, y: PAD + k * rowH + rowH * 0.15, w, h: rowH * 0.7 });
+    group(0, total, (k) => row(k, n * cell), 4, pal.line, 1, 0);
+    lit((k) => row(k, (ops[k]! + 1) * cell), 4);
+  } else if (pattern === 'branching') {
     const depthH = (HEIGHT - PAD * 2) / Math.max(1, n);
     const pos = (node: number) => {
       const depth = Math.floor(Math.log2(node + 1));
       const slot = node + 1 - 2 ** depth;
       return { x: PAD + ((slot + 0.5) / 2 ** depth) * (width - PAD * 2), y: PAD + depth * depthH, depth };
     };
+    // Edges only where the tree is still sparse enough to read.
+    ctx.globalAlpha = 0.35;
+    ctx.shadowBlur = 0;
     ctx.strokeStyle = pal.muted;
     ctx.lineWidth = 1;
-    for (let k = 0; k < shown; k += 1) {
-      const node = ops[k]!;
-      const p = pos(node);
-      if (node > 0 && p.depth <= 7) {
-        const parent = pos(Math.floor((node - 1) / 2));
-        ctx.globalAlpha = 0.35;
-        ctx.shadowBlur = 0;
-        ctx.beginPath();
-        ctx.moveTo(parent.x, parent.y);
-        ctx.lineTo(p.x, p.y);
-        ctx.stroke();
-      }
+    ctx.beginPath();
+    for (let k = 1; k < shown; k += 1) {
+      const p = pos(ops[k]!);
+      if (p.depth > 7) continue;
+      const parent = pos(Math.floor((ops[k]! - 1) / 2));
+      ctx.moveTo(parent.x, parent.y);
+      ctx.lineTo(p.x, p.y);
+    }
+    ctx.stroke();
+    const dot = (k: number): Box => {
+      const p = pos(ops[k]!);
       const r = Math.max(1, Math.min(7, (width - PAD * 2) / 2 ** p.depth / 3));
-      paint(k, { x: p.x - r, y: p.y - r, w: r * 2, h: r * 2 }, r);
-    }
-    ctx.globalAlpha = 1;
-    return;
-  }
-
-  const g = layout(pattern, n, total, width)!;
-  const gap = g.size > 8 ? Math.max(1, g.size * 0.12) : 0;
-  const round = g.size > 8 ? g.size * 0.22 : 0;
-  const inner = (box: Box): Box => ({ x: box.x + gap / 2, y: box.y + gap / 2, w: box.w - gap, h: box.h - gap });
-  if (g.cols * g.rows <= MAX_EMPTY_CELLS) {
-    ctx.globalAlpha = 1;
-    ctx.fillStyle = pal.line;
-    for (let cell = 0; cell < g.cols * g.rows && cell < (pattern === 'permutations' ? total : Infinity); cell += 1) {
-      const box = inner(g.at(cell));
-      ctx.beginPath();
-      ctx.roundRect(box.x, box.y, box.w, box.h, round);
-      ctx.fill();
-    }
-  }
-  for (let k = 0; k < shown; k += 1) {
-    const cell = pattern === 'divide-conquer' ? Math.floor(k / n) * n + ops[k]! : ops[k]!;
-    paint(k, inner(g.at(cell)), round);
+      return { x: p.x - r, y: p.y - r, w: r * 2, h: r * 2 };
+    };
+    lit(dot, 3);
+  } else {
+    const g = layout(pattern, n, total, width)!;
+    const gap = g.size > 8 ? Math.max(1, g.size * 0.12) : 0;
+    const round = g.size > 8 ? g.size * 0.22 : 0;
+    const inner = (box: Box): Box => ({ x: box.x + gap / 2, y: box.y + gap / 2, w: box.w - gap, h: box.h - gap });
+    const cells = pattern === 'permutations' ? total : g.cols * g.rows;
+    if (cells <= MAX_EMPTY_CELLS) group(0, cells, (cell) => inner(g.at(cell)), round, pal.line, 1, 0);
+    lit((k) => inner(g.at(pattern === 'divide-conquer' ? Math.floor(k / n) * n + ops[k]! : ops[k]!)), round);
   }
   ctx.globalAlpha = 1;
   ctx.shadowBlur = 0;
@@ -142,15 +133,21 @@ export function ComplexityField({ pattern, n, ops, shown, label }: { pattern: Co
     return () => observer.disconnect();
   }, []);
 
+  // Resizing the backing store clears it, so it happens only when the width or the canvas changes.
   useEffect(() => {
     const el = canvas.current;
     const ctx = el?.getContext('2d');
-    if (!el || !ctx || !pal || width === 0) return;
+    if (!el || !ctx || width === 0) return;
     const dpr = window.devicePixelRatio || 1;
     el.width = width * dpr;
     el.height = HEIGHT * dpr;
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    draw(ctx, width, pattern, n, ops, shown, pal);
+  }, [width, pattern, n]);
+
+  useEffect(() => {
+    const ctx = canvas.current?.getContext('2d');
+    if (!ctx || !pal || width === 0) return;
+    drawField(ctx, width, pattern, n, ops, shown, pal);
   }, [pattern, n, ops, shown, pal, width]);
 
   return (

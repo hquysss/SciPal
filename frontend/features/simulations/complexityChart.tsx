@@ -1,5 +1,6 @@
 'use client';
 
+import { useId } from 'react';
 import { COMPLEXITY_PATTERNS, type ComplexityPattern } from '@scipal/types';
 import { BIG_O, count } from './engines/complexity';
 import { pick } from './types';
@@ -10,10 +11,10 @@ type Bilingual = { en: string; vi: string };
 
 const W = 640;
 const H = 300;
-const X0 = 52;
-const X1 = 560;
-const Y0 = 270;
-const Y1 = 16;
+const X0 = 64;
+const X1 = 520;
+const Y0 = 262;
+const Y1 = 20;
 const N_MAX = 32;
 /** Counts above 10¹² leave the top of the chart: that is the point. */
 const DECADES = 12;
@@ -58,6 +59,7 @@ export function ComplexityChart({ pattern, n, names, lang }: { pattern: Complexi
   });
   const ordered = [...series.filter((s) => s.p !== pattern), series.find((s) => s.p === pattern)!];
   const here = count(pattern, n);
+  const clip = useId();
 
   return (
     <figure className="flex flex-col gap-2">
@@ -72,32 +74,32 @@ export function ComplexityChart({ pattern, n, names, lang }: { pattern: Complexi
         className="h-auto w-full text-ink-muted"
       >
         <defs>
-          <clipPath id="complexity-plot">
+          <clipPath id={clip}>
             <rect x={X0} y={Y1} width={X1 - X0 + 8} height={Y0 - Y1} />
           </clipPath>
         </defs>
         {/* Above a million operations a computer starts to make you wait. */}
         <rect x={X0} y={Y1} width={X1 - X0} height={y(1e6) - Y1} className="fill-[var(--line)] opacity-40" />
-        <text x={X0 + 8} y={Y1 + 16} className="fill-current text-[12px]">
+        <text x={X0 + 8} y={Y1 + 22} className="fill-current" fontSize={20}>
           {t({ en: 'Over a million operations', vi: 'Trên 1 triệu phép toán' })}
         </text>
         {[0, 3, 6, 9, 12].map((e) => (
           <g key={e}>
             <line x1={X0} x2={X1} y1={y(10 ** e)} y2={y(10 ** e)} className="stroke-[var(--line)]" strokeWidth={1} />
-            <text x={X0 - 8} y={y(10 ** e) + 4} textAnchor="end" className="fill-current text-[11px] tabular-nums">
+            <text x={X0 - 8} y={y(10 ** e) + 6} textAnchor="end" className="fill-current tabular-nums" fontSize={18}>
               {e === 0 ? '1' : `10${sup(e)}`}
             </text>
           </g>
         ))}
         {[1, 8, 16, 24, 32].map((m) => (
-          <text key={m} x={x(m)} y={Y0 + 18} textAnchor="middle" className="fill-current text-[11px] tabular-nums">
+          <text key={m} x={x(m)} y={Y0 + 24} textAnchor="middle" className="fill-current tabular-nums" fontSize={18}>
             {m}
           </text>
         ))}
-        <text x={X1} y={Y0 + 18} dx={14} className="fill-current text-[11px] font-semibold">
+        <text x={X1} y={Y0 + 24} dx={14} className="fill-current font-semibold" fontSize={18}>
           n
         </text>
-        <g clipPath="url(#complexity-plot)" fill="none" strokeLinecap="round" strokeLinejoin="round">
+        <g clipPath={`url(#${clip})`} fill="none" strokeLinecap="round" strokeLinejoin="round">
           {ordered.map((s) =>
             s.p === pattern ? (
               <path key={`${s.p}-on`} d={s.d} pathLength={1} className={`stroke-[var(--accent,var(--action))] ${styles.draw}`} strokeWidth={3.5} />
@@ -110,13 +112,14 @@ export function ComplexityChart({ pattern, n, names, lang }: { pattern: Complexi
           <text
             key={s.p}
             x={x(s.end[0]) + 8}
-            y={Math.max(Y1 + 10, y(s.end[1]) + 4)}
-            className={`text-[12px] ${s.p === pattern ? 'fill-[var(--accent,var(--action))] font-bold' : 'fill-current'}`}
+            y={Math.max(Y1 + 14, y(s.end[1]) + 6)}
+            fontSize={20}
+            className={s.p === pattern ? 'fill-[var(--accent,var(--action))] font-bold' : 'fill-current'}
           >
             {BIG_O[s.p]}
           </text>
         ))}
-        {here >= 1 && Math.log10(here) <= DECADES && (
+        {Math.log10(Math.max(1, here)) <= DECADES && (
           <circle cx={x(n)} cy={y(here)} r={6} className={`fill-[var(--accent,var(--action))] stroke-[var(--surface)] ${styles.marker}`} strokeWidth={2} />
         )}
       </svg>

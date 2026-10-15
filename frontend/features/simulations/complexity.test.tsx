@@ -2,6 +2,9 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, fireEvent, render, screen, within } from '@testing-library/react';
 import { complexityModule, formatCount, ratioLabel } from './complexity';
+import { ComplexityChart } from './complexityChart';
+import { drawField } from './complexityField';
+import { operations } from './engines/complexity';
 
 const View = complexityModule.Renderer;
 
@@ -61,6 +64,72 @@ describe('complexity view', () => {
     render(<View config={{ pattern: 'single-loop', n: 8 }} lang="vi" />);
     expect(screen.getByRole('img', { name: /thang logarit/ })).toBeTruthy();
     expect(screen.getByRole('table').querySelectorAll('tbody tr')).toHaveLength(7);
+  });
+});
+
+describe('complexity playback', () => {
+  it('never counts below zero when the first frame is stamped before Play', () => {
+    let frames = 0;
+    vi.spyOn(window, 'requestAnimationFrame').mockImplementation((cb) => {
+      if (frames++ === 0) cb(performance.now() - 5);
+      return frames;
+    });
+    render(<View config={{ pattern: 'single-loop', n: 8 }} lang="vi" />);
+    fireEvent.click(screen.getByRole('button', { name: 'Chạy' }));
+    expect(counter()).toBe('0 / 8');
+  });
+
+  it('a pattern change while playing stops and starts over', () => {
+    render(<View config={{ pattern: 'single-loop', n: 8 }} lang="vi" />);
+    fireEvent.click(screen.getByRole('button', { name: 'Bước tiếp' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Chạy' }));
+    fireEvent.click(screen.getByRole('button', { name: /Hai vòng lặp lồng nhau/ }));
+    expect(counter()).toBe('0 / 64');
+    expect(screen.getByRole('button', { name: 'Chạy' })).toBeTruthy();
+  });
+});
+
+describe('complexity chart', () => {
+  it('marks the current n even when it costs no operations', () => {
+    const names = Object.fromEntries(['direct', 'halving', 'single-loop', 'divide-conquer', 'nested-loop', 'branching', 'permutations'].map((p) => [p, { en: p, vi: p }]));
+    const { container } = render(<ComplexityChart pattern="divide-conquer" n={1} names={names as never} lang="vi" />);
+    expect(container.querySelector('circle')).toBeTruthy();
+  });
+
+  it('keeps its text readable on a phone-width screen', () => {
+    const names = Object.fromEntries(['direct', 'halving', 'single-loop', 'divide-conquer', 'nested-loop', 'branching', 'permutations'].map((p) => [p, { en: p, vi: p }]));
+    const { container } = render(<ComplexityChart pattern="single-loop" n={8} names={names as never} lang="vi" />);
+    const sizes = [...container.querySelectorAll('svg text')].map((el) => Number(el.getAttribute('font-size')));
+    expect(Math.min(...sizes)).toBeGreaterThanOrEqual(18);
+  });
+});
+
+describe('the operation field', () => {
+  const fakeContext = () => {
+    const calls = { fill: 0 };
+    const ctx = new Proxy({} as Record<string, unknown>, {
+      get: (target, key) => {
+        if (key === 'calls') return calls;
+        if (key === 'fill') return () => (calls.fill += 1);
+        if (key === 'roundRect') return undefined;
+        return key in target ? target[key as string] : () => {};
+      },
+      set: (target, key, value) => {
+        target[key as string] = value;
+        return true;
+      },
+    });
+    return ctx as unknown as CanvasRenderingContext2D & { calls: typeof calls };
+  };
+  const pal = { accent: '#000', line: '#ccc', muted: '#666' };
+
+  it('draws on canvases without roundRect, in a handful of fills even at 8! operations', () => {
+    for (const pattern of ['single-loop', 'halving', 'nested-loop', 'branching', 'permutations'] as const) {
+      const ops = operations(pattern, pattern === 'permutations' ? 8 : 6);
+      const ctx = fakeContext();
+      expect(() => drawField(ctx, 600, pattern, 6, ops, ops.length, pal)).not.toThrow();
+      expect(ctx.calls.fill).toBeLessThanOrEqual(pattern === 'halving' ? ops.length + 2 : 4);
+    }
   });
 });
 

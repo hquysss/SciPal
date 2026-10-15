@@ -178,7 +178,9 @@ export function labVariants(item: LabItem, usages: readonly LabUsage[] | null): 
   if (item.kind === 'history-map') {
     return (usages ?? []).flatMap((u, i) => {
       const config = u.kind === 'history-map' ? simulationConfig('history-map', u.config) : null;
-      return config ? [{ id: `${u.href}#${i}`, name: u.heading.vi || u.heading.en ? u.heading : u.lesson, config }] : [];
+      // A heading typed in Vietnamese only still needs an English name: fall back field by field.
+      const name = { en: u.heading.en || u.lesson.en || u.heading.vi, vi: u.heading.vi || u.lesson.vi };
+      return config ? [{ id: `${u.href}#${i}`, name, config }] : [];
     });
   }
   return [{ id: 'default', name: item.name, config: defaultSimulationConfig(item.kind) }];
