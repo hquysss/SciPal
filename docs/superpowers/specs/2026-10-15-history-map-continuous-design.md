@@ -89,7 +89,7 @@ Hiện tại camera chỉ trượt và phóng to theo giai đoạn, lúc nào c�
 1. **Khi một mũi đang được vẽ:** camera xoay dần để hướng tiến của mũi đó chỉ "lên phía trên màn hình", như người xem đang đi theo đoàn quân. Hướng này lấy từ đoạn đường gần đầu mũi, làm mượt để không giật theo từng khúc quanh.
 2. **Khi sang giai đoạn mới:** camera xoay theo hướng chung của các mũi trong giai đoạn đó, tức từ điểm đầu trung bình tới điểm cuối trung bình. Đồng thời camera hạ góc nghiêng một chút (khoảng 8°) để thấy rõ địa hình, rồi trở lại góc nghiêng cũ khi giai đoạn vẽ xong.
 3. **Giai đoạn không có mũi tiến quân:** camera quay dần về hướng bắc.
-4. **Giới hạn:** góc xoay tự động không vượt quá giới hạn xoay hiện có (±49° quanh hướng bắc). Vì vậy một mũi đi về phía nam chỉ làm camera xoay tối đa 49°, không lật ngược bản đồ.
+4. **Giới hạn:** camera xoay tự do 360° (đã bỏ giới hạn ±49° theo phản hồi "bị khoá xoay camera"), tự xoay theo hướng quay ngắn nhất. Vì vậy một mũi đi về phía nam chỉ làm camera xoay tối đa 49°, không lật ngược bản đồ.
 5. **Người xem tự xoay hoặc kéo bản đồ:** camera ngừng tự xoay, giống như ngừng tự đi theo. Bấm "Camera đi theo" hoặc "Góc nhìn ban đầu" thì bật lại.
 6. **Giảm chuyển động:** không tự xoay.
 
