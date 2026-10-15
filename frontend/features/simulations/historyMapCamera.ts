@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useRef, type KeyboardEvent, type PointerEvent } from 'react';
+import { useCallback, useEffect, useMemo, useRef, type KeyboardEvent, type PointerEvent } from 'react';
 
 // The reader's camera over a history map: turn, tilt, zoom and slide, all kept inside limits so the
 // map can never be lost (no flipping under the ground, no flying off the region). The scene eases
@@ -8,15 +8,15 @@ import { useCallback, useEffect, useRef, type KeyboardEvent, type PointerEvent }
 
 export type MapView = { theta: number; phi: number; dist: number; panX: number; panZ: number };
 
-/** Looking north, tilted down. The reader can turn this far to either side. */
+/** Looking north, tilted down. The reader can turn all the way round; tilt, zoom and slide are limited. */
 export const HOME_VIEW: MapView = { theta: -Math.PI / 2, phi: 0.78, dist: 1, panX: 0, panZ: 0 };
-export const VIEW_LIMITS = { turn: 0.85, phiMin: 0.32, phiMax: 1.22, distMin: 0.3, distMax: 1.7 } as const;
+export const VIEW_LIMITS = { phiMin: 0.32, phiMax: 1.22, distMin: 0.3, distMax: 1.7 } as const;
 
 const clamp = (v: number, lo: number, hi: number) => Math.min(Math.max(v, lo), hi);
 
 export function clampView(v: MapView, panLimit: number): MapView {
   return {
-    theta: clamp(v.theta, HOME_VIEW.theta - VIEW_LIMITS.turn, HOME_VIEW.theta + VIEW_LIMITS.turn),
+    theta: v.theta,
     phi: clamp(v.phi, VIEW_LIMITS.phiMin, VIEW_LIMITS.phiMax),
     dist: clamp(v.dist, VIEW_LIMITS.distMin, VIEW_LIMITS.distMax),
     panX: clamp(v.panX, -panLimit, panLimit),
@@ -36,9 +36,10 @@ export type MapCamera = ReturnType<typeof useMapCamera>;
 
 /**
  * `onManualPan` fires when the reader slides the map, so a camera that follows the marches can step
- * aside. The scene fills `worldPerPixel` and `panLimit` each frame (they depend on its size).
+ * aside; `onManualTurn` when the reader turns or tilts it, so a camera that turns with the marches
+ * stops turning. The scene fills `worldPerPixel` and `panLimit` each frame (they depend on its size).
  */
-export function useMapCamera(onManualPan: () => void) {
+export function useMapCamera(onManualPan: () => void, onManualTurn: () => void = () => {}) {
   const host = useRef<HTMLDivElement>(null);
   const view = useRef<MapView>({ ...HOME_VIEW });
   const invalidate = useRef<() => void>(() => {});
@@ -48,6 +49,8 @@ export function useMapCamera(onManualPan: () => void) {
   const pinch = useRef<number | null>(null);
   const manual = useRef(onManualPan);
   manual.current = onManualPan;
+  const turned = useRef(onManualTurn);
+  turned.current = onManualTurn;
 
   const set = useCallback((patch: Partial<MapView>) => {
     view.current = clampView({ ...view.current, ...patch }, panLimit.current);
@@ -120,6 +123,7 @@ export function useMapCamera(onManualPan: () => void) {
         return;
       }
       set({ theta: view.current.theta - dx * 0.007, phi: view.current.phi + dy * 0.007 });
+      turned.current();
     },
     onPointerUp: end,
     onPointerCancel: end,
@@ -141,8 +145,11 @@ export function useMapCamera(onManualPan: () => void) {
       if (!action) return;
       e.preventDefault();
       action();
+      if (!e.shiftKey && e.key.startsWith('Arrow')) turned.current();
     },
   };
 
-  return { host, view, invalidate, worldPerPixel, panLimit, handlers, zoom, reset };
+  // One object for the life of the map, so a memoised scene does not redraw on every slider move.
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- the handlers only touch refs and stable callbacks
+  return useMemo(() => ({ host, view, invalidate, worldPerPixel, panLimit, handlers, zoom, reset }), []);
 }

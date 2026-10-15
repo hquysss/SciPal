@@ -10,6 +10,28 @@ export type Bounds = { west: number; south: number; east: number; north: number 
 
 export const assetBase = (region: HistoryMapRegion) => `/models/history/${region}`;
 
+export type Borders = LonLat[][];
+const borderCache = new Map<HistoryMapRegion, Promise<Borders>>();
+/**
+ * Today's land borders of a region (scripts/assets/build_history_borders.py), fetched once. A map
+ * without them still works, so a failure gives no borders rather than an error.
+ */
+export function loadBorders(region: HistoryMapRegion): Promise<Borders> {
+  let p = borderCache.get(region);
+  if (!p) {
+    // A failed load is not kept, so the next map tries again.
+    const failed = (): Borders => (borderCache.delete(region), []);
+    p = fetch(`${assetBase(region)}/borders.json`)
+      .then((res) => (res.ok ? (res.json() as Promise<Borders>) : failed()))
+      .catch(failed);
+    borderCache.set(region, p);
+  }
+  return p;
+}
+
+/** The dash-dot of the textbook's "today's border" line, in units of the line width. */
+export const BORDER_DASH = [5, 2.5, 0.8, 2.5];
+
 export function projection(region: HistoryMapRegion) {
   const b = HISTORY_MAP_REGIONS[region];
   const k = Math.cos((((b.north + b.south) / 2) * Math.PI) / 180);
@@ -88,4 +110,92 @@ export function namedAt(config: HistoryMap, place: HistoryMap['places'][number],
     const [lon, lat] = r.points[r.points.length - 1]!;
     return Math.abs(lon - place.lon) < 0.05 && Math.abs(lat - place.lat) < 0.05;
   });
+}
+
+// The slider runs continuously: between the marks of step s − 1 and s (`frac` 0 → 1) step s happens.
+// Its marches are drawn first, one after another; its areas spread as the marches arrive; a new place
+// appears when a march passes it.
+const MARCH_SHARE = 0.75;
+const AREA_START = 0.35;
+
+/** How far through a step the slider is: 0 at the mark before, 1 at its own mark. Step 0 is always whole. */
+export const stepFraction = (pos: number, step: number) => (step === 0 ? 1 : Math.min(Math.max(pos - (step - 1), 0), 1));
+
+/** Marches drawn so far, in routes: 1.5 = the first done and the second half way. */
+export const marchProgress = (frac: number, routes: number) => (routes ? Math.min(frac / MARCH_SHARE, 1) * routes : 0);
+
+/** How far an area of the step has spread, 0–1. */
+export const areaGrowth = (frac: number, hasRoutes: boolean) =>
+  hasRoutes ? Math.min(Math.max((frac - AREA_START) / (1 - AREA_START), 0), 1) : Math.min(Math.max(frac, 0), 1);
+
+const centre = (points: readonly LonLat[]): LonLat => [points.reduce((s, p) => s + p[0], 0) / points.length, points.reduce((s, p) => s + p[1], 0) / points.length];
+const gap = (a: LonLat, b: LonLat) => Math.hypot(a[0] - b[0], a[1] - b[1]);
+
+/** Where each area of a step spreads from: the end of the march that arrives nearest it, else its own centre. */
+export function areaOrigins(config: HistoryMap, step: number): LonLat[] {
+  const s = config.steps[step];
+  if (!s) return [];
+  const ends = s.routes.map((r) => r.points[r.points.length - 1]!);
+  return s.areas.map((a) => {
+    const c = centre(a.points);
+    return ends.reduce<LonLat>((best, e) => (gap(e, c) < gap(best, c) ? e : best), ends[0] ?? c);
+  });
+}
+
+/** When (as `frac`) each place first shown at this step appears: as a march passes within 0.4°, else half way. */
+export function placeTimes(config: HistoryMap, step: number): Map<number, number> {
+  const routes = config.steps[step]?.routes ?? [];
+  const out = new Map<number, number>();
+  config.places.forEach((p, i) => {
+    if (p.from !== step) return;
+    if (step === 0) return out.set(i, 0);
+    let at = 0.5;
+    let best = 0.4;
+    routes.forEach((r, k) => {
+      r.points.forEach((q, j) => {
+        const d = gap(q, [p.lon, p.lat]);
+        if (d <= best) {
+          best = d;
+          at = (MARCH_SHARE * (k + j / Math.max(r.points.length - 1, 1))) / routes.length;
+        }
+      });
+    });
+    out.set(i, at);
+  });
+  return out;
+}
+
+/** The years in a period, e.g. "1426–1427" → [1426, 1427]; none when it holds no year. */
+export const yearsOf = (period: string) => (period.match(/\d{3,4}/g) ?? []).map(Number);
+
+/** How long (as `frac`) a victory flares after a march reaches it. */
+const BURST = 0.12;
+/** Whether a place reached at `at` is flaring at `frac`: just after the slider passes it, never at the start. */
+export const bursting = (frac: number, at: number) => at > 0 && frac >= at && frac - at < BURST;
+
+/** The direction from a to b, in radians clockwise from north (east = π/2), on a map with lon scaled by cos(lat). */
+const bearing = (a: LonLat, b: LonLat) => {
+  const k = Math.cos((((a[1] + b[1]) / 2) * Math.PI) / 180);
+  return Math.atan2((b[0] - a[0]) * k, b[1] - a[1]);
+};
+
+/**
+ * Where a march is heading at `done` (0–1) of the way along it: from a little behind the head to
+ * the head, so a camera turning with it follows the march's course, not every bend.
+ */
+export function marchHeading(points: readonly LonLat[], done: number): number {
+  const at = (f: number): LonLat => {
+    const x = Math.min(Math.max(f, 0), 1) * (points.length - 1);
+    const i = Math.min(Math.floor(x), points.length - 2);
+    const [a, b] = [points[i]!, points[i + 1]!];
+    return [a[0] + (b[0] - a[0]) * (x - i), a[1] + (b[1] - a[1]) * (x - i)];
+  };
+  return bearing(at(done - 0.25), at(Math.max(done, 0.25)));
+}
+
+/** The general direction of a stage's marches: from where they start on average to where they end. */
+export function stageHeading(config: HistoryMap, step: number): number | null {
+  const routes = config.steps[step]?.routes ?? [];
+  if (routes.length === 0) return null;
+  return bearing(centre(routes.map((r) => r.points[0]!)), centre(routes.map((r) => r.points[r.points.length - 1]!)));
 }

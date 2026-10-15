@@ -3,6 +3,7 @@ import { CirculationConfig } from './circulation.js';
 import { SkinSensesConfig } from './skin.js';
 import { KneeReflexConfig } from './kneeReflex.js';
 import { HistoryMapConfig } from './historyMap.js';
+import { HistoryWorldConfig } from './historyWorld.js';
 import { GRAPH_PARAMETER_NAME, MAX_GRAPH_EXPRESSION, parseGraphExpression } from './graphExpression.js';
 
 // Simulation templates for `interactive` blocks. Each built-in kind runs in the browser from its
@@ -481,6 +482,7 @@ export const SIMULATION_CONFIGS = {
   punnett: PunnettConfig,
   'labeled-diagram': LabeledDiagramConfig,
   'history-map': HistoryMapConfig,
+  'history-world': HistoryWorldConfig,
   'history-timeline': HistoryTimelineConfig,
   'before-after': BeforeAfterConfig,
   'org-chart': OrgChartConfig,
@@ -510,6 +512,7 @@ export const SIMULATION_KINDS = [
   'punnett',
   'labeled-diagram',
   'history-map',
+  'history-world',
   'history-timeline',
   'before-after',
   'org-chart',
@@ -618,6 +621,7 @@ const MESSAGES: Record<string, Message> = {
   punnett: { en: 'One or two genes; each parent needs two letters of the gene (for example Aa).', vi: 'Một hoặc hai gen; kiểu gen bố mẹ gồm hai chữ của gen đó (ví dụ Aa).' },
   'labeled-diagram': { en: 'Upload the image to SciPal; up to 24 labels placed on the image.', vi: 'Ảnh phải tải lên SciPal; tối đa 24 nhãn nằm trên ảnh.' },
   'history-map': { en: 'Check the map: 1–12 steps, up to 32 places, every point [longitude, latitude] inside the region.', vi: 'Kiểm tra bản đồ: 1–12 bước, tối đa 32 địa danh, mọi điểm [kinh độ, vĩ độ] nằm trong vùng bản đồ.' },
+  'history-world': { en: 'Choose one of the built-in world maps: empires-1914 or latin-america.', vi: 'Chọn một trong các bản đồ có sẵn: empires-1914 hoặc latin-america.' },
   'history-timeline': { en: 'Check the timeline: 1–16 events, each with a date and a title; every image uploaded to SciPal with a Vietnamese description.', vi: 'Kiểm tra trục thời gian: 1–16 mốc, mỗi mốc có thời gian và tiêu đề; mọi ảnh phải tải lên SciPal và có mô tả tiếng Việt.' },
   'before-after': { en: 'Upload both pictures to SciPal; each picture needs a Vietnamese description and its source.', vi: 'Hai ảnh phải tải lên SciPal; mỗi ảnh cần mô tả tiếng Việt và ghi nguồn.' },
   'org-chart': { en: 'Check the chart: every box needs a Vietnamese name, at most 6 levels, 12 boxes under one box and 40 boxes in all.', vi: 'Kiểm tra sơ đồ: mỗi ô cần tên tiếng Việt, tối đa 6 cấp, 12 ô con dưới một ô và 40 ô cả sơ đồ.' },

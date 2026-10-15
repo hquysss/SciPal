@@ -7,6 +7,7 @@ import { functionGraphModule } from './functionGraph';
 import { graph3dModule } from './graph3d';
 import { harmonic3dModule } from './harmonic3d';
 import { historyMapModule } from './historyMap';
+import { historyWorldModule } from './historyWorld';
 import { historyTimelineModule } from './historyTimeline';
 import { beforeAfterModule } from './beforeAfter';
 import { orgChartModule } from './orgChart';
@@ -42,6 +43,7 @@ export const simulationModules: { [K in BuiltInSimulationKind]: SimulationModule
   punnett: punnettModule,
   'labeled-diagram': labeledDiagramModule,
   'history-map': historyMapModule,
+  'history-world': historyWorldModule,
   'history-timeline': historyTimelineModule,
   'before-after': beforeAfterModule,
   'org-chart': orgChartModule,

@@ -1,9 +1,9 @@
 // @vitest-environment jsdom
-import { cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { defaultSimulationConfig } from '@scipal/types';
-import { HistoryTimelineView, historyTimelineModule } from './historyTimeline';
+import { HistoryTimelineView, SEGMENT_MS, historyTimelineModule, lineTiming } from './historyTimeline';
 
 vi.mock('@/features/authoring/editor/editors/ImageEditor', () => ({ ImageDropZone: () => null }));
 
@@ -54,5 +54,34 @@ describe('the history timeline', () => {
     expect(onChange).not.toHaveBeenCalled();
     fireEvent.change(box, { target: { value: JSON.stringify({ events: [{ when: '1789', title: { vi: 'Cách mạng Pháp', en: 'French Revolution' } }] }) } });
     expect(onChange).toHaveBeenCalledWith({ events: [{ when: '1789', title: { vi: 'Cách mạng Pháp', en: 'French Revolution' }, text: { vi: '', en: '' } }] });
+  });
+});
+
+describe('the timeline line', () => {
+  it('runs on segment by segment going forward, and changes at once going back', () => {
+    const on = lineTiming(0, 3, false);
+    expect([on.dot(1), on.dot(2), on.dot(3)]).toEqual([SEGMENT_MS, 2 * SEGMENT_MS, 3 * SEGMENT_MS]);
+    expect(on.right(0)).toBe(0);
+    expect(on.left(1)).toBe(SEGMENT_MS / 2);
+    expect(on.right(1)).toBe(SEGMENT_MS);
+    const back = lineTiming(3, 0, false);
+    expect([back.dot(1), back.right(1), back.left(2)]).toEqual([0, 0, 0]);
+    const reduced = lineTiming(0, 3, true);
+    expect([reduced.dot(3), reduced.half]).toEqual([0, 0]);
+  });
+
+  it('plays through the events on its own', () => {
+    vi.useFakeTimers();
+    try {
+      render(<HistoryTimelineView config={sample} lang="vi" />);
+      fireEvent.click(screen.getByRole('button', { name: 'Chạy' }));
+      act(() => void vi.advanceTimersByTime(4100));
+      expect(screen.getByRole('button', { name: /Cuối thế kỉ XVIII/ }).getAttribute('aria-current')).toBe('step');
+      fireEvent.click(screen.getByRole('button', { name: 'Dừng' }));
+      act(() => void vi.advanceTimersByTime(9000));
+      expect(screen.getByRole('button', { name: /Cuối thế kỉ XVIII/ }).getAttribute('aria-current')).toBe('step');
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });
