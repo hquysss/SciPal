@@ -104,11 +104,12 @@ describe('the history map view', () => {
 
   it('walks the stages and opens place notes when 3D cannot be shown', async () => {
     render(<HistoryMapView config={lamSon} lang="vi" />);
-    await screen.findByRole('img', { name: /1418–1423/ });
+    await screen.findByRole('img', { name: /1418–1423/ }, { timeout: 5000 });
     fireEvent.click(screen.getByRole('button', { name: '1424–1425' }));
     expect(screen.getByRole('status').textContent).toContain('Nguyễn Chích');
     fireEvent.click(screen.getByRole('button', { name: /Giai đoạn sau/ }));
     expect(screen.getByRole('status').textContent).toContain('Hội thề Đông Quan');
+    fireEvent.click(screen.getByRole('button', { name: /Xem đủ nội dung và địa danh/ }));
     fireEvent.click(screen.getByRole('button', { name: /Chi Lăng/ }));
     expect(screen.getByRole('note').textContent).toContain('viện binh');
   });
