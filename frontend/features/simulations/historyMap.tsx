@@ -11,6 +11,7 @@ import { useMapCamera } from './historyMapCamera';
 import { useReflexFullscreen } from './useReflexFrame';
 import { BORDER_DASH, areaGrowth, areaOrigins, assetBase, bursting, loadBorders, type Borders, marchProgress, namedAt, placeTimes, placesAt, projection, stepFraction, stepFrame, yearsOf, type HistoryMap } from './historyMapGeo';
 import { useTimelineGlide } from './useTimelineGlide';
+import { useReducedMotion } from './animation';
 import { MAP_VAR, PLACE_MARK } from './historyMapStyle';
 import { pick, type Lang, type SimulationEditorProps, type SimulationModule, type SimulationViewProps } from './types';
 
@@ -26,19 +27,6 @@ class SceneBoundary extends Component<{ fallback: ReactNode; children: ReactNode
   render() {
     return this.state.failed ? this.props.fallback : this.props.children;
   }
-}
-
-export function useReducedMotion() {
-  const [reduced, setReduced] = useState(false);
-  useEffect(() => {
-    const media = window.matchMedia?.('(prefers-reduced-motion: reduce)');
-    if (!media) return;
-    setReduced(media.matches);
-    const change = () => setReduced(media.matches);
-    media.addEventListener?.('change', change);
-    return () => media.removeEventListener?.('change', change);
-  }, []);
-  return reduced;
 }
 
 const CASING = { stroke: MAP_VAR.casing, strokeOpacity: 0.96, strokeLinecap: 'round', strokeLinejoin: 'round' } as const;

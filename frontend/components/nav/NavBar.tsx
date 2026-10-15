@@ -80,7 +80,7 @@ export function communityLabel(lang: 'en' | 'vi', pending: number) {
 export function primaryLinks(lang: 'en' | 'vi') {
   const label = (en: string, vi: string) => (lang === 'en' ? en : vi);
   return [
-    { href: '/lab', label: label('Lab', 'Thí nghiệm') },
+    { href: '/lab', label: label('Simulations', 'Mô phỏng') },
     { href: '/exam', label: label('Exams', 'Thi thử') },
     tutorLink(lang),
   ];

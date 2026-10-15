@@ -16,6 +16,17 @@ describe('algorithmSteps', () => {
     expect(steps.every((s) => s.note.vi && s.note.en)).toBe(true);
   });
 
+  it('counts comparisons and swaps cumulatively', () => {
+    const bubble = algo('bubble-sort', [5, 4, 3, 2, 1]).at(-1)!;
+    expect([bubble.compares, bubble.swaps]).toEqual([10, 10]);
+    const insertion = algo('insertion-sort', [1, 2, 3, 4, 5]).at(-1)!;
+    expect([insertion.compares, insertion.swaps]).toEqual([4, 0]);
+    const linear = algo('linear-search', [4, 8, 1], 1);
+    expect(linear[0]!.compares).toBe(0);
+    expect(linear.every((s) => s.swaps === 0)).toBe(true);
+    expect(linear.at(-1)!.compares).toBe(3);
+  });
+
   it('linear search finds the first match, or reports none', () => {
     const found = algo('linear-search', [4, 8, 8, 1], 8);
     expect(found.at(-1)!.found).toBe(1);
@@ -31,6 +42,14 @@ describe('algorithmSteps', () => {
     const last = steps.at(-1)!;
     expect(last.values[last.found!]).toBe(7);
     expect(steps.filter((s) => s.range).length).toBeLessThanOrEqual(Math.ceil(Math.log2(5)) + 1);
+  });
+
+  it.each(['bubble-sort', 'selection-sort', 'insertion-sort', 'linear-search', 'binary-search'])("%s keeps every item's identity", (name) => {
+    const base = [3, 1, 3, 2, 9, 1];
+    for (const s of algo(name, base, 2)) {
+      expect([...s.ids].sort((a, b) => a - b)).toEqual([0, 1, 2, 3, 4, 5]);
+      expect(s.values).toEqual(s.ids.map((i) => base[i]));
+    }
   });
 
   it('stays bounded for the largest allowed input', () => {

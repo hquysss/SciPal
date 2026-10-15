@@ -5,7 +5,7 @@ import { ChevronLeft, ChevronRight, Pause, Play } from 'lucide-react';
 import { SIMULATION_CONFIGS, type SimulationConfigByKind } from '@scipal/types';
 import { BUTTON, PANEL } from './controls';
 import { JsonConfigEditor, UploadLink } from './jsonConfigEditor';
-import { useReducedMotion } from './historyMap';
+import { useReducedMotion } from './animation';
 import { pick, type Lang, type SimulationEditorProps, type SimulationModule, type SimulationViewProps } from './types';
 
 type Timeline = SimulationConfigByKind['history-timeline'];

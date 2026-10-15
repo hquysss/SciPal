@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import { renderToStaticMarkup } from 'react-dom/server';
-import { BUILT_IN_SIMULATION_KINDS } from '@scipal/types';
-import { LAB_ITEMS, LAB_SUBJECTS, labItem } from './catalog';
+import { BUILT_IN_SIMULATION_KINDS, defaultSimulationConfig } from '@scipal/types';
+import { LAB_ITEMS, LAB_SUBJECTS, labItem, labVariants } from './catalog';
 import { usagesOf } from './labQuery';
 import { LabIndex } from './LabIndex';
 import { embedHref, embedTitle, readEmbeds } from './LabEmbeds';
@@ -31,6 +31,35 @@ describe('the Lab catalogue', () => {
     expect(labItem('punnett')).toBeNull();
     expect(labItem('nope')).toBeNull();
   });
+
+  it('files the history maps and the complexity simulation under their subjects', () => {
+    expect(labItem('history-world')?.subject).toBe('history');
+    expect(labItem('history-map')?.subject).toBe('history');
+    expect(labItem('complexity-sim')?.subject).toBe('informatics');
+  });
+});
+
+describe('labVariants', () => {
+  const usage = (config: unknown, vi: string) => ({ kind: 'history-map', heading: { en: '', vi }, lesson: { en: 'L', vi: 'Bài' }, href: '/history/x', grade: 11, config });
+
+  it('offers both built-in world maps', () => {
+    expect(labVariants(labItem('history-world')!, null).map((v) => v.config)).toEqual([{ map: 'empires-1914' }, { map: 'latin-america' }]);
+  });
+
+  it('offers every campaign map a published lesson has, named by its heading, skipping broken ones', () => {
+    const variants = labVariants(labItem('history-map')!, [usage(defaultSimulationConfig('history-map'), 'Khởi nghĩa Lam Sơn'), usage({ steps: 'broken' }, 'Hỏng')]);
+    expect(variants.map((v) => v.name.vi)).toEqual(['Khởi nghĩa Lam Sơn']);
+    expect(labVariants(labItem('history-map')!, null)).toEqual([]);
+  });
+
+  it('names a map in English even when its heading was written in Vietnamese only', () => {
+    const [variant] = labVariants(labItem('history-map')!, [{ ...usage(defaultSimulationConfig('history-map'), 'Khởi nghĩa Lam Sơn'), lesson: { en: 'Lam Son', vi: 'Bài' } }]);
+    expect(variant!.name).toEqual({ en: 'Lam Son', vi: 'Khởi nghĩa Lam Sơn' });
+  });
+
+  it('gives every other simulation its default settings', () => {
+    expect(labVariants(labItem('titration')!, null)).toEqual([{ id: 'default', name: labItem('titration')!.name, config: defaultSimulationConfig('titration') }]);
+  });
 });
 
 describe('usagesOf', () => {
@@ -42,14 +71,14 @@ describe('usagesOf', () => {
         title_vi: 'Chuẩn độ',
         grade: 11,
         subjects: [{ slug: 'chemistry' }],
-        blocks: [{ type: 'text' }, { type: 'interactive', kind: 'titration', heading: { vi: 'Chuẩn độ HCl', en: 'HCl' } }],
+        blocks: [{ type: 'text' }, { type: 'interactive', kind: 'titration', heading: { vi: 'Chuẩn độ HCl', en: 'HCl' }, config: { acid: 1 } }],
       },
       { slug: 'ham-so', title_en: 'Functions', title_vi: 'Hàm số', grade: 10, subjects: { slug: 'math' }, blocks: [{ type: 'interactive', kind: 'function-graph' }] },
       { slug: 'broken', title_en: 'x', title_vi: 'x', grade: 12, subjects: { slug: 'math' }, blocks: 'not an array' },
     ];
     expect(usagesOf(rows)).toEqual([
-      { kind: 'function-graph', heading: { en: '', vi: '' }, lesson: { en: 'Functions', vi: 'Hàm số' }, href: '/math/ham-so', grade: 10 },
-      { kind: 'titration', heading: { vi: 'Chuẩn độ HCl', en: 'HCl' }, lesson: { en: 'Titration', vi: 'Chuẩn độ' }, href: '/chemistry/chuan-do', grade: 11 },
+      { kind: 'function-graph', heading: { en: '', vi: '' }, lesson: { en: 'Functions', vi: 'Hàm số' }, href: '/math/ham-so', grade: 10, config: {} },
+      { kind: 'titration', heading: { vi: 'Chuẩn độ HCl', en: 'HCl' }, lesson: { en: 'Titration', vi: 'Chuẩn độ' }, href: '/chemistry/chuan-do', grade: 11, config: { acid: 1 } },
     ]);
   });
 });
@@ -60,6 +89,8 @@ describe('LabIndex', () => {
     for (const item of LAB_ITEMS) expect(html).toContain(`href="/lab/${item.kind}"`);
     expect(html).toContain('Có trong 2 bài học');
     expect(html).toContain('Chưa có trong bài học');
+    expect(html).toContain('>Mô phỏng</h1>');
+    expect(html).toContain('Lịch sử');
   });
 
   it('stays quiet about lessons when they could not be loaded', () => {

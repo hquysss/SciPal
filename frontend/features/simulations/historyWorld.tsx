@@ -9,7 +9,7 @@ import frame from './historyMap.module.css';
 import styles from './historyWorld.module.css';
 import { useReflexFullscreen } from './useReflexFrame';
 import { POWER_NAME, WORLD_MAPS, changes, stateAt, yearAt, type Power, type Territory } from './historyWorldData';
-import { useReducedMotion } from './historyMap';
+import { useReducedMotion } from './animation';
 import { useTimelineGlide } from './useTimelineGlide';
 import { pick, type SimulationEditorProps, type SimulationModule, type SimulationViewProps } from './types';
 

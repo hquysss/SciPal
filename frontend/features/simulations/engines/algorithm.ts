@@ -5,6 +5,8 @@ type AlgorithmConfig = SimulationConfigByKind['algorithm-sim'];
 
 export interface AlgorithmStep {
   values: number[];
+  /** Which input item sits in each place, so an item can be followed as it moves: values[k] is input[ids[k]]. */
+  ids: number[];
   /** Indices being compared. */
   compare?: [number, number];
   /** Indices just swapped (or the insertion shift). */
@@ -16,6 +18,10 @@ export interface AlgorithmStep {
   /** Search result: the index found, or null when the target is not there. */
   found?: number | null;
   note: Bilingual;
+  /** Comparisons made so far, this step included. */
+  compares: number;
+  /** Swaps (or insertion shifts) made so far, this step included. */
+  swaps: number;
 }
 
 /** 32 values by bubble sort need at most ~1000 steps; this is a safety cap. */
@@ -24,11 +30,20 @@ export const MAX_ALGORITHM_STEPS = 2500;
 /** Every step of the algorithm on the configured values, computed once. */
 export function algorithmSteps(config: AlgorithmConfig): AlgorithmStep[] {
   const steps: AlgorithmStep[] = [];
-  const push = (step: AlgorithmStep) => {
-    if (steps.length < MAX_ALGORITHM_STEPS) steps.push({ ...step, values: [...step.values], done: [...step.done] });
-  };
+  let compares = 0;
+  let swaps = 0;
   const values = [...config.values];
   const n = values.length;
+  const ids = values.map((_, i) => i);
+  const push = (step: Omit<AlgorithmStep, 'compares' | 'swaps' | 'ids'>) => {
+    if (step.compare) compares += 1;
+    if (step.swap) swaps += 1;
+    if (steps.length < MAX_ALGORITHM_STEPS) steps.push({ ...step, values: [...step.values], ids: [...ids], done: [...step.done], compares, swaps });
+  };
+  const swap = (a: number, b: number) => {
+    [values[a], values[b]] = [values[b]!, values[a]!];
+    [ids[a], ids[b]] = [ids[b]!, ids[a]!];
+  };
   const all = () => values.map((_, i) => i);
 
   switch (config.algorithm) {
@@ -39,7 +54,7 @@ export function algorithmSteps(config: AlgorithmConfig): AlgorithmStep[] {
         for (let i = 0; i < end; i += 1) {
           push({ values, done, compare: [i, i + 1], note: { en: `Compare ${values[i]} and ${values[i + 1]}.`, vi: `So sánh ${values[i]} và ${values[i + 1]}.` } });
           if (values[i]! > values[i + 1]!) {
-            [values[i], values[i + 1]] = [values[i + 1]!, values[i]!];
+            swap(i, i + 1);
             push({ values, done, swap: [i, i + 1], note: { en: 'Swap them.', vi: 'Đổi chỗ.' } });
           }
         }
@@ -58,7 +73,7 @@ export function algorithmSteps(config: AlgorithmConfig): AlgorithmStep[] {
           if (values[i]! < values[min]!) min = i;
         }
         if (min !== start) {
-          [values[start], values[min]] = [values[min]!, values[start]!];
+          swap(start, min);
           push({ values, done, swap: [start, min], note: { en: `Move ${values[start]} to place ${start + 1}.`, vi: `Đưa ${values[start]} về vị trí ${start + 1}.` } });
         }
         done.push(start);
@@ -72,9 +87,11 @@ export function algorithmSteps(config: AlgorithmConfig): AlgorithmStep[] {
         let j = i;
         push({ values, done: [], compare: [j - 1, j], note: { en: `Insert ${values[j]}.`, vi: `Chèn ${values[j]}.` } });
         while (j > 0 && values[j - 1]! > values[j]!) {
-          [values[j - 1], values[j]] = [values[j]!, values[j - 1]!];
-          push({ values, done: [], swap: [j - 1, j], note: { en: 'Shift left.', vi: 'Dịch sang trái.' } });
+          swap(j - 1, j);
           j -= 1;
+          // The loop compares again before every further shift.
+          if (j > 0) compares += 1;
+          push({ values, done: [], swap: [j, j + 1], note: { en: 'Shift left.', vi: 'Dịch sang trái.' } });
         }
       }
       push({ values, done: all(), note: { en: 'Sorted.', vi: 'Đã sắp xếp xong.' } });
@@ -103,7 +120,9 @@ export function algorithmSteps(config: AlgorithmConfig): AlgorithmStep[] {
     }
     case 'binary-search': {
       const target = config.target;
-      const sorted = [...values].sort((a, b) => a - b);
+      // Sorted by value, equal values keeping their order, so each item is still followed.
+      ids.sort((a, b) => values[a]! - values[b]! || a - b);
+      const sorted = ids.map((i) => values[i]!);
       const wasSorted = sorted.every((v, i) => v === values[i]);
       push({
         values: sorted,

@@ -56,6 +56,11 @@ describe('defaults', () => {
     expect(simulationConfig('algorithm-sim', { algorithm: 'quick-sort' })).toBeNull();
   });
 
+  it('clamps the complexity n to what its pattern can draw', () => {
+    expect(simulationConfig('complexity-sim', { pattern: 'permutations', n: 30 })).toEqual({ pattern: 'permutations', n: 8 });
+    expect(defaultSimulationConfig('complexity-sim')).toEqual({ pattern: 'single-loop', n: 8 });
+  });
+
   it("reads the seed lesson's older `data` key as the values", () => {
     expect(simulationConfig('algorithm-sim', { data: [4, 8, 15, 16, 23, 42], target: 23 })).toMatchObject({ values: [4, 8, 15, 16, 23, 42], target: 23 });
   });

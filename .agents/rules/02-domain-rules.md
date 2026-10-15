@@ -20,7 +20,7 @@ Mọi phần tử trong `lessons.blocks` (JSONB) bắt buộc phải thỏa mãn
 2. `code`: `{ type: 'code', tabs: [{ lang: 'python'|'cpp'|'javascript', code }] }`.
 3. `formula`: `{ type: 'formula', katex: string, caption?: { en, vi } }`.
 4. `quiz`: `{ type: 'quiz', question_id: uuid }`.
-5. `interactive`: `{ type: 'interactive', kind: 'algorithm-sim'|'function-graph'|'geometry-3d'|'experiment'|'bio-diagram', heading, offline: bool, embed_url?, config }`.
+5. `interactive`: `{ type: 'interactive', kind: 'algorithm-sim'|'complexity-sim'|'function-graph'|'geometry-3d'|'experiment'|'bio-diagram', heading, offline: bool, embed_url?, config }`.
 6. `term-ref`: `{ type: 'term-ref', term_id: uuid }` (liên kết sang bảng `terms`).
 7. `resource-ref`: `{ type: 'resource-ref', resource_id: uuid }`.
 

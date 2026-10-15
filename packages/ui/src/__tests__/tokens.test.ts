@@ -16,6 +16,10 @@ describe('SUBJECT_TOKENS', () => {
     }
   });
 
+  it('gives History its catalogue colour, not the brand green', () => {
+    expect(getAccentColor('history')).toBe('#92400e');
+  });
+
   it('getAccentColor returns brand green for unknown slug', () => {
     expect(getAccentColor('unknown')).toBe('#16a34a');
   });

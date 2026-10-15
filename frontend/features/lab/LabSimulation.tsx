@@ -1,14 +1,14 @@
 'use client';
 
 import Link from 'next/link';
-import type { ComponentType } from 'react';
+import { useState, type ComponentType } from 'react';
 import { ArrowRight, BookOpen, FlaskConical } from 'lucide-react';
 import { useLanguage } from '@scipal/hooks';
 import { SubjectProvider } from '@scipal/ui';
-import { defaultSimulationConfig, type BuiltInSimulationKind } from '@scipal/types';
+import type { BuiltInSimulationKind } from '@scipal/types';
 import { simulationModules } from '@/features/simulations/registry';
 import type { SimulationViewProps } from '@/features/simulations/types';
-import { LAB_ITEMS, LAB_SUBJECTS, type LabItem } from './catalog';
+import { LAB_ITEMS, LAB_SUBJECTS, labVariants, type LabItem } from './catalog';
 import { LAB_ICONS } from './LabIndex';
 import type { LabUsage } from './labQuery';
 
@@ -22,13 +22,16 @@ export function LabSimulation({ item, usages }: { item: LabItem; usages: LabUsag
   const subject = LAB_SUBJECTS.find((s) => s.slug === item.subject)!;
   const Icon = LAB_ICONS[item.kind] ?? FlaskConical;
   const others = LAB_ITEMS.filter((i) => i.subject === item.subject && i.kind !== item.kind);
+  const variants = labVariants(item, usages);
+  const [chosen, setChosen] = useState(0);
+  const variant = variants[Math.min(chosen, variants.length - 1)];
 
   return (
     <SubjectProvider slug={item.subject}>
       <main className="mx-auto w-full max-w-4xl px-4 pb-20 pt-8 sm:px-6 sm:pt-12">
         <nav aria-label="Breadcrumb" className="mb-6 flex flex-wrap items-center gap-2 text-sm text-ink-muted">
           <Link href="/lab" className={`rounded underline-offset-4 hover:text-ink hover:underline ${FOCUS}`}>
-            {t({ en: 'Lab', vi: 'Phòng thí nghiệm' })}
+            {t({ en: 'Simulations', vi: 'Mô phỏng' })}
           </Link>
           <span aria-hidden="true">/</span>
           <span>{t(subject.name)}</span>
@@ -46,7 +49,32 @@ export function LabSimulation({ item, usages }: { item: LabItem; usages: LabUsag
           </div>
         </header>
 
-        <Renderer config={defaultSimulationConfig(item.kind)} lang={lang} />
+        {variants.length > 1 && (
+          <div role="group" aria-label={t({ en: 'Choose a map', vi: 'Chọn bản đồ' })} className="mb-4 flex flex-wrap gap-2">
+            {variants.map((v, i) => (
+              <button
+                key={v.id}
+                type="button"
+                aria-pressed={v === variant}
+                onClick={() => setChosen(i)}
+                className={`inline-flex min-h-11 items-center rounded-full border px-4 text-sm font-semibold transition-colors ${FOCUS} ${
+                  v === variant ? 'border-ink bg-ink text-surface' : 'border-line bg-surface text-ink hover:bg-surface-sunken'
+                }`}
+              >
+                {t(v.name)}
+              </button>
+            ))}
+          </div>
+        )}
+        {variant ? (
+          <Renderer key={variant.id} config={variant.config as never} lang={lang} />
+        ) : (
+          <p className="rounded-lg border border-dashed border-line p-4 text-sm text-ink-muted">
+            {usages === null
+              ? t({ en: 'The maps live in the lessons and could not be loaded right now.', vi: 'Các bản đồ nằm trong bài học và chưa tải được lúc này.' })
+              : t({ en: 'No published lesson has a campaign map yet.', vi: 'Chưa có bài học đã xuất bản nào có bản đồ chiến dịch.' })}
+          </p>
+        )}
 
         <section aria-labelledby="lab-lessons" className="mt-10">
           <h2 id="lab-lessons" className="mb-3 text-lg font-bold text-ink">

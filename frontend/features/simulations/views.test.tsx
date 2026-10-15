@@ -40,6 +40,18 @@ describe('algorithm view', () => {
     expect(html).toContain('aria-live="polite"');
     expect(html).toContain('Bước 1/');
   });
+
+  it('counts comparisons, and swaps only when sorting', () => {
+    const { Renderer } = simulationModules['algorithm-sim']!;
+    const sort = renderToStaticMarkup(<Renderer config={defaultSimulationConfig('algorithm-sim')} lang="vi" />);
+    expect(sort).toContain('So sánh');
+    expect(sort).toContain('Đổi chỗ');
+    const search = renderToStaticMarkup(
+      <Renderer config={{ ...defaultSimulationConfig('algorithm-sim'), algorithm: 'linear-search' }} lang="vi" />,
+    );
+    expect(search).toContain('So sánh');
+    expect(search).not.toContain('Đổi chỗ');
+  });
 });
 
 describe('function graph view', () => {

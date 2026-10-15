@@ -9,6 +9,8 @@ export interface LabUsage {
   lesson: Bilingual;
   href: string;
   grade: number;
+  /** The block's stored settings, for simulations whose content lives in the lesson. */
+  config: unknown;
 }
 
 interface LessonRow {
@@ -39,6 +41,7 @@ export function usagesOf(rows: readonly LessonRow[]): LabUsage[] {
         lesson: { en: row.title_en, vi: row.title_vi },
         href: `/${subject.slug}/${row.slug}`,
         grade: row.grade,
+        config: block.config ?? {},
       });
     }
   }

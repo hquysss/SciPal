@@ -13,6 +13,7 @@ export const SUBJECT_TOKENS: Record<string, SubjectToken> = {
   physics:     { accentColor: '#7c3aed', icon: '⚛',   nameEn: 'Physics',     nameVi: 'Vật lí'   },
   chemistry:   { accentColor: '#0d9488', icon: '⚗',   nameEn: 'Chemistry',   nameVi: 'Hoá học'  },
   biology:     { accentColor: '#65a30d', icon: '❁',   nameEn: 'Biology',     nameVi: 'Sinh học' },
+  history:     { accentColor: '#92400e', icon: '⏳',   nameEn: 'History',     nameVi: 'Lịch sử'  },
 };
 
 export function getAccentColor(slug: string): string {
