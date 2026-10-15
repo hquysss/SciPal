@@ -199,7 +199,7 @@ export function PracticeSection({ load, state, onAnswer, onResult, onRetry, onQu
             lang={shownLang}
           />
         </div>
-        <nav aria-label={t({ en: 'Practice questions', vi: 'Các câu tự luyện' })} className="flex items-center justify-between gap-3">
+        <nav aria-label={t({ en: 'Practice questions', vi: 'Các câu tự luyện' })} className="sticky bottom-0 z-10 flex items-center justify-between gap-3 border-t border-line bg-surface py-3">
           <button type="button" disabled={activeIndex === 0} onClick={() => goTo(activeIndex - 1)} className={buttonVariants({ variant: 'outline' })}>
             {t({ en: 'Previous question', vi: 'Câu trước' })}
           </button>
@@ -292,7 +292,7 @@ function QuestionCard({ question, options, answer, result, writingFeedback, onWr
   const picked = (itemId: string) => answer?.items?.find((it) => it.id === itemId)?.selected;
 
   const checkRow = (
-    <div className="mt-4 flex flex-wrap items-center gap-3">
+    <div className="sticky bottom-[4.25rem] z-10 -mx-1 mt-4 flex flex-wrap items-center gap-3 bg-surface px-1 py-2">
       <button type="button" disabled={!response || checking} onClick={check} className={buttonVariants({ variant: result ? 'outline' : 'default' })}>
         {checking ? t({ en: 'Checking…', vi: 'Đang kiểm tra…' }) : result ? t({ en: 'Check again', vi: 'Kiểm tra lại' }) : t({ en: 'Check', vi: 'Kiểm tra' })}
       </button>
