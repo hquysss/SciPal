@@ -113,8 +113,8 @@ export function HistoryWorldView({ config, lang }: SimulationViewProps<'history-
     setGrowing((g) => new Map([...g, ...crossed]));
     window.setTimeout(() => setGrowing((g) => new Map([...g].filter(([iso, v]) => crossed.get(iso)?.key !== v.key))), 1200);
   };
-  const slider = useTimelineGlide({ last, reduced, stepMs: () => GLIDE_MS, onMove: spreadPassed });
-  const { pos, step, playing } = slider;
+  const slider = useTimelineGlide({ last, reduced, stepMs: () => GLIDE_MS, onMove: spreadPassed, narration: map.steps.map((s) => s.narration?.[lang]) });
+  const { pos, step, playing, narrated } = slider;
   const current = map.steps[step]!;
   const go = (i: number) => {
     setSelected(null);
@@ -308,7 +308,7 @@ export function HistoryWorldView({ config, lang }: SimulationViewProps<'history-
                     onClick={play}
                   >
                     {playing ? <Pause aria-hidden="true" className={ic} /> : <Play aria-hidden="true" className={ic} />}
-                    <span>{playing ? t({ en: 'Pause', vi: 'Dừng' }) : t({ en: 'Play', vi: 'Chạy' })}</span>
+                    <span>{narrated ? (playing ? t({ en: 'Pause narration', vi: 'Dừng thuyết minh' }) : t({ en: 'Narrate', vi: 'Thuyết minh' })) : (playing ? t({ en: 'Pause', vi: 'Dừng' }) : t({ en: 'Play', vi: 'Chạy' }))}</span>
                   </button>
                 </div>
 

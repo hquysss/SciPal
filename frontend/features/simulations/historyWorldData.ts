@@ -30,7 +30,7 @@ export type Territory = {
   home?: boolean;
 };
 
-export type WorldStep = { period: string; title: Bilingual; text: Bilingual };
+export type WorldStep = { period: string; title: Bilingual; text: Bilingual; narration?: Partial<Record<'en' | 'vi', string>> };
 
 export type WorldMapData = {
   view: 'world' | 'latin-america';
@@ -65,6 +65,7 @@ const EMPIRES: WorldMapData = {
         'Anh đã nắm Ấn Độ, Ca-na-đa, Ô-xtrây-li-a và đất Cáp ở Nam Phi; Pháp chiếm An-giê-ri; Nga mở rộng sang Xi-bi-ri và vùng Cáp-ca; Mỹ mở rộng lãnh thổ trên lục địa Bắc Mỹ. Phần lớn châu Phi vẫn chưa bị chia cắt.',
         'Britain already held India, Canada, Australia and the Cape in South Africa; France had taken Algeria; Russia had spread into Siberia and the Caucasus; the United States had grown across North America. Most of Africa was still undivided.',
       ),
+      narration: { vi: '/audio/history/empires-1914/01.vi.mp3' },
     },
     {
       period: '1870–1884',
@@ -73,6 +74,7 @@ const EMPIRES: WorldMapData = {
         'Chủ nghĩa tư bản chuyển sang giai đoạn đế quốc, các nước đẩy mạnh xâm lược. Anh chiếm Ai Cập (1882); Pháp chiếm Tuy-ni-di (1881) và đặt ách bảo hộ lên Việt Nam (1884); Đức bắt đầu có thuộc địa ở châu Phi; Nga tiến vào Trung Á.',
         'As capitalism became imperialism the powers pushed harder. Britain took Egypt (1882); France took Tunisia (1881) and made Viet Nam a protectorate (1884); Germany won its first colonies in Africa; Russia advanced into Central Asia.',
       ),
+      narration: { vi: '/audio/history/empires-1914/02.vi.mp3' },
     },
     {
       period: '1885–1899',
@@ -81,6 +83,7 @@ const EMPIRES: WorldMapData = {
         'Sau Hội nghị Béc-lin (1884–1885), các nước châu Âu chia nhau châu Phi: Anh chiếm một dải từ Ai Cập xuống Nam Phi, Pháp chiếm phần lớn Tây Phi và Ma-đa-ga-xca, Đức chiếm Đông Phi. Ở châu Á, Pháp lập Liên bang Đông Dương, Anh chiếm Mi-an-ma; năm 1898 Mỹ giành Phi-líp-pin từ tay Tây Ban Nha.',
         'After the Berlin Conference (1884–1885) the European powers divided Africa: Britain took a belt from Egypt down to South Africa, France most of West Africa and Madagascar, Germany East Africa. In Asia France formed French Indochina and Britain took Myanmar; in 1898 the United States won the Philippines from Spain.',
       ),
+      narration: { vi: '/audio/history/empires-1914/03.vi.mp3' },
     },
     {
       period: '1900–1914',
@@ -89,6 +92,7 @@ const EMPIRES: WorldMapData = {
         'Đầu thế kỉ XX, Pháp chiếm nốt Tây Phi và Ma-rốc (1912). Thuộc địa của Anh rộng tới 33 triệu km² với 400 triệu người, gấp 12 lần thuộc địa của Đức và 3 lần thuộc địa của Pháp. Cuộc tranh giành chia lại thế giới dẫn tới Chiến tranh thế giới thứ nhất.',
         'In the early 1900s France took the rest of West Africa and Morocco (1912). Britain’s colonies covered 33 million km² with 400 million people, 12 times Germany’s and 3 times France’s. The fight to redivide the world led to the First World War.',
       ),
+      narration: { vi: '/audio/history/empires-1914/04.vi.mp3' },
     },
   ],
   territories: [
@@ -148,11 +152,13 @@ const LATIN_AMERICA: WorldMapData = {
         'Gần như toàn bộ khu vực Mỹ La-tinh là thuộc địa: Tây Ban Nha nắm phần lớn lục địa, Bồ Đào Nha nắm Bra-xin; Anh, Pháp, Hà Lan giữ một số đảo và vùng ven biển Ca-ri-bê.',
         'Almost all of Latin America was colonial: Spain held most of the continent and Portugal held Brazil; Britain, France and the Netherlands held islands and coasts around the Caribbean.',
       ),
+      narration: { vi: '/audio/history/latin-america-independence/01.vi.mp3' },
     },
     {
       period: '1804',
       title: t('Ha-i-ti mở đầu', 'Haiti leads the way'),
       text: t('Năm 1804, Ha-i-ti giành độc lập từ tay Pháp, trở thành nước đầu tiên ở Mỹ La-tinh thoát khỏi ách thuộc địa.', 'In 1804 Haiti won independence from France, the first country in Latin America to throw off colonial rule.'),
+      narration: { vi: '/audio/history/latin-america-independence/02.vi.mp3' },
     },
     {
       period: '1810–1819',
@@ -161,6 +167,7 @@ const LATIN_AMERICA: WorldMapData = {
         'Nửa đầu thế kỉ XIX, phong trào đấu tranh giành độc lập bùng nổ ở hàng loạt thuộc địa của Tây Ban Nha: Vê-nê-xu-ê-la, Pa-ra-goay (1811), Ác-hen-ti-na (1816), Chi-lê (1818), Cô-lôm-bi-a (1819).',
         'In the early 19th century independence struggles broke out across Spain’s colonies: Venezuela and Paraguay (1811), Argentina (1816), Chile (1818), Colombia (1819).',
       ),
+      narration: { vi: '/audio/history/latin-america-independence/03.vi.mp3' },
     },
     {
       period: '1820–1825',
@@ -169,6 +176,7 @@ const LATIN_AMERICA: WorldMapData = {
         'Mê-hi-cô, các nước Trung Mỹ và Pê-ru giành độc lập năm 1821, Bra-xin tách khỏi Bồ Đào Nha năm 1822, Bô-li-vi-a năm 1825. Các quốc gia tư sản lần lượt ra đời.',
         'Mexico, the Central American countries and Peru won independence in 1821, Brazil broke from Portugal in 1822 and Bolivia followed in 1825. One bourgeois state after another was born.',
       ),
+      narration: { vi: '/audio/history/latin-america-independence/04.vi.mp3' },
     },
     {
       period: '1826–1844',
@@ -177,6 +185,7 @@ const LATIN_AMERICA: WorldMapData = {
         'U-ru-goay (1828), Ê-cu-a-đo (1830) và Đô-mi-ni-ca-na (1844) giành độc lập. Hệ thống thuộc địa của Tây Ban Nha và Bồ Đào Nha ở lục địa Mỹ La-tinh sụp đổ; chỉ còn một số thuộc địa nhỏ của Anh, Pháp, Hà Lan và các đảo Cu-ba, Pu-éc-tô Ri-cô của Tây Ban Nha.',
         'Uruguay (1828), Ecuador (1830) and the Dominican Republic (1844) won independence. The Spanish and Portuguese colonial systems on the mainland had fallen; only small British, French and Dutch colonies and Spain’s Cuba and Puerto Rico remained.',
       ),
+      narration: { vi: '/audio/history/latin-america-independence/05.vi.mp3' },
     },
   ],
   territories: [

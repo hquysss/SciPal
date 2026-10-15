@@ -15,6 +15,7 @@ export type HistoryMapRegion = keyof typeof HISTORY_MAP_REGIONS;
 const LonLat = z.tuple([z.number().finite().min(-180).max(180), z.number().finite().min(-90).max(90)]);
 const Text = (max: number) => z.object({ en: z.string().max(max), vi: z.string().max(max) });
 const Side = z.enum(['ours', 'enemy']);
+const NarrationPath = z.string().regex(/^\/audio\/history\/[a-z0-9][a-z0-9-]*(?:\/[a-z0-9][a-z0-9._-]*)+\.mp3$/);
 
 const Place = z.object({
   name: Text(80),
@@ -33,6 +34,7 @@ const Step = z.object({
   period: z.string().min(1).max(20),
   title: Text(120),
   text: Text(800),
+  narration: z.object({ en: NarrationPath.optional(), vi: NarrationPath.optional() }).optional(),
   /** Areas held from this step on (they stay on later steps); clipped to land. */
   areas: z.array(z.object({ side: Side.default('ours'), points: z.array(LonLat).min(3).max(64) })).max(6).default([]),
   /** Marches of this step, drawn in order of travel; dashed for a retreat. */
@@ -79,6 +81,7 @@ const LAM_SON = {
         'Đầu năm 1418, Lê Lợi dựng cờ khởi nghĩa ở Lam Sơn (Thanh Hoá), tự xưng Bình Định Vương. Căn cứ nhiều lần bị quân Minh bao vây, nghĩa quân gặp nhiều khó khăn, phải ba lần rút lên vùng núi Chí Linh.',
         'In early 1418 Le Loi raised the uprising at Lam Son (Thanh Hoa) and took the title Binh Dinh Vuong. His base was surrounded by the Ming many times and the army had to withdraw to the Chi Linh mountains three times.',
       ),
+      narration: { vi: '/audio/history/lam-son-uprising-1418-1427/01.vi.mp3' },
       areas: [{ side: 'ours', points: [[104.5, 20.55], [105.2, 20.7], [105.62, 20.3], [105.72, 19.9], [105.3, 19.55], [104.6, 19.7], [104.3, 20.1]] as P[] }],
       routes: [{ side: 'ours', dashed: true, points: [[105.4, 19.92], [105.3, 20.02], [105.2, 20.12]] as P[] }],
     },
@@ -89,6 +92,7 @@ const LAM_SON = {
         'Năm 1423, Lê Lợi tạm hoà hoãn với quân Minh để củng cố lực lượng, tìm phương hướng mới.',
         'In 1423 Le Loi made a truce with the Ming to rebuild his forces and look for a new direction.',
       ),
+      narration: { vi: '/audio/history/lam-son-uprising-1418-1427/02.vi.mp3' },
       areas: [],
       routes: [],
     },
@@ -99,6 +103,7 @@ const LAM_SON = {
         'Theo kế của Nguyễn Chích, nghĩa quân chuyển hướng vào Nghệ An để mở rộng địa bàn. Cuối năm 1424, nghĩa quân giải phóng Nghệ An, rồi giải phóng vùng rộng lớn từ Thanh Hoá đến đèo Hải Vân. Quân Minh ở Nghệ An phải rút chạy về Đông Quan.',
         'Following Nguyen Chich’s plan, the army turned south into Nghe An to widen its ground. Late in 1424 it freed Nghe An, then the whole stretch from Thanh Hoa to the Hai Van Pass. The Ming in Nghe An fled back to Dong Quan.',
       ),
+      narration: { vi: '/audio/history/lam-son-uprising-1418-1427/03.vi.mp3' },
       areas: [{
         side: 'ours',
         points: [[104.3, 19.6], [105.3, 19.55], [105.95, 19.75], [106.2, 19.0], [106.3, 18.3], [106.9, 17.6], [107.4, 16.95], [107.9, 16.6], [108.3, 16.2], [107.9, 15.95], [107.3, 16.3], [106.7, 16.9], [106.0, 17.6], [105.5, 18.2], [104.8, 18.8], [104.2, 19.2]] as P[],
@@ -119,6 +124,7 @@ const LAM_SON = {
         'Tháng 9-1426, nghĩa quân chia làm ba đạo tiến ra Bắc. Tháng 11-1426, nghĩa quân thắng lớn ở Tốt Động – Chúc Động, siết chặt vây hãm thành Đông Quan. Tháng 10-1427, viện binh quân Minh bị chặn đánh ở Chi Lăng, Xương Giang. Ngày 10-12-1427, Hội thề Đông Quan chấm dứt chiến tranh; tháng 1-1428, quân Minh rút hết về nước.',
         'In September 1426 the army marched north in three columns. In November 1426 it won a great victory at Tot Dong – Chuc Dong and tightened the siege of Dong Quan. In October 1427 the Ming relief armies were cut down at Chi Lang and Xuong Giang. On 10 December 1427 the Dong Quan meeting ended the war, and by January 1428 the last Ming troops had gone home.',
       ),
+      narration: { vi: '/audio/history/lam-son-uprising-1418-1427/04.vi.mp3' },
       areas: [{
         side: 'ours',
         points: [[103.0, 22.5], [104.5, 22.9], [105.5, 23.3], [106.7, 22.9], [107.6, 21.6], [106.9, 20.9], [106.5, 20.2], [105.8, 20.0], [105.0, 20.6], [104.0, 21.3], [103.0, 21.8]] as P[],

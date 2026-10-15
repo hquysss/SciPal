@@ -237,13 +237,14 @@ export function HistoryMapView({ config, lang }: SimulationViewProps<'history-ma
   const slider = useTimelineGlide({
     last,
     reduced,
+    narration: config.steps.map((s) => s.narration?.[lang]),
     stepMs: (target) => Math.max(2500, (config.steps[target]?.routes.length ?? 0) * 1600 + 1000),
     onMove: (_, next) => {
       posRef.current = next;
       camera.invalidate.current();
     },
   });
-  const { pos, step, playing } = slider;
+  const { pos, step, playing, narrated } = slider;
   const current = config.steps[step]!;
   const frac = stepFraction(pos, step);
   const years = yearsOf(current.period);
@@ -390,7 +391,7 @@ export function HistoryMapView({ config, lang }: SimulationViewProps<'history-ma
                     }}
                   >
                     {playing ? <Pause aria-hidden="true" className={ic} /> : <Play aria-hidden="true" className={ic} />}
-                    <span>{playing ? t({ en: 'Pause', vi: 'Dừng' }) : t({ en: 'Play', vi: 'Chạy' })}</span>
+                    <span>{narrated ? (playing ? t({ en: 'Pause narration', vi: 'Dừng thuyết minh' }) : t({ en: 'Narrate', vi: 'Thuyết minh' })) : (playing ? t({ en: 'Pause', vi: 'Dừng' }) : t({ en: 'Play', vi: 'Chạy' }))}</span>
                   </button>
                 </div>
 
