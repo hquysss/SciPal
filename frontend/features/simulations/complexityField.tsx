@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import type { ComplexityPattern } from '@scipal/types';
 import { usePalette } from './scene3d';
+import { pick, type Lang } from './types';
 import styles from './complexity.module.css';
 
 const HEIGHT = 260;
@@ -38,6 +39,38 @@ function layout(pattern: ComplexityPattern, n: number, total: number, width: num
     case 'halving':
     case 'branching':
       return null;
+  }
+}
+
+/** Where the run is, in words under the field: "Vòng ngoài: lần 2/4 · vòng trong: lần 3/4". Null before the first operation. */
+export function fieldCaption(pattern: ComplexityPattern, n: number, ops: readonly number[], shown: number, lang: Lang): string | null {
+  if (shown === 0) return null;
+  const t = pick(lang);
+  const op = ops[shown - 1]!;
+  const num = (v: number) => v.toLocaleString(lang === 'vi' ? 'vi-VN' : 'en-US');
+  switch (pattern) {
+    case 'direct':
+      return t({ en: `Takes item ${op + 1} directly`, vi: `Lấy thẳng phần tử thứ ${op + 1}` });
+    case 'halving':
+      return t({ en: `${op + 1} items left`, vi: `Còn lại: ${op + 1} phần tử` });
+    case 'single-loop':
+      return t({ en: `Looking at item ${op + 1} of ${n}`, vi: `Đang xét phần tử thứ ${op + 1} / ${n}` });
+    case 'divide-conquer': {
+      const level = Math.floor((shown - 1) / n) + 1;
+      const levels = ops.length / n;
+      return t({ en: `Level ${level} of ${levels} · item ${op + 1}`, vi: `Tầng ${level} / ${levels} · phần tử thứ ${op + 1}` });
+    }
+    case 'nested-loop': {
+      const row = Math.floor(op / n) + 1;
+      const col = (op % n) + 1;
+      return t({ en: `Outer loop: pass ${row} of ${n} · inner loop: pass ${col} of ${n}`, vi: `Vòng ngoài: lần ${row}/${n} · vòng trong: lần ${col}/${n}` });
+    }
+    case 'branching': {
+      const depth = Math.floor(Math.log2(op + 1));
+      return t({ en: `Depth ${depth} of ${n} · call ${num(shown)}`, vi: `Độ sâu ${depth} / ${n} · lời gọi thứ ${num(shown)}` });
+    }
+    case 'permutations':
+      return t({ en: `Arrangement ${num(shown)} of ${num(ops.length)}`, vi: `Hoán vị thứ ${num(shown)} / ${num(ops.length)}` });
   }
 }
 

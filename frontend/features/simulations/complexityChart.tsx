@@ -60,6 +60,9 @@ export function ComplexityChart({ pattern, n, names, lang }: { pattern: Complexi
   const ordered = [...series.filter((s) => s.p !== pattern), series.find((s) => s.p === pattern)!];
   const here = count(pattern, n);
   const clip = useId();
+  // Where the chosen line leaves through the top, if it does.
+  const exit = Array.from({ length: N_MAX }, (_, i) => i + 1).find((m) => Math.log10(count(pattern, m)) > DECADES);
+  const exitX = exit === undefined ? 0 : x(exit);
 
   return (
     <figure className="flex flex-col gap-2">
@@ -80,7 +83,8 @@ export function ComplexityChart({ pattern, n, names, lang }: { pattern: Complexi
         </defs>
         {/* Above a million operations a computer starts to make you wait. */}
         <rect x={X0} y={Y1} width={X1 - X0} height={y(1e6) - Y1} className="fill-[var(--line)] opacity-40" />
-        <text x={X0 + 8} y={Y1 + 22} className="fill-current" fontSize={20}>
+        {/* Along the band's floor, so the top edge stays free for the line that leaves through it. */}
+        <text x={X0 + 8} y={y(1e6) - 8} className="fill-current" fontSize={20}>
           {t({ en: 'Over a million operations', vi: 'Trên 1 triệu phép toán' })}
         </text>
         {[0, 3, 6, 9, 12].map((e) => (
@@ -119,6 +123,12 @@ export function ComplexityChart({ pattern, n, names, lang }: { pattern: Complexi
             {BIG_O[s.p]}
           </text>
         ))}
+        {exit !== undefined && (
+          // Under the line's own end label, which already sits where it leaves.
+          <text x={exitX} y={Y1 + 44} fontSize={18} className="fill-[var(--accent,var(--action))] font-semibold">
+            ↑ {t({ en: 'off the chart', vi: 'vượt khỏi biểu đồ' })}
+          </text>
+        )}
         {Math.log10(Math.max(1, here)) <= DECADES && (
           <circle cx={x(n)} cy={y(here)} r={6} className={`fill-[var(--accent,var(--action))] stroke-[var(--surface)] ${styles.marker}`} strokeWidth={2} />
         )}

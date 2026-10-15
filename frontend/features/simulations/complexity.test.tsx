@@ -1,10 +1,12 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { cleanup, fireEvent, render, screen, within } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, within } from '@testing-library/react';
 import { complexityModule, formatCount, ratioLabel } from './complexity';
 import { ComplexityChart } from './complexityChart';
-import { drawField } from './complexityField';
-import { operations } from './engines/complexity';
+import { drawField, fieldCaption } from './complexityField';
+import { humanDuration, timeAnchor, TimeCard } from './complexityTime';
+import { count, operations, permutationAt } from './engines/complexity';
+import { Odometer } from './odometer';
 
 const View = complexityModule.Renderer;
 
@@ -79,6 +81,37 @@ describe('complexity playback', () => {
     expect(counter()).toBe('0 / 8');
   });
 
+  it('plays through to the end', () => {
+    const frames: FrameRequestCallback[] = [];
+    vi.spyOn(window, 'requestAnimationFrame').mockImplementation((cb) => frames.push(cb));
+    vi.spyOn(window, 'cancelAnimationFrame').mockImplementation(() => {});
+    render(<View config={{ pattern: 'single-loop', n: 8 }} lang="vi" />);
+    fireEvent.click(screen.getByRole('button', { name: 'Chạy' }));
+    act(() => {
+      const late = performance.now() + 60_000;
+      frames.splice(0).forEach((cb) => cb(late));
+    });
+    expect(counter()).toBe('8 / 8');
+    expect(screen.getByText('Xong: 8 phép toán.')).toBeTruthy();
+  });
+
+  it('copes with n = 1, where divide and conquer has nothing to do', () => {
+    render(<View config={{ pattern: 'divide-conquer', n: 1 }} lang="vi" />);
+    expect(counter()).toBe('0 / 0');
+    cleanup();
+    render(<View config={{ pattern: 'halving', n: 1 }} lang="vi" />);
+    expect(counter()).toBe('0 / 1');
+  });
+
+  it('shuffles numbered tiles through each arrangement', () => {
+    render(<View config={{ pattern: 'permutations', n: 3 }} lang="vi" />);
+    fireEvent.click(screen.getByRole('button', { name: 'Bước tiếp' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Bước tiếp' }));
+    permutationAt(3, 1).forEach((value, slot) => {
+      expect(document.querySelector<HTMLElement>(`[data-tile="${value}"]`)!.style.transform).toBe(`translateX(${slot * 100}%)`);
+    });
+  });
+
   it('a pattern change while playing stops and starts over', () => {
     render(<View config={{ pattern: 'single-loop', n: 8 }} lang="vi" />);
     fireEvent.click(screen.getByRole('button', { name: 'Bước tiếp' }));
@@ -94,6 +127,15 @@ describe('complexity chart', () => {
     const names = Object.fromEntries(['direct', 'halving', 'single-loop', 'divide-conquer', 'nested-loop', 'branching', 'permutations'].map((p) => [p, { en: p, vi: p }]));
     const { container } = render(<ComplexityChart pattern="divide-conquer" n={1} names={names as never} lang="vi" />);
     expect(container.querySelector('circle')).toBeTruthy();
+  });
+
+  it('marks where a line leaves the top of the chart', () => {
+    const names = Object.fromEntries(['direct', 'halving', 'single-loop', 'divide-conquer', 'nested-loop', 'branching', 'permutations'].map((p) => [p, { en: p, vi: p }]));
+    const off = render(<ComplexityChart pattern="permutations" n={8} names={names as never} lang="vi" />);
+    expect(off.container.textContent).toContain('vượt khỏi biểu đồ');
+    cleanup();
+    const inside = render(<ComplexityChart pattern="single-loop" n={8} names={names as never} lang="vi" />);
+    expect(inside.container.textContent).not.toContain('vượt khỏi biểu đồ');
   });
 
   it('keeps its text readable on a phone-width screen', () => {
@@ -130,6 +172,45 @@ describe('the operation field', () => {
       expect(() => drawField(ctx, 600, pattern, 6, ops, ops.length, pal)).not.toThrow();
       expect(ctx.calls.fill).toBeLessThanOrEqual(pattern === 'halving' ? ops.length + 2 : 4);
     }
+  });
+});
+
+describe('how long a computer would take', () => {
+  it('says each duration in the unit that reads best', () => {
+    expect(humanDuration(count('permutations', 20) / 1e9, 'vi')).toBe('77 năm');
+    expect(humanDuration(count('permutations', 20) / 1e9, 'en')).toBe('77 years');
+    expect(humanDuration(1e-5, 'vi')).toBe('10 micro giây');
+    expect(humanDuration(7e-9, 'vi')).toBe('7 nano giây');
+    expect(humanDuration(count('branching', 50) / 1e9, 'vi')).toBe('26,1 ngày');
+  });
+
+  it('compares it with something a student knows', () => {
+    expect(timeAnchor(0.05)).toBe('blink');
+    expect(timeAnchor(5)).toBeNull();
+    expect(timeAnchor(count('permutations', 20) / 1e9)).toBe('lifetime');
+    expect(timeAnchor(count('permutations', 100) / 1e9)).toBe('universe');
+  });
+
+  it('lists n = 10 to 100 for the chosen pattern', () => {
+    const { container } = render(<TimeCard pattern="permutations" lang="vi" />);
+    for (const m of [10, 20, 50, 100]) expect(container.textContent).toContain(`n = ${m}`);
+    expect(container.textContent).toContain('lâu hơn tuổi vũ trụ');
+  });
+});
+
+describe('the rolling counter and captions', () => {
+  it('rolls each digit column to its digit', () => {
+    const { container } = render(<Odometer value={40320} lang="vi" reduced={false} />);
+    const columns = container.querySelectorAll<HTMLElement>('[data-digit]');
+    expect(columns).toHaveLength(5);
+    expect(columns[0]!.style.transform).toBe('translateY(-4em)');
+  });
+
+  it('says where in the pattern the run is', () => {
+    expect(fieldCaption('nested-loop', 4, operations('nested-loop', 4), 7, 'vi')).toBe('Vòng ngoài: lần 2/4 · vòng trong: lần 3/4');
+    expect(fieldCaption('halving', 9, operations('halving', 9), 2, 'vi')).toBe('Còn lại: 5 phần tử');
+    expect(fieldCaption('branching', 3, operations('branching', 3), 3, 'vi')).toBe('Độ sâu 2 / 3 · lời gọi thứ 3');
+    expect(fieldCaption('single-loop', 8, operations('single-loop', 8), 0, 'vi')).toBeNull();
   });
 });
 

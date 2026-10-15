@@ -6,7 +6,9 @@ import { COMPLEXITY_MAX_N, COMPLEXITY_PATTERNS, type ComplexityPattern } from '@
 import { BIG_O, clampN, operations, permutationAt } from './engines/complexity';
 import { BUTTON, NumberField, PANEL, SelectField, Slider } from './controls';
 import { ComplexityChart, formatCount } from './complexityChart';
-import { ComplexityField } from './complexityField';
+import { ComplexityField, fieldCaption } from './complexityField';
+import { TimeCard } from './complexityTime';
+import { Odometer } from './odometer';
 import { useReducedMotion } from './animation';
 import { pick, type SimulationEditorProps, type SimulationModule, type SimulationViewProps } from './types';
 import styles from './complexity.module.css';
@@ -72,6 +74,28 @@ export function ratioLabel(total: number, n: number, lang: Lang): string | null 
   return lang === 'vi' ? `×${times} lần so với O(n)` : `×${times} the work of O(n)`;
 }
 
+/** The numbers 1…n as tiles that move into each arrangement as it is tried. */
+function PermutationTiles({ arrangement, reduced }: { arrangement: number[]; reduced: boolean }) {
+  const n = arrangement.length;
+  const slotOf = new Map(arrangement.map((value, slot) => [value, slot]));
+  return (
+    <div aria-hidden="true" className="relative h-10">
+      {Array.from({ length: n }, (_, i) => i + 1).map((value) => (
+        <span
+          key={value}
+          data-tile={value}
+          className={`absolute inset-y-0 left-0 p-0.5 ${reduced ? '' : styles.tile}`}
+          style={{ width: `${100 / n}%`, transform: `translateX(${slotOf.get(value)! * 100}%)` }}
+        >
+          <span className="flex h-full items-center justify-center rounded-md border border-[var(--accent,var(--action))] bg-[color-mix(in_oklch,var(--accent,var(--action))_14%,transparent)] text-sm font-bold tabular-nums text-ink">
+            {value}
+          </span>
+        </span>
+      ))}
+    </div>
+  );
+}
+
 function ComplexityView({ config, lang }: SimulationViewProps<'complexity-sim'>) {
   const t = pick(lang);
   const reduced = useReducedMotion();
@@ -130,7 +154,8 @@ function ComplexityView({ config, lang }: SimulationViewProps<'complexity-sim'>)
   };
   const milestone = shown >= 10_000 ? 2 : shown >= 1_000 ? 1 : 0;
   const ratio = ratioLabel(total, n, lang);
-  const arrangement = pattern === 'permutations' && shown > 0 ? permutationAt(n, shown - 1).join(' ') : null;
+  const arrangement = pattern === 'permutations' ? (shown > 0 ? permutationAt(n, shown - 1) : Array.from({ length: n }, (_, i) => i + 1)) : null;
+  const caption = fieldCaption(pattern, n, ops, shown, lang);
 
   return (
     <div className={PANEL}>
@@ -163,14 +188,34 @@ function ComplexityView({ config, lang }: SimulationViewProps<'complexity-sim'>)
         </div>
         <div className="text-right">
           <p className="text-sm text-ink-muted">{t({ en: 'Operations', vi: 'Phép toán' })}</p>
-          <p className="text-3xl font-bold tabular-nums text-ink">
-            <span key={milestone} data-testid="complexity-counter" className={`inline-block ${milestone ? styles.milestone : ''}`}>
-              {formatCount(shown, lang)} / {formatCount(total, lang)}
+          <p className="flex items-baseline justify-end gap-1.5 font-bold tabular-nums text-ink">
+            <span key={milestone} className={`relative inline-block text-3xl ${milestone ? styles.milestone : ''}`}>
+              <Odometer value={shown} lang={lang} reduced={reduced} />
+              {milestone > 0 && !reduced && <span aria-hidden="true" className={styles.shock} />}
+            </span>
+            <span aria-hidden="true" className="text-base text-ink-muted">
+              / {total.toLocaleString(lang === 'vi' ? 'vi-VN' : 'en-US')}
             </span>
           </p>
+          {total >= 1000 && (
+            <p aria-hidden="true" className="text-sm tabular-nums text-ink-muted">
+              ≈ {formatCount(shown, lang)} {t({ en: 'operations', vi: 'phép toán' })}
+            </p>
+          )}
+          <span data-testid="complexity-counter" className="sr-only">
+            {formatCount(shown, lang)} / {formatCount(total, lang)}
+          </span>
         </div>
       </div>
 
+      {arrangement && (
+        <>
+          <PermutationTiles arrangement={arrangement} reduced={reduced} />
+          <p className="sr-only">
+            {t({ en: 'Arrangement now:', vi: 'Cách sắp xếp đang thử:' })} {arrangement.join(' ')}
+          </p>
+        </>
+      )}
       <ComplexityField
         pattern={pattern}
         n={n}
@@ -181,11 +226,7 @@ function ComplexityView({ config, lang }: SimulationViewProps<'complexity-sim'>)
           vi: `${NAMES[pattern].vi} với ${n} phần tử: đã làm ${shown} trên ${total} phép toán.`,
         })}
       />
-      {arrangement && (
-        <p className="text-sm text-ink-muted">
-          {t({ en: 'Arrangement now:', vi: 'Cách sắp xếp đang thử:' })} <span className="font-semibold tabular-nums text-ink">{arrangement}</span>
-        </p>
-      )}
+      <p className="min-h-5 text-sm tabular-nums text-ink-muted">{caption}</p>
 
       <div className="flex flex-col gap-2" aria-hidden="true">
         {[
@@ -234,6 +275,7 @@ function ComplexityView({ config, lang }: SimulationViewProps<'complexity-sim'>)
         </span>
       </div>
 
+      <TimeCard pattern={pattern} lang={lang} />
       <ComplexityChart pattern={pattern} n={n} names={NAMES} lang={lang} />
     </div>
   );

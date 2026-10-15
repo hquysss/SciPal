@@ -27,10 +27,61 @@
       cx 300ms ease-out,
       cy 300ms ease-out;
   }
+
+  /* Counter digits roll to their value; a fast count blurs the low ones. */
+  .roll {
+    transition: transform 140ms cubic-bezier(0.2, 0, 0, 1);
+  }
+
+  /* Permutation tiles slide into each arrangement. */
+  .tile {
+    transition: transform 220ms cubic-bezier(0.65, 0, 0.35, 1);
+  }
+
+  /* The time cards flip in one after another when the pattern changes. */
+  .flip {
+    animation: flip 360ms cubic-bezier(0.34, 1.56, 0.64, 1) both;
+  }
+
+  /* Passing 1 000 and 10 000 sends a ring out from the counter. */
+  .shock {
+    animation: shock 640ms cubic-bezier(0.2, 0, 0, 1);
+  }
 }
 
 .grow {
   transform-origin: left center;
+}
+
+.shock {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 2.2em;
+  height: 2.2em;
+  border: 2px solid var(--accent, var(--action));
+  border-radius: 9999px;
+  translate: -50% -50%;
+  opacity: 0;
+  pointer-events: none;
+}
+
+@keyframes flip {
+  from {
+    opacity: 0;
+    transform: perspective(480px) rotateX(-70deg);
+  }
+}
+
+@keyframes shock {
+  from {
+    opacity: 0.7;
+    transform: scale(0.4);
+  }
+  to {
+    opacity: 0;
+    transform: scale(2.6);
+  }
 }
 
 @keyframes arrive {
