@@ -9,3 +9,8 @@ Spec: `docs/superpowers/specs/2026-10-15-history-map-continuous-design.md`. Đã
 5. [x] `historyMap.tsx`: thanh trượt `step="any"` dùng hook; tiêu đề hiện năm chạy; giảm chuyển động thì nhảy nấc.
 6. [x] Test view; typecheck; chạy cả bộ test `features/simulations`; xem Lam Sơn và Tây Sơn trên trình duyệt (3D và phẳng).
 7. [x] `historyTimeline.tsx`: đoạn nối là thanh `scaleX` có transition, độ trễ theo thứ tự khi tiến, rút ngay khi lùi; chấm sáng sau độ trễ của đoạn tới nó; nút Chạy/Dừng (4 giây mỗi mốc); ô nội dung trượt lên. Test bằng đồng hồ giả.
+
+## Hiệu ứng tiến quân (chờ duyệt)
+8. [ ] `FlatMap`: cờ đầu mũi (`<g>` tại `head`, quầng sáng CSS), đường dòng chảy (`stroke-dasharray` + `@keyframes` dashoffset), trận đánh `data-burst` khi vừa được đi qua. CSS trong `historyMap.module.css`, tắt khi giảm chuyển động.
+9. [ ] `historyMapScene`: nhãn HTML cờ theo `heads`; dải dòng chảy có texture vạch trượt; nhãn trận đánh bùng sáng khi `frac` vượt `at`.
+10. [ ] Test FlatMap (cờ, dòng chảy, burst, giảm chuyển động); typecheck; xem trên trình duyệt.

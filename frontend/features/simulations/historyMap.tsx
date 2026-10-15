@@ -1,6 +1,6 @@
 'use client';
 
-import { Component, Suspense, lazy, useEffect, useId, useRef, useState, type ReactNode } from 'react';
+import { Component, Suspense, lazy, useCallback, useEffect, useId, useRef, useState, type ReactNode } from 'react';
 import { JsonConfigEditor, issuePath, type ConfigIssue } from './jsonConfigEditor';
 import { ChevronDown, ChevronLeft, ChevronRight, ChevronUp, LocateFixed, Map as MapIcon, Maximize2, Minimize2, Minus, Mountain, Pause, Play, Plus, RotateCcw, X } from 'lucide-react';
 import { HISTORY_MAP_REGIONS, HistoryMapConfig, type HistoryMapRegion } from '@scipal/types';
@@ -212,7 +212,7 @@ export function HistoryMapView({ config, lang }: SimulationViewProps<'history-ma
     .filter((p) => p.type !== 'area')
     .map((p) => t(p.name))
     .join(', ')}.`;
-  const select = (i: number) => setSelected(i);
+  const select = useCallback((i: number) => setSelected(i), []);
   const show3d = mounted && !flat;
   const flatMap = (bare: boolean) => <FlatMap config={config} step={step} frac={frac} lang={lang} description={description} onSelect={select} className="h-full w-full" bare={bare} />;
   const notes = placesAt(config, step).filter((p) => p.note && (p.note.vi || p.note.en));

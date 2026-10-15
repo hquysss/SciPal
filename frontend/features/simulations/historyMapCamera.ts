@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useRef, type KeyboardEvent, type PointerEvent } from 'react';
+import { useCallback, useEffect, useMemo, useRef, type KeyboardEvent, type PointerEvent } from 'react';
 
 // The reader's camera over a history map: turn, tilt, zoom and slide, all kept inside limits so the
 // map can never be lost (no flipping under the ground, no flying off the region). The scene eases
@@ -144,5 +144,7 @@ export function useMapCamera(onManualPan: () => void) {
     },
   };
 
-  return { host, view, invalidate, worldPerPixel, panLimit, handlers, zoom, reset };
+  // One object for the life of the map, so a memoised scene does not redraw on every slider move.
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- the handlers only touch refs and stable callbacks
+  return useMemo(() => ({ host, view, invalidate, worldPerPixel, panLimit, handlers, zoom, reset }), []);
 }

@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useId, useMemo, useRef, useState } from 'react';
+import { memo, useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
 import { ChevronDown, ChevronLeft, ChevronRight, ChevronUp, Maximize2, Minimize2, Pause, Play, X } from 'lucide-react';
 import { HISTORY_WORLD_MAPS, type HistoryWorldMap } from '@scipal/types';
 import { FIELD, PANEL } from './controls';
@@ -36,6 +36,37 @@ const fillOf = (territory: Territory | undefined, state: 'none' | 'colony' | 'fr
   if (state === 'free') return 'var(--accent, var(--action))';
   return colors[territory.power] ?? 'var(--ink-muted)';
 };
+
+/**
+ * One country. Memoised: while the slider moves only the countries whose colour changes redraw,
+ * not all 176 outlines every frame. A country taken just now keeps its old colour underneath while
+ * the new one spreads over it from `grow.from`.
+ */
+const Country = memo(function Country({ id, d, c, uid, territory, state, fill, under, grow, onPick }: { id: string; d: string; c: [number, number]; uid: string; territory: boolean; state?: string; fill: string; under?: string; grow?: Growth; onPick?: (iso: string) => void }) {
+  const path = (
+    <path
+      d={d}
+      data-iso={id}
+      data-state={state}
+      data-growing={grow ? 'true' : undefined}
+      className={`${styles.land} ${territory ? styles.territory : ''}`}
+      style={{ fill: grow ? (under ?? fill) : fill }}
+      onClick={onPick ? () => onPick(id) : undefined}
+    />
+  );
+  if (!grow) return path;
+  const clip = `${uid}-${id}-${Math.round(grow.key)}`;
+  const r = Math.hypot(grow.from[0] - c[0], grow.from[1] - c[1]) + 160;
+  return (
+    <g>
+      {path}
+      <clipPath id={clip}>
+        <circle cx={grow.from[0]} cy={grow.from[1]} r={r} className={styles.grow} style={{ transformOrigin: `${grow.from[0]}px ${grow.from[1]}px` }} />
+      </clipPath>
+      <path d={d} clipPath={`url(#${clip})`} className={`${styles.land} ${styles.ink}`} style={{ fill }} />
+    </g>
+  );
+});
 
 export function HistoryWorldView({ config, lang }: SimulationViewProps<'history-world'>) {
   const t = pick(lang);
@@ -104,6 +135,50 @@ export function HistoryWorldView({ config, lang }: SimulationViewProps<'history-
   const hasFree = map.territories.some((tr) => tr.free);
   const picked = selected ? byIso.get(selected) : undefined;
 
+  const toggleCountry = useCallback((iso: string) => setSelected((s) => (s === iso ? null : iso)), []);
+
+  // The map only changes when a country changes state, not on every frame of a moving slider: the
+  // states are summed up in `states`, and the countries are rebuilt only when that changes.
+  const states = map.territories.map((tr) => stateAt(tr.iso, pos, timeline)[0]).join('');
+  const land = useMemo(() => {
+    if (!outline) return null;
+    const stateOf = new Map(map.territories.map((tr, i) => [tr.iso, ({ n: 'none', c: 'colony', f: 'free' } as const)[states[i] as 'n' | 'c' | 'f']]));
+    return (
+      <>
+        {outline.countries.map((c) => {
+          const tr = byIso.get(c.id);
+          const state = stateOf.get(c.id) ?? 'none';
+          const grow = growing.get(c.id);
+          return (
+            <Country
+              key={c.id}
+              id={c.id}
+              d={c.d}
+              c={c.c}
+              uid={uid}
+              territory={!!tr}
+              state={tr ? state : undefined}
+              fill={fillOf(tr, state, map.colors)}
+              under={grow ? fillOf(tr, grow.before, map.colors) : undefined}
+              grow={grow && state !== grow.before ? grow : undefined}
+              onPick={tr ? toggleCountry : undefined}
+            />
+          );
+        })}
+        {map.territories.map((tr) => {
+          const c = outline.countries.find((o) => o.id === tr.iso);
+          if (!c || !tr.free || tr.free.quiet || stateOf.get(tr.iso) !== 'free') return null;
+          return (
+            <text key={tr.iso} x={c.c[0]} y={c.c[1]} className={styles.year} data-fresh={growing.has(tr.iso) ? 'true' : undefined}>
+              {tr.free.year}
+            </text>
+          );
+        })}
+      </>
+    );
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- byIso follows map
+  }, [outline, map, states, growing, uid, toggleCountry]);
+
   const describe = (tr: Territory) => {
     const state = stateAt(tr.iso, pos, timeline);
     if (state === 'free') return t({ vi: `Giành độc lập năm ${tr.free!.year}.`, en: `Independent from ${tr.free!.year}.` }) + (tr.free!.note ? ` ${t(tr.free!.note)}` : '');
@@ -134,46 +209,7 @@ export function HistoryWorldView({ config, lang }: SimulationViewProps<'history-
         <div className={styles.sea}>
           {outline && view ? (
             <svg viewBox={view.join(' ')} preserveAspectRatio="xMidYMid meet" role="img" aria-label={summary} className={styles.svg} data-independence={hasFree || undefined}>
-              {outline.countries.map((c) => {
-                const tr = byIso.get(c.id);
-                const state = tr ? stateAt(c.id, pos, timeline) : 'none';
-                const grow = growing.get(c.id);
-                const fill = fillOf(tr, state, map.colors);
-                const path = (
-                  <path
-                    key={c.id}
-                    d={c.d}
-                    data-iso={c.id}
-                    data-state={tr ? state : undefined}
-                    data-growing={grow ? 'true' : undefined}
-                    className={`${styles.land} ${tr ? styles.territory : ''}`}
-                    // While it spreads, the country keeps its old colour underneath the new one.
-                    style={{ fill: grow ? fillOf(tr, grow.before, map.colors) : fill }}
-                    onClick={tr ? () => setSelected(selected === c.id ? null : c.id) : undefined}
-                  />
-                );
-                if (!grow || state === grow.before) return path;
-                const id = `${uid}-${c.id}-${Math.round(grow.key)}`;
-                const r = Math.hypot(grow.from[0] - c.c[0], grow.from[1] - c.c[1]) + 160;
-                return (
-                  <g key={c.id}>
-                    {path}
-                    <clipPath id={id}>
-                      <circle cx={grow.from[0]} cy={grow.from[1]} r={r} className={styles.grow} style={{ transformOrigin: `${grow.from[0]}px ${grow.from[1]}px` }} />
-                    </clipPath>
-                    <path d={c.d} clipPath={`url(#${id})`} className={`${styles.land} ${styles.ink}`} style={{ fill }} />
-                  </g>
-                );
-              })}
-              {map.territories.map((tr) => {
-                const c = outline.countries.find((o) => o.id === tr.iso);
-                if (!c || !tr.free || tr.free.quiet || stateAt(tr.iso, pos, timeline) !== 'free') return null;
-                return (
-                  <text key={tr.iso} x={c.c[0]} y={c.c[1]} className={styles.year} data-fresh={growing.has(tr.iso) ? 'true' : undefined}>
-                    {tr.free.year}
-                  </text>
-                );
-              })}
+              {land}
             </svg>
           ) : (
             <p className={styles.status} role="status">

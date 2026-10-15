@@ -59,5 +59,6 @@
 
 /* On an independence map the colonies sit back so the free countries stand out. */
 .svg[data-independence='true'] .land[data-state='colony'] { fill-opacity: 0.55; }
-.svg[data-independence='true'] .land[data-state='free'] { filter: drop-shadow(0 0 2px var(--accent, var(--action))); }
+/* A stroke, not a drop-shadow filter: SVG filters on many shapes repaint slowly while the map moves. */
+.svg[data-independence='true'] .land[data-state='free'] { stroke: var(--accent, var(--action)); stroke-width: 0.9; }
 .clock { color: var(--ink); font-variant-numeric: tabular-nums; }

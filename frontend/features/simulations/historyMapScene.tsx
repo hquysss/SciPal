@@ -4,7 +4,7 @@
 // painted onto the ground (clipped to land), this step's marches as tubes that hug the terrain and
 // grow in order of travel, and place names pinned over their spots. Loaded lazily, browser only.
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import * as THREE from 'three';
 import type { HistoryMapRegion } from '@scipal/types';
@@ -60,57 +60,92 @@ function useAssets(region: HistoryMapRegion) {
   return state?.region === region ? state.assets ?? null : null;
 }
 
+/** Draws `list` of areas (each with its step index) onto `areas`, at `scale` of the texture size. */
+function drawAreas(areas: CanvasRenderingContext2D, list: Array<{ area: HistoryMap['steps'][number]['areas'][number]; i: number; clip?: { u: number; v: number; r: number } }>, step: number, palette: Palette, toUv: (p: LonLat) => [number, number], w: number, h: number) {
+  for (const { area, i, clip } of list) {
+    areas.save();
+    if (clip) {
+      areas.beginPath();
+      areas.arc(clip.u * w, clip.v * h, clip.r, 0, Math.PI * 2);
+      areas.clip();
+    }
+    areas.beginPath();
+    area.points.forEach((p, j) => {
+      const [u, v] = toUv(p);
+      if (j === 0) areas.moveTo(u * w, v * h);
+      else areas.lineTo(u * w, v * h);
+    });
+    areas.closePath();
+    const color = area.side === 'ours' ? palette.area : palette.enemy;
+    areas.globalAlpha = i === step ? 0.5 : 0.28;
+    areas.fillStyle = color;
+    areas.fill();
+    areas.globalAlpha = 0.9;
+    areas.strokeStyle = color;
+    areas.lineWidth = (5 * w) / Math.max(w, 1536);
+    areas.stroke();
+    areas.restore();
+  }
+}
+
+/** Keeps a layer to the land: everything over the sea is cut away. */
+function clipToLand(layer: HTMLCanvasElement, land: HTMLImageElement) {
+  const ctx = layer.getContext('2d')!;
+  ctx.globalAlpha = 1;
+  ctx.globalCompositeOperation = 'destination-in';
+  ctx.drawImage(land, 0, 0, layer.width, layer.height);
+  ctx.globalCompositeOperation = 'source-over';
+}
+
 /**
- * The relief with every area held up to `step`, the newest stronger, kept off the sea. The areas of
- * `step` itself are spread `grow` (0–1) of the way out from their origins, like ink.
+ * The relief with every area held before `step`, kept off the sea. Painted once per step: the areas
+ * of `step` itself spread over it frame by frame (see `paintSpread`), which only redraws those.
  */
-function paintGround(canvas: HTMLCanvasElement, layer: HTMLCanvasElement, assets: Assets, config: HistoryMap, step: number, palette: Palette, grow = 1) {
+function paintBase(base: HTMLCanvasElement, layer: HTMLCanvasElement, assets: Assets, config: HistoryMap, step: number, palette: Palette) {
   const [w, h] = [assets.relief.naturalWidth, assets.relief.naturalHeight];
-  canvas.width = layer.width = w;
-  canvas.height = layer.height = h;
-  const ctx = canvas.getContext('2d')!;
-  const areas = layer.getContext('2d')!;
+  base.width = layer.width = w;
+  base.height = layer.height = h;
+  const ctx = base.getContext('2d')!;
   const { toUv } = projection(config.region);
   ctx.drawImage(assets.relief, 0, 0, w, h);
-  const origins = areaOrigins(config, step);
-  config.steps.slice(0, step + 1).forEach((s, i) => {
-    for (const [j, area] of s.areas.entries()) {
-      const spreading = i === step && grow < 1;
-      if (spreading && grow <= 0) continue;
-      areas.save();
-      if (spreading) {
-        const [ou, ov] = toUv(origins[j]!);
-        const reach = Math.max(...area.points.map((q) => {
-          const [u, v] = toUv(q);
-          return Math.hypot((u - ou) * w, (v - ov) * h);
-        }));
-        areas.beginPath();
-        areas.arc(ou * w, ov * h, reach * grow + 1, 0, Math.PI * 2);
-        areas.clip();
-      }
-      areas.beginPath();
-      area.points.forEach((p, j) => {
-        const [u, v] = toUv(p);
-        if (j === 0) areas.moveTo(u * w, v * h);
-        else areas.lineTo(u * w, v * h);
-      });
-      areas.closePath();
-      const color = area.side === 'ours' ? palette.area : palette.enemy;
-      areas.globalAlpha = i === step ? 0.5 : 0.28;
-      areas.fillStyle = color;
-      areas.fill();
-      areas.globalAlpha = 0.9;
-      areas.strokeStyle = color;
-      areas.lineWidth = 5;
-      areas.stroke();
-      areas.restore();
-    }
-  });
-  areas.globalAlpha = 1;
-  areas.globalCompositeOperation = 'destination-in';
-  areas.drawImage(assets.land, 0, 0, w, h);
-  areas.globalCompositeOperation = 'source-over';
+  const older = config.steps.slice(0, step).flatMap((s, i) => s.areas.map((area) => ({ area, i })));
+  if (older.length === 0) return;
+  drawAreas(layer.getContext('2d')!, older, step, palette, toUv, w, h);
+  clipToLand(layer, assets.land);
   ctx.drawImage(layer, 0, 0);
+}
+
+/**
+ * The ground: the cached base plus this step's areas spread `grow` (0–1) out from their origins,
+ * like ink. The spreading layer is drawn at half size, which is plenty for soft area fills.
+ */
+function paintSpread(canvas: HTMLCanvasElement, base: HTMLCanvasElement, small: HTMLCanvasElement, assets: Assets, config: HistoryMap, step: number, palette: Palette, grow: number) {
+  const [w, h] = [base.width, base.height];
+  if (canvas.width !== w || canvas.height !== h) {
+    canvas.width = w;
+    canvas.height = h;
+  }
+  const ctx = canvas.getContext('2d')!;
+  ctx.drawImage(base, 0, 0);
+  const areas = config.steps[step]?.areas ?? [];
+  if (areas.length === 0 || grow <= 0) return;
+  const [sw, sh] = [Math.round(w / 2), Math.round(h / 2)];
+  small.width = sw;
+  small.height = sh;
+  const { toUv } = projection(config.region);
+  const origins = areaOrigins(config, step);
+  const list = areas.map((area, j) => {
+    if (grow >= 1) return { area, i: step };
+    const [ou, ov] = toUv(origins[j]!);
+    const reach = Math.max(...area.points.map((q) => {
+      const [u, v] = toUv(q);
+      return Math.hypot((u - ou) * sw, (v - ov) * sh);
+    }));
+    return { area, i: step, clip: { u: ou, v: ov, r: reach * grow + 1 } };
+  });
+  drawAreas(small.getContext('2d')!, list, step, palette, toUv, sw, sh);
+  clipToLand(small, assets.land);
+  ctx.drawImage(small, 0, 0, w, h);
 }
 
 function Terrain({ assets, config, step, palette, pos }: { assets: Assets; config: HistoryMap; step: number; palette: Palette; pos: React.RefObject<number> }) {
@@ -132,7 +167,7 @@ function Terrain({ assets, config, step, palette, pos }: { assets: Assets; confi
     g.computeVertexNormals();
     return g;
   }, [assets, proj.width, proj.height]);
-  const [canvas, layer] = useMemo(() => [document.createElement('canvas'), document.createElement('canvas')], []);
+  const [canvas, layer, base, small] = useMemo(() => [document.createElement('canvas'), document.createElement('canvas'), document.createElement('canvas'), document.createElement('canvas')], []);
   const texture = useMemo(() => {
     const t = new THREE.CanvasTexture(canvas);
     t.colorSpace = THREE.SRGBColorSpace;
@@ -141,20 +176,26 @@ function Terrain({ assets, config, step, palette, pos }: { assets: Assets; confi
   }, [canvas]);
   const hasRoutes = (config.steps[step]?.routes.length ?? 0) > 0;
   const painted = useRef(-1);
+  const lastPaint = useRef(0);
   const paint = (grow: number) => {
-    paintGround(canvas, layer, assets, config, step, palette, grow);
+    paintSpread(canvas, base, small, assets, config, step, palette, grow);
     painted.current = grow;
+    lastPaint.current = performance.now();
     texture.needsUpdate = true;
   };
   useEffect(() => {
+    paintBase(base, layer, assets, config, step, palette);
     paint(areaGrowth(stepFraction(pos.current ?? 0, step), hasRoutes));
     invalidate();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [canvas, layer, assets, config, step, palette, texture, invalidate]);
-  // Repainting the ground is costly, so the spreading areas are redrawn in small jumps.
+  }, [canvas, layer, base, small, assets, config, step, palette, texture, invalidate]);
+  // Each repaint uploads the whole ground texture, so the spreading areas are redrawn at most
+  // every 90 ms (and once more when they finish or go back).
   useFrame(() => {
     const grow = areaGrowth(stepFraction(pos.current ?? 0, step), hasRoutes);
-    if (Math.abs(grow - painted.current) > 0.04 || ((grow === 0 || grow === 1) && grow !== painted.current)) paint(grow);
+    if (grow === painted.current) return;
+    const settled = grow === 0 || grow === 1;
+    if (settled || performance.now() - lastPaint.current > 90) paint(grow);
   });
   useEffect(() => () => {
     geometry.dispose();
@@ -401,7 +442,7 @@ function MapRig({
   return null;
 }
 
-export default function HistoryMapScene({
+export default memo(function HistoryMapScene({
   config,
   step,
   lang,
@@ -522,4 +563,4 @@ export default function HistoryMapScene({
           })}
     </>
   );
-}
+});

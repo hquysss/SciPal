@@ -52,3 +52,32 @@ Phản hồi: "trục thời gian chạy dần".
   - nút "Chạy" đi tới mốc tiếp theo (dùng đồng hồ giả);
   - nhảy 3 mốc thì mỗi đoạn có độ trễ tăng dần;
   - giảm chuyển động thì không có độ trễ.
+
+## Hiệu ứng tiến quân (chờ duyệt)
+Phản hồi: "2D thấy không có hiệu ứng gì hết" → "thêm hiệu ứng tiến quân vào".
+
+Hiện tại mũi tiến quân chỉ là đường kẻ dài dần ra, không có cảm giác quân đang đi. Thêm ba hiệu ứng, áp dụng cho bản 2D và cả bản 3D:
+1. **Lá cờ ở đầu mũi.** Đầu mũi tên đang vẽ mang một lá cờ nhỏ (màu của phe), có quầng sáng nhấp nháy theo nhịp bước. Mũi vẽ xong thì cờ biến mất, chỉ còn đầu mũi tên.
+2. **Dòng chảy trên đường đã đi.** Trên phần đường đã vẽ có các vạch sáng chạy dọc theo hướng tiến quân, như dòng người đang di chuyển. Vạch tiếp tục chạy chậm cả khi thanh trượt đứng yên để bản đồ không "chết". Đường rút lui (nét đứt) chạy chậm hơn.
+3. **Trận đánh nổ sáng.** Khi đầu mũi tới một trận thắng (★), ngôi sao bùng sáng một lần (vòng tròn lan ra rồi mờ đi) rồi mới hiện tên.
+
+**Không đổi:** dữ liệu bài học, schema, cách điều khiển. Khi bật giảm chuyển động thì cả ba hiệu ứng đều không chạy, chỉ còn đường và ký hiệu tĩnh.
+
+**Cách làm:**
+- **Bản 2D (SVG):**
+  - cờ là một nhóm `<g>` đặt tại điểm đầu mũi đang tính sẵn (`head`);
+  - dòng chảy là một đường phủ lên đường đã vẽ, có `stroke-dasharray` và animation CSS `stroke-dashoffset`;
+  - trận đánh có `data-burst` khi thời điểm `at` của nó vừa bị thanh trượt đi qua (lần qua theo chiều tiến).
+- **Bản 3D:**
+  - cờ là một nhãn HTML gắn ở đầu mũi, như nhãn địa danh;
+  - dòng chảy dùng một dải băng thứ hai cùng hình, có texture vạch trượt theo thời gian (`offset` tăng mỗi khung hình);
+  - trận đánh bùng sáng bằng nhãn HTML có animation CSS.
+
+**Kiểm thử:**
+- **Bản 2D:**
+  - giữa giai đoạn có cờ ở đầu mũi đang vẽ;
+  - mũi đã xong thì không còn cờ;
+  - có đường dòng chảy.
+- **Trận đánh:** thanh đi qua thời điểm của trận đánh thì có `data-burst`.
+- **Giảm chuyển động:** không có cờ nhấp nháy và không có animation.
+- Xem trên trình duyệt (Lam Sơn, bản phẳng và 3D).
