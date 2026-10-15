@@ -81,3 +81,49 @@ Hiện tại mũi tiến quân chỉ là đường kẻ dài dần ra, không c�
 - **Trận đánh:** thanh đi qua thời điểm của trận đánh thì có `data-burst`.
 - **Giảm chuyển động:** không có cờ nhấp nháy và không có animation.
 - Xem trên trình duyệt (Lam Sơn, bản phẳng và 3D).
+
+## Camera xoay theo hướng tiến quân (đã làm, kèm nút bật/tắt, màu bản đồ cố định và quầng sáng — bảng màu theo đề xuất của Codex)
+Phản hồi: "camera nó di chuyển khi qua giai đoạn khác nhưng nó không có xoay, chỉ di chuyển cam".
+
+Hiện tại camera chỉ trượt và phóng to theo giai đoạn, lúc nào cũng nhìn về hướng bắc. Thêm phần camera tự xoay:
+1. **Khi một mũi đang được vẽ:** camera xoay dần để hướng tiến của mũi đó chỉ "lên phía trên màn hình", như người xem đang đi theo đoàn quân. Hướng này lấy từ đoạn đường gần đầu mũi, làm mượt để không giật theo từng khúc quanh.
+2. **Khi sang giai đoạn mới:** camera xoay theo hướng chung của các mũi trong giai đoạn đó, tức từ điểm đầu trung bình tới điểm cuối trung bình. Đồng thời camera hạ góc nghiêng một chút (khoảng 8°) để thấy rõ địa hình, rồi trở lại góc nghiêng cũ khi giai đoạn vẽ xong.
+3. **Giai đoạn không có mũi tiến quân:** camera quay dần về hướng bắc.
+4. **Giới hạn:** góc xoay tự động không vượt quá giới hạn xoay hiện có (±49° quanh hướng bắc). Vì vậy một mũi đi về phía nam chỉ làm camera xoay tối đa 49°, không lật ngược bản đồ.
+5. **Người xem tự xoay hoặc kéo bản đồ:** camera ngừng tự xoay, giống như ngừng tự đi theo. Bấm "Camera đi theo" hoặc "Góc nhìn ban đầu" thì bật lại.
+6. **Giảm chuyển động:** không tự xoay.
+
+**Cách làm:**
+- `historyMapGeo.ts`: thêm hàm `marchHeading(points, done)` trả về hướng đi (radian) gần đầu mũi, và `stageHeading(step)`.
+- `MapRig`: khi đang đi theo và người xem chưa tự xoay, góc xoay mục tiêu là `HOME.theta + clamp(heading, ±turn)`, làm mượt chậm (khoảng 1,5 giây).
+- Camera trong `historyMapCamera.ts`: thêm cờ "người xem đã tự xoay". Cờ này bật khi người xem kéo xoay hoặc dùng phím mũi tên, và tắt khi bấm "Góc nhìn ban đầu".
+
+**Kiểm thử:**
+- **Đo hướng:** một mũi đi về phía đông thì hướng là +90°, đi về phía bắc thì là 0. Kết quả được giới hạn trong ±49°.
+- **Cờ tự xoay:** kéo xoay thì cờ bật; bấm "Góc nhìn ban đầu" thì cờ tắt.
+- Xem trên trình duyệt với Lam Sơn và Tây Sơn.
+
+### Màu cố định và phát sáng (đã duyệt 2026-10-15)
+- Mũi tiến quân, cờ và vùng kiểm soát dùng màu riêng của bản đồ, giống nhau ở mọi theme. Đây là ngoại lệ người dùng yêu cầu so với quy tắc "chỉ dùng màu theme".
+- Các màu là biến CSS trong `.mapColors` (`historyMap.module.css`):
+
+  | Vai trò | Màu |
+  |---|---|
+  | phe ta | `#D92D2A` |
+  | quân địch | `#173B7A` |
+  | viền ngà | `#FFF8E7` |
+  | vùng ta | `#F4845F`, viền `#B72A26` |
+  | vùng địch | `#64748B`, viền `#26364A` |
+  | vệt sáng | `#FFF3B0` |
+  | bùng sáng | `#FFD166` |
+
+- Độ đậm vùng kiểm soát:
+  - giai đoạn đang xem: nền 0,36, viền 0,85;
+  - giai đoạn cũ: nền 0,18, viền 0,48.
+- Quầng sáng:
+  - bản 2D: đường rộng 2,6 lần mũi tên, độ mờ nhấp nháy 0,16 → 0,30 trong 1,4 giây;
+  - bản 3D: dải băng rộng 2,5 lần, cộng sáng, độ mờ 0,12 → 0,24 trong 1,5 giây.
+- Giảm chuyển động: quầng sáng và vệt sáng vẫn hiện nhưng đứng yên, để vẫn phân biệt được các mũi tiến quân.
+- Nút "Tự xoay camera theo hướng tiến quân" (biểu tượng la bàn), mặc định bật.
+  - Tự xoay hoặc nghiêng bằng tay thì nút tắt.
+  - "Góc nhìn ban đầu" bật lại.

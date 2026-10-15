@@ -4,7 +4,7 @@ import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { HISTORY_MAP_REGIONS, defaultSimulationConfig, simulationConfig } from '@scipal/types';
-import { areaGrowth, areaOrigins, bursting, densify, heightAt, marchProgress, namedAt, placeTimes, projection, stepFraction, stepFrame, yearsOf, type HistoryMap } from './historyMapGeo';
+import { areaGrowth, areaOrigins, bursting, densify, marchHeading, stageHeading, heightAt, marchProgress, namedAt, placeTimes, projection, stepFraction, stepFrame, yearsOf, type HistoryMap } from './historyMapGeo';
 import { FlatMap, HistoryMapView, historyMapModule } from './historyMap';
 
 vi.mock('./historyMapScene', () => ({
@@ -167,11 +167,18 @@ describe('march effects on the flat map', () => {
     expect(bursting(0, 0)).toBe(false);
   });
 
-  it('shows no moving effects with reduced motion', () => {
+  it('keeps the still cues but no flare with reduced motion', () => {
     const c = flat(0.2, true);
-    expect(c.querySelectorAll('[data-flow]')).toHaveLength(0);
-    expect(c.querySelector('[data-flag] circle')).toBeNull();
     expect(c.querySelectorAll('[data-flag]')).toHaveLength(1);
+    expect(c.querySelectorAll('[data-glow]').length).toBe(c.querySelectorAll('[data-march]').length);
+    expect(c.querySelector('[data-burst]')).toBeNull();
+  });
+
+  it('draws in the map’s own colours, not the theme’s', () => {
+    const c = flat(0.2);
+    expect(c.querySelector('svg')!.getAttribute('class')).toMatch(/mapColors/);
+    expect(c.innerHTML).toContain('var(--map-ours)');
+    expect(c.innerHTML).not.toContain('var(--danger)');
   });
 });
 
@@ -233,5 +240,41 @@ describe('the continuous history-map timeline', () => {
     expect(yearsOf('1426–1427')).toEqual([1426, 1427]);
     expect(yearsOf('938')).toEqual([938]);
     expect(yearsOf('Mùa xuân')).toEqual([]);
+  });
+});
+
+describe('turning with the marches', () => {
+  it('is on by default, can be switched off, stops when the reader turns the map, and comes back on reset', async () => {
+    render(<HistoryMapView config={lamSon} lang="vi" />);
+    await screen.findByRole('img', { name: /1418–1423/ }, { timeout: 5000 });
+    const spin = () => screen.getByRole('button', { name: 'Tự xoay camera theo hướng tiến quân' });
+    expect(spin().getAttribute('aria-pressed')).toBe('true');
+    fireEvent.click(spin());
+    expect(spin().getAttribute('aria-pressed')).toBe('false');
+    fireEvent.click(screen.getByRole('button', { name: 'Góc nhìn ban đầu' }));
+    expect(spin().getAttribute('aria-pressed')).toBe('true');
+    const map = screen.getAllByRole('img').find((el) => el.getAttribute('tabindex') === '0')!;
+    fireEvent.keyDown(map, { key: 'ArrowLeft' });
+    expect(spin().getAttribute('aria-pressed')).toBe('false');
+  }, 15000);
+});
+
+describe('march headings', () => {
+  it('reads a march heading east as a quarter turn and north as none', () => {
+    expect(marchHeading([[105, 20], [106, 20]], 0.5)).toBeCloseTo(Math.PI / 2);
+    expect(marchHeading([[105, 20], [105, 21]], 1)).toBeCloseTo(0);
+    expect(marchHeading([[105, 20], [104, 20]], 0.5)).toBeCloseTo(-Math.PI / 2);
+  });
+
+  it('follows the stretch near the head of a bending march', () => {
+    const bend: Array<[number, number]> = [[105, 20], [105, 21], [106, 21]];
+    expect(marchHeading(bend, 0.25)).toBeCloseTo(0);
+    expect(marchHeading(bend, 1)).toBeCloseTo(Math.PI / 2, 0);
+  });
+
+  it('gives a stage the general direction of its marches, none without marches', () => {
+    const north = lamSon.steps.findIndex((s, i) => i > 0 && s.routes.length > 0);
+    expect(typeof stageHeading(lamSon, north)).toBe('number');
+    expect(stageHeading({ ...lamSon, steps: [{ ...lamSon.steps[0]!, routes: [] }] }, 0)).toBeNull();
   });
 });

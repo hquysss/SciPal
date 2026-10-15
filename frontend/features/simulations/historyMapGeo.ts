@@ -150,3 +150,30 @@ export const yearsOf = (period: string) => (period.match(/\d{3,4}/g) ?? []).map(
 const BURST = 0.12;
 /** Whether a place reached at `at` is flaring at `frac`: just after the slider passes it, never at the start. */
 export const bursting = (frac: number, at: number) => at > 0 && frac >= at && frac - at < BURST;
+
+/** The direction from a to b, in radians clockwise from north (east = π/2), on a map with lon scaled by cos(lat). */
+const bearing = (a: LonLat, b: LonLat) => {
+  const k = Math.cos((((a[1] + b[1]) / 2) * Math.PI) / 180);
+  return Math.atan2((b[0] - a[0]) * k, b[1] - a[1]);
+};
+
+/**
+ * Where a march is heading at `done` (0–1) of the way along it: from a little behind the head to
+ * the head, so a camera turning with it follows the march's course, not every bend.
+ */
+export function marchHeading(points: readonly LonLat[], done: number): number {
+  const at = (f: number): LonLat => {
+    const x = Math.min(Math.max(f, 0), 1) * (points.length - 1);
+    const i = Math.min(Math.floor(x), points.length - 2);
+    const [a, b] = [points[i]!, points[i + 1]!];
+    return [a[0] + (b[0] - a[0]) * (x - i), a[1] + (b[1] - a[1]) * (x - i)];
+  };
+  return bearing(at(done - 0.25), at(Math.max(done, 0.25)));
+}
+
+/** The general direction of a stage's marches: from where they start on average to where they end. */
+export function stageHeading(config: HistoryMap, step: number): number | null {
+  const routes = config.steps[step]?.routes ?? [];
+  if (routes.length === 0) return null;
+  return bearing(centre(routes.map((r) => r.points[0]!)), centre(routes.map((r) => r.points[r.points.length - 1]!)));
+}

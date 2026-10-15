@@ -109,20 +109,41 @@
 .place[aria-pressed='true'] { background: var(--surface-sunken); border-color: var(--accent, var(--action)); }
 .place:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
 
-/* March effects: light running along the march, a flag at its head, a flare on a victory. */
+/* The history map's own colours, like the textbook's maps: the same in every theme. Red against
+   deep blue stays apart for colour-blind readers; the ivory casing lifts both off dark relief. */
+.mapColors {
+  --map-ours: #d92d2a;
+  --map-enemy: #173b7a;
+  --map-casing: #fff8e7;
+  --map-area: #f4845f;
+  --map-area-line: #b72a26;
+  --map-area-enemy: #64748b;
+  --map-area-enemy-line: #26364a;
+  --map-streak: #fff3b0;
+  --map-flare: #ffd166;
+}
+
+/* March effects: a glow under the march, light running along it, a flag at its head, a flare on a victory. */
+.glow {
+  fill: none;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-opacity: 0.16;
+  animation: pulse 1.4s ease-in-out infinite alternate;
+}
 .flow {
   fill: none;
-  stroke: var(--surface);
+  stroke: var(--map-streak);
   stroke-linecap: round;
-  stroke-opacity: 0.85;
+  stroke-opacity: 0.9;
   animation: flow 1.1s linear infinite;
 }
 .flowSlow { animation-duration: 2.4s; }
 .flag { transform-box: fill-box; transform-origin: bottom; animation: step 0.55s ease-in-out infinite alternate; }
-.flagGlow { opacity: 0.35; transform-box: fill-box; transform-origin: center; animation: glow 0.55s ease-in-out infinite alternate; }
+.flagGlow { opacity: 0.25; transform-box: fill-box; transform-origin: center; animation: glow 1.2s ease-in-out infinite alternate; }
 .burst {
   fill: none;
-  stroke: var(--danger);
+  stroke: var(--map-flare);
   stroke-width: 0.4;
   transform-box: fill-box;
   transform-origin: center;
@@ -138,7 +159,8 @@
   height: 2.6em;
   margin: -1.3em 0 0 -1.3em;
   border-radius: 50%;
-  border: 3px solid var(--danger);
+  border: 3px solid var(--map-flare);
+  box-shadow: 0 0 10px var(--map-flare), inset 0 0 6px var(--map-ours);
   animation: burst 900ms ease-out forwards;
   pointer-events: none;
 }
@@ -151,17 +173,19 @@
   font-size: 20px;
   line-height: 1;
 }
-.headFlag > span { display: block; animation: step 0.55s ease-in-out infinite alternate; filter: drop-shadow(0 1px 1px rgb(0 0 0 / 0.35)); }
+.headFlag > span { display: block; animation: step 0.55s ease-in-out infinite alternate; text-shadow: 0 0 6px currentColor, 0 0 12px currentColor, 0 1px 1px var(--map-casing); }
 @keyframes flow { to { stroke-dashoffset: calc(var(--dash) * -1); } }
 @keyframes step { from { transform: translateY(0); } to { transform: translateY(-8%); } }
-@keyframes glow { from { opacity: 0.15; transform: scale(0.8); } to { opacity: 0.45; transform: scale(1.15); } }
+@keyframes glow { from { opacity: 0.18; transform: scale(0.85); } to { opacity: 0.36; transform: scale(1.15); } }
+@keyframes pulse { from { stroke-opacity: 0.16; } to { stroke-opacity: 0.3; } }
 @keyframes burst { from { opacity: 1; transform: scale(0.3); } to { opacity: 0; transform: scale(2.2); } }
 
 @keyframes rise { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
 
 @media (prefers-reduced-motion: reduce) {
-  .note, .flow, .flag, .flagGlow, .burst, .headFlag > span, .label[data-burst='true']::after { animation: none; }
-  .flow, .flagGlow, .burst { display: none; }
+  .note, .flow, .flag, .flagGlow, .glow, .burst, .headFlag > span, .label[data-burst='true']::after { animation: none; }
+  /* The glow and the light stay, still: they help tell the marches apart. */
+  .burst { display: none; }
 }
 
 @media (max-width: 520px) {

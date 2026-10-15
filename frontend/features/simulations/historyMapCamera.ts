@@ -36,9 +36,10 @@ export type MapCamera = ReturnType<typeof useMapCamera>;
 
 /**
  * `onManualPan` fires when the reader slides the map, so a camera that follows the marches can step
- * aside. The scene fills `worldPerPixel` and `panLimit` each frame (they depend on its size).
+ * aside; `onManualTurn` when the reader turns or tilts it, so a camera that turns with the marches
+ * stops turning. The scene fills `worldPerPixel` and `panLimit` each frame (they depend on its size).
  */
-export function useMapCamera(onManualPan: () => void) {
+export function useMapCamera(onManualPan: () => void, onManualTurn: () => void = () => {}) {
   const host = useRef<HTMLDivElement>(null);
   const view = useRef<MapView>({ ...HOME_VIEW });
   const invalidate = useRef<() => void>(() => {});
@@ -48,6 +49,8 @@ export function useMapCamera(onManualPan: () => void) {
   const pinch = useRef<number | null>(null);
   const manual = useRef(onManualPan);
   manual.current = onManualPan;
+  const turned = useRef(onManualTurn);
+  turned.current = onManualTurn;
 
   const set = useCallback((patch: Partial<MapView>) => {
     view.current = clampView({ ...view.current, ...patch }, panLimit.current);
@@ -120,6 +123,7 @@ export function useMapCamera(onManualPan: () => void) {
         return;
       }
       set({ theta: view.current.theta - dx * 0.007, phi: view.current.phi + dy * 0.007 });
+      turned.current();
     },
     onPointerUp: end,
     onPointerCancel: end,
@@ -141,6 +145,7 @@ export function useMapCamera(onManualPan: () => void) {
       if (!action) return;
       e.preventDefault();
       action();
+      if (!e.shiftKey && e.key.startsWith('Arrow')) turned.current();
     },
   };
 
