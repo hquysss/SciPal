@@ -3,7 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { act, cleanup, fireEvent, render, screen, within } from '@testing-library/react';
 import { complexityModule, formatCount, ratioLabel } from './complexity';
 import { ComplexityChart } from './complexityChart';
-import { drawField, fieldCaption } from './complexityField';
+import { ComplexityField, drawField, drawSparks, fieldCaption, spawnSparks, type Spark } from './complexityField';
 import { humanDuration, timeAnchor, TimeCard } from './complexityTime';
 import { count, operations, permutationAt } from './engines/complexity';
 import { Odometer } from './odometer';
@@ -146,24 +146,83 @@ describe('complexity chart', () => {
   });
 });
 
+const fakeContext = () => {
+  const calls = { fill: 0, stroke: 0, text: [] as string[] };
+  const ctx = new Proxy({} as Record<string, unknown>, {
+    get: (target, key) => {
+      if (key === 'calls') return calls;
+      if (key === 'fill') return () => (calls.fill += 1);
+      if (key === 'stroke') return () => (calls.stroke += 1);
+      if (key === 'fillText') return (text: string) => calls.text.push(text);
+      if (key === 'roundRect') return undefined;
+      return key in target ? target[key as string] : () => {};
+    },
+    set: (target, key, value) => {
+      target[key as string] = value;
+      return true;
+    },
+  });
+  return ctx as unknown as CanvasRenderingContext2D & { calls: typeof calls };
+};
+const pal = { accent: '#000', line: '#ccc', muted: '#666', ink: '#111', surface: '#fff' };
+
+describe('the living field', () => {
+  const lit = (ops: number[], ago = 50) => ({ now: 1000, litAt: ops.map(() => 1000 - ago) });
+
+  it('drops the cut-off half of each new row while it falls', () => {
+    const ops = operations('halving', 32);
+    const still = fakeContext();
+    drawField(still, 600, 'halving', 32, ops, ops.length, pal);
+    // Lit 300 ms ago: done popping, still falling, so every extra fill is a falling piece.
+    const falling = fakeContext();
+    drawField(falling, 600, 'halving', 32, ops, ops.length, pal, lit(ops, 300));
+    expect(falling.calls.fill).toBe(still.calls.fill + ops.length - 1);
+    const popping = fakeContext();
+    drawField(popping, 600, 'halving', 32, ops, ops.length, pal, lit(ops));
+    expect(popping.calls.fill).toBeLessThanOrEqual(2 * ops.length + 3);
+  });
+
+  it('marks the running row of the nested loop and the running call of the recursion', () => {
+    const nested = operations('nested-loop', 6);
+    const grid = fakeContext();
+    drawField(grid, 600, 'nested-loop', 6, nested, 9, pal, lit(nested));
+    expect(grid.calls.fill).toBeLessThanOrEqual(6);
+    expect(grid.calls.stroke).toBeGreaterThanOrEqual(1);
+    const calls = operations('branching', 4);
+    const tree = fakeContext();
+    drawField(tree, 600, 'branching', 4, calls, 10, pal, lit(calls));
+    expect(tree.calls.stroke).toBeGreaterThanOrEqual(2);
+  });
+
+  it('numbers large cells and says where the newest operation is', () => {
+    const ctx = fakeContext();
+    const at = drawField(ctx, 600, 'single-loop', 8, operations('single-loop', 8), 3, pal);
+    expect(at!.x).toBeGreaterThan(0);
+    expect(at!.x).toBeLessThan(600);
+    expect(at!.y).toBeGreaterThan(0);
+    expect(at!.y).toBeLessThan(260);
+    expect(ctx.calls.text).toEqual(['1', '2', '3', '4', '5', '6', '7', '8']);
+  });
+
+  it('keeps at most 150 sparks, each for 300 ms', () => {
+    const pool: Spark[] = [];
+    spawnSparks(pool, 0, 0, 0, 200);
+    expect(pool).toHaveLength(150);
+    expect(drawSparks(fakeContext(), pool, 400, '#000')).toBe(0);
+    expect(pool).toHaveLength(0);
+  });
+
+  it('redraws safely when n shrinks mid-run', () => {
+    vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue(fakeContext() as never);
+    vi.spyOn(HTMLElement.prototype, 'clientWidth', 'get').mockReturnValue(600);
+    const { rerender } = render(<ComplexityField pattern="single-loop" n={8} ops={operations('single-loop', 8)} shown={5} label="field" reduced={false} milestone={0} />);
+    expect(() =>
+      rerender(<ComplexityField pattern="single-loop" n={4} ops={operations('single-loop', 4)} shown={0} label="field" reduced={false} milestone={0} />),
+    ).not.toThrow();
+  });
+});
+
 describe('the operation field', () => {
-  const fakeContext = () => {
-    const calls = { fill: 0 };
-    const ctx = new Proxy({} as Record<string, unknown>, {
-      get: (target, key) => {
-        if (key === 'calls') return calls;
-        if (key === 'fill') return () => (calls.fill += 1);
-        if (key === 'roundRect') return undefined;
-        return key in target ? target[key as string] : () => {};
-      },
-      set: (target, key, value) => {
-        target[key as string] = value;
-        return true;
-      },
-    });
-    return ctx as unknown as CanvasRenderingContext2D & { calls: typeof calls };
-  };
-  const pal = { accent: '#000', line: '#ccc', muted: '#666' };
 
   it('draws on canvases without roundRect, in a handful of fills even at 8! operations', () => {
     for (const pattern of ['single-loop', 'halving', 'nested-loop', 'branching', 'permutations'] as const) {

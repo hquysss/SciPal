@@ -221,6 +221,8 @@ function ComplexityView({ config, lang }: SimulationViewProps<'complexity-sim'>)
         n={n}
         ops={ops}
         shown={shown}
+        reduced={reduced}
+        milestone={milestone}
         label={t({
           en: `${NAMES[pattern].en} on ${n} items: ${shown} of ${total} operations done.`,
           vi: `${NAMES[pattern].vi} với ${n} phần tử: đã làm ${shown} trên ${total} phép toán.`,
