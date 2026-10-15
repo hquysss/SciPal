@@ -8,15 +8,15 @@ import { useCallback, useEffect, useMemo, useRef, type KeyboardEvent, type Point
 
 export type MapView = { theta: number; phi: number; dist: number; panX: number; panZ: number };
 
-/** Looking north, tilted down. The reader can turn this far to either side. */
+/** Looking north, tilted down. The reader can turn all the way round; tilt, zoom and slide are limited. */
 export const HOME_VIEW: MapView = { theta: -Math.PI / 2, phi: 0.78, dist: 1, panX: 0, panZ: 0 };
-export const VIEW_LIMITS = { turn: 0.85, phiMin: 0.32, phiMax: 1.22, distMin: 0.3, distMax: 1.7 } as const;
+export const VIEW_LIMITS = { phiMin: 0.32, phiMax: 1.22, distMin: 0.3, distMax: 1.7 } as const;
 
 const clamp = (v: number, lo: number, hi: number) => Math.min(Math.max(v, lo), hi);
 
 export function clampView(v: MapView, panLimit: number): MapView {
   return {
-    theta: clamp(v.theta, HOME_VIEW.theta - VIEW_LIMITS.turn, HOME_VIEW.theta + VIEW_LIMITS.turn),
+    theta: v.theta,
     phi: clamp(v.phi, VIEW_LIMITS.phiMin, VIEW_LIMITS.phiMax),
     dist: clamp(v.dist, VIEW_LIMITS.distMin, VIEW_LIMITS.distMax),
     panX: clamp(v.panX, -panLimit, panLimit),

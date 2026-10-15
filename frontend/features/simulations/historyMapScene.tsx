@@ -100,8 +100,8 @@ function clipToLand(layer: HTMLCanvasElement, land: HTMLImageElement) {
 }
 
 /**
- * The relief with every area held before `step`, kept off the sea. Painted once per step: the areas
- * of `step` itself spread over it frame by frame (see `paintSpread`), which only redraws those.
+ * The relief with every area held before `step` and today's borders, kept off the sea. Painted
+ * once per step; the areas of `step` itself spread over it on a separate small overlay.
  */
 function paintBase(base: HTMLCanvasElement, layer: HTMLCanvasElement, assets: Assets, config: HistoryMap, step: number, palette: Palette) {
   const [w, h] = [assets.relief.naturalWidth, assets.relief.naturalHeight];
@@ -111,30 +111,15 @@ function paintBase(base: HTMLCanvasElement, layer: HTMLCanvasElement, assets: As
   const { toUv } = projection(config.region);
   ctx.drawImage(assets.relief, 0, 0, w, h);
   const older = config.steps.slice(0, step).flatMap((s, i) => s.areas.map((area) => ({ area, i })));
-  if (older.length === 0) return;
-  drawAreas(layer.getContext('2d')!, older, step, palette, toUv, w, h);
-  clipToLand(layer, assets.land);
-  ctx.drawImage(layer, 0, 0);
-}
-
-/**
- * The ground: the cached base plus this step's areas spread `grow` (0–1) out from their origins,
- * like ink. The spreading layer is drawn at half size, which is plenty for soft area fills.
- */
-function paintSpread(canvas: HTMLCanvasElement, base: HTMLCanvasElement, small: HTMLCanvasElement, assets: Assets, config: HistoryMap, step: number, palette: Palette, grow: number) {
-  const [w, h] = [base.width, base.height];
-  if (canvas.width !== w || canvas.height !== h) {
-    canvas.width = w;
-    canvas.height = h;
+  if (older.length > 0) {
+    drawAreas(layer.getContext('2d')!, older, step, palette, toUv, w, h);
+    clipToLand(layer, assets.land);
+    ctx.drawImage(layer, 0, 0);
   }
-  const ctx = canvas.getContext('2d')!;
-  ctx.drawImage(base, 0, 0);
-  const areas = config.steps[step]?.areas ?? [];
-  if (areas.length > 0 && grow > 0) paintSpreadAreas(ctx, small, assets, config, step, palette, grow, w, h);
-  drawBorders(ctx, assets.borders, palette, projection(config.region).toUv, w, h);
+  drawBorders(ctx, assets.borders, palette, toUv, w, h);
 }
 
-/** Today's borders, dash-dot like the textbook's, over the areas and under the marches. */
+/** Today's borders, dash-dot like the textbook's. */
 function drawBorders(ctx: CanvasRenderingContext2D, borders: Borders, palette: Palette, toUv: (p: LonLat) => [number, number], w: number, h: number) {
   const width = Math.max(1.5, w / 900);
   ctx.save();
@@ -155,11 +140,24 @@ function drawBorders(ctx: CanvasRenderingContext2D, borders: Borders, palette: P
   ctx.restore();
 }
 
-function paintSpreadAreas(ctx: CanvasRenderingContext2D, small: HTMLCanvasElement, assets: Assets, config: HistoryMap, step: number, palette: Palette, grow: number, w: number, h: number) {
+/** The overlay is this many pixels wide: soft area fills need no more, and it uploads in a blink. */
+const OVERLAY_WIDTH = 512;
+
+/**
+ * This step's areas, spread `grow` (0–1) out from their origins like ink, on the small overlay
+ * canvas laid over the ground. Only this canvas is redrawn and uploaded while the areas spread.
+ */
+function paintSpread(overlay: HTMLCanvasElement, assets: Assets, config: HistoryMap, step: number, palette: Palette, grow: number) {
+  const w = OVERLAY_WIDTH;
+  const h = Math.round((w * assets.relief.naturalHeight) / assets.relief.naturalWidth);
+  if (overlay.width !== w || overlay.height !== h) {
+    overlay.width = w;
+    overlay.height = h;
+  }
+  const ctx = overlay.getContext('2d')!;
+  ctx.clearRect(0, 0, w, h);
   const areas = config.steps[step]?.areas ?? [];
-  const [sw, sh] = [Math.round(w / 2), Math.round(h / 2)];
-  small.width = sw;
-  small.height = sh;
+  if (areas.length === 0 || grow <= 0) return;
   const { toUv } = projection(config.region);
   const origins = areaOrigins(config, step);
   const list = areas.map((area, j) => {
@@ -167,13 +165,12 @@ function paintSpreadAreas(ctx: CanvasRenderingContext2D, small: HTMLCanvasElemen
     const [ou, ov] = toUv(origins[j]!);
     const reach = Math.max(...area.points.map((q) => {
       const [u, v] = toUv(q);
-      return Math.hypot((u - ou) * sw, (v - ov) * sh);
+      return Math.hypot((u - ou) * w, (v - ov) * h);
     }));
     return { area, i: step, clip: { u: ou, v: ov, r: reach * grow + 1 } };
   });
-  drawAreas(small.getContext('2d')!, list, step, palette, toUv, sw, sh);
-  clipToLand(small, assets.land);
-  ctx.drawImage(small, 0, 0, w, h);
+  drawAreas(ctx, list, step, palette, toUv, w, h);
+  clipToLand(overlay, assets.land);
 }
 
 function Terrain({ assets, config, step, palette, pos }: { assets: Assets; config: HistoryMap; step: number; palette: Palette; pos: React.RefObject<number> }) {
@@ -195,44 +192,54 @@ function Terrain({ assets, config, step, palette, pos }: { assets: Assets; confi
     g.computeVertexNormals();
     return g;
   }, [assets, proj.width, proj.height]);
-  const [canvas, layer, base, small] = useMemo(() => [document.createElement('canvas'), document.createElement('canvas'), document.createElement('canvas'), document.createElement('canvas')], []);
-  const texture = useMemo(() => {
-    const t = new THREE.CanvasTexture(canvas);
-    t.colorSpace = THREE.SRGBColorSpace;
-    t.anisotropy = 4;
-    return t;
-  }, [canvas]);
+  const [base, layer, overlay] = useMemo(() => [document.createElement('canvas'), document.createElement('canvas'), document.createElement('canvas')], []);
+  const [texture, overlayTexture] = useMemo(() => {
+    const make = (c: HTMLCanvasElement) => {
+      const t = new THREE.CanvasTexture(c);
+      t.colorSpace = THREE.SRGBColorSpace;
+      t.anisotropy = 4;
+      return t;
+    };
+    return [make(base), make(overlay)];
+  }, [base, overlay]);
   const hasRoutes = (config.steps[step]?.routes.length ?? 0) > 0;
   const painted = useRef(-1);
   const lastPaint = useRef(0);
   const paint = (grow: number) => {
-    paintSpread(canvas, base, small, assets, config, step, palette, grow);
+    paintSpread(overlay, assets, config, step, palette, grow);
     painted.current = grow;
     lastPaint.current = performance.now();
-    texture.needsUpdate = true;
+    overlayTexture.needsUpdate = true;
   };
   useEffect(() => {
     paintBase(base, layer, assets, config, step, palette);
+    texture.needsUpdate = true;
     paint(areaGrowth(stepFraction(pos.current ?? 0, step), hasRoutes));
     invalidate();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [canvas, layer, base, small, assets, config, step, palette, texture, invalidate]);
-  // Each repaint uploads the whole ground texture, so the spreading areas are redrawn at most
-  // every 90 ms (and once more when they finish or go back).
+  }, [base, layer, overlay, assets, config, step, palette, texture, overlayTexture, invalidate]);
+  // The overlay is small, so the spreading areas can be redrawn about 30 times a second.
   useFrame(() => {
     const grow = areaGrowth(stepFraction(pos.current ?? 0, step), hasRoutes);
     if (grow === painted.current) return;
     const settled = grow === 0 || grow === 1;
-    if (settled || performance.now() - lastPaint.current > 90) paint(grow);
+    if (settled || performance.now() - lastPaint.current > 33) paint(grow);
   });
   useEffect(() => () => {
     geometry.dispose();
     texture.dispose();
-  }, [geometry, texture]);
+    overlayTexture.dispose();
+  }, [geometry, texture, overlayTexture]);
   return (
-    <mesh geometry={geometry}>
-      <meshBasicMaterial map={texture} />
-    </mesh>
+    <>
+      <mesh geometry={geometry}>
+        <meshBasicMaterial map={texture} />
+      </mesh>
+      {/* The spreading areas, on the same ground, drawn just above it. */}
+      <mesh geometry={geometry} renderOrder={0}>
+        <meshBasicMaterial map={overlayTexture} transparent depthWrite={false} polygonOffset polygonOffsetFactor={-1} polygonOffsetUnits={-1} />
+      </mesh>
+    </>
   );
 }
 
@@ -312,7 +319,8 @@ function March({ route, index, progress, palette, toScene, radius, heads, reduce
   );
   useEffect(() => () => tubes.forEach((t) => (t.core.dispose(), t.casing.dispose(), t.flow.dispose(), t.glow.dispose())), [tubes]);
   // One glow material for every piece of the march, so the whole march breathes together.
-  const glow = useMemo(() => new THREE.MeshBasicMaterial({ transparent: true, opacity: 0.18, blending: THREE.AdditiveBlending, depthWrite: false, depthTest: false, side: THREE.DoubleSide }), []);
+  // Normal blending: added light washes a red glow out to white on the pale relief.
+  const glow = useMemo(() => new THREE.MeshBasicMaterial({ transparent: true, opacity: 0.22, depthWrite: false, depthTest: false, side: THREE.DoubleSide }), []);
   useEffect(() => () => glow.dispose(), [glow]);
   const flow = useMemo(() => flowTexture(), []);
   useEffect(() => () => flow.dispose(), [flow]);
@@ -331,7 +339,7 @@ function March({ route, index, progress, palette, toScene, radius, heads, reduce
     if (!reduced && p > 0) {
       flow.offset.x -= Math.min(dt, 0.1) * (route.dashed ? 0.35 : 0.8);
       // The glow breathes between 0.12 and 0.24 over 1.5 s.
-      glow.opacity = 0.18 + 0.06 * Math.sin((performance.now() / 1500) * Math.PI * 2);
+      glow.opacity = 0.22 + 0.08 * Math.sin((performance.now() / 1500) * Math.PI * 2);
       invalidate();
     }
     tubes.forEach((t, i) => {
@@ -368,21 +376,22 @@ function March({ route, index, progress, palette, toScene, radius, heads, reduce
       {tubes.map((t, i) => (
         <group key={i}>
           {/* A soft glow of the side's colour, added onto the ground under the march. */}
-          <mesh ref={(m) => void (meshes.current[4 * i + 3] = m)} geometry={t.glow} material={glow} renderOrder={0} />
-          <mesh ref={(m) => void (meshes.current[4 * i] = m)} geometry={t.casing} renderOrder={1}>
-            <meshBasicMaterial color={palette.casing} transparent opacity={0.96} side={THREE.DoubleSide} depthTest={false} />
+          {/* Every layer is in the transparent pass, so they draw in renderOrder: glow, casing, core, light. */}
+          <mesh ref={(m) => void (meshes.current[4 * i + 3] = m)} geometry={t.glow} material={glow} renderOrder={1} />
+          <mesh ref={(m) => void (meshes.current[4 * i] = m)} geometry={t.casing} renderOrder={2}>
+            <meshBasicMaterial color={palette.casing} transparent opacity={0.96} depthWrite={false} side={THREE.DoubleSide} depthTest={false} />
           </mesh>
-          <mesh ref={(m) => void (meshes.current[4 * i + 1] = m)} geometry={t.core} renderOrder={2}>
-            <meshBasicMaterial color={color} side={THREE.DoubleSide} depthTest={false} />
+          <mesh ref={(m) => void (meshes.current[4 * i + 1] = m)} geometry={t.core} renderOrder={3}>
+            <meshBasicMaterial color={color} transparent opacity={1} depthWrite={false} side={THREE.DoubleSide} depthTest={false} />
           </mesh>
           {/* Light running along the march; it stands still with reduced motion. */}
-          <mesh ref={(m) => void (meshes.current[4 * i + 2] = m)} geometry={t.flow} renderOrder={3}>
+          <mesh ref={(m) => void (meshes.current[4 * i + 2] = m)} geometry={t.flow} renderOrder={4}>
             <meshBasicMaterial color={palette.streak} map={flow} transparent opacity={0.9} side={THREE.DoubleSide} depthTest={false} />
           </mesh>
         </group>
       ))}
-      <mesh ref={head} geometry={headGeometry} renderOrder={2}>
-        <meshBasicMaterial color={color} side={THREE.DoubleSide} depthTest={false} />
+      <mesh ref={head} geometry={headGeometry} renderOrder={3}>
+        <meshBasicMaterial color={color} transparent opacity={1} depthWrite={false} side={THREE.DoubleSide} depthTest={false} />
       </mesh>
     </group>
   );
@@ -472,15 +481,17 @@ function MapRig({
     const zoomIn = head ? 0.72 : 1;
 
     // Turn with the marches: along the march being drawn, else the stage's general direction, north
-    // when the stage has none; never further than the reader could turn by hand. While a march is
-    // drawn the camera also dips a little to show the ground it crosses.
+    // when the stage has none, the short way round. While a march is drawn the camera also dips a
+    // little to show the ground it crosses.
     const drawing = spin && follow && !reduced && routes > 0 && progress.current < routes && progress.current > 0;
     if (spin && follow && !reduced) {
       const route = config.steps[step]?.routes[idx];
       const heading = drawing && route ? marchHeading(route.points, Math.min(Math.max(progress.current - idx, 0), 1)) : (stageHeading(config, step) ?? 0);
-      const turn = Math.min(Math.max(heading, -VIEW_LIMITS.turn), VIEW_LIMITS.turn);
+      // The goal angle, brought to within half a turn of the current one.
+      const off = HOME_VIEW.theta - heading - want.theta;
+      const delta = off - 2 * Math.PI * Math.round(off / (2 * Math.PI));
       const k = 1 - Math.exp(-dt * 1.4);
-      const theta = want.theta + (HOME_VIEW.theta - turn - want.theta) * k;
+      const theta = want.theta + delta * k;
       if (Math.abs(theta - want.theta) > 1e-4) busy0 = true;
       cam.view.current = { ...cam.view.current, theta };
       want.theta = theta;
