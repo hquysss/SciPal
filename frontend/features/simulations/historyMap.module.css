@@ -121,6 +121,7 @@
   --map-area-enemy-line: #26364a;
   --map-streak: #fff3b0;
   --map-flare: #ffd166;
+  --map-border: #4a4a4a; /* today's borders, dash-dot like the textbook's */
 }
 
 /* March effects: a glow under the march, light running along it, a flag at its head, a flare on a victory. */

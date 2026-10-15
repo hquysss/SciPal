@@ -278,3 +278,28 @@ describe('march headings', () => {
     expect(stageHeading({ ...lamSon, steps: [{ ...lamSon.steps[0]!, routes: [] }] }, 0)).toBeNull();
   });
 });
+
+describe('today’s borders', () => {
+  const borders = JSON.parse(readFileSync('public/models/history/viet-nam/borders.json', 'utf8')) as Array<Array<[number, number]>>;
+
+  it('ships land borders inside the region', () => {
+    const b = HISTORY_MAP_REGIONS['viet-nam'];
+    expect(borders.length).toBeGreaterThan(10);
+    for (const line of borders) {
+      expect(line.length).toBeGreaterThanOrEqual(2);
+      for (const [lon, lat] of line) {
+        expect(lon).toBeGreaterThanOrEqual(b.west);
+        expect(lon).toBeLessThanOrEqual(b.east);
+        expect(lat).toBeGreaterThanOrEqual(b.south);
+        expect(lat).toBeLessThanOrEqual(b.north);
+      }
+    }
+  });
+
+  it('draws them dash-dot on the flat map, and names them in the legend', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify(borders))));
+    const { container } = render(<FlatMap config={lamSon} step={0} lang="vi" description="" onSelect={() => {}} />);
+    await vi.waitFor(() => expect(container.querySelectorAll('[data-borders] polyline').length).toBe(borders.length));
+    expect((container.querySelector('[data-borders]') as SVGElement).style.strokeDasharray.split(/[ ,]+/)).toHaveLength(4);
+  });
+});

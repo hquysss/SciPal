@@ -127,3 +127,26 @@ Hiện tại camera chỉ trượt và phóng to theo giai đoạn, lúc nào c�
 - Nút "Tự xoay camera theo hướng tiến quân" (biểu tượng la bàn), mặc định bật.
   - Tự xoay hoặc nghiêng bằng tay thì nút tắt.
   - "Góc nhìn ban đầu" bật lại.
+
+## Đường biên giới quốc gia (đã làm — dữ liệu sinh bằng `scripts/assets/build_history_borders.py` riêng, không cần dựng lại địa hình)
+Phản hồi: "thiếu đường ranh giới trong mô phỏng".
+
+Lược đồ SGK (Lam Sơn Hình 3, Tây Sơn Hình 6) luôn vẽ "Biên giới quốc gia ngày nay" bằng nét gạch–chấm. Bản đồ lịch sử (`history-map`) hiện chưa có đường này. Bản đồ thế giới đã có viền từng nước nên không cần thêm.
+
+**Dữ liệu**
+- Lấy đường biên giới đất liền từ Natural Earth 10m `admin_0_boundary_lines_land` (phạm vi công cộng), cắt theo khung của vùng bản đồ.
+- `scripts/assets/build_history_terrain.py` sinh thêm `frontend/public/models/history/viet-nam/borders.json`: các đường `[kinh độ, vĩ độ]` đã giản lược (dưới 30 KB).
+- Chỉ vẽ biên giới trên đất liền: Việt Nam – Trung Quốc, Lào, Campuchia, và các nước lân cận trong khung. Không vẽ ranh giới trên biển.
+- Hoàng Sa và Trường Sa vẫn ghi "(Việt Nam)" như hiện nay.
+
+**Hiển thị**
+- Nét gạch–chấm giống SGK, màu riêng của bản đồ `--map-border` (`#4A4A4A`), mảnh, luôn nằm dưới mũi tiến quân.
+- **Bản 2D:** một lớp `<polyline>` có `stroke-dasharray` dạng gạch–chấm.
+- **Bản 3D:** vẽ vào ảnh nền mặt đất (`paintBase`) bằng `setLineDash`. Nét vẽ một lần cho mỗi giai đoạn, không làm chậm hiệu ứng lan.
+- Chú giải dưới bản đồ thêm dòng "Biên giới quốc gia ngày nay".
+
+**Kiểm thử**
+- File `borders.json` hợp lệ và mọi điểm nằm trong khung vùng.
+- Bản 2D có lớp biên giới với nét gạch–chấm.
+- Chú giải có dòng mới.
+- Xem trên trình duyệt ở cả bản 2D và 3D.

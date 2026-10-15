@@ -8,7 +8,7 @@ import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import * as THREE from 'three';
 import type { HistoryMapRegion } from '@scipal/types';
-import { areaGrowth, areaOrigins, assetBase, bursting, marchHeading, stageHeading, densify, heightAt, marchProgress, namedAt, placeTimes, placesAt, projection, stepFraction, stepFrame, type HistoryMap, type LonLat } from './historyMapGeo';
+import { BORDER_DASH, areaGrowth, areaOrigins, assetBase, bursting, loadBorders, type Borders, marchHeading, stageHeading, densify, heightAt, marchProgress, namedAt, placeTimes, placesAt, projection, stepFraction, stepFrame, type HistoryMap, type LonLat } from './historyMapGeo';
 import { usePalette } from './scene3d';
 import { HOME_VIEW, VIEW_LIMITS, clampView, type MapCamera } from './historyMapCamera';
 import { pick, type Lang } from './types';
@@ -21,7 +21,7 @@ const EXAGGERATION = 16;
 const METRES_PER_UNIT = 111_000;
 
 type Meta = { texture: [number, number]; heights: [number, number] };
-type Assets = { meta: Meta; heights: Uint16Array; relief: HTMLImageElement; land: HTMLImageElement };
+type Assets = { meta: Meta; heights: Uint16Array; relief: HTMLImageElement; land: HTMLImageElement; borders: Borders };
 
 function loadImage(src: string) {
   return new Promise<HTMLImageElement>((resolve, reject) => {
@@ -49,8 +49,9 @@ function useAssets(region: HistoryMapRegion) {
       fetchOk(`${base}/heights.bin`).then((r) => r.arrayBuffer()),
       loadImage(`${base}/relief.jpg`),
       loadImage(`${base}/land.png`),
+      loadBorders(region),
     ]).then(
-      ([meta, buffer, relief, land]) => live && setState({ region, assets: { meta, heights: new Uint16Array(buffer), relief, land } }),
+      ([meta, buffer, relief, land, borders]) => live && setState({ region, assets: { meta, heights: new Uint16Array(buffer), relief, land, borders } }),
       (error: Error) => live && setState({ region, error }),
     );
     return () => {
@@ -129,7 +130,33 @@ function paintSpread(canvas: HTMLCanvasElement, base: HTMLCanvasElement, small: 
   const ctx = canvas.getContext('2d')!;
   ctx.drawImage(base, 0, 0);
   const areas = config.steps[step]?.areas ?? [];
-  if (areas.length === 0 || grow <= 0) return;
+  if (areas.length > 0 && grow > 0) paintSpreadAreas(ctx, small, assets, config, step, palette, grow, w, h);
+  drawBorders(ctx, assets.borders, palette, projection(config.region).toUv, w, h);
+}
+
+/** Today's borders, dash-dot like the textbook's, over the areas and under the marches. */
+function drawBorders(ctx: CanvasRenderingContext2D, borders: Borders, palette: Palette, toUv: (p: LonLat) => [number, number], w: number, h: number) {
+  const width = Math.max(1.5, w / 900);
+  ctx.save();
+  ctx.strokeStyle = palette.border;
+  ctx.globalAlpha = 0.85;
+  ctx.lineWidth = width;
+  ctx.lineCap = 'round';
+  ctx.setLineDash(BORDER_DASH.map((d) => d * width));
+  for (const line of borders) {
+    ctx.beginPath();
+    line.forEach((p, i) => {
+      const [u, v] = toUv(p);
+      if (i === 0) ctx.moveTo(u * w, v * h);
+      else ctx.lineTo(u * w, v * h);
+    });
+    ctx.stroke();
+  }
+  ctx.restore();
+}
+
+function paintSpreadAreas(ctx: CanvasRenderingContext2D, small: HTMLCanvasElement, assets: Assets, config: HistoryMap, step: number, palette: Palette, grow: number, w: number, h: number) {
+  const areas = config.steps[step]?.areas ?? [];
   const [sw, sh] = [Math.round(w / 2), Math.round(h / 2)];
   small.width = sw;
   small.height = sh;

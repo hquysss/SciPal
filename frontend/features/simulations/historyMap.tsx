@@ -9,7 +9,7 @@ import overlay from './simOverlay.module.css';
 import styles from './historyMap.module.css';
 import { useMapCamera } from './historyMapCamera';
 import { useReflexFullscreen } from './useReflexFrame';
-import { areaGrowth, areaOrigins, assetBase, bursting, marchProgress, namedAt, placeTimes, placesAt, projection, stepFraction, stepFrame, yearsOf, type HistoryMap } from './historyMapGeo';
+import { BORDER_DASH, areaGrowth, areaOrigins, assetBase, bursting, loadBorders, type Borders, marchProgress, namedAt, placeTimes, placesAt, projection, stepFraction, stepFrame, yearsOf, type HistoryMap } from './historyMapGeo';
 import { useTimelineGlide } from './useTimelineGlide';
 import { MAP_VAR, PLACE_MARK } from './historyMapStyle';
 import { pick, type Lang, type SimulationEditorProps, type SimulationModule, type SimulationViewProps } from './types';
@@ -68,6 +68,14 @@ export function FlatMap({ config, step, frac = 1, reduced = false, lang, descrip
   const grow = areaGrowth(frac, routes.length > 0);
   const origins = areaOrigins(config, step);
   const times = placeTimes(config, step);
+  const [borders, setBorders] = useState<Borders>([]);
+  useEffect(() => {
+    let live = true;
+    void loadBorders(config.region).then((b) => live && setBorders(b));
+    return () => {
+      live = false;
+    };
+  }, [config.region]);
 
   return (
     <svg
@@ -112,6 +120,12 @@ export function FlatMap({ config, step, frac = 1, reduced = false, lang, descrip
             />
           )),
         )}
+      </g>
+      {/* Today's borders, dash-dot like the textbook's "Biên giới quốc gia ngày nay". */}
+      <g data-borders="" fill="none" style={{ stroke: MAP_VAR.border, strokeOpacity: 0.85, strokeWidth: line * 0.45, strokeDasharray: BORDER_DASH.map((d) => d * line * 0.45).join(' '), strokeLinecap: 'round' }}>
+        {borders.map((b, k) => (
+          <polyline key={k} points={b.map(pt).join(' ')} />
+        ))}
       </g>
       {routes.map((r, i) => {
         const done = Math.min(Math.max(drawn - i, 0), 1);
@@ -434,6 +448,7 @@ export function HistoryMapView({ config, lang }: SimulationViewProps<'history-ma
         <li><span aria-hidden="true" style={{ color: MAP_VAR.ours }}>★ </span>{t({ en: 'Victory', vi: 'Trận thắng' })}</li>
         <li><span aria-hidden="true">◉ </span>{t({ en: 'Citadel or town', vi: 'Thành, trấn' })}</li>
         <li><span aria-hidden="true" style={{ color: MAP_VAR.ours }}>⚑ </span>{t({ en: 'Base, headquarters', vi: 'Căn cứ, sở chỉ huy' })}</li>
+        <li><span aria-hidden="true" className="font-bold" style={{ color: MAP_VAR.border }}>-·- </span>{t({ en: 'Today’s national borders', vi: 'Biên giới quốc gia ngày nay' })}</li>
       </ul>
       <p className="text-xs text-ink-muted">
         {t({ en: 'Terrain: AWS Terrain Tiles (SRTM, GMTED, ETOPO1). Rivers: Natural Earth.', vi: 'Địa hình: AWS Terrain Tiles (SRTM, GMTED, ETOPO1). Sông: Natural Earth.' })}

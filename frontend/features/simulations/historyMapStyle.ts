@@ -11,6 +11,7 @@ export const MAP_TOKENS = {
   areaEnemy: '--map-area-enemy',
   areaEnemyLine: '--map-area-enemy-line',
   streak: '--map-streak',
+  border: '--map-border',
 } as const;
 /** For SVG and HTML, which can use the custom properties directly. */
 export const MAP_VAR = Object.fromEntries(Object.entries(MAP_TOKENS).map(([k, v]) => [k, `var(${v})`])) as Record<keyof typeof MAP_TOKENS, string>;

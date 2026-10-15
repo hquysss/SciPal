@@ -10,6 +10,28 @@ export type Bounds = { west: number; south: number; east: number; north: number 
 
 export const assetBase = (region: HistoryMapRegion) => `/models/history/${region}`;
 
+export type Borders = LonLat[][];
+const borderCache = new Map<HistoryMapRegion, Promise<Borders>>();
+/**
+ * Today's land borders of a region (scripts/assets/build_history_borders.py), fetched once. A map
+ * without them still works, so a failure gives no borders rather than an error.
+ */
+export function loadBorders(region: HistoryMapRegion): Promise<Borders> {
+  let p = borderCache.get(region);
+  if (!p) {
+    // A failed load is not kept, so the next map tries again.
+    const failed = (): Borders => (borderCache.delete(region), []);
+    p = fetch(`${assetBase(region)}/borders.json`)
+      .then((res) => (res.ok ? (res.json() as Promise<Borders>) : failed()))
+      .catch(failed);
+    borderCache.set(region, p);
+  }
+  return p;
+}
+
+/** The dash-dot of the textbook's "today's border" line, in units of the line width. */
+export const BORDER_DASH = [5, 2.5, 0.8, 2.5];
+
 export function projection(region: HistoryMapRegion) {
   const b = HISTORY_MAP_REGIONS[region];
   const k = Math.cos((((b.north + b.south) / 2) * Math.PI) / 180);
