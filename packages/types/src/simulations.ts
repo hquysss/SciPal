@@ -44,6 +44,14 @@ const AlgorithmConfig = z.preprocess(
   }),
 );
 
+// n beyond what the pattern can draw is clamped, not refused, so a lesson never fails over it.
+const ComplexityConfig = z
+  .object({
+    pattern: z.enum(COMPLEXITY_PATTERNS).default('single-loop'),
+    n: z.number().int().min(1).max(1000).default(8),
+  })
+  .transform((c) => ({ ...c, n: Math.min(c.n, COMPLEXITY_MAX_N[c.pattern]) }));
+
 const GraphParameter = z.object({
   name: z.string().regex(GRAPH_PARAMETER_NAME),
   min: finite(-1000, 1000),
@@ -481,6 +489,7 @@ export const SIMULATION_CONFIGS = {
   'circulation-3d': CirculationConfig,
   'skin-senses': SkinSensesConfig,
   'algorithm-sim': AlgorithmConfig,
+  'complexity-sim': ComplexityConfig,
   'function-graph': FunctionGraphConfig,
   motion: MotionConfig,
   pendulum: PendulumConfig,
@@ -511,6 +520,7 @@ export const SIMULATION_KINDS = [
   'circulation-3d',
   'skin-senses',
   'algorithm-sim',
+  'complexity-sim',
   'function-graph',
   'motion',
   'pendulum',
@@ -620,6 +630,7 @@ const MESSAGES: Record<string, Message> = {
   'circulation-3d': { en: 'Heart rate 40–180 beats per minute (whole numbers); choose the body, heart or vessels view and a loop.', vi: 'Nhịp tim 40–180 nhịp/phút (số nguyên); chọn cảnh toàn thân, tim hoặc hệ mạch và vòng tuần hoàn.' },
   'skin-senses': { en: 'Choose the receptors or reflex arc view and one stimulus: touch, pressure, pain, cold or heat.', vi: 'Chọn cảnh thụ thể hoặc cung phản xạ và một kích thích: chạm, ấn mạnh, đau, lạnh hoặc nóng.' },
   'algorithm-sim': { en: 'Check the algorithm, the values (2–32 whole numbers) and the target.', vi: 'Kiểm tra thuật toán, dãy số (2–32 số nguyên) và giá trị cần tìm.' },
+  'complexity-sim': { en: 'Choose one of the seven loop patterns and a whole n from 1 (at most 12 for branching, 8 for permutations, 32 otherwise).', vi: 'Chọn một trong bảy mẫu vòng lặp và n nguyên từ 1 (tối đa 12 với rẽ nhánh, 8 với hoán vị, 32 với các mẫu khác).' },
   'function-graph': { en: 'Check the expression, the parameters and the axes.', vi: 'Kiểm tra biểu thức, tham số và khoảng trục.' },
   motion: { en: 'Speed 0–100 m/s, angle 0–90°, acceleration −20–20 m/s², g 1–25, time 1–30 s.', vi: 'Vận tốc 0–100 m/s, góc 0–90°, gia tốc −20–20 m/s², g 1–25, thời gian 1–30 s.' },
   pendulum: { en: 'Length 0.1–10 m, mass 0.1–10 kg, k 1–1000 N/m, amplitude 1–30.', vi: 'Chiều dài 0,1–10 m, khối lượng 0,1–10 kg, k 1–1000 N/m, biên độ 1–30.' },

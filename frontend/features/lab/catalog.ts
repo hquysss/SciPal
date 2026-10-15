@@ -131,6 +131,13 @@ export const LAB_ITEMS: readonly LabItem[] = [
     blurb: { en: 'Sorting and searching step by step, every comparison shown.', vi: 'Sắp xếp và tìm kiếm từng bước, thấy rõ mọi phép so sánh.' },
     grades: { en: 'Grades 10–11', vi: 'Lớp 10–11' },
   },
+  {
+    kind: 'complexity-sim',
+    name: { en: 'Algorithm complexity', vi: 'Độ phức tạp thuật toán' },
+    subject: 'informatics',
+    blurb: { en: 'Seven loop patterns from O(1) to O(n!): count every operation and watch the slow ones explode.', vi: 'Bảy mẫu vòng lặp từ O(1) đến O(n!): đếm từng phép toán và xem các mẫu chậm bùng nổ.' },
+    grades: { en: 'Grade 11', vi: 'Lớp 11' },
+  },
 ];
 
 export const labItem = (kind: string) => LAB_ITEMS.find((item) => item.kind === kind) ?? null;

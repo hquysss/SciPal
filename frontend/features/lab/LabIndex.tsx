@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useState } from 'react';
-import { Activity, ArrowDownUp, ArrowRight, Axis3d, Box, ChartSpline, CircleDot, Dices, FlaskConical, Hand, HeartPulse, Orbit, Rocket, Waves, Zap, type LucideIcon } from 'lucide-react';
+import { Activity, ArrowDownUp, ArrowRight, Axis3d, Box, ChartSpline, CircleDot, Gauge, Dices, FlaskConical, Hand, HeartPulse, Orbit, Rocket, Waves, Zap, type LucideIcon } from 'lucide-react';
 import { useLanguage } from '@scipal/hooks';
 import { SubjectProvider } from '@scipal/ui';
 import type { BuiltInSimulationKind } from '@scipal/types';
@@ -25,6 +25,7 @@ export const LAB_ICONS: Partial<Record<BuiltInSimulationKind, LucideIcon>> = {
   'circulation-3d': HeartPulse,
   'skin-senses': Hand,
   'algorithm-sim': ArrowDownUp,
+  'complexity-sim': Gauge,
 };
 
 const FOCUS = 'focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus';

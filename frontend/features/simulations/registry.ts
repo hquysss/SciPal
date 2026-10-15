@@ -3,6 +3,7 @@ import { kneeReflexModule } from './kneeReflex';
 import { circulationModule } from './circulation';
 import { skinModule } from './skin';
 import { algorithmModule } from './algorithm';
+import { complexityModule } from './complexity';
 import { functionGraphModule } from './functionGraph';
 import { graph3dModule } from './graph3d';
 import { harmonic3dModule } from './harmonic3d';
@@ -29,6 +30,7 @@ export const simulationModules: { [K in BuiltInSimulationKind]: SimulationModule
   'circulation-3d': circulationModule,
   'skin-senses': skinModule,
   'algorithm-sim': algorithmModule,
+  'complexity-sim': complexityModule,
   'function-graph': functionGraphModule,
   probability: probabilityModule,
   'unit-circle': unitCircleModule,
