@@ -220,7 +220,7 @@ function ComplexityView({ config, lang }: SimulationViewProps<'complexity-sim'>)
           <RotateCcw aria-hidden="true" className="h-4 w-4" />
         </button>
         <span role="status" className="ml-auto text-sm text-ink-muted">
-          {!playing && shown === total ? t({ en: `Done: ${total} operations.`, vi: `Xong: ${total} phép toán.` }) : ''}
+          {!playing && shown === total ? t({ en: `Done: ${total.toLocaleString('en-US')} operations.`, vi: `Xong: ${total.toLocaleString('vi-VN')} phép toán.` }) : ''}
         </span>
       </div>
 
