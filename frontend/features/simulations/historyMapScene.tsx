@@ -10,7 +10,7 @@ import * as THREE from 'three';
 import type { HistoryMapRegion } from '@scipal/types';
 import { areaGrowth, areaOrigins, assetBase, bursting, densify, heightAt, marchProgress, namedAt, placeTimes, placesAt, projection, stepFraction, stepFrame, type HistoryMap, type LonLat } from './historyMapGeo';
 import { usePalette } from './scene3d';
-import { clampView, type MapCamera } from './historyMapCamera';
+import { clampView, fitInside, type MapCamera } from './historyMapCamera';
 import { pick, type Lang } from './types';
 import { PLACE_MARK, type Palette, MAP_TOKENS } from './historyMapStyle';
 import styles from './historyMap.module.css';
@@ -394,6 +394,7 @@ function MapRig({
   const now = useRef<{ theta: number; phi: number; dist: number; base: number; target: THREE.Vector3 } | null>(null);
   const goal = useMemo(() => new THREE.Vector3(), []);
   const v = useMemo(() => new THREE.Vector3(), []);
+  const look = useMemo(() => new THREE.Vector3(), []);
   useEffect(() => onInvalidate(invalidate), [invalidate, onInvalidate]);
   useEffect(() => invalidate(), [anchors, follow, invalidate]);
 
@@ -458,10 +459,16 @@ function MapRig({
         busy = true;
     }
 
-    const d = c.base * c.dist;
+    // Never show the edge of the terrain: tilt down from the horizon, come closer or slide back in.
+    const shot = fitInside({ x: c.target.x, z: c.target.z, theta: c.theta, phi: c.phi, d: c.base * c.dist }, (FOV * Math.PI) / 180, aspect, bounds.halfW * 0.99, bounds.halfH * 0.99);
+    // What the reader asked for stops at the same limits, so zooming back in or tilting answers at once.
+    if (shot.d < c.base * c.dist - 1e-6) cam.view.current = { ...cam.view.current, dist: Math.min(cam.view.current.dist, shot.d / c.base) };
+    if (shot.phi > c.phi + 1e-6) cam.view.current = { ...cam.view.current, phi: Math.max(cam.view.current.phi, shot.phi) };
+    const d = shot.d;
     cam.worldPerPixel.current = (2 * d * tan) / Math.max(size.height, 1);
-    camera.position.set(c.target.x + d * Math.cos(c.phi) * Math.cos(c.theta), c.target.y + d * Math.sin(c.phi), c.target.z - d * Math.cos(c.phi) * Math.sin(c.theta));
-    camera.lookAt(c.target);
+    look.set(shot.x, c.target.y, shot.z);
+    camera.position.set(look.x + d * Math.cos(shot.phi) * Math.cos(c.theta), look.y + d * Math.sin(shot.phi), look.z - d * Math.cos(shot.phi) * Math.sin(c.theta));
+    camera.lookAt(look);
     camera.updateMatrixWorld();
     // A flag rides the head of each march still being drawn.
     flags.current.forEach((el, i) => {
