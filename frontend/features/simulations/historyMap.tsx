@@ -9,7 +9,8 @@ import overlay from './simOverlay.module.css';
 import styles from './historyMap.module.css';
 import { useMapCamera } from './historyMapCamera';
 import { useReflexFullscreen } from './useReflexFrame';
-import { assetBase, namedAt, placesAt, projection, stepFrame, type HistoryMap } from './historyMapGeo';
+import { areaGrowth, areaOrigins, assetBase, marchProgress, namedAt, placeTimes, placesAt, projection, stepFraction, stepFrame, yearsOf, type HistoryMap } from './historyMapGeo';
+import { useTimelineGlide } from './useTimelineGlide';
 import { PLACE_MARK } from './historyMapStyle';
 import { pick, type Lang, type SimulationEditorProps, type SimulationModule, type SimulationViewProps } from './types';
 
@@ -27,7 +28,7 @@ class SceneBoundary extends Component<{ fallback: ReactNode; children: ReactNode
   }
 }
 
-function useReducedMotion() {
+export function useReducedMotion() {
   const [reduced, setReduced] = useState(false);
   useEffect(() => {
     const media = window.matchMedia?.('(prefers-reduced-motion: reduce)');
@@ -43,7 +44,7 @@ function useReducedMotion() {
 const CASING = { stroke: 'var(--surface)', strokeLinecap: 'round', strokeLinejoin: 'round' } as const;
 
 /** The same map drawn flat over the relief picture: the first paint, and the fallback without WebGL. */
-export function FlatMap({ config, step, lang, description, onSelect, className = 'aspect-[4/3] w-full', bare = false }: { config: HistoryMap; step: number; lang: Lang; description: string; onSelect: (index: number) => void; className?: string; bare?: boolean }) {
+export function FlatMap({ config, step, frac = 1, lang, description, onSelect, className = 'aspect-[4/3] w-full', bare = false }: { config: HistoryMap; step: number; /** How far through `step` the slider is (marches drawn, areas spread). */ frac?: number; lang: Lang; description: string; onSelect: (index: number) => void; className?: string; bare?: boolean }) {
   const t = pick(lang);
   const id = useId().replace(/:/g, '');
   const proj = projection(config.region);
@@ -62,6 +63,11 @@ export function FlatMap({ config, step, lang, description, onSelect, className =
   const picture = { x: -proj.width / 2, y: -proj.height / 2, width: proj.width, height: proj.height, preserveAspectRatio: 'none' };
   const line = span / 220;
   const font = span / 40;
+  const routes = config.steps[step]?.routes ?? [];
+  const drawn = marchProgress(frac, routes.length);
+  const grow = areaGrowth(frac, routes.length > 0);
+  const origins = areaOrigins(config, step);
+  const times = placeTimes(config, step);
 
   return (
     <svg
@@ -75,6 +81,19 @@ export function FlatMap({ config, step, lang, description, onSelect, className =
         <mask id={`${id}-land`} maskUnits="userSpaceOnUse" {...picture}>
           <image href={`${base}/land.png`} {...picture} />
         </mask>
+        {grow < 1 &&
+          (config.steps[step]?.areas ?? []).map((a, j) => {
+            const [ox, oy] = proj.toPlane(origins[j]!);
+            const reach = Math.max(...a.points.map((q) => {
+              const [x, y] = proj.toPlane(q);
+              return Math.hypot(x - ox, y - oy);
+            }));
+            return (
+              <clipPath key={j} id={`${id}-spread-${j}`}>
+                <circle cx={ox} cy={-oy} r={reach * grow} />
+              </clipPath>
+            );
+          })}
         {(['ours', 'enemy'] as const).map((side) => (
           <marker key={side} id={`${id}-${side}`} viewBox="0 0 10 10" refX="6" refY="5" markerWidth="4.5" markerHeight="4.5" orient="auto-start-reverse">
             <path d="M0,0 L10,5 L0,10 z" style={{ fill: side === 'ours' ? 'var(--danger)' : 'var(--ink)' }} />
@@ -87,19 +106,30 @@ export function FlatMap({ config, step, lang, description, onSelect, className =
           s.areas.map((a, j) => (
             <polygon
               key={`${i}-${j}`}
+              clipPath={i === step && grow < 1 ? `url(#${id}-spread-${j})` : undefined}
               points={a.points.map(pt).join(' ')}
               style={{ fill: a.side === 'ours' ? 'var(--success)' : 'var(--ink)', fillOpacity: i === step ? 0.42 : 0.22, stroke: a.side === 'ours' ? 'var(--success)' : 'var(--ink)', strokeOpacity: 0.9, strokeWidth: line * 0.6 }}
             />
           )),
         )}
       </g>
-      {(config.steps[step]?.routes ?? []).map((r, i) => {
+      {routes.map((r, i) => {
+        const done = Math.min(Math.max(drawn - i, 0), 1);
+        if (done <= 0) return null;
+        // A march still being drawn is cut at its head: the points so far plus the point between.
+        const pts = r.points;
+        const f = done * (pts.length - 1);
+        const k = Math.floor(f);
+        const a = pts[Math.min(k, pts.length - 1)]!;
+        const b = pts[Math.min(k + 1, pts.length - 1)]!;
+        const head: [number, number] = [a[0] + (b[0] - a[0]) * (f - k), a[1] + (b[1] - a[1]) * (f - k)];
+        const shown = done < 1 ? [...pts.slice(0, k + 1), head].map(pt).join(' ') : pts.map(pt).join(' ');
         const dash = r.dashed ? `${line * 3} ${line * 2.2}` : undefined;
         return (
-          <g key={i} fill="none">
-            <polyline points={r.points.map(pt).join(' ')} style={{ ...CASING, strokeWidth: line * 2.4 }} />
+          <g key={i} fill="none" data-march={i} data-done={done.toFixed(2)}>
+            <polyline points={shown} style={{ ...CASING, strokeWidth: line * 2.4 }} />
             <polyline
-              points={r.points.map(pt).join(' ')}
+              points={shown}
               markerEnd={`url(#${id}-${r.side})`}
               style={{ stroke: r.side === 'ours' ? 'var(--danger)' : 'var(--ink)', strokeWidth: line * 1.3, strokeDasharray: dash, strokeLinecap: 'round', strokeLinejoin: 'round' }}
             />
@@ -108,6 +138,7 @@ export function FlatMap({ config, step, lang, description, onSelect, className =
       })}
       {placesAt(config, step).map((p) => {
         const i = config.places.indexOf(p);
+        if (frac < (times.get(i) ?? 0)) return null;
         const [x, y] = proj.toPlane([p.lon, p.lat]);
         const area = p.type === 'area';
         return (
@@ -142,10 +173,8 @@ export function FlatMap({ config, step, lang, description, onSelect, className =
 export function HistoryMapView({ config, lang }: SimulationViewProps<'history-map'>) {
   const t = pick(lang);
   const reduced = useReducedMotion();
-  const [step, setStep] = useState(0);
   const [selected, setSelected] = useState<number | null>(null);
   const [flat, setFlat] = useState(false);
-  const [playing, setPlaying] = useState(false);
   const [follow, setFollow] = useState(true);
   const [open, setOpen] = useState(false);
   // The 3D view only exists in the browser: the server and first paint show the flat map.
@@ -157,22 +186,27 @@ export function HistoryMapView({ config, lang }: SimulationViewProps<'history-ma
   const screen = useReflexFullscreen(stage);
 
   const last = config.steps.length - 1;
-  const current = config.steps[Math.min(step, last)]!;
+  // The slider moves through time: the 3D scene reads its position every frame from this ref.
+  const posRef = useRef(0);
+  const slider = useTimelineGlide({
+    last,
+    reduced,
+    stepMs: (target) => Math.max(2500, (config.steps[target]?.routes.length ?? 0) * 1600 + 1000),
+    onMove: (_, next) => {
+      posRef.current = next;
+      camera.invalidate.current();
+    },
+  });
+  const { pos, step, playing } = slider;
+  const current = config.steps[step]!;
+  const frac = stepFraction(pos, step);
+  const years = yearsOf(current.period);
+  const year = years.length === 2 && step > 0 ? Math.round(years[0]! + (years[1]! - years[0]!) * frac) : null;
   const go = (next: number) => {
-    setStep(Math.min(Math.max(next, 0), last));
     setSelected(null);
+    slider.go(next);
   };
 
-  useEffect(() => {
-    if (!playing) return;
-    if (step >= last) {
-      setPlaying(false);
-      return;
-    }
-    const timer = window.setTimeout(() => go(step + 1), (3 + current.routes.length * 1.1) * 1000);
-    return () => window.clearTimeout(timer);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [playing, step, last]);
 
   const description = `${t({ en: 'Map', vi: 'Bản đồ' })}, ${current.period}: ${t(current.title)}. ${placesAt(config, step)
     .filter((p) => p.type !== 'area')
@@ -180,7 +214,7 @@ export function HistoryMapView({ config, lang }: SimulationViewProps<'history-ma
     .join(', ')}.`;
   const select = (i: number) => setSelected(i);
   const show3d = mounted && !flat;
-  const flatMap = (bare: boolean) => <FlatMap config={config} step={step} lang={lang} description={description} onSelect={select} className="h-full w-full" bare={bare} />;
+  const flatMap = (bare: boolean) => <FlatMap config={config} step={step} frac={frac} lang={lang} description={description} onSelect={select} className="h-full w-full" bare={bare} />;
   const notes = placesAt(config, step).filter((p) => p.note && (p.note.vi || p.note.en));
   const place = selected === null ? null : config.places[selected];
 
@@ -231,7 +265,7 @@ export function HistoryMapView({ config, lang }: SimulationViewProps<'history-ma
           {show3d ? (
             <SceneBoundary fallback={flatMap(true)}>
               <Suspense fallback={flatMap(true)}>
-                <HistoryMapScene config={config} step={step} lang={lang} reduced={reduced} follow={follow} camera={camera} onSelect={select} />
+                <HistoryMapScene config={config} step={step} lang={lang} reduced={reduced} follow={follow} camera={camera} onSelect={select} pos={posRef} />
               </Suspense>
             </SceneBoundary>
           ) : (
@@ -243,7 +277,10 @@ export function HistoryMapView({ config, lang }: SimulationViewProps<'history-ma
           <div className={styles.top}>
             <div className={styles.toolRow} onKeyDown={(e) => e.stopPropagation()}>{tools}</div>
             <div className={`${overlay.card} ${styles.title}`}>
-              <span className={styles.period}>{current.period}</span>
+              <span className={styles.period}>
+                {current.period}
+                {year !== null && <> · <span className="text-ink">{year}</span></>}
+              </span>
               <span className={styles.headline}>{t(current.title)}</span>
             </div>
           </div>
@@ -262,21 +299,24 @@ export function HistoryMapView({ config, lang }: SimulationViewProps<'history-ma
             )}
             <div className={`${overlay.card} ${styles.dock}`}>
               <div className={styles.controls}>
-                <button type="button" className={overlay.tool} aria-label={t({ en: 'Previous stage', vi: 'Giai đoạn trước' })} disabled={step === 0} onClick={() => go(step - 1)}>
+                <button type="button" className={overlay.tool} aria-label={t({ en: 'Previous stage', vi: 'Giai đoạn trước' })} disabled={pos <= 0} onClick={() => go(Math.ceil(pos - 1e-6) - 1)}>
                   <ChevronLeft aria-hidden="true" className={ic} />
                 </button>
                 <input
                   type="range"
                   min={0}
                   max={last}
-                  step={1}
-                  value={step}
+                  step="any"
+                  value={pos}
                   aria-label={t({ en: 'Stage', vi: 'Giai đoạn' })}
                   aria-valuetext={`${current.period}: ${t(current.title)}`}
-                  onChange={(e) => go(Number(e.target.value))}
+                  onChange={(e) => {
+                    setSelected(null);
+                    slider.drag(Number(e.target.value));
+                  }}
                   className={styles.slider}
                 />
-                <button type="button" className={overlay.tool} aria-label={t({ en: 'Next stage', vi: 'Giai đoạn sau' })} disabled={step === last} onClick={() => go(step + 1)}>
+                <button type="button" className={overlay.tool} aria-label={t({ en: 'Next stage', vi: 'Giai đoạn sau' })} disabled={pos >= last} onClick={() => go(Math.floor(pos + 1e-6) + 1)}>
                   <ChevronRight aria-hidden="true" className={ic} />
                 </button>
                 <button
@@ -284,8 +324,8 @@ export function HistoryMapView({ config, lang }: SimulationViewProps<'history-ma
                   className={`${overlay.tool} ${styles.play}`}
                   aria-pressed={playing}
                   onClick={() => {
-                    if (!playing && step >= last) go(0);
-                    setPlaying(!playing);
+                    setSelected(null);
+                    slider.play();
                   }}
                 >
                   {playing ? <Pause aria-hidden="true" className={ic} /> : <Play aria-hidden="true" className={ic} />}
@@ -296,7 +336,10 @@ export function HistoryMapView({ config, lang }: SimulationViewProps<'history-ma
               <ol className={styles.ticks} aria-label={t({ en: 'Stages', vi: 'Các giai đoạn' })}>
                 {config.steps.map((s, i) => (
                   <li key={i}>
-                    <button type="button" aria-current={i === step ? 'step' : undefined} onClick={() => go(i)} className={styles.tick}>
+                    <button type="button" aria-current={i === step ? 'step' : undefined} onClick={() => {
+                        setSelected(null);
+                        slider.jump(i);
+                      }} className={styles.tick}>
                       {s.period}
                     </button>
                   </li>

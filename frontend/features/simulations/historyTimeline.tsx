@@ -1,10 +1,11 @@
 'use client';
 
-import { useRef, useState, type KeyboardEvent } from 'react';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { useEffect, useRef, useState, type KeyboardEvent } from 'react';
+import { ChevronLeft, ChevronRight, Pause, Play } from 'lucide-react';
 import { SIMULATION_CONFIGS, type SimulationConfigByKind } from '@scipal/types';
 import { BUTTON, PANEL } from './controls';
 import { JsonConfigEditor, UploadLink } from './jsonConfigEditor';
+import { useReducedMotion } from './historyMap';
 import { pick, type Lang, type SimulationEditorProps, type SimulationModule, type SimulationViewProps } from './types';
 
 type Timeline = SimulationConfigByKind['history-timeline'];
@@ -22,24 +23,61 @@ function Picture({ image, lang }: { image: TimelineImage; lang: Lang }) {
   );
 }
 
+/** Time the line takes to run from one event to the next, and how long Play stays on an event. */
+export const SEGMENT_MS = 700;
+const PLAY_MS = 4000;
+
+/**
+ * When each half of the line fills and each dot lights, moving from event `from` to `to`: going
+ * forward the line runs on segment by segment; going back everything changes at once.
+ */
+export function lineTiming(from: number, to: number, reduced: boolean) {
+  const forward = !reduced && to > from;
+  const start = (i: number) => (forward && i > from ? (i - from - 1) * SEGMENT_MS : 0);
+  return {
+    /** The half of the line leaving event i to the right. */
+    right: (i: number) => (forward && i >= from ? (i - from) * SEGMENT_MS : 0),
+    /** The half arriving at event i from the left. */
+    left: (i: number) => start(i) + (forward && i > from ? SEGMENT_MS / 2 : 0),
+    /** The dot of event i lights when the line reaches it. */
+    dot: (i: number) => (forward && i > from ? (i - from) * SEGMENT_MS : 0),
+    half: forward ? SEGMENT_MS / 2 : reduced ? 0 : 150,
+  };
+}
+
 /**
  * Events along an axis that fill in as the learner walks it. Each event is a button (arrow keys,
  * Home and End move between them); the chosen one opens below with its text and picture.
  */
 export function HistoryTimelineView({ config, lang }: SimulationViewProps<'history-timeline'>) {
   const t = pick(lang);
-  const [current, setCurrent] = useState(0);
+  // The event shown and the one before it, so the line can run on from there.
+  const [[current, from], setMove] = useState<[number, number]>([0, 0]);
+  const [playing, setPlaying] = useState(false);
+  const reduced = useReducedMotion();
   const buttons = useRef<Array<HTMLButtonElement | null>>([]);
   const last = config.events.length - 1;
   const event = config.events[Math.min(current, last)]!;
+  const timing = lineTiming(from, current, reduced);
 
   const go = (i: number, focus = false) => {
     const next = Math.min(Math.max(i, 0), last);
-    setCurrent(next);
+    setMove([next, current]);
     const button = buttons.current[next];
     button?.scrollIntoView?.({ block: 'nearest', inline: 'nearest' });
     if (focus) button?.focus();
   };
+  useEffect(() => {
+    if (!playing) return;
+    if (current >= last) {
+      setPlaying(false);
+      return;
+    }
+    const timer = window.setTimeout(() => go(current + 1), PLAY_MS);
+    return () => window.clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [playing, current, last]);
+
   const onKeyDown = (e: KeyboardEvent<HTMLOListElement>) => {
     const moves: Record<string, number> = { ArrowRight: current + 1, ArrowDown: current + 1, ArrowLeft: current - 1, ArrowUp: current - 1, Home: 0, End: last };
     if (!(e.key in moves)) return;
@@ -52,14 +90,20 @@ export function HistoryTimelineView({ config, lang }: SimulationViewProps<'histo
       <ol aria-label={t({ en: 'Events', vi: 'Các mốc' })} onKeyDown={onKeyDown} className="flex snap-x overflow-x-auto pb-1">
         {config.events.map((e, i) => {
           const reached = i <= current;
+          // Each half of the line is a grey track with a coloured bar that runs along it.
           const line = (side: 'left' | 'right') =>
             (side === 'left' ? i > 0 : i < last) && (
-              <span
-                aria-hidden="true"
-                className={`absolute top-1/2 h-1 -translate-y-1/2 ${side === 'left' ? 'left-0 right-1/2' : 'left-1/2 right-0'} ${
-                  (side === 'left' ? reached : i < current) ? 'bg-[var(--accent,var(--action))]' : 'bg-line'
-                }`}
-              />
+              <span aria-hidden="true" className={`absolute top-1/2 h-1 -translate-y-1/2 overflow-hidden bg-line ${side === 'left' ? 'left-0 right-1/2' : 'left-1/2 right-0'}`}>
+                <span
+                  data-line={`${side}-${i}`}
+                  className="block h-full origin-left bg-[var(--accent,var(--action))] transition-transform ease-linear"
+                  style={{
+                    transform: `scaleX(${(side === 'left' ? reached : i < current) ? 1 : 0})`,
+                    transitionDuration: `${timing.half}ms`,
+                    transitionDelay: `${side === 'left' ? timing.left(i) : timing.right(i)}ms`,
+                  }}
+                />
+              </span>
             );
           return (
             <li
@@ -87,6 +131,7 @@ export function HistoryTimelineView({ config, lang }: SimulationViewProps<'histo
                   {line('left')}
                   {line('right')}
                   <span
+                    style={{ transitionDelay: `${timing.dot(i)}ms` }}
                     className={`absolute left-1/2 top-1/2 h-4 w-4 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 transition-colors ${
                       reached ? 'border-[var(--accent,var(--action))] bg-[var(--accent,var(--action))]' : 'border-edge bg-surface'
                     } ${i === current ? 'ring-4 ring-[var(--accent,var(--action))]/25' : ''}`}
@@ -100,7 +145,7 @@ export function HistoryTimelineView({ config, lang }: SimulationViewProps<'histo
         })}
       </ol>
 
-      <div aria-live="polite" className="flex flex-col gap-2 rounded-lg border border-line bg-surface-sunken p-3">
+      <div key={current} aria-live="polite" className="flex flex-col gap-2 rounded-lg border border-line bg-surface-sunken p-3 motion-safe:animate-[page-rise_360ms_cubic-bezier(0.22,1,0.36,1)_backwards]">
         <p className="font-semibold text-ink">
           <span className="tabular-nums text-ink-muted">{event.when} · </span>
           {t(event.title)}
@@ -120,6 +165,18 @@ export function HistoryTimelineView({ config, lang }: SimulationViewProps<'histo
         <button type="button" className={BUTTON} disabled={current === last} onClick={() => go(current + 1)}>
           {t({ en: 'Later', vi: 'Mốc sau' })}
           <ChevronRight aria-hidden="true" className="h-4 w-4" />
+        </button>
+        <button
+          type="button"
+          className={BUTTON}
+          aria-pressed={playing}
+          onClick={() => {
+            if (!playing && current >= last) go(0);
+            setPlaying(!playing);
+          }}
+        >
+          {playing ? <Pause aria-hidden="true" className="h-4 w-4" /> : <Play aria-hidden="true" className="h-4 w-4" />}
+          {playing ? t({ en: 'Pause', vi: 'Dừng' }) : t({ en: 'Play', vi: 'Chạy' })}
         </button>
       </div>
 

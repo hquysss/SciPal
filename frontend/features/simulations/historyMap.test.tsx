@@ -4,7 +4,7 @@ import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { HISTORY_MAP_REGIONS, defaultSimulationConfig, simulationConfig } from '@scipal/types';
-import { densify, heightAt, namedAt, projection, stepFrame, type HistoryMap } from './historyMapGeo';
+import { areaGrowth, areaOrigins, densify, heightAt, marchProgress, namedAt, placeTimes, projection, stepFraction, stepFrame, yearsOf, type HistoryMap } from './historyMapGeo';
 import { HistoryMapView, historyMapModule } from './historyMap';
 
 vi.mock('./historyMapScene', () => ({
@@ -107,11 +107,34 @@ describe('the history map view', () => {
     await screen.findByRole('img', { name: /1418–1423/ }, { timeout: 5000 });
     fireEvent.click(screen.getByRole('button', { name: '1424–1425' }));
     expect(screen.getByRole('status').textContent).toContain('Nguyễn Chích');
-    fireEvent.click(screen.getByRole('button', { name: /Giai đoạn sau/ }));
+    fireEvent.click(screen.getByRole('button', { name: '1426–1428' }));
     expect(screen.getByRole('status').textContent).toContain('Hội thề Đông Quan');
     fireEvent.click(screen.getByRole('button', { name: /Xem đủ nội dung và địa danh/ }));
     fireEvent.click(screen.getByRole('button', { name: /Chi Lăng/ }));
     expect(screen.getByRole('note').textContent).toContain('viện binh');
+  });
+});
+
+describe('the history map slider', () => {
+  it('moves through a stage: marches drawn part way, then the next stage glides in', async () => {
+    vi.stubGlobal('requestAnimationFrame', (cb: FrameRequestCallback) => window.setTimeout(() => cb(performance.now()), 16));
+    vi.stubGlobal('cancelAnimationFrame', (id: number) => window.clearTimeout(id));
+    const { container } = render(<HistoryMapView config={lamSon} lang="vi" />);
+    await screen.findByRole('img', { name: /1418–1423/ }, { timeout: 5000 });
+    const slider = screen.getByRole('slider', { name: 'Giai đoạn' }) as HTMLInputElement;
+    // Half way into the second stage: its first march is being drawn, its new places wait.
+    const k = lamSon.steps.findIndex((st, i) => i > 0 && st.routes.length > 0);
+    fireEvent.change(slider, { target: { value: String(k - 1 + 0.2) } });
+    // One march is being drawn, part way, and the ones after it have not started.
+    const done = [...container.querySelectorAll('[data-march]')].map((m) => Number(m.getAttribute('data-done')));
+    expect(done.some((d) => d > 0 && d < 1)).toBe(true);
+    expect(done.length).toBeLessThan(lamSon.steps[k]!.routes.length);
+    expect(screen.getByRole('status').textContent).toContain(lamSon.steps[k]!.text.vi.slice(0, 20));
+    // Next glides instead of jumping.
+    fireEvent.click(screen.getByRole('button', { name: 'Giai đoạn sau' }));
+    await new Promise((r) => setTimeout(r, 300));
+    expect(Number(slider.value)).toBeGreaterThan(k - 1 + 0.2);
+    expect(Number(slider.value)).toBeLessThan(k);
   });
 });
 
@@ -135,5 +158,43 @@ describe('the history map editor', () => {
     fireEvent.change(box, { target: { value: JSON.stringify(fine) } });
     expect(screen.queryByRole('alert')).toBeNull();
     expect(onChange).toHaveBeenCalledWith(expect.objectContaining({ region: 'viet-nam', places: [] }));
+  });
+});
+
+describe('the continuous history-map timeline', () => {
+  const lamSon = defaultSimulationConfig('history-map');
+
+  it('splits a step into marches first, then spreading areas', () => {
+    expect(stepFraction(0, 0)).toBe(1);
+    expect(stepFraction(1.5, 2)).toBe(0.5);
+    expect(stepFraction(0.2, 2)).toBe(0);
+    expect(marchProgress(0, 3)).toBe(0);
+    expect(marchProgress(0.375, 2)).toBeCloseTo(1);
+    expect(marchProgress(1, 2)).toBe(2);
+    expect(areaGrowth(0.2, true)).toBe(0);
+    expect(areaGrowth(1, true)).toBe(1);
+    expect(areaGrowth(0.5, false)).toBe(0.5);
+  });
+
+  it('a new place appears as a march reaches it, inside the step', () => {
+    const step = lamSon.places.find((p) => p.from > 0)!.from;
+    const times = placeTimes(lamSon, step);
+    expect(times.size).toBeGreaterThan(0);
+    for (const at of times.values()) {
+      expect(at).toBeGreaterThanOrEqual(0);
+      expect(at).toBeLessThanOrEqual(1);
+    }
+  });
+
+  it('an area spreads from the end of the nearest march', () => {
+    const step = lamSon.steps.findIndex((s) => s.areas.length > 0 && s.routes.length > 0);
+    const ends = lamSon.steps[step]!.routes.map((r) => r.points[r.points.length - 1]);
+    for (const o of areaOrigins(lamSon, step)) expect(ends).toContainEqual(o);
+  });
+
+  it('reads the years of a period', () => {
+    expect(yearsOf('1426–1427')).toEqual([1426, 1427]);
+    expect(yearsOf('938')).toEqual([938]);
+    expect(yearsOf('Mùa xuân')).toEqual([]);
   });
 });

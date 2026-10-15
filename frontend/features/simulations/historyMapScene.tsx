@@ -8,7 +8,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import * as THREE from 'three';
 import type { HistoryMapRegion } from '@scipal/types';
-import { assetBase, densify, heightAt, namedAt, placesAt, projection, stepFrame, type HistoryMap, type LonLat } from './historyMapGeo';
+import { areaGrowth, areaOrigins, assetBase, densify, heightAt, marchProgress, namedAt, placeTimes, placesAt, projection, stepFraction, stepFrame, type HistoryMap, type LonLat } from './historyMapGeo';
 import { usePalette } from './scene3d';
 import { clampView, type MapCamera } from './historyMapCamera';
 import { pick, type Lang } from './types';
@@ -18,7 +18,6 @@ const FOV = 40;
 /** Relief is exaggerated so hills read at the scale of a whole region. */
 const EXAGGERATION = 16;
 const METRES_PER_UNIT = 111_000;
-const SECONDS_PER_ROUTE = 1.1;
 
 type Meta = { texture: [number, number]; heights: [number, number] };
 type Assets = { meta: Meta; heights: Uint16Array; relief: HTMLImageElement; land: HTMLImageElement };
@@ -61,8 +60,11 @@ function useAssets(region: HistoryMapRegion) {
   return state?.region === region ? state.assets ?? null : null;
 }
 
-/** The relief with every area held up to `step`, the newest stronger, kept off the sea. */
-function paintGround(canvas: HTMLCanvasElement, layer: HTMLCanvasElement, assets: Assets, config: HistoryMap, step: number, palette: Palette) {
+/**
+ * The relief with every area held up to `step`, the newest stronger, kept off the sea. The areas of
+ * `step` itself are spread `grow` (0–1) of the way out from their origins, like ink.
+ */
+function paintGround(canvas: HTMLCanvasElement, layer: HTMLCanvasElement, assets: Assets, config: HistoryMap, step: number, palette: Palette, grow = 1) {
   const [w, h] = [assets.relief.naturalWidth, assets.relief.naturalHeight];
   canvas.width = layer.width = w;
   canvas.height = layer.height = h;
@@ -70,8 +72,22 @@ function paintGround(canvas: HTMLCanvasElement, layer: HTMLCanvasElement, assets
   const areas = layer.getContext('2d')!;
   const { toUv } = projection(config.region);
   ctx.drawImage(assets.relief, 0, 0, w, h);
+  const origins = areaOrigins(config, step);
   config.steps.slice(0, step + 1).forEach((s, i) => {
-    for (const area of s.areas) {
+    for (const [j, area] of s.areas.entries()) {
+      const spreading = i === step && grow < 1;
+      if (spreading && grow <= 0) continue;
+      areas.save();
+      if (spreading) {
+        const [ou, ov] = toUv(origins[j]!);
+        const reach = Math.max(...area.points.map((q) => {
+          const [u, v] = toUv(q);
+          return Math.hypot((u - ou) * w, (v - ov) * h);
+        }));
+        areas.beginPath();
+        areas.arc(ou * w, ov * h, reach * grow + 1, 0, Math.PI * 2);
+        areas.clip();
+      }
       areas.beginPath();
       area.points.forEach((p, j) => {
         const [u, v] = toUv(p);
@@ -87,6 +103,7 @@ function paintGround(canvas: HTMLCanvasElement, layer: HTMLCanvasElement, assets
       areas.strokeStyle = color;
       areas.lineWidth = 5;
       areas.stroke();
+      areas.restore();
     }
   });
   areas.globalAlpha = 1;
@@ -96,7 +113,7 @@ function paintGround(canvas: HTMLCanvasElement, layer: HTMLCanvasElement, assets
   ctx.drawImage(layer, 0, 0);
 }
 
-function Terrain({ assets, config, step, palette }: { assets: Assets; config: HistoryMap; step: number; palette: Palette }) {
+function Terrain({ assets, config, step, palette, pos }: { assets: Assets; config: HistoryMap; step: number; palette: Palette; pos: React.RefObject<number> }) {
   const { invalidate } = useThree();
   const proj = projection(config.region);
   const geometry = useMemo(() => {
@@ -122,11 +139,23 @@ function Terrain({ assets, config, step, palette }: { assets: Assets; config: Hi
     t.anisotropy = 4;
     return t;
   }, [canvas]);
-  useEffect(() => {
-    paintGround(canvas, layer, assets, config, step, palette);
+  const hasRoutes = (config.steps[step]?.routes.length ?? 0) > 0;
+  const painted = useRef(-1);
+  const paint = (grow: number) => {
+    paintGround(canvas, layer, assets, config, step, palette, grow);
+    painted.current = grow;
     texture.needsUpdate = true;
+  };
+  useEffect(() => {
+    paint(areaGrowth(stepFraction(pos.current ?? 0, step), hasRoutes));
     invalidate();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [canvas, layer, assets, config, step, palette, texture, invalidate]);
+  // Repainting the ground is costly, so the spreading areas are redrawn in small jumps.
+  useFrame(() => {
+    const grow = areaGrowth(stepFraction(pos.current ?? 0, step), hasRoutes);
+    if (Math.abs(grow - painted.current) > 0.04 || ((grow === 0 || grow === 1) && grow !== painted.current)) paint(grow);
+  });
   useEffect(() => () => {
     geometry.dispose();
     texture.dispose();
@@ -268,6 +297,8 @@ function MapRig({
   labels,
   anchors,
   onInvalidate,
+  pos,
+  step,
 }: {
   camera: MapCamera;
   frame: { target: THREE.Vector3; span: [number, number] };
@@ -278,8 +309,10 @@ function MapRig({
   routes: number;
   heads: React.RefObject<Array<THREE.Vector3 | null>>;
   labels: React.RefObject<Map<number, HTMLElement>>;
-  anchors: Array<[number, THREE.Vector3]>;
+  anchors: Array<[number, THREE.Vector3, number]>;
   onInvalidate: (fn: () => void) => void;
+  pos: React.RefObject<number>;
+  step: number;
 }) {
   const { camera, size, invalidate } = useThree();
   const now = useRef<{ theta: number; phi: number; dist: number; base: number; target: THREE.Vector3 } | null>(null);
@@ -293,7 +326,6 @@ function MapRig({
 
   useEffect(() => {
     heads.current.length = 0;
-    progress.current = reduced ? routes : 0;
     invalidate();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [frame, reduced, routes]);
@@ -307,6 +339,9 @@ function MapRig({
     const want = clampView(view, panLimit);
     cam.view.current = want;
     const base = fit(aspect);
+    // The marches are drawn as far as the slider has gone through this step.
+    const frac = stepFraction(pos.current ?? 0, step);
+    progress.current = marchProgress(frac, routes);
 
     // Where the story is: the head of the march being drawn, else the frame's centre.
     const idx = Math.min(Math.floor(progress.current), routes - 1);
@@ -345,10 +380,6 @@ function MapRig({
         c.target.distanceTo(goal) > 0.0015
       )
         busy = true;
-      if (progress.current < routes) {
-        progress.current = Math.min(routes, progress.current + dt / SECONDS_PER_ROUTE);
-        busy = true;
-      }
     }
 
     const d = c.base * c.dist;
@@ -356,11 +387,12 @@ function MapRig({
     camera.position.set(c.target.x + d * Math.cos(c.phi) * Math.cos(c.theta), c.target.y + d * Math.sin(c.phi), c.target.z - d * Math.cos(c.phi) * Math.sin(c.theta));
     camera.lookAt(c.target);
     camera.updateMatrixWorld();
-    for (const [key, p] of anchors) {
+    for (const [key, p, at] of anchors) {
       const el = labels.current.get(key);
       if (!el) continue;
       v.copy(p).project(camera);
-      const off = v.z > 1 || Math.abs(v.x) > 1.02 || Math.abs(v.y) > 1.02;
+      // A new place waits until a march reaches it.
+      const off = frac < at || v.z > 1 || Math.abs(v.x) > 1.02 || Math.abs(v.y) > 1.02;
       el.style.visibility = off ? 'hidden' : 'visible';
       el.style.transform = `translate(${((v.x + 1) / 2) * size.width}px, ${((1 - v.y) / 2) * size.height}px) translate(-50%, -50%)`;
     }
@@ -377,9 +409,12 @@ export default function HistoryMapScene({
   follow,
   camera: cam,
   onSelect,
+  pos,
 }: {
   config: HistoryMap;
   step: number;
+  /** The slider position, read every frame (it moves continuously). */
+  pos: React.RefObject<number>;
   lang: Lang;
   reduced: boolean;
   follow: boolean;
@@ -428,21 +463,21 @@ export default function HistoryMapScene({
   }, [config, step, toScene]);
 
   const places = placesAt(config, step);
-  const anchors = useMemo(
-    () => config.places.flatMap((p, i) => (p.from <= step ? [[i, toScene([p.lon, p.lat], p.type === 'area' ? 0.05 : undefined)] as [number, THREE.Vector3]] : [])),
-    [config.places, toScene, step],
-  );
+  const anchors = useMemo(() => {
+    const times = placeTimes(config, step);
+    return config.places.flatMap((p, i) => (p.from <= step ? [[i, toScene([p.lon, p.lat], p.type === 'area' ? 0.05 : undefined), times.get(i) ?? 0] as [number, THREE.Vector3, number]] : []));
+  }, [config, toScene, step]);
   const routes = config.steps[step]?.routes ?? [];
 
   return (
     <>
         {assets && palette ? (
           <Canvas frameloop="demand" dpr={[1, 2]} camera={{ fov: FOV, near: 0.02, far: 200 }} gl={{ antialias: true }}>
-            <Terrain assets={assets} config={config} step={step} palette={palette} />
+            <Terrain assets={assets} config={config} step={step} palette={palette} pos={pos} />
             {routes.map((route, i) => (
               <March key={`${step}-${i}`} route={route} index={i} progress={progress} palette={palette} toScene={toScene} radius={Math.max(...frame.span) * 0.005} heads={heads} />
             ))}
-            <MapRig camera={cam} frame={frame} bounds={bounds} reduced={reduced} follow={follow} progress={progress} routes={routes.length} heads={heads} labels={labels} anchors={anchors} onInvalidate={setInvalidate} />
+            <MapRig camera={cam} frame={frame} bounds={bounds} reduced={reduced} follow={follow} progress={progress} routes={routes.length} heads={heads} labels={labels} anchors={anchors} onInvalidate={setInvalidate} pos={pos} step={step} />
           </Canvas>
         ) : (
           <div className="grid h-full place-items-center text-sm text-ink-muted">{t({ en: 'Loading the 3D map…', vi: 'Đang tải bản đồ 3D…' })}</div>

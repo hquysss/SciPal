@@ -12,6 +12,19 @@ Triển khai toàn bộ 12 màn hình (S1–S12) theo **Đặc tả khung chung 
 - **26/09 — Landing theo cấp học:** Đã triển khai cổng chọn Tiểu học/THCS/THPT, lưu lựa chọn khách trong `sessionStorage` của tab đến khi đóng tab, và ghi lựa chọn tài khoản vào `profiles` qua RLS; thêm đổi cấp trong Profile và catalog riêng theo cấp. Navbar cùng switch EN/VI luôn hiện; khách tải lại tab vẫn giữ lựa chọn, tab mới hiện cổng chọn. QA local xác nhận THPT có 5 môn, hai cấp nhỏ có trạng thái danh mục trống hợp lệ. Hạng mục local đã kiểm tra; chưa áp migration/seed từ xa hoặc deploy.
 
 ## Completed
+- **15/10 — Bản đồ động Sử (CHƯA deploy):**
+  - Kind mới `history-world`: hai bản đồ cố định trong code, giáo viên chỉ chọn `map`.
+    - `latin-america` (Hình 4 tr.14): các nước sáng lên theo năm độc lập.
+    - `empires-1914` (Hình 6 tr.15): thuộc địa của 5 đế quốc loang dần; mốc từng vùng là ước lượng.
+  - Thanh thời gian chạy liên tục (`useTimelineGlide`) cho cả `history-world` và `history-map`:
+    - mũi tiến quân vẽ theo vị trí thanh;
+    - vùng kiểm soát loang từ điểm cuối mũi tên;
+    - địa danh hiện khi mũi tới nơi.
+  - `history-timeline`: đường nối tô dần, có nút Chạy.
+  - Bài 2 có thêm 2 khối `history-world` trong `generate_lesson_2_su.py`. Cần import lại Bài 2 sau khi deploy.
+  - Spec/plan: `docs/superpowers/specs|plans/2026-10-15-history-world-map*`, `2026-10-15-history-map-continuous*`.
+  - Xác thực: typecheck 7/7, simulations 300 test, backend 1140, types 247.
+- **15/10 — Xuất bản 8 bài Lịch sử 11 (1–3, 7–11):** Nhập mới bài 7–11 và 45 câu tự luyện; bài 1–3 đã khớp bản soạn nên giữ nguyên. Đã xác minh cả 8 bài public/published và API production trả đủ 75 câu tự luyện; trình duyệt production mở bài 7, timeline/bản đồ và tab Tự luyện có 9 câu. Bằng chứng cục bộ: `scratch/lesson-publish/verification.json`.
 
 - **14/10 — Tranh biếm hoạ có chú thích Bài 1, Bài 2 Sử (ĐÃ ghi DB):** Hai khối `labeled-diagram` (7 nhãn mỗi tranh): Bài 1 sau mục 1 — tranh nông dân Pháp 1789 (bản màu Bảo tàng Carnavalet, CC0); Bài 2 sau mục 2 — "Next!" của Udo J. Keppler, Puck 1904 (Thư viện Quốc hội Mỹ, phạm vi công cộng). Ảnh tải từ Wikimedia Commons (thay bản scan SGK bị chữ chìm), thu về ≤1600px, đưa lên R2 qua route `/api/authoring/media`. Đã thêm vào `generate_lesson_1_su.py`/`generate_lesson_2_su.py` + verify test; SQL `export-lesson/chen-tranh-biem-hoa-bai-1-2-su.sql` đã chạy (mỗi bài 13 khối, đúng vị trí; chạy lại không chèn trùng; không đụng thứ tự mà SQL trục thời gian Bài 2 cần). Sửa `labeledDiagram.tsx`: chữ nhãn mở về phía xa mép (phần ba trái → phải, phần ba phải → trái, giữa → căn giữa) để không tràn ảnh; cần deploy mới có — bản đang chạy vẫn mở sang phải nên nhãn bên phải có thể tràn. Xem thử `/dev/labeled-diagram`. Xác thực: typecheck 7/7, frontend 605 test; Browser 375px mở lần lượt 7 nhãn Bài 2 đều nằm trong ảnh, không tràn trang.
 - **14/10 — Khối sơ đồ tổ chức `org-chart`:** Kind mới trong `simulations.ts` (bản sao backend y hệt): `root` là cây ô `label`/`text`/`children` (≤12 con), tối đa 6 cấp (`ORG_CHART_MAX_DEPTH`) và 40 ô (`ORG_CHART_MAX_NODES`). Schema dựng sẵn 6 tầng bằng vòng lặp (không `z.lazy`), ô quá sâu báo `depth`; kiểu `OrgChartNode` được xuất. Mặc định: bộ máy nhà nước sau cải cách Lê Thánh Tông theo SGK tr.65 (19 ô; chức năng từng bộ trong lục Bộ là kiến thức phổ thông, SGK chỉ ghi tên). Renderer: cây `<details>` lồng nhau, chỉ mở ô gốc, nút Mở hết/Thu gọn, số bộ phận con, đường nối bằng token `--line`. Soạn bằng ô JSON chung. Xác thực: typecheck 7/7, types 244, backend 1136, frontend 602 (3 test mới `orgChart.test.tsx`); Browser `/dev/org-chart` 1280/375px không tràn, cấp 6 vẫn vừa màn hẹp. Chưa gắn vào bài (Bài 10, 11 chưa số hoá).

@@ -89,3 +89,59 @@ export function namedAt(config: HistoryMap, place: HistoryMap['places'][number],
     return Math.abs(lon - place.lon) < 0.05 && Math.abs(lat - place.lat) < 0.05;
   });
 }
+
+// The slider runs continuously: between the marks of step s − 1 and s (`frac` 0 → 1) step s happens.
+// Its marches are drawn first, one after another; its areas spread as the marches arrive; a new place
+// appears when a march passes it.
+const MARCH_SHARE = 0.75;
+const AREA_START = 0.35;
+
+/** How far through a step the slider is: 0 at the mark before, 1 at its own mark. Step 0 is always whole. */
+export const stepFraction = (pos: number, step: number) => (step === 0 ? 1 : Math.min(Math.max(pos - (step - 1), 0), 1));
+
+/** Marches drawn so far, in routes: 1.5 = the first done and the second half way. */
+export const marchProgress = (frac: number, routes: number) => (routes ? Math.min(frac / MARCH_SHARE, 1) * routes : 0);
+
+/** How far an area of the step has spread, 0–1. */
+export const areaGrowth = (frac: number, hasRoutes: boolean) =>
+  hasRoutes ? Math.min(Math.max((frac - AREA_START) / (1 - AREA_START), 0), 1) : Math.min(Math.max(frac, 0), 1);
+
+const centre = (points: readonly LonLat[]): LonLat => [points.reduce((s, p) => s + p[0], 0) / points.length, points.reduce((s, p) => s + p[1], 0) / points.length];
+const gap = (a: LonLat, b: LonLat) => Math.hypot(a[0] - b[0], a[1] - b[1]);
+
+/** Where each area of a step spreads from: the end of the march that arrives nearest it, else its own centre. */
+export function areaOrigins(config: HistoryMap, step: number): LonLat[] {
+  const s = config.steps[step];
+  if (!s) return [];
+  const ends = s.routes.map((r) => r.points[r.points.length - 1]!);
+  return s.areas.map((a) => {
+    const c = centre(a.points);
+    return ends.reduce<LonLat>((best, e) => (gap(e, c) < gap(best, c) ? e : best), ends[0] ?? c);
+  });
+}
+
+/** When (as `frac`) each place first shown at this step appears: as a march passes within 0.4°, else half way. */
+export function placeTimes(config: HistoryMap, step: number): Map<number, number> {
+  const routes = config.steps[step]?.routes ?? [];
+  const out = new Map<number, number>();
+  config.places.forEach((p, i) => {
+    if (p.from !== step) return;
+    if (step === 0) return out.set(i, 0);
+    let at = 0.5;
+    let best = 0.4;
+    routes.forEach((r, k) => {
+      r.points.forEach((q, j) => {
+        const d = gap(q, [p.lon, p.lat]);
+        if (d <= best) {
+          best = d;
+          at = (MARCH_SHARE * (k + j / Math.max(r.points.length - 1, 1))) / routes.length;
+        }
+      });
+    });
+    out.set(i, at);
+  });
+  return out;
+}
+
+/** The years in a period, e.g. "1426–1427" → [1426, 1427]; none when it holds no year. */
+export const yearsOf = (period: string) => (period.match(/\d{3,4}/g) ?? []).map(Number);
