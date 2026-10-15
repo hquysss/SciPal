@@ -2,7 +2,7 @@
 
 import { Component, Suspense, lazy, useCallback, useEffect, useId, useRef, useState, type ReactNode } from 'react';
 import { JsonConfigEditor, issuePath, type ConfigIssue } from './jsonConfigEditor';
-import { ChevronDown, ChevronLeft, ChevronRight, ChevronUp, Compass, LocateFixed, Map as MapIcon, Maximize2, Minimize2, Minus, Mountain, Pause, Play, Plus, RotateCcw, X } from 'lucide-react';
+import { ChevronDown, ChevronLeft, ChevronRight, ChevronUp, Compass, LocateFixed, Map as MapIcon, Maximize2, Minimize2, Minus, Mountain, PanelBottomClose, PanelBottomOpen, Pause, Play, Plus, RotateCcw, X } from 'lucide-react';
 import { HISTORY_MAP_REGIONS, HistoryMapConfig, type HistoryMapRegion } from '@scipal/types';
 import { PANEL } from './controls';
 import overlay from './simOverlay.module.css';
@@ -220,6 +220,7 @@ export function HistoryMapView({ config, lang }: SimulationViewProps<'history-ma
   const [flat, setFlat] = useState(false);
   const [follow, setFollow] = useState(true);
   const [open, setOpen] = useState(false);
+  const [shown, setShown] = useState(true);
   // The 3D view only exists in the browser: the server and first paint show the flat map.
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
@@ -323,18 +324,11 @@ export function HistoryMapView({ config, lang }: SimulationViewProps<'history-ma
         <div className={styles.hud}>
           <div className={styles.top}>
             <div className={styles.toolRow} onKeyDown={(e) => e.stopPropagation()}>{tools}</div>
-            <div className={`${overlay.card} ${styles.title}`}>
-              <span className={styles.period}>
-                {current.period}
-                {year !== null && <> · <span className="text-ink">{year}</span></>}
-              </span>
-              <span className={styles.headline}>{t(current.title)}</span>
-            </div>
           </div>
 
           <div className={styles.bottom}>
             {place?.note && (
-              <div role="note" className={`${overlay.card} ${styles.note}`}>
+              <div role="note" className={styles.note}>
                 <p>
                   <span className="font-bold">{t(place.name)}. </span>
                   {t(place.note)}
@@ -344,112 +338,137 @@ export function HistoryMapView({ config, lang }: SimulationViewProps<'history-ma
                 </button>
               </div>
             )}
-            <div className={`${overlay.card} ${styles.dock}`}>
-              <div className={styles.controls}>
-                <button type="button" className={overlay.tool} aria-label={t({ en: 'Previous stage', vi: 'Giai đoạn trước' })} disabled={pos <= 0} onClick={() => go(Math.ceil(pos - 1e-6) - 1)}>
-                  <ChevronLeft aria-hidden="true" className={ic} />
-                </button>
-                <input
-                  type="range"
-                  min={0}
-                  max={last}
-                  step="any"
-                  value={pos}
-                  aria-label={t({ en: 'Stage', vi: 'Giai đoạn' })}
-                  aria-valuetext={`${current.period}: ${t(current.title)}`}
-                  onChange={(e) => {
-                    setSelected(null);
-                    slider.drag(Number(e.target.value));
-                  }}
-                  className={styles.slider}
-                />
-                <button type="button" className={overlay.tool} aria-label={t({ en: 'Next stage', vi: 'Giai đoạn sau' })} disabled={pos >= last} onClick={() => go(Math.floor(pos + 1e-6) + 1)}>
-                  <ChevronRight aria-hidden="true" className={ic} />
-                </button>
-                <button
-                  type="button"
-                  className={`${overlay.tool} ${styles.play}`}
-                  aria-pressed={playing}
-                  onClick={() => {
-                    setSelected(null);
-                    slider.play();
-                  }}
-                >
-                  {playing ? <Pause aria-hidden="true" className={ic} /> : <Play aria-hidden="true" className={ic} />}
-                  <span>{playing ? t({ en: 'Pause', vi: 'Dừng' }) : t({ en: 'Play', vi: 'Chạy' })}</span>
-                </button>
-              </div>
-
-              <ol className={styles.ticks} aria-label={t({ en: 'Stages', vi: 'Các giai đoạn' })}>
-                {config.steps.map((s, i) => (
-                  <li key={i}>
-                    <button type="button" aria-current={i === step ? 'step' : undefined} onClick={() => {
-                        setSelected(null);
-                        slider.jump(i);
-                      }} className={styles.tick}>
-                      {s.period}
-                    </button>
-                  </li>
-                ))}
-              </ol>
-
-              <div className={styles.caption}>
-                <div role="status" className={styles.captionText} data-open={open}>
-                  {t(current.text)}
-                </div>
-                <button
-                  type="button"
-                  className={`${overlay.tool} ${styles.more}`}
-                  aria-expanded={open}
-                  aria-label={open ? t({ en: 'Show less', vi: 'Thu gọn' }) : t({ en: 'Show the full text and places', vi: 'Xem đủ nội dung và địa danh' })}
-                  title={open ? t({ en: 'Show less', vi: 'Thu gọn' }) : t({ en: 'Show more', vi: 'Xem thêm' })}
-                  onClick={() => setOpen(!open)}
-                >
-                  {open ? <ChevronDown aria-hidden="true" className={ic} /> : <ChevronUp aria-hidden="true" className={ic} />}
-                </button>
-              </div>
-
-              {open && notes.length > 0 && (
-                <div className="flex flex-col gap-1.5">
-                  <p className="text-xs font-semibold text-ink-muted">{t({ en: 'Places — tap for a note', vi: 'Địa danh — chạm để xem chú thích' })}</p>
-                  <div className={styles.places}>
-                    {notes.map((p) => {
-                      const i = config.places.indexOf(p);
-                      return (
-                        <button key={i} type="button" className={styles.place} aria-pressed={selected === i} onClick={() => setSelected(selected === i ? null : i)}>
-                          <span aria-hidden="true" className={p.type === 'city' || p.type === 'area' ? 'text-ink-muted' : undefined} style={p.type === 'city' || p.type === 'area' ? undefined : { color: MAP_VAR.ours }}>
-                            {PLACE_MARK[p.type]}
-                          </span>
-                          {t(p.name)}
-                        </button>
-                      );
-                    })}
+            {!shown ? (
+              <button type="button" className={styles.reveal} aria-expanded={false} onClick={() => setShown(true)}>
+                <PanelBottomOpen aria-hidden="true" className={ic} />
+                <span className={styles.period}>{current.period}</span>
+                <span className={styles.revealTitle}>{t(current.title)}</span>
+                <span className="sr-only">{t({ en: '— show the panel', vi: '— hiện bảng thông tin' })}</span>
+              </button>
+            ) : (
+              <div className={styles.dock}>
+                <div className={styles.head}>
+                  <div className={styles.title}>
+                    <span className={styles.period}>
+                      {current.period}
+                      {year !== null && <> · <span className="text-ink">{year}</span></>}
+                    </span>
+                    <span className={styles.headline}>{t(current.title)}</span>
                   </div>
+                  <button type="button" className={overlay.tool} aria-expanded={true} aria-label={t({ en: 'Hide the panel', vi: 'Ẩn bảng thông tin' })} title={t({ en: 'Hide the panel', vi: 'Ẩn bảng thông tin' })} onClick={() => setShown(false)}>
+                    <PanelBottomClose aria-hidden="true" className={ic} />
+                  </button>
                 </div>
-              )}
-            </div>
+                <div className={styles.controls}>
+                  <button type="button" className={overlay.tool} aria-label={t({ en: 'Previous stage', vi: 'Giai đoạn trước' })} disabled={pos <= 0} onClick={() => go(Math.ceil(pos - 1e-6) - 1)}>
+                    <ChevronLeft aria-hidden="true" className={ic} />
+                  </button>
+                  <input
+                    type="range"
+                    min={0}
+                    max={last}
+                    step="any"
+                    value={pos}
+                    aria-label={t({ en: 'Stage', vi: 'Giai đoạn' })}
+                    aria-valuetext={`${current.period}: ${t(current.title)}`}
+                    onChange={(e) => {
+                      setSelected(null);
+                      slider.drag(Number(e.target.value));
+                    }}
+                    className={styles.slider}
+                  />
+                  <button type="button" className={overlay.tool} aria-label={t({ en: 'Next stage', vi: 'Giai đoạn sau' })} disabled={pos >= last} onClick={() => go(Math.floor(pos + 1e-6) + 1)}>
+                    <ChevronRight aria-hidden="true" className={ic} />
+                  </button>
+                  <button
+                    type="button"
+                    className={`${overlay.tool} ${styles.play}`}
+                    aria-pressed={playing}
+                    onClick={() => {
+                      setSelected(null);
+                      slider.play();
+                    }}
+                  >
+                    {playing ? <Pause aria-hidden="true" className={ic} /> : <Play aria-hidden="true" className={ic} />}
+                    <span>{playing ? t({ en: 'Pause', vi: 'Dừng' }) : t({ en: 'Play', vi: 'Chạy' })}</span>
+                  </button>
+                </div>
+
+                <ol className={styles.ticks} aria-label={t({ en: 'Stages', vi: 'Các giai đoạn' })}>
+                  {config.steps.map((s, i) => (
+                    <li key={i}>
+                      <button type="button" aria-current={i === step ? 'step' : undefined} onClick={() => {
+                          setSelected(null);
+                          slider.jump(i);
+                        }} className={styles.tick}>
+                        {s.period}
+                      </button>
+                    </li>
+                  ))}
+                </ol>
+
+                <div className={styles.caption}>
+                  <div role="status" className={styles.captionText} data-open={open}>
+                    {t(current.text)}
+                  </div>
+                  <button
+                    type="button"
+                    className={`${overlay.tool} ${styles.more}`}
+                    aria-expanded={open}
+                    aria-label={open ? t({ en: 'Show less', vi: 'Thu gọn' }) : t({ en: 'Show the full text, places and legend', vi: 'Xem đủ nội dung, địa danh và chú giải' })}
+                    title={open ? t({ en: 'Show less', vi: 'Thu gọn' }) : t({ en: 'Show more', vi: 'Xem thêm' })}
+                    onClick={() => setOpen(!open)}
+                  >
+                    {open ? <ChevronDown aria-hidden="true" className={ic} /> : <ChevronUp aria-hidden="true" className={ic} />}
+                  </button>
+                </div>
+
+                {open && notes.length > 0 && (
+                  <div className="flex flex-col gap-1.5">
+                    <p className="text-xs font-semibold text-ink-muted">{t({ en: 'Places — tap for a note', vi: 'Địa danh — chạm để xem chú thích' })}</p>
+                    <div className={styles.places}>
+                      {notes.map((p) => {
+                        const i = config.places.indexOf(p);
+                        return (
+                          <button key={i} type="button" className={styles.place} aria-pressed={selected === i} onClick={() => setSelected(selected === i ? null : i)}>
+                            <span aria-hidden="true" className={p.type === 'city' || p.type === 'area' ? 'text-ink-muted' : undefined} style={p.type === 'city' || p.type === 'area' ? undefined : { color: MAP_VAR.ours }}>
+                              {PLACE_MARK[p.type]}
+                            </span>
+                            {t(p.name)}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+                {open && (
+                  <>
+                    <p className="text-xs text-ink-muted">
+                      {show3d
+                        ? t({
+                            en: 'Drag to turn · right-drag or two fingers to slide · pinch or Ctrl + scroll to zoom. Focus the map: arrows turn, Shift + arrows slide, + and − zoom, 0 resets.',
+                            vi: 'Kéo để xoay · chuột phải hoặc hai ngón để di chuyển · chụm hoặc Ctrl + cuộn để phóng to. Chọn bản đồ: phím mũi tên để xoay, Shift + mũi tên để di chuyển, + và − để phóng to, 0 để về ban đầu.',
+                          })
+                        : t({ en: 'Tap a place name for its note.', vi: 'Chạm tên địa danh để xem chú thích.' })}
+                    </p>
+                    <ul className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-ink-muted" aria-label={t({ en: 'Legend', vi: 'Chú giải' })}>
+                      <li><span aria-hidden="true" className="font-bold" style={{ color: MAP_VAR.ours }}>⟶ </span>{t({ en: 'Our marches', vi: 'Hướng tiến của nghĩa quân' })}</li>
+                      <li><span aria-hidden="true" className="font-bold" style={{ color: MAP_VAR.enemy }}>⟶ </span>{t({ en: 'Enemy marches', vi: 'Hướng tiến của quân địch' })}</li>
+                      <li><span aria-hidden="true" className="font-bold">┄ </span>{t({ en: 'Retreat (dashed)', vi: 'Rút lui (nét đứt)' })}</li>
+                      <li><span aria-hidden="true" style={{ color: MAP_VAR.area }}>■ </span>{t({ en: 'Areas held (newest stronger)', vi: 'Vùng kiểm soát (giai đoạn này đậm hơn)' })}</li>
+                      <li><span aria-hidden="true" style={{ color: MAP_VAR.ours }}>★ </span>{t({ en: 'Victory', vi: 'Trận thắng' })}</li>
+                      <li><span aria-hidden="true">◉ </span>{t({ en: 'Citadel or town', vi: 'Thành, trấn' })}</li>
+                      <li><span aria-hidden="true" style={{ color: MAP_VAR.ours }}>⚑ </span>{t({ en: 'Base, headquarters', vi: 'Căn cứ, sở chỉ huy' })}</li>
+                      <li><span aria-hidden="true" className="font-bold" style={{ color: MAP_VAR.border }}>-·- </span>{t({ en: 'Today’s national borders', vi: 'Biên giới quốc gia ngày nay' })}</li>
+                    </ul>
+                  </>
+                )}
+              </div>
+            )}
           </div>
         </div>
       </div>
 
-      <p className="text-xs text-ink-muted">
-        {show3d
-          ? t({
-              en: 'Drag to turn · right-drag or two fingers to slide · pinch or Ctrl + scroll to zoom. Focus the map: arrows turn, Shift + arrows slide, + and − zoom, 0 resets.',
-              vi: 'Kéo để xoay · chuột phải hoặc hai ngón để di chuyển · chụm hoặc Ctrl + cuộn để phóng to. Chọn bản đồ: phím mũi tên để xoay, Shift + mũi tên để di chuyển, + và − để phóng to, 0 để về ban đầu.',
-            })
-          : t({ en: 'Tap a place name for its note.', vi: 'Chạm tên địa danh để xem chú thích.' })}
-      </p>
-      <ul className={`flex flex-wrap gap-x-4 gap-y-1 text-xs text-ink-muted ${styles.mapColors}`} aria-label={t({ en: 'Legend', vi: 'Chú giải' })}>
-        <li><span aria-hidden="true" className="font-bold" style={{ color: MAP_VAR.ours }}>⟶ </span>{t({ en: 'Our marches', vi: 'Hướng tiến của nghĩa quân' })}</li>
-        <li><span aria-hidden="true" className="font-bold" style={{ color: MAP_VAR.enemy }}>⟶ </span>{t({ en: 'Enemy marches', vi: 'Hướng tiến của quân địch' })}</li>
-        <li><span aria-hidden="true" className="font-bold">┄ </span>{t({ en: 'Retreat (dashed)', vi: 'Rút lui (nét đứt)' })}</li>
-        <li><span aria-hidden="true" style={{ color: MAP_VAR.area }}>■ </span>{t({ en: 'Areas held (newest stronger)', vi: 'Vùng kiểm soát (giai đoạn này đậm hơn)' })}</li>
-        <li><span aria-hidden="true" style={{ color: MAP_VAR.ours }}>★ </span>{t({ en: 'Victory', vi: 'Trận thắng' })}</li>
-        <li><span aria-hidden="true">◉ </span>{t({ en: 'Citadel or town', vi: 'Thành, trấn' })}</li>
-        <li><span aria-hidden="true" style={{ color: MAP_VAR.ours }}>⚑ </span>{t({ en: 'Base, headquarters', vi: 'Căn cứ, sở chỉ huy' })}</li>
-        <li><span aria-hidden="true" className="font-bold" style={{ color: MAP_VAR.border }}>-·- </span>{t({ en: 'Today’s national borders', vi: 'Biên giới quốc gia ngày nay' })}</li>
-      </ul>
       <p className="text-xs text-ink-muted">
         {t({ en: 'Terrain: AWS Terrain Tiles (SRTM, GMTED, ETOPO1). Rivers: Natural Earth.', vi: 'Địa hình: AWS Terrain Tiles (SRTM, GMTED, ETOPO1). Sông: Natural Earth.' })}
       </p>
