@@ -38,9 +38,8 @@ export function useTimelineGlide({ last, reduced, stepMs, onMove, narration }: {
     if (!current) return;
     current.onended = null;
     current.pause();
-    if (reset) current.currentTime = 0;
     if (reset) {
-      audio.current = null;
+      current.currentTime = 0;
       audioStage.current = -1;
     }
   };
@@ -93,27 +92,30 @@ export function useTimelineGlide({ last, reduced, stepMs, onMove, narration }: {
     move(Math.min(Math.max(next, 0), last));
   };
 
+  /** When the clip of `stage` ends, play the next stage's, or stop after the last. */
+  const onClipEnd = (stage: number) => () => {
+    if (!playingRef.current || audioStage.current !== stage) return;
+    audioStage.current = -1;
+    if (stage >= last) {
+      setPlaying(false);
+      playingRef.current = false;
+      return;
+    }
+    playStage(stage + 1);
+  };
+
   const playStage = (stage: number) => {
     const src = tracks.current?.[stage];
     if (!src) return;
     if (posRef.current < stage - 1e-6) glide(stage);
-    const player = new Audio(src);
-    audio.current = player;
+    // One element for the whole run: the click that starts it unlocks playback (Safari and phones
+    // refuse a fresh Audio started from the end of the last clip), and later stages only swap its src.
+    const player = (audio.current ??= new Audio());
+    player.src = src;
     audioStage.current = stage;
-    player.onended = () => {
-      if (!playingRef.current || audio.current !== player) return;
-      audio.current = null;
-      audioStage.current = -1;
-      if (stage >= last) {
-        setPlaying(false);
-        playingRef.current = false;
-        return;
-      }
-      playStage(stage + 1);
-    };
+    player.onended = onClipEnd(stage);
     void player.play().catch(() => {
-      if (audio.current !== player) return;
-      audio.current = null;
+      if (audioStage.current !== stage) return;
       audioStage.current = -1;
       setPlaying(false);
       playingRef.current = false;
@@ -131,8 +133,9 @@ export function useTimelineGlide({ last, reduced, stepMs, onMove, narration }: {
     playingRef.current = true;
     setPlaying(true);
     if (narrated) {
-      if (audio.current) {
+      if (audio.current && audioStage.current >= 0) {
         if (posRef.current < audioStage.current - 1e-6) glide(audioStage.current);
+        audio.current.onended = onClipEnd(audioStage.current);
         void audio.current.play().catch(() => {
           setPlaying(false);
           playingRef.current = false;

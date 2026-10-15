@@ -97,33 +97,40 @@ describe('HistoryWorldView', () => {
     expect(mid).toBeLessThan(1);
   });
 
-  it('narrates each Vietnamese stage and advances when the voice ends', async () => {
-    const audio: Array<{ src: string; currentTime: number; onended: (() => void) | null; play: ReturnType<typeof vi.fn>; pause: ReturnType<typeof vi.fn> }> = [];
+  it('narrates each Vietnamese stage and advances when the voice ends, even after a pause', async () => {
+    const players: Array<{ src: string; currentTime: number; onended: (() => void) | null; play: ReturnType<typeof vi.fn>; pause: ReturnType<typeof vi.fn> }> = [];
     vi.stubGlobal('Audio', class {
-      src: string;
+      src = '';
       currentTime = 0;
       onended: (() => void) | null = null;
       play = vi.fn(() => Promise.resolve());
       pause = vi.fn();
 
-      constructor(src: string) {
-        this.src = src;
-        audio.push(this);
+      constructor() {
+        players.push(this);
       }
     });
     render(<HistoryWorldView config={{ map: 'latin-america' }} lang="vi" />);
     await screen.findByRole('img');
 
     fireEvent.click(screen.getByRole('button', { name: 'Thuyết minh' }));
-    expect(audio[0]?.src).toBe('/audio/history/latin-america-independence/01.vi.mp3');
-    expect(audio[0]?.play).toHaveBeenCalledOnce();
+    // One element serves every stage: the click that starts it is what lets later clips play.
+    const player = players[0]!;
+    expect(player.src).toBe('/audio/history/latin-america-independence/01.vi.mp3');
+    expect(player.play).toHaveBeenCalledTimes(1);
 
-    act(() => audio[0]?.onended?.());
-    expect(audio[1]?.src).toBe('/audio/history/latin-america-independence/02.vi.mp3');
-    expect(audio[1]?.play).toHaveBeenCalledOnce();
+    act(() => player.onended?.());
+    expect(players).toHaveLength(1);
+    expect(player.src).toBe('/audio/history/latin-america-independence/02.vi.mp3');
+    expect(player.play).toHaveBeenCalledTimes(2);
 
+    // Pausing and playing on must still move on to the next stage when this clip ends.
     fireEvent.click(screen.getByRole('button', { name: 'Dừng thuyết minh' }));
-    expect(audio[1]?.pause).toHaveBeenCalledOnce();
+    expect(player.pause).toHaveBeenCalled();
+    fireEvent.click(screen.getByRole('button', { name: 'Thuyết minh' }));
+    expect(player.src).toBe('/audio/history/latin-america-independence/02.vi.mp3');
+    act(() => player.onended?.());
+    expect(player.src).toBe('/audio/history/latin-america-independence/03.vi.mp3');
   });
 });
 
