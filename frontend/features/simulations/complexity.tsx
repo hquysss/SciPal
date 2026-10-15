@@ -7,7 +7,7 @@ import { BIG_O, clampN, operations, permutationAt } from './engines/complexity';
 import { BUTTON, NumberField, PANEL, SelectField, Slider } from './controls';
 import { ComplexityChart, formatCount } from './complexityChart';
 import { ComplexityField } from './complexityField';
-import { useReducedMotion } from './historyMap';
+import { useReducedMotion } from './animation';
 import { pick, type SimulationEditorProps, type SimulationModule, type SimulationViewProps } from './types';
 import styles from './complexity.module.css';
 

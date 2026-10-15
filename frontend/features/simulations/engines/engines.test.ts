@@ -44,6 +44,14 @@ describe('algorithmSteps', () => {
     expect(steps.filter((s) => s.range).length).toBeLessThanOrEqual(Math.ceil(Math.log2(5)) + 1);
   });
 
+  it.each(['bubble-sort', 'selection-sort', 'insertion-sort', 'linear-search', 'binary-search'])("%s keeps every item's identity", (name) => {
+    const base = [3, 1, 3, 2, 9, 1];
+    for (const s of algo(name, base, 2)) {
+      expect([...s.ids].sort((a, b) => a - b)).toEqual([0, 1, 2, 3, 4, 5]);
+      expect(s.values).toEqual(s.ids.map((i) => base[i]));
+    }
+  });
+
   it('stays bounded for the largest allowed input', () => {
     const values = Array.from({ length: 32 }, (_, i) => 32 - i);
     const steps = algo('bubble-sort', values);
