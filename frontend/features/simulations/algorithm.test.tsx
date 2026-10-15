@@ -98,6 +98,15 @@ describe('algorithm stage', () => {
     expect(raceRanks([5, 6, 7])).toEqual([1, 2, 3]);
   });
 
+  it('leaves room above the tallest bar for the pin, clear of the chip', () => {
+    render(<View config={config([5, 2, 9, 1, 7, 3], 'binary-search', 9)} lang="vi" />);
+    const next = screen.getByRole('button', { name: 'Bước tiếp' }) as HTMLButtonElement;
+    while (!screen.queryByText(/^9 = 9/)) fireEvent.click(next);
+    expect(screen.getByText('giữa')).toBeTruthy();
+    const heights = [...document.querySelectorAll<HTMLElement>('[data-item] span[style*="height"]')].map((el) => parseFloat(el.style.height));
+    expect(Math.max(...heights)).toBeLessThanOrEqual(80);
+  });
+
   it('flies swapped blocks, unless motion is reduced', () => {
     const fly = vi.fn(() => ({ cancel() {} }));
     Element.prototype.animate = fly as never;

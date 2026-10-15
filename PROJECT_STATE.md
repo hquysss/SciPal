@@ -12,6 +12,13 @@ Triển khai toàn bộ 12 màn hình (S1–S12) theo **Đặc tả khung chung 
 - **26/09 — Landing theo cấp học:** Đã triển khai cổng chọn Tiểu học/THCS/THPT, lưu lựa chọn khách trong `sessionStorage` của tab đến khi đóng tab, và ghi lựa chọn tài khoản vào `profiles` qua RLS; thêm đổi cấp trong Profile và catalog riêng theo cấp. Navbar cùng switch EN/VI luôn hiện; khách tải lại tab vẫn giữ lựa chọn, tab mới hiện cổng chọn. QA local xác nhận THPT có 5 môn, hai cấp nhỏ có trạng thái danh mục trống hợp lệ. Hạng mục local đã kiểm tra; chưa áp migration/seed từ xa hoặc deploy.
 
 ## Completed
+- **16/10 — Mô phỏng Tin học chủ đề F + Lab "Mô phỏng" (PR #193, CHƯA merge):**
+  - `algorithm-sim`: bộ đếm so sánh/đổi chỗ; mỗi số là một khối giữ danh tính (`AlgorithmStep.ids`), đổi chỗ thì bay qua nhau theo cung, chip "5 > 2 · đổi chỗ", tìm nhị phân chìm nửa bị loại, 3 tốc độ, chế độ "Đua 3 cách sắp xếp".
+  - Kind mới `complexity-sim` (7 mẫu O(1)…O(n!)): đồng hồ số cuộn, cánh đồng phép toán sống theo từng mẫu, thẻ "Máy tính cần bao lâu?", biểu đồ log.
+  - Lab đổi tên thành Mô phỏng (route vẫn `/lab`), thêm bản đồ chiến dịch (đọc từ bài đã xuất bản) và bản đồ thế giới.
+  - `useReducedMotion` chuyển sang `features/simulations/animation.ts`. Xem thử `/dev/informatics`.
+  - Thuyết minh 3 bản đồ chiến dịch (bài 7, 8 Sử) ĐÃ ghi DB bằng `export-lesson/chen-thuyet-minh-ban-do-bai-7-8-su.sql`: bài được nạp từ file xuất cũ chưa có đường dẫn mp3. File xuất bài 7, 8 đã sinh lại; sau mỗi lần sửa script sinh bài phải sinh lại file xuất trước khi nạp.
+  - Spec/plan: `docs/superpowers/specs|plans/2026-10-15-algorithm-complexity*`, `2026-10-15-informatics-motion*`.
 - **15/10 — Bản đồ động Sử (CHƯA deploy):**
   - Kind mới `history-world`: hai bản đồ cố định trong code, giáo viên chỉ chọn `map`.
     - `latin-america` (Hình 4 tr.14): các nước sáng lên theo năm độc lập.

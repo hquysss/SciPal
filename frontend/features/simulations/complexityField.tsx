@@ -242,7 +242,8 @@ export function drawField(ctx: CanvasRenderingContext2D, width: number, pattern:
       ctx.stroke();
     }
     if ((pattern === 'direct' || pattern === 'single-loop') && g.size >= 28) {
-      const done = new Set(ops.slice(0, shown));
+      // Only the newest cell is full accent; the dimmed ones read best in ink.
+      const newestCell = shown > 0 ? ops[shown - 1]! : -1;
       ctx.globalAlpha = 1;
       ctx.shadowBlur = 0;
       ctx.font = `600 ${Math.max(12, Math.round(g.size * 0.38))}px system-ui, sans-serif`;
@@ -250,7 +251,7 @@ export function drawField(ctx: CanvasRenderingContext2D, width: number, pattern:
       ctx.textBaseline = 'middle';
       for (let cell = 0; cell < g.cols; cell += 1) {
         const c = centre(inner(g.at(cell)));
-        ctx.fillStyle = done.has(cell) ? pal.surface : pal.ink;
+        ctx.fillStyle = cell === newestCell ? pal.surface : pal.ink;
         ctx.fillText(String(cell + 1), c.x, c.y);
       }
     }

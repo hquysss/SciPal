@@ -63,6 +63,9 @@ export function AlgorithmStage({ algorithm, step, target, stepMs, reduced, lang,
   const t = pick(lang);
   const n = step.values.length;
   const max = Math.max(...step.values.map(Math.abs), 1);
+  // With a pin over a bar, the tallest bar stops short so the pin stays below the chip.
+  const pinned = !compact && (algorithm === 'selection-sort' || algorithm === 'binary-search');
+  const tallest = pinned ? 80 : 100;
   const items = useRef(new Map<number, HTMLElement>());
   const slotsBefore = useRef<Map<number, number> | null>(null);
 
@@ -171,7 +174,7 @@ export function AlgorithmStage({ algorithm, step, target, stepMs, reduced, lang,
                   {slot === pinAt && <span className="mb-1 shrink-0 whitespace-nowrap rounded-md bg-ink px-1.5 py-0.5 text-xs font-semibold text-surface">{pinText}</span>}
                   <span
                     className={`relative w-full shrink-0 rounded-t-md ${styles.bar} ${colour} ${wave ? styles.wave : done ? styles.pop : ''}`}
-                    style={{ height: `${Math.max(6, (Math.abs(value) / max) * 100)}%`, animationDelay: wave ? `${slot * Math.min(20, 480 / n)}ms` : undefined }}
+                    style={{ height: `${Math.max(6, (Math.abs(value) / max) * tallest)}%`, animationDelay: wave ? `${slot * Math.min(20, 480 / n)}ms` : undefined }}
                   >
                     {found && !reduced && (
                       <>

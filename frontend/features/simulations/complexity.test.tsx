@@ -147,13 +147,13 @@ describe('complexity chart', () => {
 });
 
 const fakeContext = () => {
-  const calls = { fill: 0, stroke: 0, text: [] as string[] };
+  const calls = { fill: 0, stroke: 0, text: [] as string[], textColor: [] as unknown[] };
   const ctx = new Proxy({} as Record<string, unknown>, {
     get: (target, key) => {
       if (key === 'calls') return calls;
       if (key === 'fill') return () => (calls.fill += 1);
       if (key === 'stroke') return () => (calls.stroke += 1);
-      if (key === 'fillText') return (text: string) => calls.text.push(text);
+      if (key === 'fillText') return (text: string) => (calls.text.push(text), calls.textColor.push(target.fillStyle));
       if (key === 'roundRect') return undefined;
       return key in target ? target[key as string] : () => {};
     },
@@ -202,6 +202,12 @@ describe('the living field', () => {
     expect(at!.y).toBeGreaterThan(0);
     expect(at!.y).toBeLessThan(260);
     expect(ctx.calls.text).toEqual(['1', '2', '3', '4', '5', '6', '7', '8']);
+  });
+
+  it('writes numbers in ink on the dimmed cells, so they stay readable', () => {
+    const ctx = fakeContext();
+    drawField(ctx, 600, 'single-loop', 8, operations('single-loop', 8), 3, pal);
+    expect(ctx.calls.textColor).toEqual([pal.ink, pal.ink, pal.surface, pal.ink, pal.ink, pal.ink, pal.ink, pal.ink]);
   });
 
   it('keeps at most 150 sparks, each for 300 ms', () => {
