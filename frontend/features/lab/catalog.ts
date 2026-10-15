@@ -1,10 +1,12 @@
-import type { BuiltInSimulationKind } from '@scipal/types';
+import { defaultSimulationConfig, HISTORY_WORLD_MAPS, simulationConfig, type BuiltInSimulationKind, type HistoryWorldMap } from '@scipal/types';
+import type { LabUsage } from './labQuery';
 
-// The Lab: every built-in simulation of Mathematics, Physics, Chemistry, Biology and Informatics,
-// open to play with on its own. The Punnett square, labelled diagram and the history blocks (maps, timeline, then-and-now, organisation chart) are lesson-only.
+// The Lab: every built-in simulation of Mathematics, Physics, Chemistry, Biology, Informatics and the
+// History maps, open to play with on its own. The Punnett square, labelled diagram and the other history
+// blocks (timeline, then-and-now, organisation chart) are lesson-only.
 
 export type Bilingual = { en: string; vi: string };
-export type LabSubject = 'math' | 'physics' | 'chemistry' | 'biology' | 'informatics';
+export type LabSubject = 'math' | 'physics' | 'chemistry' | 'biology' | 'informatics' | 'history';
 
 export const LAB_SUBJECTS: ReadonlyArray<{ slug: LabSubject; name: Bilingual }> = [
   { slug: 'math', name: { en: 'Mathematics', vi: 'Toán' } },
@@ -12,6 +14,7 @@ export const LAB_SUBJECTS: ReadonlyArray<{ slug: LabSubject; name: Bilingual }> 
   { slug: 'chemistry', name: { en: 'Chemistry', vi: 'Hoá học' } },
   { slug: 'biology', name: { en: 'Biology', vi: 'Sinh học' } },
   { slug: 'informatics', name: { en: 'Informatics', vi: 'Tin học' } },
+  { slug: 'history', name: { en: 'History', vi: 'Lịch sử' } },
 ];
 
 export interface LabItem {
@@ -138,6 +141,47 @@ export const LAB_ITEMS: readonly LabItem[] = [
     blurb: { en: 'Seven loop patterns from O(1) to O(n!): count every operation and watch the slow ones explode.', vi: 'Bảy mẫu vòng lặp từ O(1) đến O(n!): đếm từng phép toán và xem các mẫu chậm bùng nổ.' },
     grades: { en: 'Grade 11', vi: 'Lớp 11' },
   },
+  {
+    kind: 'history-map',
+    name: { en: 'Campaign maps', vi: 'Bản đồ chiến dịch' },
+    subject: 'history',
+    blurb: { en: 'Lam Son, the decisive battles and Tay Son: marches drawn stage by stage, with narration.', vi: 'Lam Sơn, các trận quyết chiến và Tây Sơn: đường hành quân vẽ dần từng giai đoạn, có thuyết minh.' },
+    grades: { en: 'Grade 11', vi: 'Lớp 11' },
+  },
+  {
+    kind: 'history-world',
+    name: { en: 'World maps', vi: 'Bản đồ thế giới' },
+    subject: 'history',
+    blurb: { en: 'Colonial empires in 1914 and Latin America winning independence, year by year.', vi: 'Các đế quốc thực dân năm 1914 và Mỹ Latinh giành độc lập, theo từng năm.' },
+    grades: { en: 'Grade 11', vi: 'Lớp 11' },
+  },
 ];
+
+const WORLD_MAP_NAMES: Record<HistoryWorldMap, Bilingual> = {
+  'empires-1914': { en: 'Colonial empires, 1914', vi: 'Các đế quốc thực dân năm 1914' },
+  'latin-america': { en: 'Latin American independence', vi: 'Mỹ Latinh giành độc lập' },
+};
+
+/** One version of a simulation the Lab can open. */
+export interface LabVariant {
+  id: string;
+  name: Bilingual;
+  config: unknown;
+}
+
+/**
+ * The versions of a simulation to choose from: the built-in world maps, every campaign map a
+ * published lesson carries (their content lives in the lessons), or just the default settings.
+ */
+export function labVariants(item: LabItem, usages: readonly LabUsage[] | null): LabVariant[] {
+  if (item.kind === 'history-world') return HISTORY_WORLD_MAPS.map((map) => ({ id: map, name: WORLD_MAP_NAMES[map], config: { map } }));
+  if (item.kind === 'history-map') {
+    return (usages ?? []).flatMap((u, i) => {
+      const config = u.kind === 'history-map' ? simulationConfig('history-map', u.config) : null;
+      return config ? [{ id: `${u.href}#${i}`, name: u.heading.vi || u.heading.en ? u.heading : u.lesson, config }] : [];
+    });
+  }
+  return [{ id: 'default', name: item.name, config: defaultSimulationConfig(item.kind) }];
+}
 
 export const labItem = (kind: string) => LAB_ITEMS.find((item) => item.kind === kind) ?? null;

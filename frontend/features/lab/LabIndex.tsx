@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useState } from 'react';
-import { Activity, ArrowDownUp, ArrowRight, Axis3d, Box, ChartSpline, CircleDot, Gauge, Dices, FlaskConical, Hand, HeartPulse, Orbit, Rocket, Waves, Zap, type LucideIcon } from 'lucide-react';
+import { Activity, ArrowDownUp, ArrowRight, Axis3d, Box, ChartSpline, CircleDot, Gauge, Globe2, Map as MapIcon, Dices, FlaskConical, Hand, HeartPulse, Orbit, Rocket, Waves, Zap, type LucideIcon } from 'lucide-react';
 import { useLanguage } from '@scipal/hooks';
 import { SubjectProvider } from '@scipal/ui';
 import type { BuiltInSimulationKind } from '@scipal/types';
@@ -26,6 +26,8 @@ export const LAB_ICONS: Partial<Record<BuiltInSimulationKind, LucideIcon>> = {
   'skin-senses': Hand,
   'algorithm-sim': ArrowDownUp,
   'complexity-sim': Gauge,
+  'history-map': MapIcon,
+  'history-world': Globe2,
 };
 
 const FOCUS = 'focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus';
@@ -45,11 +47,11 @@ export function LabIndex({ counts }: { counts: Record<string, number> | null }) 
             {t({ en: 'Home', vi: 'Trang chủ' })}
           </Link>
         </nav>
-        <h1 className="text-3xl font-bold text-ink sm:text-4xl">{t({ en: 'Lab', vi: 'Phòng thí nghiệm' })}</h1>
+        <h1 className="text-3xl font-bold text-ink sm:text-4xl">{t({ en: 'Simulations', vi: 'Mô phỏng' })}</h1>
         <p className="mt-2 max-w-prose text-base text-ink-muted">
           {t({
-            en: 'Every simulation and experiment of Mathematics, Physics, Chemistry, Biology and Informatics. Open one and try it freely, then go to the lessons that use it.',
-            vi: 'Mọi mô phỏng, thí nghiệm của Toán, Vật lí, Hoá học, Sinh học và Tin học. Mở ra thử thoải mái, rồi vào các bài học có dùng nó.',
+            en: 'Every simulation and experiment of Mathematics, Physics, Chemistry, Biology, Informatics and History. Open one and try it freely, then go to the lessons that use it.',
+            vi: 'Mọi mô phỏng, thí nghiệm của Toán, Vật lí, Hoá học, Sinh học, Tin học và Lịch sử. Mở ra thử thoải mái, rồi vào các bài học có dùng nó.',
           })}
         </p>
       </header>

@@ -63,17 +63,17 @@ export const STUDENT_GUIDES = [
   },
   {
     id: 'lab', audience: 'student', category: 'learn',
-    title: { en: 'Explore the Lab', vi: 'Khám phá Thí nghiệm' },
+    title: { en: 'Explore the simulations', vi: 'Khám phá Mô phỏng' },
     description: { en: 'Use interactive models to see how a scientific idea behaves.', vi: 'Dùng mô hình tương tác để quan sát một ý tưởng khoa học.' },
     visualSteps: [
       { en: 'Choose', vi: 'Chọn mẫu' }, { en: 'Adjust', vi: 'Điều chỉnh' }, { en: 'Observe', vi: 'Quan sát' },
     ],
     steps: [
-      { en: 'Open Lab and choose a simulation that is available for your level.', vi: 'Mở Thí nghiệm rồi chọn mô phỏng đang có ở cấp học của bạn.' },
+      { en: 'Open Simulations and choose one that is available for your level.', vi: 'Mở Mô phỏng rồi chọn mô phỏng đang có ở cấp học của bạn.' },
       { en: 'Change its controls, move the model or use the time controls when provided.', vi: 'Điều chỉnh tham số, thao tác mô hình hoặc dùng nút thời gian nếu có.' },
       { en: 'Compare the result with the lesson. Some linked external simulations need internet access.', vi: 'Đối chiếu kết quả với bài học. Một số mô phỏng ngoài cần kết nối mạng.' },
     ],
-    href: '/lab', action: { en: 'Open Lab', vi: 'Mở Thí nghiệm' },
+    href: '/lab', action: { en: 'Open Simulations', vi: 'Mở Mô phỏng' },
   },
   {
     id: 'glossary', audience: 'student', category: 'learn',

@@ -6,8 +6,8 @@ import { pageTitle } from '@/lib/pageTitle';
 export const dynamic = 'force-dynamic';
 
 export const metadata: Metadata = {
-  ...pageTitle('Lab', 'Phòng thí nghiệm'),
-  description: 'Mô phỏng và thí nghiệm Toán, Vật lí, Hoá học, Sinh học, Tin học để thử trực tiếp.',
+  ...pageTitle('Simulations', 'Mô phỏng'),
+  description: 'Mô phỏng và thí nghiệm Toán, Vật lí, Hoá học, Sinh học, Tin học, Lịch sử để thử trực tiếp.',
 };
 
 export default async function LabPage() {

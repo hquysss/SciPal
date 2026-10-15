@@ -22,7 +22,7 @@ export function LabEmbedView({ link, subject }: { link: string; subject: string 
       <main className="mx-auto w-full max-w-4xl px-4 pb-20 pt-8 sm:px-6 sm:pt-12">
         <nav aria-label="Breadcrumb" className="mb-6 flex flex-wrap items-center gap-2 text-sm text-ink-muted">
           <Link href="/lab" className={`rounded underline-offset-4 hover:text-ink hover:underline ${FOCUS}`}>
-            {t({ en: 'Lab', vi: 'Phòng thí nghiệm' })}
+            {t({ en: 'Simulations', vi: 'Mô phỏng' })}
           </Link>
           <span aria-hidden="true">/</span>
           <span>{t(found.name)}</span>
