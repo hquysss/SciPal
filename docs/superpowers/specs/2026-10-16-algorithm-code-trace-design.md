@@ -21,10 +21,10 @@ Ngoài phạm vi (dự án con 2, spec riêng): chạy một đoạn code bất 
 ## Giao diện (`algorithmCode.tsx`, mới; sửa `algorithm.tsx`)
 - Khung code dưới hình cột (điện thoại) hoặc bên phải (≥1024px), tab `Python | C++` (mặc định Python), chữ `--font-mono`, có số dòng. Dòng dài cuộn ngang trong khung, trang không tràn ngang ở 375px.
 - **Dòng đang chạy** phải nhận ra ngay, không chỉ bằng màu:
-  - dòng **nổi lên và phát sáng**: `transform: translateY(-2px) scale(1.035)` (gốc bên trái), bo góc, nền `--accent` pha đậm, viền 1px `--accent`, đổ bóng sâu cộng quầng sáng `--accent` (box-shadow pha bằng `color-mix`), chữ sáng và đậm hơn; các dòng khác hơi mờ đi;
+  - **chữ** của dòng nổi lên và phát sáng, không có khung hay nền: `transform: translateY(-3px) scale(1.07)` (gốc bên trái), chữ đậm, `text-shadow` gồm quầng sáng `--accent` (pha bằng `color-mix`) và bóng đổ bên dưới để thấy chữ nhấc khỏi trang; các dòng khác hơi mờ đi;
   - dấu ▶ ở cột số dòng;
   - `aria-current="step"`; vùng ghi chú `aria-live` sẵn có đọc ghi chú bước.
-  - Dòng mới nảy lên trong 250 ms (đường cong có nảy nhẹ), dòng cũ hạ xuống; chỉ dùng `transform` và `box-shadow`. Giảm chuyển động thì đổi tức thì, vẫn giữ nền, viền và quầng sáng.
+  - Dòng mới nảy lên trong 250 ms (đường cong có nảy nhẹ), dòng cũ hạ xuống; chỉ dùng `transform`, `opacity` và `text-shadow`. Giảm chuyển động thì đổi tức thì, vẫn giữ chữ đậm và quầng sáng.
   - Khung code có chừa lề để phần phóng to và quầng sáng không bị cắt.
 - Ở dòng `if`, cuối dòng hiện kết quả so sánh: `5 > 2 → True` (C++: `true`), chip `--success` hoặc `--warning` kèm chữ.
 - Hàng chip biến dưới khung code: `i = 0`, `j = 2`…; chip vừa đổi giá trị nảy nhẹ (dùng lại `bump` của bộ đếm).
