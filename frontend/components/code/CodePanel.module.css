@@ -1,0 +1,90 @@
+/* Dark code panel. Light mode: ink as the base, paper as the text; dark mode: the sunken surface and ink.
+   Colours are mixed with `in srgb` so the contrast test can reproduce them exactly (CodePanel.test.ts). */
+
+.panel {
+  --base: var(--ink);
+  --fg: var(--paper);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border-radius: 12px;
+  background: var(--base);
+  color: var(--fg);
+  font-family: var(--font-mono);
+}
+.panel[data-dark='true'] {
+  --base: var(--surface-sunken);
+  --fg: var(--ink);
+  border: 1px solid var(--line);
+}
+
+.bar { display: flex; align-items: center; gap: 8px; padding: 10px 12px 6px; }
+.tabs { display: flex; gap: 6px; }
+.tab {
+  min-height: 44px;
+  padding: 0 14px;
+  border: 1px solid color-mix(in srgb, var(--fg) 30%, transparent);
+  border-radius: 999px;
+  background: transparent;
+  color: color-mix(in srgb, var(--fg) 75%, var(--base));
+  font: 700 13px var(--font-mono);
+  cursor: pointer;
+}
+.tab[aria-selected='true'] {
+  border-color: var(--accent, var(--action));
+  background: color-mix(in srgb, var(--accent, var(--action)) 35%, transparent);
+  color: var(--fg);
+}
+.copy {
+  display: inline-flex; align-items: center; gap: 6px; margin-left: auto; min-height: 44px; padding: 0 12px;
+  border: 1px solid color-mix(in srgb, var(--fg) 30%, transparent); border-radius: 999px; background: transparent;
+  color: color-mix(in srgb, var(--fg) 85%, var(--base)); font: 600 12px var(--font-mono); cursor: pointer;
+}
+.tab:focus-visible, .copy:focus-visible, .src:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+
+.src {
+  overflow-x: auto;
+  /* Room for the lifted line and its glow, so nothing is cut off. */
+  padding: 10px 12px 12px 4px;
+  font-size: 14px;
+  line-height: 32px;
+}
+.ln { display: flex; align-items: center; white-space: pre; }
+.num {
+  flex: none;
+  width: 42px;
+  padding-right: 14px;
+  text-align: right;
+  color: color-mix(in srgb, var(--fg) 45%, var(--base));
+  user-select: none;
+}
+.txt {
+  display: inline-block;
+  transform-origin: left center;
+  transition: transform 280ms cubic-bezier(0.3, 1.6, 0.5, 1), opacity 250ms, text-shadow 250ms;
+}
+.ln[data-dim='true'] .txt { opacity: 0.6; }
+.ln[data-on='true'] .txt {
+  font-weight: 800;
+  color: var(--fg);
+  transform: translateY(-3px) scale(1.07);
+  text-shadow:
+    0 0 8px color-mix(in srgb, var(--accent, var(--action)) 80%, transparent),
+    0 0 20px color-mix(in srgb, var(--accent, var(--action)) 55%, transparent),
+    0 5px 6px color-mix(in srgb, var(--base) 70%, black);
+}
+.ln[data-on='true'] .txt span { color: var(--fg); }
+.ln[data-on='true'] .num { color: var(--accent, var(--action)); font-weight: 800; }
+.ln[data-on='true'] .num::before { content: '▶'; margin-right: 4px; font-size: 10px; }
+
+.keyword { color: color-mix(in srgb, var(--sky) 60%, var(--fg)); }
+.function { color: color-mix(in srgb, var(--accent, var(--action)) 55%, var(--fg)); }
+.string { color: color-mix(in srgb, var(--sun) 65%, var(--fg)); }
+.number { color: color-mix(in srgb, var(--coral) 60%, var(--fg)); }
+.operator { color: color-mix(in srgb, var(--sky) 40%, var(--fg)); }
+.comment { color: color-mix(in srgb, var(--fg) 62%, var(--base)); }
+
+@media (prefers-reduced-motion: reduce) {
+  .txt { transition: none; }
+  .ln[data-on='true'] .txt { transform: none; }
+}

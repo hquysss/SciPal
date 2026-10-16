@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it, vi } from 'vitest';
 import type { Block } from '@scipal/types';
@@ -56,8 +58,8 @@ describe('BlockRenderer', () => {
       <BlockRenderer block={{ type: 'code', tabs: [{ lang: 'python', code: 'x' }, { lang: 'cpp', code: 'y' }] }} />,
     );
     expect(html).toContain('role="tablist"');
-    expect(html).toMatch(/aria-selected="true"[^>]*>python|>python<\/button>/);
-    expect(html).toContain('min-h-11');
+    expect(html).toMatch(/aria-selected="true"[^>]*>Python<\/button>/);
+    expect(readFileSync(fileURLToPath(new URL('../code/CodePanel.module.css', import.meta.url)), 'utf8')).toMatch(/\.tab \{\s*min-height: 44px/);
   });
 
   it('renders an image with its alt text and caption, lazily', () => {
