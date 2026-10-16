@@ -95,6 +95,53 @@ describe('complexity playback', () => {
     expect(screen.getByText('Xong: 8 phép toán.')).toBeTruthy();
   });
 
+  it('offers three speeds, medium first', () => {
+    render(<View config={{ pattern: 'single-loop', n: 8 }} lang="vi" />);
+    expect(within(screen.getByRole('group', { name: 'Tốc độ' })).getAllByRole('button')).toHaveLength(3);
+    expect(screen.getByRole('button', { name: 'Vừa' }).getAttribute('aria-pressed')).toBe('true');
+  });
+
+  it('runs sooner at Fast than at Slow', () => {
+    const frames: FrameRequestCallback[] = [];
+    vi.spyOn(window, 'requestAnimationFrame').mockImplementation((cb) => frames.push(cb));
+    vi.spyOn(window, 'cancelAnimationFrame').mockImplementation(() => {});
+    const afterOneAndAHalfSeconds = (speed: string) => {
+      render(<View config={{ pattern: 'single-loop', n: 8 }} lang="vi" />);
+      fireEvent.click(screen.getByRole('button', { name: speed }));
+      fireEvent.click(screen.getByRole('button', { name: 'Chạy' }));
+      act(() => {
+        const now = performance.now() + 1500;
+        frames.splice(0).forEach((cb) => cb(now));
+      });
+      const shown = counter();
+      cleanup();
+      return shown;
+    };
+    expect(afterOneAndAHalfSeconds('Nhanh')).toBe('8 / 8');
+    expect(afterOneAndAHalfSeconds('Chậm')).not.toBe('8 / 8');
+  });
+
+  it('keeps the count when the speed changes while playing', () => {
+    const frames: FrameRequestCallback[] = [];
+    vi.spyOn(window, 'requestAnimationFrame').mockImplementation((cb) => frames.push(cb));
+    vi.spyOn(window, 'cancelAnimationFrame').mockImplementation(() => {});
+    render(<View config={{ pattern: 'single-loop', n: 8 }} lang="vi" />);
+    fireEvent.click(screen.getByRole('button', { name: 'Chạy' }));
+    act(() => {
+      const now = performance.now() + 3000;
+      frames.splice(0).forEach((cb) => cb(now));
+    });
+    const before = counter();
+    expect(before).not.toBe('0 / 8');
+    fireEvent.click(screen.getByRole('button', { name: 'Nhanh' }));
+    expect(counter()).toBe(before);
+    act(() => {
+      const now = performance.now() + 5000;
+      frames.splice(0).forEach((cb) => cb(now));
+    });
+    expect(counter()).toBe('8 / 8');
+  });
+
   it('copes with n = 1, where divide and conquer has nothing to do', () => {
     render(<View config={{ pattern: 'divide-conquer', n: 1 }} lang="vi" />);
     expect(counter()).toBe('0 / 0');

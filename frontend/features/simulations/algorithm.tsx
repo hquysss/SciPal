@@ -8,6 +8,7 @@ import { ALGORITHM_NAMES, AlgorithmStage } from './algorithmStage';
 import { useReducedMotion } from './animation';
 import { algorithmSteps } from './engines/algorithm';
 import { BUTTON, Field, FIELD, NumberField, PANEL, SelectField } from './controls';
+import { SpeedPicker, type Speed } from './speedPicker';
 import { pick, type Lang, type SimulationEditorProps, type SimulationModule, type SimulationViewProps } from './types';
 import styles from './algorithm.module.css';
 
@@ -16,14 +17,7 @@ type Bilingual = { en: string; vi: string };
 const isSearch = (a: string) => a.endsWith('search');
 
 /** Milliseconds per step at each playing speed. */
-export const SPEEDS = { slow: 1100, medium: 650, fast: 220 } as const;
-type Speed = keyof typeof SPEEDS;
-const SPEED_NAMES: Record<Speed, Bilingual> = {
-  slow: { en: 'Slow', vi: 'Chậm' },
-  medium: { en: 'Medium', vi: 'Vừa' },
-  fast: { en: 'Fast', vi: 'Nhanh' },
-};
-
+export const SPEEDS: Record<Speed, number> = { slow: 1100, medium: 650, fast: 220 };
 /** A count that bumps each time it changes. */
 function Tally({ label, value }: { label: string; value: number }) {
   return (
@@ -33,27 +27,6 @@ function Tally({ label, value }: { label: string; value: number }) {
         {value}
       </span>
     </span>
-  );
-}
-
-function SpeedPicker({ speed, onChange, lang }: { speed: Speed; onChange: (speed: Speed) => void; lang: Lang }) {
-  const t = pick(lang);
-  return (
-    <div role="group" aria-label={t({ en: 'Speed', vi: 'Tốc độ' })} className="ml-auto inline-flex rounded-lg border border-line p-0.5">
-      {(Object.keys(SPEEDS) as Speed[]).map((s) => (
-        <button
-          key={s}
-          type="button"
-          aria-pressed={speed === s}
-          onClick={() => onChange(s)}
-          className={`min-h-11 rounded-md px-3 text-sm font-semibold transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus ${
-            speed === s ? 'bg-[color-mix(in_oklch,var(--accent,var(--action))_16%,transparent)] text-ink' : 'text-ink-muted hover:bg-surface-sunken'
-          }`}
-        >
-          {t(SPEED_NAMES[s])}
-        </button>
-      ))}
-    </div>
   );
 }
 
