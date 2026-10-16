@@ -89,6 +89,43 @@ describe('algorithm stage', () => {
     vi.useRealTimers();
   });
 
+  it('lights the running code line and moves it as the steps go', () => {
+    render(<View config={config([5, 2, 9])} lang="vi" />);
+    const next = screen.getByRole('button', { name: 'Bước tiếp' });
+    expect(document.querySelector('[aria-current="step"]')).toBeNull();
+    fireEvent.click(next);
+    expect(document.querySelector('[aria-current="step"]')!.textContent).toContain('for i in range(n - 1)');
+    fireEvent.click(next);
+    fireEvent.click(next);
+    expect(document.querySelector('[aria-current="step"]')!.textContent).toContain('if a[j] > a[j + 1]');
+    expect(screen.getByText('5 > 2 → True')).toBeTruthy();
+  });
+
+  it('shows the same step in C++ and keeps the step when the tab changes', () => {
+    render(<View config={config([5, 2, 9])} lang="vi" />);
+    const next = screen.getByRole('button', { name: 'Bước tiếp' });
+    for (let i = 0; i < 3; i += 1) fireEvent.click(next);
+    fireEvent.click(screen.getByRole('tab', { name: 'C++' }));
+    expect(document.querySelector('[aria-current="step"]')!.textContent).toContain('if (a[j] > a[j + 1])');
+    expect(screen.getByText('5 > 2 → true')).toBeTruthy();
+    expect(screen.getByText('Bước 4/', { exact: false })).toBeTruthy();
+  });
+
+  it('lists the variables of the step and can hide the code', () => {
+    render(<View config={config([5, 2, 9])} lang="vi" />);
+    fireEvent.click(screen.getByRole('button', { name: 'Bước tiếp' }));
+    expect(within(screen.getByRole('list', { name: 'Biến' })).getByText('n =', { exact: false })).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'Ẩn code' }));
+    expect(screen.queryByRole('tab', { name: 'Python' })).toBeNull();
+    expect(screen.getByRole('button', { name: 'Hiện code' }).getAttribute('aria-pressed')).toBe('false');
+  });
+
+  it('has no code panel in the race', () => {
+    render(<View config={config([5, 2, 9])} lang="vi" />);
+    fireEvent.click(screen.getByRole('button', { name: 'Đua 3 cách sắp xếp' }));
+    expect(screen.queryByRole('tab', { name: 'Python' })).toBeNull();
+  });
+
   it('offers the race only for sorting', () => {
     render(<View config={config([4, 8, 1], 'linear-search', 8)} lang="vi" />);
     expect(screen.queryByRole('button', { name: 'Đua 3 cách sắp xếp' })).toBeNull();

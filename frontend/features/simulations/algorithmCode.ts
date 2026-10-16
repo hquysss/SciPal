@@ -119,3 +119,20 @@ export const lineOf = (lines: CodeLine[], key: string | undefined): number | und
   const i = key ? lines.findIndex((l) => l.line === key) : -1;
   return i < 0 ? undefined : i + 1;
 };
+
+/** The if/while condition of a comparing step with its numbers filled in: `5 > 2`, and whether it holds. */
+export function condition(algorithm: Algorithm, step: { values: number[]; compare?: [number, number] }, target: number): { expr: string; ok: boolean } | null {
+  if (!step.compare) return null;
+  const a = step.values[step.compare[0]]!;
+  const b = step.values[step.compare[1]]!;
+  switch (algorithm) {
+    case 'bubble-sort':
+    case 'insertion-sort':
+      return { expr: `${a} > ${b}`, ok: a > b };
+    case 'selection-sort':
+      return { expr: `${b} < ${a}`, ok: b < a };
+    case 'linear-search':
+    case 'binary-search':
+      return { expr: `${a} == ${target}`, ok: a === target };
+  }
+}

@@ -77,11 +77,11 @@
 .ln[data-on='true'] .num { color: var(--accent, var(--action)); font-weight: 800; }
 .ln[data-on='true'] .num::before { content: '▶'; margin-right: 4px; font-size: 10px; }
 
-.keyword { color: color-mix(in srgb, var(--sky) 60%, var(--fg)); }
+.keyword { color: color-mix(in srgb, var(--sky) 80%, var(--fg)); }
 .function { color: color-mix(in srgb, var(--accent, var(--action)) 55%, var(--fg)); }
-.string { color: color-mix(in srgb, var(--sun) 65%, var(--fg)); }
-.number { color: color-mix(in srgb, var(--coral) 60%, var(--fg)); }
-.operator { color: color-mix(in srgb, var(--sky) 40%, var(--fg)); }
+.string { color: color-mix(in srgb, var(--sun) 80%, var(--fg)); }
+.number { color: color-mix(in srgb, var(--coral) 75%, var(--fg)); }
+.operator { color: color-mix(in srgb, var(--sky) 55%, var(--fg)); }
 .comment { color: color-mix(in srgb, var(--fg) 62%, var(--base)); }
 
 @media (prefers-reduced-motion: reduce) {

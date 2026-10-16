@@ -1,8 +1,10 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import { Check, Flag, Pause, Play, RotateCcw, SearchX, SkipBack, SkipForward } from 'lucide-react';
+import { Check, Code2, Flag, Pause, Play, RotateCcw, SearchX, SkipBack, SkipForward } from 'lucide-react';
 import { ALGORITHMS } from '@scipal/types';
+import { CodePanel } from '../../components/code/CodePanel';
+import { ALGORITHM_CODE, CODE_LANGS, codeText, condition, lineOf } from './algorithmCode';
 import { AlgorithmRace } from './algorithmRace';
 import { ALGORITHM_NAMES, AlgorithmStage } from './algorithmStage';
 import { useReducedMotion } from './animation';
@@ -38,6 +40,8 @@ function AlgorithmView({ config, lang }: SimulationViewProps<'algorithm-sim'>) {
   const [playing, setPlaying] = useState(false);
   const [speed, setSpeed] = useState<Speed>('medium');
   const [race, setRace] = useState(false);
+  const [tab, setTab] = useState(0);
+  const [showCode, setShowCode] = useState(true);
   const at = Math.min(index, steps.length - 1);
   const step = steps[at]!;
   const finished = at === steps.length - 1;
@@ -62,6 +66,37 @@ function AlgorithmView({ config, lang }: SimulationViewProps<'algorithm-sim'>) {
       : missing
         ? { vi: `Không có ${config.target}; đã so sánh ${step.compares} lần.`, en: `${config.target} is not there; ${step.compares} comparisons made.` }
         : { vi: `Tìm thấy ${config.target} sau ${step.compares} lần so sánh.`, en: `Found ${config.target} after ${step.compares} comparisons.` };
+  const program = ALGORITHM_CODE[config.algorithm];
+  const langs = ['python', 'cpp'] as const;
+  const active = lineOf(program[langs[tab] ?? 'python'], step.line);
+  const verdict = condition(config.algorithm, step, config.target);
+  const truth = langs[tab] === 'cpp' ? ['false', 'true'] : ['False', 'True'];
+  const codePanel = (
+    <CodePanel
+      tabs={langs.map((l) => ({ lang: CODE_LANGS[l], code: codeText(program[l]) }))}
+      tab={tab}
+      onTab={setTab}
+      activeLine={active}
+      lang={lang}
+      lineExtra={
+        verdict && (
+          <span className={`${styles.verdict} ${verdict.ok ? styles.yes : styles.no}`}>
+            {verdict.expr} → {truth[Number(verdict.ok)]}
+          </span>
+        )
+      }
+    >
+      {step.vars && (
+        <ul className={styles.vars} aria-label={t({ en: 'Variables', vi: 'Biến' })}>
+          {Object.entries(step.vars).map(([name, value], k) => (
+            <li key={`${name}=${value}`} className={`${styles.chipVar} ${styles[`v${k % 3}`]} ${at > 0 && steps[at - 1]?.vars?.[name] !== value ? styles.bump : ''}`}>
+              {name} = <b>{value}</b>
+            </li>
+          ))}
+        </ul>
+      )}
+    </CodePanel>
+  );
   const speedPicker = <SpeedPicker speed={speed} onChange={setSpeed} lang={lang} />;
 
   return (
@@ -92,7 +127,10 @@ function AlgorithmView({ config, lang }: SimulationViewProps<'algorithm-sim'>) {
         </AlgorithmRace>
       ) : (
         <>
-          <AlgorithmStage algorithm={config.algorithm} step={step} target={config.target} stepMs={SPEEDS[speed]} reduced={reduced} lang={lang} finished={finished} />
+          <div className={showCode ? 'grid items-start gap-3 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)]' : undefined}>
+            <AlgorithmStage algorithm={config.algorithm} step={step} target={config.target} stepMs={SPEEDS[speed]} reduced={reduced} lang={lang} finished={finished} />
+            {showCode && codePanel}
+          </div>
           <p aria-live="polite" className="min-h-10 text-sm text-ink">
             {t(step.note)}
           </p>
@@ -128,6 +166,10 @@ function AlgorithmView({ config, lang }: SimulationViewProps<'algorithm-sim'>) {
               }}
             >
               <RotateCcw aria-hidden="true" className="h-4 w-4" />
+            </button>
+            <button type="button" className={BUTTON} aria-pressed={showCode} onClick={() => setShowCode(!showCode)}>
+              <Code2 aria-hidden="true" className="h-4 w-4" />
+              {showCode ? t({ en: 'Hide code', vi: 'Ẩn code' }) : t({ en: 'Show code', vi: 'Hiện code' })}
             </button>
             {speedPicker}
           </div>

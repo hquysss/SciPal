@@ -45,10 +45,10 @@ describe('syntax colours', () => {
     const [base, fg] = mode === 'dark' ? [p.surfaceSunken, p.ink] : [p.ink, p.paper];
     const accents = [p.action, '#16a34a', '#2563c9'];
     const colours: Record<string, string> = {
-      keyword: mixHex(p.sky, fg, 0.6),
-      string: mixHex(p.sun, fg, 0.65),
-      number: mixHex(p.coral, fg, 0.6),
-      operator: mixHex(p.sky, fg, 0.4),
+      keyword: mixHex(p.sky, fg, 0.8),
+      string: mixHex(p.sun, fg, 0.8),
+      number: mixHex(p.coral, fg, 0.75),
+      operator: mixHex(p.sky, fg, 0.55),
       comment: mixHex(fg, base, 0.62),
       ...Object.fromEntries(accents.map((a, i) => [`function ${i}`, mixHex(a, fg, 0.55)])),
     };
