@@ -9,6 +9,7 @@ import { ComplexityChart, formatCount } from './complexityChart';
 import { ComplexityField, fieldCaption } from './complexityField';
 import { TimeCard } from './complexityTime';
 import { Odometer } from './odometer';
+import { SpeedPicker, type Speed } from './speedPicker';
 import { useReducedMotion } from './animation';
 import { pick, type SimulationEditorProps, type SimulationModule, type SimulationViewProps } from './types';
 import styles from './complexity.module.css';
@@ -62,6 +63,8 @@ const WHY: Record<ComplexityPattern, Bilingual> = {
 
 const STEP_MS = 400;
 const MAX_PLAY_MS = 10_000;
+/** How long a run takes at each speed, as a multiple of the Medium run. */
+const SPEED_TIME: Record<Speed, number> = { slow: 2, medium: 1, fast: 0.35 };
 /** The largest count any pattern reaches (8! = 40 320), the end of the comparison bars. */
 const MAX_LOG = Math.log10(40_321);
 const EXPLOSIVE: ReadonlySet<ComplexityPattern> = new Set(['branching', 'permutations']);
@@ -105,6 +108,7 @@ function ComplexityView({ config, lang }: SimulationViewProps<'complexity-sim'>)
   const total = ops.length;
   const [shown, setShown] = useState(0);
   const [playing, setPlaying] = useState(false);
+  const [speed, setSpeed] = useState<Speed>('medium');
   const shownRef = useRef(shown);
   shownRef.current = shown;
 
@@ -127,7 +131,7 @@ function ComplexityView({ config, lang }: SimulationViewProps<'complexity-sim'>)
       setPlaying(false);
       return;
     }
-    const duration = Math.min(MAX_PLAY_MS, left * STEP_MS);
+    const duration = Math.min(MAX_PLAY_MS, left * STEP_MS) * SPEED_TIME[speed];
     const explosive = EXPLOSIVE.has(pattern);
     const start = performance.now();
     let frame = 0;
@@ -141,7 +145,7 @@ function ComplexityView({ config, lang }: SimulationViewProps<'complexity-sim'>)
     };
     frame = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(frame);
-  }, [playing, pattern, total, reduced]);
+  }, [playing, pattern, total, reduced, speed]);
 
   const restart = () => {
     setPlaying(false);
@@ -272,7 +276,8 @@ function ComplexityView({ config, lang }: SimulationViewProps<'complexity-sim'>)
         >
           <RotateCcw aria-hidden="true" className="h-4 w-4" />
         </button>
-        <span role="status" className="ml-auto text-sm text-ink-muted">
+        <SpeedPicker speed={speed} onChange={setSpeed} lang={lang} />
+        <span role="status" className="text-sm text-ink-muted">
           {!playing && shown === total ? t({ en: `Done: ${total.toLocaleString('en-US')} operations.`, vi: `Xong: ${total.toLocaleString('vi-VN')} phép toán.` }) : ''}
         </span>
       </div>
