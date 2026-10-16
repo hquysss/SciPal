@@ -18,6 +18,12 @@ export interface AlgorithmStep {
   /** Search result: the index found, or null when the target is not there. */
   found?: number | null;
   note: Bilingual;
+  /** The code line this step runs (a key of ALGORITHM_CODE); steps without one light no line. */
+  line?: string;
+  /** Variables of the program at this step, for the chips under the code. */
+  vars?: Record<string, number>;
+  /** The step only lights a code line and changes nothing on the stage; the race view skips it. */
+  trace?: boolean;
   /** Comparisons made so far, this step included. */
   compares: number;
   /** Swaps (or insertion shifts) made so far, this step included. */
@@ -46,21 +52,32 @@ export function algorithmSteps(config: AlgorithmConfig): AlgorithmStep[] {
   };
   const all = () => values.map((_, i) => i);
 
+  // A step that only lights a code line (no change on the stage); the race view skips these.
+  const trace = (line: string, vars: Record<string, number>, view: Omit<AlgorithmStep, 'compares' | 'swaps' | 'ids' | 'line' | 'vars' | 'note' | 'trace'>, note: Bilingual) =>
+    push({ ...view, line, vars, note, trace: true });
+  const loopNote = (vars: Record<string, number>): Bilingual => {
+    const text = Object.entries(vars).map(([k, v]) => `${k} = ${v}`).join(', ');
+    return { en: `Loop: ${text}.`, vi: `Vòng lặp: ${text}.` };
+  };
+
   switch (config.algorithm) {
     case 'bubble-sort': {
       const done: number[] = [];
       push({ values, done, note: { en: 'Compare neighbours and swap when out of order.', vi: 'So sánh hai phần tử kề nhau, đổi chỗ nếu sai thứ tự.' } });
       for (let end = n - 1; end > 0; end -= 1) {
-        for (let i = 0; i < end; i += 1) {
-          push({ values, done, compare: [i, i + 1], note: { en: `Compare ${values[i]} and ${values[i + 1]}.`, vi: `So sánh ${values[i]} và ${values[i + 1]}.` } });
-          if (values[i]! > values[i + 1]!) {
-            swap(i, i + 1);
-            push({ values, done, swap: [i, i + 1], note: { en: 'Swap them.', vi: 'Đổi chỗ.' } });
+        const i = n - 1 - end;
+        trace('outer', { n, i }, { values, done }, loopNote({ i }));
+        for (let j = 0; j < end; j += 1) {
+          trace('inner', { n, i, j }, { values, done }, loopNote({ j }));
+          push({ values, done, line: 'compare', vars: { n, i, j }, compare: [j, j + 1], note: { en: `Compare ${values[j]} and ${values[j + 1]}.`, vi: `So sánh ${values[j]} và ${values[j + 1]}.` } });
+          if (values[j]! > values[j + 1]!) {
+            swap(j, j + 1);
+            push({ values, done, line: 'swap', vars: { n, i, j }, swap: [j, j + 1], note: { en: 'Swap them.', vi: 'Đổi chỗ.' } });
           }
         }
         done.push(end);
       }
-      push({ values, done: all(), note: { en: 'Sorted.', vi: 'Đã sắp xếp xong.' } });
+      push({ values, done: all(), line: 'done', vars: { n }, note: { en: 'Sorted.', vi: 'Đã sắp xếp xong.' } });
       break;
     }
     case 'selection-sort': {
@@ -68,43 +85,65 @@ export function algorithmSteps(config: AlgorithmConfig): AlgorithmStep[] {
       push({ values, done, note: { en: 'Find the smallest value and move it to the front.', vi: 'Tìm giá trị nhỏ nhất và đưa lên đầu.' } });
       for (let start = 0; start < n - 1; start += 1) {
         let min = start;
-        for (let i = start + 1; i < n; i += 1) {
-          push({ values, done, compare: [min, i], note: { en: `Smallest so far: ${values[min]}.`, vi: `Nhỏ nhất hiện tại: ${values[min]}.` } });
-          if (values[i]! < values[min]!) min = i;
+        trace('outer', { n, i: start }, { values, done }, loopNote({ i: start }));
+        trace('min', { n, i: start, m: min }, { values, done }, { en: `Assume place ${start + 1} holds the smallest: m = ${min}.`, vi: `Giả sử vị trí ${start + 1} nhỏ nhất: m = ${min}.` });
+        for (let j = start + 1; j < n; j += 1) {
+          trace('inner', { n, i: start, m: min, j }, { values, done }, loopNote({ j }));
+          push({ values, done, line: 'compare', vars: { n, i: start, m: min, j }, compare: [min, j], note: { en: `Smallest so far: ${values[min]}.`, vi: `Nhỏ nhất hiện tại: ${values[min]}.` } });
+          if (values[j]! < values[min]!) {
+            min = j;
+            trace('setmin', { n, i: start, m: min, j }, { values, done }, { en: `${values[j]} is smaller: m = ${j}.`, vi: `${values[j]} nhỏ hơn: m = ${j}.` });
+          }
         }
+        trace('check', { n, i: start, m: min }, { values, done }, { en: `Is m = ${min} different from i = ${start}?`, vi: `m = ${min} có khác i = ${start} không?` });
         if (min !== start) {
           swap(start, min);
-          push({ values, done, swap: [start, min], note: { en: `Move ${values[start]} to place ${start + 1}.`, vi: `Đưa ${values[start]} về vị trí ${start + 1}.` } });
+          push({ values, done, line: 'swap', vars: { n, i: start, m: min }, swap: [start, min], note: { en: `Move ${values[start]} to place ${start + 1}.`, vi: `Đưa ${values[start]} về vị trí ${start + 1}.` } });
         }
         done.push(start);
       }
-      push({ values, done: all(), note: { en: 'Sorted.', vi: 'Đã sắp xếp xong.' } });
+      push({ values, done: all(), line: 'done', vars: { n }, note: { en: 'Sorted.', vi: 'Đã sắp xếp xong.' } });
       break;
     }
     case 'insertion-sort': {
       push({ values, done: [0], note: { en: 'Insert each value into the sorted part on the left.', vi: 'Chèn từng giá trị vào phần đã sắp xếp bên trái.' } });
       for (let i = 1; i < n; i += 1) {
         let j = i;
-        push({ values, done: [], compare: [j - 1, j], note: { en: `Insert ${values[j]}.`, vi: `Chèn ${values[j]}.` } });
-        while (j > 0 && values[j - 1]! > values[j]!) {
+        trace('outer', { n, i }, { values, done: [] }, loopNote({ i }));
+        trace('set', { n, i, j }, { values, done: [] }, { en: `Insert ${values[j]}: j = ${j}.`, vi: `Chèn ${values[j]}: j = ${j}.` });
+        // The while line is checked before every shift, and once more when it stops.
+        for (;;) {
+          const compare = j > 0 ? ([j - 1, j] as [number, number]) : undefined;
+          push({
+            values,
+            done: [],
+            line: 'while',
+            vars: { n, i, j },
+            compare,
+            note: compare ? { en: `Is ${values[j - 1]} greater than ${values[j]}?`, vi: `${values[j - 1]} có lớn hơn ${values[j]} không?` } : { en: 'Reached the front.', vi: 'Đã tới đầu dãy.' },
+          });
+          if (!(j > 0 && values[j - 1]! > values[j]!)) break;
           swap(j - 1, j);
+          push({ values, done: [], line: 'swap', vars: { n, i, j }, swap: [j - 1, j], note: { en: 'Shift left.', vi: 'Dịch sang trái.' } });
           j -= 1;
-          // The loop compares again before every further shift.
-          if (j > 0) compares += 1;
-          push({ values, done: [], swap: [j, j + 1], note: { en: 'Shift left.', vi: 'Dịch sang trái.' } });
+          trace('dec', { n, i, j }, { values, done: [] }, { en: `j = ${j}.`, vi: `j = ${j}.` });
         }
       }
-      push({ values, done: all(), note: { en: 'Sorted.', vi: 'Đã sắp xếp xong.' } });
+      push({ values, done: all(), line: 'done', vars: { n }, note: { en: 'Sorted.', vi: 'Đã sắp xếp xong.' } });
       break;
     }
     case 'linear-search': {
       const target = config.target;
       push({ values, done: [], note: { en: `Look for ${target} from left to right.`, vi: `Tìm ${target} lần lượt từ trái sang phải.` } });
+      trace('init', { n, x: target, pos: -1 }, { values, done: [] }, { en: 'No position found yet: pos = -1.', vi: 'Chưa thấy vị trí nào: pos = -1.' });
       let found: number | null = null;
       for (let i = 0; i < n; i += 1) {
-        push({ values, done: [], compare: [i, i], note: { en: `Is ${values[i]} equal to ${target}?`, vi: `${values[i]} có bằng ${target} không?` } });
+        trace('loop', { n, x: target, pos: -1, i }, { values, done: [] }, loopNote({ i }));
+        push({ values, done: [], line: 'compare', vars: { n, x: target, pos: -1, i }, compare: [i, i], note: { en: `Is ${values[i]} equal to ${target}?`, vi: `${values[i]} có bằng ${target} không?` } });
         if (values[i] === target) {
           found = i;
+          trace('found', { n, x: target, pos: i, i }, { values, done: [] }, { en: `Found: pos = ${i}.`, vi: `Đã thấy: pos = ${i}.` });
+          trace('stop', { n, x: target, pos: i, i }, { values, done: [] }, { en: 'break leaves the loop.', vi: 'break thoát khỏi vòng lặp.' });
           break;
         }
       }
@@ -112,6 +151,8 @@ export function algorithmSteps(config: AlgorithmConfig): AlgorithmStep[] {
         values,
         done: [],
         found,
+        line: 'done',
+        vars: { n, x: target, pos: found ?? -1 },
         note: found === null
           ? { en: `${target} is not in the list.`, vi: `Không tìm thấy ${target}.` }
           : { en: `Found ${target} at place ${found + 1}.`, vi: `Tìm thấy ${target} ở vị trí ${found + 1}.` },
@@ -135,20 +176,34 @@ export function algorithmSteps(config: AlgorithmConfig): AlgorithmStep[] {
       let lo = 0;
       let hi = n - 1;
       let found: number | null = null;
+      const view = (range: [number, number]) => ({ values: sorted, done: [] as number[], range });
+      trace('init', { n, x: target, pos: -1 }, view([0, n - 1]), { en: 'No position found yet: pos = -1.', vi: 'Chưa thấy vị trí nào: pos = -1.' });
+      trace('range', { n, x: target, lo, hi }, view([lo, hi]), { en: `Search the whole list: lo = ${lo}, hi = ${hi}.`, vi: `Tìm trong cả dãy: lo = ${lo}, hi = ${hi}.` });
       while (lo <= hi) {
+        trace('while', { n, x: target, lo, hi }, view([lo, hi]), { en: `lo = ${lo} ≤ hi = ${hi}: keep going.`, vi: `lo = ${lo} ≤ hi = ${hi}: còn tìm tiếp.` });
         const mid = Math.floor((lo + hi) / 2);
-        push({ values: sorted, done: [], range: [lo, hi], compare: [mid, mid], note: { en: `Middle value: ${sorted[mid]}.`, vi: `Phần tử giữa: ${sorted[mid]}.` } });
+        trace('mid', { n, x: target, lo, hi, mid }, view([lo, hi]), { en: `Middle place: mid = ${mid}.`, vi: `Vị trí giữa: mid = ${mid}.` });
+        push({ values: sorted, done: [], range: [lo, hi], line: 'equal', vars: { n, x: target, lo, hi, mid }, compare: [mid, mid], note: { en: `Middle value: ${sorted[mid]}.`, vi: `Phần tử giữa: ${sorted[mid]}.` } });
         if (sorted[mid] === target) {
           found = mid;
+          trace('found', { n, x: target, lo, hi, mid, pos: mid }, view([lo, hi]), { en: `Found: pos = ${mid}.`, vi: `Đã thấy: pos = ${mid}.` });
+          trace('stop', { n, x: target, lo, hi, mid, pos: mid }, view([lo, hi]), { en: 'break leaves the loop.', vi: 'break thoát khỏi vòng lặp.' });
           break;
         }
-        if (sorted[mid]! < target) lo = mid + 1;
+        const less = sorted[mid]! < target;
+        trace('less', { n, x: target, lo, hi, mid }, view([lo, hi]), less
+          ? { en: `${sorted[mid]} < ${target}: the target is on the right.`, vi: `${sorted[mid]} < ${target}: giá trị cần tìm ở bên phải.` }
+          : { en: `${sorted[mid]} > ${target}: the target is on the left.`, vi: `${sorted[mid]} > ${target}: giá trị cần tìm ở bên trái.` });
+        if (less) lo = mid + 1;
         else hi = mid - 1;
+        trace(less ? 'setlo' : 'sethi', { n, x: target, lo, hi, mid }, view([lo, Math.max(hi, lo - 1)]), less ? { en: `lo = ${lo}.`, vi: `lo = ${lo}.` } : { en: `hi = ${hi}.`, vi: `hi = ${hi}.` });
       }
       push({
         values: sorted,
         done: [],
         found,
+        line: 'done',
+        vars: { n, x: target, pos: found ?? -1 },
         note: found === null
           ? { en: `${target} is not in the list.`, vi: `Không tìm thấy ${target}.` }
           : { en: `Found ${target} at place ${found + 1}.`, vi: `Tìm thấy ${target} ở vị trí ${found + 1}.` },

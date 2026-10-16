@@ -41,7 +41,7 @@ describe('algorithmSteps', () => {
     expect(steps[0]!.values).toEqual([1, 3, 5, 7, 9]);
     const last = steps.at(-1)!;
     expect(last.values[last.found!]).toBe(7);
-    expect(steps.filter((s) => s.range).length).toBeLessThanOrEqual(Math.ceil(Math.log2(5)) + 1);
+    expect(steps.filter((s) => s.range && !s.trace).length).toBeLessThanOrEqual(Math.ceil(Math.log2(5)) + 1);
   });
 
   it.each(['bubble-sort', 'selection-sort', 'insertion-sort', 'linear-search', 'binary-search'])("%s keeps every item's identity", (name) => {

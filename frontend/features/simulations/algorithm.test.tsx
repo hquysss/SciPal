@@ -58,7 +58,8 @@ describe('algorithm stage', () => {
 
   it('shows each comparison as a chip and sums up at the end', () => {
     render(<View config={config([5, 2, 9])} lang="vi" />);
-    fireEvent.click(screen.getByRole('button', { name: 'Bước tiếp' }));
+    const next = screen.getByRole('button', { name: 'Bước tiếp' }) as HTMLButtonElement;
+    while (!screen.queryByText('5 > 2 · đổi chỗ') && !next.disabled) fireEvent.click(next);
     expect(screen.getByText('5 > 2 · đổi chỗ')).toBeTruthy();
     stepToEnd();
     expect(screen.getByText('Xong: 3 phép so sánh, 1 lần đổi chỗ với 3 số.')).toBeTruthy();
@@ -82,7 +83,7 @@ describe('algorithm stage', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Đua 3 cách sắp xếp' }));
     fireEvent.click(screen.getByRole('button', { name: 'Chạy' }));
     for (let i = 0; i < 13; i += 1) act(() => vi.advanceTimersByTime(650));
-    expect(screen.getByRole('group', { name: 'Sắp xếp chèn' }).textContent).toContain('Hạng 1 · 7 bước');
+    expect(screen.getByRole('group', { name: 'Sắp xếp chèn' }).textContent).toContain('Hạng 1 · 8 bước');
     expect(screen.getByRole('group', { name: 'Sắp xếp nổi bọt' }).textContent).toContain('Hạng 2 · 13 bước');
     expect(screen.getByRole('group', { name: 'Sắp xếp chọn' }).textContent).toContain('Hạng 2 · 13 bước');
     vi.useRealTimers();
@@ -111,16 +112,14 @@ describe('algorithm stage', () => {
     const fly = vi.fn(() => ({ cancel() {} }));
     Element.prototype.animate = fly as never;
     render(<View config={config([5, 2, 9])} lang="vi" />);
-    fireEvent.click(screen.getByRole('button', { name: 'Bước tiếp' }));
-    fireEvent.click(screen.getByRole('button', { name: 'Bước tiếp' }));
+    stepToEnd();
     expect(fly).toHaveBeenCalled();
 
     cleanup();
     fly.mockClear();
     reduceMotion(true);
     render(<View config={config([5, 2, 9])} lang="vi" />);
-    fireEvent.click(screen.getByRole('button', { name: 'Bước tiếp' }));
-    fireEvent.click(screen.getByRole('button', { name: 'Bước tiếp' }));
+    stepToEnd();
     expect(fly).not.toHaveBeenCalled();
   });
 });
