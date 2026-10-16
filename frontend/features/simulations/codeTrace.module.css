@@ -34,7 +34,7 @@
 .chip b { font-weight: 800; }
 .list > li:nth-child(3n + 1) .chip { background: color-mix(in srgb, var(--coral) 22%, var(--surface)); border-color: color-mix(in srgb, var(--coral) 70%, transparent); }
 .list > li:nth-child(3n + 2) .chip { background: color-mix(in srgb, var(--sun) 24%, var(--surface)); border-color: color-mix(in srgb, var(--sun) 70%, transparent); }
-.list > li:nth-child(3n) .chip { background: color-mix(in srgb, var(--sky) 22%, var(--surface)); border-color: color-mix(in srgb, var(--sky) 70%, transparent); }
+.list > li:nth-child(3n) .chip { background: color-mix(in srgb, var(--accent, var(--success)) 22%, var(--surface)); border-color: color-mix(in srgb, var(--accent, var(--success)) 70%, transparent); }
 
 /* A list or a string as numbered cells. */
 .cells { display: flex; flex-wrap: wrap; gap: 4px; margin: 0; padding: 0; list-style: none; }
@@ -58,14 +58,14 @@
   overflow: auto;
   padding: 10px 12px;
   border-radius: 12px;
-  --base: var(--ink);
+  --base: color-mix(in srgb, var(--ink) 88%, var(--surface));
   --fg: var(--paper);
   background: var(--base);
   color: var(--fg);
   font: 500 13px/1.6 var(--font-mono);
   white-space: pre-wrap;
 }
-.screen[data-dark="true"] { --base: var(--surface-sunken); --fg: var(--ink); border: 1px solid var(--line); }
+.screen[data-dark="true"] { --base: color-mix(in srgb, var(--surface-sunken) 55%, var(--surface)); --fg: var(--ink); border: 1px solid var(--line); }
 .errorLine { display: block; margin-top: 4px; font-weight: 800; color: color-mix(in srgb, var(--danger) 55%, var(--fg)); }
 .error {
   display: inline-flex;

@@ -2,7 +2,7 @@
    Colours are mixed with `in srgb` so the contrast test can reproduce them exactly (CodePanel.test.ts). */
 
 .panel {
-  --base: var(--ink);
+  --base: color-mix(in srgb, var(--ink) 88%, var(--surface));
   --fg: var(--paper);
   display: flex;
   flex-direction: column;
@@ -13,7 +13,7 @@
   font-family: var(--font-mono);
 }
 .panel[data-dark='true'] {
-  --base: var(--surface-sunken);
+  --base: color-mix(in srgb, var(--surface-sunken) 55%, var(--surface));
   --fg: var(--ink);
   border: 1px solid var(--line);
 }
@@ -64,25 +64,35 @@
   transition: transform 280ms cubic-bezier(0.3, 1.6, 0.5, 1), opacity 250ms, text-shadow 250ms;
 }
 .ln[data-dim='true'] .txt { opacity: 0.6; }
+/* The running line: its text is painted with a bright gradient and given a halo, so it reads as lit, not just white. */
 .ln[data-on='true'] .txt {
   font-weight: 800;
-  color: var(--fg);
   transform: translateY(-3px) scale(1.07);
-  text-shadow:
-    0 0 8px color-mix(in srgb, var(--accent, var(--action)) 80%, transparent),
-    0 0 20px color-mix(in srgb, var(--accent, var(--action)) 55%, transparent),
-    0 5px 6px color-mix(in srgb, var(--base) 70%, black);
+  background: linear-gradient(
+    90deg,
+    color-mix(in srgb, var(--accent, var(--action)) 62%, var(--fg)),
+    color-mix(in srgb, var(--sun) 82%, var(--fg)),
+    color-mix(in srgb, var(--coral) 68%, var(--fg))
+  );
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  -webkit-text-fill-color: transparent;
+  filter:
+    drop-shadow(0 0 6px color-mix(in srgb, var(--accent, var(--action)) 95%, transparent))
+    drop-shadow(0 0 16px color-mix(in srgb, var(--sun) 85%, transparent))
+    drop-shadow(0 4px 4px color-mix(in srgb, var(--base) 80%, black));
 }
-.ln[data-on='true'] .txt span { color: var(--fg); }
+.ln[data-on='true'] .txt span { color: inherit; -webkit-text-fill-color: transparent; }
 .ln[data-on='true'] .num { color: var(--accent, var(--action)); font-weight: 800; }
 .ln[data-on='true'] .num::before { content: '▶'; margin-right: 4px; font-size: 10px; }
 
-.keyword { color: color-mix(in srgb, var(--sky) 80%, var(--fg)); }
-.function { color: color-mix(in srgb, var(--accent, var(--action)) 55%, var(--fg)); }
-.string { color: color-mix(in srgb, var(--sun) 80%, var(--fg)); }
-.number { color: color-mix(in srgb, var(--coral) 75%, var(--fg)); }
-.operator { color: color-mix(in srgb, var(--sky) 55%, var(--fg)); }
-.comment { color: color-mix(in srgb, var(--fg) 62%, var(--base)); }
+.keyword { color: color-mix(in srgb, var(--coral) 55%, var(--fg)); }
+.function { color: color-mix(in srgb, var(--action) 40%, var(--fg)); }
+.string { color: color-mix(in srgb, var(--accent, var(--success)) 45%, var(--fg)); }
+.number { color: color-mix(in srgb, var(--sun) 70%, var(--fg)); }
+.operator { color: color-mix(in srgb, var(--fg) 85%, var(--base)); }
+.comment { color: color-mix(in srgb, var(--fg) 72%, var(--base)); }
 
 @media (prefers-reduced-motion: reduce) {
   .txt { transition: none; }

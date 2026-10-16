@@ -157,7 +157,7 @@
 .chipVar b { font-weight: 800; }
 .v0 { background: color-mix(in srgb, var(--coral) 24%, transparent); border-color: color-mix(in srgb, var(--coral) 70%, transparent); }
 .v1 { background: color-mix(in srgb, var(--sun) 24%, transparent); border-color: color-mix(in srgb, var(--sun) 70%, transparent); }
-.v2 { background: color-mix(in srgb, var(--sky) 24%, transparent); border-color: color-mix(in srgb, var(--sky) 70%, transparent); }
+.v2 { background: color-mix(in srgb, var(--accent, var(--success)) 24%, transparent); border-color: color-mix(in srgb, var(--accent, var(--success)) 70%, transparent); }
 
 /* The result of the if/while on the running line, with words as well as colour. */
 .verdict {

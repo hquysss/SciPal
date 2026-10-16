@@ -42,15 +42,17 @@ describe('CodePanel', () => {
 describe('syntax colours', () => {
   it.each(THEME_LEVELS.flatMap((level) => THEME_MODES.map((mode) => [level, mode] as const)))('read at 4.5:1 on %s / %s', (level, mode) => {
     const p = THEME_PALETTES[level][mode];
-    const [base, fg] = mode === 'dark' ? [p.surfaceSunken, p.ink] : [p.ink, p.paper];
-    const accents = [p.action, '#16a34a', '#2563c9'];
+    const [base, fg] = mode === 'dark' ? [mixHex(p.surfaceSunken, p.surface, 0.55), p.ink] : [mixHex(p.ink, p.surface, 0.88), p.paper];
     const colours: Record<string, string> = {
-      keyword: mixHex(p.sky, fg, 0.8),
-      string: mixHex(p.sun, fg, 0.8),
-      number: mixHex(p.coral, fg, 0.75),
-      operator: mixHex(p.sky, fg, 0.55),
-      comment: mixHex(fg, base, 0.62),
-      ...Object.fromEntries(accents.map((a, i) => [`function ${i}`, mixHex(a, fg, 0.55)])),
+      keyword: mixHex(p.coral, fg, 0.55),
+      function: mixHex(p.action, fg, 0.4),
+      string: mixHex('#16a34a', fg, 0.45),
+      number: mixHex(p.sun, fg, 0.7),
+      operator: mixHex(fg, base, 0.85),
+      comment: mixHex(fg, base, 0.72),
+      'lit 1': mixHex('#16a34a', fg, 0.62),
+      'lit 2': mixHex(p.sun, fg, 0.82),
+      'lit 3': mixHex(p.coral, fg, 0.68),
     };
     const low = Object.entries(colours).filter(([, c]) => contrastRatio(c, base) < 4.5).map(([k, c]) => `${k} ${c} on ${base}: ${contrastRatio(c, base).toFixed(2)}`);
     expect(low).toEqual([]);
