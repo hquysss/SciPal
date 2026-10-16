@@ -57,13 +57,22 @@ const Country = memo(function Country({ id, d, c, uid, territory, state, fill, u
   if (!grow) return path;
   const clip = `${uid}-${id}-${Math.round(grow.key)}`;
   const r = Math.hypot(grow.from[0] - c[0], grow.from[1] - c[1]) + 160;
+  const shape = `${clip}-s`;
+  const origin = { transformOrigin: `${grow.from[0]}px ${grow.from[1]}px` };
   return (
     <g>
       {path}
       <clipPath id={clip}>
-        <circle cx={grow.from[0]} cy={grow.from[1]} r={r} className={styles.grow} style={{ transformOrigin: `${grow.from[0]}px ${grow.from[1]}px` }} />
+        <circle cx={grow.from[0]} cy={grow.from[1]} r={r} className={styles.grow} style={origin} />
+      </clipPath>
+      <clipPath id={shape}>
+        <path d={d} />
       </clipPath>
       <path d={d} clipPath={`url(#${clip})`} className={`${styles.land} ${styles.ink}`} style={{ fill }} />
+      {/* The bright front of the wave, kept inside the country's outline. */}
+      <g clipPath={`url(#${shape})`} className={styles.noPointer}>
+        <circle cx={grow.from[0]} cy={grow.from[1]} r={r} className={styles.front} style={origin} />
+      </g>
     </g>
   );
 });
@@ -111,7 +120,7 @@ export function HistoryWorldView({ config, lang }: SimulationViewProps<'history-
     }
     if (crossed.size === 0) return;
     setGrowing((g) => new Map([...g, ...crossed]));
-    window.setTimeout(() => setGrowing((g) => new Map([...g].filter(([iso, v]) => crossed.get(iso)?.key !== v.key))), 1200);
+    window.setTimeout(() => setGrowing((g) => new Map([...g].filter(([iso, v]) => crossed.get(iso)?.key !== v.key))), 1800);
   };
   const slider = useTimelineGlide({ last, reduced, stepMs: () => GLIDE_MS, onMove: spreadPassed, narration: map.steps.map((s) => s.narration?.[lang]) });
   const { pos, step, playing } = slider;
@@ -171,14 +180,19 @@ export function HistoryWorldView({ config, lang }: SimulationViewProps<'history-
           if (!c || !tr.free || tr.free.quiet || stateOf.get(tr.iso) !== 'free') return null;
           return (
             <text key={tr.iso} x={c.c[0]} y={c.c[1]} className={styles.year} data-fresh={growing.has(tr.iso) ? 'true' : undefined}>
-              {tr.free.year}
+              <tspan x={c.c[0]} dy="-1.8" className={styles.name}>
+                {t(tr.name)}
+              </tspan>
+              <tspan x={c.c[0]} dy="4.6">
+                {tr.free.year}
+              </tspan>
             </text>
           );
         })}
       </>
     );
     // eslint-disable-next-line react-hooks/exhaustive-deps -- byIso follows map
-  }, [outline, map, states, growing, uid, toggleCountry]);
+  }, [outline, map, states, growing, uid, toggleCountry, lang]);
 
   const describe = (tr: Territory) => {
     const state = stateAt(tr.iso, pos, timeline);
