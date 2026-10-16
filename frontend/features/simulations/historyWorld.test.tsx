@@ -113,7 +113,7 @@ describe('HistoryWorldView', () => {
     render(<HistoryWorldView config={{ map: 'latin-america' }} lang="vi" />);
     await screen.findByRole('img');
 
-    fireEvent.click(screen.getByRole('button', { name: 'Thuyết minh' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Chạy' }));
     // One element serves every stage: the click that starts it is what lets later clips play.
     const player = players[0]!;
     expect(player.src).toBe('/audio/history/latin-america-independence/01.vi.mp3');
@@ -125,9 +125,9 @@ describe('HistoryWorldView', () => {
     expect(player.play).toHaveBeenCalledTimes(2);
 
     // Pausing and playing on must still move on to the next stage when this clip ends.
-    fireEvent.click(screen.getByRole('button', { name: 'Dừng thuyết minh' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Dừng' }));
     expect(player.pause).toHaveBeenCalled();
-    fireEvent.click(screen.getByRole('button', { name: 'Thuyết minh' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Chạy' }));
     expect(player.src).toBe('/audio/history/latin-america-independence/02.vi.mp3');
     act(() => player.onended?.());
     expect(player.src).toBe('/audio/history/latin-america-independence/03.vi.mp3');

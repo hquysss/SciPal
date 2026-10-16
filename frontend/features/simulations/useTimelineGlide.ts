@@ -3,6 +3,8 @@
 import { useEffect, useRef, useState } from 'react';
 
 const PAUSE_MS = 1000;
+// While narrating, a stage finishes drawing a little before its clip ends, so the last words land on the finished map.
+const CLIP_SHARE = 0.85;
 
 /**
  * A history slider that moves through time instead of jumping: `pos` runs from 0 to `last` in
@@ -104,16 +106,35 @@ export function useTimelineGlide({ last, reduced, stepMs, onMove, narration }: {
     playStage(stage + 1);
   };
 
+  /** Move the slider into `stage` in step with its clip: the clip's playback time sets the pace. */
+  const follow = (stage: number) => {
+    stop();
+    const start = Math.min(posRef.current, stage);
+    const player = audio.current;
+    if (!player || start >= stage - 1e-6) return;
+    if (reduced || typeof requestAnimationFrame === 'undefined') {
+      move(stage);
+      return;
+    }
+    const tick = () => {
+      if (audioStage.current !== stage) return;
+      const k = player.duration > 0 ? Math.min(player.currentTime / (player.duration * CLIP_SHARE), 1) : 0;
+      move(start + (stage - start) * k);
+      if (k < 1) raf.current = requestAnimationFrame(tick);
+    };
+    raf.current = requestAnimationFrame(tick);
+  };
+
   const playStage = (stage: number) => {
     const src = tracks.current?.[stage];
     if (!src) return;
-    if (posRef.current < stage - 1e-6) glide(stage);
     // One element for the whole run: the click that starts it unlocks playback (Safari and phones
     // refuse a fresh Audio started from the end of the last clip), and later stages only swap its src.
     const player = (audio.current ??= new Audio());
     player.src = src;
     audioStage.current = stage;
     player.onended = onClipEnd(stage);
+    follow(stage);
     void player.play().catch(() => {
       if (audioStage.current !== stage) return;
       audioStage.current = -1;
@@ -134,7 +155,7 @@ export function useTimelineGlide({ last, reduced, stepMs, onMove, narration }: {
     setPlaying(true);
     if (narrated) {
       if (audio.current && audioStage.current >= 0) {
-        if (posRef.current < audioStage.current - 1e-6) glide(audioStage.current);
+        follow(audioStage.current);
         audio.current.onended = onClipEnd(audioStage.current);
         void audio.current.play().catch(() => {
           setPlaying(false);
