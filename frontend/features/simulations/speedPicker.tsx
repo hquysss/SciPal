@@ -14,14 +14,14 @@ const SPEEDS = Object.keys(SPEED_NAMES) as Speed[];
 export function SpeedPicker({ speed, onChange, lang }: { speed: Speed; onChange: (speed: Speed) => void; lang: Lang }) {
   const t = pick(lang);
   return (
-    <div role="group" aria-label={t({ en: 'Speed', vi: 'Tốc độ' })} className="ml-auto inline-flex rounded-lg border border-line p-0.5">
+    <div role="group" aria-label={t({ en: 'Speed', vi: 'Tốc độ' })} className="ml-auto inline-flex rounded-lg border border-line p-0.5 text-xs">
       {SPEEDS.map((s) => (
         <button
           key={s}
           type="button"
           aria-pressed={speed === s}
           onClick={() => onChange(s)}
-          className={`min-h-11 rounded-md px-3 text-sm font-semibold transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus ${
+          className={`min-h-9 rounded-md px-2.5 text-xs font-semibold transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus ${
             speed === s ? 'bg-[color-mix(in_oklch,var(--accent,var(--action))_16%,transparent)] text-ink' : 'text-ink-muted hover:bg-surface-sunken'
           }`}
         >
