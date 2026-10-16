@@ -5,7 +5,7 @@
 ## Mục tiêu
 Trong khối `algorithm-sim` của bài Tin (Tin 11 chủ đề 6, Bài 21–27 đã nạp), học sinh nhìn thấy máy đang chạy dòng code nào ở mỗi bước, đồng bộ với hình cột số đang có. Bài đã nạp tự có tính năng này, không nạp lại dữ liệu.
 
-Ngoài phạm vi (dự án con 2, spec riêng): chạy một đoạn code bất kỳ do giáo viên hay học sinh gõ (Pyodide). Không thêm thuật toán mới, không đổi chế độ "Đua 3 cách sắp xếp", không dùng hiệu ứng ánh sáng hay nền tối riêng.
+Ngoài phạm vi (dự án con 2, spec riêng): chạy một đoạn code bất kỳ do giáo viên hay học sinh gõ (Pyodide). Không thêm thuật toán mới, không đổi chế độ "Đua 3 cách sắp xếp", không có vệt sáng chạy theo luồng chương trình hay nền tối riêng (khung code dùng token theme).
 
 ## Engine (`engines/algorithm.ts`)
 - `AlgorithmStep` thêm:
@@ -21,10 +21,11 @@ Ngoài phạm vi (dự án con 2, spec riêng): chạy một đoạn code bất 
 ## Giao diện (`algorithmCode.tsx`, mới; sửa `algorithm.tsx`)
 - Khung code dưới hình cột (điện thoại) hoặc bên phải (≥1024px), tab `Python | C++` (mặc định Python), chữ `--font-mono`, có số dòng. Dòng dài cuộn ngang trong khung, trang không tràn ngang ở 375px.
 - **Dòng đang chạy** phải nhận ra ngay, không chỉ bằng màu:
-  - nền `--accent` pha nhạt, viền trái đậm màu `--accent`, chữ đậm;
+  - dòng **nổi lên và phát sáng**: `transform: translateY(-2px) scale(1.035)` (gốc bên trái), bo góc, nền `--accent` pha đậm, viền 1px `--accent`, đổ bóng sâu cộng quầng sáng `--accent` (box-shadow pha bằng `color-mix`), chữ sáng và đậm hơn; các dòng khác hơi mờ đi;
   - dấu ▶ ở cột số dòng;
   - `aria-current="step"`; vùng ghi chú `aria-live` sẵn có đọc ghi chú bước.
-  - Dòng đổi theo bước, chuyển nền 150 ms; giảm chuyển động thì đổi tức thì.
+  - Dòng mới nảy lên trong 250 ms (đường cong có nảy nhẹ), dòng cũ hạ xuống; chỉ dùng `transform` và `box-shadow`. Giảm chuyển động thì đổi tức thì, vẫn giữ nền, viền và quầng sáng.
+  - Khung code có chừa lề để phần phóng to và quầng sáng không bị cắt.
 - Ở dòng `if`, cuối dòng hiện kết quả so sánh: `5 > 2 → True` (C++: `true`), chip `--success` hoặc `--warning` kèm chữ.
 - Hàng chip biến dưới khung code: `i = 0`, `j = 2`…; chip vừa đổi giá trị nảy nhẹ (dùng lại `bump` của bộ đếm).
 - Nút "Ẩn code / Hiện code" (mặc định hiện) cho lúc chỉ chiếu hình. Chế độ đua không hiện khung code.
