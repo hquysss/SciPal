@@ -58,7 +58,8 @@ describe('algorithm stage', () => {
 
   it('shows each comparison as a chip and sums up at the end', () => {
     render(<View config={config([5, 2, 9])} lang="vi" />);
-    fireEvent.click(screen.getByRole('button', { name: 'Bước tiếp' }));
+    const next = screen.getByRole('button', { name: 'Bước tiếp' }) as HTMLButtonElement;
+    while (!screen.queryByText('5 > 2 · đổi chỗ') && !next.disabled) fireEvent.click(next);
     expect(screen.getByText('5 > 2 · đổi chỗ')).toBeTruthy();
     stepToEnd();
     expect(screen.getByText('Xong: 3 phép so sánh, 1 lần đổi chỗ với 3 số.')).toBeTruthy();
@@ -82,10 +83,47 @@ describe('algorithm stage', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Đua 3 cách sắp xếp' }));
     fireEvent.click(screen.getByRole('button', { name: 'Chạy' }));
     for (let i = 0; i < 13; i += 1) act(() => vi.advanceTimersByTime(650));
-    expect(screen.getByRole('group', { name: 'Sắp xếp chèn' }).textContent).toContain('Hạng 1 · 7 bước');
+    expect(screen.getByRole('group', { name: 'Sắp xếp chèn' }).textContent).toContain('Hạng 1 · 8 bước');
     expect(screen.getByRole('group', { name: 'Sắp xếp nổi bọt' }).textContent).toContain('Hạng 2 · 13 bước');
     expect(screen.getByRole('group', { name: 'Sắp xếp chọn' }).textContent).toContain('Hạng 2 · 13 bước');
     vi.useRealTimers();
+  });
+
+  it('lights the running code line and moves it as the steps go', () => {
+    render(<View config={config([5, 2, 9])} lang="vi" />);
+    const next = screen.getByRole('button', { name: 'Bước tiếp' });
+    expect(document.querySelector('[aria-current="step"]')).toBeNull();
+    fireEvent.click(next);
+    expect(document.querySelector('[aria-current="step"]')!.textContent).toContain('for i in range(n - 1)');
+    fireEvent.click(next);
+    fireEvent.click(next);
+    expect(document.querySelector('[aria-current="step"]')!.textContent).toContain('if a[j] > a[j + 1]');
+    expect(screen.getByText('5 > 2 → True')).toBeTruthy();
+  });
+
+  it('shows the same step in C++ and keeps the step when the tab changes', () => {
+    render(<View config={config([5, 2, 9])} lang="vi" />);
+    const next = screen.getByRole('button', { name: 'Bước tiếp' });
+    for (let i = 0; i < 3; i += 1) fireEvent.click(next);
+    fireEvent.click(screen.getByRole('tab', { name: 'C++' }));
+    expect(document.querySelector('[aria-current="step"]')!.textContent).toContain('if (a[j] > a[j + 1])');
+    expect(screen.getByText('5 > 2 → true')).toBeTruthy();
+    expect(screen.getByText('Bước 4/', { exact: false })).toBeTruthy();
+  });
+
+  it('lists the variables of the step and can hide the code', () => {
+    render(<View config={config([5, 2, 9])} lang="vi" />);
+    fireEvent.click(screen.getByRole('button', { name: 'Bước tiếp' }));
+    expect(within(screen.getByRole('list', { name: 'Biến' })).getByText('n =', { exact: false })).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'Ẩn code' }));
+    expect(screen.queryByRole('tab', { name: 'Python' })).toBeNull();
+    expect(screen.getByRole('button', { name: 'Hiện code' }).getAttribute('aria-pressed')).toBe('false');
+  });
+
+  it('has no code panel in the race', () => {
+    render(<View config={config([5, 2, 9])} lang="vi" />);
+    fireEvent.click(screen.getByRole('button', { name: 'Đua 3 cách sắp xếp' }));
+    expect(screen.queryByRole('tab', { name: 'Python' })).toBeNull();
   });
 
   it('offers the race only for sorting', () => {
@@ -111,16 +149,14 @@ describe('algorithm stage', () => {
     const fly = vi.fn(() => ({ cancel() {} }));
     Element.prototype.animate = fly as never;
     render(<View config={config([5, 2, 9])} lang="vi" />);
-    fireEvent.click(screen.getByRole('button', { name: 'Bước tiếp' }));
-    fireEvent.click(screen.getByRole('button', { name: 'Bước tiếp' }));
+    stepToEnd();
     expect(fly).toHaveBeenCalled();
 
     cleanup();
     fly.mockClear();
     reduceMotion(true);
     render(<View config={config([5, 2, 9])} lang="vi" />);
-    fireEvent.click(screen.getByRole('button', { name: 'Bước tiếp' }));
-    fireEvent.click(screen.getByRole('button', { name: 'Bước tiếp' }));
+    stepToEnd();
     expect(fly).not.toHaveBeenCalled();
   });
 });

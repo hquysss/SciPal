@@ -3,6 +3,7 @@ import { kneeReflexModule } from './kneeReflex';
 import { circulationModule } from './circulation';
 import { skinModule } from './skin';
 import { algorithmModule } from './algorithm';
+import { codeTraceModule } from './codeTrace';
 import { complexityModule } from './complexity';
 import { functionGraphModule } from './functionGraph';
 import { graph3dModule } from './graph3d';
@@ -22,6 +23,7 @@ import { solid3dModule } from './solid3d';
 import { titrationModule } from './titration';
 import { unitCircleModule } from './unitCircle';
 import { wave3dModule } from './wave3d';
+import { webPreviewModule } from './webPreview';
 import type { SimulationModule } from './types';
 
 /** Every built-in template, used by the Studio editor, its preview and the learner page alike. */
@@ -31,6 +33,8 @@ export const simulationModules: { [K in BuiltInSimulationKind]: SimulationModule
   'skin-senses': skinModule,
   'algorithm-sim': algorithmModule,
   'complexity-sim': complexityModule,
+  'code-trace': codeTraceModule,
+  'web-preview': webPreviewModule,
   'function-graph': functionGraphModule,
   probability: probabilityModule,
   'unit-circle': unitCircleModule,

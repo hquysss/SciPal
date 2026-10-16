@@ -136,3 +136,38 @@
     transform: translateY(8px);
   }
 }
+
+/* Under the code: one chip per variable, each in its own hue; the chip of a changed value bumps. */
+.vars {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 0;
+  padding: 12px 14px 14px;
+  list-style: none;
+  border-top: 1px solid color-mix(in srgb, var(--fg) 18%, transparent);
+}
+.chipVar {
+  padding: 4px 12px;
+  border: 1.5px solid;
+  border-radius: 10px;
+  font: 700 13px var(--font-mono);
+  color: var(--fg);
+}
+.chipVar b { font-weight: 800; }
+.v0 { background: color-mix(in srgb, var(--coral) 24%, transparent); border-color: color-mix(in srgb, var(--coral) 70%, transparent); }
+.v1 { background: color-mix(in srgb, var(--sun) 24%, transparent); border-color: color-mix(in srgb, var(--sun) 70%, transparent); }
+.v2 { background: color-mix(in srgb, var(--accent, var(--success)) 24%, transparent); border-color: color-mix(in srgb, var(--accent, var(--success)) 70%, transparent); }
+
+/* The result of the if/while on the running line, with words as well as colour. */
+.verdict {
+  margin-left: 14px;
+  padding: 0 10px;
+  border: 1px solid;
+  border-radius: 999px;
+  font: 800 12px var(--font-mono);
+  line-height: 24px;
+  color: var(--fg);
+}
+.yes { background: color-mix(in srgb, var(--success) 35%, transparent); border-color: color-mix(in srgb, var(--success) 80%, var(--fg)); }
+.no { background: color-mix(in srgb, var(--coral) 30%, transparent); border-color: color-mix(in srgb, var(--coral) 80%, var(--fg)); }

@@ -60,6 +60,45 @@ const GraphParameter = z.object({
   value: finite(-1000, 1000),
 });
 
+// One Python lesson program played back line by line. `steps` are recorded when the lesson is
+// written (code_trace.py), never computed here: each step is the line about to run and the variables
+// of every active call, outermost first.
+export const CODE_TRACE_MAX_STEPS = 500;
+export const CODE_TRACE_MAX_LINES = 60;
+const TraceVar = z.object({ repr: z.string().max(200), items: z.array(z.string().max(60)).max(31).optional() });
+const TraceFrame = z.object({ name: z.string().min(1).max(60), vars: z.record(z.string().max(40), TraceVar) });
+const TraceStep = z.object({
+  line: z.number().int().min(1),
+  frames: z.array(TraceFrame).min(1).max(8),
+  out: z.string().max(2000).optional(),
+  error: z.string().max(300).optional(),
+});
+export type CodeTraceStep = z.infer<typeof TraceStep>;
+const CodeTraceConfig = z
+  .object({
+    code: z.string().max(4000).default('print("Xin chào")'),
+    input: z.array(z.string().max(100)).max(20).default([]),
+    steps: z.array(TraceStep).min(1).max(CODE_TRACE_MAX_STEPS).default([{ line: 1, frames: [{ name: '<module>', vars: {} }], out: 'Xin chào\n' }]),
+    truncated: z.boolean().optional(),
+  })
+  .superRefine((c, ctx) => {
+    const lines = c.code.split(/\r?\n/).length;
+    if (lines > CODE_TRACE_MAX_LINES) ctx.addIssue({ code: 'custom', path: ['code'], message: 'lines' });
+    c.steps.forEach((step, i) => {
+      if (step.line > lines) ctx.addIssue({ code: 'custom', path: ['steps', i, 'line'], message: 'line' });
+      if (step.error !== undefined && i !== c.steps.length - 1) ctx.addIssue({ code: 'custom', path: ['steps', i, 'error'], message: 'error' });
+    });
+  });
+
+// HTML and CSS of a small page, built up line by line beside its code. Scripts never run (the page
+// sits in a sandboxed frame with none allowed); the page is shown from `html` and `css` alone.
+export const WEB_PREVIEW_MAX_SOURCE = 20000;
+const WebPreviewConfig = z.object({
+  html: z.string().max(WEB_PREVIEW_MAX_SOURCE).default('<h1>Xin chào</h1>\n<p>Đây là trang web đầu tiên.</p>'),
+  css: z.string().max(WEB_PREVIEW_MAX_SOURCE).default('h1 {\n  color: tomato;\n}'),
+  height: z.number().int().min(200).max(800).default(360),
+});
+
 const FunctionGraphConfig = z
   .object({
     expression: z.string().max(MAX_GRAPH_EXPRESSION).default('a*x^2 + b'),
@@ -490,6 +529,8 @@ export const SIMULATION_CONFIGS = {
   'skin-senses': SkinSensesConfig,
   'algorithm-sim': AlgorithmConfig,
   'complexity-sim': ComplexityConfig,
+  'code-trace': CodeTraceConfig,
+  'web-preview': WebPreviewConfig,
   'function-graph': FunctionGraphConfig,
   motion: MotionConfig,
   pendulum: PendulumConfig,
@@ -521,6 +562,8 @@ export const SIMULATION_KINDS = [
   'skin-senses',
   'algorithm-sim',
   'complexity-sim',
+  'code-trace',
+  'web-preview',
   'function-graph',
   'motion',
   'pendulum',
@@ -631,6 +674,8 @@ const MESSAGES: Record<string, Message> = {
   'skin-senses': { en: 'Choose the receptors or reflex arc view and one stimulus: touch, pressure, pain, cold or heat.', vi: 'Chọn cảnh thụ thể hoặc cung phản xạ và một kích thích: chạm, ấn mạnh, đau, lạnh hoặc nóng.' },
   'algorithm-sim': { en: 'Check the algorithm, the values (2–32 whole numbers) and the target.', vi: 'Kiểm tra thuật toán, dãy số (2–32 số nguyên) và giá trị cần tìm.' },
   'complexity-sim': { en: 'Choose one of the seven loop patterns and a whole n from 1 (at most 12 for branching, 8 for permutations, 32 otherwise).', vi: 'Chọn một trong bảy mẫu vòng lặp và n nguyên từ 1 (tối đa 12 với rẽ nhánh, 8 với hoán vị, 32 với các mẫu khác).' },
+  'code-trace': { en: 'Check the recorded run: 1–500 steps, each on a line of the code (at most 60 lines), and an error only on the last step.', vi: 'Kiểm tra bản ghi chạy: 1–500 bước, mỗi bước nằm trên một dòng của code (tối đa 60 dòng) và chỉ bước cuối được có lỗi.' },
+  'web-preview': { en: 'Check the HTML and the CSS (at most 20 000 characters each) and a height of 200–800.', vi: 'Kiểm tra HTML và CSS (mỗi phần tối đa 20 000 kí tự) và chiều cao 200–800.' },
   'function-graph': { en: 'Check the expression, the parameters and the axes.', vi: 'Kiểm tra biểu thức, tham số và khoảng trục.' },
   motion: { en: 'Speed 0–100 m/s, angle 0–90°, acceleration −20–20 m/s², g 1–25, time 1–30 s.', vi: 'Vận tốc 0–100 m/s, góc 0–90°, gia tốc −20–20 m/s², g 1–25, thời gian 1–30 s.' },
   pendulum: { en: 'Length 0.1–10 m, mass 0.1–10 kg, k 1–1000 N/m, amplitude 1–30.', vi: 'Chiều dài 0,1–10 m, khối lượng 0,1–10 kg, k 1–1000 N/m, biên độ 1–30.' },

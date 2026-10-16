@@ -1,0 +1,87 @@
+/* Variables and screen beside the code. The screen is dark like the code panel (CodePanel.module.css):
+   ink in light mode, the sunken surface in dark mode, mixed with `in srgb` like the panel. */
+
+.side {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+.title { margin: 0; font-size: 12px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; color: var(--ink-muted); }
+.frames { display: flex; flex-direction: column; gap: 8px; }
+.frame {
+  padding: 8px 10px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--surface);
+}
+/* The call that is running sits on top and stands out. */
+.frame[data-active='true'] {
+  border-color: var(--accent, var(--action));
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent, var(--action)) 18%, transparent);
+}
+.frameName { margin: 0 0 6px; font-size: 12px; font-weight: 700; color: var(--ink-muted); }
+.empty { margin: 0; font-size: 13px; color: var(--ink-muted); }
+.list { display: flex; flex-direction: column; gap: 6px; margin: 0; padding: 0; list-style: none; }
+.var { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; min-width: 0; }
+.chip {
+  padding: 4px 12px;
+  border: 1.5px solid;
+  border-radius: 10px;
+  font: 700 13px var(--font-mono);
+  color: var(--ink);
+}
+.chip b { font-weight: 800; }
+.list > li:nth-child(3n + 1) .chip { background: color-mix(in srgb, var(--coral) 22%, var(--surface)); border-color: color-mix(in srgb, var(--coral) 70%, transparent); }
+.list > li:nth-child(3n + 2) .chip { background: color-mix(in srgb, var(--sun) 24%, var(--surface)); border-color: color-mix(in srgb, var(--sun) 70%, transparent); }
+.list > li:nth-child(3n) .chip { background: color-mix(in srgb, var(--accent, var(--success)) 22%, var(--surface)); border-color: color-mix(in srgb, var(--accent, var(--success)) 70%, transparent); }
+
+/* A list or a string as numbered cells. */
+.cells { display: flex; flex-wrap: wrap; gap: 4px; margin: 0; padding: 0; list-style: none; }
+.cell {
+  position: relative;
+  min-width: 34px;
+  padding: 14px 8px 4px;
+  border: 1px solid var(--edge);
+  border-radius: 8px;
+  background: var(--surface-sunken);
+  font: 700 13px var(--font-mono);
+  text-align: center;
+  color: var(--ink);
+}
+.idx { position: absolute; top: 1px; left: 0; right: 0; font-size: 10px; font-weight: 600; color: var(--ink-muted); }
+
+.screen {
+  margin: 0;
+  min-height: 72px;
+  max-height: 200px;
+  overflow: auto;
+  padding: 10px 12px;
+  border-radius: 12px;
+  --base: color-mix(in srgb, var(--ink) 95%, var(--surface));
+  --fg: var(--paper);
+  background: var(--base);
+  color: var(--fg);
+  font: 500 13px/1.6 var(--font-mono);
+  white-space: pre-wrap;
+}
+.screen[data-dark="true"] { --base: color-mix(in srgb, var(--surface-sunken) 80%, var(--surface)); --fg: var(--ink); border: 1px solid var(--line); }
+.errorLine { display: block; margin-top: 4px; font-weight: 800; color: color-mix(in srgb, var(--danger) 55%, var(--fg)); }
+.error {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: 14px;
+  padding: 0 10px;
+  border: 1px solid color-mix(in srgb, var(--danger) 70%, var(--fg));
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--danger) 40%, transparent);
+  font: 800 12px var(--font-mono);
+  line-height: 24px;
+  color: var(--fg);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .bump .chip, .bump .cell { animation: bump 240ms cubic-bezier(0.34, 1.56, 0.64, 1); }
+}
+@keyframes bump { 40% { transform: scale(1.15); } }

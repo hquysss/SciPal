@@ -18,7 +18,7 @@ export function raceRanks(lengths: readonly number[]): number[] {
 /** The three sorts on the same list, one step each per beat, so the quicker one visibly finishes first. */
 export function AlgorithmRace({ values, target, stepMs, reduced, lang, children }: { values: number[]; target: number; stepMs: number; reduced: boolean; lang: Lang; children?: ReactNode }) {
   const t = pick(lang);
-  const lanes = useMemo(() => RACE_ALGORITHMS.map((algorithm) => ({ algorithm, steps: algorithmSteps({ algorithm, values, target }) })), [values, target]);
+  const lanes = useMemo(() => RACE_ALGORITHMS.map((algorithm) => ({ algorithm, steps: algorithmSteps({ algorithm, values, target }).filter((s) => !s.trace) })), [values, target]);
   const ranks = raceRanks(lanes.map((lane) => lane.steps.length));
   const last = Math.max(...lanes.map((lane) => lane.steps.length)) - 1;
   const [tick, setTick] = useState(0);
