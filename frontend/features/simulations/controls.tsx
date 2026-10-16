@@ -10,7 +10,7 @@ export const BUTTON =
   'inline-flex min-h-11 min-w-11 items-center justify-center gap-1.5 rounded-lg border border-line bg-surface px-3 text-sm font-semibold text-ink transition-colors hover:bg-surface-sunken disabled:opacity-40 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus';
 export const PRIMARY_BUTTON =
   'inline-flex min-h-11 items-center justify-center gap-1.5 rounded-lg bg-action px-4 text-sm font-semibold text-action-ink transition-colors hover:bg-action-hover disabled:opacity-40 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus';
-export const PANEL = 'flex flex-col gap-4 rounded-lg border border-line bg-surface p-4';
+export const PANEL = 'flex flex-col gap-3 rounded-lg border border-line bg-surface p-3 sm:p-4';
 
 export function Field({ label, hint, error, children }: { label: string; hint?: string; error?: string; children: (id: string) => ReactNode }) {
   const id = useId();

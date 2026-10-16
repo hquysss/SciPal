@@ -172,7 +172,7 @@ function ComplexityView({ config, lang }: SimulationViewProps<'complexity-sim'>)
               type="button"
               aria-pressed={active}
               onClick={() => choose(p)}
-              className={`flex min-h-14 flex-col items-start justify-center rounded-md border px-3 py-2 text-left transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus ${
+              className={`flex min-h-12 flex-col items-start justify-center rounded-md border px-2.5 py-1 text-left transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus ${
                 active ? 'border-[var(--accent,var(--action))] bg-[color-mix(in_oklch,var(--accent,var(--action))_12%,transparent)]' : 'border-line bg-surface hover:bg-surface-sunken'
               }`}
             >
@@ -186,14 +186,14 @@ function ComplexityView({ config, lang }: SimulationViewProps<'complexity-sim'>)
       <div className="flex flex-wrap items-end justify-between gap-x-6 gap-y-2">
         <div>
           <p className="text-sm text-ink-muted">{t(NAMES[pattern])}</p>
-          <p data-testid="complexity-big-o" className="text-4xl font-bold tabular-nums text-[var(--accent,var(--action))]">
+          <p data-testid="complexity-big-o" className="text-3xl font-bold tabular-nums text-[var(--accent,var(--action))]">
             {BIG_O[pattern]}
           </p>
         </div>
         <div className="text-right">
           <p className="text-sm text-ink-muted">{t({ en: 'Operations', vi: 'Phép toán' })}</p>
           <p className="flex items-baseline justify-end gap-1.5 font-bold tabular-nums text-ink">
-            <span key={milestone} className={`relative inline-block text-3xl ${milestone ? styles.milestone : ''}`}>
+            <span key={milestone} className={`relative inline-block text-2xl ${milestone ? styles.milestone : ''}`}>
               <Odometer value={shown} lang={lang} reduced={reduced} />
               {milestone > 0 && !reduced && <span aria-hidden="true" className={styles.shock} />}
             </span>
@@ -234,14 +234,14 @@ function ComplexityView({ config, lang }: SimulationViewProps<'complexity-sim'>)
       />
       <p className="min-h-5 text-sm tabular-nums text-ink-muted">{caption}</p>
 
-      <div className="flex flex-col gap-2" aria-hidden="true">
+      <div className="flex flex-col gap-1.5" aria-hidden="true">
         {[
           { label: t({ en: `Data: n = ${n}`, vi: `Dữ liệu: n = ${n}` }), value: n, strong: false },
           { label: t({ en: `Operations: ${formatCount(total, 'en')}`, vi: `Phép toán: ${formatCount(total, 'vi')}` }), value: total, strong: true },
         ].map((bar) => (
-          <div key={bar.strong ? 'ops' : 'n'} className="grid grid-cols-[minmax(8rem,auto)_1fr] items-center gap-3 text-sm">
+          <div key={bar.strong ? 'ops' : 'n'} className="grid grid-cols-[minmax(7rem,auto)_1fr] items-center gap-2 text-sm">
             <span className={bar.strong ? 'font-semibold text-ink' : 'text-ink-muted'}>{bar.label}</span>
-            <span className="h-3 overflow-hidden rounded-full bg-[var(--line)]">
+            <span className="h-2 overflow-hidden rounded-full bg-[var(--line)]">
               <span
                 className={`block h-full rounded-full ${styles.grow} ${bar.strong ? 'bg-[var(--accent,var(--action))]' : 'bg-ink-muted'}`}
                 style={{ transform: `scaleX(${barScale(bar.value)})` }}
