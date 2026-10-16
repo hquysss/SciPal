@@ -58,14 +58,14 @@
   overflow: auto;
   padding: 10px 12px;
   border-radius: 12px;
-  --base: color-mix(in srgb, var(--ink) 88%, var(--surface));
+  --base: color-mix(in srgb, var(--ink) 95%, var(--surface));
   --fg: var(--paper);
   background: var(--base);
   color: var(--fg);
   font: 500 13px/1.6 var(--font-mono);
   white-space: pre-wrap;
 }
-.screen[data-dark="true"] { --base: color-mix(in srgb, var(--surface-sunken) 55%, var(--surface)); --fg: var(--ink); border: 1px solid var(--line); }
+.screen[data-dark="true"] { --base: color-mix(in srgb, var(--surface-sunken) 80%, var(--surface)); --fg: var(--ink); border: 1px solid var(--line); }
 .errorLine { display: block; margin-top: 4px; font-weight: 800; color: color-mix(in srgb, var(--danger) 55%, var(--fg)); }
 .error {
   display: inline-flex;

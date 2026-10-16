@@ -42,7 +42,7 @@ describe('CodePanel', () => {
 describe('syntax colours', () => {
   it.each(THEME_LEVELS.flatMap((level) => THEME_MODES.map((mode) => [level, mode] as const)))('read at 4.5:1 on %s / %s', (level, mode) => {
     const p = THEME_PALETTES[level][mode];
-    const [base, fg] = mode === 'dark' ? [mixHex(p.surfaceSunken, p.surface, 0.55), p.ink] : [mixHex(p.ink, p.surface, 0.88), p.paper];
+    const [base, fg] = mode === 'dark' ? [mixHex(p.surfaceSunken, p.surface, 0.8), p.ink] : [mixHex(p.ink, p.surface, 0.95), p.paper];
     const colours: Record<string, string> = {
       keyword: mixHex(p.coral, fg, 0.55),
       function: mixHex(p.action, fg, 0.4),
@@ -54,6 +54,8 @@ describe('syntax colours', () => {
       'lit 2': mixHex(p.sun, fg, 0.82),
       'lit 3': mixHex(p.coral, fg, 0.68),
     };
+    // Lines that are not running are drawn at 82% opacity over the base.
+    for (const [k, c] of Object.entries(colours)) if (!k.startsWith('lit')) colours[`${k} (dimmed)`] = mixHex(c, base, 0.82);
     const low = Object.entries(colours).filter(([, c]) => contrastRatio(c, base) < 4.5).map(([k, c]) => `${k} ${c} on ${base}: ${contrastRatio(c, base).toFixed(2)}`);
     expect(low).toEqual([]);
   });

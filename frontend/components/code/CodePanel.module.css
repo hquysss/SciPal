@@ -2,7 +2,7 @@
    Colours are mixed with `in srgb` so the contrast test can reproduce them exactly (CodePanel.test.ts). */
 
 .panel {
-  --base: color-mix(in srgb, var(--ink) 88%, var(--surface));
+  --base: color-mix(in srgb, var(--ink) 95%, var(--surface));
   --fg: var(--paper);
   display: flex;
   flex-direction: column;
@@ -13,7 +13,7 @@
   font-family: var(--font-mono);
 }
 .panel[data-dark='true'] {
-  --base: color-mix(in srgb, var(--surface-sunken) 55%, var(--surface));
+  --base: color-mix(in srgb, var(--surface-sunken) 80%, var(--surface));
   --fg: var(--ink);
   border: 1px solid var(--line);
 }
@@ -63,7 +63,7 @@
   transform-origin: left center;
   transition: transform 280ms cubic-bezier(0.3, 1.6, 0.5, 1), opacity 250ms, text-shadow 250ms;
 }
-.ln[data-dim='true'] .txt { opacity: 0.6; }
+.ln[data-dim='true'] .txt { opacity: 0.82; }
 /* The running line: its text is painted with a bright gradient and given a halo, so it reads as lit, not just white. */
 .ln[data-on='true'] .txt {
   font-weight: 800;
