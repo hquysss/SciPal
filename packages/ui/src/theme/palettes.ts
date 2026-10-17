@@ -72,8 +72,29 @@ export const THEME_PALETTES: Record<ThemeLevel, Record<ThemeMode, ThemePalette>>
       patternInk: '#F2B45C', patternOpacity: 0.04,
     },
   },
-  // THCS: xanh lá của bảng lớp
+  // THCS: xanh dương của Baseline
   lower_secondary: {
+    light: {
+      paper: '#F3F7FF', surface: '#FFFFFF', surfaceSunken: '#E6EEFF',
+      ink: '#0B1F4A', muted: '#3E5075', line: '#CCDBF7', edge: '#7189B8',
+      action: '#2563C9', actionHover: '#1B4EB8', actionInk: '#FFFFFF', focus: '#2563C9',
+      nav: '#2563C9', navInk: '#FFFFFF',
+      ...LIGHT_STATUS,
+      sun: '#F5B82E', coral: '#F0716B', sky: '#9D84F5',
+      patternInk: '#2563C9', patternOpacity: 0.07,
+    },
+    dark: {
+      paper: '#131B30', surface: '#1F2B4C', surfaceSunken: '#0D1424',
+      ink: '#E8EEFF', muted: '#AEBCDB', line: '#384A7C', edge: '#7587B3',
+      action: '#8AB2FF', actionHover: '#A9C5FF', actionInk: '#0D1322', focus: '#8AB2FF',
+      nav: '#2563C9', navInk: '#FFFFFF',
+      ...DARK_STATUS,
+      sun: '#F8CB63', coral: '#F59591', sky: '#B4A1F8',
+      patternInk: '#8AB2FF', patternOpacity: 0.04,
+    },
+  },
+  // THPT: xanh lá của bảng lớp
+  upper_secondary: {
     light: {
       paper: '#F2F8F3', surface: '#FFFFFF', surfaceSunken: '#E3F0E6',
       ink: '#0F2A1A', muted: '#3F5A48', line: '#CFE5D5', edge: '#6B8F76',
@@ -93,27 +114,6 @@ export const THEME_PALETTES: Record<ThemeLevel, Record<ThemeMode, ThemePalette>>
       warning: '#F2C66D', warningSurface: '#3A2F12',
       sun: '#F7D46E', coral: '#F6A881', sky: '#6BBDDB',
       patternInk: '#6EE7A0', patternOpacity: 0.04,
-    },
-  },
-  // THPT: xanh dương của Baseline
-  upper_secondary: {
-    light: {
-      paper: '#F3F7FF', surface: '#FFFFFF', surfaceSunken: '#E6EEFF',
-      ink: '#0B1F4A', muted: '#3E5075', line: '#CCDBF7', edge: '#7189B8',
-      action: '#2563C9', actionHover: '#1B4EB8', actionInk: '#FFFFFF', focus: '#2563C9',
-      nav: '#2563C9', navInk: '#FFFFFF',
-      ...LIGHT_STATUS,
-      sun: '#F5B82E', coral: '#F0716B', sky: '#9D84F5',
-      patternInk: '#2563C9', patternOpacity: 0.07,
-    },
-    dark: {
-      paper: '#131B30', surface: '#1F2B4C', surfaceSunken: '#0D1424',
-      ink: '#E8EEFF', muted: '#AEBCDB', line: '#384A7C', edge: '#7587B3',
-      action: '#8AB2FF', actionHover: '#A9C5FF', actionInk: '#0D1322', focus: '#8AB2FF',
-      nav: '#2563C9', navInk: '#FFFFFF',
-      ...DARK_STATUS,
-      sun: '#F8CB63', coral: '#F59591', sky: '#B4A1F8',
-      patternInk: '#8AB2FF', patternOpacity: 0.04,
     },
   },
   // Chưa rõ cấp: giấy trắng, xanh thương hiệu trên navbar
