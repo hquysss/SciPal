@@ -8,6 +8,7 @@ import { complexityModule } from './complexity';
 import { functionGraphModule } from './functionGraph';
 import { graph3dModule } from './graph3d';
 import { harmonic3dModule } from './harmonic3d';
+import { dampedPendulumModule } from './dampedPendulum';
 import { historyMapModule } from './historyMap';
 import { historyWorldModule } from './historyWorld';
 import { historyTimelineModule } from './historyTimeline';
@@ -44,6 +45,7 @@ export const simulationModules: { [K in BuiltInSimulationKind]: SimulationModule
   motion: motionModule,
   pendulum: pendulumModule,
   'harmonic-3d': harmonic3dModule,
+  'damped-pendulum': dampedPendulumModule,
   'wave-3d': wave3dModule,
   'ohm-circuit': ohmCircuitModule,
   punnett: punnettModule,

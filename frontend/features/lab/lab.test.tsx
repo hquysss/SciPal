@@ -13,6 +13,9 @@ describe('the Lab catalogue', () => {
   it('offers native 3D harmonic motion in the physics lab', () => {
     expect(labItem('harmonic-3d')?.subject).toBe('physics');
   });
+  it('offers the damped pendulum in the physics lab', () => {
+    expect(labItem('damped-pendulum')?.subject).toBe('physics');
+  });
   it('offers the 3D ripple tank in the physics lab', () => {
     expect(labItem('wave-3d')?.subject).toBe('physics');
   });
