@@ -2,13 +2,14 @@
 
 import { useEffect, useRef } from 'react';
 import type { EducationLevel } from '../educationLevel';
-import { HeroIllustration } from './HeroIllustration';
+import { HeroCards } from './HeroCards';
 import styles from './hero.module.css';
 
 const clamp = (value: number) => Math.max(-1, Math.min(1, value));
 
 /**
- * Feeds the pointer position over the hero into --px/--py (-1…1) for the scene's tilt and depth.
+ * Feeds the pointer position over the hero into --px/--py (-1…1) on the stage only, for the cards'
+ * tilt and depth. Kept off the hero section so a mouse move restyles just the cards, not the whole hero.
  * Only on hover-capable fine pointers without reduced motion; one frame per pointer move, no loop.
  */
 function usePointerDepth(stageRef: React.RefObject<HTMLDivElement | null>) {
@@ -60,7 +61,7 @@ export function HeroStage({ level }: { level: EducationLevel }) {
 
   return (
     <div ref={stageRef} className={styles.stage} data-hero-art>
-      <HeroIllustration key={level} level={level} />
+      <HeroCards key={level} level={level} />
     </div>
   );
 }

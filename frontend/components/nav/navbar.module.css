@@ -429,3 +429,16 @@
 @supports not (color: light-dark(white, black)) {
   .bar { background: var(--nav); }
 }
+
+/* The landing hero folds the bar away while its photo is on screen (see useHeroNav). */
+:global([data-app-shell][data-hero-nav='hidden']) .header .bar {
+  visibility: hidden;
+  opacity: 0;
+  translate: 0 -130%;
+  transition: translate 420ms cubic-bezier(0.16, 1, 0.3, 1), opacity 300ms ease, visibility 0s linear 420ms;
+}
+
+/* Its own fold toggle would sit under the hero's one. */
+:global([data-app-shell][data-hero-nav='hidden']) .header .barToggle {
+  display: none;
+}

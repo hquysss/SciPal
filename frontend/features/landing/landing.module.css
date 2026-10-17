@@ -171,51 +171,235 @@
 
 /* ---------- hero ---------- */
 
+/* The hero is a full-bleed photo with a copy card and an Explore block under it. It reaches up under
+   the floating nav (the shell's top padding is pulled back) and out to both screen edges. */
 .hero {
   position: relative;
   isolation: isolate;
-  overflow: hidden;
-  border-radius: var(--radius-card-lg);
-  padding: clamp(3rem, 5.5vw, 4.5rem) var(--landing-gutter);
-  background:
-    radial-gradient(ellipse 65% 55% at 85% 25%, color-mix(in srgb, var(--sky) 22%, transparent), transparent 65%),
-    radial-gradient(ellipse 55% 50% at 15% 80%, color-mix(in srgb, var(--sun) 18%, transparent), transparent 60%),
-    radial-gradient(circle at 50% 0%, color-mix(in srgb, var(--sun) 12%, transparent), transparent 55%),
-    linear-gradient(145deg, var(--nav) 0%, color-mix(in srgb, var(--nav) 75%, black 25%) 100%);
-  color: var(--nav-ink);
-  box-shadow: 0 1.5rem 3.5rem -1.25rem color-mix(in srgb, var(--ink) 25%, transparent);
+  /* Pulls the photo up past the shell padding and the (sticky) nav bar's own height, to the very top. */
+  margin-top: calc(-0.5rem - 4.125rem);
+  padding: 0 0 clamp(2rem, 4vw, 3rem);
+  color: var(--ink);
+
+  /* Liquid glass shared by the cards over the photo. */
+  --glass: color-mix(in srgb, var(--surface) 62%, transparent);
+  --glass-edge: color-mix(in srgb, var(--surface) 75%, transparent);
+  --glass-shadow:
+    inset 0 1px 0 color-mix(in srgb, var(--surface) 90%, transparent),
+    0 1.5rem 3rem -1.25rem color-mix(in srgb, black 45%, transparent);
 }
 
-/* Ambient wash behind the hero; no generic blueprint grid (antislop-ui R-07) */
-.hero::before {
-  content: '';
+@media (min-width: 640px) {
+  .hero {
+    margin-top: calc(-0.75rem - 4.125rem);
+  }
+}
+
+/* The nav toggle: while the hero folds the bar away, this brings it back. */
+.navPeek {
+  position: fixed;
+  z-index: 60;
+  top: 0.9rem;
+  right: 1rem;
+  display: grid;
+  width: 2.5rem;
+  height: 2.5rem;
+  place-items: center;
+  border: 1px solid color-mix(in srgb, var(--surface) 75%, transparent);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--surface) 62%, transparent);
+  color: var(--ink);
+  backdrop-filter: blur(18px) saturate(170%);
+  -webkit-backdrop-filter: blur(18px) saturate(170%);
+  box-shadow: inset 0 1px 0 color-mix(in srgb, var(--surface) 90%, transparent), 0 0.75rem 1.5rem -0.75rem color-mix(in srgb, black 55%, transparent);
+  cursor: pointer;
+  transition: top 420ms var(--expo), scale 200ms ease;
+}
+
+.navPeek[data-open] {
+  top: 5rem;
+}
+
+.navPeek:hover {
+  scale: 1.08;
+}
+
+.navPeek:focus-visible {
+  outline: 3px solid var(--focus);
+  outline-offset: 3px;
+}
+
+/* The explore burst: --bx/--by are the button's center. Everything stays hidden until data-burst is set. */
+.heroBurst {
   position: absolute;
-  z-index: -1;
   inset: 0;
-  background: radial-gradient(circle at 60% 10%, color-mix(in srgb, var(--sun) 14%, transparent), transparent 60%);
   pointer-events: none;
 }
 
-.heroLayout {
+/* Flash: the page lights up around the button. */
+.heroBurst::before {
+  content: '';
+  position: absolute;
+  inset: -4rem;
+  background: radial-gradient(
+    24rem circle at calc(var(--bx, 50%) + 4rem) calc(var(--by, 50%) + 4rem),
+    color-mix(in srgb, var(--sun) 55%, transparent),
+    transparent 70%
+  );
+  opacity: 0;
+}
+
+/* Two shockwave rings, the second a beat behind. */
+.heroBurst b {
+  position: absolute;
+  left: var(--bx, 50%);
+  top: var(--by, 50%);
+  width: 5rem;
+  aspect-ratio: 1;
+  margin: -2.5rem 0 0 -2.5rem;
+  border: 3px solid var(--sun);
+  border-radius: 50%;
+  opacity: 0;
+}
+
+.heroBurst b + b {
+  border-color: var(--action);
+  border-width: 2px;
+}
+
+.heroBurst i {
+  position: absolute;
+  left: var(--bx, 50%);
+  top: var(--by, 50%);
+  width: 0.8rem;
+  height: 0.8rem;
+  margin: -0.4rem 0 0 -0.4rem;
+  border-radius: 50%;
+  background: var(--c);
+  opacity: 0;
+}
+
+.hero[data-burst] .heroBurst::before {
+  animation: burst-flash 900ms ease-out both;
+}
+
+.hero[data-burst] .heroBurst b {
+  animation: burst-ring 1000ms var(--expo) both, burst-fade 1000ms ease-in both;
+}
+
+.hero[data-burst] .heroBurst b + b {
+  animation-delay: 140ms;
+}
+
+.hero[data-burst] .heroBurst i {
+  animation: burst-spark 1000ms var(--expo) both, burst-fade 1000ms ease-in both;
+}
+
+@keyframes burst-flash {
+  0% { opacity: 0; }
+  18% { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+@keyframes burst-ring {
+  from { scale: 0.2; }
+  to { scale: 9; }
+}
+
+@keyframes burst-spark {
+  from { transform: rotate(var(--a)) translateX(0) scale(1.4); }
+  to { transform: rotate(var(--a)) translateX(var(--r)) scale(0.3); }
+}
+
+/* Travel eases out fast; the fade is its own slower curve so the pieces stay visible while they fly. */
+@keyframes burst-fade {
+  from { opacity: 1; }
+  to { opacity: 0; }
+}
+
+/* The rest of the hero reacts: the cards punch forward, the light blobs flare, the glyphs speed up. */
+.heroArt {
+  transition: scale 600ms var(--spring);
+}
+
+.hero[data-burst] .heroArt {
+  scale: 1.06;
+}
+
+.heroFrame {
+  display: grid;
   max-width: 74rem;
   margin-inline: auto;
   width: 100%;
+}
+
+/* The photo breaks out of the content column to span the whole viewport width. */
+.heroPanel {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  width: 100vw;
+  margin-inline: calc(50% - 50vw);
+  min-height: clamp(26rem, 54vw, 44rem);
+}
+
+/* The photo layer dissolves into the page along its lower edge instead of ending on a hard line.
+   The mask lives on this layer only, so the cards over it stay fully opaque. */
+.heroPhoto {
+  position: absolute;
+  z-index: -1;
+  inset: 0;
+  background: var(--surface-sunken);
+  -webkit-mask-image: linear-gradient(to bottom, black 58%, transparent 100%);
+  mask-image: linear-gradient(to bottom, black 58%, transparent 100%);
+}
+
+.heroPanelImg {
+  object-fit: cover;
+}
+
+/* The cards float on the left, where every scene is empty; the subject keeps the right.
+   On wide screens they stay aligned with the content column instead of the screen edge. */
+.heroArt {
+  position: absolute;
+  z-index: 1;
+  left: max(var(--landing-gutter), calc(50% - 37rem + var(--landing-gutter)));
+  bottom: clamp(6rem, 11vw, 9.5rem);
+  width: min(38%, 26rem);
+  animation: rise 1000ms var(--expo) 650ms both;
+}
+
+.heroRow {
+  position: relative;
+  z-index: 2;
   display: grid;
-  grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr);
-  align-items: center;
-  gap: clamp(2.5rem, 5vw, 4.5rem);
+  grid-template-columns: minmax(0, 1.7fr) minmax(0, 1fr);
+  gap: clamp(0.75rem, 1.6vw, 1.25rem);
+  margin: calc(-1 * clamp(4rem, 8vw, 7rem)) var(--landing-gutter) 0;
+}
+
+.heroCard {
+  display: grid;
+  gap: clamp(1.25rem, 2.4vw, 1.75rem);
+  border-radius: var(--radius-card-lg);
+  padding: clamp(1.5rem, 3vw, 2.25rem);
+  border: 1px solid var(--glass-edge);
+  background: linear-gradient(140deg, color-mix(in srgb, var(--surface) 40%, transparent), transparent 45%), var(--glass);
+  box-shadow: var(--glass-shadow);
+  backdrop-filter: blur(22px) saturate(180%);
+  -webkit-backdrop-filter: blur(22px) saturate(180%);
 }
 
 .heroCopy {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  gap: clamp(1.125rem, 2vw, 1.75rem);
+  gap: clamp(0.75rem, 1.4vw, 1.1rem);
 }
 
 .heroTitle {
   margin: 0;
-  font-size: clamp(2.75rem, 5vw, 4.5rem);
+  font-size: clamp(2.25rem, 4.4vw, 3.75rem);
   font-weight: 800;
   line-height: 1.05;
   letter-spacing: -0.035em;
@@ -231,43 +415,128 @@
 }
 
 .heroTitle .clipLine + .clipLine > span {
-  color: var(--sun);
+  color: var(--action);
 }
 
 .heroSubline {
-  max-width: 42ch;
+  max-width: 46ch;
   margin: 0;
-  color: color-mix(in srgb, var(--nav-ink) 90%, transparent);
-  font-size: clamp(1.125rem, 1.4vw, 1.3rem);
+  color: var(--ink-muted);
+  font-size: clamp(1rem, 1.3vw, 1.15rem);
   font-weight: 500;
   line-height: 1.6;
-  letter-spacing: normal;
   text-wrap: pretty;
   animation: rise 900ms var(--expo) 450ms both;
 }
 
-.heroActions {
+.heroFoot {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 0.85rem;
-  margin-top: 0.25rem;
+  justify-content: space-between;
+  gap: 1rem 1.5rem;
   animation: rise 900ms var(--expo) 560ms both;
 }
 
-/* The illustration breathes freely without a rigid nested box */
-.heroArt {
-  min-width: 0;
-  max-width: 36rem;
-  width: 100%;
-  justify-self: center;
+.heroStats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem 2rem;
+  margin: 0;
+}
+
+.heroStats div {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+}
+
+.heroStats dd {
+  order: -1;
+  margin: 0;
+  color: var(--action);
+  font-size: clamp(1.75rem, 3vw, 2.5rem);
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  line-height: 1;
+}
+
+.heroStats dt {
+  max-width: 7rem;
+  color: var(--ink-muted);
+  font-size: 0.8125rem;
+  line-height: 1.25;
+}
+
+/* The shared ghost pill is drawn for dark bands; on a light card it takes the ink colors. */
+.hero .pillGhost {
+  border-color: var(--edge);
+  background: transparent;
+  color: var(--ink);
+}
+
+.hero .pillGhost:hover {
+  background: var(--surface-sunken);
+}
+
+.hero .pillGhost:focus-visible,
+.heroExplore:focus-visible {
+  outline: 3px solid var(--focus);
+  outline-offset: 3px;
+}
+
+/* The Explore block: a colored tile with a rotating text badge, like a stamp. */
+.heroExplore {
   position: relative;
   display: flex;
+  flex-direction: column;
+  align-self: start;
+  overflow: hidden;
+  border: 1px solid var(--glass-edge);
+  border-radius: var(--radius-card-lg);
+  padding: clamp(1rem, 2vw, 1.4rem) clamp(1.1rem, 2.2vw, 1.6rem);
+  background:
+    radial-gradient(circle at 88% 8%, color-mix(in srgb, var(--sun) 55%, transparent), transparent 52%),
+    radial-gradient(circle at 5% 100%, color-mix(in srgb, var(--sky) 45%, transparent), transparent 55%),
+    linear-gradient(160deg, color-mix(in srgb, var(--action) 92%, transparent), color-mix(in srgb, var(--action) 62%, black));
+  color: var(--action-ink);
+  text-decoration: none;
+  box-shadow: var(--glass-shadow);
+  transition: translate 400ms var(--spring), filter 220ms ease;
+}
+
+.heroExplore:hover {
+  translate: 0 -3px;
+  filter: brightness(1.06);
+}
+
+.heroExploreText {
+  display: flex;
   align-items: center;
-  justify-content: center;
-  translate: 0 calc((var(--p, 0.5) - 0.5) * -1.5rem);
-  animation: rise 1000ms var(--expo) 650ms both;
-  filter: drop-shadow(0 1.75rem 3.5rem color-mix(in srgb, black 30%, transparent));
+  justify-content: space-between;
+  gap: 0.75rem;
+  font-size: clamp(1.5rem, 2.4vw, 2rem);
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: -0.03em;
+}
+
+.exploreArrow {
+  display: grid;
+  flex: none;
+  width: 2.75rem;
+  height: 2.75rem;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--sun);
+  color: var(--ink);
+  box-shadow: 0 0.6rem 1.2rem -0.5rem color-mix(in srgb, black 55%, transparent);
+  transition: translate 300ms var(--spring), rotate 300ms var(--spring);
+}
+
+.heroExplore:hover .exploreArrow {
+  translate: 4px 0;
+  rotate: -45deg;
 }
 
 @keyframes rise {
@@ -653,7 +922,8 @@
 /* The hero entrance waits under the curtain until it lifts. */
 .page:not([data-ready]) .heroTitle .clipLine > span,
 .page:not([data-ready]) .heroCopy > *,
-.page:not([data-ready]) .heroArt {
+.page:not([data-ready]) .heroArt,
+.page:not([data-ready]) .heroArt * {
   animation-play-state: paused;
 }
 
@@ -1039,14 +1309,27 @@
 }
 
 @media (max-width: 900px) {
-  .heroLayout,
   .footerCols {
     grid-template-columns: minmax(0, 1fr);
   }
 
+  .heroRow {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  /* Narrow: the panel grows tall, the subject shows on top and the cards rest over the lower part. */
+  .heroPanel {
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+    padding: clamp(16rem, 70vw, 24rem) 1rem 6rem;
+  }
+
   .heroArt {
-    max-width: 28rem;
-    justify-self: center;
+    position: relative;
+    inset: auto;
+    width: min(100%, 24rem);
+    margin-inline: auto;
   }
 
   .statGrid {
@@ -1107,6 +1390,8 @@
   .heroTitle .clipLine > span,
   .heroCopy > *,
   .heroArt,
+  .heroSubline,
+  .heroFoot,
   .ctaFloats span {
     animation: none;
   }
@@ -1119,6 +1404,10 @@
   .heroArt,
   .ghostWord {
     translate: none;
+  }
+
+  .heroBurst {
+    display: none;
   }
 
   .ghost.clipIn .clipLine > span,
