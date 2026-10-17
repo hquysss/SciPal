@@ -9,16 +9,19 @@
   perspective: 1000px;
 }
 
-/* A pool of plain paper behind the scene keeps the page pattern from crowding the drawing. */
+/* Ambient luminous pool behind the scene lifts the book and instruments off the dark background. */
 .stage::before {
   content: '';
   position: absolute;
-  inset: -6% -8%;
+  inset: -12% -14%;
   z-index: -1;
+  border-radius: 50%;
   background:
-    radial-gradient(circle closest-side at 76% 30%, color-mix(in srgb, var(--sun) 34%, transparent), transparent),
-    radial-gradient(circle closest-side at 22% 74%, color-mix(in srgb, var(--sky) 26%, transparent), transparent),
-    radial-gradient(closest-side, var(--paper) 58%, transparent);
+    radial-gradient(ellipse 70% 60% at 75% 30%, color-mix(in srgb, var(--sun) 30%, transparent), transparent 70%),
+    radial-gradient(ellipse 65% 55% at 25% 72%, color-mix(in srgb, var(--sky) 24%, transparent), transparent 70%),
+    radial-gradient(ellipse 60% 50% at 50% 50%, color-mix(in srgb, var(--paper) 40%, transparent), transparent 70%);
+  filter: blur(24px);
+  pointer-events: none;
 }
 
 .art {
