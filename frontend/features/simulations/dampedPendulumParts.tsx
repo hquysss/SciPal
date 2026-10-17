@@ -31,11 +31,11 @@ function useCanvasTexture(width: number, height: number, draw: (c: CanvasRenderi
 }
 
 /** Wooden bench top: base colour with long dark grain strokes. */
-export function useWoodTexture({ base, dark }: { readonly base: string; readonly dark: string }) {
+export function useWoodTexture({ base, grain }: { readonly base: string; readonly grain: string }) {
   return useCanvasTexture(1024, 512, (c) => {
     c.fillStyle = base;
     c.fillRect(0, 0, 1024, 512);
-    c.strokeStyle = dark;
+    c.strokeStyle = grain;
     let seed = 7;
     const rand = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
     for (let i = 0; i < 160; i++) {
@@ -48,7 +48,7 @@ export function useWoodTexture({ base, dark }: { readonly base: string; readonly
       c.stroke();
     }
     c.globalAlpha = 1;
-  }, [base, dark]);
+  }, [base, grain]);
 }
 
 /**

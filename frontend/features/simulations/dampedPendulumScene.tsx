@@ -92,7 +92,7 @@ const Experiment = memo(function Experiment({ config, time, palette, onGrab, onR
   const trace = useTrace(config);
   const envelope = useEnvelope(config, palette.envelope);
   const paper = usePlateTexture(palette, span, halfWidth, speed, DAMPED_DURATION);
-  const wood = useWoodTexture({ base: palette.bench, dark: palette.benchDark });
+  const wood = useWoodTexture({ base: palette.bench, grain: palette.benchDark });
   useEffect(() => {
     wood.wrapS = wood.wrapT = THREE.RepeatWrapping;
     wood.repeat.set(6, 2);
