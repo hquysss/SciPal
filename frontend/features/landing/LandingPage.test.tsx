@@ -31,7 +31,7 @@ const render = (level: EducationLevel) =>
 describe('LandingPage', () => {
   it.each<[EducationLevel, string, string]>([
     ['primary', 'Bắt đầu từ', 'điều bạn tò mò.'],
-    ['lower_secondary', 'Mỗi câu hỏi', 'là một bước hiểu thêm.'],
+    ['lower_secondary', 'Hiểu bài sâu hơn', 'qua từng câu hỏi.'],
     ['upper_secondary', 'Hiểu từng bài,', 'tiến từng bước.'],
   ])('hero copy for %s', (level, first, second) => {
     lang = 'vi';
@@ -40,7 +40,7 @@ describe('LandingPage', () => {
     expect(h1).toContain(first);
     expect(h1).toContain(second);
     expect(html).toContain('Học song ngữ Việt–Anh, hướng đến việc tiếng Anh trở thành ngôn ngữ thứ hai của bạn.');
-    expect(html).toContain('Xem môn học');
+    expect(html).toContain('Khám phá');
     expect(html).toMatch(/<a[^>]*href="\/\?chooseLevel=1"[^>]*>[\s\S]*?Đổi cấp/);
     expect(html).toContain(`data-hero-stage="${level}"`);
   });

@@ -8,9 +8,9 @@ import styles from './hero.module.css';
 const clamp = (value: number) => Math.max(-1, Math.min(1, value));
 
 /**
- * Feeds the pointer position over the hero into --px/--py (-1…1) on the hero section, for the
- * cards' tilt and depth and the hero's pointer glow. Only on hover-capable fine pointers without
- * reduced motion; one frame per pointer move, no loop.
+ * Feeds the pointer position over the hero into --px/--py (-1…1) on the stage only, for the cards'
+ * tilt and depth. Kept off the hero section so a mouse move restyles just the cards, not the whole hero.
+ * Only on hover-capable fine pointers without reduced motion; one frame per pointer move, no loop.
  */
 function usePointerDepth(stageRef: React.RefObject<HTMLDivElement | null>) {
   useEffect(() => {
@@ -25,14 +25,14 @@ function usePointerDepth(stageRef: React.RefObject<HTMLDivElement | null>) {
     let y = 0;
     const apply = () => {
       frame = 0;
-      area.style.setProperty('--px', x.toFixed(3));
-      area.style.setProperty('--py', y.toFixed(3));
+      stage.style.setProperty('--px', x.toFixed(3));
+      stage.style.setProperty('--py', y.toFixed(3));
     };
     const schedule = () => {
       if (!frame) frame = requestAnimationFrame(apply);
     };
     const onMove = (event: PointerEvent) => {
-      const box = area.getBoundingClientRect();
+      const box = stage.getBoundingClientRect();
       x = clamp(((event.clientX - box.left) / box.width) * 2 - 1);
       y = clamp(((event.clientY - box.top) / box.height) * 2 - 1);
       schedule();
@@ -49,8 +49,8 @@ function usePointerDepth(stageRef: React.RefObject<HTMLDivElement | null>) {
       cancelAnimationFrame(frame);
       area.removeEventListener('pointermove', onMove);
       area.removeEventListener('pointerleave', onLeave);
-      area.style.removeProperty('--px');
-      area.style.removeProperty('--py');
+      stage.style.removeProperty('--px');
+      stage.style.removeProperty('--py');
     };
   }, [stageRef]);
 }

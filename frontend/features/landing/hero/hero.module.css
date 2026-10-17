@@ -2,12 +2,12 @@
   --hero-ease: cubic-bezier(0.16, 1, 0.3, 1);
   --hero-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
   /* Cards are drawn from the level's tokens, so they read in light and dark alike. */
-  --card-line: color-mix(in srgb, var(--ink) 12%, transparent);
+  --card-line: var(--glass-edge, color-mix(in srgb, var(--ink) 12%, transparent));
 
   position: relative;
   isolation: isolate;
   width: 100%;
-  aspect-ratio: 5 / 4;
+  aspect-ratio: 1;
   container-type: inline-size;
   perspective: 1200px;
 }
@@ -40,11 +40,13 @@
   border: 1px solid var(--card-line);
   border-radius: 1.5rem;
   padding: clamp(0.9rem, 4.5cqi, 1.5rem);
-  background: var(--surface);
+  background:
+    linear-gradient(140deg, color-mix(in srgb, var(--surface) 40%, transparent), transparent 45%),
+    var(--glass, var(--surface));
   color: var(--ink);
-  box-shadow:
-    0 1px 2px color-mix(in srgb, var(--ink) 6%, transparent),
-    0 1.5rem 3rem -1rem color-mix(in srgb, var(--ink) 22%, transparent);
+  box-shadow: var(--glass-shadow, 0 1.5rem 3rem -1rem color-mix(in srgb, var(--ink) 22%, transparent));
+  backdrop-filter: blur(22px) saturate(180%);
+  -webkit-backdrop-filter: blur(22px) saturate(180%);
   animation: card-in 1000ms var(--hero-ease) var(--d, 0ms) both;
 }
 
@@ -64,6 +66,11 @@
   right: 0;
   width: 60%;
   rotate: 3deg;
+}
+
+/* Leaves room for the VI/EN switch pinned to the card's corner. */
+.termCard .cardLabel {
+  padding-right: 4.5rem;
 }
 
 .cardLabel {
@@ -188,7 +195,7 @@
   border: 1px solid var(--card-line);
   border-radius: 0.8rem;
   padding: 0.4rem 0.75rem;
-  background: var(--surface);
+  background: color-mix(in srgb, var(--surface) 45%, transparent);
   font-size: clamp(0.76rem, 3cqi, 0.9rem);
   font-weight: 600;
   transition: background-color 400ms ease, border-color 400ms ease, color 400ms ease;
@@ -264,9 +271,12 @@
   gap: 0.4rem;
   border-radius: 999px;
   padding: 0.6rem 1.1rem;
-  background: var(--action);
+  border: 1px solid var(--card-line);
+  background: color-mix(in srgb, var(--action) 80%, transparent);
   color: var(--action-ink);
-  box-shadow: 0 1rem 2rem -0.75rem color-mix(in srgb, var(--ink) 35%, transparent);
+  box-shadow: var(--glass-shadow, 0 1rem 2rem -0.75rem color-mix(in srgb, var(--ink) 35%, transparent));
+  backdrop-filter: blur(18px) saturate(180%);
+  -webkit-backdrop-filter: blur(18px) saturate(180%);
   font-size: clamp(0.85rem, 3.4cqi, 1.05rem);
   font-weight: 800;
   letter-spacing: -0.01em;

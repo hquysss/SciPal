@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
-import { ArrowRight, Atom, BookOpen, Braces, Dna, FlaskConical, Globe, Lightbulb, Mail, Sigma, Sparkles } from 'lucide-react';
+import { ArrowRight, Atom, ChevronUp, Menu, BookOpen, Braces, Dna, FlaskConical, Globe, Lightbulb, Mail, Sigma, Sparkles } from 'lucide-react';
 import { useLanguage } from '@scipal/hooks';
 import { DemandPollBanner } from '@/features/survey/DemandPollBanner';
 import { fetchWebsiteFeedback } from '@/features/website-feedback/api';
@@ -61,13 +61,20 @@ const HERO_TITLE: Record<EducationLevel, [Copy, Copy]> = {
     { vi: 'điều bạn tò mò.', en: 'what you wonder.' },
   ],
   lower_secondary: [
-    { vi: 'Mỗi câu hỏi', en: 'Every question' },
-    { vi: 'là một bước hiểu thêm.', en: 'grows understanding.' },
+    { vi: 'Hiểu bài sâu hơn', en: 'Understand more' },
+    { vi: 'qua từng câu hỏi.', en: 'one question at a time.' },
   ],
   upper_secondary: [
     { vi: 'Hiểu từng bài,', en: 'Understand each lesson.' },
     { vi: 'tiến từng bước.', en: 'Move forward step by step.' },
   ],
+};
+
+/** Where each scene's subject sits, so the crop keeps them in frame when the panel is wider than the photo. */
+const HERO_FOCUS: Record<EducationLevel, string> = {
+  primary: '80% 35%',
+  lower_secondary: '72% 30%',
+  upper_secondary: '72% 35%',
 };
 
 const reducedMotion = () => window.matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -215,6 +222,89 @@ function useScrollProgress(pageRef: React.RefObject<HTMLDivElement | null>) {
   }, [pageRef]);
 }
 
+/** Colors the burst's sparks cycle through; all level tokens, so the burst follows the theme. */
+const SPARK_COLORS = ['var(--sun)', 'var(--coral)', 'var(--sky)', 'var(--action)'];
+const SPARKS = Array.from({ length: 16 }, (_, index) => ({
+  angle: index * (360 / 16) + (index % 2) * 8,
+  reach: 7 + (index % 3) * 3,
+  color: SPARK_COLORS[index % SPARK_COLORS.length],
+}));
+
+/**
+ * "Explore": a burst erupts from the button (shockwave, sparks, flash), then the page glides down to
+ * the section under the hero. Reduced motion skips the burst and the glide and jumps straight there.
+ */
+function useExploreBurst() {
+  const heroRef = useRef<HTMLElement>(null);
+  const timers = useRef<number[]>([]);
+
+  useEffect(() => {
+    const pending = timers.current;
+    return () => pending.forEach((id) => window.clearTimeout(id));
+  }, []);
+
+  const explore = (event: React.MouseEvent<HTMLAnchorElement>) => {
+    const target = document.getElementById('gioi-thieu');
+    const hero = heroRef.current;
+    if (!target) return;
+    event.preventDefault();
+    if (!hero || reducedMotion()) {
+      target.scrollIntoView();
+      return;
+    }
+    const heroBox = hero.getBoundingClientRect();
+    const buttonBox = event.currentTarget.getBoundingClientRect();
+    hero.style.setProperty('--bx', `${buttonBox.left + buttonBox.width / 2 - heroBox.left}px`);
+    hero.style.setProperty('--by', `${buttonBox.top + buttonBox.height / 2 - heroBox.top}px`);
+    // Restart the animation if it is clicked again mid-burst.
+    hero.removeAttribute('data-burst');
+    void hero.offsetWidth;
+    hero.setAttribute('data-burst', '');
+    timers.current.forEach((id) => window.clearTimeout(id));
+    timers.current = [
+      window.setTimeout(() => target.scrollIntoView({ behavior: 'smooth' }), 420),
+      window.setTimeout(() => hero.removeAttribute('data-burst'), 1400),
+    ];
+  };
+
+  return { heroRef, explore };
+}
+
+/**
+ * While the hero photo is on screen the floating nav bar folds away (data-hero-nav on the app shell) and a
+ * small toggle brings it back. Past the hero, the bar returns on its own.
+ */
+function useHeroNav(panelRef: React.RefObject<HTMLDivElement | null>) {
+  const [inHero, setInHero] = useState(true);
+  const [peek, setPeek] = useState(false);
+
+  useEffect(() => {
+    const panel = panelRef.current;
+    if (!panel || !('IntersectionObserver' in window)) return;
+    const observer = new IntersectionObserver(([entry]) => {
+      setInHero(entry.isIntersecting);
+      if (!entry.isIntersecting) setPeek(false);
+    }, { rootMargin: '-72px 0px 0px 0px' });
+    observer.observe(panel);
+    return () => observer.disconnect();
+  }, [panelRef]);
+
+  useEffect(() => {
+    const shell = document.querySelector('[data-app-shell]');
+    if (!shell) return;
+    if (inHero && !peek) shell.setAttribute('data-hero-nav', 'hidden');
+    else shell.removeAttribute('data-hero-nav');
+    return () => shell.removeAttribute('data-hero-nav');
+  }, [inHero, peek]);
+
+  return { inHero, peek, togglePeek: () => {
+      // The bar keeps its own remembered "hidden" state on wide screens; clear it so peeking really shows the bar.
+      if (!peek) document.querySelector<HTMLButtonElement>('header[data-bar-hidden] button[aria-pressed="true"]')?.click();
+      setPeek((value) => !value);
+    },
+  };
+}
+
 /** A stat that counts up from zero each time it scrolls into view; the final value is what readers get. */
 function StatValue({ value, suffix = '' }: { value: number; suffix?: string }) {
   const ref = useRef<HTMLSpanElement>(null);
@@ -263,6 +353,9 @@ export function LandingPage({ level, catalog, onChangeLevel, pricing = null, sho
     : null;
 
   const [rating, setRating] = useState<{ average: number; total: number } | null>(null);
+  const { heroRef, explore } = useExploreBurst();
+  const panelRef = useRef<HTMLDivElement>(null);
+  const heroNav = useHeroNav(panelRef);
 
   useEffect(() => {
     applyShellLevel(getShell(), level);
@@ -295,43 +388,99 @@ export function LandingPage({ level, catalog, onChangeLevel, pricing = null, sho
   return (
     <>
       {intro && <IntroCurtain level={level} onReady={() => setReady(true)} />}
+      {heroNav.inHero && (
+        <button
+          type="button"
+          className={styles.navPeek}
+          data-open={heroNav.peek ? '' : undefined}
+          onClick={heroNav.togglePeek}
+          aria-pressed={heroNav.peek}
+          aria-label={heroNav.peek ? t({ en: 'Hide navigation bar', vi: 'Ẩn thanh điều hướng' }) : t({ en: 'Show navigation bar', vi: 'Hiện thanh điều hướng' })}
+        >
+          {heroNav.peek ? <ChevronUp size={18} aria-hidden="true" /> : <Menu size={18} aria-hidden="true" />}
+        </button>
+      )}
       <div className={styles.page} data-level={level} data-scipal-level={level} data-ready={ready ? '' : undefined} lang={lang} ref={pageRef}>
         <main className={styles.shell}>
           {/* ---------- hero ---------- */}
-          <section className={styles.hero} aria-labelledby="landing-title" data-scroll-progress>
-            <div className={styles.heroBackdrop} aria-hidden="true">
-              <span />
-              <span />
-              <span />
+          <section className={styles.hero} aria-labelledby="landing-title" data-scroll-progress ref={heroRef}>
+            <div className={styles.heroBurst} aria-hidden="true">
+              <b />
+              <b />
+              {SPARKS.map((spark, index) => (
+                <i
+                  key={index}
+                  style={{ '--a': `${spark.angle}deg`, '--r': `${spark.reach}rem`, '--c': spark.color } as React.CSSProperties}
+                />
+              ))}
             </div>
-            <div className={styles.heroLayout}>
-              <div className={styles.heroCopy}>
-                <p className={styles.eyebrow}>{t(LEVEL_LABEL[level])}</p>
-                <h1 id="landing-title" tabIndex={-1} className={styles.heroTitle}>
-                  <ClipLines lines={[t(titleFirst), t(titleSecond)]} />
-                </h1>
-                <p className={styles.heroSubline}>
-                  {t({
-                    en: 'Learn in Vietnamese and English, working towards English as your second language.',
-                    vi: 'Học song ngữ Việt–Anh, hướng đến việc tiếng Anh trở thành ngôn ngữ thứ hai của bạn.',
-                  })}
-                </p>
-                <div className={styles.heroActions}>
-                  <Link href="#mon-hoc" className={styles.pillLight}>
-                    {t({ en: 'Explore subjects', vi: 'Xem môn học' })}
-                    <ArrowRight size={16} aria-hidden="true" />
-                  </Link>
-                  <ChangeLevel onChangeLevel={onChangeLevel} className={styles.pillGhost} />
+            <div className={styles.heroFrame}>
+              <div className={styles.heroPanel} ref={panelRef}>
+                <div className={styles.heroPhoto}>
+                  <Image
+                    src={`/images/hero/${level}.jpg`}
+                    alt=""
+                    fill
+                    priority
+                    quality={90}
+                    sizes="100vw"
+                    className={styles.heroPanelImg}
+                    style={{ objectPosition: HERO_FOCUS[level] }}
+                  />
+                </div>
+                <div className={styles.heroArt}>
+                  <HeroStage level={level} />
                 </div>
               </div>
-              <div className={styles.heroArt}>
-                <HeroStage level={level} />
+              <div className={styles.heroRow}>
+                <div className={styles.heroCard}>
+                  <div className={styles.heroCopy}>
+                    <h1 id="landing-title" tabIndex={-1} className={styles.heroTitle}>
+                      <ClipLines lines={[t(titleFirst), t(titleSecond)]} />
+                    </h1>
+                    <p className={styles.heroSubline}>
+                      {t({
+                        en: 'Learn in Vietnamese and English, so English becomes your second language.',
+                        vi: 'Học song ngữ Việt–Anh để tiếng Anh dần trở thành ngôn ngữ thứ hai của bạn.',
+                      })}
+                    </p>
+                  </div>
+                  <div className={styles.heroFoot}>
+                    <dl className={styles.heroStats}>
+                      {liveSubjects ? (
+                        <div>
+                          <dt>{t({ en: 'Subjects open', vi: 'Môn đang mở' })}</dt>
+                          <dd>{liveSubjects}</dd>
+                        </div>
+                      ) : null}
+                      {publishedLessons > 0 ? (
+                        <div>
+                          <dt>{t({ en: 'Lessons', vi: 'Bài học' })}</dt>
+                          <dd>{publishedLessons}</dd>
+                        </div>
+                      ) : null}
+                      <div>
+                        <dt>{t({ en: 'Free to learn', vi: 'Miễn phí' })}</dt>
+                        <dd>100%</dd>
+                      </div>
+                    </dl>
+                    <ChangeLevel onChangeLevel={onChangeLevel} className={styles.pillGhost} />
+                  </div>
+                </div>
+                <Link href="#gioi-thieu" className={styles.heroExplore} onClick={explore}>
+                  <span className={styles.heroExploreText}>
+                    {t({ en: 'Explore', vi: 'Khám phá' })}
+                    <span className={styles.exploreArrow}>
+                      <ArrowRight size={22} strokeWidth={2.5} aria-hidden="true" />
+                    </span>
+                  </span>
+                </Link>
               </div>
             </div>
           </section>
 
           {/* ---------- ghost heading ---------- */}
-          <section className={styles.trust} aria-labelledby="trust-title" data-scroll-progress>
+          <section className={styles.trust} id="gioi-thieu" aria-labelledby="trust-title" data-scroll-progress>
             <div className={styles.trustTop}>
               <div className={styles.pct} data-landing-reveal>
                 <strong>100%</strong>

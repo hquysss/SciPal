@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type CSSProperties } from 'react';
-import { BookOpen, Sparkles } from 'lucide-react';
+import { BookOpen } from 'lucide-react';
 import { useLanguage } from '@scipal/hooks';
 import type { EducationLevel } from '../educationLevel';
 import styles from './hero.module.css';
@@ -193,7 +193,11 @@ export function HeroCards({ level }: { level: EducationLevel }) {
       <div className={`${styles.layer} ${styles.layerFront}`}>
         <div className={styles.xp} style={at(950)}>
           <span className={styles.xpInner}>
-            <Sparkles size={16} strokeWidth={2.25} />
+            <svg viewBox="0 0 48 48" width="20" height="20" aria-hidden="true" focusable="false">
+              <path fill="var(--sun)" d="M22 4c1.4 9.6 4.4 12.6 14 14-9.6 1.4-12.6 4.4-14 14-1.4-9.6-4.4-12.6-14-14 9.6-1.4 12.6-4.4 14-14z" />
+              <path fill="var(--coral)" d="M37 26c.8 5 2.2 6.4 7 7-4.8.6-6.2 2-7 7-.8-5-2.2-6.4-7-7 4.8-.6 6.2-2 7-7z" />
+              <path fill="var(--sky)" d="M9 31c.6 3.6 1.6 4.6 5 5-3.4.4-4.4 1.4-5 5-.6-3.6-1.6-4.6-5-5 3.4-.4 4.4-1.4 5-5z" />
+            </svg>
             +10 XP
           </span>
         </div>
