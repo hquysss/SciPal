@@ -65,6 +65,7 @@ describe('TopicAccordion', () => {
     const html = renderToStaticMarkup(<TopicAccordion topics={customTopics} subjectSlug="informatics" />);
     expect(html).toContain('Chủ đề 5');
     expect(html).toContain('>19<');
-    expect(html).toContain('Bài 19. Câu lệnh rẽ nhánh if');
+    expect(html).toContain('Câu lệnh rẽ nhánh if');
+    expect(html).not.toContain('Bài 19. Câu lệnh rẽ nhánh if');
   });
 });

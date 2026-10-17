@@ -31,6 +31,11 @@ function lessonDisplayNumber(lesson: Lesson, fallbackIndex: number): number {
   return fallbackIndex;
 }
 
+export function cleanLessonTitle(title: string): string {
+  if (!title) return '';
+  return title.replace(/^(?:(?:Bài|Lesson)\s*\d+|\d+)[\s.:-]+\s*/i, '').trim();
+}
+
 /**
  * Topics are chapters: a tinted header with an accent edge and a "Topic n" label. They start closed
  * and unfold smoothly (grid rows 0fr to 1fr), the lessons inside rising in one after another. The
@@ -92,21 +97,25 @@ export function TopicAccordion({ topics, subjectSlug }: { topics: Topic[]; subje
                     >
                       <Link
                         href={`/${subjectSlug}/${lesson.slug}`}
-                        className="flex min-h-11 items-center gap-3 rounded-lg px-3 py-2.5 transition-colors hover:bg-surface-sunken focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-focus"
+                        className="group flex min-h-12 items-center gap-3.5 rounded-xl px-3 py-2.5 transition-colors hover:bg-surface-sunken focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-focus"
                       >
-                        <span className="flex h-6 min-w-6 shrink-0 items-center justify-center rounded-md border border-line px-1 text-xs font-semibold tabular-nums text-ink-muted">
+                        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-action/30 bg-surface text-xs font-semibold tabular-nums text-ink transition-colors group-hover:border-action/60">
                           {lessonDisplayNumber(lesson, lessonIdx + 1)}
                         </span>
-                        <span className="flex-1">
-                          <span className="block text-sm font-semibold text-ink">{lang === 'en' ? lesson.title_en : lesson.title_vi}</span>
-                          <span className="block text-sm text-ink-muted">{lang === 'en' ? lesson.title_vi : lesson.title_en}</span>
+                        <span className="flex flex-1 flex-col justify-center">
+                          <span className="block text-sm font-semibold leading-tight text-ink">
+                            {cleanLessonTitle(lang === 'en' ? lesson.title_en : lesson.title_vi)}
+                          </span>
+                          <span className="block text-xs leading-tight text-ink-muted">
+                            {cleanLessonTitle(lang === 'en' ? lesson.title_vi : lesson.title_en)}
+                          </span>
                           {lesson.source && (
-                            <span className="block text-xs italic text-ink-muted">
+                            <span className="mt-0.5 block text-xs italic text-ink-muted">
                               {lang === 'en' ? 'Source' : 'Nguồn'}: {lesson.source}
                             </span>
                           )}
                         </span>
-                        <ChevronRight aria-hidden="true" className="h-4 w-4 shrink-0 text-action" />
+                        <ChevronRight aria-hidden="true" className="h-4 w-4 shrink-0 text-action transition-transform duration-200 group-hover:translate-x-0.5" />
                       </Link>
                     </li>
                   ))}
