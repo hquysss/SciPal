@@ -299,14 +299,12 @@ export function LandingPage({ level, catalog, onChangeLevel, pricing = null, sho
         <main className={styles.shell}>
           {/* ---------- hero ---------- */}
           <section className={styles.hero} aria-labelledby="landing-title" data-scroll-progress>
-            <div className={styles.heroTop}>
-              <p className={styles.eyebrowLight}>{t(LEVEL_LABEL[level])}</p>
-              <h1 id="landing-title" tabIndex={-1} className={styles.heroTitle}>
-                <ClipLines lines={[t(titleFirst), t(titleSecond)]} />
-              </h1>
-            </div>
-            <div className={styles.heroBottom}>
+            <div className={styles.heroLayout}>
               <div className={styles.heroCopy}>
+                <p className={styles.eyebrowLight}>{t(LEVEL_LABEL[level])}</p>
+                <h1 id="landing-title" tabIndex={-1} className={styles.heroTitle}>
+                  <ClipLines lines={[t(titleFirst), t(titleSecond)]} />
+                </h1>
                 <p className={styles.heroSubline}>
                   {t({
                     en: 'Learn in Vietnamese and English, working towards English as your second language.',
