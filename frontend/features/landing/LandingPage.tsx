@@ -299,9 +299,14 @@ export function LandingPage({ level, catalog, onChangeLevel, pricing = null, sho
         <main className={styles.shell}>
           {/* ---------- hero ---------- */}
           <section className={styles.hero} aria-labelledby="landing-title" data-scroll-progress>
+            <div className={styles.heroBackdrop} aria-hidden="true">
+              <span />
+              <span />
+              <span />
+            </div>
             <div className={styles.heroLayout}>
               <div className={styles.heroCopy}>
-                <p className={styles.eyebrowLight}>{t(LEVEL_LABEL[level])}</p>
+                <p className={styles.eyebrow}>{t(LEVEL_LABEL[level])}</p>
                 <h1 id="landing-title" tabIndex={-1} className={styles.heroTitle}>
                   <ClipLines lines={[t(titleFirst), t(titleSecond)]} />
                 </h1>

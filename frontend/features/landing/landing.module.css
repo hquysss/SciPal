@@ -171,29 +171,93 @@
 
 /* ---------- hero ---------- */
 
+/* The hero sits on the page itself: no card, a slow living light behind the copy and cards. */
 .hero {
   position: relative;
   isolation: isolate;
-  overflow: hidden;
-  border-radius: var(--radius-card-lg);
+  display: grid;
+  align-items: center;
+  min-height: min(calc(100svh - 6rem), 50rem);
   padding: clamp(3rem, 5.5vw, 4.5rem) var(--landing-gutter);
-  background:
-    radial-gradient(ellipse 65% 55% at 85% 25%, color-mix(in srgb, var(--sky) 22%, transparent), transparent 65%),
-    radial-gradient(ellipse 55% 50% at 15% 80%, color-mix(in srgb, var(--sun) 18%, transparent), transparent 60%),
-    radial-gradient(circle at 50% 0%, color-mix(in srgb, var(--sun) 12%, transparent), transparent 55%),
-    linear-gradient(145deg, var(--nav) 0%, color-mix(in srgb, var(--nav) 75%, black 25%) 100%);
-  color: var(--nav-ink);
-  box-shadow: 0 1.5rem 3.5rem -1.25rem color-mix(in srgb, var(--ink) 25%, transparent);
+  color: var(--ink);
 }
 
-/* Ambient wash behind the hero; no generic blueprint grid (antislop-ui R-07) */
-.hero::before {
+/* Three soft blobs of the level's supporting colors drift on their own slow loops. The layer
+   fades out at the bottom so the light melts into the page instead of ending on a hard edge. */
+.heroBackdrop {
+  position: absolute;
+  z-index: -1;
+  inset: -4rem calc(-1 * var(--landing-gutter)) 0;
+  overflow: hidden;
+  pointer-events: none;
+  -webkit-mask-image: linear-gradient(to bottom, black 70%, transparent);
+  mask-image: linear-gradient(to bottom, black 70%, transparent);
+}
+
+.heroBackdrop span {
+  position: absolute;
+  width: clamp(18rem, 42vw, 34rem);
+  aspect-ratio: 1;
+  border-radius: 50%;
+  filter: blur(70px);
+  opacity: 0.55;
+  will-change: transform;
+}
+
+.heroBackdrop span:nth-child(1) {
+  top: 2%;
+  right: 6%;
+  background: color-mix(in srgb, var(--sun) 70%, transparent);
+  animation: drift-a 19s ease-in-out infinite alternate;
+}
+
+.heroBackdrop span:nth-child(2) {
+  top: 30%;
+  right: 28%;
+  background: color-mix(in srgb, var(--sky) 60%, transparent);
+  animation: drift-b 23s ease-in-out infinite alternate;
+}
+
+.heroBackdrop span:nth-child(3) {
+  bottom: 0;
+  left: 4%;
+  width: clamp(14rem, 30vw, 24rem);
+  background: color-mix(in srgb, var(--coral) 45%, transparent);
+  animation: drift-c 27s ease-in-out infinite alternate;
+}
+
+@keyframes drift-a {
+  to { transform: translate(-14%, 18%) scale(1.15); }
+}
+
+@keyframes drift-b {
+  to { transform: translate(22%, -14%) scale(0.85); }
+}
+
+@keyframes drift-c {
+  to { transform: translate(30%, -20%) scale(1.2); }
+}
+
+/* A glow that follows the pointer (--px/--py come from HeroStage), shown only while hovering. */
+.hero::after {
   content: '';
   position: absolute;
   z-index: -1;
   inset: 0;
-  background: radial-gradient(circle at 60% 10%, color-mix(in srgb, var(--sun) 14%, transparent), transparent 60%);
+  background: radial-gradient(
+    28rem circle at calc(50% + var(--px, 0) * 50%) calc(50% + var(--py, 0) * 50%),
+    color-mix(in srgb, var(--action) 10%, transparent),
+    transparent 70%
+  );
+  opacity: 0;
   pointer-events: none;
+  transition: opacity 500ms ease;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .hero:hover::after {
+    opacity: 1;
+  }
 }
 
 .heroLayout {
@@ -201,7 +265,7 @@
   margin-inline: auto;
   width: 100%;
   display: grid;
-  grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr);
   align-items: center;
   gap: clamp(2.5rem, 5vw, 4.5rem);
 }
@@ -215,7 +279,7 @@
 
 .heroTitle {
   margin: 0;
-  font-size: clamp(2.75rem, 5vw, 4.5rem);
+  font-size: clamp(2.75rem, 5.5vw, 5rem);
   font-weight: 800;
   line-height: 1.05;
   letter-spacing: -0.035em;
@@ -231,13 +295,13 @@
 }
 
 .heroTitle .clipLine + .clipLine > span {
-  color: var(--sun);
+  color: var(--action);
 }
 
 .heroSubline {
   max-width: 42ch;
   margin: 0;
-  color: color-mix(in srgb, var(--nav-ink) 90%, transparent);
+  color: var(--ink-muted);
   font-size: clamp(1.125rem, 1.4vw, 1.3rem);
   font-weight: 500;
   line-height: 1.6;
@@ -255,7 +319,32 @@
   animation: rise 900ms var(--expo) 560ms both;
 }
 
-/* The illustration breathes freely without a rigid nested box */
+/* The shared pills are drawn for dark bands; on the page they take the action colors. */
+.hero .pillLight {
+  background: var(--action);
+  color: var(--action-ink);
+}
+
+.hero .pillLight:hover {
+  background: var(--action-hover);
+  color: var(--action-ink);
+}
+
+.hero .pillGhost {
+  border-color: var(--edge);
+  background: color-mix(in srgb, var(--surface) 60%, transparent);
+  color: var(--ink);
+}
+
+.hero .pillGhost:hover {
+  background: var(--surface);
+}
+
+.hero .pillLight:focus-visible,
+.hero .pillGhost:focus-visible {
+  outline-color: var(--focus);
+}
+
 .heroArt {
   min-width: 0;
   max-width: 36rem;
@@ -267,7 +356,6 @@
   justify-content: center;
   translate: 0 calc((var(--p, 0.5) - 0.5) * -1.5rem);
   animation: rise 1000ms var(--expo) 650ms both;
-  filter: drop-shadow(0 1.75rem 3.5rem color-mix(in srgb, black 30%, transparent));
 }
 
 @keyframes rise {
@@ -653,7 +741,8 @@
 /* The hero entrance waits under the curtain until it lifts. */
 .page:not([data-ready]) .heroTitle .clipLine > span,
 .page:not([data-ready]) .heroCopy > *,
-.page:not([data-ready]) .heroArt {
+.page:not([data-ready]) .heroArt,
+.page:not([data-ready]) .heroArt * {
   animation-play-state: paused;
 }
 
@@ -1119,6 +1208,10 @@
   .heroArt,
   .ghostWord {
     translate: none;
+  }
+
+  .heroBackdrop span {
+    animation: none;
   }
 
   .ghost.clipIn .clipLine > span,
