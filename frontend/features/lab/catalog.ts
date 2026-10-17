@@ -86,6 +86,13 @@ export const LAB_ITEMS: readonly LabItem[] = [
     grades: { en: 'Grade 11', vi: 'Lớp 11' },
   },
   {
+    kind: 'damped-pendulum',
+    name: { en: 'Damped pendulum 3D', vi: 'Dao động tắt dần của con lắc đơn 3D' },
+    subject: 'physics',
+    blurb: { en: 'A pen on the bob draws the damped oscillation on a moving plate.', vi: 'Bút gắn ở vật nặng vẽ đồ thị dao động tắt dần trên tấm nhựa chuyển động đều.' },
+    grades: { en: 'Grade 11', vi: 'Lớp 11' },
+  },
+  {
     kind: 'wave-3d',
     name: { en: 'Water waves 3D', vi: 'Sóng trên mặt nước 3D' },
     subject: 'physics',

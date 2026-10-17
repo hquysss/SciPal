@@ -85,3 +85,9 @@
   .bump .chip, .bump .cell { animation: bump 240ms cubic-bezier(0.34, 1.56, 0.64, 1); }
 }
 @keyframes bump { 40% { transform: scale(1.15); } }
+
+/* A visible copy and an invisible copy of the largest state share one cell, so the box keeps its final size from the first step. */
+.stack { display: grid; }
+.stack > * { grid-area: 1 / 1; min-width: 0; }
+.ghost { visibility: hidden; pointer-events: none; }
+.ghostText::before { content: attr(data-text); }

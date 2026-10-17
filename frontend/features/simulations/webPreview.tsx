@@ -43,10 +43,10 @@ export function applyStep(doc: Document, o: { steps: WebStep[]; at: number; html
   });
   doc.querySelectorAll('[data-sp-on]').forEach((el) => el.removeAttribute('data-sp-on'));
   const step = steps[at];
-  if (!step || !o.glow) return 0;
+  if (!step) return 0;
   try {
     const hit = doc.querySelectorAll(step.select);
-    [...hit].slice(0, MAX_GLOWING).forEach((el) => el.setAttribute('data-sp-on', ''));
+    if (o.glow) [...hit].slice(0, MAX_GLOWING).forEach((el) => el.setAttribute('data-sp-on', ''));
     return hit.length;
   } catch {
     return 0;
@@ -108,7 +108,7 @@ function WebPreviewView({ config, lang }: SimulationViewProps<'web-preview'>) {
     if (!doc || !doc.documentElement) return;
     const style = holder.current ? getComputedStyle(holder.current) : null;
     const accent = style?.getPropertyValue('--accent').trim() || style?.getPropertyValue('--action').trim();
-    setMatches(applyStep(doc, { steps, at, htmlCount, accent, glow: !editing }));
+    setMatches(applyStep(doc, { steps, at, htmlCount, accent, glow: !editing && !last }));
   }, [steps, at, htmlCount, editing]);
 
   useEffect(apply, [apply, srcdoc]);
