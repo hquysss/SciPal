@@ -17,7 +17,18 @@ interface Topic {
   id: string;
   name_en: string;
   name_vi: string;
+  sort_order?: number;
   lessons: Lesson[];
+}
+
+function lessonDisplayNumber(lesson: Lesson, fallbackIndex: number): number {
+  const match = lesson.title_vi.match(/^(?:Bài|Lesson)\s*(\d+)/i) ?? lesson.title_en.match(/^(?:Bài|Lesson)\s*(\d+)/i);
+  if (match) {
+    const parsed = parseInt(match[1], 10);
+    if (!Number.isNaN(parsed) && parsed > 0) return parsed;
+  }
+  if (lesson.sort_order && lesson.sort_order > 0) return lesson.sort_order;
+  return fallbackIndex;
 }
 
 /**
@@ -34,6 +45,7 @@ export function TopicAccordion({ topics, subjectSlug }: { topics: Topic[]; subje
       {topics.map((topic, topicIdx) => {
         const isOpen = open === topic.id;
         const panelId = `topic-${topic.id}`;
+        const topicNumber = topic.sort_order && topic.sort_order > 0 ? topic.sort_order : topicIdx + 1;
         return (
           <section key={topic.id} className="overflow-hidden rounded-xl border border-line bg-surface">
             <h3>
@@ -45,11 +57,11 @@ export function TopicAccordion({ topics, subjectSlug }: { topics: Topic[]; subje
                 aria-controls={panelId}
               >
                 <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-action text-sm font-bold text-action-ink">
-                  {topicIdx + 1}
+                  {topicNumber}
                 </span>
                 <span className="flex-1">
                   <span className="block text-xs font-semibold uppercase tracking-widest text-action">
-                    {t({ en: 'Topic', vi: 'Chủ đề' })} {topicIdx + 1}
+                    {t({ en: 'Topic', vi: 'Chủ đề' })} {topicNumber}
                   </span>
                   <span className="block text-lg font-bold leading-snug text-ink">{lang === 'en' ? topic.name_en : topic.name_vi}</span>
                   <span className="block text-sm text-ink-muted">
@@ -82,7 +94,9 @@ export function TopicAccordion({ topics, subjectSlug }: { topics: Topic[]; subje
                         href={`/${subjectSlug}/${lesson.slug}`}
                         className="flex min-h-11 items-center gap-3 rounded-lg px-3 py-2.5 transition-colors hover:bg-surface-sunken focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-focus"
                       >
-                        <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md border border-line text-xs font-semibold text-ink-muted">{lessonIdx + 1}</span>
+                        <span className="flex h-6 min-w-6 shrink-0 items-center justify-center rounded-md border border-line px-1 text-xs font-semibold tabular-nums text-ink-muted">
+                          {lessonDisplayNumber(lesson, lessonIdx + 1)}
+                        </span>
                         <span className="flex-1">
                           <span className="block text-sm font-semibold text-ink">{lang === 'en' ? lesson.title_en : lesson.title_vi}</span>
                           <span className="block text-sm text-ink-muted">{lang === 'en' ? lesson.title_vi : lesson.title_en}</span>

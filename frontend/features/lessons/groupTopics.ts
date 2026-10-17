@@ -53,7 +53,13 @@ export function groupTopicsByGrade(topics: TopicRow[]): GradeGroup[] {
       grade,
       topics: [...byTopic.values()].map((topic) => ({
         ...topic,
-        lessons: [...topic.lessons].sort((a, b) => a.sort_order - b.sort_order),
+        lessons: [...topic.lessons].sort((a, b) => {
+          if (a.sort_order !== b.sort_order) return a.sort_order - b.sort_order;
+          const numA = parseInt(a.title_vi.match(/^(?:Bài|Lesson)\s*(\d+)/i)?.[1] ?? a.title_en.match(/^(?:Bài|Lesson)\s*(\d+)/i)?.[1] ?? '0', 10);
+          const numB = parseInt(b.title_vi.match(/^(?:Bài|Lesson)\s*(\d+)/i)?.[1] ?? b.title_en.match(/^(?:Bài|Lesson)\s*(\d+)/i)?.[1] ?? '0', 10);
+          if (numA !== numB) return numA - numB;
+          return a.title_vi.localeCompare(b.title_vi);
+        }),
       })),
     }));
 }

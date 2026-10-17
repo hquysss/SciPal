@@ -69,6 +69,7 @@ export function planNewTopic(
   let slug = base;
   for (let suffix = 2; taken.has(slug); suffix += 1) slug = `${base}-${suffix}`;
 
-  const sortOrder = sameGrade.length > 0 ? Math.max(...sameGrade.map((topic) => topic.sort_order)) + 1 : 0;
+  const topicNumMatch = input.name_vi.match(/^(?:Chủ đề|Topic)\s*(\d+)/i) ?? input.name_en.match(/^(?:Chủ đề|Topic)\s*(\d+)/i);
+  const sortOrder = topicNumMatch ? parseInt(topicNumMatch[1], 10) : (sameGrade.length > 0 ? Math.max(...sameGrade.map((topic) => topic.sort_order)) + 1 : 0);
   return { kind: 'new', slug, sort_order: sortOrder };
 }

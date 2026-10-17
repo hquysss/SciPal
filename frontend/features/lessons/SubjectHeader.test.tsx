@@ -48,4 +48,23 @@ describe('TopicAccordion', () => {
     expect(html).not.toContain('→');
     expect(countRawColors(html).total).toBe(0);
   });
+
+  it('uses topic sort_order and extracts lesson number when present', () => {
+    lang = 'vi';
+    const customTopics = [
+      {
+        id: 't5',
+        name_en: 'Problem solving with computers',
+        name_vi: 'Giải quyết vấn đề với sự trợ giúp của máy tính',
+        sort_order: 5,
+        lessons: [
+          { id: 'l19', slug: 'cau-lenh-re-nhanh-if', title_en: 'Lesson 19. The if branching statement', title_vi: 'Bài 19. Câu lệnh rẽ nhánh if', sort_order: 19 },
+        ],
+      },
+    ];
+    const html = renderToStaticMarkup(<TopicAccordion topics={customTopics} subjectSlug="informatics" />);
+    expect(html).toContain('Chủ đề 5');
+    expect(html).toContain('>19<');
+    expect(html).toContain('Bài 19. Câu lệnh rẽ nhánh if');
+  });
 });
