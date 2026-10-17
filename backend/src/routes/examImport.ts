@@ -419,7 +419,8 @@ export const examImportRoutes: FastifyPluginAsync = async (app) => {
           return { type: 'quiz', question_id: questionIds.get(key)! };
         });
         const checked = BlockSchema.array().safeParse(blocks);
-        if (!checked.success) return reply.code(400).send({ error: `Bài "${lesson.title.vi}" có khối không hợp lệ.` });
+        const numMatch = lesson.title.vi.match(/^(?:Bài|Lesson)\s*(\d+)/i) ?? lesson.title.en.match(/^(?:Bài|Lesson)\s*(\d+)/i);
+        const sortOrder = numMatch ? parseInt(numMatch[1], 10) : 0;
 
         lessonRows.push({
           id: lessonId,
@@ -430,6 +431,7 @@ export const examImportRoutes: FastifyPluginAsync = async (app) => {
           title_vi: lesson.title.vi,
           grade: lesson.grade,
           blocks: checked.data,
+          sort_order: sortOrder,
           status: lessonStatus,
           created_by: user.id,
           ...(publish ? { published_at: now, reviewed_by: user.id, reviewed_at: now } : {}),
