@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Pause, Play, RotateCcw, SkipBack, SkipForward, TriangleAlert } from 'lucide-react';
 import { CodePanel } from '../../components/code/CodePanel';
 import { useShellDark } from '../../lib/theme/useShellDark';
@@ -36,6 +36,39 @@ function Variable({ name, value, changed }: { name: string; value: Frame['vars']
   );
 }
 
+function Frames({ step, prev, t }: { step: TraceStep; prev?: TraceStep; t: ReturnType<typeof pick> }) {
+  const mainName = t({ en: 'Main program', vi: 'Chương trình chính' });
+  const frames = [...step.frames].reverse();
+  return (
+    <>
+      {frames.map((frame, k) => {
+        const before = prev?.frames.find((f) => f.name === frame.name);
+        const entries = Object.entries(frame.vars);
+        return (
+          <section key={`${frame.name}-${frames.length - k}`} className={styles.frame} data-active={k === 0 || undefined} aria-label={frame.name === '<module>' ? mainName : t({ en: `Function ${frame.name}`, vi: `Hàm ${frame.name}` })}>
+            <p className={styles.frameName}>{frame.name === '<module>' ? mainName : t({ en: `Function ${frame.name}`, vi: `Hàm ${frame.name}` })}</p>
+            {entries.length === 0 ? (
+              <p className={styles.empty}>{t({ en: 'No variables yet.', vi: 'Chưa có biến nào.' })}</p>
+            ) : (
+              <ul className={styles.list}>
+                {entries.map(([name, value]) => (
+                  <Variable key={`${name}=${value.repr}`} name={name} value={value} changed={!!prev && before?.vars[name]?.repr !== value.repr} />
+                ))}
+              </ul>
+            )}
+          </section>
+        );
+      })}
+    </>
+  );
+}
+
+/** The step that draws the most variable rows: its layout reserves the space so the box never grows mid-run. */
+function heaviestStep(steps: TraceStep[]): TraceStep {
+  const weight = (st: TraceStep) => st.frames.reduce((n, f) => n + 3 + Object.values(f.vars).reduce((m, v) => m + (v.items ? 2 : 1), 0), 0);
+  return steps.reduce((best, st) => (weight(st) > weight(best) ? st : best), steps[0]!);
+}
+
 function CodeTraceView({ config, lang }: SimulationViewProps<'code-trace'>) {
   const t = pick(lang);
   const dark = useShellDark();
@@ -59,8 +92,9 @@ function CodeTraceView({ config, lang }: SimulationViewProps<'code-trace'>) {
   }, [playing, last, at, speed]);
 
   const text = screenText(steps, at);
-  const mainName = t({ en: 'Main program', vi: 'Chương trình chính' });
-  const frames = [...step.frames].reverse();
+  const lastStep = steps[steps.length - 1]!;
+  const finalText = useMemo(() => screenText(steps, steps.length - 1), [steps]);
+  const tallest = useMemo(() => heaviestStep(steps), [steps]);
   const note = stepNote(prev, step);
 
   return (
@@ -81,31 +115,23 @@ function CodeTraceView({ config, lang }: SimulationViewProps<'code-trace'>) {
         />
         <div className={styles.side}>
           <h4 className={styles.title}>{t({ en: 'Variables', vi: 'Biến' })}</h4>
-          <div className={styles.frames}>
-            {frames.map((frame, k) => {
-              const before = prev?.frames.find((f) => f.name === frame.name);
-              const entries = Object.entries(frame.vars);
-              return (
-                <section key={`${frame.name}-${frames.length - k}`} className={styles.frame} data-active={k === 0 || undefined} aria-label={frame.name === '<module>' ? mainName : t({ en: `Function ${frame.name}`, vi: `Hàm ${frame.name}` })}>
-                  <p className={styles.frameName}>{frame.name === '<module>' ? mainName : t({ en: `Function ${frame.name}`, vi: `Hàm ${frame.name}` })}</p>
-                  {entries.length === 0 ? (
-                    <p className={styles.empty}>{t({ en: 'No variables yet.', vi: 'Chưa có biến nào.' })}</p>
-                  ) : (
-                    <ul className={styles.list}>
-                      {entries.map(([name, value]) => (
-                        <Variable key={`${name}=${value.repr}`} name={name} value={value} changed={!!prev && before?.vars[name]?.repr !== value.repr} />
-                      ))}
-                    </ul>
-                  )}
-                </section>
-              );
-            })}
+          <div className={styles.stack}>
+            <div className={`${styles.frames} ${styles.ghost}`} aria-hidden="true" inert>
+              <Frames step={tallest} t={t} />
+            </div>
+            <div className={styles.frames}>
+              <Frames step={step} prev={prev} t={t} />
+            </div>
           </div>
           <h4 className={styles.title}>{t({ en: 'Screen', vi: 'Màn hình' })}</h4>
-          <pre className={styles.screen} data-dark={dark} aria-label={t({ en: 'Screen', vi: 'Màn hình' })}>
-            {text || ' '}
-            {last && step.error && <span className={styles.errorLine}>{step.error}</span>}
-          </pre>
+          <div className={styles.stack}>
+            <pre className={`${styles.screen} ${styles.ghost} ${styles.ghostText}`} data-dark={dark} data-text={`${finalText}${lastStep.error ? `
+${lastStep.error}` : ''}` || ' '} aria-hidden="true" />
+            <pre className={styles.screen} data-dark={dark} aria-label={t({ en: 'Screen', vi: 'Màn hình' })}>
+              {text || ' '}
+              {last && step.error && <span className={styles.errorLine}>{step.error}</span>}
+            </pre>
+          </div>
         </div>
       </div>
       <p aria-live="polite" className="min-h-10 text-sm text-ink">
