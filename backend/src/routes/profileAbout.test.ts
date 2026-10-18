@@ -74,6 +74,23 @@ describe('GET /api/profile/:user_id', () => {
     expect((await get(db, 'me')).json()).toMatchObject({ is_me: true, relation: 'me', school: 'THPT B', show_school: false, streak: { current: 0, best: 0 } });
   });
 
+  it('adds the all-time XP rank, and leaves it null when the lookup fails or the person has no XP', async () => {
+    const db = fakeDb({ 'profiles.select': [row()], ...others(null) });
+    (db as any).rpc = async (fn: string, args: object) => {
+      expect([fn, args]).toEqual(['xp_rank_of', { p_user: OTHER }]);
+      return { data: [{ rank: '3', xp: '120', week_rank: '1' }], error: null };
+    };
+    expect((await get(db)).json().rank).toEqual({ position: 3, xp: 120, week: 1 });
+    const none = fakeDb({ 'profiles.select': [row()], ...others(null) });
+    (none as any).rpc = async () => ({ data: [], error: null });
+    expect((await get(none)).json().rank).toBeNull();
+    const broken = fakeDb({ 'profiles.select': [row()], ...others(null) });
+    (broken as any).rpc = async () => ({ data: null, error: { message: 'missing function' } });
+    const res = await get(broken);
+    expect(res.statusCode).toBe(200);
+    expect(res.json().rank).toBeNull();
+  });
+
   it('404 for an unknown or malformed id', async () => {
     expect((await get(fakeDb({ 'profiles.select': [{ data: null }] }))).statusCode).toBe(404);
     expect((await get(fakeDb({}), 'nope')).statusCode).toBe(404);

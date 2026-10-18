@@ -19,7 +19,7 @@ import {
   School,
 } from 'lucide-react';
 import { useLanguage } from '@scipal/hooks';
-import { Badge } from '../../components/ui/badge';
+import { ProfileBadges } from './RoleBadge';
 import { buttonVariants } from '../../components/ui/button';
 import { BadgeShowcase } from './BadgeShowcase';
 import { ProfileEditor } from './ProfileEditor';
@@ -90,7 +90,7 @@ export function ProfileCard({ displayName, role, email, joinedAt, avatarUrl, cov
   const [editing, setEditing] = useState(false);
   const [tab, setTab] = useState<'shortcuts' | 'badges'>('shortcuts');
   // Grade, school and bio come from the community profile; the card shows without them until they load.
-  const [about, setAbout] = useState<Pick<PublicProfile, 'grade' | 'school' | 'bio'> | null>(null);
+  const [about, setAbout] = useState<Pick<PublicProfile, 'grade' | 'school' | 'bio' | 'rank'> | null>(null);
 
   useEffect(() => {
     let live = true;
@@ -110,13 +110,6 @@ export function ProfileCard({ displayName, role, email, joinedAt, avatarUrl, cov
       .map((w) => w[0])
       .join('')
       .toUpperCase() || 'SP';
-
-  const roleBadge =
-    role === 'admin'
-      ? { variant: 'default' as const, label: t({ en: 'Admin', vi: 'Quản trị viên' }) }
-      : role === 'teacher'
-        ? { variant: 'outline' as const, label: t({ en: 'Teacher', vi: 'Giáo viên' }) }
-        : { variant: 'secondary' as const, label: t({ en: 'Student', vi: 'Học sinh' }) };
 
   const joined = joinedAt ? new Date(joinedAt) : null;
   const joinedText = joined && !Number.isNaN(joined.getTime())
@@ -142,7 +135,7 @@ export function ProfileCard({ displayName, role, email, joinedAt, avatarUrl, cov
         initials={initials}
         avatarUrl={avatarUrl}
         coverUrl={coverUrl}
-        badge={<Badge variant={roleBadge.variant}>{roleBadge.label}</Badge>}
+        badge={<ProfileBadges role={role} weekRank={about?.rank?.week} />}
         handle={email}
         bio={about?.bio}
         meta={meta}
