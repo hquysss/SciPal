@@ -18,6 +18,7 @@ import { HowItWorks } from './HowItWorks';
 import { TutorSection } from './TutorSection';
 import { PricingSection } from './PricingSection';
 import { FeaturesSection } from './FeaturesSection';
+import { CommunitySection } from './CommunitySection';
 import { FaqSection } from './FaqSection';
 import { InstallAppSection } from './InstallAppSection';
 import { useCountUp, useInView } from './countUp';
@@ -505,6 +506,7 @@ export function LandingPage({ level, catalog, onChangeLevel, pricing = null, sho
             <HowItWorks level={level} />
             <TutorSection href="/tutor" level={level} />
             <FeaturesSection />
+            <CommunitySection />
             <InstallAppSection />
             {pricing && <PricingSection catalog={pricing} />}
             <FaqSection />
