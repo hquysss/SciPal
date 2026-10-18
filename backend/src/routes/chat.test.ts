@@ -347,3 +347,62 @@ describe('POST /api/chat/reports (a whole conversation)', () => {
     expect((await report(db, { community: true, reason: 'Spam' })).statusCode).toBe(409);
   });
 });
+
+describe('grade rooms, replies and reactions', () => {
+  const PARENT = '88888888-8888-4888-8888-888888888888';
+  const student = (grade: number | null, role = 'student') => ({ data: { chat_banned: false, display_name: 'An', grade, role } });
+  const send = (db: ReturnType<typeof fakeDb>, body: object, user?: object) =>
+    build({ db, user: user as any }).inject({ method: 'POST', url: '/api/chat/messages', payload: body });
+  const gradeDb = (profile: object, extra: Record<string, any[]> = {}) =>
+    fakeDb({ 'profiles.select': [profile as any], 'chat_messages.select': [{ count: 0 }], 'chat_messages.insert': [{ data: { id: MSG } }], ...extra });
+
+  it('a student enters only their own grade room', async () => {
+    expect((await send(gradeDb(student(11)), { room_grade: 11, body: 'hi' })).statusCode).toBe(201);
+    expect((await send(gradeDb(student(11)), { room_grade: 12, body: 'hi' })).statusCode).toBe(403);
+    expect((await send(gradeDb(student(null)), { room_grade: 10, body: 'hi' })).statusCode).toBe(403);
+  });
+
+  it('a teacher enters every grade room, and an unknown grade is rejected', async () => {
+    const db = gradeDb(student(null, 'teacher'));
+    expect((await send(db, { room_grade: 12, body: 'hi' })).statusCode).toBe(201);
+    expect(db.calls.find((c) => c.op === 'insert')!.chain[0][1]).toEqual([expect.objectContaining({ room_grade: 12 })]);
+    expect((await send(gradeDb(student(10)), { room_grade: 9, body: 'hi' })).statusCode).toBe(400);
+    expect((await send(gradeDb(student(10)), { room_grade: 10, community: true, body: 'hi' })).statusCode).toBe(400);
+  });
+
+  it('a reply must point at a message of the same room', async () => {
+    const good = gradeDb(student(10), { 'chat_messages.select': [{ count: 0 }, { data: { id: PARENT } }] });
+    expect((await send(good, { community: true, body: 'hi', reply_to: PARENT })).statusCode).toBe(201);
+    expect(good.calls.find((c) => c.op === 'insert')!.chain[0][1]).toEqual([expect.objectContaining({ reply_to: PARENT })]);
+    const elsewhere = gradeDb(student(10), { 'chat_messages.select': [{ count: 0 }, { data: null }] });
+    expect((await send(elsewhere, { community: true, body: 'hi', reply_to: PARENT })).statusCode).toBe(400);
+    expect((await send(gradeDb(student(10)), { community: true, body: 'hi', reply_to: 'nope' })).statusCode).toBe(400);
+  });
+
+  const react = (db: ReturnType<typeof fakeDb>, body: object) =>
+    build({ db }).inject({ method: 'POST', url: '/api/chat/reactions', payload: body });
+  const msg = (over: object = {}) => ({ data: { id: PARENT, community: false, room_grade: 10, class_id: null, friendship_id: null, ...over } });
+
+  it('reactions: toggles on, then off, for a readable message', async () => {
+    const on = fakeDb({ 'chat_messages.select': [msg()], 'profiles.select': [student(10)], 'chat_reactions.delete': [{ data: [] }], 'chat_reactions.insert': [{}] });
+    const res = await react(on, { message_id: PARENT, emoji: '👍' });
+    expect(res.statusCode).toBe(201);
+    expect(res.json()).toEqual({ on: true });
+    const off = fakeDb({ 'chat_messages.select': [msg()], 'profiles.select': [student(10)], 'chat_reactions.delete': [{ data: [{ message_id: PARENT }] }] });
+    expect((await react(off, { message_id: PARENT, emoji: '👍' })).json()).toEqual({ on: false });
+  });
+
+  it('reactions: 404 for another grade room, 400 for an emoji outside the set', async () => {
+    const other = fakeDb({ 'chat_messages.select': [msg({ room_grade: 12 })], 'profiles.select': [student(10)] });
+    expect((await react(other, { message_id: PARENT, emoji: '👍' })).statusCode).toBe(404);
+    expect((await react(fakeDb({}), { message_id: PARENT, emoji: '💩' })).statusCode).toBe(400);
+  });
+
+  it('GET /api/chat/rooms lists the grades a student can enter; POST /api/chat/grade validates', async () => {
+    const rooms = await build({ db: fakeDb({ 'profiles.select': [student(11)] }) }).inject({ method: 'GET', url: '/api/chat/rooms' });
+    expect(rooms.json()).toEqual({ grade: 11, grades: [11] });
+    const put = (body: object) => build({ db: fakeDb({ 'profiles.update': [{}] }) }).inject({ method: 'POST', url: '/api/chat/grade', payload: body });
+    expect((await put({ grade: 12 })).statusCode).toBe(200);
+    expect((await put({ grade: 9 })).statusCode).toBe(400);
+  });
+});

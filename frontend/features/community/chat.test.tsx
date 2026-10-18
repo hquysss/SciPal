@@ -2,7 +2,7 @@
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ChatPaneView } from './ChatPane';
-import { mergeMessages } from './useChatRoom';
+import { groupReactions, mergeMessages } from './useChatRoom';
 import type { ChatMessage } from './chatApi';
 
 vi.mock('@scipal/hooks', () => ({ useLanguage: () => ({ lang: 'vi', t: (o: { vi: string }) => o.vi }) }));
@@ -48,7 +48,7 @@ describe('ChatPaneView', () => {
     fireEvent.change(box, { target: { value: '  chào cả nhà  ' } });
     expect(send.disabled).toBe(false);
     fireEvent.submit(box.closest('form')!);
-    expect(h.onSend).toHaveBeenCalledWith('chào cả nhà');
+    expect(h.onSend).toHaveBeenCalledWith('chào cả nhà', undefined);
     await waitFor(() => expect(box.value).toBe(''));
   });
 
@@ -192,5 +192,37 @@ describe('messenger layout', () => {
     await act(async () => { finish(true); });
     expect((screen.getByRole('button', { name: 'Gửi' }) as HTMLButtonElement).disabled).toBe(true); // box is empty again
     expect(box.value).toBe('');
+  });
+});
+
+describe('replies and reactions', () => {
+  const a = msg('a', 'them', '2026-10-12T10:00:00Z', 'đề này khó');
+  const b = { ...msg('b', 'me', '2026-10-12T10:00:01Z', 'mình cũng thấy'), reply_to: 'a' };
+
+  it('groupReactions counts per emoji and marks the reader\'s own', () => {
+    const chips = groupReactions([
+      { message_id: 'a', user_id: 'me', emoji: '👍' }, { message_id: 'a', user_id: 'x', emoji: '👍' }, { message_id: 'a', user_id: 'x', emoji: '🔥' },
+    ], 'me');
+    expect(chips.a).toEqual([{ emoji: '👍', count: 2, mine: true }, { emoji: '🔥', count: 1, mine: false }]);
+  });
+
+  it('shows the replied-to message above a reply, and sends reply_to after pressing Trả lời', async () => {
+    const h = handlers();
+    render(<ChatPaneView messages={[a, b]} meId="me" {...h} />);
+    expect(screen.getByText('Tên them: đề này khó', { selector: 'p' })).toBeTruthy();
+    fireEvent.click(screen.getAllByRole('button', { name: 'Trả lời' })[0]);
+    fireEvent.change(screen.getByRole('textbox'), { target: { value: 'đúng rồi' } });
+    fireEvent.submit(screen.getByRole('textbox').closest('form')!);
+    expect(h.onSend).toHaveBeenCalledWith('đúng rồi', 'a');
+  });
+
+  it('picks an emoji and toggles an existing chip through onReact', () => {
+    const onReact = vi.fn();
+    render(<ChatPaneView messages={[a]} meId="me" {...handlers()} onReact={onReact} reactions={{ a: [{ emoji: '🔥', count: 2, mine: false }] }} />);
+    fireEvent.click(screen.getByRole('button', { name: 'Thả cảm xúc' }));
+    fireEvent.click(screen.getByRole('button', { name: '👍' }));
+    expect(onReact).toHaveBeenCalledWith('a', '👍');
+    fireEvent.click(screen.getByRole('button', { name: /🔥 2/ }));
+    expect(onReact).toHaveBeenCalledWith('a', '🔥');
   });
 });

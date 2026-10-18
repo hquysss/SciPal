@@ -1,14 +1,14 @@
 'use client';
 
 import { useEffect, useRef, useState, type ChangeEvent, type FormEvent } from 'react';
-import { ArrowLeft, Flag, ImagePlus, X } from 'lucide-react';
+import { ArrowLeft, Flag, ImagePlus, Reply, SmilePlus, X } from 'lucide-react';
 import { useLanguage } from '@scipal/hooks';
 import { createBrowserClient } from '@scipal/supabase';
 import { Alert } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Dialog } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
-import { blockUser, reportConversation, sendImage, sendMessage, type ChatMessage, type ChatTarget } from './chatApi';
+import { REACTIONS, blockUser, reactToMessage, reportConversation, sendImage, sendMessage, type ChatMessage, type ChatTarget, type ReactionChip } from './chatApi';
 import { groupMessages } from './chatLayout';
 import { SendButton } from './SendButton';
 import { useChatRoom } from './useChatRoom';
@@ -36,16 +36,19 @@ function Avatar({ name, className = 'h-8 w-8 text-sm' }: { name: string; classNa
   );
 }
 
-export function ChatPaneView({ messages, meId, onSend, onSendImage, onReport, onBlock, title, subtitle, onBack, showNames = true, now }: {
+export function ChatPaneView({ messages, meId, onSend, onSendImage, onReport, onBlock, onReact, reactions = {}, title, subtitle, onBack, showNames = true, now }: {
   messages: ChatMessage[];
   meId: string | null;
   /** Resolves true when the message went through, so the box can clear. */
-  onSend: (body: string) => Promise<boolean>;
+  onSend: (body: string, replyTo?: string) => Promise<boolean>;
   /** Present only where pictures are allowed (direct messages). */
   onSendImage?: (file: File, caption: string) => Promise<boolean>;
   /** Reports the whole conversation, not one message. */
   onReport: (reason: string) => void;
   onBlock: (userId: string) => void;
+  /** Toggles one emoji on a message; the picker is hidden where this is absent. */
+  onReact?: (messageId: string, emoji: string) => void;
+  reactions?: Record<string, ReactionChip[]>;
   title?: string;
   subtitle?: string;
   onBack?: () => void;
@@ -62,6 +65,8 @@ export function ChatPaneView({ messages, meId, onSend, onSendImage, onReport, on
   const [reporting, setReporting] = useState(false);
   const [confirmBlock, setConfirmBlock] = useState<string | null>(null);
   const [zoomed, setZoomed] = useState<string | null>(null);
+  const [replyTo, setReplyTo] = useState<ChatMessage | null>(null);
+  const [picking, setPicking] = useState<string | null>(null);
   const log = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -103,8 +108,9 @@ export function ChatPaneView({ messages, meId, onSend, onSendImage, onReport, on
           setFile(null);
           setDraft('');
         }
-      } else if (await onSend(body)) {
+      } else if (await onSend(body, replyTo?.id)) {
         setDraft('');
+        setReplyTo(null);
       }
     } finally {
       setSending(false);
@@ -112,6 +118,8 @@ export function ChatPaneView({ messages, meId, onSend, onSendImage, onReport, on
   };
 
   const groups = groupMessages(messages, now);
+  const byId = new Map(messages.map((m) => [m.id, m]));
+  const snippet = (m: ChatMessage) => m.body || t({ en: 'Picture', vi: 'Ảnh' });
 
   return (
     <div className="flex h-[70dvh] min-h-96 flex-col overflow-hidden rounded-2xl border border-line bg-surface">
@@ -155,10 +163,37 @@ export function ChatPaneView({ messages, meId, onSend, onSendImage, onReport, on
                               <img src={m.image_url} alt={t({ en: 'Picture', vi: 'Ảnh' })} loading="lazy" className="max-h-60 max-w-full cursor-zoom-in object-cover" />
                             </button>
                           )}
+                          {m.reply_to && (
+                            <p className="max-w-full truncate rounded-lg border-l-2 border-line bg-surface-sunken px-2 py-1 text-xs text-ink-muted">
+                              {byId.get(m.reply_to) ? `${byId.get(m.reply_to)!.sender_name}: ${snippet(byId.get(m.reply_to)!)}` : t({ en: 'Earlier message', vi: 'Tin trước đó' })}
+                            </p>
+                          )}
                           {m.body && (
                             <p className={`whitespace-pre-wrap break-words rounded-2xl px-3 py-2 text-sm ${corners} ${mine ? 'bg-action text-action-ink' : 'bg-surface-sunken text-ink'}`}>{m.body}</p>
                           )}
+                          {(reactions[m.id]?.length ?? 0) > 0 && (
+                            <span className="flex flex-wrap gap-1">
+                              {reactions[m.id].map((chip) => (
+                                <button key={chip.emoji} type="button" aria-pressed={chip.mine} disabled={!onReact} onClick={() => onReact?.(m.id, chip.emoji)}
+                                  className={`min-h-8 rounded-full border px-2 text-xs focus-visible:outline focus-visible:outline-2 focus-visible:outline-focus ${chip.mine ? 'border-action bg-surface-sunken font-bold' : 'border-line'}`}>
+                                  {chip.emoji} {chip.count}
+                                </button>
+                              ))}
+                            </span>
+                          )}
+                          {picking === m.id && onReact && (
+                            <span role="group" aria-label={t({ en: 'Pick a reaction', vi: 'Chọn cảm xúc' })} className="flex gap-1 rounded-full border border-line bg-surface px-2 py-1">
+                              {REACTIONS.map((emoji) => (
+                                <button key={emoji} type="button" aria-label={emoji} onClick={() => { setPicking(null); onReact(m.id, emoji); }}
+                                  className="min-h-8 min-w-8 rounded-full hover:bg-surface-sunken focus-visible:outline focus-visible:outline-2 focus-visible:outline-focus">{emoji}</button>
+                              ))}
+                            </span>
+                          )}
                         </div>
+                        <span className="flex shrink-0 opacity-0 transition-opacity focus-within:opacity-100 group-hover:opacity-100 [@media(hover:none)]:opacity-100">
+                          <Button type="button" variant="ghost" size="icon" className="size-8" aria-label={t({ en: 'Reply', vi: 'Trả lời' })} onClick={() => setReplyTo(m)}><Reply aria-hidden="true" /></Button>
+                          {onReact && <Button type="button" variant="ghost" size="icon" className="size-8" aria-label={t({ en: 'React', vi: 'Thả cảm xúc' })} onClick={() => setPicking(picking === m.id ? null : m.id)}><SmilePlus aria-hidden="true" /></Button>}
+                        </span>
                         {!mine && (
                           <span className="flex shrink-0 opacity-0 transition-opacity focus-within:opacity-100 group-hover:opacity-100 [@media(hover:none)]:opacity-100">
                             {confirmBlock === m.sender_id
@@ -177,6 +212,12 @@ export function ChatPaneView({ messages, meId, onSend, onSendImage, onReport, on
       </div>
 
       <div className="flex flex-col gap-2 border-t border-line px-3 py-3">
+        {replyTo && (
+          <div className="flex items-center gap-2 rounded-lg bg-surface-sunken px-3 py-1 text-xs text-ink-muted">
+            <span className="min-w-0 flex-1 truncate">{t({ en: 'Replying to', vi: 'Trả lời' })} {replyTo.sender_name}: {snippet(replyTo)}</span>
+            <Button type="button" variant="ghost" size="icon" className="size-8" aria-label={t({ en: 'Cancel reply', vi: 'Huỷ trả lời' })} onClick={() => setReplyTo(null)}><X aria-hidden="true" /></Button>
+          </div>
+        )}
         {fileError && <Alert tone="danger">{t(fileError)}</Alert>}
         {preview && (
           <div className="flex items-center gap-3">
@@ -239,8 +280,8 @@ export function ChatPane({ target, title, subtitle, onBack, onBlocked }: {
   onBlocked?: (userId: string) => void;
 }) {
   const { t } = useLanguage();
-  const { messages, status } = useChatRoom(target);
   const [meId, setMeId] = useState<string | null>(null);
+  const { messages, reactions, status, refreshReactions } = useChatRoom(target, meId);
   const [notice, setNotice] = useState<{ tone: 'danger' | 'info'; text: Bilingual } | null>(null);
   const [blocked, setBlocked] = useState<string[]>([]);
 
@@ -248,8 +289,8 @@ export function ChatPane({ target, title, subtitle, onBack, onBlocked }: {
     createBrowserClient().auth.getSession().then(({ data }) => setMeId(data.session?.user.id ?? null)).catch(() => undefined);
   }, []);
 
-  const send = async (body: string) => {
-    const result = await sendMessage(target, body);
+  const send = async (body: string, replyTo?: string) => {
+    const result = await sendMessage(target, body, replyTo);
     setNotice(result.ok ? null : { tone: 'danger', text: result.error });
     return result.ok;
   };
@@ -267,6 +308,11 @@ export function ChatPane({ target, title, subtitle, onBack, onBlocked }: {
     setNotice(result.ok
       ? { tone: 'info', text: { en: 'Thanks, we will take a look.', vi: 'Cảm ơn bạn, chúng tôi sẽ xem xét.' } }
       : { tone: 'danger', text: result.error });
+  };
+  const react = async (messageId: string, emoji: string) => {
+    const result = await reactToMessage(messageId, emoji);
+    if (!result.ok) return setNotice({ tone: 'danger', text: result.error });
+    refreshReactions();
   };
   const block = async (userId: string) => {
     const result = await blockUser(userId);
@@ -287,6 +333,8 @@ export function ChatPane({ target, title, subtitle, onBack, onBlocked }: {
         onSendImage={sendPicture}
         onReport={(reason) => void report(reason)}
         onBlock={(id) => void block(id)}
+        onReact={(id, emoji) => void react(id, emoji)}
+        reactions={reactions}
         title={title}
         subtitle={subtitle}
         onBack={onBack}

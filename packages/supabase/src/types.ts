@@ -799,6 +799,7 @@ export interface Database {
           cover_url: string | null;
           chat_banned: boolean;
           preferred_education_level: EducationLevel | null;
+          grade: number | null;
           preferred_code_language: CodeLanguage | null;
           created_at: string;
         };
@@ -810,6 +811,7 @@ export interface Database {
           cover_url?: string | null;
           chat_banned?: boolean;
           preferred_education_level?: EducationLevel | null;
+          grade?: number | null;
           preferred_code_language?: CodeLanguage | null;
           created_at?: string;
         };
@@ -821,6 +823,7 @@ export interface Database {
           cover_url?: string | null;
           chat_banned?: boolean;
           preferred_education_level?: EducationLevel | null;
+          grade?: number | null;
           preferred_code_language?: CodeLanguage | null;
           created_at?: string;
         };
@@ -1102,6 +1105,8 @@ export interface Database {
           image_url: string | null;
           created_at: string;
           deleted_at: string | null;
+          room_grade: number | null;
+          reply_to: string | null;
         };
         Insert: {
           id?: string;
@@ -1115,6 +1120,8 @@ export interface Database {
           image_url?: string | null;
           created_at?: string;
           deleted_at?: string | null;
+          room_grade?: number | null;
+          reply_to?: string | null;
         };
         Update: {
           id?: string;
@@ -1128,6 +1135,8 @@ export interface Database {
           image_url?: string | null;
           created_at?: string;
           deleted_at?: string | null;
+          room_grade?: number | null;
+          reply_to?: string | null;
         };
         Relationships: [
           {
@@ -1156,6 +1165,20 @@ export interface Database {
             columns: ['sender_id'];
             isOneToOne: false;
             referencedRelation: 'profiles';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
+      chat_reactions: {
+        Row: { message_id: string; user_id: string; emoji: string; created_at: string };
+        Insert: { message_id: string; user_id: string; emoji: string; created_at?: string };
+        Update: { message_id?: string; user_id?: string; emoji?: string; created_at?: string };
+        Relationships: [
+          {
+            foreignKeyName: 'chat_reactions_message_id_fkey';
+            columns: ['message_id'];
+            isOneToOne: false;
+            referencedRelation: 'chat_messages';
             referencedColumns: ['id'];
           },
         ];

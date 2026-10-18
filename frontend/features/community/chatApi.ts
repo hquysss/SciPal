@@ -3,12 +3,23 @@ import { authoringCall, queryString, type ApiResult } from '../authoring/apiClie
 // Community chat from the backend (routes/chat.ts). Messages are read straight from Supabase under
 // RLS (useChatRoom); everything that writes goes through here.
 
-export type ChatTarget = { community: true } | { class_id: string } | { friendship_id: string };
+export type ChatTarget = { community: true } | { room_grade: number } | { class_id: string } | { friendship_id: string };
 export type ChatClass = { id: string; name: string };
-export type ChatMessage = { id: string; sender_id: string; sender_name: string; body: string; image_url: string | null; created_at: string };
+export type ChatMessage = { id: string; sender_id: string; sender_name: string; body: string; image_url: string | null; created_at: string; reply_to?: string | null };
+export const REACTIONS = ['👍', '❤️', '😂', '😮', '😢', '🔥'] as const;
+/** The count per emoji on one message, and whether the reader is one of them. */
+export type ReactionChip = { emoji: string; count: number; mine: boolean };
 
-export const sendMessage = (target: ChatTarget, body: string): Promise<ApiResult<{ id: string }>> =>
-  authoringCall('/api/chat/messages', 'POST', { ...target, body });
+export const sendMessage = (target: ChatTarget, body: string, replyTo?: string): Promise<ApiResult<{ id: string }>> =>
+  authoringCall('/api/chat/messages', 'POST', { ...target, body, ...(replyTo ? { reply_to: replyTo } : {}) });
+
+export const reactToMessage = (messageId: string, emoji: string): Promise<ApiResult<{ on: boolean }>> =>
+  authoringCall('/api/chat/reactions', 'POST', { message_id: messageId, emoji });
+
+/** The reader's grade (null until chosen) and the grade rooms they may enter. */
+export const getChatRooms = (): Promise<ApiResult<{ grade: number | null; grades: number[] }>> => authoringCall('/api/chat/rooms', 'GET');
+
+export const setChatGrade = (grade: number): Promise<ApiResult<{ grade: number }>> => authoringCall('/api/chat/grade', 'POST', { grade });
 
 /** A picture for a direct message, with an optional caption; the server checks and stores it. */
 export const sendImage = (friendshipId: string, file: File, caption: string): Promise<ApiResult<{ id: string; image_url: string }>> =>
