@@ -293,6 +293,19 @@ export const chatRoutes: FastifyPluginAsync = async (app) => {
     return reply.code(201).send({ on: true });
   });
 
+  // Who sent the messages on screen: the picture and the role next to the name. Public card data only.
+  app.get('/api/chat/senders', { preHandler: [requireUser] }, async (request, reply) => {
+    const supabase = app.supabase;
+    if (!supabase) return reply.code(503).send(unavailable);
+    const raw = (request.query as { ids?: unknown }).ids;
+    const ids = typeof raw === 'string' ? [...new Set(raw.split(',').filter((id) => UUID_PATTERN.test(id)))].slice(0, 100) : [];
+    if (ids.length === 0) return reply.send({ senders: [] });
+    const found = await supabase.from('profiles').select('id, avatar_url, role').in('id', ids);
+    if (found.error) return reply.code(500).send(failed);
+    const rows = (found.data ?? []) as Array<{ id: string; avatar_url: string | null; role: string | null }>;
+    return reply.send({ senders: rows.map((p) => ({ user_id: p.id, avatar_url: p.avatar_url, role: p.role === 'teacher' ? 'teacher' : 'student' })) });
+  });
+
   // Unsend: only the sender. The original goes to chat_recalls (service role only) before the row is cleared.
   app.post('/api/chat/messages/:id/recall', { preHandler: [requireUser] }, async (request, reply) => {
     const supabase = app.supabase;

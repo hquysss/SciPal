@@ -8,7 +8,7 @@ import { createBrowserClient } from '@scipal/supabase';
 import { Alert } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Dialog } from '@/components/ui/dialog';
-import { REACTIONS, blockUser, reactToMessage, recallMessage, reportConversation, sendImage, sendMessage, type ChatMessage, type ChatTarget, type ReactionChip } from './chatApi';
+import { REACTIONS, blockUser, reactToMessage, recallMessage, reportConversation, sendImage, sendMessage, type ChatMessage, type ChatSender, type ChatTarget, type ReactionChip } from './chatApi';
 import { groupMessages } from './chatLayout';
 import { SendButton } from './SendButton';
 import { useChatRoom } from './useChatRoom';
@@ -28,10 +28,13 @@ const REASONS: Bilingual[] = [
 /** The address was written by our own server, but only https ever reaches an <img> or a link. */
 const isHttps = (url: string | null): url is string => typeof url === 'string' && url.startsWith('https://');
 
-function Avatar({ name, className = 'size-10 text-sm' }: { name: string; className?: string }) {
+function Avatar({ name, url, className = 'size-10 text-sm' }: { name: string; url?: string | null; className?: string }) {
   return (
-    <span aria-hidden="true" className={`flex shrink-0 items-center justify-center rounded-xl bg-surface-sunken font-bold text-ink ${className}`}>
-      {name.trim().slice(0, 1).toUpperCase() || '?'}
+    <span aria-hidden="true" className={`flex shrink-0 items-center justify-center overflow-hidden rounded-xl bg-surface-sunken font-bold text-ink ${className}`}>
+      {isHttps(url ?? null)
+        // eslint-disable-next-line @next/next/no-img-element -- media store image
+        ? <img src={url as string} alt="" className="size-full object-cover" />
+        : name.trim().slice(0, 1).toUpperCase() || '?'}
     </span>
   );
 }
@@ -60,7 +63,7 @@ function MessageSkeleton({ rows = SKELETON.length }: { rows?: number }) {
   );
 }
 
-export function ChatPaneView({ messages, meId, onSend, onSendImage, onReport, onBlock, onReact, onRecall, loading = false, hasOlder = false, loadingOlder = false, onLoadOlder, reactions = {}, title, subtitle, onBack, showNames = true, now }: {
+export function ChatPaneView({ messages, meId, onSend, onSendImage, onReport, onBlock, onReact, onRecall, senders = {}, loading = false, hasOlder = false, loadingOlder = false, onLoadOlder, reactions = {}, title, subtitle, onBack, showNames = true, now }: {
   messages: ChatMessage[];
   meId: string | null;
   /** Resolves true when the message went through, so the box can clear. */
@@ -75,6 +78,8 @@ export function ChatPaneView({ messages, meId, onSend, onSendImage, onReport, on
   reactions?: Record<string, ReactionChip[]>;
   /** Unsends one of your own messages; the menu item is hidden where this is absent. */
   onRecall?: (messageId: string) => void;
+  /** Picture and role by sender id; a sender not listed yet shows the plain initial. */
+  senders?: Record<string, ChatSender>;
   /** First load still running: skeleton bubbles instead of the empty note. */
   loading?: boolean;
   hasOlder?: boolean;
@@ -201,10 +206,19 @@ export function ChatPaneView({ messages, meId, onSend, onSendImage, onReport, on
               {group.timeLabel && <p className="mb-2 text-center text-xs font-medium text-ink-muted">{group.timeLabel}</p>}
               <div className={`flex items-start gap-4 ${mine ? 'flex-row-reverse' : ''}`}>
                 {mine
-                  ? <Avatar name={group.sender_name} />
-                  : <Link href={`/community/u/${group.sender_id}`} aria-label={group.sender_name} className="rounded-xl focus-visible:outline focus-visible:outline-2 focus-visible:outline-focus"><Avatar name={group.sender_name} /></Link>}
+                  ? <Avatar name={group.sender_name} url={senders[group.sender_id]?.avatar_url} />
+                  : <Link href={`/community/u/${group.sender_id}`} aria-label={group.sender_name} className="rounded-xl focus-visible:outline focus-visible:outline-2 focus-visible:outline-focus"><Avatar name={group.sender_name} url={senders[group.sender_id]?.avatar_url} /></Link>}
                 <div className={`flex min-w-0 max-w-[80%] flex-col gap-2 ${mine ? 'items-end' : 'items-start'}`}>
-                  {!mine && showNames && <Link href={`/community/u/${group.sender_id}`} className="-mb-1 text-xs font-semibold text-ink-muted hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-focus">{group.sender_name}</Link>}
+                  {!mine && showNames && (
+                    <span className="-mb-1 flex flex-wrap items-center gap-x-2">
+                      <Link href={`/community/u/${group.sender_id}`} className="text-sm font-bold text-ink hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-focus">{group.sender_name}</Link>
+                      {senders[group.sender_id] && (
+                        <span className={`rounded-full px-2 text-xs font-semibold ${senders[group.sender_id].role === 'teacher' ? 'bg-action text-action-ink' : 'border border-line text-ink-muted'}`}>
+                          {senders[group.sender_id].role === 'teacher' ? t({ en: 'Teacher', vi: 'Giáo viên' }) : t({ en: 'Student', vi: 'Học sinh' })}
+                        </span>
+                      )}
+                    </span>
+                  )}
                   {group.messages.map((m) => {
                     if (m.recalled_at) {
                       return (
@@ -215,7 +229,7 @@ export function ChatPaneView({ messages, meId, onSend, onSendImage, onReport, on
                     }
                     const chips = reactions[m.id] ?? [];
                     return (
-                      <div key={m.id} className={`chat-in group relative flex items-center gap-1 ${mine ? 'flex-row-reverse' : ''} ${chips.length > 0 ? 'mb-3' : ''}`}>
+                      <div key={m.id} className={`chat-in group relative flex items-center gap-1 ${mine ? 'flex-row-reverse' : ''}`}>
                         <div className={`relative flex min-w-0 flex-col gap-0.5 ${mine ? 'items-end' : 'items-start'}`}>
                           {picking === m.id && onReact && (
                             <span role="group" aria-label={t({ en: 'Pick a reaction', vi: 'Chọn cảm xúc' })}
@@ -239,19 +253,12 @@ export function ChatPaneView({ messages, meId, onSend, onSendImage, onReport, on
                           {m.body && (
                             <p className={`whitespace-pre-wrap break-words rounded-xl px-4 py-2 text-sm ${mine ? 'bg-action text-action-ink' : 'bg-surface-sunken text-ink'}`}>{m.body}</p>
                           )}
-                          {chips.length > 0 && (
-                            // Messenger-style: the reactions sit on the bubble's lower corner.
-                            <span className={`absolute -bottom-4 z-10 flex gap-0.5 ${mine ? 'left-2' : 'right-2'}`}>
-                              {chips.map((chip) => (
-                                <button key={`${chip.emoji}${chip.count}${chip.mine}`} type="button" aria-pressed={chip.mine} disabled={!onReact} onClick={() => onReact?.(m.id, chip.emoji)}
-                                  className={`chat-pop inline-flex min-h-7 items-center gap-0.5 rounded-full border bg-surface px-1.5 text-xs shadow-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-focus ${chip.mine ? 'border-action font-bold text-ink' : 'border-line text-ink-muted'}`}>
-                                  {chip.emoji} {chip.count}
-                                </button>
-                              ))}
-                            </span>
-                          )}
                         </div>
                         <span className={`relative flex shrink-0 items-center transition-opacity duration-150 ${picking === m.id || menuFor === m.id ? 'opacity-100' : 'opacity-0 focus-within:opacity-100 group-hover:opacity-100 [@media(hover:none)]:opacity-100'}`}>
+                          {chips.map((chip) => (
+                            <button key={chip.emoji} type="button" aria-pressed={chip.mine} disabled={!onReact} title={String(chip.count)} aria-label={`${chip.emoji} ${chip.count}`} onClick={() => onReact?.(m.id, chip.emoji)}
+                              className={`chat-pop grid size-8 place-items-center rounded-full text-base focus-visible:outline focus-visible:outline-2 focus-visible:outline-focus ${chip.mine ? 'bg-surface-sunken ring-1 ring-action' : 'hover:bg-surface-sunken'}`}>{chip.emoji}</button>
+                          ))}
                           {onReact && <Button type="button" variant="ghost" size="icon" className="size-8 min-h-8 rounded-full text-ink-muted" aria-label={t({ en: 'React', vi: 'Thả cảm xúc' })} aria-expanded={picking === m.id} onClick={() => { setMenuFor(null); setPicking(picking === m.id ? null : m.id); }}><SmilePlus aria-hidden="true" /></Button>}
                           <Button type="button" variant="ghost" size="icon" className="size-8 min-h-8 rounded-full text-ink-muted" aria-label={t({ en: 'Reply', vi: 'Trả lời' })} onClick={() => setReplyTo(m)}><Reply aria-hidden="true" /></Button>
                           {(mine ? onRecall : true) && (
@@ -359,7 +366,7 @@ export function ChatPane({ target, title, subtitle, onBack, onBlocked }: {
 }) {
   const { t } = useLanguage();
   const [meId, setMeId] = useState<string | null>(null);
-  const { messages, reactions, status, refreshReactions, hasOlder, loadingOlder, loadOlder } = useChatRoom(target, meId);
+  const { messages, reactions, status, refreshReactions, senders, hasOlder, loadingOlder, loadOlder } = useChatRoom(target, meId);
   const [notice, setNotice] = useState<{ tone: 'danger' | 'info'; text: Bilingual } | null>(null);
   const [blocked, setBlocked] = useState<string[]>([]);
 
@@ -422,6 +429,7 @@ export function ChatPane({ target, title, subtitle, onBack, onBlocked }: {
         onBlock={(id) => void block(id)}
         onReact={(id, emoji) => void react(id, emoji)}
         onRecall={(id) => void recall(id)}
+        senders={senders}
         loading={status === 'loading'}
         hasOlder={hasOlder}
         loadingOlder={loadingOlder}
