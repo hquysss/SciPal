@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { ArrowRight, ClipboardList, FlaskConical, Gamepad2, School, TrendingUp, type LucideIcon } from 'lucide-react';
+import { ArrowRight, ClipboardList, FlaskConical, Gamepad2, MessagesSquare, School, Trophy, type LucideIcon } from 'lucide-react';
 import { useLanguage } from '@scipal/hooks';
 import styles from './sections.module.css';
 
@@ -28,9 +28,15 @@ const FEATURES: Array<{ href: string; Icon: LucideIcon; title: Copy; text: Copy 
   },
   {
     href: '/progress',
-    Icon: TrendingUp,
-    title: { vi: 'Theo dõi tiến độ', en: 'Track your progress' },
-    text: { vi: 'Xem điểm XP, chuỗi ngày học và huy hiệu của bạn.', en: 'See your XP, learning streak and badges.' },
+    Icon: Trophy,
+    title: { vi: 'Tiến độ và bảng xếp hạng', en: 'Progress and leaderboard' },
+    text: { vi: 'Tích XP, giữ chuỗi ngày học, mở huy hiệu và đua top tuần để thành Thủ khoa tuần.', en: 'Earn XP, keep your streak, unlock badges and race for Top of the week.' },
+  },
+  {
+    href: '/community',
+    Icon: MessagesSquare,
+    title: { vi: 'Cộng đồng học tập', en: 'Study community' },
+    text: { vi: 'Phòng chat theo khối và lớp, kết bạn, nhắn riêng, có thông báo tin mới ngay khi đến.', en: 'Chat rooms by grade and class, friends and direct messages, with new messages announced as they arrive.' },
   },
   {
     href: '/teacher',
