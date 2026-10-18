@@ -68,11 +68,18 @@ export function LiveToasts() {
     setToasts((prev) => prev.filter((x) => x.id !== id));
   }, []);
 
+  // A card waits while the pointer rests on it, and closes SHOW_MS after it leaves.
+  const hold = useCallback((id: string) => { clearTimeout(timers.current.get(id)); }, []);
+  const release = useCallback((id: string) => {
+    clearTimeout(timers.current.get(id));
+    timers.current.set(id, setTimeout(() => dismiss(id), SHOW_MS));
+  }, [dismiss]);
+
   const push = useCallback((toast: Toast) => {
     setToasts((prev) => [toast, ...prev.filter((x) => x.id !== toast.id)].slice(0, MAX));
-    timers.current.set(toast.id, setTimeout(() => dismiss(toast.id), SHOW_MS));
+    release(toast.id);
     chime();
-  }, [dismiss]);
+  }, [release]);
 
   useEffect(() => {
     let live = true;
@@ -122,7 +129,7 @@ export function LiveToasts() {
   return (
     <div role="status" aria-live="polite" className={styles.stack}>
       {toasts.map((toast) => (
-        <div key={toast.id} className={styles.card} data-tone={toast.tone}>
+        <div key={toast.id} className={styles.card} data-tone={toast.tone} onMouseEnter={() => hold(toast.id)} onMouseLeave={() => release(toast.id)}>
           <svg className={styles.wave} viewBox="0 0 1440 320" aria-hidden="true"><path d={WAVE} /></svg>
           <span className={styles.icon} aria-hidden="true">
             {toast.tone === 'message' ? <MessageCircle className="size-[18px]" /> : <Bell className="size-[18px]" />}

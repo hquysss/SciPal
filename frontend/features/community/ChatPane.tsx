@@ -371,7 +371,7 @@ export function ChatPaneView({ messages, meId, onSend, onSendImage, onReport, on
                               className={`chat-pop absolute top-full z-20 mt-1 flex min-w-36 flex-col rounded-xl border border-line bg-surface p-1 shadow-lg ${mine ? 'right-0 origin-top-right' : 'left-0 origin-top-left'}`}>
                               {mine
                                 ? <button type="button" role="menuitem" onClick={() => { setMenuFor(null); setRecalling(m); }} className="flex min-h-10 items-center gap-2 rounded-lg px-3 text-left text-sm font-semibold text-ink hover:bg-surface-sunken focus-visible:outline focus-visible:outline-2 focus-visible:outline-focus"><Undo2 aria-hidden="true" className="size-4" />{t({ en: 'Unsend', vi: 'Thu hồi' })}</button>
-                                : <button type="button" role="menuitem" onClick={() => { setMenuFor(null); setReportingMsg(m); }} className="flex min-h-10 items-center gap-2 rounded-lg px-3 text-left text-sm font-semibold text-danger hover:bg-surface-sunken focus-visible:outline focus-visible:outline-2 focus-visible:outline-focus"><Flag aria-hidden="true" className="size-4" />{t({ en: 'Report message', vi: 'Báo cáo tin nhắn' })}</button>}
+                                : <button type="button" role="menuitem" onClick={() => { setMenuFor(null); setReportingMsg(m); }} className="flex min-h-10 items-center gap-2 rounded-lg px-3 text-left text-sm font-semibold text-danger hover:bg-surface-sunken focus-visible:outline focus-visible:outline-2 focus-visible:outline-focus"><Flag aria-hidden="true" className="size-4" />{t({ en: 'Report', vi: 'Báo cáo' })}</button>}
                             </span>
                           )}
                         </span>

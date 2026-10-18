@@ -396,7 +396,7 @@ export function NavBar({ currentSubject }: NavBarProps) {
   // Folded bar or phone menu: a red dot says something waits in Community.
   const waitingDot = signedIn && unreadMessages + pendingFriends > 0 ? <span aria-hidden="true" className="absolute -right-0.5 -top-0.5 size-2.5 rounded-full bg-danger ring-2 ring-[var(--surface)]" /> : null;
   const countBadge = pendingFriends > 0 ? (
-    <span aria-hidden="true" className={`ml-0.5 ${UNREAD_BADGE}`}>{pendingFriends}</span>
+    <span aria-hidden="true" className="ml-0.5 inline-grid h-5 min-w-5 place-items-center rounded-full bg-danger-surface px-1 text-xs font-bold leading-none text-danger ring-1 ring-danger">{pendingFriends}</span>
   ) : null;
   // New messages: a chat icon with the count, so it reads apart from the friend-request number.
   const messageBadge = unreadMessages > 0 ? (

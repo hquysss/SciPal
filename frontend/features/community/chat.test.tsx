@@ -36,11 +36,11 @@ describe('ChatPaneView', () => {
     expect(screen.getByRole('log')).toBeTruthy();
     expect(screen.getByText('Tên them')).toBeTruthy();
     expect(screen.queryByText('Tên me')).toBeNull();
-    // Your own message has no menu without onRecall; theirs offers "Báo cáo tin nhắn" behind Thêm, not Chặn.
+    // Your own message has no menu without onRecall; theirs offers "Báo cáo" behind Thêm, not Chặn.
     expect(screen.getAllByRole('button', { name: 'Thêm' })).toHaveLength(1);
     fireEvent.click(screen.getByRole('button', { name: 'Thêm' }));
     expect(screen.queryByRole('menuitem', { name: 'Chặn' })).toBeNull();
-    fireEvent.click(screen.getByRole('menuitem', { name: 'Báo cáo tin nhắn' }));
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Báo cáo' }));
     fireEvent.click(screen.getByRole('button', { name: 'Spam' }));
     expect(onReportMessage).toHaveBeenCalledWith('2', 'Spam');
   });

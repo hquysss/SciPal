@@ -1,0 +1,5 @@
+/* Unread messages are blue in every theme (the subject palettes have no fixed blue), white text at 4.5:1, no outline. */
+.badge {
+  background: #1a73e8;
+  color: #fff;
+}

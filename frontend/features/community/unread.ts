@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { createBrowserClient } from '@scipal/supabase';
+import styles from './unread.module.css';
 
 const READ_EVENT = 'scipal:chat-read';
 
@@ -14,8 +15,8 @@ const rpc = (fn: string, args?: Record<string, unknown>) =>
 export const readKeyOf = (c: { kind: 'room'; grade: number | null } | { kind: 'class'; id: string } | { kind: 'dm'; id: string }): string =>
   c.kind === 'room' ? (c.grade === null ? 'all' : String(c.grade)) : `${c.kind}:${c.id}`;
 
-/** The red count pill, the same as the friend-request count in the navbar. */
-export const UNREAD_BADGE = 'inline-grid h-5 min-w-5 place-items-center rounded-full bg-danger-surface px-1 text-xs font-bold leading-none text-danger ring-1 ring-danger';
+/** The blue count pill for unread messages. */
+export const UNREAD_BADGE = `inline-grid h-5 min-w-5 place-items-center rounded-full px-1.5 text-xs font-bold leading-none ${styles.badge}`;
 
 /** "99+" past 99, so a busy room does not stretch the badge. */
 export const badgeText = (n: number): string => (n > 99 ? '99+' : String(n));
