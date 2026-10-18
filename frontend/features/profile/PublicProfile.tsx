@@ -8,6 +8,7 @@ import { Alert } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { sendRequest } from '../friends/friendsApi';
+import { BadgeShowcase } from './BadgeShowcase';
 import { getProfile, type PublicProfile as Profile } from './profileApi';
 
 type Bilingual = { en: string; vi: string };
@@ -75,6 +76,7 @@ export function PublicProfile({ userId }: { userId: string }) {
           </p>
           {p.bio && <p className="max-w-prose whitespace-pre-wrap text-sm text-ink">{p.bio}</p>}
         </div>
+        <BadgeShowcase userId={p.user_id} />
         {notice && <Alert tone="danger">{t(notice)}</Alert>}
         {action && <div className="flex">{action}</div>}
       </div>

@@ -109,3 +109,22 @@ export const BIO_MAX = 250;
 export const getProfile = (userId: string) => authoringCall<PublicProfile>(`/api/profile/${encodeURIComponent(userId)}`, 'GET');
 
 export const saveAbout = (about: ProfileAbout) => authoringCall<Record<string, never>>('/api/profile/about', 'PATCH', about);
+
+export type CommunityBadge = {
+  id: string;
+  slug: string | null;
+  name_vi: string;
+  name_en: string;
+  description_vi: string;
+  description_en: string;
+  icon: string;
+  category: 'streak' | 'exam' | 'excellence' | 'community' | 'honor';
+  tier: 'bronze' | 'silver' | 'gold' | 'platinum' | 'special';
+  is_system: boolean;
+  unlocked: boolean;
+  earned_at: string | null;
+  reason: string | null;
+};
+
+/** A student's badges, earned first. Opening your own list also awards the ones you have just earned. */
+export const getBadges = (userId: string) => authoringCall<{ badges: CommunityBadge[] }>(`/api/badges/${encodeURIComponent(userId)}`, 'GET');

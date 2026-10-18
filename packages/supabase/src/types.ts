@@ -969,6 +969,13 @@ export interface Database {
           name_vi: string;
           icon: string;
           condition: Json;
+          slug: string | null;
+          category: string;
+          tier: string;
+          description_vi: string;
+          description_en: string;
+          is_system: boolean;
+          sort_order: number;
         };
         Insert: {
           id?: string;
@@ -977,6 +984,13 @@ export interface Database {
           name_vi: string;
           icon: string;
           condition: Json;
+          slug?: string | null;
+          category?: string;
+          tier?: string;
+          description_vi?: string;
+          description_en?: string;
+          is_system?: boolean;
+          sort_order?: number;
         };
         Update: {
           id?: string;
@@ -985,6 +999,13 @@ export interface Database {
           name_vi?: string;
           icon?: string;
           condition?: Json;
+          slug?: string | null;
+          category?: string;
+          tier?: string;
+          description_vi?: string;
+          description_en?: string;
+          is_system?: boolean;
+          sort_order?: number;
         };
         Relationships: [
           {
@@ -1001,16 +1022,22 @@ export interface Database {
           user_id: string;
           badge_id: string;
           earned_at: string;
+          awarded_by: string | null;
+          reason: string | null;
         };
         Insert: {
           user_id: string;
           badge_id: string;
           earned_at?: string;
+          awarded_by?: string | null;
+          reason?: string | null;
         };
         Update: {
           user_id?: string;
           badge_id?: string;
           earned_at?: string;
+          awarded_by?: string | null;
+          reason?: string | null;
         };
         Relationships: [
           {
