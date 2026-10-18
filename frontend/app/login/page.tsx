@@ -80,7 +80,7 @@ function LoginContent() {
         </Link>
         <div className="login-topbar-controls">
           <LoginLanguageSwitch />
-          <ThemeToggle tone="surface" />
+          <ThemeToggle />
         </div>
       </header>
 

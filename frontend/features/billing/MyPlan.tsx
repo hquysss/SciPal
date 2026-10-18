@@ -221,7 +221,7 @@ export function TransactionsView({ state, onMore }: { state: TransactionsState; 
   );
 }
 
-function Transactions() {
+export function Transactions() {
   const [state, setState] = useState<TransactionsState>({ status: 'loading' });
   const load = useCallback(async (cursor?: string) => {
     if (cursor) setState((prev) => (prev.status === 'ready' ? { ...prev, loadingMore: true } : prev));

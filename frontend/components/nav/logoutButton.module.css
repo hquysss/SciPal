@@ -1,0 +1,82 @@
+/* A round sign-out button that widens on hover or focus to show its label. */
+.btn {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  width: 2.75rem;
+  height: 2.75rem;
+  overflow: hidden;
+  border: none;
+  border-radius: 9999px;
+  background: var(--danger);
+  color: var(--surface);
+  cursor: pointer;
+  box-shadow: 0 4px 12px -4px color-mix(in srgb, var(--ink) 40%, transparent);
+  transition: width 0.3s, border-radius 0.3s, transform 0.15s;
+}
+
+.sign {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  transition: width 0.3s, padding-left 0.3s;
+}
+
+.sign svg {
+  width: 1.0625rem;
+  fill: currentColor;
+}
+
+.text {
+  position: absolute;
+  right: 0;
+  width: 0;
+  opacity: 0;
+  font-size: 0.875rem;
+  font-weight: 600;
+  white-space: nowrap;
+  transition: width 0.3s, opacity 0.3s, padding-right 0.3s;
+}
+
+.btn:hover,
+.btn:focus-visible {
+  width: 8.5rem;
+  border-radius: 2.5rem;
+}
+
+.btn:hover .sign,
+.btn:focus-visible .sign {
+  width: 30%;
+  padding-left: 1.25rem;
+}
+
+.btn:hover .text,
+.btn:focus-visible .text {
+  width: 70%;
+  opacity: 1;
+  padding-right: 0.625rem;
+}
+
+.btn:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+
+.btn:active { transform: translate(2px, 2px); }
+.btn:disabled { cursor: wait; opacity: 0.6; }
+
+@media (prefers-reduced-motion: reduce) {
+  .btn,
+  .sign,
+  .text { transition-duration: 0.01ms; }
+}
+
+@media (max-width: 1279px) {
+  .btn { width: 2.25rem; height: 2.25rem; }
+  .btn:hover,
+  .btn:focus-visible { width: 7.5rem; }
+  .sign svg { width: 0.9375rem; }
+  .text { font-size: 0.8125rem; }
+}

@@ -41,7 +41,7 @@ describe('CommunityPage', () => {
     expect(screen.getByText('chat:Tất cả')).toBeTruthy();
     fireEvent.click(await screen.findByRole('button', { name: /Lớp 10A/ }));
     expect(nav.replace).toHaveBeenCalledWith('/community?tab=classes&class=c1');
-    fireEvent.click(screen.getByRole('button', { name: /^An/ }));
+    fireEvent.click(screen.getByRole('button', { name: /An/ }));
     expect(nav.replace).toHaveBeenCalledWith('/community?tab=friends&dm=f1');
   });
 
@@ -59,7 +59,7 @@ describe('CommunityPage', () => {
     render(<CommunityPage />);
     await screen.findByRole('button', { name: /Lớp 10A/ });
     fireEvent.change(screen.getByRole('searchbox'), { target: { value: 'lớp' } });
-    expect(screen.queryByRole('button', { name: /^An/ })).toBeNull();
+    expect(screen.queryByRole('button', { name: /An/ })).toBeNull();
     expect(screen.getByRole('button', { name: /Lớp 10A/ })).toBeTruthy();
     fireEvent.change(screen.getByRole('searchbox'), { target: { value: 'zzz' } });
     expect(screen.getByText('Không có cuộc trò chuyện nào khớp.')).toBeTruthy();

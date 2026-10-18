@@ -4,10 +4,19 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { ConversationList, type Conversation } from './ConversationList';
 import { ConversationPane } from './ConversationPane';
+import { PresenceProvider } from './presence';
 import { useConversations } from './useConversations';
 
 /** The community chat inside the floating bubble: the list, then one open chat with a back button. */
-export function CommunityMini({ onNavigate }: { onNavigate: () => void }) {
+export function CommunityMini(props: { onNavigate: () => void }) {
+  return (
+    <PresenceProvider>
+      <MiniChat {...props} />
+    </PresenceProvider>
+  );
+}
+
+function MiniChat({ onNavigate }: { onNavigate: () => void }) {
   const router = useRouter();
   const { data, error, reload, chooseGrade } = useConversations();
   const [open, setOpen] = useState<Exclude<Conversation, { kind: 'friends' }> | null>(null);

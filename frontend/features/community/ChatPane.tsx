@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/button';
 import { Dialog } from '@/components/ui/dialog';
 import { REACTIONS, blockUser, reactToMessage, recallMessage, reportConversation, sendImage, sendMessage, type ChatMessage, type ChatSender, type ChatTarget, type ReactionChip } from './chatApi';
 import { groupMessages } from './chatLayout';
+import { PresenceAvatar } from './presence';
 import { SendButton } from './SendButton';
 import { useChatRoom } from './useChatRoom';
 
@@ -63,7 +64,7 @@ function MessageSkeleton({ rows = SKELETON.length }: { rows?: number }) {
   );
 }
 
-export function ChatPaneView({ messages, meId, onSend, onSendImage, onReport, onBlock, onReact, onRecall, senders = {}, loading = false, hasOlder = false, loadingOlder = false, onLoadOlder, reactions = {}, title, subtitle, onBack, backAlways = false, showNames = true, now }: {
+export function ChatPaneView({ messages, meId, onSend, onSendImage, onReport, onBlock, onReact, onRecall, senders = {}, loading = false, hasOlder = false, loadingOlder = false, onLoadOlder, reactions = {}, title, subtitle, peerId, onBack, backAlways = false, showNames = true, now }: {
   messages: ChatMessage[];
   meId: string | null;
   /** Resolves true when the message went through, so the box can clear. */
@@ -88,6 +89,8 @@ export function ChatPaneView({ messages, meId, onSend, onSendImage, onReport, on
   onLoadOlder?: () => void;
   title?: string;
   subtitle?: string;
+  /** The other person in a direct chat, for the online dot. */
+  peerId?: string;
   onBack?: () => void;
   /** Keep the back button on wide screens too (the floating panel). */
   backAlways?: boolean;
@@ -183,7 +186,7 @@ export function ChatPaneView({ messages, meId, onSend, onSendImage, onReport, on
           {onBack && (
             <Button type="button" variant="ghost" size="icon" className={backAlways ? '' : 'lg:hidden'} aria-label={t({ en: 'Back', vi: 'Quay lại' })} onClick={onBack}><ArrowLeft aria-hidden="true" /></Button>
           )}
-          <Avatar name={title} className="size-10 text-base" />
+          <PresenceAvatar userId={peerId}><Avatar name={title} className="size-10 text-base" /></PresenceAvatar>
           <div className="min-w-0 flex-1">
             <h2 className="truncate text-lg font-bold text-ink">{title}</h2>
             {subtitle && <p className="truncate text-xs font-medium text-ink-muted">{subtitle}</p>}
@@ -209,7 +212,7 @@ export function ChatPaneView({ messages, meId, onSend, onSendImage, onReport, on
               <div className={`flex items-start gap-4 ${mine ? 'flex-row-reverse' : ''}`}>
                 {mine
                   ? <Avatar name={group.sender_name} url={senders[group.sender_id]?.avatar_url} />
-                  : <Link href={`/community/u/${group.sender_id}`} aria-label={group.sender_name} className="rounded-xl focus-visible:outline focus-visible:outline-2 focus-visible:outline-focus"><Avatar name={group.sender_name} url={senders[group.sender_id]?.avatar_url} /></Link>}
+                  : <Link href={`/community/u/${group.sender_id}`} aria-label={group.sender_name} className="rounded-xl focus-visible:outline focus-visible:outline-2 focus-visible:outline-focus"><PresenceAvatar userId={group.sender_id}><Avatar name={group.sender_name} url={senders[group.sender_id]?.avatar_url} /></PresenceAvatar></Link>}
                 <div className={`flex min-w-0 max-w-[80%] flex-col gap-2 ${mine ? 'items-end' : 'items-start'}`}>
                   {!mine && showNames && (
                     <span className="-mb-1 flex flex-wrap items-center gap-x-2">
@@ -359,10 +362,12 @@ export function ChatPaneView({ messages, meId, onSend, onSendImage, onReport, on
   );
 }
 
-export function ChatPane({ target, title, subtitle, onBack, onBlocked, backAlways }: {
+export function ChatPane({ target, title, subtitle, peerId, onBack, onBlocked, backAlways }: {
   target: ChatTarget;
   title?: string;
   subtitle?: string;
+  /** The other person in a direct chat, for the online dot. */
+  peerId?: string;
   onBack?: () => void;
   onBlocked?: (userId: string) => void;
   backAlways?: boolean;
@@ -440,6 +445,7 @@ export function ChatPane({ target, title, subtitle, onBack, onBlocked, backAlway
         reactions={reactions}
         title={title}
         subtitle={subtitle}
+        peerId={peerId}
         onBack={onBack}
         backAlways={backAlways}
         showNames={!friendshipId}
