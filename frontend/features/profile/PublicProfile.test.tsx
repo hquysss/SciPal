@@ -36,6 +36,19 @@ describe('PublicProfile', () => {
     expect(sendRequest).toHaveBeenCalledWith('u2');
   });
 
+  it('shows the role, the leaderboard place and the weekly trophy for first place', async () => {
+    getProfile.mockResolvedValue({ ok: true, data: profile({ role: 'admin', rank: { position: 2, xp: 500, week: 1 } }) });
+    render(<PublicProfile userId="u2" />);
+    expect(await screen.findByText('Admin')).toBeTruthy();
+    expect(screen.getByText('trên bảng xếp hạng').parentElement?.textContent).toBe('#2trên bảng xếp hạng');
+    expect(screen.getByText('Thủ khoa tuần')).toBeTruthy();
+    cleanup();
+    getProfile.mockResolvedValue({ ok: true, data: profile({ rank: { position: 4, xp: 90, week: 3 } }) });
+    render(<PublicProfile userId="u2" />);
+    expect(await screen.findByText('Học sinh')).toBeTruthy();
+    expect(screen.queryByText('Thủ khoa tuần')).toBeNull();
+  });
+
   it('links a friend to their direct chat and hides the school when it is null', async () => {
     getProfile.mockResolvedValue({ ok: true, data: profile({ relation: 'friend', friendship_id: 'f9', school: null }) });
     render(<PublicProfile userId="u2" />);

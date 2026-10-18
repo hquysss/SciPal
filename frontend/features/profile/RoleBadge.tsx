@@ -15,7 +15,7 @@ export function ProfileBadges({ role, weekRank }: { role: string | null | undefi
       {weekRank === 1 && (
         <span className="inline-flex items-center gap-1 text-sm font-bold text-ink" title={t({ en: 'First on the leaderboard this week', vi: 'Hạng nhất bảng xếp hạng tuần này' })}>
           <WeeklyTrophy size="2.25rem" />
-          {t({ en: 'Top this week', vi: 'Nhất tuần' })}
+          {t({ en: 'Top of the week', vi: 'Thủ khoa tuần' })}
         </span>
       )}
     </span>

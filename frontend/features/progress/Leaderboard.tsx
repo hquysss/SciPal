@@ -47,7 +47,7 @@ function PodiumPlace({ row, place, weekly }: { row: LeaderRow; place: number; we
       {place === 0 && (weekly ? (
         <span className="mb-1 flex flex-col items-center">
           <WeeklyTrophy size="3rem" />
-          <span className="text-xs font-bold text-ink">{t({ en: 'Top this week', vi: 'Nhất tuần' })}</span>
+          <span className="text-xs font-bold text-ink">{t({ en: 'Top of the week', vi: 'Thủ khoa tuần' })}</span>
         </span>
       ) : <Crown aria-hidden="true" className="mb-1 h-5 w-5 text-ink" />)}
       <span
