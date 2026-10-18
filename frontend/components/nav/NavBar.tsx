@@ -464,7 +464,7 @@ export function NavBar({ currentSubject }: NavBarProps) {
           {label}
           <ChevronDown aria-hidden="true" className={`h-4 w-4 transition-transform duration-150 motion-reduce:transition-none ${open ? 'rotate-180' : ''}`} />
         </button>
-        <div id={`desktop-${id}-navigation`} aria-hidden={!open} className={`${navStyles.dropdown} ${navStyles.dropdownWide} ${open ? navStyles.dropdownOpen : ''}`}>
+        <div id={`desktop-${id}-navigation`} inert={!open} className={`${navStyles.dropdown} ${navStyles.dropdownWide} ${open ? navStyles.dropdownOpen : ''}`}>
           {children}
         </div>
       </div>
@@ -575,7 +575,7 @@ export function NavBar({ currentSubject }: NavBarProps) {
               </button>
               <div
                 id="desktop-account-menu"
-                aria-hidden={!accountMenuOpen}
+                inert={!accountMenuOpen}
                 className={`${navStyles.dropdown} ${navStyles.dropdownEnd} ${accountMenuOpen ? navStyles.dropdownOpen : ''}`}
               >
                 {accountHeader}
@@ -618,7 +618,7 @@ export function NavBar({ currentSubject }: NavBarProps) {
       <nav
         id="mobile-navigation"
         aria-label={t('Mobile navigation', 'Điều hướng di động')}
-        aria-hidden={!mobileOpen}
+        inert={!mobileOpen}
         className={`${navStyles.mobilePanel} xl:hidden ${mobileOpen ? navStyles.mobilePanelOpen : ''}`}
       >
         <div className="pb-20">
