@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState, type ChangeEvent, type FormEvent } from 'react';
+import Link from 'next/link';
 import { ArrowLeft, Flag, ImagePlus, Reply, SmilePlus, X } from 'lucide-react';
 import { useLanguage } from '@scipal/hooks';
 import { createBrowserClient } from '@scipal/supabase';
@@ -148,9 +149,9 @@ export function ChatPaneView({ messages, meId, onSend, onSendImage, onReport, on
             <div key={group.messages[0].id} className="flex flex-col gap-1">
               {group.timeLabel && <p className="my-1 text-center text-xs text-ink-muted">{group.timeLabel}</p>}
               <div className={`flex items-end gap-2 ${mine ? 'flex-row-reverse' : ''}`}>
-                {!mine && <Avatar name={group.sender_name} />}
+                {!mine && <Link href={`/community/u/${group.sender_id}`} aria-label={group.sender_name} className="rounded-full focus-visible:outline focus-visible:outline-2 focus-visible:outline-focus"><Avatar name={group.sender_name} /></Link>}
                 <div className={`flex min-w-0 max-w-[80%] flex-col gap-0.5 ${mine ? 'items-end' : 'items-start'}`}>
-                  {!mine && showNames && <span className="px-1 text-xs font-semibold text-ink-muted">{group.sender_name}</span>}
+                  {!mine && showNames && <Link href={`/community/u/${group.sender_id}`} className="px-1 text-xs font-semibold text-ink-muted hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-focus">{group.sender_name}</Link>}
                   {group.messages.map((m, i) => {
                     const corners = mine
                       ? `${i > 0 ? 'rounded-tr-md' : ''} ${i < last ? 'rounded-br-md' : ''}`

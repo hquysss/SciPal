@@ -81,3 +81,31 @@ export async function uploadProfileImage(kind: ProfileImageKind, file: Blob): Pr
     return { ok: false, status: 0, error: { en: 'Could not reach the server.', vi: 'Không kết nối được máy chủ.' } };
   }
 }
+
+export type ProfileRelation = 'me' | 'none' | 'friend' | 'pending_out' | 'pending_in' | 'blocked';
+export type PublicProfile = {
+  user_id: string;
+  display_name: string | null;
+  avatar_url: string | null;
+  cover_url: string | null;
+  role: string | null;
+  grade: 10 | 11 | 12 | null;
+  school: string | null;
+  bio: string | null;
+  /** Only present on your own profile. */
+  show_school: boolean | null;
+  show_bio: boolean | null;
+  is_me: boolean;
+  relation: ProfileRelation;
+  friendship_id: string | null;
+  streak: { current: number; best: number };
+};
+export type ProfileAbout = { grade: 10 | 11 | 12 | null; school: string | null; bio: string | null; show_school: boolean; show_bio: boolean };
+
+export const SCHOOL_MAX = 100;
+export const BIO_MAX = 250;
+
+/** A profile by id, or "me" for your own. */
+export const getProfile = (userId: string) => authoringCall<PublicProfile>(`/api/profile/${encodeURIComponent(userId)}`, 'GET');
+
+export const saveAbout = (about: ProfileAbout) => authoringCall<Record<string, never>>('/api/profile/about', 'PATCH', about);

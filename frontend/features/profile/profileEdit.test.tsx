@@ -18,6 +18,7 @@ const api = vi.hoisted(() => ({
   uploadProfileImage: vi.fn(),
   removeProfileImage: vi.fn(),
 }));
+vi.mock('./ProfileAboutEditor', () => ({ ProfileAboutEditor: () => null }));
 vi.mock('./profileApi', async (importOriginal) => ({ ...(await importOriginal<object>()), ...api }));
 
 afterEach(() => {

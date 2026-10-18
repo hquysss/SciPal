@@ -800,6 +800,10 @@ export interface Database {
           chat_banned: boolean;
           preferred_education_level: EducationLevel | null;
           grade: number | null;
+          school: string | null;
+          bio: string | null;
+          show_school: boolean;
+          show_bio: boolean;
           preferred_code_language: CodeLanguage | null;
           created_at: string;
         };
@@ -812,6 +816,10 @@ export interface Database {
           chat_banned?: boolean;
           preferred_education_level?: EducationLevel | null;
           grade?: number | null;
+          school?: string | null;
+          bio?: string | null;
+          show_school?: boolean;
+          show_bio?: boolean;
           preferred_code_language?: CodeLanguage | null;
           created_at?: string;
         };
@@ -824,6 +832,10 @@ export interface Database {
           chat_banned?: boolean;
           preferred_education_level?: EducationLevel | null;
           grade?: number | null;
+          school?: string | null;
+          bio?: string | null;
+          show_school?: boolean;
+          show_bio?: boolean;
           preferred_code_language?: CodeLanguage | null;
           created_at?: string;
         };
