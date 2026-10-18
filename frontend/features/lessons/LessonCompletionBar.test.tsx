@@ -18,7 +18,7 @@ describe('LessonCompletionBar', () => {
     const html = renderToStaticMarkup(<LessonCompletionBar lessonId="l1" subjectSlug="informatics" />);
     expect(html).toContain('Mark as complete');
     expect(html).toContain('bg-action');
-    expect(html).toContain('min-h-11');
+    expect(html).toContain('min-h-12'); // the large button, at least the 44px target
     expect(countRawColors(html).total).toBe(0);
   });
 });

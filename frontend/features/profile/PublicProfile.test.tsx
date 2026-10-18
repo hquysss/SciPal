@@ -29,7 +29,8 @@ describe('PublicProfile', () => {
     expect(screen.getByText('Lớp 11')).toBeTruthy();
     expect(screen.getByText('THPT B')).toBeTruthy();
     expect(screen.getByText('Thích Tin học')).toBeTruthy();
-    expect(screen.getByText('Chuỗi 3 ngày · kỉ lục 9')).toBeTruthy();
+    expect(screen.getByText('ngày liên tiếp').parentElement?.textContent).toBe('3ngày liên tiếp');
+    expect(screen.getByText('ngày kỉ lục').parentElement?.textContent).toBe('9ngày kỉ lục');
     fireEvent.click(screen.getByRole('button', { name: 'Kết bạn' }));
     await waitFor(() => expect(screen.getByRole('button', { name: 'Đã gửi lời mời' })).toBeTruthy());
     expect(sendRequest).toHaveBeenCalledWith('u2');

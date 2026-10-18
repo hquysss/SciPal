@@ -392,6 +392,31 @@ describe('grade rooms, replies and reactions', () => {
     expect((await react(off, { message_id: PARENT, emoji: '👍' })).json()).toEqual({ on: false });
   });
 
+  const recall = (db: ReturnType<typeof fakeDb>, id = PARENT) => build({ db }).inject({ method: 'POST', url: `/api/chat/messages/${id}/recall` });
+
+  it('recall: keeps the original for moderators, clears the row and drops its reactions', async () => {
+    const db = fakeDb({
+      'chat_messages.select': [{ data: { id: PARENT, sender_id: ME, body: 'lỡ tay', image_url: null } }],
+      'chat_recalls.insert': [{}],
+      'chat_messages.update': [{ data: [{ id: PARENT }] }],
+      'chat_reactions.delete': [{}],
+    });
+    expect((await recall(db)).statusCode).toBe(200);
+    const lookup = db.calls.find((c) => c.table === 'chat_messages' && c.op === 'select')!.chain;
+    expect(lookup).toEqual(expect.arrayContaining([['eq', ['sender_id', ME]], ['is', ['recalled_at', null]]]));
+    expect(db.calls.find((c) => c.table === 'chat_recalls')!.chain[0][1]).toEqual([{ message_id: PARENT, sender_id: ME, body: 'lỡ tay', image_url: null }]);
+    expect(db.calls.find((c) => c.op === 'update')!.chain[0][1]).toEqual([expect.objectContaining({ body: '', image_url: null })]);
+    expect(db.calls.some((c) => c.table === 'chat_reactions' && c.op === 'delete')).toBe(true);
+  });
+
+  it('recall: 404 for someone else\'s or an already recalled message, and for a bad id; nothing changes', async () => {
+    const db = fakeDb({ 'chat_messages.select': [{ data: null }] });
+    expect((await recall(db)).statusCode).toBe(404);
+    expect(db.calls.some((c) => c.op !== 'select')).toBe(false);
+    expect((await recall(fakeDb({}), 'nope')).statusCode).toBe(404);
+    expect((await build({ user: null }).inject({ method: 'POST', url: `/api/chat/messages/${PARENT}/recall` })).statusCode).toBe(401);
+  });
+
   it('reactions: 404 for another grade room, 400 for an emoji outside the set', async () => {
     const other = fakeDb({ 'chat_messages.select': [msg({ room_grade: 12 })], 'profiles.select': [student(10)] });
     expect((await react(other, { message_id: PARENT, emoji: '👍' })).statusCode).toBe(404);
