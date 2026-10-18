@@ -442,3 +442,6 @@
 :global([data-app-shell][data-hero-nav='hidden']) .header .barToggle {
   display: none;
 }
+
+/* Category menus carry a line under each entry, so they are wider than the account menu. */
+.dropdownWide { width: 17rem; }

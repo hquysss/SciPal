@@ -1,6 +1,6 @@
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it, vi } from 'vitest';
-import { accountLinks, getAvatarUrl, moreLinks, NavBar, primaryLinks, roleLinks, tutorLink } from './NavBar';
+import { accountLinks, communityLink, getAvatarUrl, learnLinks, moreLinks, NavBar, roleLinks, tutorLink } from './NavBar';
 
 vi.mock('next/link', () => ({
   default: ({ href, children, prefetch: _prefetch, ...props }: { href: string; children: React.ReactNode; prefetch?: boolean }) =>
@@ -38,16 +38,21 @@ describe('NavBar', () => {
     expect(html).toMatch(/<a[^>]*href="\/subjects"[^>]*>Môn học<\/a>/);
   });
 
-  it('keeps the daily links on the bar and the reference pages in "Thêm", in both menus', () => {
+  it('sorts the pages into categories: Học tập and Tra cứu menus, each with a heading and a hint per page', () => {
     const html = renderToStaticMarkup(<NavBar />);
-    const order = [...html.matchAll(/<a[^>]*href="(\/|\/subjects|\/lab|\/exam|\/tutor)"[^>]*>/g)].map((m) => m[1]);
-    expect(order.slice(1, 6)).toEqual(['/', '/subjects', '/lab', '/exam', '/tutor']);
+    expect(html).toContain('aria-controls="desktop-learn-navigation"');
     expect(html).toContain('aria-controls="desktop-more-navigation"');
-    expect(html.indexOf('desktop-more-navigation')).toBeLessThan(html.indexOf('href="/pricing"'));
-    // The mobile menu uses the same groups, each with its own heading.
-    expect(html).toContain('aria-label="Học"');
-    expect(html).toContain('aria-label="Thêm"');
-    expect(html).not.toContain('aria-label="Của tôi"'); // members only
+    // Learn pages come before the reference pages.
+    const order = ['/subjects', '/lab', '/exam', '/tutor', '/glossary', '/pricing', '/help'].map((href) => html.indexOf(`href="${href}"`));
+    expect(order).toEqual([...order].sort((x, y) => x - y));
+    expect(order, JSON.stringify(order)).not.toContain(-1);
+    expect(html).toContain('Bài học theo môn');
+    expect(html).toContain('Thuật ngữ khoa học song ngữ');
+    // The mobile menu uses the same categories, each with its own heading.
+    expect(html).toContain('aria-label="Học tập"');
+    expect(html).toContain('aria-label="Tra cứu"');
+    expect(html).not.toContain('aria-label="Của tôi"');
+    expect(html).not.toContain('aria-label="Kết nối"'); // members only
   });
 });
 
@@ -90,10 +95,11 @@ describe('tutorLink', () => {
   });
 });
 
-describe('primaryLinks', () => {
-  it('holds only what a student opens every day, and adds Community for members', () => {
-    expect(primaryLinks('vi').map((l) => l.href)).toEqual(['/lab', '/exam', '/tutor']);
-    expect(primaryLinks('vi', true).map((l) => l.href)).toEqual(['/lab', '/exam', '/tutor', '/community']);
+describe('learnLinks', () => {
+  it('holds what a student opens to study, each with a hint', () => {
+    expect(learnLinks('vi').map((l) => l.href)).toEqual(['/subjects', '/lab', '/exam', '/tutor']);
+    expect(learnLinks('en').every((l) => l.hint.length > 0)).toBe(true);
+    expect(communityLink('vi')).toEqual({ href: '/community', label: 'Cộng đồng' });
   });
 });
 
@@ -105,15 +111,16 @@ describe('moreLinks', () => {
 });
 
 describe('accountLinks', () => {
-  it('keeps everything personal in the account menu', () => {
-    expect(accountLinks('vi', 'student').map((l) => l.href)).toEqual(['/profile', '/progress', '/games', '/classes', '/profile/plan']);
+  it('splits what is personal into learning and account sections', () => {
+    const by = (group: string) => accountLinks('vi', 'student').filter((l) => l.group === group).map((l) => l.href);
+    expect(by('study')).toEqual(['/progress', '/games', '/classes']);
+    expect(by('account')).toEqual(['/profile', '/profile/plan']);
   });
 
   it('gives students their classes and plan; teachers keep theirs in the teacher menu', () => {
-    expect(accountLinks('vi', 'student')).toContainEqual({ href: '/classes', label: 'Lớp của em' });
-    expect(accountLinks('en', 'student')).toContainEqual({ href: '/profile/plan', label: 'My plan' });
+    expect(accountLinks('en', 'student').map((l) => l.label)).toEqual(expect.arrayContaining(['My classes', 'My plan']));
     for (const role of ['teacher', 'admin']) {
-      expect(accountLinks('vi', role).map((l) => l.href)).toEqual(['/profile', '/progress', '/games']);
+      expect(accountLinks('vi', role).map((l) => l.href)).toEqual(['/progress', '/games', '/profile']);
     }
   });
 });
