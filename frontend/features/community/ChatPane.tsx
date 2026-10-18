@@ -60,7 +60,7 @@ function MessageSkeleton({ rows = SKELETON.length }: { rows?: number }) {
   );
 }
 
-export function ChatPaneView({ messages, meId, onSend, onSendImage, onReport, onBlock, onReact, onRecall, loading = false, hasOlder = false, loadingOlder = false, onLoadOlder, reactions = {}, title, subtitle, onBack, showNames = true, now }: {
+export function ChatPaneView({ messages, meId, onSend, onSendImage, onReport, onBlock, onReact, onRecall, loading = false, hasOlder = false, loadingOlder = false, onLoadOlder, reactions = {}, title, subtitle, onBack, backAlways = false, showNames = true, now }: {
   messages: ChatMessage[];
   meId: string | null;
   /** Resolves true when the message went through, so the box can clear. */
@@ -84,6 +84,8 @@ export function ChatPaneView({ messages, meId, onSend, onSendImage, onReport, on
   title?: string;
   subtitle?: string;
   onBack?: () => void;
+  /** Keep the back button on wide screens too (the floating panel). */
+  backAlways?: boolean;
   /** Group chats name each sender; a two-person chat does not need to. */
   showNames?: boolean;
   now?: Date;
@@ -174,7 +176,7 @@ export function ChatPaneView({ messages, meId, onSend, onSendImage, onReport, on
       {title && (
         <header className="flex items-center gap-3 border-b border-line px-4 py-3 sm:px-6 sm:py-4">
           {onBack && (
-            <Button type="button" variant="ghost" size="icon" className="lg:hidden" aria-label={t({ en: 'Back', vi: 'Quay lại' })} onClick={onBack}><ArrowLeft aria-hidden="true" /></Button>
+            <Button type="button" variant="ghost" size="icon" className={backAlways ? '' : 'lg:hidden'} aria-label={t({ en: 'Back', vi: 'Quay lại' })} onClick={onBack}><ArrowLeft aria-hidden="true" /></Button>
           )}
           <Avatar name={title} className="size-10 text-base" />
           <div className="min-w-0 flex-1">
@@ -350,12 +352,13 @@ export function ChatPaneView({ messages, meId, onSend, onSendImage, onReport, on
   );
 }
 
-export function ChatPane({ target, title, subtitle, onBack, onBlocked }: {
+export function ChatPane({ target, title, subtitle, onBack, onBlocked, backAlways }: {
   target: ChatTarget;
   title?: string;
   subtitle?: string;
   onBack?: () => void;
   onBlocked?: (userId: string) => void;
+  backAlways?: boolean;
 }) {
   const { t } = useLanguage();
   const [meId, setMeId] = useState<string | null>(null);
@@ -430,6 +433,7 @@ export function ChatPane({ target, title, subtitle, onBack, onBlocked }: {
         title={title}
         subtitle={subtitle}
         onBack={onBack}
+        backAlways={backAlways}
         showNames={!friendshipId}
       />
     </div>
