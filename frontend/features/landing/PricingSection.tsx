@@ -2,7 +2,7 @@
 
 import { useRef, useState, type CSSProperties } from 'react';
 import Link from 'next/link';
-import { ArrowRight, Check, CreditCard, QrCode, ShieldCheck, Sparkles, Wallet, type LucideIcon } from 'lucide-react';
+import { ArrowRight, Check, CreditCard, ShieldCheck, Sparkles, type LucideIcon } from 'lucide-react';
 import { useLanguage } from '@scipal/hooks';
 import type { BillingAudience, BillingInterval } from '@scipal/types';
 import { INTERVALS, INTERVAL_LABEL, INTERVAL_MONTHS, INTERVAL_NOUN, INTERVAL_SPAN } from '@/features/billing/intervals';
@@ -25,14 +25,17 @@ function CountingPrice({ amount, run, className }: { amount: number; run: boolea
 const item = (index: number) => ({ '--i': index }) as CSSProperties;
 
 type Copy = { en: string; vi: string };
+type PaymentMethod = { id: string; name: string; text: Copy; logo?: { src: string; width: number; height: number }; Icon?: LucideIcon };
 
-/** The payment providers SciPal checks out with; each shows only while the catalog says it is open. */
-export function paymentMethods(catalog: Catalog): Array<{ id: string; name: string; Icon: LucideIcon; text: Copy }> {
-  return [
-    catalog.payosCheckoutOpen === true && { id: 'payos', name: 'payOS', Icon: QrCode, text: { vi: 'Chuyển khoản VietQR', en: 'VietQR bank transfer' } },
-    catalog.vnpayCheckoutOpen === true && { id: 'vnpay', name: 'VNPAY', Icon: CreditCard, text: { vi: 'Cổng thanh toán VNPAY', en: 'VNPAY payment gateway' } },
-    catalog.momoAutoRenewOpen === true && { id: 'momo', name: 'MoMo', Icon: Wallet, text: { vi: 'Ví MoMo, tự gia hạn', en: 'MoMo wallet, auto-renewal' } },
-  ].filter((m): m is { id: string; name: string; Icon: LucideIcon; text: Copy } => Boolean(m));
+/** The payment providers SciPal checks out with, with their logos; each shows only while the catalog says it is open. */
+export function paymentMethods(catalog: Catalog): PaymentMethod[] {
+  const all: Array<PaymentMethod | false> = [
+    catalog.payosCheckoutOpen === true && { id: 'payos', name: 'payOS', text: { vi: 'Chuyển khoản qua payOS', en: 'Bank transfer via payOS' }, logo: { src: '/icons/payment/payos.png', width: 468, height: 192 } },
+    catalog.payosCheckoutOpen === true && { id: 'vietqr', name: 'VietQR', text: { vi: 'Quét mã VietQR', en: 'Scan VietQR' }, logo: { src: '/icons/payment/vietqr.svg', width: 3000, height: 860 } },
+    catalog.vnpayCheckoutOpen === true && { id: 'vnpay', name: 'VNPAY', text: { vi: 'Cổng thanh toán VNPAY', en: 'VNPAY payment gateway' }, Icon: CreditCard },
+    catalog.momoAutoRenewOpen === true && { id: 'momo', name: 'MoMo', text: { vi: 'Ví MoMo, tự gia hạn', en: 'MoMo wallet, auto-renewal' }, logo: { src: '/icons/payment/momo.svg', width: 570, height: 570 } },
+  ];
+  return all.filter((m): m is PaymentMethod => m !== false);
 }
 
 /**
@@ -101,26 +104,6 @@ export function PricingSection({
             ))}
           </div>
         </div>
-        {methods.length > 0 && (
-          <div className={styles.methods}>
-            <p className={styles.methodsTitle}>{t({ en: 'Pay with', vi: 'Thanh toán qua' })}</p>
-            <ul className={styles.methodList}>
-              {methods.map(({ id, name, Icon, text }) => (
-                <li key={id} className={styles.method}>
-                  <span className={styles.methodIcon} aria-hidden="true"><Icon size={18} /></span>
-                  <span>
-                    <span className={styles.methodName}>{name}</span>
-                    <span className={styles.methodText}>{t(text)}</span>
-                  </span>
-                </li>
-              ))}
-            </ul>
-            <p className={styles.methodsSafe}>
-              <ShieldCheck aria-hidden="true" size={16} />
-              {t({ en: 'SciPal never receives or stores card or bank details.', vi: 'SciPal không nhận và không lưu thông tin thẻ hay tài khoản ngân hàng.' })}
-            </p>
-          </div>
-        )}
       </div>
 
       <div className={styles.plans}>
@@ -209,6 +192,29 @@ export function PricingSection({
           </div>
         )}
       </div>
+
+      {methods.length > 0 && (
+        <div className={styles.methods} data-landing-reveal>
+          <p className={styles.methodsTitle}>{t({ en: 'Pay securely with', vi: 'Thanh toán an toàn qua' })}</p>
+          <ul className={styles.methodList}>
+            {methods.map(({ id, name, Icon, logo, text }) => (
+              <li key={id} className={styles.method}>
+                {logo ? (
+                  // eslint-disable-next-line @next/next/no-img-element -- a small brand logo from /public
+                  <img src={logo.src} width={logo.width} height={logo.height} alt={name} className={styles.methodLogo} data-logo={id} loading="lazy" />
+                ) : (
+                  <span className={styles.methodName}>{Icon && <Icon aria-hidden="true" size={20} />}{name}</span>
+                )}
+                <span className={styles.methodText}>{t(text)}</span>
+              </li>
+            ))}
+          </ul>
+          <p className={styles.methodsSafe}>
+            <ShieldCheck aria-hidden="true" size={16} />
+            {t({ en: 'SciPal never receives or stores card or bank details.', vi: 'SciPal không nhận và không lưu thông tin thẻ hay tài khoản ngân hàng.' })}
+          </p>
+        </div>
+      )}
     </section>
   );
 }

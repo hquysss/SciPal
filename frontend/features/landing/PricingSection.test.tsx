@@ -39,7 +39,12 @@ describe('PricingSection (landing)', () => {
 
   it('lists only the open payment providers, with the no-card-data line, and none while checkout is closed', () => {
     const open = renderToStaticMarkup(<PricingSection catalog={{ ...catalog(true), payosCheckoutOpen: true, vnpayCheckoutOpen: true, momoAutoRenewOpen: false, vnpayAutoRenewOpen: true }} />);
-    expect(open).toContain('Thanh toán qua');
+    expect(open).toContain('Thanh toán an toàn qua');
+    expect(open).toContain('/icons/payment/payos.png');
+    expect(open).toContain('/icons/payment/vietqr.svg');
+    expect(open).not.toContain('/icons/payment/momo.svg');
+    // The strip sits below the plans, not above them.
+    expect(open.indexOf('Thanh toán an toàn qua')).toBeGreaterThan(open.indexOf('Nâng cấp ngay'));
     expect(open).toContain('payOS');
     expect(open).toContain('VNPAY');
     expect(open).not.toContain('Ví MoMo');
@@ -47,7 +52,7 @@ describe('PricingSection (landing)', () => {
     expect(open).toContain('Chỉ tự gia hạn khi bạn chọn');
     expect(countRawColors(open).total).toBe(0);
     const closed = renderToStaticMarkup(<PricingSection catalog={{ ...catalog(false), payosCheckoutOpen: true }} />);
-    expect(closed).not.toContain('Thanh toán qua');
+    expect(closed).not.toContain('Thanh toán an toàn qua');
   });
 
   it('crowns the paid plan and plays its entrance each time it scrolls into view', () => {
