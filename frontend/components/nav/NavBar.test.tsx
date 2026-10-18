@@ -1,6 +1,6 @@
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it, vi } from 'vitest';
-import { getAvatarUrl, moreLinks, NavBar, primaryLinks, roleLinks, tutorLink } from './NavBar';
+import { accountLinks, getAvatarUrl, moreLinks, NavBar, primaryLinks, roleLinks, tutorLink } from './NavBar';
 
 vi.mock('next/link', () => ({
   default: ({ href, children, prefetch: _prefetch, ...props }: { href: string; children: React.ReactNode; prefetch?: boolean }) =>
@@ -30,6 +30,7 @@ describe('NavBar', () => {
     const html = renderToStaticMarkup(<NavBar />);
     expect(html).toContain('aria-current="page"');
     expect(html).toContain('Từ điển');
+    expect(html).toContain('Hướng dẫn');
     expect(html).toContain('aria-label="Mở menu"');
     expect(html).not.toContain('☰');
     expect(html).not.toContain('EdTech');
@@ -43,6 +44,10 @@ describe('NavBar', () => {
     expect(order.slice(1, 6)).toEqual(['/', '/subjects', '/lab', '/exam', '/tutor']);
     expect(html).toContain('aria-controls="desktop-more-navigation"');
     expect(html.indexOf('desktop-more-navigation')).toBeLessThan(html.indexOf('href="/pricing"'));
+    // The mobile menu uses the same groups, each with its own heading.
+    expect(html).toContain('aria-label="Học"');
+    expect(html).toContain('aria-label="Thêm"');
+    expect(html).not.toContain('aria-label="Của tôi"'); // members only
   });
 });
 
@@ -86,30 +91,29 @@ describe('tutorLink', () => {
 });
 
 describe('primaryLinks', () => {
-  it('holds only what a student opens every day', () => {
+  it('holds only what a student opens every day, and adds Community for members', () => {
     expect(primaryLinks('vi').map((l) => l.href)).toEqual(['/lab', '/exam', '/tutor']);
+    expect(primaryLinks('vi', true).map((l) => l.href)).toEqual(['/lab', '/exam', '/tutor', '/community']);
   });
 });
 
 describe('moreLinks', () => {
-  it('leaves Profile to the account button on the desktop bar, keeps it in the mobile menu', () => {
-    const desktop = moreLinks('vi', true, 'desktop').map((l) => l.href);
-    const mobile = moreLinks('vi', true, 'mobile').map((l) => l.href);
-    expect(desktop).toEqual(['/glossary', '/pricing', '/progress', '/games']);
-    expect(mobile).toEqual(['/glossary', '/pricing', '/progress', '/games', '/community', '/profile']);
-    expect(moreLinks('vi', false, 'desktop').map((l) => l.href)).toEqual(['/glossary', '/pricing']);
+  it('is reference pages only, the same for everyone', () => {
+    expect(moreLinks('vi').map((l) => l.href)).toEqual(['/glossary', '/pricing', '/help']);
+    expect(moreLinks('en').map((l) => l.label)).toEqual(['Glossary', 'Pricing', 'Help']);
+  });
+});
+
+describe('accountLinks', () => {
+  it('keeps everything personal in the account menu', () => {
+    expect(accountLinks('vi', 'student').map((l) => l.href)).toEqual(['/profile', '/progress', '/games', '/classes', '/profile/plan']);
   });
 
-  it('gives students their classes; teachers keep theirs in the teacher menu', () => {
-    expect(moreLinks('vi', true, 'desktop', 'student')).toContainEqual({ href: '/classes', label: 'Lớp của em' });
-    expect(moreLinks('en', true, 'mobile', 'student')).toContainEqual({ href: '/classes', label: 'My classes' });
-    expect(moreLinks('vi', true, 'desktop', 'teacher').map((l) => l.href)).not.toContain('/classes');
-    expect(moreLinks('vi', true, 'desktop', 'admin').map((l) => l.href)).not.toContain('/classes');
-  });
-
-  it('shows Pricing to everyone, admins included', () => {
-    for (const role of ['student', 'teacher', 'admin']) {
-      expect(moreLinks('vi', true, 'desktop', role).map((l) => l.href)).toContain('/pricing');
+  it('gives students their classes and plan; teachers keep theirs in the teacher menu', () => {
+    expect(accountLinks('vi', 'student')).toContainEqual({ href: '/classes', label: 'Lớp của em' });
+    expect(accountLinks('en', 'student')).toContainEqual({ href: '/profile/plan', label: 'My plan' });
+    for (const role of ['teacher', 'admin']) {
+      expect(accountLinks('vi', role).map((l) => l.href)).toEqual(['/profile', '/progress', '/games']);
     }
   });
 });
@@ -120,13 +124,5 @@ describe('community link', () => {
     expect(communityLabel('vi', 0)).toBe('Cộng đồng');
     expect(communityLabel('vi', 2)).toBe('Cộng đồng (2)');
     expect(communityLabel('en', 3)).toBe('Community (3)');
-  });
-
-  it('is in the signed-in mobile list only, with the waiting count', () => {
-    const hrefs = (links: { href: string }[]) => links.map((l) => l.href);
-    expect(hrefs(moreLinks('vi', true, 'mobile', 'student'))).toContain('/community');
-    expect(hrefs(moreLinks('vi', true, 'desktop', 'student'))).not.toContain('/community');
-    expect(hrefs(moreLinks('vi', false, 'mobile'))).not.toContain('/community');
-    expect(moreLinks('vi', true, 'mobile', 'student', 4).find((l) => l.href === '/community')?.label).toBe('Cộng đồng (4)');
   });
 });
