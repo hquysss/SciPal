@@ -1146,6 +1146,7 @@ export interface Database {
           deleted_at: string | null;
           room_grade: number | null;
           reply_to: string | null;
+          recalled_at: string | null;
         };
         Insert: {
           id?: string;
@@ -1161,6 +1162,7 @@ export interface Database {
           deleted_at?: string | null;
           room_grade?: number | null;
           reply_to?: string | null;
+          recalled_at?: string | null;
         };
         Update: {
           id?: string;
@@ -1176,6 +1178,7 @@ export interface Database {
           deleted_at?: string | null;
           room_grade?: number | null;
           reply_to?: string | null;
+          recalled_at?: string | null;
         };
         Relationships: [
           {

@@ -36,7 +36,10 @@ describe('ChatPaneView', () => {
     expect(screen.getByText('Tên them')).toBeTruthy();
     expect(screen.queryByText('Tên me')).toBeNull();
     expect(screen.queryByRole('button', { name: 'Báo cáo' })).toBeNull();
-    expect(screen.getAllByRole('button', { name: 'Chặn' })).toHaveLength(1);
+    // Your own message has no menu without onRecall; theirs offers Chặn behind Thêm.
+    expect(screen.getAllByRole('button', { name: 'Thêm' })).toHaveLength(1);
+    fireEvent.click(screen.getByRole('button', { name: 'Thêm' }));
+    expect(screen.getAllByRole('menuitem', { name: 'Chặn' })).toHaveLength(1);
   });
 
   it('sends the trimmed text on submit, keeps the box locked while empty, and clears after sending', async () => {
@@ -75,10 +78,24 @@ describe('ChatPaneView', () => {
   it('blocks only on the second click, since there is no undo', () => {
     const h = handlers();
     render(<ChatPaneView messages={[msg('2', 'them', '2026-10-12T10:00:01Z')]} meId="me" {...h} />);
-    fireEvent.click(screen.getByRole('button', { name: 'Chặn' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Thêm' }));
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Chặn' }));
     expect(h.onBlock).not.toHaveBeenCalled();
-    fireEvent.click(screen.getByRole('button', { name: /Chắc chắn chặn/ }));
+    fireEvent.click(screen.getByRole('menuitem', { name: /Chắc chắn chặn/ }));
     expect(h.onBlock).toHaveBeenCalledWith('them');
+  });
+
+  it('unsends your own message after confirming, and shows a recalled one as a note without actions', () => {
+    const onRecall = vi.fn();
+    const recalled = { ...msg('3', 'them', '2026-10-12T10:00:02Z', ''), recalled_at: '2026-10-12T10:01:00Z' };
+    render(<ChatPaneView messages={[msg('1', 'me', '2026-10-12T10:00:00Z'), recalled]} meId="me" {...handlers()} onRecall={onRecall} />);
+    expect(screen.getByText('Tên them đã thu hồi một tin nhắn')).toBeTruthy();
+    expect(screen.getAllByRole('button', { name: 'Trả lời' })).toHaveLength(1);
+    fireEvent.click(screen.getByRole('button', { name: 'Thêm' }));
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Thu hồi' }));
+    expect(onRecall).not.toHaveBeenCalled();
+    fireEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Thu hồi' }));
+    expect(onRecall).toHaveBeenCalledWith('1');
   });
 });
 
@@ -192,6 +209,31 @@ describe('messenger layout', () => {
     await act(async () => { finish(true); });
     expect((screen.getByRole('button', { name: 'Gửi' }) as HTMLButtonElement).disabled).toBe(true); // box is empty again
     expect(box.value).toBe('');
+  });
+});
+
+describe('loading', () => {
+  it('shows skeleton bubbles, not the empty note, while the first page loads', () => {
+    render(<ChatPaneView messages={[]} meId="me" {...handlers()} loading />);
+    expect(screen.getByRole('log').getAttribute('aria-busy')).toBe('true');
+    expect(screen.queryByText(/Chưa có tin nhắn/)).toBeNull();
+  });
+
+  it('asks for the older page when scrolled near the top, and marks the start once there is none', () => {
+    const onLoadOlder = vi.fn();
+    const one = [msg('1', 'them', '2026-10-12T10:00:00Z')];
+    const { rerender } = render(<ChatPaneView messages={one} meId="me" {...handlers()} hasOlder onLoadOlder={onLoadOlder} />);
+    const log = screen.getByRole('log');
+    log.scrollTop = 0;
+    fireEvent.scroll(log);
+    expect(onLoadOlder).toHaveBeenCalledTimes(1);
+    rerender(<ChatPaneView messages={one} meId="me" {...handlers()} hasOlder={false} onLoadOlder={onLoadOlder} />);
+    expect(screen.getByText('Đầu cuộc trò chuyện')).toBeTruthy();
+  });
+
+  it('mergeMessages keeps every older page the reader asked for', () => {
+    const many = Array.from({ length: 250 }, (_, i) => msg(`m${i}`, 'u1', new Date(Date.UTC(2026, 9, 12, 10, 0, i)).toISOString()));
+    expect(mergeMessages([], many, Infinity)).toHaveLength(250);
   });
 });
 

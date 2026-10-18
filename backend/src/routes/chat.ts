@@ -260,7 +260,7 @@ export const chatRoutes: FastifyPluginAsync = async (app) => {
       return reply.code(400).send(invalid);
     }
 
-    const found = await supabase.from('chat_messages').select('id, community, room_grade, class_id, friendship_id').eq('id', input.message_id).is('deleted_at', null).maybeSingle();
+    const found = await supabase.from('chat_messages').select('id, community, room_grade, class_id, friendship_id').eq('id', input.message_id).is('deleted_at', null).is('recalled_at', null).maybeSingle();
     if (found.error) return reply.code(500).send(failed);
     const msg = found.data as { community: boolean; room_grade: number | null; class_id: string | null; friendship_id: string | null } | null;
     if (!msg) return reply.code(404).send(notFound);
@@ -291,6 +291,30 @@ export const chatRoutes: FastifyPluginAsync = async (app) => {
     const added = await supabase.from('chat_reactions').insert({ message_id: input.message_id, user_id: me, emoji: input.emoji });
     if (added.error) return reply.code(500).send(failed);
     return reply.code(201).send({ on: true });
+  });
+
+  // Unsend: only the sender. The original goes to chat_recalls (service role only) before the row is cleared.
+  app.post('/api/chat/messages/:id/recall', { preHandler: [requireUser] }, async (request, reply) => {
+    const supabase = app.supabase;
+    if (!supabase) return reply.code(503).send(unavailable);
+    const me = userId(request)!;
+    const id = (request.params as { id: string }).id;
+    if (!UUID_PATTERN.test(id)) return reply.code(404).send(notFound);
+
+    const found = await supabase.from('chat_messages').select('id, sender_id, body, image_url')
+      .eq('id', id).eq('sender_id', me).is('deleted_at', null).is('recalled_at', null).maybeSingle();
+    if (found.error) return reply.code(500).send(failed);
+    const msg = found.data as { sender_id: string; body: string; image_url: string | null } | null;
+    if (!msg) return reply.code(404).send(notFound);
+
+    const kept = await supabase.from('chat_recalls').insert({ message_id: id, sender_id: me, body: msg.body, image_url: msg.image_url });
+    if (kept.error) return reply.code(500).send(failed);
+    const cleared = await supabase.from('chat_messages').update({ body: '', image_url: null, recalled_at: new Date().toISOString() })
+      .eq('id', id).eq('sender_id', me).is('recalled_at', null).select('id');
+    if (cleared.error) return reply.code(500).send(failed);
+    if (((cleared.data as unknown[] | null) ?? []).length === 0) return reply.code(404).send(notFound);
+    await supabase.from('chat_reactions').delete().eq('message_id', id);
+    return reply.send({});
   });
 
   app.get('/api/chat/blocks', { preHandler: [requireUser] }, async (request, reply) => {

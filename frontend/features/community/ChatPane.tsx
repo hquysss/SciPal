@@ -1,14 +1,14 @@
 'use client';
 
-import { useEffect, useRef, useState, type ChangeEvent, type FormEvent } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState, type ChangeEvent, type FormEvent } from 'react';
 import Link from 'next/link';
-import { ArrowLeft, Flag, Paperclip, Reply, SmilePlus, X } from 'lucide-react';
+import { ArrowLeft, Ban, Flag, MoreHorizontal, Paperclip, Reply, SmilePlus, Undo2, X } from 'lucide-react';
 import { useLanguage } from '@scipal/hooks';
 import { createBrowserClient } from '@scipal/supabase';
 import { Alert } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Dialog } from '@/components/ui/dialog';
-import { REACTIONS, blockUser, reactToMessage, reportConversation, sendImage, sendMessage, type ChatMessage, type ChatTarget, type ReactionChip } from './chatApi';
+import { REACTIONS, blockUser, reactToMessage, recallMessage, reportConversation, sendImage, sendMessage, type ChatMessage, type ChatTarget, type ReactionChip } from './chatApi';
 import { groupMessages } from './chatLayout';
 import { SendButton } from './SendButton';
 import { useChatRoom } from './useChatRoom';
@@ -36,7 +36,31 @@ function Avatar({ name, className = 'size-10 text-sm' }: { name: string; classNa
   );
 }
 
-export function ChatPaneView({ messages, meId, onSend, onSendImage, onReport, onBlock, onReact, reactions = {}, title, subtitle, onBack, showNames = true, now }: {
+const SKELETON = [
+  { mine: false, widths: ['w-48', 'w-32'] },
+  { mine: true, widths: ['w-40'] },
+  { mine: false, widths: ['w-56'] },
+  { mine: true, widths: ['w-28', 'w-44'] },
+  { mine: false, widths: ['w-36'] },
+];
+
+/** Grey bubbles in the shape of a conversation while messages load; still under reduced motion. */
+function MessageSkeleton({ rows = SKELETON.length }: { rows?: number }) {
+  return (
+    <div aria-hidden="true" className="flex flex-col gap-6">
+      {SKELETON.slice(0, rows).map((row, i) => (
+        <div key={i} className={`flex items-start gap-4 ${row.mine ? 'flex-row-reverse' : ''}`}>
+          <span className="size-10 shrink-0 rounded-xl bg-surface-sunken motion-safe:animate-pulse" />
+          <span className={`flex flex-col gap-2 ${row.mine ? 'items-end' : 'items-start'}`}>
+            {row.widths.map((w) => <span key={w} className={`h-9 rounded-xl bg-surface-sunken motion-safe:animate-pulse ${w}`} />)}
+          </span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+export function ChatPaneView({ messages, meId, onSend, onSendImage, onReport, onBlock, onReact, onRecall, loading = false, hasOlder = false, loadingOlder = false, onLoadOlder, reactions = {}, title, subtitle, onBack, showNames = true, now }: {
   messages: ChatMessage[];
   meId: string | null;
   /** Resolves true when the message went through, so the box can clear. */
@@ -49,6 +73,14 @@ export function ChatPaneView({ messages, meId, onSend, onSendImage, onReport, on
   /** Toggles one emoji on a message; the picker is hidden where this is absent. */
   onReact?: (messageId: string, emoji: string) => void;
   reactions?: Record<string, ReactionChip[]>;
+  /** Unsends one of your own messages; the menu item is hidden where this is absent. */
+  onRecall?: (messageId: string) => void;
+  /** First load still running: skeleton bubbles instead of the empty note. */
+  loading?: boolean;
+  hasOlder?: boolean;
+  loadingOlder?: boolean;
+  /** Asked for when the reader scrolls near the top. */
+  onLoadOlder?: () => void;
   title?: string;
   subtitle?: string;
   onBack?: () => void;
@@ -67,11 +99,27 @@ export function ChatPaneView({ messages, meId, onSend, onSendImage, onReport, on
   const [zoomed, setZoomed] = useState<string | null>(null);
   const [replyTo, setReplyTo] = useState<ChatMessage | null>(null);
   const [picking, setPicking] = useState<string | null>(null);
+  const [menuFor, setMenuFor] = useState<string | null>(null);
+  const [recalling, setRecalling] = useState<ChatMessage | null>(null);
   const log = useRef<HTMLDivElement>(null);
 
+  // Jump to the bottom only when the newest message changes; an older page keeps the reader where they were.
+  const newest = messages[messages.length - 1]?.id;
+  const oldestId = messages[0]?.id;
+  const keepFromBottom = useRef<number | null>(null);
   useEffect(() => {
     if (log.current) log.current.scrollTop = log.current.scrollHeight;
-  }, [messages.length]);
+  }, [newest]);
+  useLayoutEffect(() => {
+    if (log.current && keepFromBottom.current !== null) log.current.scrollTop = log.current.scrollHeight - keepFromBottom.current;
+    keepFromBottom.current = null;
+  }, [oldestId]);
+  const onScroll = () => {
+    const el = log.current;
+    if (!el || !onLoadOlder || !hasOlder || loadingOlder || el.scrollTop > 80) return;
+    keepFromBottom.current = el.scrollHeight - el.scrollTop;
+    onLoadOlder();
+  };
 
   useEffect(() => {
     if (!file) return setPreview(null);
@@ -119,7 +167,7 @@ export function ChatPaneView({ messages, meId, onSend, onSendImage, onReport, on
 
   const groups = groupMessages(messages, now);
   const byId = new Map(messages.map((m) => [m.id, m]));
-  const snippet = (m: ChatMessage) => m.body || t({ en: 'Picture', vi: 'Ảnh' });
+  const snippet = (m: ChatMessage) => (m.recalled_at ? t({ en: 'Unsent message', vi: 'Tin đã thu hồi' }) : m.body || t({ en: 'Picture', vi: 'Ảnh' }));
 
   return (
     <div className="flex h-full min-h-0 flex-col bg-surface">
@@ -139,8 +187,13 @@ export function ChatPaneView({ messages, meId, onSend, onSendImage, onReport, on
         </header>
       )}
 
-      <div ref={log} role="log" aria-live="polite" aria-label={t({ en: 'Messages', vi: 'Tin nhắn' })} className="flex flex-1 flex-col gap-6 overflow-y-auto px-4 py-6 sm:px-6">
-        {messages.length === 0 && <p className="m-auto text-sm text-ink-muted">{t({ en: 'No messages yet. Say hello!', vi: 'Chưa có tin nhắn nào. Chào mọi người nhé!' })}</p>}
+      <div ref={log} role="log" aria-live="polite" aria-label={t({ en: 'Messages', vi: 'Tin nhắn' })} aria-busy={loading || loadingOlder} onScroll={onScroll} className="flex flex-1 flex-col gap-6 overflow-y-auto px-4 py-6 sm:px-6">
+        {loading && <MessageSkeleton />}
+        {loadingOlder && <MessageSkeleton rows={2} />}
+        {!loading && !hasOlder && messages.length > 0 && onLoadOlder && (
+          <p className="text-center text-xs text-ink-muted">{t({ en: 'Start of the conversation', vi: 'Đầu cuộc trò chuyện' })}</p>
+        )}
+        {!loading && messages.length === 0 && <p className="m-auto text-sm text-ink-muted">{t({ en: 'No messages yet. Say hello!', vi: 'Chưa có tin nhắn nào. Chào mọi người nhé!' })}</p>}
         {groups.map((group) => {
           const mine = group.sender_id === meId;
           return (
@@ -153,9 +206,26 @@ export function ChatPaneView({ messages, meId, onSend, onSendImage, onReport, on
                 <div className={`flex min-w-0 max-w-[80%] flex-col gap-2 ${mine ? 'items-end' : 'items-start'}`}>
                   {!mine && showNames && <Link href={`/community/u/${group.sender_id}`} className="-mb-1 text-xs font-semibold text-ink-muted hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-focus">{group.sender_name}</Link>}
                   {group.messages.map((m) => {
+                    if (m.recalled_at) {
+                      return (
+                        <p key={m.id} className="chat-in rounded-xl border border-line px-4 py-2 text-sm italic text-ink-muted">
+                          {mine ? t({ en: 'You unsent a message', vi: 'Bạn đã thu hồi một tin nhắn' }) : t({ en: `${m.sender_name} unsent a message`, vi: `${m.sender_name} đã thu hồi một tin nhắn` })}
+                        </p>
+                      );
+                    }
+                    const chips = reactions[m.id] ?? [];
                     return (
-                      <div key={m.id} className={`group flex items-center gap-1 ${mine ? 'flex-row-reverse' : ''}`}>
-                        <div className={`flex min-w-0 flex-col gap-0.5 ${mine ? 'items-end' : 'items-start'}`}>
+                      <div key={m.id} className={`chat-in group relative flex items-center gap-1 ${mine ? 'flex-row-reverse' : ''} ${chips.length > 0 ? 'mb-3' : ''}`}>
+                        <div className={`relative flex min-w-0 flex-col gap-0.5 ${mine ? 'items-end' : 'items-start'}`}>
+                          {picking === m.id && onReact && (
+                            <span role="group" aria-label={t({ en: 'Pick a reaction', vi: 'Chọn cảm xúc' })}
+                              className={`chat-pop absolute bottom-full z-20 mb-1 flex gap-0.5 rounded-full border border-line bg-surface px-1.5 py-1 shadow-lg ${mine ? 'right-0 origin-bottom-right' : 'left-0 origin-bottom-left'}`}>
+                              {REACTIONS.map((emoji) => (
+                                <button key={emoji} type="button" aria-label={emoji} onClick={() => { setPicking(null); onReact(m.id, emoji); }}
+                                  className="grid size-9 place-items-center rounded-full text-xl transition-transform hover:scale-125 focus-visible:outline focus-visible:outline-2 focus-visible:outline-focus motion-reduce:transition-none motion-reduce:hover:scale-100">{emoji}</button>
+                              ))}
+                            </span>
+                          )}
                           {isHttps(m.image_url) && (
                             <button type="button" aria-label={t({ en: 'Enlarge picture', vi: 'Phóng to ảnh' })} onClick={() => setZoomed(m.image_url)} className="block overflow-hidden rounded-xl focus-visible:outline focus-visible:outline-2 focus-visible:outline-focus">
                               <img src={m.image_url} alt={t({ en: 'Picture', vi: 'Ảnh' })} loading="lazy" className="max-h-60 max-w-full cursor-zoom-in object-cover" />
@@ -169,36 +239,36 @@ export function ChatPaneView({ messages, meId, onSend, onSendImage, onReport, on
                           {m.body && (
                             <p className={`whitespace-pre-wrap break-words rounded-xl px-4 py-2 text-sm ${mine ? 'bg-action text-action-ink' : 'bg-surface-sunken text-ink'}`}>{m.body}</p>
                           )}
-                          {(reactions[m.id]?.length ?? 0) > 0 && (
-                            <span className="flex flex-wrap gap-1">
-                              {reactions[m.id].map((chip) => (
-                                <button key={chip.emoji} type="button" aria-pressed={chip.mine} disabled={!onReact} onClick={() => onReact?.(m.id, chip.emoji)}
-                                  className={`min-h-8 rounded-full border px-2 text-xs focus-visible:outline focus-visible:outline-2 focus-visible:outline-focus ${chip.mine ? 'border-action bg-surface-sunken font-bold' : 'border-line'}`}>
+                          {chips.length > 0 && (
+                            // Messenger-style: the reactions sit on the bubble's lower corner.
+                            <span className={`absolute -bottom-4 z-10 flex gap-0.5 ${mine ? 'left-2' : 'right-2'}`}>
+                              {chips.map((chip) => (
+                                <button key={`${chip.emoji}${chip.count}${chip.mine}`} type="button" aria-pressed={chip.mine} disabled={!onReact} onClick={() => onReact?.(m.id, chip.emoji)}
+                                  className={`chat-pop inline-flex min-h-7 items-center gap-0.5 rounded-full border bg-surface px-1.5 text-xs shadow-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-focus ${chip.mine ? 'border-action font-bold text-ink' : 'border-line text-ink-muted'}`}>
                                   {chip.emoji} {chip.count}
                                 </button>
                               ))}
                             </span>
                           )}
-                          {picking === m.id && onReact && (
-                            <span role="group" aria-label={t({ en: 'Pick a reaction', vi: 'Chọn cảm xúc' })} className="flex gap-1 rounded-full border border-line bg-surface px-2 py-1">
-                              {REACTIONS.map((emoji) => (
-                                <button key={emoji} type="button" aria-label={emoji} onClick={() => { setPicking(null); onReact(m.id, emoji); }}
-                                  className="min-h-8 min-w-8 rounded-full hover:bg-surface-sunken focus-visible:outline focus-visible:outline-2 focus-visible:outline-focus">{emoji}</button>
-                              ))}
+                        </div>
+                        <span className={`relative flex shrink-0 items-center transition-opacity duration-150 ${picking === m.id || menuFor === m.id ? 'opacity-100' : 'opacity-0 focus-within:opacity-100 group-hover:opacity-100 [@media(hover:none)]:opacity-100'}`}>
+                          {onReact && <Button type="button" variant="ghost" size="icon" className="size-8 min-h-8 rounded-full text-ink-muted" aria-label={t({ en: 'React', vi: 'Thả cảm xúc' })} aria-expanded={picking === m.id} onClick={() => { setMenuFor(null); setPicking(picking === m.id ? null : m.id); }}><SmilePlus aria-hidden="true" /></Button>}
+                          <Button type="button" variant="ghost" size="icon" className="size-8 min-h-8 rounded-full text-ink-muted" aria-label={t({ en: 'Reply', vi: 'Trả lời' })} onClick={() => setReplyTo(m)}><Reply aria-hidden="true" /></Button>
+                          {(mine ? onRecall : true) && (
+                            <Button type="button" variant="ghost" size="icon" className="size-8 min-h-8 rounded-full text-ink-muted" aria-label={t({ en: 'More', vi: 'Thêm' })} aria-haspopup="menu" aria-expanded={menuFor === m.id}
+                              onClick={() => { setPicking(null); setConfirmBlock(null); setMenuFor(menuFor === m.id ? null : m.id); }}><MoreHorizontal aria-hidden="true" /></Button>
+                          )}
+                          {menuFor === m.id && (
+                            <span role="menu" onKeyDown={(e) => e.key === 'Escape' && setMenuFor(null)}
+                              className={`chat-pop absolute top-full z-20 mt-1 flex min-w-36 flex-col rounded-xl border border-line bg-surface p-1 shadow-lg ${mine ? 'right-0 origin-top-right' : 'left-0 origin-top-left'}`}>
+                              {mine
+                                ? <button type="button" role="menuitem" onClick={() => { setMenuFor(null); setRecalling(m); }} className="flex min-h-10 items-center gap-2 rounded-lg px-3 text-left text-sm font-semibold text-ink hover:bg-surface-sunken focus-visible:outline focus-visible:outline-2 focus-visible:outline-focus"><Undo2 aria-hidden="true" className="size-4" />{t({ en: 'Unsend', vi: 'Thu hồi' })}</button>
+                                : confirmBlock === m.sender_id
+                                  ? <button type="button" role="menuitem" onClick={() => { setConfirmBlock(null); setMenuFor(null); onBlock(m.sender_id); }} className="flex min-h-10 items-center gap-2 rounded-lg px-3 text-left text-sm font-semibold text-danger hover:bg-surface-sunken focus-visible:outline focus-visible:outline-2 focus-visible:outline-focus"><Ban aria-hidden="true" className="size-4" />{t({ en: 'Sure? Block', vi: 'Chắc chắn chặn?' })}</button>
+                                  : <button type="button" role="menuitem" onClick={() => setConfirmBlock(m.sender_id)} className="flex min-h-10 items-center gap-2 rounded-lg px-3 text-left text-sm font-semibold text-ink hover:bg-surface-sunken focus-visible:outline focus-visible:outline-2 focus-visible:outline-focus"><Ban aria-hidden="true" className="size-4" />{t({ en: 'Block', vi: 'Chặn' })}</button>}
                             </span>
                           )}
-                        </div>
-                        <span className="flex shrink-0 opacity-0 transition-opacity focus-within:opacity-100 group-hover:opacity-100 [@media(hover:none)]:opacity-100">
-                          <Button type="button" variant="ghost" size="icon" className="size-8" aria-label={t({ en: 'Reply', vi: 'Trả lời' })} onClick={() => setReplyTo(m)}><Reply aria-hidden="true" /></Button>
-                          {onReact && <Button type="button" variant="ghost" size="icon" className="size-8" aria-label={t({ en: 'React', vi: 'Thả cảm xúc' })} onClick={() => setPicking(picking === m.id ? null : m.id)}><SmilePlus aria-hidden="true" /></Button>}
                         </span>
-                        {!mine && (
-                          <span className="flex shrink-0 opacity-0 transition-opacity focus-within:opacity-100 group-hover:opacity-100 [@media(hover:none)]:opacity-100">
-                            {confirmBlock === m.sender_id
-                              ? <Button type="button" variant="link" className="min-h-8 px-1 text-xs text-danger" onClick={() => { setConfirmBlock(null); onBlock(m.sender_id); }}>{t({ en: 'Sure? Block', vi: 'Chắc chắn chặn?' })}</Button>
-                              : <Button type="button" variant="link" className="min-h-8 px-1 text-xs" onClick={() => setConfirmBlock(m.sender_id)}>{t({ en: 'Block', vi: 'Chặn' })}</Button>}
-                          </span>
-                        )}
                       </div>
                     );
                   })}
@@ -257,6 +327,14 @@ export function ChatPaneView({ messages, meId, onSend, onSendImage, onReport, on
         </div>
       </Dialog>
 
+      <Dialog open={recalling !== null} onClose={() => setRecalling(null)} title={t({ en: 'Unsend this message?', vi: 'Thu hồi tin nhắn này?' })} closeLabel={t({ en: 'Close', vi: 'Đóng' })}>
+        <p className="text-sm text-ink-muted">{t({ en: 'Everyone in the chat will see that you unsent a message.', vi: 'Mọi người trong cuộc trò chuyện sẽ thấy bạn đã thu hồi một tin nhắn.' })}</p>
+        <div className="mt-4 flex justify-end gap-2">
+          <Button type="button" variant="outline" onClick={() => setRecalling(null)}>{t({ en: 'Cancel', vi: 'Huỷ' })}</Button>
+          <Button type="button" variant="destructive" onClick={() => { if (recalling) onRecall?.(recalling.id); setRecalling(null); }}>{t({ en: 'Unsend', vi: 'Thu hồi' })}</Button>
+        </div>
+      </Dialog>
+
       <Dialog open={zoomed !== null} onClose={() => setZoomed(null)} title={t({ en: 'Picture', vi: 'Ảnh' })} closeLabel={t({ en: 'Close', vi: 'Đóng' })} closeOnBackdrop className="max-w-3xl">
         {zoomed && (
           <div className="flex flex-col items-center gap-3">
@@ -281,7 +359,7 @@ export function ChatPane({ target, title, subtitle, onBack, onBlocked }: {
 }) {
   const { t } = useLanguage();
   const [meId, setMeId] = useState<string | null>(null);
-  const { messages, reactions, status, refreshReactions } = useChatRoom(target, meId);
+  const { messages, reactions, status, refreshReactions, hasOlder, loadingOlder, loadOlder } = useChatRoom(target, meId);
   const [notice, setNotice] = useState<{ tone: 'danger' | 'info'; text: Bilingual } | null>(null);
   const [blocked, setBlocked] = useState<string[]>([]);
 
@@ -314,6 +392,11 @@ export function ChatPane({ target, title, subtitle, onBack, onBlocked }: {
     if (!result.ok) return setNotice({ tone: 'danger', text: result.error });
     refreshReactions();
   };
+  // Realtime brings the cleared row back to everyone, including this tab.
+  const recall = async (messageId: string) => {
+    const result = await recallMessage(messageId);
+    setNotice(result.ok ? null : { tone: 'danger', text: result.error });
+  };
   const block = async (userId: string) => {
     const result = await blockUser(userId);
     if (!result.ok) return setNotice({ tone: 'danger', text: result.error });
@@ -338,6 +421,11 @@ export function ChatPane({ target, title, subtitle, onBack, onBlocked }: {
         onReport={(reason) => void report(reason)}
         onBlock={(id) => void block(id)}
         onReact={(id, emoji) => void react(id, emoji)}
+        onRecall={(id) => void recall(id)}
+        loading={status === 'loading'}
+        hasOlder={hasOlder}
+        loadingOlder={loadingOlder}
+        onLoadOlder={loadOlder}
         reactions={reactions}
         title={title}
         subtitle={subtitle}
