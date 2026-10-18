@@ -382,7 +382,7 @@ export function NavBar({ currentSubject }: NavBarProps) {
       ? `${planName} · ${t('until', 'đến')} ${new Date(plan.paidThrough).toLocaleDateString(lang === 'en' ? 'en-GB' : 'vi-VN')}`
       : planName
     : null;
-  const planLine = planDetail ? `${roleLabel} · ${planDetail}` : roleLabel;
+  const roleClass = appRole === 'admin' ? navStyles.roleAdmin : appRole === 'teacher' ? navStyles.roleTeacher : navStyles.roleStudent;
   const teacherMenuOpen = openNavGroup === 'teacher';
   const toggleNavGroup = (group: 'admin' | 'teacher' | 'account' | 'more' | 'learn', trigger: HTMLButtonElement) => {
     openNavTriggerRef.current = trigger;
@@ -422,10 +422,13 @@ export function NavBar({ currentSubject }: NavBarProps) {
     <span className="flex min-w-0 flex-col">
       <span className="truncate text-sm font-bold text-ink">{accountName}</span>
       {email && <span className="truncate text-xs text-ink-muted">{email}</span>}
-      {planLine && (
+      {appRole && (
         <span className="mt-0.5 flex items-center gap-1.5 text-xs font-semibold text-ink-muted">
           <span aria-hidden="true" className="h-2 w-2 shrink-0 rounded-full bg-success" />
-          <span className="truncate">{planLine}</span>
+          <span className="truncate">
+            <span className={roleClass}>{roleLabel}</span>
+            {planDetail && ` · ${planDetail}`}
+          </span>
         </span>
       )}
     </span>
