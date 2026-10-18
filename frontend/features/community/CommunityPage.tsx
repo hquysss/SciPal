@@ -1,17 +1,14 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { ArrowLeft } from 'lucide-react';
 import { useLanguage } from '@scipal/hooks';
 import { Button } from '@/components/ui/button';
-import { FRIENDS_CHANGED_EVENT, listFriends } from '../friends/friendsApi';
 import { FriendsTab } from '../friends/FriendsTab';
-import { getChatRooms, listChatClasses, setChatGrade } from './chatApi';
-import { ChatPane } from './ChatPane';
-import { ConversationList, GRADES, type Conversation, type ConversationData } from './ConversationList';
+import { ConversationPane } from './ConversationPane';
+import { ConversationList, GRADES, type Conversation } from './ConversationList';
+import { useConversations } from './useConversations';
 
-type Bilingual = { vi: string; en: string };
 
 /** The open conversation lives in the URL (`?room=10`, `?tab=classes&class=<id>`, `?tab=friends&dm=<id>`, `?tab=friends`) so it can be linked and survives a reload. */
 export function conversationFromParams(params: URLSearchParams): Conversation | null {
@@ -41,66 +38,17 @@ export function CommunityPage() {
   const selected = conversationFromParams(params);
   // With nothing chosen, a wide screen still shows the shared room; a phone shows the list.
   const shown: Conversation = selected ?? { kind: 'room', grade: null };
-  const [data, setData] = useState<ConversationData | null>(null);
-  const [error, setError] = useState<Bilingual | null>(null);
-
-  const load = useCallback(async () => {
-    const [rooms, classes, friends] = await Promise.all([getChatRooms(), listChatClasses(), listFriends()]);
-    const failed = [rooms, classes, friends].find((r) => !r.ok);
-    setError(failed && !failed.ok ? failed.error : null);
-    setData({
-      grades: rooms.ok ? rooms.data.grades : [],
-      classes: classes.ok ? classes.data.classes : [],
-      friends: friends.ok ? friends.data.friends : [],
-      incoming: friends.ok ? friends.data.incoming.length : 0,
-    });
-  }, []);
-
-  useEffect(() => {
-    void load();
-    const refresh = () => void load();
-    window.addEventListener(FRIENDS_CHANGED_EVENT, refresh);
-    return () => window.removeEventListener(FRIENDS_CHANGED_EVENT, refresh);
-  }, [load]);
+  const { data, error, reload, chooseGrade: saveGrade } = useConversations();
 
   const open = (c: Conversation) => router.replace(conversationHref(c));
   const back = () => router.replace('/community');
 
   const chooseGrade = async (grade: number) => {
-    const result = await setChatGrade(grade);
-    if (!result.ok) return setError(result.error);
-    setError(null);
-    setData((prev) => (prev ? { ...prev, grades: [grade] } : prev));
-    open({ kind: 'room', grade });
+    if (await saveGrade(grade)) open({ kind: 'room', grade });
   };
 
   const pane = (() => {
-    if (shown.kind === 'room') {
-      const g = shown.grade;
-      return (
-        <ChatPane
-          key={`room:${g ?? 'all'}`}
-          target={g === null ? { community: true } : { room_grade: g }}
-          title={g === null ? t({ en: 'Everyone', vi: 'Tất cả' }) : t({ en: `Grade ${g}`, vi: `Khối ${g}` })}
-          subtitle={g === null ? t({ en: 'Everyone on SciPal, all subjects', vi: 'Mọi người trên SciPal, mọi môn học' }) : t({ en: `Students in grade ${g}`, vi: `Học sinh khối ${g}` })}
-          onBack={back}
-        />
-      );
-    }
-    if (shown.kind === 'class') {
-      const name = data?.classes.find((c) => c.id === shown.id)?.name;
-      return (
-        <ChatPane key={`class:${shown.id}`} target={{ class_id: shown.id }} title={name ?? t({ en: 'Class', vi: 'Lớp học' })}
-          subtitle={t({ en: 'Teacher and classmates', vi: 'Thầy cô và các bạn trong lớp' })} onBack={back} />
-      );
-    }
-    if (shown.kind === 'dm') {
-      const name = data?.friends.find((f) => f.id === shown.id)?.display_name?.trim();
-      return (
-        <ChatPane key={`dm:${shown.id}`} target={{ friendship_id: shown.id }} title={name || t({ en: 'User', vi: 'Người dùng' })}
-          onBack={back} onBlocked={() => { back(); void load(); }} />
-      );
-    }
+    if (shown.kind !== 'friends') return <ConversationPane conversation={shown} data={data} onBack={back} onBlocked={() => { back(); void reload(); }} />;
     return (
       <div className="flex h-full min-h-0 flex-col">
         <header className="flex items-center gap-3 border-b border-line px-4 py-3 sm:px-6">
