@@ -258,12 +258,19 @@ export function ChatPaneView({ messages, meId, onSend, onSendImage, onReport, on
                           {m.body && (
                             <p className={`whitespace-pre-wrap break-words rounded-xl px-4 py-2 text-sm ${mine ? 'bg-action text-action-ink' : 'bg-surface-sunken text-ink'}`}>{m.body}</p>
                           )}
+                          {chips.length > 0 && (
+                            <span className={`flex gap-1.5 px-1 ${mine ? 'justify-end' : ''}`}>
+                              {chips.map((chip) => (
+                                <button key={chip.emoji} type="button" aria-pressed={chip.mine} disabled={!onReact} aria-label={`${chip.emoji} ${chip.count}`} onClick={() => onReact?.(m.id, chip.emoji)}
+                                  className="chat-pop group/chip flex items-center gap-0.5 rounded text-xs leading-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-focus">
+                                  <span className={chip.mine ? '' : 'opacity-80'}>{chip.emoji}</span>
+                                  <span className="hidden font-semibold text-ink-muted group-hover/chip:inline group-focus-visible/chip:inline">{chip.count}</span>
+                                </button>
+                              ))}
+                            </span>
+                          )}
                         </div>
                         <span className={`relative flex shrink-0 items-center transition-opacity duration-150 ${picking === m.id || menuFor === m.id ? 'opacity-100' : 'opacity-0 focus-within:opacity-100 group-hover:opacity-100 [@media(hover:none)]:opacity-100'}`}>
-                          {chips.map((chip) => (
-                            <button key={chip.emoji} type="button" aria-pressed={chip.mine} disabled={!onReact} title={String(chip.count)} aria-label={`${chip.emoji} ${chip.count}`} onClick={() => onReact?.(m.id, chip.emoji)}
-                              className={`chat-pop grid size-8 place-items-center rounded-full text-base focus-visible:outline focus-visible:outline-2 focus-visible:outline-focus ${chip.mine ? 'bg-surface-sunken ring-1 ring-action' : 'hover:bg-surface-sunken'}`}>{chip.emoji}</button>
-                          ))}
                           {onReact && <Button type="button" variant="ghost" size="icon" className="size-8 min-h-8 rounded-full text-ink-muted" aria-label={t({ en: 'React', vi: 'Thả cảm xúc' })} aria-expanded={picking === m.id} onClick={() => { setMenuFor(null); setPicking(picking === m.id ? null : m.id); }}><SmilePlus aria-hidden="true" /></Button>}
                           <Button type="button" variant="ghost" size="icon" className="size-8 min-h-8 rounded-full text-ink-muted" aria-label={t({ en: 'Reply', vi: 'Trả lời' })} onClick={() => setReplyTo(m)}><Reply aria-hidden="true" /></Button>
                           {(mine ? onRecall : true) && (

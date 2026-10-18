@@ -227,12 +227,14 @@ describe('sender header', () => {
     expect(screen.getByText('Học sinh')).toBeTruthy();
   });
 
-  it('shows reactions as bare emoji in the hover bar, with the count only as a tooltip', () => {
+  it('shows reactions as bare emoji under the message, with the count revealed on hover', () => {
     render(<ChatPaneView messages={[msg('1', 'them', '2026-10-12T03:00:00Z')]} meId="me" {...handlers()} onReact={vi.fn()} reactions={{ '1': [{ emoji: '🔥', count: 2, mine: false }] }} />);
     const chip = screen.getByRole('button', { name: '🔥 2' });
-    expect(chip.textContent).toBe('🔥');
-    expect(chip.getAttribute('title')).toBe('2');
-    expect(chip.parentElement?.className).toContain('group-hover:opacity-100');
+    const [emoji, count] = Array.from(chip.children);
+    expect(emoji.textContent).toBe('🔥');
+    expect(count.textContent).toBe('2');
+    expect(count.className).toContain('group-hover/chip:inline');
+    expect(chip.className).not.toMatch(/ring|border|bg-/);
   });
 });
 
