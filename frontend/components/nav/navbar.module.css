@@ -12,7 +12,7 @@
   display: none;
 }
 
-@media (min-width: 1536px) {
+@media (min-width: 1280px) {
   .header {
     padding-inline: 3.75rem;
   }
@@ -442,3 +442,6 @@
 :global([data-app-shell][data-hero-nav='hidden']) .header .barToggle {
   display: none;
 }
+
+/* Category menus carry a line under each entry, so they are wider than the account menu. */
+.dropdownWide { width: 17rem; }
