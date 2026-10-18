@@ -20,6 +20,20 @@ export const UNREAD_BADGE = 'inline-grid h-5 min-w-5 place-items-center rounded-
 /** "99+" past 99, so a busy room does not stretch the badge. */
 export const badgeText = (n: number): string => (n > 99 ? '99+' : String(n));
 
+const openConversations = new Map<string, { current: HTMLElement | null }>();
+
+/** A chat pane announces itself while mounted; returns the cleanup. */
+export function registerOpenConversation(conv: string, el: { current: HTMLElement | null }): () => void {
+  openConversations.set(conv, el);
+  return () => { if (openConversations.get(conv) === el) openConversations.delete(conv); };
+}
+
+/** True when the reader is looking at this conversation right now (a hidden bubble does not count). */
+export function isConversationOnScreen(conv: string): boolean {
+  const el = openConversations.get(conv)?.current;
+  return Boolean(el) && document.visibilityState === 'visible' && el!.checkVisibility?.() !== false;
+}
+
 /** Records that the reader has seen a conversation up to now; every unread counter on the page refreshes. */
 export async function markChatRead(conv: string): Promise<void> {
   try {

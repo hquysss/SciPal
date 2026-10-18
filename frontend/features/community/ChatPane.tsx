@@ -14,7 +14,7 @@ import roleColors from '../../components/ui/roleColors.module.css';
 import { PresenceAvatar } from './presence';
 import { SendButton } from './SendButton';
 import { useChatRoom } from './useChatRoom';
-import { markChatRead } from './unread';
+import { markChatRead, registerOpenConversation } from './unread';
 import { sendRequest } from '../friends/friendsApi';
 
 type Bilingual = { vi: string; en: string };
@@ -511,6 +511,16 @@ export function ChatPane({ target, title, subtitle, peerId, roomKey, roomAvatar,
   };
   // eslint-disable-next-line react-hooks/exhaustive-deps -- markRead reads the same values
   useEffect(markRead, [status, lastId, readKey]);
+  // A tab opened in the background marks the chat read once the reader switches to it.
+  const latestMark = useRef(markRead);
+  latestMark.current = markRead;
+  useEffect(() => {
+    const onVisible = () => latestMark.current();
+    document.addEventListener('visibilitychange', onVisible);
+    return () => document.removeEventListener('visibilitychange', onVisible);
+  }, []);
+  // While on screen, this conversation does not pop a toast for its own messages.
+  useEffect(() => registerOpenConversation(readKey, root), [readKey]);
 
   const changeRoomAvatar = async (file: File | null) => {
     if (!roomKey) return;

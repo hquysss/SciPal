@@ -393,6 +393,8 @@ export function NavBar({ currentSubject }: NavBarProps) {
     openNavTriggerRef.current = trigger;
     setOpenNavGroup((current) => current === group ? null : group);
   };
+  // Folded bar or phone menu: a red dot says something waits in Community.
+  const waitingDot = signedIn && unreadMessages + pendingFriends > 0 ? <span aria-hidden="true" className="absolute -right-0.5 -top-0.5 size-2.5 rounded-full bg-danger ring-2 ring-[var(--surface)]" /> : null;
   const countBadge = pendingFriends > 0 ? (
     <span aria-hidden="true" className={`ml-0.5 ${UNREAD_BADGE}`}>{pendingFriends}</span>
   ) : null;
@@ -501,6 +503,7 @@ export function NavBar({ currentSubject }: NavBarProps) {
         title={barHidden ? t('Show navigation bar', 'Hiện thanh điều hướng') : t('Hide navigation bar', 'Ẩn thanh điều hướng')}
       >
         {barHidden ? <ChevronDown size={14} aria-hidden="true" /> : <ChevronUp size={14} aria-hidden="true" />}
+        {barHidden && waitingDot}
       </button>
       <div inert={barHidden && wideBar} className={`${navStyles.bar} relative z-10 mx-auto flex h-14 max-w-5xl xl:max-w-[90rem] items-center justify-between gap-3 px-3 sm:px-4`}>
         <Link href="/" prefetch={pathname !== '/'} className={`${navStyles.rise} group flex shrink-0 items-center gap-3 font-bold text-nav-ink`}>
@@ -621,9 +624,10 @@ export function NavBar({ currentSubject }: NavBarProps) {
             aria-controls="mobile-navigation"
             ref={mobileMenuButtonRef}
             onClick={() => setMobileOpen((value) => !value)}
-            className="flex h-9 w-9 items-center justify-center rounded-full bg-[color-mix(in_srgb,var(--nav-ink)_12%,transparent)] text-nav-ink text-xl transition hover:bg-[color-mix(in_srgb,var(--nav-ink)_12%,transparent)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-nav-ink"
+            className="relative flex h-9 w-9 items-center justify-center rounded-full bg-[color-mix(in_srgb,var(--nav-ink)_12%,transparent)] text-nav-ink text-xl transition hover:bg-[color-mix(in_srgb,var(--nav-ink)_12%,transparent)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-nav-ink"
           >
             {mobileOpen ? <X aria-hidden="true" size={18} /> : <Menu aria-hidden="true" size={18} />}
+            {!mobileOpen && waitingDot}
           </button>
         </div>
       </div>
