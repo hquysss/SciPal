@@ -3,12 +3,13 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { ArrowRight, BookOpen, ChevronDown, ChevronUp, CircleHelp, ClipboardCheck, FlaskConical, Gauge, Library, LineChart, LogOut, Menu, MessageCircleQuestion, School, Tag, Trophy, UserRound, X } from 'lucide-react';
+import { ArrowRight, BookOpen, ReceiptText, ChevronDown, ChevronUp, CircleHelp, ClipboardCheck, FlaskConical, Gauge, Library, LineChart, Menu, MessageCircleQuestion, School, Tag, Trophy, UserRound, X } from 'lucide-react';
 import { useParams, usePathname, useRouter } from 'next/navigation';
 import { useLanguage } from '@scipal/hooks';
 import { LanguageToggle } from './LanguageToggle';
 import { NotificationBell } from '@/features/games/NotificationBell';
 import { ThemeToggle } from './ThemeToggle';
+import { LogoutButton, LogoutConfirm } from './LogoutButton';
 import { OnlinePill } from './OnlinePill';
 import navStyles from './navbar.module.css';
 import type { SubjectSlug } from '@/lib/subject-config';
@@ -16,6 +17,8 @@ import { createBrowserClient } from '@/lib/supabase';
 import { adoptAccountLevel, forgetAccountLevel, getShell, safeSessionStorage } from '@/lib/theme/shellTheme';
 import { countOpenSimulationRequests } from '@/features/authoring/simulationRequests/api';
 import { FRIENDS_CHANGED_EVENT, listFriends } from '@/features/friends/friendsApi';
+import { fetchMyPlan, PLAN_NAME } from '@/features/billing/billingApi';
+import type { BillingAccount } from '@scipal/types';
 
 /** The admin entry: one link to the page with every admin tool, with the requests still waiting. */
 export function adminLinkLabel(lang: 'en' | 'vi', open: number): string {
@@ -113,6 +116,7 @@ export function accountLinks(lang: 'en' | 'vi', role: string | null) {
     ...(isStudent ? [{ href: '/classes', label: label('My classes', 'Lớp của em'), group: 'study' as const }] : []),
     { href: '/profile', label: label('Profile', 'Hồ sơ'), group: 'account' as const },
     ...(isStudent ? [{ href: '/profile/plan', label: label('My plan', 'Gói của tôi'), group: 'account' as const }] : []),
+    ...(role !== 'admin' ? [{ href: '/profile/orders', label: label('Orders', 'Đơn hàng'), group: 'account' as const }] : []),
   ];
 }
 
@@ -145,7 +149,10 @@ export function NavBar({ currentSubject }: NavBarProps) {
   const [appRole, setAppRole] = useState<AppRole | null>(null);
   const [displayName, setDisplayName] = useState<string | null>(null);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+  const [email, setEmail] = useState<string | null>(null);
+  const [plan, setPlan] = useState<BillingAccount | null>(null);
   const [signingOut, setSigningOut] = useState(false);
+  const [confirmSignOut, setConfirmSignOut] = useState(false);
   const [openRequests, setOpenRequests] = useState(0);
   const [pendingFriends, setPendingFriends] = useState(0);
   const mobileMenuButtonRef = useRef<HTMLButtonElement>(null);
@@ -255,6 +262,7 @@ export function NavBar({ currentSubject }: NavBarProps) {
           setAppRole(getAppRole(user));
           setDisplayName(getDisplayName(user));
           setAvatarUrl(getAvatarUrl(user));
+          setEmail(user?.email ?? null);
           if (user?.id) {
             void supabase
               .from('profiles')
@@ -280,6 +288,7 @@ export function NavBar({ currentSubject }: NavBarProps) {
           setAppRole(getAppRole(user));
           setDisplayName(getDisplayName(user));
           setAvatarUrl(getAvatarUrl(user));
+          setEmail(user?.email ?? null);
           setSigningOut(false);
         }
       });
@@ -293,6 +302,22 @@ export function NavBar({ currentSubject }: NavBarProps) {
           setAvatarUrl(null);
     }
   }, [pathname]);
+
+  // The plan line in the account menu: who pays through when. Admins have no plan; a failed lookup just hides the line.
+  useEffect(() => {
+    if (!appRole || appRole === 'admin') {
+      setPlan(null);
+      return;
+    }
+    let live = true;
+    void fetchMyPlan().then((result) => {
+      if (!result.ok) console.warn('Plan lookup failed', result.status, result.error.en);
+      if (live) setPlan(result.ok ? result.data : null);
+    });
+    return () => {
+      live = false;
+    };
+  }, [appRole]);
 
   const handleSignOut = async () => {
     setSigningOut(true);
@@ -345,6 +370,19 @@ export function NavBar({ currentSubject }: NavBarProps) {
   const teacherRouteActive = teacherLinks.some((link) => pathname === link.href || pathname.startsWith(`${link.href}/`));
   const adminRouteActive = pathname === '/admin' || pathname.startsWith('/admin/');
   const accountMenuOpen = openNavGroup === 'account';
+  // A loaded account with no plan on record is on the free plan of its role.
+  const planCode = plan ? plan.plan ?? (plan.role === 'teacher' ? 'teacher_free' : 'student_free') : null;
+  const planName = planCode ? t(PLAN_NAME[planCode]?.en ?? planCode, PLAN_NAME[planCode]?.vi ?? planCode) : null;
+  // The plan and its end date; until it loads (or when it cannot), the role, so the line never goes missing.
+  const roleLabel = appRole === 'admin' ? t('Administrator', 'Quản trị viên') : appRole === 'teacher' ? t('Teacher', 'Giáo viên') : t('Student', 'Học sinh');
+  const planDetail = appRole === 'admin'
+    ? t('no limits', 'không giới hạn')
+    : planName
+    ? plan?.paidThrough
+      ? `${planName} · ${t('until', 'đến')} ${new Date(plan.paidThrough).toLocaleDateString(lang === 'en' ? 'en-GB' : 'vi-VN')}`
+      : planName
+    : null;
+  const planLine = planDetail ? `${roleLabel} · ${planDetail}` : roleLabel;
   const teacherMenuOpen = openNavGroup === 'teacher';
   const toggleNavGroup = (group: 'admin' | 'teacher' | 'account' | 'more' | 'learn', trigger: HTMLButtonElement) => {
     openNavTriggerRef.current = trigger;
@@ -367,6 +405,7 @@ export function NavBar({ currentSubject }: NavBarProps) {
     '/games': <Trophy aria-hidden="true" size={16} />,
     '/classes': <School aria-hidden="true" size={16} />,
     '/profile/plan': <Gauge aria-hidden="true" size={16} />,
+    '/profile/orders': <ReceiptText aria-hidden="true" size={16} />,
   };
   const closeMenus = () => setOpenNavGroup(null);
   const heading = (title: string) => <p className="px-3 pb-1 pt-2 text-xs font-extrabold uppercase tracking-wider text-action">{title}</p>;
@@ -517,19 +556,35 @@ export function NavBar({ currentSubject }: NavBarProps) {
                 aria-hidden={!accountMenuOpen}
                 className={`${navStyles.dropdown} ${navStyles.dropdownEnd} ${accountMenuOpen ? navStyles.dropdownOpen : ''}`}
               >
-                <p className="truncate px-3 pb-1 pt-1.5 text-sm font-bold text-ink">{accountName}</p>
-                {heading(t('Account', 'Tài khoản'))}
-                {accountItems.map((link) => menuLink(link))}
-                {heading(t('My learning', 'Học tập của tôi'))}
-                {study.map((link) => menuLink(link))}
-                <div className="flex items-center justify-between gap-3 border-y border-line px-3 py-2 my-1">
-                  <span className="text-sm font-semibold text-ink-muted">{t('Theme', 'Giao diện')}</span>
-                  <ThemeToggle tone="surface" />
+                <div className={navStyles.menuHeader}>
+                  <span aria-hidden="true" className={navStyles.menuAvatar}>
+                    {avatarUrl ? (
+                      // eslint-disable-next-line @next/next/no-img-element -- media store image
+                      <img src={avatarUrl} alt="" className="h-full w-full rounded-full object-cover" />
+                    ) : (
+                      accountName.trim().charAt(0).toUpperCase()
+                    )}
+                  </span>
+                  <span className="flex min-w-0 flex-col">
+                    <span className="truncate text-sm font-bold text-ink">{accountName}</span>
+                    {email && <span className="truncate text-xs text-ink-muted">{email}</span>}
+                    {planLine && (
+                      <span className="mt-0.5 flex items-center gap-1.5 text-xs font-semibold text-ink-muted">
+                        <span aria-hidden="true" className="h-2 w-2 shrink-0 rounded-full bg-success" />
+                        <span className="truncate">{planLine}</span>
+                      </span>
+                    )}
+                  </span>
                 </div>
-                <button type="button" onClick={handleSignOut} disabled={signingOut} className={`${navStyles.menuItem} ${navStyles.menuDanger}`}>
-                  <LogOut aria-hidden="true" size={16} />
-                  {signingOut ? t('Signing out…', 'Đang đăng xuất…') : t('Sign out', 'Đăng xuất')}
-                </button>
+                <div className={navStyles.menuGroup}>{accountItems.map((link) => menuLink(link))}</div>
+                <div className={navStyles.menuGroup}>{study.map((link) => menuLink(link))}</div>
+                <div className={`${navStyles.menuGroup} flex items-center justify-between gap-3 px-3 py-3`}>
+                  <span className="text-xs font-extrabold uppercase tracking-wider text-ink-muted">{t('Theme', 'Giao diện')}</span>
+                  <ThemeToggle />
+                </div>
+                <div className={`${navStyles.menuGroup} px-3 pb-2 pt-3`}>
+                  <LogoutButton onClick={() => setConfirmSignOut(true)} busy={signingOut} />
+                </div>
               </div>
             </div>
           ) : (
@@ -564,13 +619,13 @@ export function NavBar({ currentSubject }: NavBarProps) {
         className={`${navStyles.mobilePanel} xl:hidden ${mobileOpen ? navStyles.mobilePanelOpen : ''}`}
       >
         <div className="space-y-1">
-          <div className="flex justify-end pb-1">
-            <ThemeToggle tone="surface" />
+          <div className="flex justify-end pb-1 pt-2">
+            <ThemeToggle />
           </div>
           {mobileLink({ href: '/', label: t('Home', 'Trang chủ') })}
+          {signedIn && mobileGroup(t('Account', 'Tài khoản'), accountItems.map((link) => mobileLink(link)))}
           {mobileGroup(t('Learn', 'Học tập'), learn.map((link) => mobileLink(link, inSection(link.href))))}
           {signedIn && mobileGroup(t('Connect', 'Kết nối'), mobileLink({ href: community.href, label: communityText }, communityActive))}
-          {signedIn && mobileGroup(t('Account', 'Tài khoản'), accountItems.map((link) => mobileLink(link)))}
           {signedIn && mobileGroup(t('My learning', 'Học tập của tôi'), study.map((link) => mobileLink(link)))}
           {mobileGroup(t('Resources', 'Tra cứu'), more.map((link) => mobileLink(link)))}
           {hasStaff && mobileGroup(t('Manage', 'Quản lý'), (
@@ -584,14 +639,7 @@ export function NavBar({ currentSubject }: NavBarProps) {
               <span className="min-w-0 truncate text-sm font-bold text-ink" title={displayName ?? undefined}>
                 {accountName}
               </span>
-              <button
-                type="button"
-                onClick={handleSignOut}
-                disabled={signingOut}
-                className="min-h-11 shrink-0 rounded-xl border border-[color-mix(in_srgb,var(--danger)_30%,transparent)] bg-danger-surface px-4 py-2.5 text-sm font-bold text-danger transition hover:bg-[color-mix(in_srgb,var(--danger-surface),var(--danger)_10%)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-danger disabled:cursor-wait disabled:opacity-60"
-              >
-                {signingOut ? t('Signing out…', 'Đang đăng xuất…') : t('Sign out', 'Đăng xuất')}
-              </button>
+              <LogoutButton onClick={() => setConfirmSignOut(true)} busy={signingOut} />
             </div>
           )}
           {!signedIn && (
@@ -606,6 +654,7 @@ export function NavBar({ currentSubject }: NavBarProps) {
           )}
         </div>
       </nav>
+      <LogoutConfirm open={confirmSignOut} onClose={() => setConfirmSignOut(false)} onConfirm={() => void handleSignOut()} />
     </header>
   );
 }

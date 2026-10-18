@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/button';
 import { Dialog } from '@/components/ui/dialog';
 import { REACTIONS, blockUser, reactToMessage, recallMessage, reportConversation, sendImage, sendMessage, type ChatMessage, type ChatSender, type ChatTarget, type ReactionChip } from './chatApi';
 import { groupMessages } from './chatLayout';
+import { PresenceAvatar } from './presence';
 import { SendButton } from './SendButton';
 import { useChatRoom } from './useChatRoom';
 
@@ -63,7 +64,7 @@ function MessageSkeleton({ rows = SKELETON.length }: { rows?: number }) {
   );
 }
 
-export function ChatPaneView({ messages, meId, onSend, onSendImage, onReport, onBlock, onReact, onRecall, senders = {}, loading = false, hasOlder = false, loadingOlder = false, onLoadOlder, reactions = {}, title, subtitle, onBack, backAlways = false, showNames = true, now }: {
+export function ChatPaneView({ messages, meId, onSend, onSendImage, onReport, onBlock, onReact, onRecall, senders = {}, loading = false, hasOlder = false, loadingOlder = false, onLoadOlder, reactions = {}, title, subtitle, peerId, onBack, backAlways = false, showNames = true, now }: {
   messages: ChatMessage[];
   meId: string | null;
   /** Resolves true when the message went through, so the box can clear. */
@@ -88,6 +89,8 @@ export function ChatPaneView({ messages, meId, onSend, onSendImage, onReport, on
   onLoadOlder?: () => void;
   title?: string;
   subtitle?: string;
+  /** The other person in a direct chat, for the online dot. */
+  peerId?: string;
   onBack?: () => void;
   /** Keep the back button on wide screens too (the floating panel). */
   backAlways?: boolean;
@@ -183,7 +186,7 @@ export function ChatPaneView({ messages, meId, onSend, onSendImage, onReport, on
           {onBack && (
             <Button type="button" variant="ghost" size="icon" className={backAlways ? '' : 'lg:hidden'} aria-label={t({ en: 'Back', vi: 'Quay lại' })} onClick={onBack}><ArrowLeft aria-hidden="true" /></Button>
           )}
-          <Avatar name={title} className="size-10 text-base" />
+          <PresenceAvatar userId={peerId}><Avatar name={title} className="size-10 text-base" /></PresenceAvatar>
           <div className="min-w-0 flex-1">
             <h2 className="truncate text-lg font-bold text-ink">{title}</h2>
             {subtitle && <p className="truncate text-xs font-medium text-ink-muted">{subtitle}</p>}
@@ -209,7 +212,7 @@ export function ChatPaneView({ messages, meId, onSend, onSendImage, onReport, on
               <div className={`flex items-start gap-4 ${mine ? 'flex-row-reverse' : ''}`}>
                 {mine
                   ? <Avatar name={group.sender_name} url={senders[group.sender_id]?.avatar_url} />
-                  : <Link href={`/community/u/${group.sender_id}`} aria-label={group.sender_name} className="rounded-xl focus-visible:outline focus-visible:outline-2 focus-visible:outline-focus"><Avatar name={group.sender_name} url={senders[group.sender_id]?.avatar_url} /></Link>}
+                  : <Link href={`/community/u/${group.sender_id}`} aria-label={group.sender_name} className="rounded-xl focus-visible:outline focus-visible:outline-2 focus-visible:outline-focus"><PresenceAvatar userId={group.sender_id}><Avatar name={group.sender_name} url={senders[group.sender_id]?.avatar_url} /></PresenceAvatar></Link>}
                 <div className={`flex min-w-0 max-w-[80%] flex-col gap-2 ${mine ? 'items-end' : 'items-start'}`}>
                   {!mine && showNames && (
                     <span className="-mb-1 flex flex-wrap items-center gap-x-2">
@@ -255,12 +258,19 @@ export function ChatPaneView({ messages, meId, onSend, onSendImage, onReport, on
                           {m.body && (
                             <p className={`whitespace-pre-wrap break-words rounded-xl px-4 py-2 text-sm ${mine ? 'bg-action text-action-ink' : 'bg-surface-sunken text-ink'}`}>{m.body}</p>
                           )}
+                          {chips.length > 0 && (
+                            <span className={`flex gap-1.5 px-1 ${mine ? 'justify-end' : ''}`}>
+                              {chips.map((chip) => (
+                                <button key={chip.emoji} type="button" aria-pressed={chip.mine} disabled={!onReact} aria-label={`${chip.emoji} ${chip.count}`} onClick={() => onReact?.(m.id, chip.emoji)}
+                                  className="chat-pop group/chip flex items-center gap-0.5 rounded text-xs leading-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-focus">
+                                  <span className={chip.mine ? '' : 'opacity-80'}>{chip.emoji}</span>
+                                  <span className="hidden font-semibold text-ink-muted group-hover/chip:inline group-focus-visible/chip:inline">{chip.count}</span>
+                                </button>
+                              ))}
+                            </span>
+                          )}
                         </div>
                         <span className={`relative flex shrink-0 items-center transition-opacity duration-150 ${picking === m.id || menuFor === m.id ? 'opacity-100' : 'opacity-0 focus-within:opacity-100 group-hover:opacity-100 [@media(hover:none)]:opacity-100'}`}>
-                          {chips.map((chip) => (
-                            <button key={chip.emoji} type="button" aria-pressed={chip.mine} disabled={!onReact} title={String(chip.count)} aria-label={`${chip.emoji} ${chip.count}`} onClick={() => onReact?.(m.id, chip.emoji)}
-                              className={`chat-pop grid size-8 place-items-center rounded-full text-base focus-visible:outline focus-visible:outline-2 focus-visible:outline-focus ${chip.mine ? 'bg-surface-sunken ring-1 ring-action' : 'hover:bg-surface-sunken'}`}>{chip.emoji}</button>
-                          ))}
                           {onReact && <Button type="button" variant="ghost" size="icon" className="size-8 min-h-8 rounded-full text-ink-muted" aria-label={t({ en: 'React', vi: 'Thả cảm xúc' })} aria-expanded={picking === m.id} onClick={() => { setMenuFor(null); setPicking(picking === m.id ? null : m.id); }}><SmilePlus aria-hidden="true" /></Button>}
                           <Button type="button" variant="ghost" size="icon" className="size-8 min-h-8 rounded-full text-ink-muted" aria-label={t({ en: 'Reply', vi: 'Trả lời' })} onClick={() => setReplyTo(m)}><Reply aria-hidden="true" /></Button>
                           {(mine ? onRecall : true) && (
@@ -359,10 +369,12 @@ export function ChatPaneView({ messages, meId, onSend, onSendImage, onReport, on
   );
 }
 
-export function ChatPane({ target, title, subtitle, onBack, onBlocked, backAlways }: {
+export function ChatPane({ target, title, subtitle, peerId, onBack, onBlocked, backAlways }: {
   target: ChatTarget;
   title?: string;
   subtitle?: string;
+  /** The other person in a direct chat, for the online dot. */
+  peerId?: string;
   onBack?: () => void;
   onBlocked?: (userId: string) => void;
   backAlways?: boolean;
@@ -440,6 +452,7 @@ export function ChatPane({ target, title, subtitle, onBack, onBlocked, backAlway
         reactions={reactions}
         title={title}
         subtitle={subtitle}
+        peerId={peerId}
         onBack={onBack}
         backAlways={backAlways}
         showNames={!friendshipId}

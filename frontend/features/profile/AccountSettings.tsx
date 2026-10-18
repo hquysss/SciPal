@@ -80,7 +80,7 @@ export function AccountSettings({ currentRole = 'student', educationPreference, 
               <div className={rowLabel}>{t({ en: 'Theme', vi: 'Chế độ sáng / tối' })}</div>
               <div className={rowHint}>{t({ en: 'Follow the device, or pick light or dark', vi: 'Theo thiết bị, hoặc chọn sáng hay tối' })}</div>
             </div>
-            <ThemeToggle tone="surface" />
+            <ThemeToggle />
           </div>
           <div className={row}>
             <div>

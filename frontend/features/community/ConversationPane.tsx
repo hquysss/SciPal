@@ -34,9 +34,10 @@ export function ConversationPane({ conversation, data, onBack, onBlocked, backAl
         subtitle={t({ en: 'Teacher and classmates', vi: 'Thầy cô và các bạn trong lớp' })} onBack={onBack} backAlways={backAlways} />
     );
   }
-  const name = data?.friends.find((f) => f.id === conversation.id)?.display_name?.trim();
+  const friend = data?.friends.find((f) => f.id === conversation.id);
+  const name = friend?.display_name?.trim();
   return (
     <ChatPane key={`dm:${conversation.id}`} target={{ friendship_id: conversation.id }} title={name || t({ en: 'User', vi: 'Người dùng' })}
-      onBack={onBack} onBlocked={onBlocked} backAlways={backAlways} />
+      peerId={friend?.user_id} onBack={onBack} onBlocked={onBlocked} backAlways={backAlways} />
   );
 }

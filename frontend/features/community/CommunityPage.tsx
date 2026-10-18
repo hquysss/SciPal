@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { FriendsTab } from '../friends/FriendsTab';
 import { ConversationPane } from './ConversationPane';
 import { ConversationList, GRADES, type Conversation } from './ConversationList';
+import { PresenceProvider } from './presence';
 import { useConversations } from './useConversations';
 
 
@@ -63,6 +64,7 @@ export function CommunityPage() {
   })();
 
   return (
+    <PresenceProvider>
     <div className="grid h-[calc(100dvh-9rem)] min-h-[32rem] overflow-hidden rounded-2xl border border-line bg-surface lg:grid-cols-[20rem_1fr]">
       <aside className={`min-h-0 border-line lg:block lg:border-r ${selected ? 'hidden' : 'block'}`}>
         <ConversationList data={data} error={error} active={shown} onOpen={open} onChooseGrade={(g) => void chooseGrade(g)} />
@@ -71,5 +73,6 @@ export function CommunityPage() {
         {pane}
       </section>
     </div>
+    </PresenceProvider>
   );
 }

@@ -11,6 +11,7 @@ import { Input } from '@/components/ui/input';
 import type { ApiResult } from '../authoring/apiClient';
 import { blockUser } from '../community/chatApi';
 import { BlockedList } from './BlockedList';
+import { PresenceAvatar } from '../community/presence';
 import {
   acceptRequest, listFriends, removeFriendship, searchUsers, sendRequest,
   type FriendEntry, type FriendsList, type SearchUser,
@@ -34,10 +35,10 @@ function Avatar({ name, url }: { name: string; url: string | null }) {
   );
 }
 
-function Person({ name, url, children }: { name: string; url: string | null; children: ReactNode }) {
+function Person({ name, url, userId, children }: { name: string; url: string | null; userId?: string; children: ReactNode }) {
   return (
     <li className="flex min-h-14 items-center gap-3 py-2">
-      <Avatar name={name} url={url} />
+      <PresenceAvatar userId={userId}><Avatar name={name} url={url} /></PresenceAvatar>
       <span className="min-w-0 flex-1 truncate font-semibold text-ink">{name}</span>
       <span className="flex shrink-0 items-center gap-2">{children}</span>
     </li>
@@ -147,7 +148,7 @@ export function FriendsTabView({ state, onSearch, onSend, onAccept, onRemove, on
           ) : (
             <Section title={t({ en: 'Friends', vi: 'Bạn bè' })}>
               {state.friends.map((p) => (
-                <Person key={p.id} name={nameOf(p)} url={p.avatar_url}>
+                <Person key={p.id} name={nameOf(p)} url={p.avatar_url} userId={p.user_id}>
                   <Button type="button" onClick={() => onMessage(p.id)}>{t({ en: 'Message', vi: 'Nhắn tin' })}</Button>
                   <Button type="button" variant="outline" onClick={() => onRemove(p.id)}>{t({ en: 'Unfriend', vi: 'Huỷ kết bạn' })}</Button>
                 </Person>

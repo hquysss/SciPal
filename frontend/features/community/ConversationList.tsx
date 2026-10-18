@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import type { ChatClass } from './chatApi';
 import type { FriendEntry } from '../friends/friendsApi';
+import { PresenceAvatar } from './presence';
 
 type Bilingual = { vi: string; en: string };
 /** What the right-hand pane shows. `room: null` is the room everyone shares. */
@@ -163,7 +164,7 @@ export function ConversationList({ data, error, active, onOpen, onChooseGrade }:
             {friends.length > 0 && (
               <Group title={t({ en: 'Friends', vi: 'Bạn bè' })}>
                 {friends.map((f) => (
-                  <Row key={f.id} name={f.name} line={t({ en: 'Direct message', vi: 'Tin nhắn riêng' })} avatar={<Initial name={f.name} url={f.avatar_url} />}
+                  <Row key={f.id} name={f.name} line={t({ en: 'Direct message', vi: 'Tin nhắn riêng' })} avatar={<PresenceAvatar userId={f.user_id}><Initial name={f.name} url={f.avatar_url} /></PresenceAvatar>}
                     active={sameConversation(active, { kind: 'dm', id: f.id })} onOpen={() => onOpen({ kind: 'dm', id: f.id })} />
                 ))}
               </Group>

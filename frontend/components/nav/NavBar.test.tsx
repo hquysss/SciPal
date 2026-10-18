@@ -114,14 +114,13 @@ describe('accountLinks', () => {
   it('splits what is personal into learning and account sections', () => {
     const by = (group: string) => accountLinks('vi', 'student').filter((l) => l.group === group).map((l) => l.href);
     expect(by('study')).toEqual(['/progress', '/games', '/classes']);
-    expect(by('account')).toEqual(['/profile', '/profile/plan']);
+    expect(by('account')).toEqual(['/profile', '/profile/plan', '/profile/orders']);
   });
 
   it('gives students their classes and plan; teachers keep theirs in the teacher menu', () => {
     expect(accountLinks('en', 'student').map((l) => l.label)).toEqual(expect.arrayContaining(['My classes', 'My plan']));
-    for (const role of ['teacher', 'admin']) {
-      expect(accountLinks('vi', role).map((l) => l.href)).toEqual(['/progress', '/games', '/profile']);
-    }
+    expect(accountLinks('vi', 'teacher').map((l) => l.href)).toEqual(['/progress', '/games', '/profile', '/profile/orders']);
+    expect(accountLinks('vi', 'admin').map((l) => l.href)).toEqual(['/progress', '/games', '/profile']);
   });
 });
 
