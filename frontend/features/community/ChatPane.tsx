@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/button';
 import { Dialog } from '@/components/ui/dialog';
 import { REACTIONS, blockUser, reactToMessage, recallMessage, reportConversation, sendImage, sendMessage, type ChatMessage, type ChatSender, type ChatTarget, type ReactionChip } from './chatApi';
 import { groupMessages } from './chatLayout';
+import roleColors from '../../components/ui/roleColors.module.css';
 import { PresenceAvatar } from './presence';
 import { SendButton } from './SendButton';
 import { useChatRoom } from './useChatRoom';
@@ -218,8 +219,8 @@ export function ChatPaneView({ messages, meId, onSend, onSendImage, onReport, on
                     <span className="-mb-1 flex flex-wrap items-center gap-x-2">
                       <Link href={`/community/u/${group.sender_id}`} className="text-sm font-bold text-ink hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-focus">{group.sender_name}</Link>
                       {senders[group.sender_id] && (
-                        <span className={`rounded-full px-2 text-xs font-semibold ${senders[group.sender_id].role === 'teacher' ? 'bg-action text-action-ink' : 'border border-line text-ink-muted'}`}>
-                          {senders[group.sender_id].role === 'teacher' ? t({ en: 'Teacher', vi: 'Giáo viên' }) : t({ en: 'Student', vi: 'Học sinh' })}
+                        <span className={`rounded-full border border-current px-2 text-xs font-semibold ${roleColors[senders[group.sender_id].role]}`}>
+                          {senders[group.sender_id].role === 'admin' ? 'Admin' : senders[group.sender_id].role === 'teacher' ? t({ en: 'Teacher', vi: 'Giáo viên' }) : t({ en: 'Student', vi: 'Học sinh' })}
                         </span>
                       )}
                     </span>

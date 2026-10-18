@@ -12,6 +12,7 @@ import { ThemeToggle } from './ThemeToggle';
 import { LogoutButton, LogoutConfirm } from './LogoutButton';
 import { OnlinePill } from './OnlinePill';
 import navStyles from './navbar.module.css';
+import roleColors from '../ui/roleColors.module.css';
 import type { SubjectSlug } from '@/lib/subject-config';
 import { createBrowserClient } from '@/lib/supabase';
 import { adoptAccountLevel, forgetAccountLevel, getShell, safeSessionStorage } from '@/lib/theme/shellTheme';
@@ -382,7 +383,7 @@ export function NavBar({ currentSubject }: NavBarProps) {
       ? `${planName} · ${t('until', 'đến')} ${new Date(plan.paidThrough).toLocaleDateString(lang === 'en' ? 'en-GB' : 'vi-VN')}`
       : planName
     : null;
-  const roleClass = appRole === 'admin' ? navStyles.roleAdmin : appRole === 'teacher' ? navStyles.roleTeacher : navStyles.roleStudent;
+  const roleClass = `font-extrabold ${appRole === 'admin' ? roleColors.admin : appRole === 'teacher' ? roleColors.teacher : roleColors.student}`;
   const teacherMenuOpen = openNavGroup === 'teacher';
   const toggleNavGroup = (group: 'admin' | 'teacher' | 'account' | 'more' | 'learn', trigger: HTMLButtonElement) => {
     openNavTriggerRef.current = trigger;

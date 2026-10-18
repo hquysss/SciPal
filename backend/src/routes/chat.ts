@@ -306,7 +306,7 @@ export const chatRoutes: FastifyPluginAsync = async (app) => {
     const found = await supabase.from('profiles').select('id, avatar_url, role').in('id', ids);
     if (found.error) return reply.code(500).send(failed);
     const rows = (found.data ?? []) as Array<{ id: string; avatar_url: string | null; role: string | null }>;
-    return reply.send({ senders: rows.map((p) => ({ user_id: p.id, avatar_url: p.avatar_url, role: p.role === 'teacher' ? 'teacher' : 'student' })) });
+    return reply.send({ senders: rows.map((p) => ({ user_id: p.id, avatar_url: p.avatar_url, role: p.role === 'teacher' || p.role === 'admin' ? p.role : 'student' })) });
   });
 
   // Unsend: only the sender. The original goes to chat_recalls (service role only) before the row is cleared.

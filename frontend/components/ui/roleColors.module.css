@@ -1,0 +1,8 @@
+/* One colour per role, for text and badges: admin red, teacher purple, student follows the level theme. */
+.admin { color: var(--danger); }
+.student { color: var(--action); }
+.teacher { color: #6b3fa0; }
+:global([data-theme='dark']) .teacher { color: #c9b0f5; }
+@media (prefers-color-scheme: dark) {
+  :global([data-app-shell]:not([data-theme='light'])) .teacher { color: #c9b0f5; }
+}

@@ -14,7 +14,7 @@ export const sendMessage = (target: ChatTarget, body: string, replyTo?: string):
   authoringCall('/api/chat/messages', 'POST', { ...target, body, ...(replyTo ? { reply_to: replyTo } : {}) });
 
 /** The picture and role of message senders, by id (public card data). */
-export type ChatSender = { user_id: string; avatar_url: string | null; role: 'student' | 'teacher' };
+export type ChatSender = { user_id: string; avatar_url: string | null; role: 'student' | 'teacher' | 'admin' };
 export const getSenders = (ids: string[]): Promise<ApiResult<{ senders: ChatSender[] }>> =>
   authoringCall(`/api/chat/senders${queryString({ ids: ids.join(',') })}`, 'GET');
 
