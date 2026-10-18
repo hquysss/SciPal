@@ -56,8 +56,18 @@ const Initial = ({ name, url }: { name: string; url?: string | null }) =>
     </span>
   );
 
-const GroupIcon = () => (
-  <span aria-hidden="true" className="flex size-12 shrink-0 items-center justify-center rounded-xl bg-surface-sunken text-ink"><Users className="size-5" /></span>
+/** Each room gets its own theme colour, so the list is not a column of identical grey icons. */
+const TONES = ['--action', '--sky', '--sun', '--coral', '--success'] as const;
+const ROOM_TONE = (grade: number | null) => (grade === null ? TONES[0] : TONES[1 + ((grade - 10) % 3 + 3) % 3]);
+
+const GroupIcon = ({ tone }: { tone: (typeof TONES)[number] }) => (
+  <span
+    aria-hidden="true"
+    style={{ background: `color-mix(in srgb, var(${tone}) 26%, var(--surface))`, color: `color-mix(in srgb, var(${tone}) 70%, var(--ink))` }}
+    className="flex size-12 shrink-0 items-center justify-center rounded-xl"
+  >
+    <Users className="size-5" />
+  </span>
 );
 
 function Group({ title, children }: { title: string; children: ReactNode }) {
@@ -134,7 +144,7 @@ export function ConversationList({ data, error, active, onOpen, onChooseGrade }:
                     name={r.name}
                     line={r.grade === null ? t({ en: 'Everyone on SciPal', vi: 'Mọi người trên SciPal' }) : t({ en: `Students in grade ${r.grade}`, vi: `Học sinh khối ${r.grade}` })}
                     tag={r.grade === null ? t({ en: 'Public', vi: 'Công khai' }) : t({ en: 'Grade room', vi: 'Phòng khối' })}
-                    avatar={<GroupIcon />}
+                    avatar={<GroupIcon tone={ROOM_TONE(r.grade)} />}
                     active={sameConversation(active, { kind: 'room', grade: r.grade })}
                     onOpen={() => onOpen({ kind: 'room', grade: r.grade })}
                   />
@@ -156,7 +166,7 @@ export function ConversationList({ data, error, active, onOpen, onChooseGrade }:
             {classes.length > 0 && (
               <Group title={t({ en: 'Classes', vi: 'Lớp học' })}>
                 {classes.map((c) => (
-                  <Row key={c.id} name={c.name} line={t({ en: 'Teacher and classmates', vi: 'Thầy cô và các bạn trong lớp' })} tag={t({ en: 'Class', vi: 'Lớp' })} avatar={<GroupIcon />}
+                  <Row key={c.id} name={c.name} line={t({ en: 'Teacher and classmates', vi: 'Thầy cô và các bạn trong lớp' })} tag={t({ en: 'Class', vi: 'Lớp' })} avatar={<GroupIcon tone="--success" />}
                     active={sameConversation(active, { kind: 'class', id: c.id })} onOpen={() => onOpen({ kind: 'class', id: c.id })} />
                 ))}
               </Group>
