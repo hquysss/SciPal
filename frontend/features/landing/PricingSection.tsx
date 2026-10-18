@@ -2,7 +2,7 @@
 
 import { useRef, useState, type CSSProperties } from 'react';
 import Link from 'next/link';
-import { ArrowRight, Check, Sparkles } from 'lucide-react';
+import { ArrowRight, Check, CreditCard, QrCode, ShieldCheck, Sparkles, Wallet, type LucideIcon } from 'lucide-react';
 import { useLanguage } from '@scipal/hooks';
 import type { BillingAudience, BillingInterval } from '@scipal/types';
 import { INTERVALS, INTERVAL_LABEL, INTERVAL_MONTHS, INTERVAL_NOUN, INTERVAL_SPAN } from '@/features/billing/intervals';
@@ -23,6 +23,17 @@ function CountingPrice({ amount, run, className }: { amount: number; run: boolea
 }
 
 const item = (index: number) => ({ '--i': index }) as CSSProperties;
+
+type Copy = { en: string; vi: string };
+
+/** The payment providers SciPal checks out with; each shows only while the catalog says it is open. */
+export function paymentMethods(catalog: Catalog): Array<{ id: string; name: string; Icon: LucideIcon; text: Copy }> {
+  return [
+    catalog.payosCheckoutOpen === true && { id: 'payos', name: 'payOS', Icon: QrCode, text: { vi: 'Chuyển khoản VietQR', en: 'VietQR bank transfer' } },
+    catalog.vnpayCheckoutOpen === true && { id: 'vnpay', name: 'VNPAY', Icon: CreditCard, text: { vi: 'Cổng thanh toán VNPAY', en: 'VNPAY payment gateway' } },
+    catalog.momoAutoRenewOpen === true && { id: 'momo', name: 'MoMo', Icon: Wallet, text: { vi: 'Ví MoMo, tự gia hạn', en: 'MoMo wallet, auto-renewal' } },
+  ].filter((m): m is { id: string; name: string; Icon: LucideIcon; text: Copy } => Boolean(m));
+}
 
 /**
  * The plans on the landing page: the free sheet of paper next to the paid plan in its aura.
@@ -50,6 +61,8 @@ export function PricingSection({
   const monthly = paid?.prices.find((p) => p.interval === 'month');
   const paidMonths = price && monthly && interval !== 'month' ? Math.round(price.amountVnd / monthly.amountVnd) : null;
   const offered = INTERVALS.filter((i) => paid?.prices.some((p) => p.interval === i));
+  const methods = catalog.checkoutOpen ? paymentMethods(catalog) : [];
+  const renewable = catalog.momoAutoRenewOpen === true || catalog.vnpayAutoRenewOpen === true;
 
   return (
     <section ref={sectionRef} className={styles.pricing} aria-labelledby="pricing-title" data-inview={inView}>
@@ -88,6 +101,26 @@ export function PricingSection({
             ))}
           </div>
         </div>
+        {methods.length > 0 && (
+          <div className={styles.methods}>
+            <p className={styles.methodsTitle}>{t({ en: 'Pay with', vi: 'Thanh toán qua' })}</p>
+            <ul className={styles.methodList}>
+              {methods.map(({ id, name, Icon, text }) => (
+                <li key={id} className={styles.method}>
+                  <span className={styles.methodIcon} aria-hidden="true"><Icon size={18} /></span>
+                  <span>
+                    <span className={styles.methodName}>{name}</span>
+                    <span className={styles.methodText}>{t(text)}</span>
+                  </span>
+                </li>
+              ))}
+            </ul>
+            <p className={styles.methodsSafe}>
+              <ShieldCheck aria-hidden="true" size={16} />
+              {t({ en: 'SciPal never receives or stores card or bank details.', vi: 'SciPal không nhận và không lưu thông tin thẻ hay tài khoản ngân hàng.' })}
+            </p>
+          </div>
+        )}
       </div>
 
       <div className={styles.plans}>
@@ -157,7 +190,9 @@ export function PricingSection({
                 <p className={styles.note}>
                   {interval !== 'month'
                     ? `${t({ en: `Paid up front for ${INTERVAL_SPAN[interval].en}`, vi: `trả trước ${INTERVAL_SPAN[interval].vi}` })}${paidMonths !== null && paidMonths < INTERVAL_MONTHS[interval] ? ` · ${t({ en: `the price of ${paidMonths} months`, vi: `bằng giá ${paidMonths} tháng` })}` : ''}`
-                    : t({ en: 'No auto-renewal; the plan runs to the end of the period you paid for.', vi: 'Không tự gia hạn; gói chạy tới hết kỳ đã trả.' })}
+                    : renewable
+                      ? t({ en: 'Renews only if you opt in with MoMo or VNPAY; otherwise it runs to the end of the period.', vi: 'Chỉ tự gia hạn khi bạn chọn qua MoMo hoặc VNPAY; nếu không, gói chạy tới hết kỳ đã trả.' })
+                      : t({ en: 'No auto-renewal; the plan runs to the end of the period you paid for.', vi: 'Không tự gia hạn; gói chạy tới hết kỳ đã trả.' })}
                 </p>
                 {catalog.checkoutOpen ? (
                   <Link href={`/profile/payment-methods?plan=${paid.code}&interval=${interval}`} className={styles.paidAction}>
