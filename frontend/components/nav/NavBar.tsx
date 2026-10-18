@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { ArrowRight, BookOpen, House, Users, ReceiptText, ChevronDown, ChevronUp, CircleHelp, ClipboardCheck, FlaskConical, Gauge, Library, LineChart, Menu, MessageCircleQuestion, School, Tag, Trophy, UserRound, X } from 'lucide-react';
+import { ArrowRight, BookOpen, House, Users, ReceiptText, ChevronDown, ChevronUp, CircleHelp, ClipboardCheck, FlaskConical, Gauge, Library, LineChart, Menu, MessageCircle, MessageCircleQuestion, School, Tag, Trophy, UserRound, X } from 'lucide-react';
 import { useParams, usePathname, useRouter } from 'next/navigation';
 import { useLanguage } from '@scipal/hooks';
 import { LanguageToggle } from './LanguageToggle';
@@ -18,6 +18,7 @@ import { createBrowserClient } from '@/lib/supabase';
 import { adoptAccountLevel, forgetAccountLevel, getShell, safeSessionStorage } from '@/lib/theme/shellTheme';
 import { countOpenSimulationRequests } from '@/features/authoring/simulationRequests/api';
 import { FRIENDS_CHANGED_EVENT, listFriends } from '@/features/friends/friendsApi';
+import { badgeText, UNREAD_BADGE, useChatUnread } from '@/features/community/unread';
 import { fetchMyPlan, PLAN_NAME } from '@/features/billing/billingApi';
 import type { BillingAccount } from '@scipal/types';
 
@@ -74,10 +75,12 @@ export function pricingLink(lang: 'en' | 'vi') {
   return { href: '/pricing', label: lang === 'en' ? 'Pricing' : 'Bảng giá' };
 }
 
-/** "Cộng đồng (2)": friend requests waiting for an answer. */
-export function communityLabel(lang: 'en' | 'vi', pending: number) {
+/** "Cộng đồng (2)": friend requests waiting for an answer, then unread messages ("Cộng đồng (2), 5 tin nhắn mới"). */
+export function communityLabel(lang: 'en' | 'vi', pending: number, unread = 0) {
   const base = lang === 'en' ? 'Community' : 'Cộng đồng';
-  return pending > 0 ? `${base} (${pending})` : base;
+  const withPending = pending > 0 ? `${base} (${pending})` : base;
+  if (unread <= 0) return withPending;
+  return `${withPending}, ${badgeText(unread)} ${lang === 'en' ? 'new messages' : 'tin nhắn mới'}`;
 }
 
 /** Learn: what a student opens to study, as a category with a line saying what each page is for. */
@@ -156,6 +159,7 @@ export function NavBar({ currentSubject }: NavBarProps) {
   const [confirmSignOut, setConfirmSignOut] = useState(false);
   const [openRequests, setOpenRequests] = useState(0);
   const [pendingFriends, setPendingFriends] = useState(0);
+  const { total: unreadMessages } = useChatUnread(Boolean(appRole));
   const mobileMenuButtonRef = useRef<HTMLButtonElement>(null);
   const openNavTriggerRef = useRef<HTMLButtonElement>(null);
 
@@ -360,7 +364,7 @@ export function NavBar({ currentSubject }: NavBarProps) {
   const learnActive = learn.some((link) => inSection(link.href));
   const community = communityLink(navLang);
   const communityActive = pathname === community.href;
-  const communityText = communityLabel(navLang, pendingFriends);
+  const communityText = communityLabel(navLang, pendingFriends, unreadMessages);
   const more = moreLinks(navLang);
   const moreActive = more.some((link) => pathname === link.href);
   const mine = accountLinks(navLang, appRole);
@@ -390,7 +394,11 @@ export function NavBar({ currentSubject }: NavBarProps) {
     setOpenNavGroup((current) => current === group ? null : group);
   };
   const countBadge = pendingFriends > 0 ? (
-    <span aria-hidden="true" className="ml-0.5 inline-grid h-5 min-w-5 place-items-center rounded-full bg-danger-surface px-1 text-xs font-bold leading-none text-danger ring-1 ring-danger">{pendingFriends}</span>
+    <span aria-hidden="true" className={`ml-0.5 ${UNREAD_BADGE}`}>{pendingFriends}</span>
+  ) : null;
+  // New messages: a chat icon with the count, so it reads apart from the friend-request number.
+  const messageBadge = unreadMessages > 0 ? (
+    <span aria-hidden="true" className={`ml-0.5 gap-0.5 !inline-flex items-center ${UNREAD_BADGE}`}><MessageCircle size={12} strokeWidth={2.5} />{badgeText(unreadMessages)}</span>
   ) : null;
 
   const icons: Record<string, ReactNode> = {
@@ -521,6 +529,7 @@ export function NavBar({ currentSubject }: NavBarProps) {
             <Link href={community.href} prefetch={pathname !== '/'} aria-current={communityActive ? 'page' : undefined} aria-label={communityText} className={navStyles.navLink}>
               {community.label}
               {countBadge}
+              {messageBadge}
             </Link>
           )}
           {barMenu('more', t('Resources', 'Tra cứu'), moreActive, (

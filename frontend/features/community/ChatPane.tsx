@@ -14,6 +14,7 @@ import roleColors from '../../components/ui/roleColors.module.css';
 import { PresenceAvatar } from './presence';
 import { SendButton } from './SendButton';
 import { useChatRoom } from './useChatRoom';
+import { markChatRead } from './unread';
 import { sendRequest } from '../friends/friendsApi';
 
 type Bilingual = { vi: string; en: string };
@@ -495,6 +496,22 @@ export function ChatPane({ target, title, subtitle, peerId, roomKey, roomAvatar,
     createBrowserClient().auth.getSession().then(({ data }) => { setMeId(data.session?.user.id ?? null); setIsAdmin(data.session?.user.app_metadata?.app_role === 'admin'); }).catch(() => undefined);
   }, []);
 
+  // Opening a conversation and each new message while it is on screen mark it read; touching it again
+  // (after the bubble was hidden) catches up too.
+  const root = useRef<HTMLDivElement>(null);
+  const readKey = 'community' in target ? 'all' : 'room_grade' in target ? String(target.room_grade) : 'class_id' in target ? `class:${target.class_id}` : `dm:${target.friendship_id}`;
+  const lastId = messages.at(-1)?.id;
+  // The newest message already marked, so pointer and focus events do not ask the server again.
+  const marked = useRef<string | null>(null);
+  const markRead = () => {
+    const seen = `${readKey}|${lastId ?? ''}`;
+    if (status !== 'ready' || marked.current === seen || document.visibilityState !== 'visible' || root.current?.checkVisibility?.() === false) return;
+    marked.current = seen;
+    void markChatRead(readKey);
+  };
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- markRead reads the same values
+  useEffect(markRead, [status, lastId, readKey]);
+
   const changeRoomAvatar = async (file: File | null) => {
     if (!roomKey) return;
     if (file && (!IMAGE_TYPES.includes(file.type) || file.size > IMAGE_MAX)) {
@@ -555,7 +572,7 @@ export function ChatPane({ target, title, subtitle, peerId, roomKey, roomAvatar,
   };
 
   return (
-    <div className="flex h-full min-h-0 flex-col">
+    <div ref={root} onPointerDown={markRead} onFocus={markRead} className="flex h-full min-h-0 flex-col">
       {(status === 'error' || notice) && (
         <div className="flex flex-col gap-2 px-4 pt-3 sm:px-6">
           {status === 'error' && <Alert tone="danger">{t({ en: 'Could not load messages.', vi: 'Không tải được tin nhắn.' })}</Alert>}

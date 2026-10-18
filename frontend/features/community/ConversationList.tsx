@@ -9,6 +9,7 @@ import { Input } from '@/components/ui/input';
 import type { ChatClass } from './chatApi';
 import type { FriendEntry } from '../friends/friendsApi';
 import { PresenceAvatar } from './presence';
+import { badgeText, readKeyOf, UNREAD_BADGE, useChatUnread } from './unread';
 
 type Bilingual = { vi: string; en: string };
 /** What the right-hand pane shows. `room: null` is the room everyone shares. */
@@ -30,7 +31,8 @@ export const GRADES = [10, 11, 12];
 const keyOf = (c: Conversation) => (c.kind === 'room' ? `room:${c.grade ?? 'all'}` : c.kind === 'friends' ? 'friends' : `${c.kind}:${c.id}`);
 const sameConversation = (a: Conversation | null, b: Conversation) => a !== null && keyOf(a) === keyOf(b);
 
-function Row({ name, line, tag, avatar, active, onOpen }: { name: string; line: string; tag?: string; avatar: ReactNode; active: boolean; onOpen: () => void }) {
+function Row({ name, line, tag, avatar, active, unread = 0, onOpen }: { name: string; line: string; tag?: string; avatar: ReactNode; active: boolean; unread?: number; onOpen: () => void }) {
+  const { t } = useLanguage();
   return (
     <li>
       <button
@@ -41,10 +43,11 @@ function Row({ name, line, tag, avatar, active, onOpen }: { name: string; line: 
       >
         {avatar}
         <span className="flex min-w-0 flex-1 flex-col gap-0.5">
-          <span className="truncate text-sm font-semibold text-ink">{name}</span>
-          <span className="truncate text-xs text-ink-muted">{line}</span>
+          <span className={`truncate text-sm text-ink ${unread > 0 ? 'font-bold' : 'font-semibold'}`}>{name}</span>
+          <span className={`truncate text-xs ${unread > 0 ? 'font-semibold text-ink' : 'text-ink-muted'}`}>{unread > 0 ? t({ en: `${badgeText(unread)} new messages`, vi: `${badgeText(unread)} tin nhắn mới` }) : line}</span>
           {tag && <span className="mt-1 w-fit rounded-full border border-line px-2 text-xs font-medium text-ink-muted">{tag}</span>}
         </span>
+        {unread > 0 && <span aria-hidden="true" className={`shrink-0 ${UNREAD_BADGE}`}>{badgeText(unread)}</span>}
       </button>
     </li>
   );
@@ -98,6 +101,7 @@ export function ConversationList({ data, error, active, onOpen, onChooseGrade }:
   const q = query.trim().toLocaleLowerCase('vi');
   const matches = (name: string) => q === '' || name.toLocaleLowerCase('vi').includes(q);
   const fallbackName = t({ en: 'User', vi: 'Người dùng' });
+  const { counts } = useChatUnread();
 
   const rooms = [null, ...(data?.grades ?? [])].map((grade) => ({
     grade,
@@ -152,6 +156,7 @@ export function ConversationList({ data, error, active, onOpen, onChooseGrade }:
                     tag={r.grade === null ? t({ en: 'Public', vi: 'Công khai' }) : t({ en: 'Grade room', vi: 'Phòng khối' })}
                     avatar={<GroupIcon tone={ROOM_TONE(r.grade)} src={data.roomAvatars?.[r.grade === null ? 'all' : String(r.grade)]} />}
                     active={sameConversation(active, { kind: 'room', grade: r.grade })}
+                    unread={counts[readKeyOf({ kind: 'room', grade: r.grade })]}
                     onOpen={() => onOpen({ kind: 'room', grade: r.grade })}
                   />
                 ))}
@@ -173,7 +178,7 @@ export function ConversationList({ data, error, active, onOpen, onChooseGrade }:
               <Group title={t({ en: 'Classes', vi: 'Lớp học' })}>
                 {classes.map((c) => (
                   <Row key={c.id} name={c.name} line={t({ en: 'Teacher and classmates', vi: 'Thầy cô và các bạn trong lớp' })} tag={t({ en: 'Class', vi: 'Lớp' })} avatar={<GroupIcon tone="--success" />}
-                    active={sameConversation(active, { kind: 'class', id: c.id })} onOpen={() => onOpen({ kind: 'class', id: c.id })} />
+                    active={sameConversation(active, { kind: 'class', id: c.id })} unread={counts[readKeyOf({ kind: 'class', id: c.id })]} onOpen={() => onOpen({ kind: 'class', id: c.id })} />
                 ))}
               </Group>
             )}
@@ -181,7 +186,7 @@ export function ConversationList({ data, error, active, onOpen, onChooseGrade }:
               <Group title={t({ en: 'Friends', vi: 'Bạn bè' })}>
                 {friends.map((f) => (
                   <Row key={f.id} name={f.name} line={t({ en: 'Direct message', vi: 'Tin nhắn riêng' })} avatar={<PresenceAvatar userId={f.user_id}><Initial name={f.name} url={f.avatar_url} /></PresenceAvatar>}
-                    active={sameConversation(active, { kind: 'dm', id: f.id })} onOpen={() => onOpen({ kind: 'dm', id: f.id })} />
+                    active={sameConversation(active, { kind: 'dm', id: f.id })} unread={counts[readKeyOf({ kind: 'dm', id: f.id })]} onOpen={() => onOpen({ kind: 'dm', id: f.id })} />
                 ))}
               </Group>
             )}
