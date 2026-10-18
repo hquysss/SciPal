@@ -618,7 +618,7 @@ export function NavBar({ currentSubject }: NavBarProps) {
         aria-hidden={!mobileOpen}
         className={`${navStyles.mobilePanel} xl:hidden ${mobileOpen ? navStyles.mobilePanelOpen : ''}`}
       >
-        <div className="space-y-1">
+        <div className="space-y-1 pb-20">
           <div className="flex justify-end pb-1 pt-2">
             <ThemeToggle />
           </div>
