@@ -113,7 +113,7 @@ export function ProfileCard({ displayName, role, email, joinedAt, avatarUrl, cov
 
   const roleBadge =
     role === 'admin'
-      ? { variant: 'default' as const, label: t({ en: 'Admin', vi: 'Quản trị viên' }) }
+      ? { variant: 'default' as const, label: 'Admin' }
       : role === 'teacher'
         ? { variant: 'outline' as const, label: t({ en: 'Teacher', vi: 'Giáo viên' }) }
         : { variant: 'secondary' as const, label: t({ en: 'Student', vi: 'Học sinh' }) };

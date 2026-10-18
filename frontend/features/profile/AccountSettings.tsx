@@ -157,7 +157,7 @@ export function AccountSettings({ currentRole = 'student', educationPreference, 
               {currentRole === 'teacher'
                 ? t({ en: 'Teacher', vi: 'Giáo viên' })
                 : currentRole === 'admin'
-                  ? t({ en: 'Admin', vi: 'Quản trị viên' })
+                  ? 'Admin'
                   : t({ en: 'Student', vi: 'Học sinh' })}
             </div>
             <p className={rowHint}>
