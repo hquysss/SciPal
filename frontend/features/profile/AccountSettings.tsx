@@ -9,6 +9,7 @@ import { buttonVariants } from '@/components/ui/button';
 import { createBrowserClient } from '@/lib/supabase';
 import { AccountHelpModal } from '@/features/auth/AccountHelpModal';
 import { EducationLevelSetting } from './EducationLevelSetting';
+import { GradeSetting } from './GradeSetting';
 import type { resolveEducationLevel } from '@/features/landing/educationLevel';
 import { ThemeToggle } from '@/components/nav/ThemeToggle';
 import { forgetAccountLevel, getShell, safeSessionStorage } from '@/lib/theme/shellTheme';
@@ -106,6 +107,7 @@ export function AccountSettings({ currentRole = 'student', educationPreference, 
             {t({ en: 'Learning', vi: 'Học tập' })}
           </h3>
           <EducationLevelSetting preference={educationPreference} isAuthenticated={isAuthenticated} />
+          {isAuthenticated && <GradeSetting />}
           <div className="flex items-center justify-between gap-3">
             <div>
               <div className={rowLabel}>
