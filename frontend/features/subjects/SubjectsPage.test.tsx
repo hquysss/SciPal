@@ -59,6 +59,16 @@ describe('SubjectsPage', () => {
     expect(main).not.toContain('Môn informatics');
   });
 
+  it('opens on the own grade of the account when it belongs to the level, else on the first', () => {
+    const open = (accountLevel: 'primary' | 'upper_secondary' | null, accountGrade: number | null) =>
+      (renderToStaticMarkup(<SubjectsPage accountLevel={accountLevel} accountGrade={accountGrade} catalog={catalog} />)
+        .match(/aria-label="Lớp (\d+)"[^>]*aria-pressed="true"|aria-pressed="true"[^>]*aria-label="Lớp (\d+)"/) ?? []).slice(1).find(Boolean);
+    expect(open('upper_secondary', 11)).toBe('11');
+    expect(open(null, 12)).toBe('12');
+    expect(open('primary', 11)).toBe('1');
+    expect(open('upper_secondary', null)).toBe('10');
+  });
+
   it('offers every grade 1–12 while no level is chosen yet', () => {
     const html = renderToStaticMarkup(<SubjectsPage accountLevel={null} catalog={catalog} />);
     for (let grade = 1; grade <= 12; grade += 1) expect(html).toContain(`aria-label="Lớp ${grade}"`);

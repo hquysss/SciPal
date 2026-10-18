@@ -26,21 +26,27 @@ export default async function SubjectsRoute() {
   const landingData = await getLandingData(cookieStore, supabase ?? undefined);
 
   let accountLevel: EducationLevel | null = null;
+  let accountGrade: number | null = null;
   if (supabase) {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
+        // The generated profile types do not list `grade` (10–12, set on the profile page) yet.
         const { data, error } = await supabase
           .from('profiles')
-          .select('preferred_education_level')
+          .select('preferred_education_level, grade')
           .eq('id', user.id)
-          .maybeSingle();
-        if (!error) accountLevel = parseEducationLevel(data?.preferred_education_level);
+          .maybeSingle() as { data: { preferred_education_level?: string | null; grade?: number | null } | null; error: unknown };
+        if (!error) {
+          accountLevel = parseEducationLevel(data?.preferred_education_level);
+          accountGrade = typeof data?.grade === 'number' ? data.grade : null;
+        }
       }
     } catch {
       accountLevel = null;
+      accountGrade = null;
     }
   }
 
-  return <SubjectsPage accountLevel={accountLevel} catalog={landingData.catalog} informatics={landingData.informatics} />;
+  return <SubjectsPage accountLevel={accountLevel} accountGrade={accountGrade} catalog={landingData.catalog} informatics={landingData.informatics} />;
 }
