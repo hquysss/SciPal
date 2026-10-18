@@ -374,7 +374,7 @@ export function NavBar({ currentSubject }: NavBarProps) {
   const planCode = plan ? plan.plan ?? (plan.role === 'teacher' ? 'teacher_free' : 'student_free') : null;
   const planName = planCode ? t(PLAN_NAME[planCode]?.en ?? planCode, PLAN_NAME[planCode]?.vi ?? planCode) : null;
   // The plan and its end date; until it loads (or when it cannot), the role, so the line never goes missing.
-  const roleLabel = appRole === 'admin' ? t('Administrator', 'Quản trị viên') : appRole === 'teacher' ? t('Teacher', 'Giáo viên') : t('Student', 'Học sinh');
+  const roleLabel = appRole === 'admin' ? 'Admin' : appRole === 'teacher' ? t('Teacher', 'Giáo viên') : t('Student', 'Học sinh');
   const planDetail = appRole === 'admin'
     ? t('no limits', 'không giới hạn')
     : planName
