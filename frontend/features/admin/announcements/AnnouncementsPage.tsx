@@ -13,6 +13,7 @@ import { ALL_ACCOUNTS, AudiencePicker, targetCount, type Target } from './Audien
 import { SendToast } from './SendToast';
 import {
   NEWSLETTER_LEVELS,
+  deleteAnnouncement,
   fetchAnnouncements,
   sendAnnouncement,
   type Announcement,
@@ -50,6 +51,27 @@ export function AnnouncementsPage() {
     // Roles and the picker's search need the account list; without it the notice can still go to everyone.
     void listAccounts().then(setAccounts, () => undefined);
   }, [load]);
+
+  async function remove(a: Announcement) {
+    const ok = await ask({
+      title: t({ vi: 'Xóa thông báo này?', en: 'Delete this announcement?' }),
+      description: t({
+        vi: `Thông báo “${a.title_vi}” sẽ biến mất khỏi chuông của mọi người đã nhận. Email đã gửi thì không thu hồi được.`,
+        en: `“${a.title_en}” will leave the bell of everyone who got it. E-mails already sent cannot be recalled.`,
+      }),
+      confirmLabel: t({ vi: 'Xóa', en: 'Delete' }),
+      cancelLabel: t({ vi: 'Huỷ', en: 'Cancel' }),
+      destructive: true,
+    });
+    if (!ok) return;
+    const result = await deleteAnnouncement(a.id);
+    if (result.ok) {
+      setData((prev) => (prev ? { ...prev, announcements: prev.announcements.filter((x) => x.id !== a.id) } : prev));
+      setNotice({ tone: 'success', text: { vi: 'Đã xóa thông báo.', en: 'Announcement deleted.' } });
+    } else {
+      setNotice({ tone: 'danger', text: result.error });
+    }
+  }
 
   const set = <K extends keyof typeof EMPTY>(key: K, value: (typeof EMPTY)[K]) => setForm((f) => ({ ...f, [key]: value }));
   const audience = data?.audience;
@@ -188,7 +210,10 @@ export function AnnouncementsPage() {
         <ul className="flex flex-col gap-3">
           {data?.announcements.map((a) => (
             <li key={a.id} className="rounded-xl border border-line bg-surface p-4">
-              <p className="font-semibold text-ink">{t({ vi: a.title_vi, en: a.title_en })}</p>
+              <div className="flex items-start justify-between gap-3">
+                <p className="font-semibold text-ink">{t({ vi: a.title_vi, en: a.title_en })}</p>
+                <Button type="button" variant="outline" onClick={() => void remove(a)}>{t({ vi: 'Xóa', en: 'Delete' })}</Button>
+              </div>
               <p className="mt-1 text-sm text-ink-muted">
                 {dateOf(a.created_at)} · {t({ vi: `${a.app_count} trong app`, en: `${a.app_count} in-app` })} · {t({ vi: `${a.email_count} email`, en: `${a.email_count} e-mails` })}
                 {a.level ? ` · ${t(NEWSLETTER_LEVELS.find((l) => l.value === a.level)!.label)}` : ''}

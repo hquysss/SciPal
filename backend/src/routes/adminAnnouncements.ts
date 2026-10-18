@@ -233,4 +233,38 @@ export const adminAnnouncementRoutes: FastifyPluginAsync = async (app) => {
     if (done.error) request.log.error({ err: done.error }, 'Failed to store announcement counts');
     return reply.code(201).send({ announcement: { ...row, app_count: appCount, email_count: emailCount }, ...(warning ? { warning } : {}) });
   });
+
+  // Take an announcement back: its notices leave every bell and the row leaves the history.
+  // Notices carry no announcement id, so they are matched by kind, titles and the minutes after sending.
+  // E-mails already sent cannot be recalled.
+  app.delete('/api/admin/announcements/:id', { preHandler: [requireAdmin] }, async (request, reply) => {
+    const supabase = app.supabase;
+    if (!supabase) return reply.code(503).send(unavailable);
+    const { id } = request.params as { id: string };
+    if (!ID.test(id)) return reply.code(400).send(INVALID);
+    const found = await supabase.from('announcements').select(COLUMNS).eq('id', id).maybeSingle();
+    if (found.error) {
+      request.log.error({ err: found.error }, 'Failed to look up an announcement');
+      return reply.code(500).send(unavailable);
+    }
+    const row = found.data as Row | null;
+    if (!row) return reply.code(404).send(msg('Không tìm thấy thông báo.', 'Announcement not found.'));
+    if (row.send_app) {
+      const from = new Date(row.created_at);
+      const until = new Date(from.getTime() + 10 * 60 * 1000);
+      const removed = await supabase.from('notifications').delete()
+        .eq('kind', 'announcement').eq('title_en', row.title_en).eq('title_vi', row.title_vi)
+        .gte('created_at', from.toISOString()).lte('created_at', until.toISOString());
+      if (removed.error) {
+        request.log.error({ err: removed.error }, 'Failed to remove announcement notifications');
+        return reply.code(500).send(unavailable);
+      }
+    }
+    const gone = await supabase.from('announcements').delete().eq('id', id);
+    if (gone.error) {
+      request.log.error({ err: gone.error }, 'Failed to delete an announcement');
+      return reply.code(500).send(unavailable);
+    }
+    return reply.code(204).send();
+  });
 };
