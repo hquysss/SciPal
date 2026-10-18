@@ -19,7 +19,7 @@ import {
   School,
 } from 'lucide-react';
 import { useLanguage } from '@scipal/hooks';
-import { RoleBadge } from './RoleBadge';
+import { ProfileBadges } from './RoleBadge';
 import { buttonVariants } from '../../components/ui/button';
 import { BadgeShowcase } from './BadgeShowcase';
 import { ProfileEditor } from './ProfileEditor';
@@ -90,7 +90,7 @@ export function ProfileCard({ displayName, role, email, joinedAt, avatarUrl, cov
   const [editing, setEditing] = useState(false);
   const [tab, setTab] = useState<'shortcuts' | 'badges'>('shortcuts');
   // Grade, school and bio come from the community profile; the card shows without them until they load.
-  const [about, setAbout] = useState<Pick<PublicProfile, 'grade' | 'school' | 'bio'> | null>(null);
+  const [about, setAbout] = useState<Pick<PublicProfile, 'grade' | 'school' | 'bio' | 'rank'> | null>(null);
 
   useEffect(() => {
     let live = true;
@@ -135,7 +135,7 @@ export function ProfileCard({ displayName, role, email, joinedAt, avatarUrl, cov
         initials={initials}
         avatarUrl={avatarUrl}
         coverUrl={coverUrl}
-        badge={<RoleBadge role={role} />}
+        badge={<ProfileBadges role={role} weekRank={about?.rank?.week} />}
         handle={email}
         bio={about?.bio}
         meta={meta}

@@ -100,7 +100,7 @@ export type PublicProfile = {
   friendship_id: string | null;
   streak: { current: number; best: number };
   /** All-time XP leaderboard place; null with no XP yet (or when the lookup failed). */
-  rank?: { position: number; xp: number } | null;
+  rank?: { position: number; xp: number; /** Place this week; null with no XP this week. */ week: number | null } | null;
 };
 export type ProfileAbout = { grade: 10 | 11 | 12 | null; school: string | null; bio: string | null; show_school: boolean; show_bio: boolean };
 

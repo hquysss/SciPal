@@ -78,9 +78,9 @@ describe('GET /api/profile/:user_id', () => {
     const db = fakeDb({ 'profiles.select': [row()], ...others(null) });
     (db as any).rpc = async (fn: string, args: object) => {
       expect([fn, args]).toEqual(['xp_rank_of', { p_user: OTHER }]);
-      return { data: [{ rank: '3', xp: '120' }], error: null };
+      return { data: [{ rank: '3', xp: '120', week_rank: '1' }], error: null };
     };
-    expect((await get(db)).json().rank).toEqual({ position: 3, xp: 120 });
+    expect((await get(db)).json().rank).toEqual({ position: 3, xp: 120, week: 1 });
     const none = fakeDb({ 'profiles.select': [row()], ...others(null) });
     (none as any).rpc = async () => ({ data: [], error: null });
     expect((await get(none)).json().rank).toBeNull();

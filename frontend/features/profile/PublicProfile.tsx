@@ -9,7 +9,7 @@ import { Button, buttonVariants } from '@/components/ui/button';
 import { sendRequest } from '../friends/friendsApi';
 import { BadgeShowcase } from './BadgeShowcase';
 import { ProfileHero, pill } from './ProfileHero';
-import { RoleBadge } from './RoleBadge';
+import { ProfileBadges } from './RoleBadge';
 import { getProfile, type PublicProfile as Profile } from './profileApi';
 
 type Bilingual = { en: string; vi: string };
@@ -59,7 +59,7 @@ export function PublicProfile({ userId }: { userId: string }) {
         initials={name.slice(0, 1).toUpperCase()}
         avatarUrl={p.avatar_url}
         coverUrl={p.cover_url}
-        badge={<RoleBadge role={p.role} />}
+        badge={<ProfileBadges role={p.role} weekRank={p.rank?.week} />}
         handle={p.grade ? t({ en: `Grade ${p.grade}`, vi: `Lớp ${p.grade}` }) : null}
         bio={p.bio}
         meta={p.school ? [{ Icon: School, text: p.school }] : []}

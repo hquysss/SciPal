@@ -210,12 +210,12 @@ export const profileRoutes: FastifyPluginAsync = async (app) => {
     const rows = (streaks.data ?? []) as Array<{ current_streak: number; longest_streak: number }>;
 
     // All-time XP rank; a failed lookup only leaves it out, the profile still opens.
-    let rank: { position: number; xp: number } | null = null;
+    let rank: { position: number; xp: number; week: number | null } | null = null;
     try {
       const ranked = await supabase.rpc('xp_rank_of', { p_user: target });
-      const hit = ((ranked.data as Array<{ rank: number | string; xp: number | string }> | null) ?? [])[0];
+      const hit = ((ranked.data as Array<{ rank: number | string; xp: number | string; week_rank?: number | string | null }> | null) ?? [])[0];
       if (ranked.error) request.log.warn({ err: ranked.error }, 'XP rank lookup failed');
-      else if (hit) rank = { position: Number(hit.rank), xp: Number(hit.xp) };
+      else if (hit) rank = { position: Number(hit.rank), xp: Number(hit.xp), week: hit.week_rank == null ? null : Number(hit.week_rank) };
     } catch (err) {
       request.log.warn({ err }, 'XP rank lookup failed');
     }
