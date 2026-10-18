@@ -40,12 +40,12 @@ pg_cron calls the backend every minute, so timing does not depend on the Vercel 
 ```sql
 create extension if not exists pg_cron;
 create extension if not exists pg_net;
-select cron.schedule('scipal-scheduled-actions', '* * * * *', $
+select cron.schedule('scipal-scheduled-actions', '* * * * *', $$
   select net.http_get(
     url := 'https://<BACKEND-HOST>/api/internal/scheduled/run',
     headers := jsonb_build_object('Authorization', 'Bearer <CRON_SECRET>')
   );
-$);
+$$);
 ```
 
 Maintenance: the end time is optional; without one an admin switches maintenance off with the existing switch.
