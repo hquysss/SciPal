@@ -2,13 +2,12 @@
 
 import { useEffect, useRef, useState, type ChangeEvent, type FormEvent } from 'react';
 import Link from 'next/link';
-import { ArrowLeft, Flag, ImagePlus, Reply, SmilePlus, X } from 'lucide-react';
+import { ArrowLeft, Flag, Paperclip, Reply, SmilePlus, X } from 'lucide-react';
 import { useLanguage } from '@scipal/hooks';
 import { createBrowserClient } from '@scipal/supabase';
 import { Alert } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Dialog } from '@/components/ui/dialog';
-import { Input } from '@/components/ui/input';
 import { REACTIONS, blockUser, reactToMessage, reportConversation, sendImage, sendMessage, type ChatMessage, type ChatTarget, type ReactionChip } from './chatApi';
 import { groupMessages } from './chatLayout';
 import { SendButton } from './SendButton';
@@ -29,9 +28,9 @@ const REASONS: Bilingual[] = [
 /** The address was written by our own server, but only https ever reaches an <img> or a link. */
 const isHttps = (url: string | null): url is string => typeof url === 'string' && url.startsWith('https://');
 
-function Avatar({ name, className = 'h-8 w-8 text-sm' }: { name: string; className?: string }) {
+function Avatar({ name, className = 'size-10 text-sm' }: { name: string; className?: string }) {
   return (
-    <span aria-hidden="true" className={`flex shrink-0 items-center justify-center rounded-full bg-surface-sunken font-bold text-ink ${className}`}>
+    <span aria-hidden="true" className={`flex shrink-0 items-center justify-center rounded-xl bg-surface-sunken font-bold text-ink ${className}`}>
       {name.trim().slice(0, 1).toUpperCase() || '?'}
     </span>
   );
@@ -123,44 +122,42 @@ export function ChatPaneView({ messages, meId, onSend, onSendImage, onReport, on
   const snippet = (m: ChatMessage) => m.body || t({ en: 'Picture', vi: 'Ảnh' });
 
   return (
-    <div className="flex h-[70dvh] min-h-96 flex-col overflow-hidden rounded-2xl border border-line bg-surface">
+    <div className="flex h-full min-h-0 flex-col bg-surface">
       {title && (
-        <header className="flex items-center gap-3 border-b border-line px-3 py-2">
+        <header className="flex items-center gap-3 border-b border-line px-4 py-3 sm:px-6 sm:py-4">
           {onBack && (
-            <Button type="button" variant="ghost" size="icon" aria-label={t({ en: 'Back', vi: 'Quay lại' })} onClick={onBack}><ArrowLeft aria-hidden="true" /></Button>
+            <Button type="button" variant="ghost" size="icon" className="lg:hidden" aria-label={t({ en: 'Back', vi: 'Quay lại' })} onClick={onBack}><ArrowLeft aria-hidden="true" /></Button>
           )}
-          <Avatar name={title} className="h-10 w-10 text-base" />
+          <Avatar name={title} className="size-10 text-base" />
           <div className="min-w-0 flex-1">
-            <h2 className="truncate text-base font-bold text-ink">{title}</h2>
-            {subtitle && <p className="truncate text-xs text-ink-muted">{subtitle}</p>}
+            <h2 className="truncate text-lg font-bold text-ink">{title}</h2>
+            {subtitle && <p className="truncate text-xs font-medium text-ink-muted">{subtitle}</p>}
           </div>
-          <Button type="button" variant="ghost" className="shrink-0 text-danger" onClick={() => setReporting(true)}>
-            <Flag aria-hidden="true" />{t({ en: 'Report', vi: 'Báo cáo' })}
+          <Button type="button" variant="destructive" className="shrink-0 max-sm:size-11 max-sm:px-0" aria-label={t({ en: 'Report', vi: 'Báo cáo' })} onClick={() => setReporting(true)}>
+            <Flag aria-hidden="true" /><span className="max-sm:hidden">{t({ en: 'Report', vi: 'Báo cáo' })}</span>
           </Button>
         </header>
       )}
 
-      <div ref={log} role="log" aria-live="polite" aria-label={t({ en: 'Messages', vi: 'Tin nhắn' })} className="flex flex-1 flex-col gap-3 overflow-y-auto px-3 py-3">
+      <div ref={log} role="log" aria-live="polite" aria-label={t({ en: 'Messages', vi: 'Tin nhắn' })} className="flex flex-1 flex-col gap-6 overflow-y-auto px-4 py-6 sm:px-6">
         {messages.length === 0 && <p className="m-auto text-sm text-ink-muted">{t({ en: 'No messages yet. Say hello!', vi: 'Chưa có tin nhắn nào. Chào mọi người nhé!' })}</p>}
         {groups.map((group) => {
           const mine = group.sender_id === meId;
-          const last = group.messages.length - 1;
           return (
-            <div key={group.messages[0].id} className="flex flex-col gap-1">
-              {group.timeLabel && <p className="my-1 text-center text-xs text-ink-muted">{group.timeLabel}</p>}
-              <div className={`flex items-end gap-2 ${mine ? 'flex-row-reverse' : ''}`}>
-                {!mine && <Link href={`/community/u/${group.sender_id}`} aria-label={group.sender_name} className="rounded-full focus-visible:outline focus-visible:outline-2 focus-visible:outline-focus"><Avatar name={group.sender_name} /></Link>}
-                <div className={`flex min-w-0 max-w-[80%] flex-col gap-0.5 ${mine ? 'items-end' : 'items-start'}`}>
-                  {!mine && showNames && <Link href={`/community/u/${group.sender_id}`} className="px-1 text-xs font-semibold text-ink-muted hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-focus">{group.sender_name}</Link>}
-                  {group.messages.map((m, i) => {
-                    const corners = mine
-                      ? `${i > 0 ? 'rounded-tr-md' : ''} ${i < last ? 'rounded-br-md' : ''}`
-                      : `${i > 0 ? 'rounded-tl-md' : ''} ${i < last ? 'rounded-bl-md' : ''}`;
+            <div key={group.messages[0].id} className="flex flex-col gap-2">
+              {group.timeLabel && <p className="mb-2 text-center text-xs font-medium text-ink-muted">{group.timeLabel}</p>}
+              <div className={`flex items-start gap-4 ${mine ? 'flex-row-reverse' : ''}`}>
+                {mine
+                  ? <Avatar name={group.sender_name} />
+                  : <Link href={`/community/u/${group.sender_id}`} aria-label={group.sender_name} className="rounded-xl focus-visible:outline focus-visible:outline-2 focus-visible:outline-focus"><Avatar name={group.sender_name} /></Link>}
+                <div className={`flex min-w-0 max-w-[80%] flex-col gap-2 ${mine ? 'items-end' : 'items-start'}`}>
+                  {!mine && showNames && <Link href={`/community/u/${group.sender_id}`} className="-mb-1 text-xs font-semibold text-ink-muted hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-focus">{group.sender_name}</Link>}
+                  {group.messages.map((m) => {
                     return (
                       <div key={m.id} className={`group flex items-center gap-1 ${mine ? 'flex-row-reverse' : ''}`}>
                         <div className={`flex min-w-0 flex-col gap-0.5 ${mine ? 'items-end' : 'items-start'}`}>
                           {isHttps(m.image_url) && (
-                            <button type="button" aria-label={t({ en: 'Enlarge picture', vi: 'Phóng to ảnh' })} onClick={() => setZoomed(m.image_url)} className={`block overflow-hidden rounded-2xl focus-visible:outline focus-visible:outline-2 focus-visible:outline-focus ${corners}`}>
+                            <button type="button" aria-label={t({ en: 'Enlarge picture', vi: 'Phóng to ảnh' })} onClick={() => setZoomed(m.image_url)} className="block overflow-hidden rounded-xl focus-visible:outline focus-visible:outline-2 focus-visible:outline-focus">
                               <img src={m.image_url} alt={t({ en: 'Picture', vi: 'Ảnh' })} loading="lazy" className="max-h-60 max-w-full cursor-zoom-in object-cover" />
                             </button>
                           )}
@@ -170,7 +167,7 @@ export function ChatPaneView({ messages, meId, onSend, onSendImage, onReport, on
                             </p>
                           )}
                           {m.body && (
-                            <p className={`whitespace-pre-wrap break-words rounded-2xl px-3 py-2 text-sm ${corners} ${mine ? 'bg-action text-action-ink' : 'bg-surface-sunken text-ink'}`}>{m.body}</p>
+                            <p className={`whitespace-pre-wrap break-words rounded-xl px-4 py-2 text-sm ${mine ? 'bg-action text-action-ink' : 'bg-surface-sunken text-ink'}`}>{m.body}</p>
                           )}
                           {(reactions[m.id]?.length ?? 0) > 0 && (
                             <span className="flex flex-wrap gap-1">
@@ -212,7 +209,7 @@ export function ChatPaneView({ messages, meId, onSend, onSendImage, onReport, on
         })}
       </div>
 
-      <div className="flex flex-col gap-2 border-t border-line px-3 py-3">
+      <div className="flex flex-col gap-2 px-4 pb-4 pt-2 sm:px-6 sm:pb-6">
         {replyTo && (
           <div className="flex items-center gap-2 rounded-lg bg-surface-sunken px-3 py-1 text-xs text-ink-muted">
             <span className="min-w-0 flex-1 truncate">{t({ en: 'Replying to', vi: 'Trả lời' })} {replyTo.sender_name}: {snippet(replyTo)}</span>
@@ -229,22 +226,24 @@ export function ChatPaneView({ messages, meId, onSend, onSendImage, onReport, on
             </Button>
           </div>
         )}
-        <form onSubmit={(e) => void submit(e)} className="flex items-center gap-2">
+        <form onSubmit={(e) => void submit(e)} className="flex items-center gap-3">
           {onSendImage && (
-            <label className="inline-flex size-11 shrink-0 cursor-pointer items-center justify-center rounded-full text-ink hover:bg-surface-sunken focus-within:outline focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-focus">
-              <ImagePlus aria-hidden="true" className="h-5 w-5" />
+            <label className="inline-flex size-11 shrink-0 cursor-pointer items-center justify-center rounded-lg text-ink-muted hover:bg-surface-sunken hover:text-ink focus-within:outline focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-focus">
+              <Paperclip aria-hidden="true" className="size-5" />
               <input type="file" accept={IMAGE_TYPES.join(',')} aria-label={t({ en: 'Attach a picture', vi: 'Đính kèm ảnh' })} onChange={choose} className="sr-only" />
             </label>
           )}
-          <Input
-            value={draft}
-            maxLength={BODY_MAX}
-            onChange={(e) => setDraft(e.target.value)}
-            aria-label={t({ en: 'Write a message', vi: 'Viết tin nhắn' })}
-            placeholder={file ? t({ en: 'Add a caption (optional)', vi: 'Thêm chú thích (không bắt buộc)' }) : t({ en: 'Aa', vi: 'Aa' })}
-            className="rounded-full bg-surface-sunken px-4"
-          />
-          <SendButton label={t({ en: 'Send', vi: 'Gửi' })} sendingLabel={t({ en: 'Sending…', vi: 'Đang gửi…' })} sending={sending} disabled={draft.trim() === '' && !file} />
+          <div className="flex min-h-12 flex-1 items-center rounded-xl border-2 border-line bg-surface pl-4 pr-1 focus-within:border-action">
+            <input
+              value={draft}
+              maxLength={BODY_MAX}
+              onChange={(e) => setDraft(e.target.value)}
+              aria-label={t({ en: 'Write a message', vi: 'Viết tin nhắn' })}
+              placeholder={file ? t({ en: 'Add a caption (optional)', vi: 'Thêm chú thích (không bắt buộc)' }) : t({ en: 'Type a message', vi: 'Nhập tin nhắn' })}
+              className="min-w-0 flex-1 bg-transparent text-sm text-ink placeholder:text-ink-muted focus:outline-none"
+            />
+            <SendButton label={t({ en: 'Send', vi: 'Gửi' })} sendingLabel={t({ en: 'Sending…', vi: 'Đang gửi…' })} sending={sending} disabled={draft.trim() === '' && !file} />
+          </div>
         </form>
       </div>
 
@@ -324,9 +323,13 @@ export function ChatPane({ target, title, subtitle, onBack, onBlocked }: {
   };
 
   return (
-    <div className="flex flex-col gap-3">
-      {status === 'error' && <Alert tone="danger">{t({ en: 'Could not load messages.', vi: 'Không tải được tin nhắn.' })}</Alert>}
-      {notice && <Alert tone={notice.tone}>{t(notice.text)}</Alert>}
+    <div className="flex h-full min-h-0 flex-col">
+      {(status === 'error' || notice) && (
+        <div className="flex flex-col gap-2 px-4 pt-3 sm:px-6">
+          {status === 'error' && <Alert tone="danger">{t({ en: 'Could not load messages.', vi: 'Không tải được tin nhắn.' })}</Alert>}
+          {notice && <Alert tone={notice.tone}>{t(notice.text)}</Alert>}
+        </div>
+      )}
       <ChatPaneView
         messages={messages.filter((m) => !blocked.includes(m.sender_id))}
         meId={meId}

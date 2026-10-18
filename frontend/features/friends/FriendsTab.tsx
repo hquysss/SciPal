@@ -11,7 +11,6 @@ import { Input } from '@/components/ui/input';
 import type { ApiResult } from '../authoring/apiClient';
 import { blockUser } from '../community/chatApi';
 import { BlockedList } from './BlockedList';
-import { ChatPane } from '../community/ChatPane';
 import {
   acceptRequest, listFriends, removeFriendship, searchUsers, sendRequest,
   type FriendEntry, type FriendsList, type SearchUser,
@@ -161,8 +160,8 @@ export function FriendsTabView({ state, onSearch, onSend, onAccept, onRemove, on
   );
 }
 
-/** `dm` is the friendship whose chat is open (kept in the URL by the community page); `onDm` opens or closes one. */
-export function FriendsTab({ dm = null, onDm }: { dm?: string | null; onDm?: (friendshipId: string | null) => void }) {
+/** Finding people and handling requests; `onDm` opens the chat with a friend (the community page shows it). */
+export function FriendsTab({ onDm }: { onDm?: (friendshipId: string | null) => void }) {
   const [state, setState] = useState<FriendsState>({ status: 'loading' });
   const [notice, setNotice] = useState<Bilingual | null>(null);
   const [blockVersion, setBlockVersion] = useState(0);
@@ -206,19 +205,6 @@ export function FriendsTab({ dm = null, onDm }: { dm?: string | null; onDm?: (fr
     setBlockVersion((v) => v + 1);
     setState((prev) => (prev.status === 'ready' && prev.results ? { ...prev, results: prev.results.filter((u) => u.user_id !== userId) } : prev));
   };
-
-  if (dm) {
-    const friend = state.status === 'ready' ? state.friends.find((f) => f.id === dm) : undefined;
-    return (
-      <ChatPane
-        key={dm}
-        target={{ friendship_id: dm }}
-        title={friend?.display_name?.trim() || t({ en: 'User', vi: 'Người dùng' })}
-        onBack={() => onDm?.(null)}
-        onBlocked={() => { onDm?.(null); void load(); }}
-      />
-    );
-  }
 
   return (
     <div className="flex flex-col gap-4">
