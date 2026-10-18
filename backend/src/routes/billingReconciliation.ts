@@ -254,7 +254,11 @@ export const billingReconciliationRoutes: FastifyPluginAsync<{ payos?: PayosClie
     let query = supabase
       .from('billing_orders')
       .select('id, user_id, plan_code, interval, amount_vnd, status, created_at, paid_at, expires_at', { count: 'exact' });
-    if (status) query = query.eq('status', status);
+    // Nothing rewrites a lapsed pending order, so "pending" and "expired" are decided by expires_at, as the buyer's own list does.
+    const nowIso = new Date().toISOString();
+    if (status === 'pending') query = query.eq('status', 'pending').gt('expires_at', nowIso);
+    else if (status === 'expired') query = query.or(`status.eq.expired,and(status.eq.pending,expires_at.lte.${nowIso})`);
+    else if (status) query = query.eq('status', status);
     const { data, error, count } = await query.order('created_at', { ascending: false }).range(offset, offset + limit - 1);
     if (error) {
       request.log.error({ err: error }, 'Could not list billing orders');
@@ -302,7 +306,7 @@ export const billingReconciliationRoutes: FastifyPluginAsync<{ payos?: PayosClie
         const plan = planByCode.get(order.plan_code);
         return {
           id: order.id,
-          status: order.status,
+          status: order.status === 'pending' && order.expires_at && new Date(order.expires_at) <= new Date() ? 'expired' : order.status,
           amountVnd: order.amount_vnd,
           interval: order.interval,
           createdAt: order.created_at,
