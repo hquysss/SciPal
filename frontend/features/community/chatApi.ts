@@ -13,6 +13,11 @@ export type ReactionChip = { emoji: string; count: number; mine: boolean };
 export const sendMessage = (target: ChatTarget, body: string, replyTo?: string): Promise<ApiResult<{ id: string }>> =>
   authoringCall('/api/chat/messages', 'POST', { ...target, body, ...(replyTo ? { reply_to: replyTo } : {}) });
 
+/** The picture and role of message senders, by id (public card data). */
+export type ChatSender = { user_id: string; avatar_url: string | null; role: 'student' | 'teacher' };
+export const getSenders = (ids: string[]): Promise<ApiResult<{ senders: ChatSender[] }>> =>
+  authoringCall(`/api/chat/senders${queryString({ ids: ids.join(',') })}`, 'GET');
+
 /** Unsend your own message: everyone then sees that it was taken back. */
 export const recallMessage = (messageId: string): Promise<ApiResult<Record<string, never>>> =>
   authoringCall(`/api/chat/messages/${encodeURIComponent(messageId)}/recall`, 'POST');

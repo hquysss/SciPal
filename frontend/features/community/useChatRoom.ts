@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { createBrowserClient } from '@scipal/supabase';
-import type { ChatMessage, ChatTarget, ReactionChip } from './chatApi';
+import { getSenders, type ChatMessage, type ChatSender, type ChatTarget, type ReactionChip } from './chatApi';
 
 const PAGE = 50;
 const KEEP = 200;
@@ -46,6 +46,8 @@ export function useChatRoom(target: ChatTarget, meId: string | null = null): {
   reactions: Record<string, ReactionChip[]>;
   status: 'loading' | 'ready' | 'error';
   refreshReactions: () => void;
+  /** Picture and role of each sender on screen, filled in after the messages arrive. */
+  senders: Record<string, ChatSender>;
   hasOlder: boolean;
   loadingOlder: boolean;
   loadOlder: () => void;
@@ -57,6 +59,7 @@ export function useChatRoom(target: ChatTarget, meId: string | null = null): {
   const [reactionRows, setReactionRows] = useState<Array<{ message_id: string; user_id: string; emoji: string }>>([]);
   const [tick, setTick] = useState(0);
   const refreshReactions = useCallback(() => setTick((n) => n + 1), []);
+  const [senders, setSenders] = useState<Record<string, ChatSender>>({});
   const [hasOlder, setHasOlder] = useState(false);
   const [loadingOlder, setLoadingOlder] = useState(false);
 
@@ -99,6 +102,20 @@ export function useChatRoom(target: ChatTarget, meId: string | null = null): {
     };
   }, [column, id]);
 
+  // Ask once for each sender the reader has not seen yet; a failed lookup just leaves the plain initial.
+  const unknown = [...new Set(state.messages.map((m) => m.sender_id))].filter((id) => !senders[id]);
+  const unknownKey = unknown.join(',');
+  useEffect(() => {
+    if (!unknownKey) return;
+    let live = true;
+    void getSenders(unknownKey.split(',')).then((result) => {
+      if (live && result.ok) setSenders((prev) => ({ ...prev, ...Object.fromEntries(result.data.senders.map((s) => [s.user_id, s])) }));
+    });
+    return () => {
+      live = false;
+    };
+  }, [unknownKey]);
+
   // Older history only when the reader scrolls up for it, one page at a time.
   const oldest = state.messages[0]?.created_at ?? null;
   const loadOlder = useCallback(() => {
@@ -132,5 +149,5 @@ export function useChatRoom(target: ChatTarget, meId: string | null = null): {
     };
   }, [ids, tick]);
 
-  return { messages: state.messages, reactions: groupReactions(reactionRows, meId), status: state.status, refreshReactions, hasOlder, loadingOlder, loadOlder };
+  return { messages: state.messages, reactions: groupReactions(reactionRows, meId), status: state.status, refreshReactions, senders, hasOlder, loadingOlder, loadOlder };
 }

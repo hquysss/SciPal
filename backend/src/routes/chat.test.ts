@@ -417,6 +417,20 @@ describe('grade rooms, replies and reactions', () => {
     expect((await build({ user: null }).inject({ method: 'POST', url: `/api/chat/messages/${PARENT}/recall` })).statusCode).toBe(401);
   });
 
+  it('senders: gives the picture and role of the ids on screen, ignoring bad ids', async () => {
+    const db = fakeDb({ 'profiles.select': [{ data: [{ id: OTHER, avatar_url: 'https://m.test/a.webp', role: 'teacher' }, { id: THIRD, avatar_url: null, role: null }] }] });
+    const res = await build({ db }).inject({ method: 'GET', url: `/api/chat/senders?ids=${OTHER},${THIRD},nope` });
+    expect(res.statusCode).toBe(200);
+    expect(res.json().senders).toEqual([
+      { user_id: OTHER, avatar_url: 'https://m.test/a.webp', role: 'teacher' },
+      { user_id: THIRD, avatar_url: null, role: 'student' },
+    ]);
+    expect(db.calls[0].chain).toContainEqual(['in', ['id', [OTHER, THIRD]]]);
+    const none = await build({ db: fakeDb({}) }).inject({ method: 'GET', url: '/api/chat/senders?ids=nope' });
+    expect(none.json()).toEqual({ senders: [] });
+    expect((await build({ user: null }).inject({ method: 'GET', url: '/api/chat/senders?ids=x' })).statusCode).toBe(401);
+  });
+
   it('reactions: 404 for another grade room, 400 for an emoji outside the set', async () => {
     const other = fakeDb({ 'chat_messages.select': [msg({ room_grade: 12 })], 'profiles.select': [student(10)] });
     expect((await react(other, { message_id: PARENT, emoji: '👍' })).statusCode).toBe(404);

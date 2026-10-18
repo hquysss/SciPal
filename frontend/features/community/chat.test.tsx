@@ -212,6 +212,30 @@ describe('messenger layout', () => {
   });
 });
 
+describe('sender header', () => {
+  it('shows the sender avatar, name and role beside the first message, and the initial until the lookup arrives', () => {
+    const run = [msg('1', 'them', '2026-10-12T03:00:00Z')];
+    const senders = { them: { user_id: 'them', avatar_url: 'https://m.test/a.webp', role: 'teacher' as const } };
+    const { container, rerender } = render(<ChatPaneView messages={run} meId="me" {...handlers()} showNames />);
+    expect(screen.getByText('Tên them')).toBeTruthy();
+    expect(screen.queryByText('Giáo viên')).toBeNull();
+    expect(container.querySelector('img')).toBeNull();
+    rerender(<ChatPaneView messages={run} meId="me" {...handlers()} showNames senders={senders} />);
+    expect(screen.getByText('Giáo viên')).toBeTruthy();
+    expect(container.querySelector('img')?.getAttribute('src')).toBe('https://m.test/a.webp');
+    rerender(<ChatPaneView messages={run} meId="me" {...handlers()} showNames senders={{ them: { ...senders.them, role: 'student' } }} />);
+    expect(screen.getByText('Học sinh')).toBeTruthy();
+  });
+
+  it('shows reactions as bare emoji in the hover bar, with the count only as a tooltip', () => {
+    render(<ChatPaneView messages={[msg('1', 'them', '2026-10-12T03:00:00Z')]} meId="me" {...handlers()} onReact={vi.fn()} reactions={{ '1': [{ emoji: '🔥', count: 2, mine: false }] }} />);
+    const chip = screen.getByRole('button', { name: '🔥 2' });
+    expect(chip.textContent).toBe('🔥');
+    expect(chip.getAttribute('title')).toBe('2');
+    expect(chip.parentElement?.className).toContain('group-hover:opacity-100');
+  });
+});
+
 describe('loading', () => {
   it('shows skeleton bubbles, not the empty note, while the first page loads', () => {
     render(<ChatPaneView messages={[]} meId="me" {...handlers()} loading />);
