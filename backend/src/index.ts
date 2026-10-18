@@ -31,6 +31,7 @@ import { termRoutes } from './routes/terms.js';
 import { lazyAIProvider } from './providers/ai.js';
 import { aiSettingsRoutes, loadAiSettings } from './routes/aiSettings.js';
 import { maintenanceHook } from './site/maintenance.js';
+import { lessonVideoRoutes } from './routes/lessonVideos.js';
 import { loadSiteSettings, siteSettingsRoutes, siteSettingsStore } from './routes/siteSettings.js';
 import { translateRoutes } from './routes/translate.js';
 import { adminTutorRoutes } from './routes/adminTutor.js';
@@ -101,6 +102,7 @@ await app.register(billingVnpayRoutes);
 await app.register(billingReconciliationRoutes);
 await app.register(authorAiRoutes);
 await app.register(practiceRoutes);
+await app.register(lessonVideoRoutes);
 await app.register(dictionaryRoutes);
 await app.register(gameRoutes);
 

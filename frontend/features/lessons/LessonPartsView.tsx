@@ -12,6 +12,7 @@ import { buttonVariants } from '@/components/ui/button';
 import { SelectionLookup } from '@/features/dictionary/SelectionLookup';
 import { PART_LABEL, splitLessonParts, type LessonPart } from './lessonParts';
 import { LessonTermsSection } from './LessonTermsSection';
+import { LessonVideoPanel, useLessonVideo } from './LessonVideoPanel';
 import { PracticeSection, usePracticeState } from './PracticeSection';
 import { fetchLessonPractice, type PracticeLoad } from './practiceApi';
 
@@ -34,8 +35,9 @@ interface LessonPartsProps {
 }
 
 /** The learner's steps: the lesson with its simulations on one page, then Tự luyện. */
-type Step = 'lesson' | 'practice';
-const STEPS: readonly Step[] = ['lesson', 'practice'];
+type Step = 'lesson' | 'video' | 'practice';
+const STEPS: readonly Step[] = ['lesson', 'video', 'practice'];
+const STEP_LABEL: Record<Step, { en: string; vi: string }> = { ...PART_LABEL, video: { en: 'Video', vi: 'Video' } };
 
 /**
  * A lesson read in two steps: Bài học (theory and simulations together, in the order the teacher
@@ -53,10 +55,13 @@ export function LessonPartsView({ blocks: written, completion, part, sheet, lang
   const parts = splitLessonParts(blocks);
   const steps: Record<Step, Block[]> = {
     lesson: parts.lesson,
+    video: [],
     practice: parts.practice,
   };
+  // The Video tab is the learner's page only, and only when the lesson has a video (or an admin may add one).
+  const lessonVideo = useLessonVideo(part ? undefined : lessonId);
   // The learner's page always shows Tự luyện (an empty one says it is not ready); the editor decides by blocks.
-  const present = STEPS.filter((p) => steps[p].length > 0 || (p === 'practice' && !!lessonId));
+  const present = STEPS.filter((p) => steps[p].length > 0 || (p === 'practice' && !!lessonId) || (p === 'video' && lessonVideo.showTab));
   const [active, setActive] = useState<Step>(present[0] ?? 'lesson');
   const step = present.includes(active) ? active : (present[0] ?? 'lesson');
   const shownBlocks = part ? parts[part] : steps[step];
@@ -74,7 +79,9 @@ export function LessonPartsView({ blocks: written, completion, part, sheet, lang
 
   const content = (
     <div className="flex flex-col gap-7" role={tabbed ? 'tabpanel' : undefined} id={tabbed ? `part-${shown}` : undefined}>
-      {showPractice && practiceLoad ? (
+      {step === 'video' && !part && lessonId && lessonVideo.video ? (
+        <LessonVideoPanel lessonId={lessonId} video={lessonVideo.video} onChanged={lessonVideo.reload} />
+      ) : showPractice && practiceLoad ? (
         <PracticeSection
           load={practiceLoad}
           state={practiceState.state}
@@ -119,14 +126,14 @@ export function LessonPartsView({ blocks: written, completion, part, sheet, lang
             }`}
           >
             <span aria-hidden="true" className="tabular-nums">{i + 1}</span>
-            {t(PART_LABEL[p])}
+            {t(STEP_LABEL[p])}
           </button>
         ))}
       </div>
       {body}
       {next ? (
         <button type="button" onClick={() => go(next)} className={`${buttonVariants({ size: 'lg' })} self-end`}>
-          {t({ en: 'Next', vi: 'Tiếp theo' })}: {t(PART_LABEL[next])} →
+          {t({ en: 'Next', vi: 'Tiếp theo' })}: {t(STEP_LABEL[next])} →
         </button>
       ) : (
         completion
