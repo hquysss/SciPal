@@ -2,14 +2,17 @@
 
 import { useLanguage } from '@scipal/hooks';
 import { ChatPane } from './ChatPane';
+import { roomKeyOf } from './chatApi';
 import type { Conversation, ConversationData } from './ConversationList';
 
 /** The open chat of a room, a class or a friend, titled from the loaded list. The friends manager is not a chat and is shown by the caller. */
-export function ConversationPane({ conversation, data, onBack, onBlocked, backAlways }: {
+export function ConversationPane({ conversation, data, onBack, onBlocked, onRoomAvatar, backAlways }: {
   conversation: Exclude<Conversation, { kind: 'friends' }>;
   data: ConversationData | null;
   onBack: () => void;
   onBlocked: () => void;
+  /** After an admin changes a room picture, so the list reloads. */
+  onRoomAvatar?: () => void;
   /** Show the back button at every width (the floating panel is always narrow). */
   backAlways?: boolean;
 }) {
@@ -24,6 +27,9 @@ export function ConversationPane({ conversation, data, onBack, onBlocked, backAl
         subtitle={g === null ? t({ en: 'Everyone on SciPal, all subjects', vi: 'Mọi người trên SciPal, mọi môn học' }) : t({ en: `Students in grade ${g}`, vi: `Học sinh khối ${g}` })}
         onBack={onBack}
         backAlways={backAlways}
+        roomKey={roomKeyOf(g)}
+        roomAvatar={data?.roomAvatars?.[roomKeyOf(g)] ?? null}
+        onRoomAvatar={onRoomAvatar}
       />
     );
   }

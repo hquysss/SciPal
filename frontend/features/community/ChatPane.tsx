@@ -2,13 +2,13 @@
 
 import { useEffect, useLayoutEffect, useRef, useState, type ChangeEvent, type FormEvent } from 'react';
 import Link from 'next/link';
-import { ArrowLeft, Ban, Flag, MoreHorizontal, Paperclip, Reply, SmilePlus, Undo2, X } from 'lucide-react';
+import { ArrowLeft, Ban, Camera, Flag, MoreHorizontal, Paperclip, Reply, SmilePlus, Undo2, X } from 'lucide-react';
 import { useLanguage } from '@scipal/hooks';
 import { createBrowserClient } from '@scipal/supabase';
 import { Alert } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Dialog } from '@/components/ui/dialog';
-import { REACTIONS, blockUser, reactToMessage, recallMessage, reportConversation, sendImage, sendMessage, type ChatMessage, type ChatSender, type ChatTarget, type ReactionChip } from './chatApi';
+import { REACTIONS, blockUser, removeRoomAvatar, uploadRoomAvatar, reactToMessage, recallMessage, reportConversation, sendImage, sendMessage, type ChatMessage, type ChatSender, type ChatTarget, type ReactionChip } from './chatApi';
 import { groupMessages } from './chatLayout';
 import roleColors from '../../components/ui/roleColors.module.css';
 import { PresenceAvatar } from './presence';
@@ -65,7 +65,32 @@ function MessageSkeleton({ rows = SKELETON.length }: { rows?: number }) {
   );
 }
 
-export function ChatPaneView({ messages, meId, onSend, onSendImage, onReport, onBlock, onReact, onRecall, senders = {}, loading = false, hasOlder = false, loadingOlder = false, onLoadOlder, reactions = {}, title, subtitle, peerId, onBack, backAlways = false, showNames = true, now }: {
+/** An admin's room picture: click to choose a new one, and a small button to put the plain icon back. */
+function RoomAvatarPicker({ name, url, onChange }: { name: string; url: string | null; onChange: (file: File | null) => void }) {
+  const { t } = useLanguage();
+  const input = useRef<HTMLInputElement>(null);
+  const pick = (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    event.target.value = '';
+    if (file) onChange(file);
+  };
+  return (
+    <span className="relative inline-flex shrink-0">
+      <button type="button" onClick={() => input.current?.click()} aria-label={t({ en: 'Change room picture', vi: 'Đổi ảnh phòng' })} title={t({ en: 'Change room picture', vi: 'Đổi ảnh phòng' })}
+        className="group relative rounded-xl focus-visible:outline focus-visible:outline-2 focus-visible:outline-focus">
+        <Avatar name={name} url={url} className="size-10 text-base" />
+        <span aria-hidden="true" className="absolute inset-0 grid place-items-center rounded-xl bg-[color-mix(in_srgb,var(--ink)_45%,transparent)] text-surface opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100 [@media(hover:none)]:opacity-100"><Camera className="size-4" /></span>
+      </button>
+      {url && (
+        <button type="button" onClick={() => onChange(null)} aria-label={t({ en: 'Remove room picture', vi: 'Gỡ ảnh phòng' })} title={t({ en: 'Remove room picture', vi: 'Gỡ ảnh phòng' })}
+          className="absolute -right-1.5 -top-1.5 grid size-5 place-items-center rounded-full border border-line bg-surface text-ink-muted hover:text-ink focus-visible:outline focus-visible:outline-2 focus-visible:outline-focus"><X aria-hidden="true" className="size-3" /></button>
+      )}
+      <input ref={input} type="file" accept={IMAGE_TYPES.join(',')} className="sr-only" tabIndex={-1} onChange={pick} />
+    </span>
+  );
+}
+
+export function ChatPaneView({ messages, meId, onSend, onSendImage, onReport, onBlock, onReact, onRecall, senders = {}, loading = false, hasOlder = false, loadingOlder = false, onLoadOlder, reactions = {}, title, subtitle, peerId, roomAvatar, onChangeRoomAvatar, onBack, backAlways = false, showNames = true, now }: {
   messages: ChatMessage[];
   meId: string | null;
   /** Resolves true when the message went through, so the box can clear. */
@@ -92,6 +117,9 @@ export function ChatPaneView({ messages, meId, onSend, onSendImage, onReport, on
   subtitle?: string;
   /** The other person in a direct chat, for the online dot. */
   peerId?: string;
+  /** A shared room's picture; with `onChangeRoomAvatar` (admins) the header avatar becomes a picker. */
+  roomAvatar?: string | null;
+  onChangeRoomAvatar?: (file: File | null) => void;
   onBack?: () => void;
   /** Keep the back button on wide screens too (the floating panel). */
   backAlways?: boolean;
@@ -187,7 +215,11 @@ export function ChatPaneView({ messages, meId, onSend, onSendImage, onReport, on
           {onBack && (
             <Button type="button" variant="ghost" size="icon" className={backAlways ? '' : 'lg:hidden'} aria-label={t({ en: 'Back', vi: 'Quay lại' })} onClick={onBack}><ArrowLeft aria-hidden="true" /></Button>
           )}
-          <PresenceAvatar userId={peerId}><Avatar name={title} className="size-10 text-base" /></PresenceAvatar>
+          {onChangeRoomAvatar ? (
+            <RoomAvatarPicker name={title} url={roomAvatar ?? null} onChange={onChangeRoomAvatar} />
+          ) : (
+            <PresenceAvatar userId={peerId}><Avatar name={title} url={roomAvatar ?? null} className="size-10 text-base" /></PresenceAvatar>
+          )}
           <div className="min-w-0 flex-1">
             <h2 className="truncate text-lg font-bold text-ink">{title}</h2>
             {subtitle && <p className="truncate text-xs font-medium text-ink-muted">{subtitle}</p>}
@@ -370,25 +402,41 @@ export function ChatPaneView({ messages, meId, onSend, onSendImage, onReport, on
   );
 }
 
-export function ChatPane({ target, title, subtitle, peerId, onBack, onBlocked, backAlways }: {
+export function ChatPane({ target, title, subtitle, peerId, roomKey, roomAvatar, onRoomAvatar, onBack, onBlocked, backAlways }: {
   target: ChatTarget;
   title?: string;
   subtitle?: string;
   /** The other person in a direct chat, for the online dot. */
   peerId?: string;
+  /** A shared room ("all", "10"…) and its picture; admins can change the picture from the header. */
+  roomKey?: string;
+  roomAvatar?: string | null;
+  onRoomAvatar?: () => void;
   onBack?: () => void;
   onBlocked?: (userId: string) => void;
   backAlways?: boolean;
 }) {
   const { t } = useLanguage();
   const [meId, setMeId] = useState<string | null>(null);
+  const [isAdmin, setIsAdmin] = useState(false);
   const { messages, reactions, status, refreshReactions, senders, hasOlder, loadingOlder, loadOlder } = useChatRoom(target, meId);
   const [notice, setNotice] = useState<{ tone: 'danger' | 'info'; text: Bilingual } | null>(null);
   const [blocked, setBlocked] = useState<string[]>([]);
 
   useEffect(() => {
-    createBrowserClient().auth.getSession().then(({ data }) => setMeId(data.session?.user.id ?? null)).catch(() => undefined);
+    createBrowserClient().auth.getSession().then(({ data }) => { setMeId(data.session?.user.id ?? null); setIsAdmin(data.session?.user.app_metadata?.app_role === 'admin'); }).catch(() => undefined);
   }, []);
+
+  const changeRoomAvatar = async (file: File | null) => {
+    if (!roomKey) return;
+    if (file && (!IMAGE_TYPES.includes(file.type) || file.size > IMAGE_MAX)) {
+      setNotice({ tone: 'danger', text: { vi: 'Ảnh PNG, JPG hoặc WEBP, tối đa 1,5 MB.', en: 'A PNG, JPG or WEBP picture up to 1.5 MB.' } });
+      return;
+    }
+    const result = file ? await uploadRoomAvatar(roomKey, file) : await removeRoomAvatar(roomKey);
+    if (!result.ok) setNotice({ tone: 'danger', text: result.error });
+    else onRoomAvatar?.();
+  };
 
   const send = async (body: string, replyTo?: string) => {
     const result = await sendMessage(target, body, replyTo);
@@ -454,6 +502,8 @@ export function ChatPane({ target, title, subtitle, peerId, onBack, onBlocked, b
         title={title}
         subtitle={subtitle}
         peerId={peerId}
+        roomAvatar={roomAvatar}
+        onChangeRoomAvatar={isAdmin && roomKey ? (file) => void changeRoomAvatar(file) : undefined}
         onBack={onBack}
         backAlways={backAlways}
         showNames={!friendshipId}

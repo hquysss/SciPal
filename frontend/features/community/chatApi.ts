@@ -1,3 +1,4 @@
+import { createBrowserClient } from '@scipal/supabase';
 import { authoringCall, queryString, type ApiResult } from '../authoring/apiClient';
 
 // Community chat from the backend (routes/chat.ts). Messages are read straight from Supabase under
@@ -49,3 +50,25 @@ export const unblockUser = (userId: string): Promise<ApiResult<Record<string, ne
   authoringCall(`/api/chat/blocks/${encodeURIComponent(userId)}`, 'DELETE');
 
 export const listChatClasses = (): Promise<ApiResult<{ classes: ChatClass[] }>> => authoringCall('/api/chat/classes', 'GET');
+
+/** The key of a shared room in the picture table: "all" for everyone, else the grade. */
+export const roomKeyOf = (grade: number | null): string => (grade === null ? 'all' : String(grade));
+
+/** Room pictures set by admins, by room key; readable by anyone signed in. A failed read just means no pictures. */
+export async function loadRoomAvatars(): Promise<Record<string, string>> {
+  try {
+    // The generated table types do not list this table yet.
+    const table = (createBrowserClient() as unknown as { from: (name: string) => { select: (columns: string) => Promise<{ data: unknown; error: unknown }> } }).from('chat_room_avatars');
+    const { data, error } = await table.select('room, avatar_url');
+    if (error) return {};
+    return Object.fromEntries(((data ?? []) as Array<{ room: string; avatar_url: string }>).map((r) => [r.room, r.avatar_url]));
+  } catch {
+    return {};
+  }
+}
+
+/** Admin only: the server checks the role and the picture. */
+export const uploadRoomAvatar = (room: string, file: File): Promise<ApiResult<{ url: string }>> =>
+  authoringCall(`/api/chat/room-avatar${queryString({ room })}`, 'POST', file);
+export const removeRoomAvatar = (room: string): Promise<ApiResult<Record<string, never>>> =>
+  authoringCall(`/api/chat/room-avatar${queryString({ room })}`, 'DELETE');

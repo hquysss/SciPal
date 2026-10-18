@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { FRIENDS_CHANGED_EVENT, listFriends } from '../friends/friendsApi';
-import { getChatRooms, listChatClasses, setChatGrade } from './chatApi';
+import { getChatRooms, listChatClasses, loadRoomAvatars, setChatGrade } from './chatApi';
 import type { ConversationData } from './ConversationList';
 
 type Bilingual = { vi: string; en: string };
@@ -19,7 +19,7 @@ export function useConversations(): {
   const [error, setError] = useState<Bilingual | null>(null);
 
   const reload = useCallback(async () => {
-    const [rooms, classes, friends] = await Promise.all([getChatRooms(), listChatClasses(), listFriends()]);
+    const [rooms, classes, friends, roomAvatars] = await Promise.all([getChatRooms(), listChatClasses(), listFriends(), loadRoomAvatars()]);
     const failed = [rooms, classes, friends].find((r) => !r.ok);
     setError(failed && !failed.ok ? failed.error : null);
     setData({
@@ -27,6 +27,7 @@ export function useConversations(): {
       classes: classes.ok ? classes.data.classes : [],
       friends: friends.ok ? friends.data.friends : [],
       incoming: friends.ok ? friends.data.incoming.length : 0,
+      roomAvatars,
     });
   }, []);
 

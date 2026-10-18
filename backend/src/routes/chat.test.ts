@@ -447,3 +447,33 @@ describe('grade rooms, replies and reactions', () => {
     expect((await put({ grade: 9 })).statusCode).toBe(400);
   });
 });
+
+describe('POST /api/chat/room-avatar', () => {
+  const PNG = Buffer.concat([Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]), Buffer.alloc(32)]);
+  function setup(role: 'admin' | 'student', results: Record<string, any[]> = {}) {
+    const db = fakeDb({ 'chat_room_avatars.select': [{ data: { avatar_url: 'https://m.test/chat-rooms/10/old.png' } }], 'chat_room_avatars.upsert': [{}], ...results });
+    const store = { put: vi.fn().mockResolvedValue(undefined), remove: vi.fn().mockResolvedValue(undefined), publicUrl: (k: string) => `https://m.test/${k}` };
+    const app = Fastify({ logger: false });
+    app.decorate('supabase', db as any);
+    app.decorate('mediaStore', store as any);
+    app.addHook('onRequest', async (req) => { (req as any).user = { id: ME, app_metadata: { app_role: role } }; });
+    app.register(chatRoutes);
+    const send = (room: string) => app.inject({ method: 'POST', url: `/api/chat/room-avatar?room=${room}`, payload: PNG, headers: { 'content-type': 'image/png' } });
+    return { store, send };
+  }
+
+  it('is for admins only, and only for the four shared rooms', async () => {
+    const student = setup('student');
+    expect((await student.send('10')).statusCode).toBe(403);
+    expect(student.store.put).not.toHaveBeenCalled();
+    expect((await setup('admin').send('13')).statusCode).toBe(400);
+  });
+
+  it('stores the new picture under chat-rooms and removes the one it replaces', async () => {
+    const s = setup('admin');
+    const res = await s.send('10');
+    expect(res.statusCode).toBe(201);
+    expect(s.store.put.mock.calls[0]![0]).toMatch(/^chat-rooms\/10\/.+\.png$/);
+    expect(s.store.remove).toHaveBeenCalledWith('chat-rooms/10/old.png');
+  });
+});

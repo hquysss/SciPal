@@ -22,7 +22,7 @@ function MiniChat({ onNavigate }: { onNavigate: () => void }) {
   const [open, setOpen] = useState<Exclude<Conversation, { kind: 'friends' }> | null>(null);
 
   if (open) {
-    return <ConversationPane conversation={open} data={data} backAlways onBack={() => setOpen(null)} onBlocked={() => { setOpen(null); void reload(); }} />;
+    return <ConversationPane conversation={open} data={data} backAlways onBack={() => setOpen(null)} onBlocked={() => { setOpen(null); void reload(); }} onRoomAvatar={() => void reload()} />;
   }
   return (
     <ConversationList

@@ -21,6 +21,8 @@ export type ConversationData = {
   friends: FriendEntry[];
   /** Friend requests waiting for the reader. */
   incoming: number;
+  /** Pictures of the shared rooms, by room key ("all", "10"…); missing means the coloured icon. */
+  roomAvatars?: Record<string, string>;
 };
 
 export const GRADES = [10, 11, 12];
@@ -60,7 +62,11 @@ const Initial = ({ name, url }: { name: string; url?: string | null }) =>
 const TONES = ['--action', '--sky', '--sun', '--coral', '--success'] as const;
 const ROOM_TONE = (grade: number | null) => (grade === null ? TONES[0] : TONES[1 + ((grade - 10) % 3 + 3) % 3]);
 
-const GroupIcon = ({ tone }: { tone: (typeof TONES)[number] }) => (
+const GroupIcon = ({ tone, src }: { tone: (typeof TONES)[number]; src?: string }) =>
+  src && src.startsWith('https://') ? (
+    // eslint-disable-next-line @next/next/no-img-element -- media store image
+    <img src={src} alt="" className="size-12 shrink-0 rounded-xl object-cover" />
+  ) : (
   <span
     aria-hidden="true"
     style={{ background: `color-mix(in srgb, var(${tone}) 26%, var(--surface))`, color: `color-mix(in srgb, var(${tone}) 70%, var(--ink))` }}
@@ -68,7 +74,7 @@ const GroupIcon = ({ tone }: { tone: (typeof TONES)[number] }) => (
   >
     <Users className="size-5" />
   </span>
-);
+  );
 
 function Group({ title, children }: { title: string; children: ReactNode }) {
   return (
@@ -144,7 +150,7 @@ export function ConversationList({ data, error, active, onOpen, onChooseGrade }:
                     name={r.name}
                     line={r.grade === null ? t({ en: 'Everyone on SciPal', vi: 'Mọi người trên SciPal' }) : t({ en: `Students in grade ${r.grade}`, vi: `Học sinh khối ${r.grade}` })}
                     tag={r.grade === null ? t({ en: 'Public', vi: 'Công khai' }) : t({ en: 'Grade room', vi: 'Phòng khối' })}
-                    avatar={<GroupIcon tone={ROOM_TONE(r.grade)} />}
+                    avatar={<GroupIcon tone={ROOM_TONE(r.grade)} src={data.roomAvatars?.[r.grade === null ? 'all' : String(r.grade)]} />}
                     active={sameConversation(active, { kind: 'room', grade: r.grade })}
                     onOpen={() => onOpen({ kind: 'room', grade: r.grade })}
                   />

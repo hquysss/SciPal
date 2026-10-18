@@ -197,6 +197,65 @@ export const chatRoutes: FastifyPluginAsync = async (app) => {
     return reply.code(201).send({ id: (inserted.data as { id: string }).id, image_url: imageUrl });
   });
 
+  // An admin sets the picture of a shared room (everyone, grade 10, 11, 12). One picture per room: a new one replaces the old,
+  // and the old file leaves the store once the row points away from it.
+  const ROOMS = ['all', '10', '11', '12'];
+  const roomOf = (request: FastifyRequest): string | null => {
+    const room = (request.query as { room?: string } | undefined)?.room;
+    return typeof room === 'string' && ROOMS.includes(room) ? room : null;
+  };
+  const roomKey = (url: string | null | undefined): string | null => {
+    const base = app.mediaStore?.publicUrl('');
+    if (!url || !base || !url.startsWith(base)) return null;
+    const key = url.slice(base.length);
+    return key.startsWith('chat-rooms/') && !key.includes('..') ? key : null;
+  };
+
+  app.post('/api/chat/room-avatar', { preHandler: [requireUser], bodyLimit: CHAT_IMAGE_MAX }, async (request, reply) => {
+    const supabase = app.supabase;
+    const store = app.mediaStore;
+    if (!supabase || !store) return reply.code(503).send(unavailable);
+    if (!isAdmin(request)) return reply.code(403).send({ error: 'Chỉ admin mới đổi ảnh phòng.', error_en: 'Only admins change room pictures.' });
+    const room = roomOf(request);
+    if (!room) return reply.code(400).send(invalid);
+    const image = request.body;
+    if (!Buffer.isBuffer(image)) return reply.code(415).send(notImage);
+    const type = sniffImageType(image);
+    if (!type) return reply.code(400).send(notImage);
+
+    const before = await supabase.from('chat_room_avatars').select('avatar_url').eq('room', room).maybeSingle();
+    if (before.error) return reply.code(500).send(failed);
+    const key = `chat-rooms/${room}/${randomUUID()}.${type === 'jpeg' ? 'jpg' : type}`;
+    try {
+      await store.put(key, image, IMAGE_MIME[type]);
+    } catch (err) {
+      request.log.error({ err }, 'Room picture upload failed');
+      return reply.code(500).send(failed);
+    }
+    const url = store.publicUrl(key);
+    const saved = await supabase.from('chat_room_avatars').upsert({ room, avatar_url: url, updated_at: new Date().toISOString(), updated_by: userId(request) }, { onConflict: 'room' });
+    if (saved.error) {
+      await store.remove(key).catch((err: unknown) => request.log.warn({ err, key }, 'Orphaned room picture was not removed'));
+      return reply.code(500).send(failed);
+    }
+    const old = roomKey((before.data as { avatar_url: string } | null)?.avatar_url);
+    if (old) await store.remove(old).catch((err: unknown) => request.log.warn({ err, key: old }, 'Old room picture was not removed'));
+    return reply.code(201).send({ url });
+  });
+
+  app.delete('/api/chat/room-avatar', { preHandler: [requireUser] }, async (request, reply) => {
+    const supabase = app.supabase;
+    if (!supabase) return reply.code(503).send(unavailable);
+    if (!isAdmin(request)) return reply.code(403).send({ error: 'Chỉ admin mới đổi ảnh phòng.', error_en: 'Only admins change room pictures.' });
+    const room = roomOf(request);
+    if (!room) return reply.code(400).send(invalid);
+    const removed = await supabase.from('chat_room_avatars').delete().eq('room', room).select('avatar_url');
+    if (removed.error) return reply.code(500).send(failed);
+    const old = roomKey((removed.data as Array<{ avatar_url: string }> | null)?.[0]?.avatar_url);
+    if (old && app.mediaStore) await app.mediaStore.remove(old).catch((err: unknown) => request.log.warn({ err, key: old }, 'Old room picture was not removed'));
+    return reply.code(204).send();
+  });
+
   // Blocking also ends any friendship between the two; the block hides their community-room messages from you.
   app.post('/api/chat/blocks', { preHandler: [requireUser] }, async (request, reply) => {
     const supabase = app.supabase;
