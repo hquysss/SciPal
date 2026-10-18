@@ -10,10 +10,10 @@ vi.mock('@scipal/hooks', () => ({
 }));
 
 describe('FeaturesSection', () => {
-  it('links the five features in both languages', () => {
+  it('links the six features in both languages', () => {
     lang = 'vi';
     const vi = renderToStaticMarkup(<FeaturesSection />);
-    for (const href of ['/exam', '/lab', '/games', '/progress', '/teacher']) expect(vi).toContain(`href="${href}"`);
+    for (const href of ['/exam', '/lab', '/games', '/progress', '/community', '/teacher']) expect(vi).toContain(`href="${href}"`);
     expect(vi).toContain('Hơn cả bài học');
     lang = 'en';
     expect(renderToStaticMarkup(<FeaturesSection />)).toContain('Practice exams');
