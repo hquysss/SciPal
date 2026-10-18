@@ -31,6 +31,8 @@ export const submitGame = (id: string, body: { playId: string; answers?: Array<{
   authoringCall(`${game(id)}/submit`, 'POST', body);
 export const getLeaderboard = (id: string): Promise<ApiResult<{ entries: LeaderEntry[] }>> => authoringCall(`${game(id)}/leaderboard`, 'GET');
 export const listNotifications = (): Promise<ApiResult<{ notifications: Notification[]; unread: number }>> => authoringCall('/api/notifications', 'GET');
+export const deleteNotification = (id: string): Promise<ApiResult<Record<string, never>>> => authoringCall(`/api/notifications/${encodeURIComponent(id)}`, 'DELETE');
+export const clearNotifications = (): Promise<ApiResult<Record<string, never>>> => authoringCall('/api/notifications', 'DELETE');
 export const markNotificationsRead = (): Promise<ApiResult<Record<string, never>>> => authoringCall('/api/notifications/read', 'POST');
 
 export const KIND_LABEL: Record<GameKind, Bilingual> = {
