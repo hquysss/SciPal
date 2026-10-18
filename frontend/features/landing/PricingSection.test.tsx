@@ -37,6 +37,19 @@ describe('PricingSection (landing)', () => {
     expect(countRawColors(html).total).toBe(0);
   });
 
+  it('lists only the open payment providers, with the no-card-data line, and none while checkout is closed', () => {
+    const open = renderToStaticMarkup(<PricingSection catalog={{ ...catalog(true), payosCheckoutOpen: true, vnpayCheckoutOpen: true, momoAutoRenewOpen: false, vnpayAutoRenewOpen: true }} />);
+    expect(open).toContain('Thanh toán qua');
+    expect(open).toContain('payOS');
+    expect(open).toContain('VNPAY');
+    expect(open).not.toContain('Ví MoMo');
+    expect(open).toContain('SciPal không nhận và không lưu thông tin thẻ');
+    expect(open).toContain('Chỉ tự gia hạn khi bạn chọn');
+    expect(countRawColors(open).total).toBe(0);
+    const closed = renderToStaticMarkup(<PricingSection catalog={{ ...catalog(false), payosCheckoutOpen: true }} />);
+    expect(closed).not.toContain('Thanh toán qua');
+  });
+
   it('crowns the paid plan and plays its entrance each time it scrolls into view', () => {
     const html = renderToStaticMarkup(<PricingSection catalog={catalog(true)} />);
     expect(html).toContain('Khuyên dùng');
