@@ -20,6 +20,7 @@
   /* Folds the bar up out of the way; the toggle stays in the top-right corner to bring it back. */
   .barToggle {
     position: fixed;
+    overflow: visible;
     z-index: 60;
     top: 1.25rem;
     right: 0.75rem;
@@ -481,11 +482,3 @@
 /* Category menus carry a line under each entry, so they are wider than the account menu. */
 .dropdownWide { width: 17rem; }
 
-/* Role in the account header: admin red, teacher purple, student follows the level theme. */
-.roleAdmin { color: var(--danger); font-weight: 800; }
-.roleStudent { color: var(--action); font-weight: 800; }
-.roleTeacher { color: #6b3fa0; font-weight: 800; }
-:global([data-theme='dark']) .roleTeacher { color: #c9b0f5; }
-@media (prefers-color-scheme: dark) {
-  :global([data-app-shell]:not([data-theme='light'])) .roleTeacher { color: #c9b0f5; }
-}

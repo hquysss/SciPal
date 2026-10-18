@@ -384,10 +384,12 @@ describe('grade rooms, replies and reactions', () => {
   const msg = (over: object = {}) => ({ data: { id: PARENT, community: false, room_grade: 10, class_id: null, friendship_id: null, ...over } });
 
   it('reactions: toggles on, then off, for a readable message', async () => {
-    const on = fakeDb({ 'chat_messages.select': [msg()], 'profiles.select': [student(10)], 'chat_reactions.delete': [{ data: [] }], 'chat_reactions.insert': [{}] });
+    const on = fakeDb({ 'chat_messages.select': [msg()], 'profiles.select': [student(10)], 'chat_reactions.delete': [{ data: [] }, {}], 'chat_reactions.insert': [{}] });
     const res = await react(on, { message_id: PARENT, emoji: '👍' });
     expect(res.statusCode).toBe(201);
     expect(res.json()).toEqual({ on: true });
+    // Any other emoji this person left on the message goes first: one reaction each.
+    expect(on.calls.filter((c) => c.table === 'chat_reactions' && c.op === 'delete')).toHaveLength(2);
     const off = fakeDb({ 'chat_messages.select': [msg()], 'profiles.select': [student(10)], 'chat_reactions.delete': [{ data: [{ message_id: PARENT }] }] });
     expect((await react(off, { message_id: PARENT, emoji: '👍' })).json()).toEqual({ on: false });
   });
@@ -443,5 +445,59 @@ describe('grade rooms, replies and reactions', () => {
     const put = (body: object) => build({ db: fakeDb({ 'profiles.update': [{}] }) }).inject({ method: 'POST', url: '/api/chat/grade', payload: body });
     expect((await put({ grade: 12 })).statusCode).toBe(200);
     expect((await put({ grade: 9 })).statusCode).toBe(400);
+  });
+});
+
+describe('POST /api/chat/room-avatar', () => {
+  const PNG = Buffer.concat([Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]), Buffer.alloc(32)]);
+  function setup(role: 'admin' | 'student', results: Record<string, any[]> = {}) {
+    const db = fakeDb({ 'chat_room_avatars.select': [{ data: { avatar_url: 'https://m.test/chat-rooms/10/old.png' } }], 'chat_room_avatars.upsert': [{}], ...results });
+    const store = { put: vi.fn().mockResolvedValue(undefined), remove: vi.fn().mockResolvedValue(undefined), publicUrl: (k: string) => `https://m.test/${k}` };
+    const app = Fastify({ logger: false });
+    app.decorate('supabase', db as any);
+    app.decorate('mediaStore', store as any);
+    app.addHook('onRequest', async (req) => { (req as any).user = { id: ME, app_metadata: { app_role: role } }; });
+    app.register(chatRoutes);
+    const send = (room: string) => app.inject({ method: 'POST', url: `/api/chat/room-avatar?room=${room}`, payload: PNG, headers: { 'content-type': 'image/png' } });
+    return { store, send };
+  }
+
+  it('is for admins only, and only for the four shared rooms', async () => {
+    const student = setup('student');
+    expect((await student.send('10')).statusCode).toBe(403);
+    expect(student.store.put).not.toHaveBeenCalled();
+    expect((await setup('admin').send('13')).statusCode).toBe(400);
+  });
+
+  it('stores the new picture under chat-rooms and removes the one it replaces', async () => {
+    const s = setup('admin');
+    const res = await s.send('10');
+    expect(res.statusCode).toBe(201);
+    expect(s.store.put.mock.calls[0]![0]).toMatch(/^chat-rooms\/10\/.+\.png$/);
+    expect(s.store.remove).toHaveBeenCalledWith('chat-rooms/10/old.png');
+  });
+});
+
+describe('POST /api/chat/messages/:id/report', () => {
+  const MSG_ID = '77777777-7777-4777-8777-777777777777';
+  const message = (over: object = {}) => ({ data: { id: MSG_ID, sender_id: OTHER, sender_name: 'Bình', body: 'xấu', image_url: null, created_at: '2026-10-18T00:00:00Z', community: true, room_grade: null, class_id: null, friendship_id: null, ...over } });
+  const profile = { data: { chat_banned: false, grade: 10, role: 'student' } };
+  const report = (db: ReturnType<typeof fakeDb>, body: object = { reason: 'Quấy rối' }, id = MSG_ID) =>
+    build({ db }).inject({ method: 'POST', url: `/api/chat/messages/${id}/report`, payload: body });
+
+  it('files one message with its text as evidence for the admins', async () => {
+    const db = fakeDb({ 'chat_messages.select': [message()], 'profiles.select': [profile], 'chat_reports.insert': [{}] });
+    const res = await report(db);
+    expect(res.statusCode).toBe(201);
+    const row = db.calls.find((c) => c.table === 'chat_reports' && c.op === 'insert')!.chain[0][1][0] as any;
+    expect(row).toMatchObject({ message_id: MSG_ID, conversation_key: `message:${MSG_ID}`, reason: 'Quấy rối', label: 'Cộng đồng · tin của Bình' });
+    expect(row.snapshot).toEqual([expect.objectContaining({ id: MSG_ID, body: 'xấu' })]);
+  });
+
+  it('refuses your own message, a second report, a missing reason or an unreadable message', async () => {
+    expect((await report(fakeDb({ 'chat_messages.select': [message({ sender_id: ME })], 'profiles.select': [profile] }))).statusCode).toBe(400);
+    expect((await report(fakeDb({ 'chat_messages.select': [message()], 'profiles.select': [profile], 'chat_reports.insert': [{ error: { code: '23505' } }] }))).statusCode).toBe(409);
+    expect((await report(fakeDb({}), { reason: ' ' })).statusCode).toBe(400);
+    expect((await report(fakeDb({ 'chat_messages.select': [{ data: null }], 'profiles.select': [profile] }))).statusCode).toBe(404);
   });
 });

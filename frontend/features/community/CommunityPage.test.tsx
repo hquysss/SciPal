@@ -16,6 +16,8 @@ vi.mock('./chatApi', () => ({
   getChatRooms: async () => ({ ok: true, data: { grade: null, grades: api.grades } }),
   listChatClasses: async () => ({ ok: true, data: { classes: [{ id: 'c1', name: 'Lớp 10A' }] } }),
   setChatGrade: api.setChatGrade,
+  loadRoomAvatars: async () => ({}),
+  roomKeyOf: (grade: number | null) => (grade === null ? 'all' : String(grade)),
 }));
 vi.mock('../friends/friendsApi', () => ({
   FRIENDS_CHANGED_EVENT: 'x',

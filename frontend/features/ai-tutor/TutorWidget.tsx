@@ -11,6 +11,7 @@ import { TutorAvatar } from './TutorAvatar';
 import { LANDING_QUESTIONS, lessonQuestions } from './examples';
 import { useTutorSession } from './TutorSession';
 import { useTutorDrag } from './useTutorDrag';
+import { badgeText, useChatUnread } from '@/features/community/unread';
 import styles from './widget.module.css';
 
 const Panel = dynamic(() => import('./AiTutorPanel').then((module) => module.AiTutorPanel));
@@ -27,6 +28,7 @@ export function TutorWidget() {
   const drag = useTutorDrag();
   const setOpen = session?.setOpen;
   const fullPage = pathname === '/tutor';
+  const { total: unread } = useChatUnread(session?.signedIn === true);
   // No help during an exam: /exam/<id> is the exam room (the list and /exam/manage keep the chat).
   const examRoom = /^\/exam\/(?!manage(\/|$))[^/]+\/?$/.test(pathname ?? '');
   useEffect(() => {
@@ -49,7 +51,7 @@ export function TutorWidget() {
   const suggestions = session.lesson ? lessonQuestions(session.lesson.title) : LANDING_QUESTIONS[activeLevel];
   return <LevelScope level={activeLevel} className={styles.scope}><div data-tutor-scope>
     <button ref={trigger} type="button" disabled={!online} aria-haspopup="dialog" aria-expanded={visible} aria-controls={opened ? 'scipal-professor-panel' : undefined}
-      aria-label={t({ en: 'Open the AI Professor', vi: 'Mở Giáo sư AI' })}
+      aria-label={unread > 0 ? t({ en: `Open the AI Professor, ${badgeText(unread)} new community messages`, vi: `Mở Giáo sư AI, ${badgeText(unread)} tin nhắn cộng đồng mới` }) : t({ en: 'Open the AI Professor', vi: 'Mở Giáo sư AI' })}
       title={online ? t({ en: 'Ask the Professor', vi: 'Hỏi thầy' }) : t({ en: 'Needs an internet connection', vi: 'Cần kết nối mạng' })}
       className={styles.trigger} data-open={visible || undefined} data-answering={session.chat.streaming || undefined}
       {...drag.handlers}
@@ -60,8 +62,9 @@ export function TutorWidget() {
       }}>
       <TutorAvatar size="3.25rem" />
       <span aria-hidden="true" className={styles.indicator} />
+      {unread > 0 && <span aria-hidden="true" className={styles.unread}>{badgeText(unread)}</span>}
       <span className={styles.hint}>{t({ en: 'Ask the Professor', vi: 'Hỏi thầy' })}</span>
     </button>
-    {opened && <Panel id="scipal-professor-panel" visible={visible} lessonId={session.lesson?.id} lessonTitle={session.lesson?.title} level={activeLevel} signedIn={session.signedIn} suggestions={suggestions} onClose={close} />}
+    {opened && <Panel id="scipal-professor-panel" visible={visible} lessonId={session.lesson?.id} lessonTitle={session.lesson?.title} level={activeLevel} signedIn={session.signedIn} suggestions={suggestions} communityUnread={unread} onClose={close} />}
   </div></LevelScope>;
 }

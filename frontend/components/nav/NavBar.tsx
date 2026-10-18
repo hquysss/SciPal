@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { ArrowRight, BookOpen, House, Users, ReceiptText, ChevronDown, ChevronUp, CircleHelp, ClipboardCheck, FlaskConical, Gauge, Library, LineChart, Menu, MessageCircleQuestion, School, Tag, Trophy, UserRound, X } from 'lucide-react';
+import { ArrowRight, BookOpen, House, Users, ReceiptText, ChevronDown, ChevronUp, CircleHelp, ClipboardCheck, FlaskConical, Gauge, Library, LineChart, Menu, MessageCircle, MessageCircleQuestion, School, Tag, Trophy, UserRound, X } from 'lucide-react';
 import { useParams, usePathname, useRouter } from 'next/navigation';
 import { useLanguage } from '@scipal/hooks';
 import { LanguageToggle } from './LanguageToggle';
@@ -12,11 +12,13 @@ import { ThemeToggle } from './ThemeToggle';
 import { LogoutButton, LogoutConfirm } from './LogoutButton';
 import { OnlinePill } from './OnlinePill';
 import navStyles from './navbar.module.css';
+import roleColors from '../ui/roleColors.module.css';
 import type { SubjectSlug } from '@/lib/subject-config';
 import { createBrowserClient } from '@/lib/supabase';
 import { adoptAccountLevel, forgetAccountLevel, getShell, safeSessionStorage } from '@/lib/theme/shellTheme';
 import { countOpenSimulationRequests } from '@/features/authoring/simulationRequests/api';
 import { FRIENDS_CHANGED_EVENT, listFriends } from '@/features/friends/friendsApi';
+import { badgeText, UNREAD_BADGE, useChatUnread } from '@/features/community/unread';
 import { fetchMyPlan, PLAN_NAME } from '@/features/billing/billingApi';
 import type { BillingAccount } from '@scipal/types';
 
@@ -73,10 +75,12 @@ export function pricingLink(lang: 'en' | 'vi') {
   return { href: '/pricing', label: lang === 'en' ? 'Pricing' : 'Bảng giá' };
 }
 
-/** "Cộng đồng (2)": friend requests waiting for an answer. */
-export function communityLabel(lang: 'en' | 'vi', pending: number) {
+/** "Cộng đồng (2)": friend requests waiting for an answer, then unread messages ("Cộng đồng (2), 5 tin nhắn mới"). */
+export function communityLabel(lang: 'en' | 'vi', pending: number, unread = 0) {
   const base = lang === 'en' ? 'Community' : 'Cộng đồng';
-  return pending > 0 ? `${base} (${pending})` : base;
+  const withPending = pending > 0 ? `${base} (${pending})` : base;
+  if (unread <= 0) return withPending;
+  return `${withPending}, ${badgeText(unread)} ${lang === 'en' ? 'new messages' : 'tin nhắn mới'}`;
 }
 
 /** Learn: what a student opens to study, as a category with a line saying what each page is for. */
@@ -155,6 +159,7 @@ export function NavBar({ currentSubject }: NavBarProps) {
   const [confirmSignOut, setConfirmSignOut] = useState(false);
   const [openRequests, setOpenRequests] = useState(0);
   const [pendingFriends, setPendingFriends] = useState(0);
+  const { total: unreadMessages } = useChatUnread(Boolean(appRole));
   const mobileMenuButtonRef = useRef<HTMLButtonElement>(null);
   const openNavTriggerRef = useRef<HTMLButtonElement>(null);
 
@@ -359,7 +364,7 @@ export function NavBar({ currentSubject }: NavBarProps) {
   const learnActive = learn.some((link) => inSection(link.href));
   const community = communityLink(navLang);
   const communityActive = pathname === community.href;
-  const communityText = communityLabel(navLang, pendingFriends);
+  const communityText = communityLabel(navLang, pendingFriends, unreadMessages);
   const more = moreLinks(navLang);
   const moreActive = more.some((link) => pathname === link.href);
   const mine = accountLinks(navLang, appRole);
@@ -382,14 +387,20 @@ export function NavBar({ currentSubject }: NavBarProps) {
       ? `${planName} · ${t('until', 'đến')} ${new Date(plan.paidThrough).toLocaleDateString(lang === 'en' ? 'en-GB' : 'vi-VN')}`
       : planName
     : null;
-  const roleClass = appRole === 'admin' ? navStyles.roleAdmin : appRole === 'teacher' ? navStyles.roleTeacher : navStyles.roleStudent;
+  const roleClass = `font-extrabold ${appRole === 'admin' ? roleColors.admin : appRole === 'teacher' ? roleColors.teacher : roleColors.student}`;
   const teacherMenuOpen = openNavGroup === 'teacher';
   const toggleNavGroup = (group: 'admin' | 'teacher' | 'account' | 'more' | 'learn', trigger: HTMLButtonElement) => {
     openNavTriggerRef.current = trigger;
     setOpenNavGroup((current) => current === group ? null : group);
   };
+  // Folded bar or phone menu: a red dot says something waits in Community.
+  const waitingDot = signedIn && unreadMessages + pendingFriends > 0 ? <span aria-hidden="true" className="absolute -right-0.5 -top-0.5 size-2.5 rounded-full bg-danger ring-2 ring-[var(--surface)]" /> : null;
   const countBadge = pendingFriends > 0 ? (
     <span aria-hidden="true" className="ml-0.5 inline-grid h-5 min-w-5 place-items-center rounded-full bg-danger-surface px-1 text-xs font-bold leading-none text-danger ring-1 ring-danger">{pendingFriends}</span>
+  ) : null;
+  // New messages: a chat icon with the count, so it reads apart from the friend-request number.
+  const messageBadge = unreadMessages > 0 ? (
+    <span aria-hidden="true" className={`ml-0.5 gap-0.5 !inline-flex items-center ${UNREAD_BADGE}`}><MessageCircle size={12} strokeWidth={2.5} />{badgeText(unreadMessages)}</span>
   ) : null;
 
   const icons: Record<string, ReactNode> = {
@@ -492,6 +503,7 @@ export function NavBar({ currentSubject }: NavBarProps) {
         title={barHidden ? t('Show navigation bar', 'Hiện thanh điều hướng') : t('Hide navigation bar', 'Ẩn thanh điều hướng')}
       >
         {barHidden ? <ChevronDown size={14} aria-hidden="true" /> : <ChevronUp size={14} aria-hidden="true" />}
+        {barHidden && waitingDot}
       </button>
       <div inert={barHidden && wideBar} className={`${navStyles.bar} relative z-10 mx-auto flex h-14 max-w-5xl xl:max-w-[90rem] items-center justify-between gap-3 px-3 sm:px-4`}>
         <Link href="/" prefetch={pathname !== '/'} className={`${navStyles.rise} group flex shrink-0 items-center gap-3 font-bold text-nav-ink`}>
@@ -520,6 +532,7 @@ export function NavBar({ currentSubject }: NavBarProps) {
             <Link href={community.href} prefetch={pathname !== '/'} aria-current={communityActive ? 'page' : undefined} aria-label={communityText} className={navStyles.navLink}>
               {community.label}
               {countBadge}
+              {messageBadge}
             </Link>
           )}
           {barMenu('more', t('Resources', 'Tra cứu'), moreActive, (
@@ -611,9 +624,10 @@ export function NavBar({ currentSubject }: NavBarProps) {
             aria-controls="mobile-navigation"
             ref={mobileMenuButtonRef}
             onClick={() => setMobileOpen((value) => !value)}
-            className="flex h-9 w-9 items-center justify-center rounded-full bg-[color-mix(in_srgb,var(--nav-ink)_12%,transparent)] text-nav-ink text-xl transition hover:bg-[color-mix(in_srgb,var(--nav-ink)_12%,transparent)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-nav-ink"
+            className="relative flex h-9 w-9 items-center justify-center rounded-full bg-[color-mix(in_srgb,var(--nav-ink)_12%,transparent)] text-nav-ink text-xl transition hover:bg-[color-mix(in_srgb,var(--nav-ink)_12%,transparent)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-nav-ink"
           >
             {mobileOpen ? <X aria-hidden="true" size={18} /> : <Menu aria-hidden="true" size={18} />}
+            {!mobileOpen && waitingDot}
           </button>
         </div>
       </div>

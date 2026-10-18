@@ -2,17 +2,20 @@
 
 import { useEffect, useLayoutEffect, useRef, useState, type ChangeEvent, type FormEvent } from 'react';
 import Link from 'next/link';
-import { ArrowLeft, Ban, Flag, MoreHorizontal, Paperclip, Reply, SmilePlus, Undo2, X } from 'lucide-react';
+import { ArrowLeft, Ban, Camera, Flag, MessageCircle, UserPlus, UserRound, MoreHorizontal, Paperclip, Reply, SmilePlus, Undo2, X } from 'lucide-react';
 import { useLanguage } from '@scipal/hooks';
 import { createBrowserClient } from '@scipal/supabase';
 import { Alert } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Dialog } from '@/components/ui/dialog';
-import { REACTIONS, blockUser, reactToMessage, recallMessage, reportConversation, sendImage, sendMessage, type ChatMessage, type ChatSender, type ChatTarget, type ReactionChip } from './chatApi';
+import { REACTIONS, blockUser, removeRoomAvatar, reportMessage, uploadRoomAvatar, reactToMessage, recallMessage, reportConversation, sendImage, sendMessage, type ChatMessage, type ChatSender, type ChatTarget, type ReactionChip } from './chatApi';
 import { groupMessages } from './chatLayout';
+import roleColors from '../../components/ui/roleColors.module.css';
 import { PresenceAvatar } from './presence';
 import { SendButton } from './SendButton';
 import { useChatRoom } from './useChatRoom';
+import { markChatRead, registerOpenConversation } from './unread';
+import { sendRequest } from '../friends/friendsApi';
 
 type Bilingual = { vi: string; en: string };
 const BODY_MAX = 500;
@@ -64,7 +67,66 @@ function MessageSkeleton({ rows = SKELETON.length }: { rows?: number }) {
   );
 }
 
-export function ChatPaneView({ messages, meId, onSend, onSendImage, onReport, onBlock, onReact, onRecall, senders = {}, loading = false, hasOlder = false, loadingOlder = false, onLoadOlder, reactions = {}, title, subtitle, peerId, onBack, backAlways = false, showNames = true, now }: {
+const MENU_ITEM = 'flex min-h-10 w-full items-center gap-2 rounded-lg px-3 text-left text-sm font-semibold hover:bg-surface-sunken focus-visible:outline focus-visible:outline-2 focus-visible:outline-focus';
+
+/** What you can do with a sender: see their profile, message them (friends) or add them, or block them (asks twice). */
+function SenderMenu({ userId, friendshipId, confirmBlock, onClose, onOpenDm, onAddFriend, onAskBlock, onBlock }: {
+  userId: string;
+  friendshipId?: string;
+  confirmBlock: boolean;
+  onClose: () => void;
+  onOpenDm?: (friendshipId: string) => void;
+  onAddFriend?: (userId: string) => void;
+  onAskBlock: () => void;
+  onBlock: () => void;
+}) {
+  const { t } = useLanguage();
+  const [asked, setAsked] = useState(false);
+  return (
+    <span role="menu" onKeyDown={(e) => e.key === 'Escape' && onClose()}
+      className="chat-pop absolute left-0 top-12 z-30 flex min-w-48 origin-top-left flex-col rounded-xl border border-line bg-surface p-1 shadow-lg">
+      <Link role="menuitem" href={`/community/u/${userId}`} className={`${MENU_ITEM} text-ink`}><UserRound aria-hidden="true" className="size-4" />{t({ en: 'View profile', vi: 'Xem hồ sơ' })}</Link>
+      {friendshipId && onOpenDm && (
+        <button type="button" role="menuitem" onClick={() => { onClose(); onOpenDm(friendshipId); }} className={`${MENU_ITEM} text-ink`}><MessageCircle aria-hidden="true" className="size-4" />{t({ en: 'Message', vi: 'Nhắn tin' })}</button>
+      )}
+      {!friendshipId && onAddFriend && (
+        <button type="button" role="menuitem" disabled={asked} onClick={() => { setAsked(true); onAddFriend(userId); }} className={`${MENU_ITEM} text-ink disabled:opacity-60`}>
+          <UserPlus aria-hidden="true" className="size-4" />{asked ? t({ en: 'Request sent', vi: 'Đã gửi lời mời' }) : t({ en: 'Add friend', vi: 'Kết bạn' })}
+        </button>
+      )}
+      {confirmBlock
+        ? <button type="button" role="menuitem" onClick={onBlock} className={`${MENU_ITEM} text-danger`}><Ban aria-hidden="true" className="size-4" />{t({ en: 'Sure? Block', vi: 'Chắc chắn chặn?' })}</button>
+        : <button type="button" role="menuitem" onClick={onAskBlock} className={`${MENU_ITEM} text-ink`}><Ban aria-hidden="true" className="size-4" />{t({ en: 'Block', vi: 'Chặn' })}</button>}
+    </span>
+  );
+}
+
+/** An admin's room picture: click to choose a new one, and a small button to put the plain icon back. */
+function RoomAvatarPicker({ name, url, onChange }: { name: string; url: string | null; onChange: (file: File | null) => void }) {
+  const { t } = useLanguage();
+  const input = useRef<HTMLInputElement>(null);
+  const pick = (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    event.target.value = '';
+    if (file) onChange(file);
+  };
+  return (
+    <span className="relative inline-flex shrink-0">
+      <button type="button" onClick={() => input.current?.click()} aria-label={t({ en: 'Change room picture', vi: 'Đổi ảnh phòng' })} title={t({ en: 'Change room picture', vi: 'Đổi ảnh phòng' })}
+        className="group relative rounded-xl focus-visible:outline focus-visible:outline-2 focus-visible:outline-focus">
+        <Avatar name={name} url={url} className="size-10 text-base" />
+        <span aria-hidden="true" className="absolute inset-0 grid place-items-center rounded-xl bg-[color-mix(in_srgb,var(--ink)_45%,transparent)] text-surface opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100 [@media(hover:none)]:opacity-100"><Camera className="size-4" /></span>
+      </button>
+      {url && (
+        <button type="button" onClick={() => onChange(null)} aria-label={t({ en: 'Remove room picture', vi: 'Gỡ ảnh phòng' })} title={t({ en: 'Remove room picture', vi: 'Gỡ ảnh phòng' })}
+          className="absolute -right-1.5 -top-1.5 grid size-5 place-items-center rounded-full border border-line bg-surface text-ink-muted hover:text-ink focus-visible:outline focus-visible:outline-2 focus-visible:outline-focus"><X aria-hidden="true" className="size-3" /></button>
+      )}
+      <input ref={input} type="file" accept={IMAGE_TYPES.join(',')} className="sr-only" tabIndex={-1} onChange={pick} />
+    </span>
+  );
+}
+
+export function ChatPaneView({ messages, meId, onSend, onSendImage, onReport, onBlock, onReact, onRecall, senders = {}, loading = false, hasOlder = false, loadingOlder = false, onLoadOlder, reactions = {}, title, subtitle, peerId, roomAvatar, onChangeRoomAvatar, onReportMessage, friendships = {}, onOpenDm, onAddFriend, onBack, backAlways = false, showNames = true, now }: {
   messages: ChatMessage[];
   meId: string | null;
   /** Resolves true when the message went through, so the box can clear. */
@@ -91,6 +153,15 @@ export function ChatPaneView({ messages, meId, onSend, onSendImage, onReport, on
   subtitle?: string;
   /** The other person in a direct chat, for the online dot. */
   peerId?: string;
+  /** A shared room's picture; with `onChangeRoomAvatar` (admins) the header avatar becomes a picker. */
+  roomAvatar?: string | null;
+  onChangeRoomAvatar?: (file: File | null) => void;
+  /** Report one person's message (from its ⋯ menu) with a fixed reason. */
+  onReportMessage?: (messageId: string, reason: string) => void;
+  /** Friends by user id, to their friendship id: a friend gets "Message", anyone else "Add friend". */
+  friendships?: Record<string, string>;
+  onOpenDm?: (friendshipId: string) => void;
+  onAddFriend?: (userId: string) => void;
   onBack?: () => void;
   /** Keep the back button on wide screens too (the floating panel). */
   backAlways?: boolean;
@@ -110,6 +181,8 @@ export function ChatPaneView({ messages, meId, onSend, onSendImage, onReport, on
   const [replyTo, setReplyTo] = useState<ChatMessage | null>(null);
   const [picking, setPicking] = useState<string | null>(null);
   const [menuFor, setMenuFor] = useState<string | null>(null);
+  const [profileFor, setProfileFor] = useState<string | null>(null);
+  const [reportingMsg, setReportingMsg] = useState<ChatMessage | null>(null);
   const [recalling, setRecalling] = useState<ChatMessage | null>(null);
   const log = useRef<HTMLDivElement>(null);
 
@@ -186,7 +259,11 @@ export function ChatPaneView({ messages, meId, onSend, onSendImage, onReport, on
           {onBack && (
             <Button type="button" variant="ghost" size="icon" className={backAlways ? '' : 'lg:hidden'} aria-label={t({ en: 'Back', vi: 'Quay lại' })} onClick={onBack}><ArrowLeft aria-hidden="true" /></Button>
           )}
-          <PresenceAvatar userId={peerId}><Avatar name={title} className="size-10 text-base" /></PresenceAvatar>
+          {onChangeRoomAvatar ? (
+            <RoomAvatarPicker name={title} url={roomAvatar ?? null} onChange={onChangeRoomAvatar} />
+          ) : (
+            <PresenceAvatar userId={peerId}><Avatar name={title} url={roomAvatar ?? null} className="size-10 text-base" /></PresenceAvatar>
+          )}
           <div className="min-w-0 flex-1">
             <h2 className="truncate text-lg font-bold text-ink">{title}</h2>
             {subtitle && <p className="truncate text-xs font-medium text-ink-muted">{subtitle}</p>}
@@ -209,17 +286,29 @@ export function ChatPaneView({ messages, meId, onSend, onSendImage, onReport, on
           return (
             <div key={group.messages[0].id} className="flex flex-col gap-2">
               {group.timeLabel && <p className="mb-2 text-center text-xs font-medium text-ink-muted">{group.timeLabel}</p>}
-              <div className={`flex items-start gap-4 ${mine ? 'flex-row-reverse' : ''}`}>
+              <div className={`relative flex items-start gap-4 ${mine ? 'flex-row-reverse' : ''}`}>
                 {mine
                   ? <Avatar name={group.sender_name} url={senders[group.sender_id]?.avatar_url} />
-                  : <Link href={`/community/u/${group.sender_id}`} aria-label={group.sender_name} className="rounded-xl focus-visible:outline focus-visible:outline-2 focus-visible:outline-focus"><PresenceAvatar userId={group.sender_id}><Avatar name={group.sender_name} url={senders[group.sender_id]?.avatar_url} /></PresenceAvatar></Link>}
+                  : <button type="button" aria-label={group.sender_name} aria-haspopup="menu" aria-expanded={profileFor === group.messages[0].id} onClick={() => { setMenuFor(null); setConfirmBlock(null); setProfileFor(profileFor === group.messages[0].id ? null : group.messages[0].id); }} className="rounded-xl focus-visible:outline focus-visible:outline-2 focus-visible:outline-focus"><PresenceAvatar userId={group.sender_id}><Avatar name={group.sender_name} url={senders[group.sender_id]?.avatar_url} /></PresenceAvatar></button>}
+                {!mine && profileFor === group.messages[0].id && (
+                  <SenderMenu
+                    userId={group.sender_id}
+                    friendshipId={friendships[group.sender_id]}
+                    confirmBlock={confirmBlock === group.sender_id}
+                    onClose={() => { setProfileFor(null); setConfirmBlock(null); }}
+                    onOpenDm={onOpenDm}
+                    onAddFriend={onAddFriend}
+                    onAskBlock={() => setConfirmBlock(group.sender_id)}
+                    onBlock={() => { setProfileFor(null); setConfirmBlock(null); onBlock(group.sender_id); }}
+                  />
+                )}
                 <div className={`flex min-w-0 max-w-[80%] flex-col gap-2 ${mine ? 'items-end' : 'items-start'}`}>
                   {!mine && showNames && (
                     <span className="-mb-1 flex flex-wrap items-center gap-x-2">
-                      <Link href={`/community/u/${group.sender_id}`} className="text-sm font-bold text-ink hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-focus">{group.sender_name}</Link>
+                      <button type="button" aria-haspopup="menu" onClick={() => { setMenuFor(null); setConfirmBlock(null); setProfileFor(profileFor === group.messages[0].id ? null : group.messages[0].id); }} className="text-sm font-bold text-ink hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-focus">{group.sender_name}</button>
                       {senders[group.sender_id] && (
-                        <span className={`rounded-full px-2 text-xs font-semibold ${senders[group.sender_id].role === 'teacher' ? 'bg-action text-action-ink' : 'border border-line text-ink-muted'}`}>
-                          {senders[group.sender_id].role === 'teacher' ? t({ en: 'Teacher', vi: 'Giáo viên' }) : t({ en: 'Student', vi: 'Học sinh' })}
+                        <span className={`rounded-full border border-current px-2 text-xs font-semibold ${roleColors[senders[group.sender_id].role]}`}>
+                          {senders[group.sender_id].role === 'admin' ? 'Admin' : senders[group.sender_id].role === 'teacher' ? t({ en: 'Teacher', vi: 'Giáo viên' }) : t({ en: 'Student', vi: 'Học sinh' })}
                         </span>
                       )}
                     </span>
@@ -273,18 +362,16 @@ export function ChatPaneView({ messages, meId, onSend, onSendImage, onReport, on
                         <span className={`relative flex shrink-0 items-center transition-opacity duration-150 ${picking === m.id || menuFor === m.id ? 'opacity-100' : 'opacity-0 focus-within:opacity-100 group-hover:opacity-100 [@media(hover:none)]:opacity-100'}`}>
                           {onReact && <Button type="button" variant="ghost" size="icon" className="size-8 min-h-8 rounded-full text-ink-muted" aria-label={t({ en: 'React', vi: 'Thả cảm xúc' })} aria-expanded={picking === m.id} onClick={() => { setMenuFor(null); setPicking(picking === m.id ? null : m.id); }}><SmilePlus aria-hidden="true" /></Button>}
                           <Button type="button" variant="ghost" size="icon" className="size-8 min-h-8 rounded-full text-ink-muted" aria-label={t({ en: 'Reply', vi: 'Trả lời' })} onClick={() => setReplyTo(m)}><Reply aria-hidden="true" /></Button>
-                          {(mine ? onRecall : true) && (
+                          {(mine ? onRecall : onReportMessage) && (
                             <Button type="button" variant="ghost" size="icon" className="size-8 min-h-8 rounded-full text-ink-muted" aria-label={t({ en: 'More', vi: 'Thêm' })} aria-haspopup="menu" aria-expanded={menuFor === m.id}
-                              onClick={() => { setPicking(null); setConfirmBlock(null); setMenuFor(menuFor === m.id ? null : m.id); }}><MoreHorizontal aria-hidden="true" /></Button>
+                              onClick={() => { setPicking(null); setProfileFor(null); setMenuFor(menuFor === m.id ? null : m.id); }}><MoreHorizontal aria-hidden="true" /></Button>
                           )}
                           {menuFor === m.id && (
                             <span role="menu" onKeyDown={(e) => e.key === 'Escape' && setMenuFor(null)}
                               className={`chat-pop absolute top-full z-20 mt-1 flex min-w-36 flex-col rounded-xl border border-line bg-surface p-1 shadow-lg ${mine ? 'right-0 origin-top-right' : 'left-0 origin-top-left'}`}>
                               {mine
                                 ? <button type="button" role="menuitem" onClick={() => { setMenuFor(null); setRecalling(m); }} className="flex min-h-10 items-center gap-2 rounded-lg px-3 text-left text-sm font-semibold text-ink hover:bg-surface-sunken focus-visible:outline focus-visible:outline-2 focus-visible:outline-focus"><Undo2 aria-hidden="true" className="size-4" />{t({ en: 'Unsend', vi: 'Thu hồi' })}</button>
-                                : confirmBlock === m.sender_id
-                                  ? <button type="button" role="menuitem" onClick={() => { setConfirmBlock(null); setMenuFor(null); onBlock(m.sender_id); }} className="flex min-h-10 items-center gap-2 rounded-lg px-3 text-left text-sm font-semibold text-danger hover:bg-surface-sunken focus-visible:outline focus-visible:outline-2 focus-visible:outline-focus"><Ban aria-hidden="true" className="size-4" />{t({ en: 'Sure? Block', vi: 'Chắc chắn chặn?' })}</button>
-                                  : <button type="button" role="menuitem" onClick={() => setConfirmBlock(m.sender_id)} className="flex min-h-10 items-center gap-2 rounded-lg px-3 text-left text-sm font-semibold text-ink hover:bg-surface-sunken focus-visible:outline focus-visible:outline-2 focus-visible:outline-focus"><Ban aria-hidden="true" className="size-4" />{t({ en: 'Block', vi: 'Chặn' })}</button>}
+                                : <button type="button" role="menuitem" onClick={() => { setMenuFor(null); setReportingMsg(m); }} className="flex min-h-10 items-center gap-2 rounded-lg px-3 text-left text-sm font-semibold text-danger hover:bg-surface-sunken focus-visible:outline focus-visible:outline-2 focus-visible:outline-focus"><Flag aria-hidden="true" className="size-4" />{t({ en: 'Report', vi: 'Báo cáo' })}</button>}
                             </span>
                           )}
                         </span>
@@ -354,6 +441,18 @@ export function ChatPaneView({ messages, meId, onSend, onSendImage, onReport, on
         </div>
       </Dialog>
 
+      <Dialog open={reportingMsg !== null} onClose={() => setReportingMsg(null)} title={t({ en: 'Why are you reporting this message?', vi: 'Vì sao bạn báo cáo tin nhắn này?' })} closeLabel={t({ en: 'Close', vi: 'Đóng' })}>
+        {reportingMsg && <p className="mb-3 line-clamp-3 rounded-lg bg-surface-sunken px-3 py-2 text-sm text-ink-muted">{reportingMsg.sender_name}: {snippet(reportingMsg)}</p>}
+        <div className="flex flex-col gap-2">
+          {REASONS.map((reason) => (
+            <Button key={reason.vi} type="button" variant="outline" onClick={() => { if (reportingMsg) onReportMessage?.(reportingMsg.id, reason.vi); setReportingMsg(null); }}>
+              {t(reason)}
+            </Button>
+          ))}
+        </div>
+        <p className="mt-3 text-xs text-ink-muted">{t({ en: 'Admins see the message and decide. The sender is not told who reported it.', vi: 'Admin sẽ xem tin nhắn và quyết định. Người gửi không biết ai đã báo cáo.' })}</p>
+      </Dialog>
+
       <Dialog open={zoomed !== null} onClose={() => setZoomed(null)} title={t({ en: 'Picture', vi: 'Ảnh' })} closeLabel={t({ en: 'Close', vi: 'Đóng' })} closeOnBackdrop className="max-w-3xl">
         {zoomed && (
           <div className="flex flex-col items-center gap-3">
@@ -369,25 +468,70 @@ export function ChatPaneView({ messages, meId, onSend, onSendImage, onReport, on
   );
 }
 
-export function ChatPane({ target, title, subtitle, peerId, onBack, onBlocked, backAlways }: {
+export function ChatPane({ target, title, subtitle, peerId, roomKey, roomAvatar, onRoomAvatar, friendships, onOpenDm, onBack, onBlocked, backAlways }: {
   target: ChatTarget;
   title?: string;
   subtitle?: string;
   /** The other person in a direct chat, for the online dot. */
   peerId?: string;
+  /** A shared room ("all", "10"…) and its picture; admins can change the picture from the header. */
+  roomKey?: string;
+  roomAvatar?: string | null;
+  onRoomAvatar?: () => void;
+  /** Friends by user id (to friendship id), and how to open a direct chat with one. */
+  friendships?: Record<string, string>;
+  onOpenDm?: (friendshipId: string) => void;
   onBack?: () => void;
   onBlocked?: (userId: string) => void;
   backAlways?: boolean;
 }) {
   const { t } = useLanguage();
   const [meId, setMeId] = useState<string | null>(null);
+  const [isAdmin, setIsAdmin] = useState(false);
   const { messages, reactions, status, refreshReactions, senders, hasOlder, loadingOlder, loadOlder } = useChatRoom(target, meId);
   const [notice, setNotice] = useState<{ tone: 'danger' | 'info'; text: Bilingual } | null>(null);
   const [blocked, setBlocked] = useState<string[]>([]);
 
   useEffect(() => {
-    createBrowserClient().auth.getSession().then(({ data }) => setMeId(data.session?.user.id ?? null)).catch(() => undefined);
+    createBrowserClient().auth.getSession().then(({ data }) => { setMeId(data.session?.user.id ?? null); setIsAdmin(data.session?.user.app_metadata?.app_role === 'admin'); }).catch(() => undefined);
   }, []);
+
+  // Opening a conversation and each new message while it is on screen mark it read; touching it again
+  // (after the bubble was hidden) catches up too.
+  const root = useRef<HTMLDivElement>(null);
+  const readKey = 'community' in target ? 'all' : 'room_grade' in target ? String(target.room_grade) : 'class_id' in target ? `class:${target.class_id}` : `dm:${target.friendship_id}`;
+  const lastId = messages.at(-1)?.id;
+  // The newest message already marked, so pointer and focus events do not ask the server again.
+  const marked = useRef<string | null>(null);
+  const markRead = () => {
+    const seen = `${readKey}|${lastId ?? ''}`;
+    if (status !== 'ready' || marked.current === seen || document.visibilityState !== 'visible' || root.current?.checkVisibility?.() === false) return;
+    marked.current = seen;
+    void markChatRead(readKey);
+  };
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- markRead reads the same values
+  useEffect(markRead, [status, lastId, readKey]);
+  // A tab opened in the background marks the chat read once the reader switches to it.
+  const latestMark = useRef(markRead);
+  latestMark.current = markRead;
+  useEffect(() => {
+    const onVisible = () => latestMark.current();
+    document.addEventListener('visibilitychange', onVisible);
+    return () => document.removeEventListener('visibilitychange', onVisible);
+  }, []);
+  // While on screen, this conversation does not pop a toast for its own messages.
+  useEffect(() => registerOpenConversation(readKey, root), [readKey]);
+
+  const changeRoomAvatar = async (file: File | null) => {
+    if (!roomKey) return;
+    if (file && (!IMAGE_TYPES.includes(file.type) || file.size > IMAGE_MAX)) {
+      setNotice({ tone: 'danger', text: { vi: 'Ảnh PNG, JPG hoặc WEBP, tối đa 1,5 MB.', en: 'A PNG, JPG or WEBP picture up to 1.5 MB.' } });
+      return;
+    }
+    const result = file ? await uploadRoomAvatar(roomKey, file) : await removeRoomAvatar(roomKey);
+    if (!result.ok) setNotice({ tone: 'danger', text: result.error });
+    else onRoomAvatar?.();
+  };
 
   const send = async (body: string, replyTo?: string) => {
     const result = await sendMessage(target, body, replyTo);
@@ -409,6 +553,16 @@ export function ChatPane({ target, title, subtitle, peerId, onBack, onBlocked, b
       ? { tone: 'info', text: { en: 'Thanks, we will take a look.', vi: 'Cảm ơn bạn, chúng tôi sẽ xem xét.' } }
       : { tone: 'danger', text: result.error });
   };
+  const reportOne = async (messageId: string, reason: string) => {
+    const result = await reportMessage(messageId, reason);
+    setNotice(result.ok
+      ? { tone: 'info', text: { en: 'Thanks, an admin will look at this message.', vi: 'Cảm ơn bạn, admin sẽ xem xét tin nhắn này.' } }
+      : { tone: 'danger', text: result.error });
+  };
+  const addFriend = async (userId: string) => {
+    const result = await sendRequest(userId);
+    if (!result.ok) setNotice({ tone: 'danger', text: result.error });
+  };
   const react = async (messageId: string, emoji: string) => {
     const result = await reactToMessage(messageId, emoji);
     if (!result.ok) return setNotice({ tone: 'danger', text: result.error });
@@ -428,7 +582,7 @@ export function ChatPane({ target, title, subtitle, peerId, onBack, onBlocked, b
   };
 
   return (
-    <div className="flex h-full min-h-0 flex-col">
+    <div ref={root} onPointerDown={markRead} onFocus={markRead} className="flex h-full min-h-0 flex-col">
       {(status === 'error' || notice) && (
         <div className="flex flex-col gap-2 px-4 pt-3 sm:px-6">
           {status === 'error' && <Alert tone="danger">{t({ en: 'Could not load messages.', vi: 'Không tải được tin nhắn.' })}</Alert>}
@@ -453,6 +607,12 @@ export function ChatPane({ target, title, subtitle, peerId, onBack, onBlocked, b
         title={title}
         subtitle={subtitle}
         peerId={peerId}
+        roomAvatar={roomAvatar}
+        onReportMessage={(id, reason) => void reportOne(id, reason)}
+        friendships={friendships}
+        onOpenDm={onOpenDm}
+        onAddFriend={(id) => void addFriend(id)}
+        onChangeRoomAvatar={isAdmin && roomKey ? (file) => void changeRoomAvatar(file) : undefined}
         onBack={onBack}
         backAlways={backAlways}
         showNames={!friendshipId}

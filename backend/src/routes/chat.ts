@@ -197,6 +197,65 @@ export const chatRoutes: FastifyPluginAsync = async (app) => {
     return reply.code(201).send({ id: (inserted.data as { id: string }).id, image_url: imageUrl });
   });
 
+  // An admin sets the picture of a shared room (everyone, grade 10, 11, 12). One picture per room: a new one replaces the old,
+  // and the old file leaves the store once the row points away from it.
+  const ROOMS = ['all', '10', '11', '12'];
+  const roomOf = (request: FastifyRequest): string | null => {
+    const room = (request.query as { room?: string } | undefined)?.room;
+    return typeof room === 'string' && ROOMS.includes(room) ? room : null;
+  };
+  const roomKey = (url: string | null | undefined): string | null => {
+    const base = app.mediaStore?.publicUrl('');
+    if (!url || !base || !url.startsWith(base)) return null;
+    const key = url.slice(base.length);
+    return key.startsWith('chat-rooms/') && !key.includes('..') ? key : null;
+  };
+
+  app.post('/api/chat/room-avatar', { preHandler: [requireUser], bodyLimit: CHAT_IMAGE_MAX }, async (request, reply) => {
+    const supabase = app.supabase;
+    const store = app.mediaStore;
+    if (!supabase || !store) return reply.code(503).send(unavailable);
+    if (!isAdmin(request)) return reply.code(403).send({ error: 'Chỉ admin mới đổi ảnh phòng.', error_en: 'Only admins change room pictures.' });
+    const room = roomOf(request);
+    if (!room) return reply.code(400).send(invalid);
+    const image = request.body;
+    if (!Buffer.isBuffer(image)) return reply.code(415).send(notImage);
+    const type = sniffImageType(image);
+    if (!type) return reply.code(400).send(notImage);
+
+    const before = await supabase.from('chat_room_avatars').select('avatar_url').eq('room', room).maybeSingle();
+    if (before.error) return reply.code(500).send(failed);
+    const key = `chat-rooms/${room}/${randomUUID()}.${type === 'jpeg' ? 'jpg' : type}`;
+    try {
+      await store.put(key, image, IMAGE_MIME[type]);
+    } catch (err) {
+      request.log.error({ err }, 'Room picture upload failed');
+      return reply.code(500).send(failed);
+    }
+    const url = store.publicUrl(key);
+    const saved = await supabase.from('chat_room_avatars').upsert({ room, avatar_url: url, updated_at: new Date().toISOString(), updated_by: userId(request) }, { onConflict: 'room' });
+    if (saved.error) {
+      await store.remove(key).catch((err: unknown) => request.log.warn({ err, key }, 'Orphaned room picture was not removed'));
+      return reply.code(500).send(failed);
+    }
+    const old = roomKey((before.data as { avatar_url: string } | null)?.avatar_url);
+    if (old) await store.remove(old).catch((err: unknown) => request.log.warn({ err, key: old }, 'Old room picture was not removed'));
+    return reply.code(201).send({ url });
+  });
+
+  app.delete('/api/chat/room-avatar', { preHandler: [requireUser] }, async (request, reply) => {
+    const supabase = app.supabase;
+    if (!supabase) return reply.code(503).send(unavailable);
+    if (!isAdmin(request)) return reply.code(403).send({ error: 'Chỉ admin mới đổi ảnh phòng.', error_en: 'Only admins change room pictures.' });
+    const room = roomOf(request);
+    if (!room) return reply.code(400).send(invalid);
+    const removed = await supabase.from('chat_room_avatars').delete().eq('room', room).select('avatar_url');
+    if (removed.error) return reply.code(500).send(failed);
+    const old = roomKey((removed.data as Array<{ avatar_url: string }> | null)?.[0]?.avatar_url);
+    if (old && app.mediaStore) await app.mediaStore.remove(old).catch((err: unknown) => request.log.warn({ err, key: old }, 'Old room picture was not removed'));
+    return reply.code(204).send();
+  });
+
   // Blocking also ends any friendship between the two; the block hides their community-room messages from you.
   app.post('/api/chat/blocks', { preHandler: [requireUser] }, async (request, reply) => {
     const supabase = app.supabase;
@@ -250,7 +309,64 @@ export const chatRoutes: FastifyPluginAsync = async (app) => {
     return reply.send({ grade });
   });
 
-  // Tapping the same emoji again takes it back. The message must be one the user can read.
+  type MessageRow = { id: string; sender_id: string; sender_name: string; body: string; image_url: string | null; created_at: string; community: boolean; room_grade: number | null; class_id: string | null; friendship_id: string | null };
+  type Access =
+    | { ok: true; msg: MessageRow; profile: { chat_banned?: boolean; grade?: number | null; role?: string | null } }
+    | { ok: false; code: number; body: object };
+  /** A live message the user may read (its room, class or friendship), with the user's chat profile. */
+  const readable = async (supabase: NonNullable<typeof app.supabase>, request: FastifyRequest, me: string, messageId: string): Promise<Access> => {
+    const found = await supabase.from('chat_messages').select('id, sender_id, sender_name, body, image_url, created_at, community, room_grade, class_id, friendship_id')
+      .eq('id', messageId).is('deleted_at', null).is('recalled_at', null).maybeSingle();
+    if (found.error) return { ok: false, code: 500, body: failed };
+    const msg = found.data as MessageRow | null;
+    if (!msg) return { ok: false, code: 404, body: notFound };
+    const profile = await supabase.from('profiles').select('chat_banned, grade, role').eq('id', me).maybeSingle();
+    if (profile.error) return { ok: false, code: 500, body: failed };
+    const mine = (profile.data ?? {}) as { chat_banned?: boolean; grade?: number | null; role?: string | null };
+    let allowed = msg.community;
+    if (msg.room_grade !== null) {
+      allowed = canEnterGrade(mine, isAdmin(request), msg.room_grade);
+    } else if (msg.class_id) {
+      const room = await inClass(supabase, me, msg.class_id);
+      if (!room) return { ok: false, code: 500, body: failed };
+      allowed = room.ok;
+    } else if (msg.friendship_id) {
+      const friendship = await supabase.from('friendships').select('id, user_a, user_b, status').eq('id', msg.friendship_id).maybeSingle();
+      if (friendship.error) return { ok: false, code: 500, body: failed };
+      const f = friendship.data as FriendRow | null;
+      allowed = Boolean(f && f.status === 'accepted' && (f.user_a === me || f.user_b === me));
+    }
+    return allowed ? { ok: true, msg, profile: mine } : { ok: false, code: 404, body: notFound };
+  };
+
+  // Report one person's message: it goes to the admins' review queue with the message as evidence.
+  // One open report per person per message (the conversation-report key is reused as "message:<id>").
+  app.post('/api/chat/messages/:id/report', { preHandler: [requireUser] }, async (request, reply) => {
+    const supabase = app.supabase;
+    if (!supabase) return reply.code(503).send(unavailable);
+    const me = userId(request)!;
+    const id = (request.params as { id: string }).id;
+    const reason = typeof (request.body as { reason?: unknown } | null)?.reason === 'string' ? ((request.body as { reason: string }).reason).trim() : '';
+    if (!UUID_PATTERN.test(id) || reason.length < 1 || reason.length > REASON_MAX) return reply.code(400).send(invalid);
+    const access = await readable(supabase, request, me, id);
+    if (!access.ok) return reply.code(access.code).send(access.body);
+    const { msg } = access;
+    if (msg.sender_id === me) return reply.code(400).send({ error: 'Bạn không tự báo cáo tin của mình.', error_en: 'You cannot report your own message.' });
+    const place = msg.room_grade !== null ? `Khối ${msg.room_grade}` : msg.class_id ? 'Lớp học' : msg.friendship_id ? 'Tin nhắn riêng' : 'Cộng đồng';
+    const evidence = { id: msg.id, sender_id: msg.sender_id, sender_name: msg.sender_name, body: msg.body, image_url: msg.image_url, created_at: msg.created_at };
+    const inserted = await supabase.from('chat_reports').insert({
+      reporter_id: me, reason, message_id: msg.id, conversation_key: `message:${msg.id}`,
+      label: `${place} · tin của ${msg.sender_name}`, snapshot: [evidence],
+    });
+    if (inserted.error?.code === '23505') {
+      return reply.code(409).send({ error: 'Bạn đã báo cáo tin nhắn này, chúng tôi đang xem xét.', error_en: 'You already reported this message; we are looking at it.' });
+    }
+    if (inserted.error) return reply.code(500).send(failed);
+    return reply.code(201).send({});
+  });
+
+  // One reaction per person and message: tapping the same emoji again takes it back, another emoji replaces it.
+  // The message must be one the user can read.
   app.post('/api/chat/reactions', { preHandler: [requireUser] }, async (request, reply) => {
     const supabase = app.supabase;
     if (!supabase) return reply.code(503).send(unavailable);
@@ -260,34 +376,15 @@ export const chatRoutes: FastifyPluginAsync = async (app) => {
       return reply.code(400).send(invalid);
     }
 
-    const found = await supabase.from('chat_messages').select('id, community, room_grade, class_id, friendship_id').eq('id', input.message_id).is('deleted_at', null).is('recalled_at', null).maybeSingle();
-    if (found.error) return reply.code(500).send(failed);
-    const msg = found.data as { community: boolean; room_grade: number | null; class_id: string | null; friendship_id: string | null } | null;
-    if (!msg) return reply.code(404).send(notFound);
-
-    const profile = await supabase.from('profiles').select('chat_banned, grade, role').eq('id', me).maybeSingle();
-    if (profile.error) return reply.code(500).send(failed);
-    const mine = (profile.data ?? {}) as { chat_banned?: boolean; grade?: number | null; role?: string | null };
-    if (mine.chat_banned) return reply.code(403).send({ error: 'Tài khoản của bạn đã bị cấm trò chuyện.', error_en: 'You are not allowed to chat.' });
-
-    let allowed = msg.community;
-    if (msg.room_grade !== null) {
-      allowed = canEnterGrade(mine, isAdmin(request), msg.room_grade);
-    } else if (msg.class_id) {
-      const room = await inClass(supabase, me, msg.class_id);
-      if (!room) return reply.code(500).send(failed);
-      allowed = room.ok;
-    } else if (msg.friendship_id) {
-      const friendship = await supabase.from('friendships').select('id, user_a, user_b, status').eq('id', msg.friendship_id).maybeSingle();
-      if (friendship.error) return reply.code(500).send(failed);
-      const f = friendship.data as FriendRow | null;
-      allowed = Boolean(f && f.status === 'accepted' && (f.user_a === me || f.user_b === me));
-    }
-    if (!allowed) return reply.code(404).send(notFound);
+    const access = await readable(supabase, request, me, input.message_id);
+    if (!access.ok) return reply.code(access.code).send(access.body);
+    if (access.profile.chat_banned) return reply.code(403).send({ error: 'Tài khoản của bạn đã bị cấm trò chuyện.', error_en: 'You are not allowed to chat.' });
 
     const removed = await supabase.from('chat_reactions').delete().eq('message_id', input.message_id).eq('user_id', me).eq('emoji', input.emoji).select('message_id');
     if (removed.error) return reply.code(500).send(failed);
     if (((removed.data as unknown[] | null) ?? []).length > 0) return reply.send({ on: false });
+    const replaced = await supabase.from('chat_reactions').delete().eq('message_id', input.message_id).eq('user_id', me);
+    if (replaced.error) return reply.code(500).send(failed);
     const added = await supabase.from('chat_reactions').insert({ message_id: input.message_id, user_id: me, emoji: input.emoji });
     if (added.error) return reply.code(500).send(failed);
     return reply.code(201).send({ on: true });
@@ -303,7 +400,7 @@ export const chatRoutes: FastifyPluginAsync = async (app) => {
     const found = await supabase.from('profiles').select('id, avatar_url, role').in('id', ids);
     if (found.error) return reply.code(500).send(failed);
     const rows = (found.data ?? []) as Array<{ id: string; avatar_url: string | null; role: string | null }>;
-    return reply.send({ senders: rows.map((p) => ({ user_id: p.id, avatar_url: p.avatar_url, role: p.role === 'teacher' ? 'teacher' : 'student' })) });
+    return reply.send({ senders: rows.map((p) => ({ user_id: p.id, avatar_url: p.avatar_url, role: p.role === 'teacher' || p.role === 'admin' ? p.role : 'student' })) });
   });
 
   // Unsend: only the sender. The original goes to chat_recalls (service role only) before the row is cleared.

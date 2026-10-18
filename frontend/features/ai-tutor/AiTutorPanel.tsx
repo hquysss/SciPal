@@ -12,6 +12,7 @@ import { TutorAvatarOnline } from './TutorAvatar';
 import { TutorChat } from './TutorChat';
 import { lessonQuestions } from './examples';
 import { useTutorSession } from './TutorSession';
+import { badgeText, UNREAD_BADGE } from '@/features/community/unread';
 import styles from './widget.module.css';
 
 // Loaded the first time someone opens the community tab, so the bubble stays light.
@@ -27,12 +28,14 @@ interface AiTutorPanelProps {
   guest?: ReactNode;
   level: EducationLevel;
   signedIn: boolean | null;
+  /** Unread community messages, shown on the Community tab. */
+  communityUnread?: number;
   onClose: () => void;
 }
 const CONTROL = 'flex min-h-11 min-w-11 shrink-0 items-center justify-center rounded-full text-ink-muted transition-colors hover:bg-surface-sunken hover:text-ink focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-focus';
 
 /** A non-modal reading companion; visibility never owns the shared transcript. */
-export function AiTutorPanel({ id, visible = true, lessonId, lessonTitle, suggestions, guest, level, signedIn, onClose }: AiTutorPanelProps) {
+export function AiTutorPanel({ id, visible = true, lessonId, lessonTitle, suggestions, guest, level, signedIn, communityUnread = 0, onClose }: AiTutorPanelProps) {
   const { t } = useLanguage();
   const session = useTutorSession();
   const panel = useRef<HTMLDivElement>(null);
@@ -75,6 +78,11 @@ export function AiTutorPanel({ id, visible = true, lessonId, lessonTitle, sugges
             onClick={() => { setTab(id); if (id === 'community') setCommunitySeen(true); }}
             className={`relative flex min-h-11 flex-1 items-center justify-center text-sm transition-colors hover:bg-surface-sunken focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-focus ${tab === id ? 'font-bold text-ink' : 'font-medium text-ink-muted'}`}>
             {label}
+            {id === 'community' && communityUnread > 0 && (
+              <span className={`ml-1.5 ${UNREAD_BADGE}`}>
+                {badgeText(communityUnread)}<span className="sr-only">{t({ en: ' new messages', vi: ' tin nhắn mới' })}</span>
+              </span>
+            )}
             {tab === id && <span aria-hidden="true" className="absolute bottom-0 h-1 w-12 rounded-full bg-action" />}
           </button>
         ))}

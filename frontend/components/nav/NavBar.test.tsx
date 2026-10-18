@@ -130,5 +130,7 @@ describe('community link', () => {
     expect(communityLabel('vi', 0)).toBe('Cộng đồng');
     expect(communityLabel('vi', 2)).toBe('Cộng đồng (2)');
     expect(communityLabel('en', 3)).toBe('Community (3)');
+    expect(communityLabel('vi', 2, 5)).toBe('Cộng đồng (2), 5 tin nhắn mới');
+    expect(communityLabel('en', 0, 150)).toBe('Community, 99+ new messages');
   });
 });
