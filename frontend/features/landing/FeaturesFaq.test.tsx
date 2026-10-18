@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { countRawColors } from '../../lib/theme/rawColors';
 import { FaqSection, FAQ } from './FaqSection';
 import { FeaturesSection } from './FeaturesSection';
+import { CommunitySection } from './CommunitySection';
 
 let lang: 'vi' | 'en' = 'vi';
 vi.mock('@scipal/hooks', () => ({
@@ -17,6 +18,19 @@ describe('FeaturesSection', () => {
     expect(vi).toContain('Hơn cả bài học');
     lang = 'en';
     expect(renderToStaticMarkup(<FeaturesSection />)).toContain('Practice exams');
+  });
+});
+
+describe('CommunitySection', () => {
+  it('introduces the community in both languages and links to it, on theme tokens', () => {
+    lang = 'vi';
+    const vi = renderToStaticMarkup(<CommunitySection />);
+    expect(vi).toContain('Học cùng nhau');
+    expect(vi).toContain('Thủ khoa tuần');
+    expect(vi).toContain('href="/community"');
+    expect(countRawColors(vi).total).toBe(0);
+    lang = 'en';
+    expect(renderToStaticMarkup(<CommunitySection />)).toContain('Learn together');
   });
 });
 
