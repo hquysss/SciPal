@@ -11,6 +11,8 @@ import { useConfirmDialog } from '@/components/ui/confirm-dialog';
 import { listAccounts, type Account } from '@/features/admin/accountsApi';
 import { ALL_ACCOUNTS, AudiencePicker, targetCount, type Target } from './AudiencePicker';
 import { SendToast } from './SendToast';
+import { ScheduledList } from '@/features/admin/scheduled/ScheduledList';
+import { createScheduled, parseLocalTime } from '@/features/admin/scheduled/scheduledApi';
 import {
   NEWSLETTER_LEVELS,
   deleteAnnouncement,
@@ -24,6 +26,7 @@ import {
 type Bilingual = { vi: string; en: string };
 type Loaded = { announcements: Announcement[]; audience: AnnouncementAudience; emailReady: boolean };
 
+const SCHEDULE_KINDS = ['announcement'] as const;
 const EMPTY = { title_vi: '', title_en: '', body_vi: '', body_en: '', link: '', level: '' as NewsletterLevel | '', send_app: true, send_email: false };
 const dateOf = (iso: string) => new Intl.DateTimeFormat('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh', dateStyle: 'short', timeStyle: 'short' }).format(new Date(iso));
 
@@ -38,6 +41,8 @@ export function AnnouncementsPage() {
   const [target, setTarget] = useState<Target>(ALL_ACCOUNTS);
   const [accounts, setAccounts] = useState<Account[] | null>(null);
   const [notice, setNotice] = useState<{ tone: 'success' | 'warning' | 'danger'; text: Bilingual } | null>(null);
+  const [when, setWhen] = useState('');
+  const [scheduleTick, setScheduleTick] = useState(0);
   const requestId = useRef<string>(crypto.randomUUID());
   const locked = useRef(false);
 
@@ -81,24 +86,47 @@ export function AnnouncementsPage() {
   async function submit(event: FormEvent) {
     event.preventDefault();
     if (locked.current || !audience) return;
+    const runAt = parseLocalTime(when);
+    if (when && (!runAt || runAt.getTime() < Date.now() + 60_000)) {
+      setNotice({ tone: 'danger', text: { vi: 'Chọn thời điểm ít nhất 1 phút sau bây giờ.', en: 'Pick a time at least a minute from now.' } });
+      return;
+    }
     const parts: string[] = [];
     if (form.send_app) parts.push(t({ vi: `${appTarget} tài khoản (chuông thông báo)`, en: `${appTarget} accounts (bell)` }));
     if (form.send_email) parts.push(t({ vi: `${emailTarget} người đăng ký (email)`, en: `${emailTarget} subscribers (e-mail)` }));
     const confirmed = await ask({
-      title: t({ vi: 'Gửi thông báo này?', en: 'Send this announcement?' }),
-      description: t({ vi: `Sẽ gửi tới ${parts.join(' và ')}. Không thu hồi được.`, en: `It goes to ${parts.join(' and ')}. It cannot be taken back.` }),
-      confirmLabel: t({ vi: 'Gửi', en: 'Send' }),
+      title: runAt ? t({ vi: 'Hẹn giờ gửi thông báo này?', en: 'Schedule this announcement?' }) : t({ vi: 'Gửi thông báo này?', en: 'Send this announcement?' }),
+      description: runAt
+        ? t({ vi: `Sẽ tự gửi lúc ${runAt.toLocaleString('vi-VN')} tới ${parts.join(' và ')}. Bạn hủy được trước giờ đó.`, en: `It goes out at ${runAt.toLocaleString('en-GB')} to ${parts.join(' and ')}. You can cancel before then.` })
+        : t({ vi: `Sẽ gửi tới ${parts.join(' và ')}. Không thu hồi được.`, en: `It goes to ${parts.join(' and ')}. It cannot be taken back.` }),
+      confirmLabel: runAt ? t({ vi: 'Hẹn giờ', en: 'Schedule' }) : t({ vi: 'Gửi', en: 'Send' }),
       cancelLabel: t({ vi: 'Hủy', en: 'Cancel' }),
     });
     if (!confirmed || locked.current) return;
     locked.current = true;
     setBusy(true);
     setNotice(null);
+    const audiencePayload = target.mode === 'users' ? { mode: 'users' as const, user_ids: target.picked.map((a) => a.id) } : target.mode === 'role' ? { mode: 'role' as const, roles: target.roles } : { mode: 'all' as const };
+    if (runAt) {
+      const queued = await createScheduled('announcement', runAt, { ...form, link: form.link.trim(), audience: audiencePayload });
+      locked.current = false;
+      setBusy(false);
+      if (!queued.ok) {
+        setNotice({ tone: 'danger', text: queued.error });
+        return;
+      }
+      setNotice({ tone: 'warning', text: { vi: `Đã hẹn giờ gửi lúc ${runAt.toLocaleString('vi-VN')}.`, en: `Scheduled for ${runAt.toLocaleString('en-GB')}.` } });
+      setForm(EMPTY);
+      setTarget(ALL_ACCOUNTS);
+      setWhen('');
+      setScheduleTick((n) => n + 1);
+      return;
+    }
     const result = await sendAnnouncement({
       client_request_id: requestId.current,
       ...form,
       link: form.link.trim(),
-      audience: target.mode === 'users' ? { mode: 'users', user_ids: target.picked.map((a) => a.id) } : target.mode === 'role' ? { mode: 'role', roles: target.roles } : { mode: 'all' },
+      audience: audiencePayload,
     });
     locked.current = false;
     setBusy(false);
@@ -199,10 +227,15 @@ export function AnnouncementsPage() {
         </fieldset>
         {form.send_app && <AudiencePicker target={target} onChange={setTarget} accounts={accounts} total={audience?.accounts ?? 0} />}
         {notice?.tone === 'success' ? <SendToast title={t({ vi: 'Đã gửi thông báo', en: 'Announcement sent' })} text={t(notice.text)} onClose={() => setNotice(null)} /> : notice && <Alert tone={notice.tone}>{t(notice.text)}</Alert>}
+        <Field id="ann-when" label={t({ vi: 'Hẹn giờ gửi (để trống = gửi ngay)', en: 'Send at (leave empty to send now)' })} description={t({ vi: 'Giờ theo đồng hồ máy bạn. Hủy được trước giờ gửi.', en: 'Your device clock. You can cancel before it goes out.' })}>
+          {(c) => <Input {...c} type="datetime-local" value={when} onChange={(e) => setWhen(e.target.value)} />}
+        </Field>
         <div>
-          <Button type="submit" disabled={!canSend}>{busy ? t({ vi: 'Đang gửi…', en: 'Sending…' }) : t({ vi: 'Gửi thông báo', en: 'Send announcement' })}</Button>
+          <Button type="submit" disabled={!canSend}>{busy ? t({ vi: 'Đang gửi…', en: 'Sending…' }) : when ? t({ vi: 'Hẹn giờ gửi', en: 'Schedule' }) : t({ vi: 'Gửi thông báo', en: 'Send announcement' })}</Button>
         </div>
       </form>
+
+      <ScheduledList kinds={SCHEDULE_KINDS} refreshKey={scheduleTick} />
 
       <section aria-labelledby="ann-history" className="flex flex-col gap-3">
         <h2 id="ann-history" className="text-lg font-bold text-ink">{t({ vi: 'Đã gửi', en: 'Sent' })}</h2>
