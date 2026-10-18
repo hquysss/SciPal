@@ -446,24 +446,6 @@ export function LandingPage({ level, catalog, onChangeLevel, pricing = null, sho
                     </p>
                   </div>
                   <div className={styles.heroFoot}>
-                    <dl className={styles.heroStats}>
-                      {liveSubjects ? (
-                        <div>
-                          <dt>{t({ en: 'Subjects open', vi: 'Môn đang mở' })}</dt>
-                          <dd>{liveSubjects}</dd>
-                        </div>
-                      ) : null}
-                      {publishedLessons > 0 ? (
-                        <div>
-                          <dt>{t({ en: 'Lessons', vi: 'Bài học' })}</dt>
-                          <dd>{publishedLessons}</dd>
-                        </div>
-                      ) : null}
-                      <div>
-                        <dt>{t({ en: 'Free to learn', vi: 'Miễn phí' })}</dt>
-                        <dd>100%</dd>
-                      </div>
-                    </dl>
                     <ChangeLevel onChangeLevel={onChangeLevel} className={styles.pillGhost} />
                   </div>
                 </div>
