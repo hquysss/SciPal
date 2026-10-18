@@ -518,10 +518,10 @@ export function NavBar({ currentSubject }: NavBarProps) {
                 className={`${navStyles.dropdown} ${navStyles.dropdownEnd} ${accountMenuOpen ? navStyles.dropdownOpen : ''}`}
               >
                 <p className="truncate px-3 pb-1 pt-1.5 text-sm font-bold text-ink">{accountName}</p>
-                {heading(t('My learning', 'Học tập của tôi'))}
-                {study.map((link) => menuLink(link))}
                 {heading(t('Account', 'Tài khoản'))}
                 {accountItems.map((link) => menuLink(link))}
+                {heading(t('My learning', 'Học tập của tôi'))}
+                {study.map((link) => menuLink(link))}
                 <div className="flex items-center justify-between gap-3 border-y border-line px-3 py-2 my-1">
                   <span className="text-sm font-semibold text-ink-muted">{t('Theme', 'Giao diện')}</span>
                   <ThemeToggle tone="surface" />
@@ -570,8 +570,8 @@ export function NavBar({ currentSubject }: NavBarProps) {
           {mobileLink({ href: '/', label: t('Home', 'Trang chủ') })}
           {mobileGroup(t('Learn', 'Học tập'), learn.map((link) => mobileLink(link, inSection(link.href))))}
           {signedIn && mobileGroup(t('Connect', 'Kết nối'), mobileLink({ href: community.href, label: communityText }, communityActive))}
-          {signedIn && mobileGroup(t('My learning', 'Học tập của tôi'), study.map((link) => mobileLink(link)))}
           {signedIn && mobileGroup(t('Account', 'Tài khoản'), accountItems.map((link) => mobileLink(link)))}
+          {signedIn && mobileGroup(t('My learning', 'Học tập của tôi'), study.map((link) => mobileLink(link)))}
           {mobileGroup(t('Resources', 'Tra cứu'), more.map((link) => mobileLink(link)))}
           {hasStaff && mobileGroup(t('Manage', 'Quản lý'), (
             <>
