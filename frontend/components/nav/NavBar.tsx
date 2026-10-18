@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { ArrowRight, BookOpen, ReceiptText, ChevronDown, ChevronUp, CircleHelp, ClipboardCheck, FlaskConical, Gauge, Library, LineChart, Menu, MessageCircleQuestion, School, Tag, Trophy, UserRound, X } from 'lucide-react';
+import { ArrowRight, BookOpen, House, Users, ReceiptText, ChevronDown, ChevronUp, CircleHelp, ClipboardCheck, FlaskConical, Gauge, Library, LineChart, Menu, MessageCircleQuestion, School, Tag, Trophy, UserRound, X } from 'lucide-react';
 import { useParams, usePathname, useRouter } from 'next/navigation';
 import { useLanguage } from '@scipal/hooks';
 import { LanguageToggle } from './LanguageToggle';
@@ -374,7 +374,7 @@ export function NavBar({ currentSubject }: NavBarProps) {
   const planCode = plan ? plan.plan ?? (plan.role === 'teacher' ? 'teacher_free' : 'student_free') : null;
   const planName = planCode ? t(PLAN_NAME[planCode]?.en ?? planCode, PLAN_NAME[planCode]?.vi ?? planCode) : null;
   // The plan and its end date; until it loads (or when it cannot), the role, so the line never goes missing.
-  const roleLabel = appRole === 'admin' ? t('Administrator', 'Quản trị viên') : appRole === 'teacher' ? t('Teacher', 'Giáo viên') : t('Student', 'Học sinh');
+  const roleLabel = appRole === 'admin' ? 'Admin' : appRole === 'teacher' ? t('Teacher', 'Giáo viên') : t('Student', 'Học sinh');
   const planDetail = appRole === 'admin'
     ? t('no limits', 'không giới hạn')
     : planName
@@ -382,7 +382,7 @@ export function NavBar({ currentSubject }: NavBarProps) {
       ? `${planName} · ${t('until', 'đến')} ${new Date(plan.paidThrough).toLocaleDateString(lang === 'en' ? 'en-GB' : 'vi-VN')}`
       : planName
     : null;
-  const planLine = planDetail ? `${roleLabel} · ${planDetail}` : roleLabel;
+  const roleClass = appRole === 'admin' ? navStyles.roleAdmin : appRole === 'teacher' ? navStyles.roleTeacher : navStyles.roleStudent;
   const teacherMenuOpen = openNavGroup === 'teacher';
   const toggleNavGroup = (group: 'admin' | 'teacher' | 'account' | 'more' | 'learn', trigger: HTMLButtonElement) => {
     openNavTriggerRef.current = trigger;
@@ -405,8 +405,41 @@ export function NavBar({ currentSubject }: NavBarProps) {
     '/games': <Trophy aria-hidden="true" size={16} />,
     '/classes': <School aria-hidden="true" size={16} />,
     '/profile/plan': <Gauge aria-hidden="true" size={16} />,
+    '/': <House aria-hidden="true" size={16} />,
+    '/community': <Users aria-hidden="true" size={16} />,
     '/profile/orders': <ReceiptText aria-hidden="true" size={16} />,
   };
+  const accountHeader = (
+  <div className={navStyles.menuHeader}>
+    <span aria-hidden="true" className={navStyles.menuAvatar}>
+      {avatarUrl ? (
+        // eslint-disable-next-line @next/next/no-img-element -- media store image
+        <img src={avatarUrl} alt="" className="h-full w-full rounded-full object-cover" />
+      ) : (
+        accountName.trim().charAt(0).toUpperCase()
+      )}
+    </span>
+    <span className="flex min-w-0 flex-col">
+      <span className="truncate text-sm font-bold text-ink">{accountName}</span>
+      {email && <span className="truncate text-xs text-ink-muted">{email}</span>}
+      {appRole && (
+        <span className="mt-0.5 flex items-center gap-1.5 text-xs font-semibold text-ink-muted">
+          <span aria-hidden="true" className="h-2 w-2 shrink-0 rounded-full bg-success" />
+          <span className="truncate">
+            <span className={roleClass}>{roleLabel}</span>
+            {planDetail && ` · ${planDetail}`}
+          </span>
+        </span>
+      )}
+    </span>
+  </div>
+  );
+  const themeRow = (
+    <div className={`${navStyles.menuGroup} flex items-center justify-between gap-3 px-3 py-3`}>
+      <span className="text-xs font-extrabold uppercase tracking-wider text-ink-muted">{t('Theme', 'Giao diện')}</span>
+      <ThemeToggle />
+    </div>
+  );
   const closeMenus = () => setOpenNavGroup(null);
   const heading = (title: string) => <p className="px-3 pb-1 pt-2 text-xs font-extrabold uppercase tracking-wider text-action">{title}</p>;
   const menuLink = (link: { href: string; label: string; hint?: string }, icon: ReactNode = icons[link.href]) => (
@@ -434,26 +467,18 @@ export function NavBar({ currentSubject }: NavBarProps) {
           {label}
           <ChevronDown aria-hidden="true" className={`h-4 w-4 transition-transform duration-150 motion-reduce:transition-none ${open ? 'rotate-180' : ''}`} />
         </button>
-        <div id={`desktop-${id}-navigation`} aria-hidden={!open} className={`${navStyles.dropdown} ${navStyles.dropdownWide} ${open ? navStyles.dropdownOpen : ''}`}>
+        <div id={`desktop-${id}-navigation`} inert={!open} className={`${navStyles.dropdown} ${navStyles.dropdownWide} ${open ? navStyles.dropdownOpen : ''}`}>
           {children}
         </div>
       </div>
     );
   };
 
-  const closeMobile = () => setMobileOpen(false);
-  const mobileItem = (active: boolean, bold = false) =>
-    `flex min-h-11 items-center justify-between gap-2 rounded-xl px-4 py-2 text-sm transition hover:bg-surface-sunken focus-visible:outline focus-visible:outline-2 focus-visible:outline-focus ${bold ? 'font-bold' : 'font-semibold'} ${active ? 'bg-surface-sunken text-action' : 'text-ink'}`;
-  const mobileLink = (link: { href: string; label: string }, active = pathname === link.href, bold = false) => (
-    <Link key={link.href} href={link.href} prefetch={false} onClick={closeMobile} aria-current={pathname === link.href ? 'page' : undefined} className={mobileItem(active, bold)}>
-      {link.label}
-    </Link>
-  );
-  const mobileGroup = (title: string, children: ReactNode) => (
-    <section className="space-y-1 border-t border-line pt-2" aria-label={title}>
-      <p className="px-4 pb-1 pt-2 text-xs font-extrabold uppercase tracking-wider text-action">{title}</p>
+  const mobileSection = (title: string, children: ReactNode) => (
+    <div role="group" aria-label={title} className={navStyles.menuGroup}>
+      {heading(title)}
       {children}
-    </section>
+    </div>
   );
 
   return (
@@ -553,29 +578,10 @@ export function NavBar({ currentSubject }: NavBarProps) {
               </button>
               <div
                 id="desktop-account-menu"
-                aria-hidden={!accountMenuOpen}
+                inert={!accountMenuOpen}
                 className={`${navStyles.dropdown} ${navStyles.dropdownEnd} ${accountMenuOpen ? navStyles.dropdownOpen : ''}`}
               >
-                <div className={navStyles.menuHeader}>
-                  <span aria-hidden="true" className={navStyles.menuAvatar}>
-                    {avatarUrl ? (
-                      // eslint-disable-next-line @next/next/no-img-element -- media store image
-                      <img src={avatarUrl} alt="" className="h-full w-full rounded-full object-cover" />
-                    ) : (
-                      accountName.trim().charAt(0).toUpperCase()
-                    )}
-                  </span>
-                  <span className="flex min-w-0 flex-col">
-                    <span className="truncate text-sm font-bold text-ink">{accountName}</span>
-                    {email && <span className="truncate text-xs text-ink-muted">{email}</span>}
-                    {planLine && (
-                      <span className="mt-0.5 flex items-center gap-1.5 text-xs font-semibold text-ink-muted">
-                        <span aria-hidden="true" className="h-2 w-2 shrink-0 rounded-full bg-success" />
-                        <span className="truncate">{planLine}</span>
-                      </span>
-                    )}
-                  </span>
-                </div>
+                {accountHeader}
                 <div className={navStyles.menuGroup}>{accountItems.map((link) => menuLink(link))}</div>
                 <div className={navStyles.menuGroup}>{study.map((link) => menuLink(link))}</div>
                 <div className={`${navStyles.menuGroup} flex items-center justify-between gap-3 px-3 py-3`}>
@@ -615,38 +621,33 @@ export function NavBar({ currentSubject }: NavBarProps) {
       <nav
         id="mobile-navigation"
         aria-label={t('Mobile navigation', 'Điều hướng di động')}
-        aria-hidden={!mobileOpen}
+        inert={!mobileOpen}
         className={`${navStyles.mobilePanel} xl:hidden ${mobileOpen ? navStyles.mobilePanelOpen : ''}`}
       >
-        <div className="space-y-1">
-          <div className="flex justify-end pb-1 pt-2">
-            <ThemeToggle />
-          </div>
-          {mobileLink({ href: '/', label: t('Home', 'Trang chủ') })}
-          {signedIn && mobileGroup(t('Account', 'Tài khoản'), accountItems.map((link) => mobileLink(link)))}
-          {mobileGroup(t('Learn', 'Học tập'), learn.map((link) => mobileLink(link, inSection(link.href))))}
-          {signedIn && mobileGroup(t('Connect', 'Kết nối'), mobileLink({ href: community.href, label: communityText }, communityActive))}
-          {signedIn && mobileGroup(t('My learning', 'Học tập của tôi'), study.map((link) => mobileLink(link)))}
-          {mobileGroup(t('Resources', 'Tra cứu'), more.map((link) => mobileLink(link)))}
-          {hasStaff && mobileGroup(t('Manage', 'Quản lý'), (
+        <div className="pb-20">
+          {signedIn && <div className="-mx-4 -mt-4 mb-1 overflow-hidden rounded-t-[1.25rem]">{accountHeader}</div>}
+          <div className={navStyles.menuGroup}>{menuLink({ href: '/', label: t('Home', 'Trang chủ') })}</div>
+          {signedIn && <div className={navStyles.menuGroup}>{accountItems.map((link) => menuLink(link))}</div>}
+          {signedIn && <div className={navStyles.menuGroup}>{study.map((link) => menuLink(link))}</div>}
+          {mobileSection(t('Learn', 'Học tập'), learn.map((link) => menuLink(link)))}
+          {signedIn && mobileSection(t('Connect', 'Kết nối'), menuLink({ href: community.href, label: communityText }))}
+          {mobileSection(t('Resources', 'Tra cứu'), more.map((link) => menuLink(link)))}
+          {hasStaff && mobileSection(t('Manage', 'Quản lý'), (
             <>
-              {teacherLinks.map((link) => mobileLink(link, pathname === link.href || pathname.startsWith(`${link.href}/`)))}
-              {adminLinks.map((link) => mobileLink(link, adminRouteActive, true))}
+              {teacherLinks.map((link) => menuLink(link, <School aria-hidden="true" size={16} />))}
+              {adminLinks.map((link) => menuLink(link, null))}
             </>
           ))}
-          {signedIn && (
-            <div className="mt-3 flex items-center justify-between gap-3 border-t border-line px-2 pt-4">
-              <span className="min-w-0 truncate text-sm font-bold text-ink" title={displayName ?? undefined}>
-                {accountName}
-              </span>
+          {themeRow}
+          {signedIn ? (
+            <div className={`${navStyles.menuGroup} px-3 pb-2 pt-3`}>
               <LogoutButton onClick={() => setConfirmSignOut(true)} busy={signingOut} />
             </div>
-          )}
-          {!signedIn && (
+          ) : (
             <Link
               href="/login"
               prefetch={pathname !== '/'}
-              onClick={closeMobile}
+              onClick={() => setMobileOpen(false)}
               className="mt-3 flex min-h-11 items-center justify-center gap-2 rounded-xl bg-gradient-to-br from-sun to-coral px-4 py-2 text-sm font-extrabold text-ink shadow-[0_10px_24px_-12px_var(--coral)] transition hover:brightness-105 focus-visible:outline focus-visible:outline-2 focus-visible:outline-focus"
             >
               {t('Sign In', 'Đăng nhập')} <ArrowRight aria-hidden="true" size={16} />

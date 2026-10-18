@@ -35,7 +35,7 @@ describe('NavBar', () => {
     expect(html).not.toContain('☰');
     expect(html).not.toContain('EdTech');
     expect(html).not.toContain('Trực tuyến');
-    expect(html).toMatch(/<a[^>]*href="\/subjects"[^>]*>Môn học<\/a>/);
+    expect(html).toMatch(/<a[^>]*href="\/subjects"[^>]*>.*Môn học/);
   });
 
   it('sorts the pages into categories: Học tập and Tra cứu menus, each with a heading and a hint per page', () => {
