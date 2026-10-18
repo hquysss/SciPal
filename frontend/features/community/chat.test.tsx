@@ -30,16 +30,36 @@ describe('mergeMessages', () => {
 const handlers = () => ({ onSend: vi.fn().mockResolvedValue(true), onReport: vi.fn(), onBlock: vi.fn() });
 
 describe('ChatPaneView', () => {
-  it('is a log; others show their name and get Chặn, your own do not, and no message has its own Báo cáo', () => {
-    render(<ChatPaneView messages={[msg('1', 'me', '2026-10-12T10:00:00Z'), msg('2', 'them', '2026-10-12T10:00:01Z')]} meId="me" {...handlers()} />);
+  it('is a log; others show their name and their message menu reports that one message', () => {
+    const onReportMessage = vi.fn();
+    render(<ChatPaneView messages={[msg('1', 'me', '2026-10-12T10:00:00Z'), msg('2', 'them', '2026-10-12T10:00:01Z')]} meId="me" {...handlers()} onReportMessage={onReportMessage} />);
     expect(screen.getByRole('log')).toBeTruthy();
     expect(screen.getByText('Tên them')).toBeTruthy();
     expect(screen.queryByText('Tên me')).toBeNull();
-    expect(screen.queryByRole('button', { name: 'Báo cáo' })).toBeNull();
-    // Your own message has no menu without onRecall; theirs offers Chặn behind Thêm.
+    // Your own message has no menu without onRecall; theirs offers "Báo cáo tin nhắn" behind Thêm, not Chặn.
     expect(screen.getAllByRole('button', { name: 'Thêm' })).toHaveLength(1);
     fireEvent.click(screen.getByRole('button', { name: 'Thêm' }));
-    expect(screen.getAllByRole('menuitem', { name: 'Chặn' })).toHaveLength(1);
+    expect(screen.queryByRole('menuitem', { name: 'Chặn' })).toBeNull();
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Báo cáo tin nhắn' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Spam' }));
+    expect(onReportMessage).toHaveBeenCalledWith('2', 'Spam');
+  });
+
+  it("opens a sender's menu from the name: profile, message a friend or add a stranger, block", () => {
+    const onOpenDm = vi.fn();
+    const onAddFriend = vi.fn();
+    const { unmount } = render(<ChatPaneView messages={[msg('2', 'them', '2026-10-12T10:00:01Z')]} meId="me" {...handlers()} friendships={{ them: 'f1' }} onOpenDm={onOpenDm} onAddFriend={onAddFriend} />);
+    fireEvent.click(screen.getAllByRole('button', { name: 'Tên them' })[0]);
+    expect(screen.getByRole('menuitem', { name: 'Xem hồ sơ' }).getAttribute('href')).toBe('/community/u/them');
+    expect(screen.queryByRole('menuitem', { name: 'Kết bạn' })).toBeNull();
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Nhắn tin' }));
+    expect(onOpenDm).toHaveBeenCalledWith('f1');
+    unmount();
+    render(<ChatPaneView messages={[msg('2', 'them', '2026-10-12T10:00:01Z')]} meId="me" {...handlers()} onAddFriend={onAddFriend} />);
+    fireEvent.click(screen.getAllByRole('button', { name: 'Tên them' })[0]);
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Kết bạn' }));
+    expect(onAddFriend).toHaveBeenCalledWith('them');
+    expect(screen.getByRole('menuitem', { name: 'Đã gửi lời mời' })).toBeTruthy();
   });
 
   it('sends the trimmed text on submit, keeps the box locked while empty, and clears after sending', async () => {
@@ -78,7 +98,7 @@ describe('ChatPaneView', () => {
   it('blocks only on the second click, since there is no undo', () => {
     const h = handlers();
     render(<ChatPaneView messages={[msg('2', 'them', '2026-10-12T10:00:01Z')]} meId="me" {...h} />);
-    fireEvent.click(screen.getByRole('button', { name: 'Thêm' }));
+    fireEvent.click(screen.getAllByRole('button', { name: 'Tên them' })[0]);
     fireEvent.click(screen.getByRole('menuitem', { name: 'Chặn' }));
     expect(h.onBlock).not.toHaveBeenCalled();
     fireEvent.click(screen.getByRole('menuitem', { name: /Chắc chắn chặn/ }));

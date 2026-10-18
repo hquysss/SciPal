@@ -49,7 +49,7 @@ export function CommunityPage() {
   };
 
   const pane = (() => {
-    if (shown.kind !== 'friends') return <ConversationPane conversation={shown} data={data} onBack={back} onBlocked={() => { back(); void reload(); }} onRoomAvatar={() => void reload()} />;
+    if (shown.kind !== 'friends') return <ConversationPane conversation={shown} data={data} onBack={back} onBlocked={() => { back(); void reload(); }} onRoomAvatar={() => void reload()} onOpenDm={(id) => open({ kind: 'dm', id })} />;
     return (
       <div className="flex h-full min-h-0 flex-col">
         <header className="flex items-center gap-3 border-b border-line px-4 py-3 sm:px-6">

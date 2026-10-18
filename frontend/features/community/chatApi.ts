@@ -23,6 +23,10 @@ export const getSenders = (ids: string[]): Promise<ApiResult<{ senders: ChatSend
 export const recallMessage = (messageId: string): Promise<ApiResult<Record<string, never>>> =>
   authoringCall(`/api/chat/messages/${encodeURIComponent(messageId)}/recall`, 'POST');
 
+/** Report one person's message to the admins, with one of the fixed reasons. */
+export const reportMessage = (messageId: string, reason: string): Promise<ApiResult<Record<string, never>>> =>
+  authoringCall(`/api/chat/messages/${encodeURIComponent(messageId)}/report`, 'POST', { reason });
+
 export const reactToMessage = (messageId: string, emoji: string): Promise<ApiResult<{ on: boolean }>> =>
   authoringCall('/api/chat/reactions', 'POST', { message_id: messageId, emoji });
 

@@ -477,3 +477,27 @@ describe('POST /api/chat/room-avatar', () => {
     expect(s.store.remove).toHaveBeenCalledWith('chat-rooms/10/old.png');
   });
 });
+
+describe('POST /api/chat/messages/:id/report', () => {
+  const MSG_ID = '77777777-7777-4777-8777-777777777777';
+  const message = (over: object = {}) => ({ data: { id: MSG_ID, sender_id: OTHER, sender_name: 'Bình', body: 'xấu', image_url: null, created_at: '2026-10-18T00:00:00Z', community: true, room_grade: null, class_id: null, friendship_id: null, ...over } });
+  const profile = { data: { chat_banned: false, grade: 10, role: 'student' } };
+  const report = (db: ReturnType<typeof fakeDb>, body: object = { reason: 'Quấy rối' }, id = MSG_ID) =>
+    build({ db }).inject({ method: 'POST', url: `/api/chat/messages/${id}/report`, payload: body });
+
+  it('files one message with its text as evidence for the admins', async () => {
+    const db = fakeDb({ 'chat_messages.select': [message()], 'profiles.select': [profile], 'chat_reports.insert': [{}] });
+    const res = await report(db);
+    expect(res.statusCode).toBe(201);
+    const row = db.calls.find((c) => c.table === 'chat_reports' && c.op === 'insert')!.chain[0][1][0] as any;
+    expect(row).toMatchObject({ message_id: MSG_ID, conversation_key: `message:${MSG_ID}`, reason: 'Quấy rối', label: 'Cộng đồng · tin của Bình' });
+    expect(row.snapshot).toEqual([expect.objectContaining({ id: MSG_ID, body: 'xấu' })]);
+  });
+
+  it('refuses your own message, a second report, a missing reason or an unreadable message', async () => {
+    expect((await report(fakeDb({ 'chat_messages.select': [message({ sender_id: ME })], 'profiles.select': [profile] }))).statusCode).toBe(400);
+    expect((await report(fakeDb({ 'chat_messages.select': [message()], 'profiles.select': [profile], 'chat_reports.insert': [{ error: { code: '23505' } }] }))).statusCode).toBe(409);
+    expect((await report(fakeDb({}), { reason: ' ' })).statusCode).toBe(400);
+    expect((await report(fakeDb({ 'chat_messages.select': [{ data: null }], 'profiles.select': [profile] }))).statusCode).toBe(404);
+  });
+});
