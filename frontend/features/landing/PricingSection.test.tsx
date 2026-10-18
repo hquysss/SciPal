@@ -42,6 +42,7 @@ describe('PricingSection (landing)', () => {
     expect(open).toContain('Thanh toán an toàn qua');
     expect(open).toContain('/icons/payment/payos.png');
     expect(open).toContain('/icons/payment/vietqr.svg');
+    expect(open).toContain('/icons/payment/vnpay.svg');
     expect(open).not.toContain('/icons/payment/momo.svg');
     // The strip sits below the plans, not above them.
     expect(open.indexOf('Thanh toán an toàn qua')).toBeGreaterThan(open.indexOf('Nâng cấp ngay'));

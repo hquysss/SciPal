@@ -2,7 +2,7 @@
 
 import { useRef, useState, type CSSProperties } from 'react';
 import Link from 'next/link';
-import { ArrowRight, Check, CreditCard, ShieldCheck, Sparkles, type LucideIcon } from 'lucide-react';
+import { ArrowRight, Check, ShieldCheck, Sparkles, type LucideIcon } from 'lucide-react';
 import { useLanguage } from '@scipal/hooks';
 import type { BillingAudience, BillingInterval } from '@scipal/types';
 import { INTERVALS, INTERVAL_LABEL, INTERVAL_MONTHS, INTERVAL_NOUN, INTERVAL_SPAN } from '@/features/billing/intervals';
@@ -32,7 +32,7 @@ export function paymentMethods(catalog: Catalog): PaymentMethod[] {
   const all: Array<PaymentMethod | false> = [
     catalog.payosCheckoutOpen === true && { id: 'payos', name: 'payOS', text: { vi: 'Chuyển khoản qua payOS', en: 'Bank transfer via payOS' }, logo: { src: '/icons/payment/payos.png', width: 468, height: 192 } },
     catalog.payosCheckoutOpen === true && { id: 'vietqr', name: 'VietQR', text: { vi: 'Quét mã VietQR', en: 'Scan VietQR' }, logo: { src: '/icons/payment/vietqr.svg', width: 3000, height: 860 } },
-    catalog.vnpayCheckoutOpen === true && { id: 'vnpay', name: 'VNPAY', text: { vi: 'Cổng thanh toán VNPAY', en: 'VNPAY payment gateway' }, Icon: CreditCard },
+    catalog.vnpayCheckoutOpen === true && { id: 'vnpay', name: 'VNPAY', text: { vi: 'Cổng thanh toán VNPAY', en: 'VNPAY payment gateway' }, logo: { src: '/icons/payment/vnpay.svg', width: 138, height: 42 } },
     catalog.momoAutoRenewOpen === true && { id: 'momo', name: 'MoMo', text: { vi: 'Ví MoMo, tự gia hạn', en: 'MoMo wallet, auto-renewal' }, logo: { src: '/icons/payment/momo.svg', width: 570, height: 570 } },
   ];
   return all.filter((m): m is PaymentMethod => m !== false);
