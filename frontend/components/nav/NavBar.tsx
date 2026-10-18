@@ -369,7 +369,7 @@ export function NavBar({ currentSubject }: NavBarProps) {
     '/profile/plan': <Gauge aria-hidden="true" size={16} />,
   };
   const closeMenus = () => setOpenNavGroup(null);
-  const heading = (title: string) => <p className="px-3 pb-1 pt-2 text-xs font-bold uppercase tracking-wide text-ink-muted">{title}</p>;
+  const heading = (title: string) => <p className="px-3 pb-1 pt-2 text-xs font-extrabold uppercase tracking-wider text-action">{title}</p>;
   const menuLink = (link: { href: string; label: string; hint?: string }, icon: ReactNode = icons[link.href]) => (
     <Link key={link.href} href={link.href} prefetch={false} onClick={closeMenus} aria-current={pathname === link.href ? 'page' : undefined} className={navStyles.menuItem}>
       {icon}
@@ -411,8 +411,8 @@ export function NavBar({ currentSubject }: NavBarProps) {
     </Link>
   );
   const mobileGroup = (title: string, children: ReactNode) => (
-    <section className="space-y-1 pt-2" aria-label={title}>
-      <p className="px-4 pb-1 pt-2 text-xs font-bold uppercase tracking-wide text-ink-muted">{title}</p>
+    <section className="space-y-1 border-t border-line pt-2" aria-label={title}>
+      <p className="px-4 pb-1 pt-2 text-xs font-extrabold uppercase tracking-wider text-action">{title}</p>
       {children}
     </section>
   );
