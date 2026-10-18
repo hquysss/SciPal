@@ -215,7 +215,7 @@ export function ChatPaneView({ messages, meId, onSend, onSendImage, onReport, on
                     }
                     const chips = reactions[m.id] ?? [];
                     return (
-                      <div key={m.id} className={`chat-in group relative flex items-center gap-1 ${mine ? 'flex-row-reverse' : ''} ${chips.length > 0 ? 'mb-3' : ''}`}>
+                      <div key={m.id} className={`chat-in group relative flex items-center gap-1 ${mine ? 'flex-row-reverse' : ''}`}>
                         <div className={`relative flex min-w-0 flex-col gap-0.5 ${mine ? 'items-end' : 'items-start'}`}>
                           {picking === m.id && onReact && (
                             <span role="group" aria-label={t({ en: 'Pick a reaction', vi: 'Chọn cảm xúc' })}
@@ -240,11 +240,11 @@ export function ChatPaneView({ messages, meId, onSend, onSendImage, onReport, on
                             <p className={`whitespace-pre-wrap break-words rounded-xl px-4 py-2 text-sm ${mine ? 'bg-action text-action-ink' : 'bg-surface-sunken text-ink'}`}>{m.body}</p>
                           )}
                           {chips.length > 0 && (
-                            // Messenger-style: the reactions sit on the bubble's lower corner.
-                            <span className={`absolute -bottom-4 z-10 flex gap-0.5 ${mine ? 'left-2' : 'right-2'}`}>
+                            // Under the bubble, not over it: a plain emoji and count in one line.
+                            <span className="flex flex-wrap gap-x-2">
                               {chips.map((chip) => (
                                 <button key={`${chip.emoji}${chip.count}${chip.mine}`} type="button" aria-pressed={chip.mine} disabled={!onReact} onClick={() => onReact?.(m.id, chip.emoji)}
-                                  className={`chat-pop inline-flex min-h-7 items-center gap-0.5 rounded-full border bg-surface px-1.5 text-xs shadow-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-focus ${chip.mine ? 'border-action font-bold text-ink' : 'border-line text-ink-muted'}`}>
+                                  className={`chat-pop inline-flex min-h-7 items-center gap-1 whitespace-nowrap rounded-md px-1 text-xs focus-visible:outline focus-visible:outline-2 focus-visible:outline-focus ${chip.mine ? 'font-bold text-ink' : 'text-ink-muted'}`}>
                                   {chip.emoji} {chip.count}
                                 </button>
                               ))}
