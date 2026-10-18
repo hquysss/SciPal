@@ -250,7 +250,8 @@ export const chatRoutes: FastifyPluginAsync = async (app) => {
     return reply.send({ grade });
   });
 
-  // Tapping the same emoji again takes it back. The message must be one the user can read.
+  // One reaction per person and message: tapping the same emoji again takes it back, another emoji replaces it.
+  // The message must be one the user can read.
   app.post('/api/chat/reactions', { preHandler: [requireUser] }, async (request, reply) => {
     const supabase = app.supabase;
     if (!supabase) return reply.code(503).send(unavailable);
@@ -288,6 +289,8 @@ export const chatRoutes: FastifyPluginAsync = async (app) => {
     const removed = await supabase.from('chat_reactions').delete().eq('message_id', input.message_id).eq('user_id', me).eq('emoji', input.emoji).select('message_id');
     if (removed.error) return reply.code(500).send(failed);
     if (((removed.data as unknown[] | null) ?? []).length > 0) return reply.send({ on: false });
+    const replaced = await supabase.from('chat_reactions').delete().eq('message_id', input.message_id).eq('user_id', me);
+    if (replaced.error) return reply.code(500).send(failed);
     const added = await supabase.from('chat_reactions').insert({ message_id: input.message_id, user_id: me, emoji: input.emoji });
     if (added.error) return reply.code(500).send(failed);
     return reply.code(201).send({ on: true });

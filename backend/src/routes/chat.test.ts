@@ -384,10 +384,12 @@ describe('grade rooms, replies and reactions', () => {
   const msg = (over: object = {}) => ({ data: { id: PARENT, community: false, room_grade: 10, class_id: null, friendship_id: null, ...over } });
 
   it('reactions: toggles on, then off, for a readable message', async () => {
-    const on = fakeDb({ 'chat_messages.select': [msg()], 'profiles.select': [student(10)], 'chat_reactions.delete': [{ data: [] }], 'chat_reactions.insert': [{}] });
+    const on = fakeDb({ 'chat_messages.select': [msg()], 'profiles.select': [student(10)], 'chat_reactions.delete': [{ data: [] }, {}], 'chat_reactions.insert': [{}] });
     const res = await react(on, { message_id: PARENT, emoji: '👍' });
     expect(res.statusCode).toBe(201);
     expect(res.json()).toEqual({ on: true });
+    // Any other emoji this person left on the message goes first: one reaction each.
+    expect(on.calls.filter((c) => c.table === 'chat_reactions' && c.op === 'delete')).toHaveLength(2);
     const off = fakeDb({ 'chat_messages.select': [msg()], 'profiles.select': [student(10)], 'chat_reactions.delete': [{ data: [{ message_id: PARENT }] }] });
     expect((await react(off, { message_id: PARENT, emoji: '👍' })).json()).toEqual({ on: false });
   });
