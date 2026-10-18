@@ -5,11 +5,11 @@ import { useEffect, useState } from 'react';
 import { Mail, School, UserPlus } from 'lucide-react';
 import { useLanguage } from '@scipal/hooks';
 import { Alert } from '@/components/ui/alert';
-import { Badge } from '@/components/ui/badge';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { sendRequest } from '../friends/friendsApi';
 import { BadgeShowcase } from './BadgeShowcase';
 import { ProfileHero, pill } from './ProfileHero';
+import { RoleBadge } from './RoleBadge';
 import { getProfile, type PublicProfile as Profile } from './profileApi';
 
 type Bilingual = { en: string; vi: string };
@@ -59,13 +59,16 @@ export function PublicProfile({ userId }: { userId: string }) {
         initials={name.slice(0, 1).toUpperCase()}
         avatarUrl={p.avatar_url}
         coverUrl={p.cover_url}
-        badge={p.role === 'teacher' && <Badge variant="outline">{t({ en: 'Teacher', vi: 'Giáo viên' })}</Badge>}
+        badge={<RoleBadge role={p.role} />}
         handle={p.grade ? t({ en: `Grade ${p.grade}`, vi: `Lớp ${p.grade}` }) : null}
         bio={p.bio}
         meta={p.school ? [{ Icon: School, text: p.school }] : []}
         stats={[
           { value: String(p.streak.current), label: t({ en: 'day streak', vi: 'ngày liên tiếp' }) },
           { value: String(p.streak.best), label: t({ en: 'best streak', vi: 'ngày kỉ lục' }) },
+          p.rank
+            ? { value: `#${p.rank.position}`, label: t({ en: 'on the leaderboard', vi: 'trên bảng xếp hạng' }) }
+            : { value: '—', label: t({ en: 'not ranked yet', vi: 'chưa có hạng' }) },
         ]}
         actions={action}
       />

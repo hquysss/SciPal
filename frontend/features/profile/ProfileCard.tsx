@@ -19,7 +19,7 @@ import {
   School,
 } from 'lucide-react';
 import { useLanguage } from '@scipal/hooks';
-import { Badge } from '../../components/ui/badge';
+import { RoleBadge } from './RoleBadge';
 import { buttonVariants } from '../../components/ui/button';
 import { BadgeShowcase } from './BadgeShowcase';
 import { ProfileEditor } from './ProfileEditor';
@@ -111,13 +111,6 @@ export function ProfileCard({ displayName, role, email, joinedAt, avatarUrl, cov
       .join('')
       .toUpperCase() || 'SP';
 
-  const roleBadge =
-    role === 'admin'
-      ? { variant: 'default' as const, label: t({ en: 'Admin', vi: 'Quản trị viên' }) }
-      : role === 'teacher'
-        ? { variant: 'outline' as const, label: t({ en: 'Teacher', vi: 'Giáo viên' }) }
-        : { variant: 'secondary' as const, label: t({ en: 'Student', vi: 'Học sinh' }) };
-
   const joined = joinedAt ? new Date(joinedAt) : null;
   const joinedText = joined && !Number.isNaN(joined.getTime())
     ? t({ vi: `Tham gia ${joined.getUTCMonth() + 1}/${joined.getUTCFullYear()}`, en: `Joined ${joined.toLocaleDateString('en-GB', { month: 'short', year: 'numeric', timeZone: 'UTC' })}` })
@@ -142,7 +135,7 @@ export function ProfileCard({ displayName, role, email, joinedAt, avatarUrl, cov
         initials={initials}
         avatarUrl={avatarUrl}
         coverUrl={coverUrl}
-        badge={<Badge variant={roleBadge.variant}>{roleBadge.label}</Badge>}
+        badge={<RoleBadge role={role} />}
         handle={email}
         bio={about?.bio}
         meta={meta}

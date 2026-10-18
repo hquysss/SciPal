@@ -99,6 +99,8 @@ export type PublicProfile = {
   relation: ProfileRelation;
   friendship_id: string | null;
   streak: { current: number; best: number };
+  /** All-time XP leaderboard place; null with no XP yet (or when the lookup failed). */
+  rank?: { position: number; xp: number } | null;
 };
 export type ProfileAbout = { grade: 10 | 11 | 12 | null; school: string | null; bio: string | null; show_school: boolean; show_bio: boolean };
 
