@@ -9,6 +9,7 @@ import { MathText } from '@/components/math/MathText';
 import { QuestionFigure, QuestionSource } from '@/components/math/QuestionFigure';
 import { useShuffledOptions } from '@/lib/useShuffledOptions';
 import { checkPractice, type PracticeLoad } from './practiceApi';
+import { CodeAnswer } from './CodeAnswer';
 import { WritingAnswer, type WritingFeedbackState } from './WritingAnswer';
 import styles from './practice.module.css';
 
@@ -426,7 +427,9 @@ function QuestionCard({ question, options, answer, result, writingFeedback, onWr
         />
       )}
 
-      {question.type !== 'writing' && checkRow}
+      {question.type === 'code' && <CodeAnswer question={question} answer={answer} result={result} onAnswer={answerWith} onResult={onResult} t={t} />}
+
+      {question.type !== 'writing' && question.type !== 'code' && checkRow}
       {result?.explanation && (
         <p className="mt-3 rounded-lg bg-surface-sunken px-3 py-2 text-sm text-ink">
           <MathText text={t(result.explanation)} />

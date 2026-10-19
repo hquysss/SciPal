@@ -161,3 +161,17 @@ describe('code questions in the paper', () => {
     expect(html).toContain('Nộp bài (1 câu)');
   });
 });
+
+describe('a code question card', () => {
+  it('shows the statement above the code box and no Check button', () => {
+    const codeQ: PublicPracticeQuestion = {
+      id: 'q6', type: 'code', difficulty: 1,
+      data: { stem: { vi: 'Nhân đôi một số.', en: 'Double.' }, input_spec: { vi: 'n', en: 'n' }, output_spec: { vi: '2n', en: '2n' }, time_limit_ms: 2000, memory_limit_mb: 128, starter: { python: 'n = 1' }, samples: [] },
+    };
+    const html = render({ load: { ok: true, questions: [codeQ] } });
+    expect(html.indexOf('Nhân đôi một số.')).toBeLessThan(html.indexOf('Code của em'));
+    expect(html).toContain('Nộp bài');
+    expect(html).not.toMatch(/>Kiểm tra</);
+    expect(countRawColors(html).total).toBe(0);
+  });
+});
