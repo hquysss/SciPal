@@ -53,7 +53,7 @@ function Player({ video }: { video: Extract<LessonVideo, { available: true }> })
   }
   const { kind, url } = video.playback;
   return kind === 'file' ? (
-    <video controls preload="metadata" poster={video.poster ?? undefined} src={url} className="aspect-video w-full rounded-xl bg-black" />
+    <video controls preload="metadata" poster={video.poster ?? undefined} src={url} className="aspect-video w-full rounded-xl bg-surface-sunken" />
   ) : (
     <iframe
       src={url}
@@ -62,7 +62,7 @@ function Player({ video }: { video: Extract<LessonVideo, { available: true }> })
       allowFullScreen
       referrerPolicy="strict-origin-when-cross-origin"
       loading="lazy"
-      className="aspect-video w-full rounded-xl border border-edge bg-black"
+      className="aspect-video w-full rounded-xl border border-edge bg-surface-sunken"
     />
   );
 }
