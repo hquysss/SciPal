@@ -1,27 +1,62 @@
-/* Code editor for programming questions: a transparent textarea over the highlighted text, same font and
-   metrics, so the learner types into coloured code. Colours follow the dark code panel (CodePanel.module.css). */
+/* Code editor for programming questions, drawn as a small IDE window: a toolbar, a transparent textarea
+   over the highlighted text (same font and metrics, so the learner types into coloured code), and a
+   status bar. Colours follow the dark code panel (CodePanel.module.css) and stay readable in both themes. */
 
 .box {
   --base: color-mix(in srgb, var(--ink) 95%, var(--surface));
   --fg: var(--paper);
-  border-radius: 12px;
+  --muted: color-mix(in srgb, var(--fg) 72%, var(--base));
+  --rule: color-mix(in srgb, var(--fg) 16%, var(--base));
+  overflow: hidden;
+  border-radius: 14px;
   background: var(--base);
   color: var(--fg);
   font-family: var(--font-mono);
   font-size: 14px;
   line-height: 24px;
+  box-shadow: 0 1px 0 color-mix(in srgb, var(--fg) 8%, transparent) inset, 0 10px 28px -18px color-mix(in srgb, var(--ink) 70%, transparent);
 }
 .box[data-dark='true'] {
-  --base: color-mix(in srgb, var(--surface-sunken) 80%, var(--surface));
+  --base: color-mix(in srgb, var(--surface-sunken) 70%, black);
   --fg: var(--ink);
-  border: 1px solid var(--line);
+  border: 1px solid var(--edge);
 }
 .box:focus-within { outline: 2px solid var(--focus); outline-offset: 2px; }
 
-.scroll { display: flex; max-height: 26rem; overflow: auto; padding: 12px 0; border-radius: 12px; }
+/* Toolbar: window dots and the file name on the left, the controls on the right. */
+.bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--rule);
+  background: color-mix(in srgb, var(--fg) 6%, var(--base));
+  font-family: var(--font-sans);
+}
+.dots { display: flex; gap: 6px; padding: 0 4px; }
+.dots span { width: 10px; height: 10px; border-radius: 999px; }
+.dots span:nth-child(1) { background: var(--coral); }
+.dots span:nth-child(2) { background: var(--sun); }
+.dots span:nth-child(3) { background: var(--success); }
+.file {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 8px;
+  background: var(--base);
+  color: var(--fg);
+  font: 600 13px var(--font-mono);
+  border-bottom: 2px solid var(--accent, var(--action));
+}
+.tools { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-left: auto; }
+
+.scroll { display: flex; max-height: 26rem; min-height: 12rem; overflow: auto; padding: 12px 0; }
 .gutter {
   position: sticky;
   left: 0;
+  z-index: 1;
   flex: none;
   width: 48px;
   padding-right: 12px;
@@ -29,12 +64,12 @@
   text-align: right;
   white-space: pre;
   user-select: none;
-  color: color-mix(in srgb, var(--fg) 45%, var(--base));
+  color: color-mix(in srgb, var(--fg) 50%, var(--base));
 }
 .code { position: relative; flex: 1 0 auto; min-width: 0; }
 .shown, .input {
   margin: 0;
-  padding: 0 12px 0 4px;
+  padding: 0 12px 0 6px;
   border: 0;
   font: inherit;
   line-height: inherit;
@@ -56,9 +91,53 @@
 }
 .input::selection { background: color-mix(in srgb, var(--accent, var(--action)) 45%, transparent); }
 
-.keyword { color: color-mix(in srgb, var(--coral) 55%, var(--fg)); }
-.function { color: color-mix(in srgb, var(--action) 40%, var(--fg)); }
-.string { color: color-mix(in srgb, var(--accent, var(--success)) 45%, var(--fg)); }
+.status {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 4px 12px;
+  padding: 6px 12px;
+  border-top: 1px solid var(--rule);
+  color: var(--muted);
+  font: 500 12px/18px var(--font-mono);
+}
+
+/* Syntax colours, mixed toward the text colour so every token keeps at least 4.5:1 on the base. */
+.keyword { color: color-mix(in srgb, var(--coral) 60%, var(--fg)); font-weight: 600; }
+.function { color: color-mix(in srgb, var(--sky, var(--action)) 55%, var(--fg)); }
+.string { color: color-mix(in srgb, var(--success) 55%, var(--fg)); }
 .number { color: color-mix(in srgb, var(--sun) 70%, var(--fg)); }
-.operator { color: color-mix(in srgb, var(--fg) 85%, var(--base)); }
-.comment { color: color-mix(in srgb, var(--fg) 72%, var(--base)); }
+.operator { color: var(--fg); }
+.comment { color: var(--muted); font-style: italic; }
+
+/* Toolbar controls on the dark base. */
+.control {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 36px;
+  padding: 0 12px;
+  border: 1px solid color-mix(in srgb, var(--fg) 30%, var(--base));
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--fg) 8%, var(--base));
+  color: var(--fg);
+  font: 600 13px var(--font-sans);
+  cursor: pointer;
+  transition: background-color 150ms, border-color 150ms;
+}
+.control:hover { background: color-mix(in srgb, var(--fg) 16%, var(--base)); border-color: color-mix(in srgb, var(--fg) 50%, var(--base)); }
+.control:focus-visible, .control:focus-within { outline: 2px solid var(--focus); outline-offset: 2px; }
+.selectWrap { position: relative; display: inline-flex; align-items: center; }
+.select {
+  appearance: none;
+  padding-right: 32px;
+}
+.select option { background: var(--surface); color: var(--ink); }
+.chevron { position: absolute; right: 10px; pointer-events: none; }
+
+@media (prefers-reduced-motion: reduce) {
+  .control { transition: none; }
+}
+@media (pointer: coarse) {
+  .control { min-height: 44px; }
+}

@@ -1,10 +1,13 @@
 'use client';
 
-import { useMemo, type KeyboardEvent } from 'react';
+import { useMemo, type KeyboardEvent, type ReactNode } from 'react';
+import { ChevronDown } from 'lucide-react';
 import { highlight } from '@/components/code/highlight';
 import { useShellDark } from '../../lib/theme/useShellDark';
 import type { CodeLanguage } from '@scipal/types';
 import styles from './codeEditor.module.css';
+
+export const FILE_NAME: Record<CodeLanguage, string> = { python: 'main.py', cpp: 'main.cpp' };
 
 interface CodeEditorProps {
   value: string;
@@ -13,10 +16,14 @@ interface CodeEditorProps {
   label: string;
   /** The id of the text that says Tab inserts spaces and Escape leaves the box. */
   describedBy?: string;
+  /** Controls in the toolbar, right of the file name. */
+  tools?: ReactNode;
+  /** The bottom line: language, size, keys. */
+  status?: ReactNode;
 }
 
-/** A code box with syntax colours: a transparent textarea laid over the same text coloured by `highlight`. */
-export function CodeEditor({ value, onChange, language, label, describedBy }: CodeEditorProps) {
+/** A small IDE window: a code box with syntax colours (a transparent textarea over the same text coloured by `highlight`). */
+export function CodeEditor({ value, onChange, language, label, describedBy, tools, status }: CodeEditorProps) {
   const dark = useShellDark();
   // A trailing newline would collapse in the coloured copy and push the last line out of step with the caret.
   const lines = useMemo(() => highlight(`${value}\n`, language), [value, language]);
@@ -38,6 +45,15 @@ export function CodeEditor({ value, onChange, language, label, describedBy }: Co
 
   return (
     <div className={styles.box} data-dark={dark}>
+      <div className={styles.bar}>
+        <span className={styles.dots} aria-hidden="true">
+          <span />
+          <span />
+          <span />
+        </span>
+        <span className={styles.file}>{FILE_NAME[language]}</span>
+        <div className={styles.tools}>{tools}</div>
+      </div>
       <div className={styles.scroll}>
         <div className={styles.gutter} aria-hidden="true">
           {lines.slice(1).map((_, i) => `${i + 1}\n`).join('')}
@@ -65,6 +81,26 @@ export function CodeEditor({ value, onChange, language, label, describedBy }: Co
           />
         </div>
       </div>
+      {status && <div className={styles.status}>{status}</div>}
     </div>
   );
 }
+
+/** A dropdown that sits on the editor's dark toolbar. */
+export function ToolbarSelect<T extends string>({ label, value, options, onChange }: { label: string; value: T; options: Array<{ value: T; label: string }>; onChange: (value: T) => void }) {
+  return (
+    <span className={styles.selectWrap}>
+      <select aria-label={label} value={value} onChange={(e) => onChange(e.target.value as T)} className={`${styles.control} ${styles.select}`}>
+        {options.map((option) => (
+          <option key={option.value} value={option.value}>
+            {option.label}
+          </option>
+        ))}
+      </select>
+      <ChevronDown aria-hidden="true" className={`${styles.chevron} h-4 w-4`} />
+    </span>
+  );
+}
+
+/** The class of a button or label on the editor's toolbar. */
+export const toolbarControl = styles.control;

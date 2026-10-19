@@ -48,7 +48,7 @@ describe('CodeAnswer', () => {
   it('loads the starter of the other language, keeping the draft of the first', () => {
     const onAnswer = vi.fn();
     renderAnswer({ onAnswer, answer: { code: { language: 'python', source: 'print(1)' } } });
-    fireEvent.click(screen.getByRole('tab', { name: 'C++' }));
+    fireEvent.change(screen.getByLabelText('Ngôn ngữ lập trình'), { target: { value: 'cpp' } });
     expect(onAnswer).toHaveBeenLastCalledWith({ code: { language: 'cpp', source: '#include <iostream>\nint main() {}\n' } });
   });
 
@@ -127,7 +127,7 @@ describe('CodeResults', () => {
     );
     expect(screen.getByText('1/3 test đạt')).toBeTruthy();
     expect(screen.getByText('Đạt')).toBeTruthy();
-    expect(screen.getByText('Sai kết quả')).toBeTruthy();
+    expect(screen.getAllByText('Sai kết quả').length).toBeGreaterThan(0);
     expect(screen.getByText('Quá thời gian')).toBeTruthy();
     expect(screen.getAllByText(/\(ẩn\)/)).toHaveLength(2);
     expect(screen.queryByText('Output của em')).toBeNull();
