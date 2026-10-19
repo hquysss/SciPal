@@ -140,3 +140,24 @@ describe('a verdict that arrives late', () => {
     expect(withResult(changed, 'q1', { correct: true }, checked)).toBe(changed);
   });
 });
+
+describe('code questions in the paper', () => {
+  const codeQ: PublicPracticeQuestion = {
+    id: 'q5', type: 'code', difficulty: 1,
+    data: { stem: { vi: 'Nhân đôi', en: 'Double' }, input_spec: { vi: 'n', en: 'n' }, output_spec: { vi: '2n', en: '2n' }, time_limit_ms: 2000, memory_limit_mb: 128, starter: {}, samples: [{ input: '2\n', expected: '4\n' }] },
+  };
+
+  it('counts a code question as answered only once it has code', () => {
+    expect(responseOf(codeQ, undefined)).toBeNull();
+    expect(responseOf(codeQ, { code: { language: 'python', source: '   ' } })).toBeNull();
+    expect(responseOf(codeQ, { code: { language: 'cpp', source: 'int main(){}' } })).toEqual({ code: { language: 'cpp', source: 'int main(){}' } });
+  });
+
+  it('leaves code questions out of the hand-in-everything button', () => {
+    const html = render({
+      load: { ok: true, questions: [questions[0]!, codeQ] },
+      state: state({ answers: { q1: { selected_option: 'a' }, q5: { code: { language: 'python', source: 'print(1)' } } } }),
+    });
+    expect(html).toContain('Nộp bài (1 câu)');
+  });
+});

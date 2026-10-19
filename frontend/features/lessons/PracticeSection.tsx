@@ -66,6 +66,7 @@ export function responseOf(question: PublicPracticeQuestion, answer: PracticeRes
   if (question.type === 'mc') return answer?.selected_option ? { selected_option: answer.selected_option } : null;
   if (question.type === 'truefalse') return answer?.items?.length ? { items: answer.items } : null;
   if (question.type === 'writing') return answer?.writing_answer?.trim() ? { writing_answer: answer.writing_answer } : null;
+  if (question.type === 'code') return answer?.code?.source.trim() ? { code: answer.code } : null;
   return answer?.short_answer?.trim() ? { short_answer: answer.short_answer } : null;
 }
 
@@ -104,7 +105,7 @@ interface PracticeSectionProps {
   lang?: 'en' | 'vi';
 }
 
-const PART_ORDER =['mc', 'truefalse', 'short', 'writing'] as const;
+const PART_ORDER = ['mc', 'truefalse', 'short', 'writing', 'code'] as const;
 const PART_TITLE: Record<(typeof PART_ORDER)[number], Bilingual> = {
   mc: { en: 'Multiple choice', vi: 'Trắc nghiệm nhiều phương án lựa chọn' },
   truefalse: { en: 'True / false', vi: 'Trắc nghiệm đúng sai' },
@@ -159,8 +160,9 @@ export function PracticeSection({ load, state, onAnswer, onResult, onRetry, onQu
     positionRef.current?.focus({ preventScroll: true });
   };
   // Hand in the whole set: every answered question not checked yet goes to the server at once.
+  // Programming questions have their own Submit button: judging is slow and limited per minute.
   const pending = questions.flatMap((q) => {
-    const response = state.results[q.id] ? null : responseOf(q, state.answers[q.id]);
+    const response = state.results[q.id] || q.type === 'code' ? null : responseOf(q, state.answers[q.id]);
     return response ? [{ id: q.id, response, checked: state.answers[q.id] }] : [];
   });
   const submitAll = async () => {

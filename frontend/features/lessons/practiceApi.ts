@@ -1,4 +1,4 @@
-import type { PracticeCheckResult, PracticeResponse, PublicPracticeQuestion } from '@scipal/types';
+import type { CodeLanguage, CodeVerdict, PracticeCheckResult, PracticeResponse, PublicPracticeQuestion } from '@scipal/types';
 import { authoringCall, type ApiResult } from '@/features/authoring/apiClient';
 import { getAccessToken } from '../../lib/session';
 
@@ -56,3 +56,43 @@ export async function checkPractice(questionId: string, response: PracticeRespon
 /** The AI Professor's comments on an English writing answer (signed in; paid from the Professor's tokens). */
 export const writingFeedback = (questionId: string, answer: string, language: 'vi' | 'en'): Promise<ApiResult<{ feedback: string; remaining: number | null }>> =>
   authoringCall('/api/practice/writing-feedback', 'POST', { question_id: questionId, answer, language });
+
+type CodeAnswer = { language: CodeLanguage; source: string };
+/** Running and judging need an account; `signIn` tells the page to invite the visitor to log in. */
+type CodeFailure = { ok: false; error: Bilingual; signIn: boolean };
+export type CodeCheck = { ok: true; result: PracticeCheckResult } | CodeFailure;
+export type CodeRunOutput = { status: CodeVerdict; stdout: string; stderr: string; time_ms: number; memory_kb: number };
+export type CodeRun = { ok: true; run: CodeRunOutput } | CodeFailure;
+
+const SIGN_IN: Bilingual = { en: 'Sign in to run and submit code.', vi: 'Đăng nhập để chạy và nộp code.' };
+
+async function codeCall(path: string, body: Record<string, unknown>): Promise<{ ok: true; data: Record<string, unknown> } | CodeFailure> {
+  const token = await getAccessToken().catch(() => null);
+  if (!token) return { ok: false, error: SIGN_IN, signIn: true };
+  try {
+    const res = await fetch(`${API_BASE}${path}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      body: JSON.stringify(body),
+    });
+    const data = (await res.json().catch(() => ({}))) as Record<string, unknown>;
+    if (!res.ok) return { ok: false, error: errorOf(data, { en: 'Could not judge the code.', vi: 'Chưa chấm được code.' }), signIn: res.status === 401 };
+    return { ok: true, data };
+  } catch {
+    return { ok: false, error: UNREACHABLE, signIn: false };
+  }
+}
+
+/** Run the code once on an input the learner typed. */
+export async function runCode(questionId: string, code: CodeAnswer, stdin: string): Promise<CodeRun> {
+  const res = await codeCall('/api/practice/code/run', { question_id: questionId, ...code, stdin });
+  return res.ok ? { ok: true, run: res.data as unknown as CodeRunOutput } : res;
+}
+
+/** Judge the code on every test. The verdict for each test comes back; hidden tests show no output. */
+export async function submitCode(questionId: string, code: CodeAnswer): Promise<CodeCheck> {
+  const res = await codeCall('/api/practice/code/submit', { question_id: questionId, ...code });
+  if (!res.ok) return res;
+  if (typeof res.data.correct !== 'boolean') return { ok: false, error: { en: 'Could not judge the code.', vi: 'Chưa chấm được code.' }, signIn: false };
+  return { ok: true, result: res.data as unknown as PracticeCheckResult };
+}
