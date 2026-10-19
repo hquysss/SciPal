@@ -145,7 +145,7 @@ describe('POST /api/practice/code/submit', () => {
     const { app } = await build({ user: student, judge0, siteToday: 300 });
     const res = await post(app, '/api/practice/code/submit', submitBody);
     expect(res.statusCode).toBe(429);
-    expect(res.json().error).toMatch(/đã đầy/);
+    expect(res.json().error).toMatch(/hết lượt cho toàn hệ thống/);
     expect(judge0.runBatch).not.toHaveBeenCalled();
     expect(billingCalls('billing_reserve_quota')).toEqual([]);
   });
@@ -161,7 +161,7 @@ describe('POST /api/practice/code/submit', () => {
     const { app } = await build({ user: student, judge0: { runBatch: async () => { throw new Judge0Unavailable('down'); } } });
     const res = await post(app, '/api/practice/code/submit', submitBody);
     expect(res.statusCode).toBe(502);
-    expect(res.json().error).toMatch(/thử lại/);
+    expect(res.json().error).toMatch(/không trừ lượt/);
   });
 
   const streamed = (app: Awaited<ReturnType<typeof build>>['app']) =>
@@ -190,7 +190,7 @@ describe('POST /api/practice/code/submit', () => {
   it('ends a stream with an error line, not a wrong verdict, when Judge0 goes down', async () => {
     const { app } = await build({ user: student, judge0: { runBatch: async () => { throw new Judge0Unavailable('down'); } } });
     const all = lines((await streamed(app)).body);
-    expect(all.at(-1)).toMatchObject({ type: 'error', error: expect.stringMatching(/thử lại/) });
+    expect(all.at(-1)).toMatchObject({ type: 'error', error: expect.stringMatching(/không trừ lượt/) });
     expect(all.some((l) => l.type === 'result')).toBe(false);
   });
 });

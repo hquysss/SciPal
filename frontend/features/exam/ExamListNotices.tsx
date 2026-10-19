@@ -43,10 +43,10 @@ export function ExamListHeader() {
       </nav>
 
       <header className="max-w-xl">
-        <h1 className="text-3xl font-bold text-ink">{t({ en: 'Competency Assessment & National High School Graduation Exam Room', vi: 'Phòng thi ĐGNL & THPTQG' })}</h1>
+        <h1 className="text-3xl font-bold text-ink">{t({ en: 'Mock exams: Competency test & graduation exam', vi: 'Phòng thi ĐGNL & THPTQG' })}</h1>
         <p className="mt-2 text-base text-ink-muted">
           {t({
-            en: 'Timed exams with a question grid. Scoring happens on the server, so answers are never sent to your browser.',
+            en: 'Timed exams with a question grid. Your score appears as soon as you submit.',
             vi: 'Bài thi bấm giờ có bảng điều hướng câu hỏi. Điểm được chấm ngay khi bạn nộp bài.',
           })}
         </p>
@@ -116,7 +116,7 @@ function CodingCard({ coding, subjectName }: { coding: HsgCoding; subjectName: s
           {t({ en: 'Programming problems', vi: 'Luyện lập trình' })}
         </span>
         <span className="text-sm text-ink-muted">
-          {t({ en: 'Write code, submit, and the judge checks it on hidden tests.', vi: 'Viết code, nộp bài, hệ thống chấm bằng bộ test ẩn.' })}
+          {t({ en: 'Submit your code and the judge runs it on the sample and hidden tests.', vi: 'Nộp code để máy chấm chạy trên test mẫu và test ẩn.' })}
         </span>
         <span className="text-sm font-semibold text-action">{t({ en: 'Open problem list', vi: 'Xem danh sách bài' })}</span>
       </Link>

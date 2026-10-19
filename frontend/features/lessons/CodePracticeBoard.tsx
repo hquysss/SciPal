@@ -129,7 +129,7 @@ export function CodePracticeBoard({ questions, answers, results, onAnswer, onRes
             <h3 id="code-board-title" className="text-lg font-bold text-ink">
               {t({ en: 'Programming problems', vi: 'Bài lập trình' })}
             </h3>
-            <p className="text-sm text-ink">{t({ en: 'Write code, submit, and the judge checks it on hidden tests.', vi: 'Viết code, nộp bài, hệ thống chấm bằng bộ test ẩn.' })}</p>
+            <p className="text-sm text-ink">{t({ en: 'Submit your code and the judge runs it on the sample and hidden tests.', vi: 'Nộp code để máy chấm chạy trên test mẫu và test ẩn.' })}</p>
           </div>
         </div>
         <div className="flex gap-6 sm:text-right">

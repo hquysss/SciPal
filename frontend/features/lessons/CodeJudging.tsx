@@ -12,21 +12,22 @@ type Bilingual = { en: string; vi: string };
 export type JudgingProgress = { total: number; tests: Array<{ verdict: CodeVerdict; time_ms: number } | undefined> };
 
 const STEPS: Array<{ icon: typeof Send; label: Bilingual; hint: Bilingual }> = [
-  { icon: Send, label: { en: 'Submitted', vi: 'Đã gửi bài' }, hint: { en: 'Your code reached SciPal.', vi: 'Code của em đã tới SciPal.' } },
+  { icon: Send, label: { en: 'Submitted', vi: 'Đã gửi bài' }, hint: { en: 'Your code reached SciPal.', vi: 'Code của bạn đã tới SciPal.' } },
   {
     icon: ServerCog,
     label: { en: 'Running on every test', vi: 'Đang chạy trên bộ test' },
-    hint: { en: 'The judge compiles your code and runs it on the examples and the hidden tests.', vi: 'Máy chấm biên dịch rồi chạy code của em trên test mẫu và test ẩn.' },
+    hint: { en: 'The judge compiles your code and runs it on the examples and the hidden tests.', vi: 'Máy chấm biên dịch rồi chạy code của bạn trên test mẫu và test ẩn.' },
   },
   { icon: Trophy, label: { en: 'Result', vi: 'Trả kết quả' }, hint: { en: 'Each test gets a verdict.', vi: 'Mỗi test có một kết luận.' } },
 ];
 
-const DOING: Bilingual[] = [
-  { en: 'compiling', vi: 'biên dịch code' },
-  { en: 'running every test', vi: 'chạy từng test' },
-  { en: 'comparing output', vi: 'so kết quả' },
-  { en: 'scoring', vi: 'chấm điểm' },
-];
+/** What the judge is really doing, from what it has reported so far. */
+const phaseOf = (progress: JudgingProgress | null | undefined): Bilingual =>
+  !progress
+    ? { en: 'Sending your code', vi: 'Đang gửi code' }
+    : progress.tests.filter(Boolean).length < progress.total
+      ? { en: 'Running the tests', vi: 'Đang chạy test' }
+      : { en: 'Adding up the result', vi: 'Đang tổng hợp kết quả' };
 
 /** Running tests are sky blue, so they never read as passed (green) or the subject colour. */
 const RUNNING = 'bg-[color-mix(in_srgb,var(--sky)_28%,var(--surface))]';
@@ -47,6 +48,7 @@ export function CodeJudging({ t, progress }: { t: (text: Bilingual) => string; p
   const passed = tests.filter((x) => x?.verdict === 'AC').length;
   const failed = done - passed;
   const total = progress?.total ?? 0;
+  const phase = phaseOf(progress);
 
   return (
     <section
@@ -60,16 +62,10 @@ export function CodeJudging({ t, progress }: { t: (text: Bilingual) => string; p
           <LoaderCircle aria-hidden="true" className="h-6 w-6 animate-spin motion-reduce:animate-none" />
         </span>
         <div className="flex min-w-0 flex-1 flex-col">
-          <p className="sr-only">{t({ en: 'Judging your code…', vi: 'Đang chấm bài…' })}</p>
-          {/* What the judge is doing, rolling by. Decorative: the real progress is the counts and tiles below. */}
-          <p aria-hidden="true" className="flex items-center gap-2 text-lg font-extrabold text-ink">
-            {t({ en: 'Now', vi: 'Đang' })}
-            <span className={styles.words}>
-              {[...DOING, DOING[0]!].map((word, i) => (
-                <span key={i} className={styles.word}>
-                  {t(word)}
-                </span>
-              ))}
+          {/* The step rolls in when the judge moves on to the next one. */}
+          <p className={`text-lg font-extrabold text-ink ${styles.words}`}>
+            <span key={phase.en} className={styles.word}>
+              {t(phase)}
             </span>
           </p>
           <p className="text-sm text-ink">

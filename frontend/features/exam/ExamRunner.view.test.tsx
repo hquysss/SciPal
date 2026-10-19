@@ -126,7 +126,7 @@ describe('ExamResultView', () => {
     expect(screen.getByTestId('exam-score').textContent).toBe('7.5 / 10');
     expect(screen.queryByText(/điểm quy đổi tham khảo/)).toBeNull();
     expect(screen.queryByRole('table')).toBeNull();
-    expect(screen.getByText('Đạt rồi. Xem lại các câu sai nhé.')).toBeTruthy();
+    expect(screen.getByText('Đạt.')).toBeTruthy();
   });
 
   it('shows a 1200-scale estimate with the note and bands by the share of the maximum', () => {
@@ -139,7 +139,7 @@ describe('ExamResultView', () => {
     showResult({ ...base, score: 1000, max_score: 1200, correct_count: 100, total_questions: 120, estimated: true, sections });
     expect(screen.getByTestId('exam-score').textContent).toBe('1000 / 1200');
     expect(screen.getByText(/điểm quy đổi tham khảo/)).toBeTruthy();
-    expect(screen.getByText('Rất tốt! Bạn nắm chắc phần này.')).toBeTruthy();
+    expect(screen.getByText('Đạt mức tốt.')).toBeTruthy();
   });
 
   it('lists each section of a THPTQG result with its score and correct answers', () => {

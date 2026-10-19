@@ -47,10 +47,10 @@ const VerifyBody = z
 const signIn = msg('Đăng nhập để chạy và nộp code.', 'Sign in to run and submit code.');
 const badRequest = msg('Yêu cầu không đúng định dạng (code tối đa 64 KB).', 'The request is not valid (code up to 64 KB).');
 const off = msg('Chấm code chưa được bật.', 'Code judging is not switched on.');
-const tooMany = msg('Em thao tác nhanh quá, đợi một phút rồi thử lại.', 'Too many tries, wait a minute and try again.');
-const tooManyToday = msg('Hôm nay em đã dùng hết lượt chấm code, mai thử lại nhé.', 'You have used all of today’s code runs, try again tomorrow.');
-const siteFull = msg('Hôm nay hệ thống chấm bài đã đầy, em thử lại vào ngày mai nhé.', 'The judge is full for today, try again tomorrow.');
-const judgeDown = msg('Chưa chấm được lúc này, em thử lại sau nhé. Lần này không bị tính là sai.', 'Could not judge right now, try again later. This does not count as a wrong answer.');
+const tooMany = msg('Bạn thao tác nhanh quá. Đợi một phút rồi thử lại.', 'Too many tries. Wait a minute and try again.');
+const tooManyToday = msg('Bạn đã dùng hết lượt chấm code hôm nay. Lượt mới có lúc 0 giờ.', 'You have used all of today’s code runs. New ones come at midnight.');
+const siteFull = msg('Hôm nay máy chấm đã hết lượt cho toàn hệ thống. Lượt mới có lúc 0 giờ.', 'The judge has used up today’s runs for the whole site. New ones come at midnight.');
+const judgeDown = msg('Máy chấm đang không trả lời. Lần này không tính là sai và không trừ lượt. Thử lại sau vài phút.', 'The judge is not answering. This does not count as a wrong answer or use up a run. Try again in a few minutes.');
 /** XP for the first accepted answer, by difficulty (1 easy, 2 medium, 3 hard). */
 export const CODE_XP: Record<number, number> = { 1: 20, 2: 35, 3: 50 };
 

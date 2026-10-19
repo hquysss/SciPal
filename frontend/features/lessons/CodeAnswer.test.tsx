@@ -44,7 +44,7 @@ describe('CodeAnswer', () => {
     renderAnswer();
     expect(screen.getByText('Một số nguyên n.')).toBeTruthy();
     expect(screen.getByText(/2000 ms/)).toBeTruthy();
-    expect((screen.getByLabelText('Code của em') as HTMLTextAreaElement).value).toBe('n = int(input())\n');
+    expect((screen.getByLabelText('Code của bạn') as HTMLTextAreaElement).value).toBe('n = int(input())\n');
   });
 
   it('loads the starter of the other language, keeping the draft of the first', () => {
@@ -92,6 +92,7 @@ describe('CodeAnswer', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Nộp bài' }));
     const judging = screen.getByRole('region', { name: 'Đang chấm bài' });
     expect(judging.getAttribute('aria-busy')).toBe('true');
+    expect(screen.getByText('Đang gửi code')).toBeTruthy();
     expect(screen.getByText('Đang chạy trên bộ test').closest('li')!.getAttribute('aria-current')).toBe('step');
     // The old verdict is hidden so it cannot pass for the new one.
     expect(screen.queryByRole('region', { name: 'Kết quả chấm' })).toBeNull();
@@ -105,6 +106,9 @@ describe('CodeAnswer', () => {
     expect(screen.getByText('Đã chấm 1/2 test')).toBeTruthy();
     expect(screen.getByText('1 chưa đạt')).toBeTruthy();
     expect(screen.getByText('1 đang chạy')).toBeTruthy();
+    expect(screen.getByText('Đang chạy test')).toBeTruthy();
+    act(() => onProgress({ type: 'test', index: 0, verdict: 'AC', time_ms: 2 }));
+    expect(screen.getByText('Đang tổng hợp kết quả')).toBeTruthy();
     finish({ ok: true, result: passed });
     await waitFor(() => expect(onResult).toHaveBeenCalled());
     view.rerender({ answer, result: { ...passed } });
@@ -187,12 +191,12 @@ describe('CodeResults', () => {
     expect(screen.getAllByText('Sai kết quả').length).toBeGreaterThan(0);
     expect(screen.getByText('Quá thời gian')).toBeTruthy();
     expect(screen.getAllByText(/\(ẩn\)/)).toHaveLength(2);
-    expect(screen.queryByText('Output của em')).toBeNull();
+    expect(screen.queryByText('Output của bạn')).toBeNull();
   });
 
   it('shows what an example test printed against what it should print', () => {
     render(<CodeResults t={t} result={{ status: 'WA', tests: [{ verdict: 'WA', time_ms: 5, memory_kb: 900, stdout: '5\n', expected: '4\n' }] }} />);
-    expect(screen.getByText('Output của em')).toBeTruthy();
+    expect(screen.getByText('Output của bạn')).toBeTruthy();
     expect(screen.getByText('Kết quả đúng')).toBeTruthy();
   });
 

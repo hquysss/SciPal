@@ -16,14 +16,14 @@ export const VERDICT_TEXT: Record<CodeVerdict, Bilingual> = {
   CE: { en: 'Compile error', vi: 'Lỗi biên dịch' },
 };
 
-/** A friendly hint per verdict, in the voice of a teacher. */
+/** What to check next, per verdict. */
 const VERDICT_HINT: Record<CodeVerdict, Bilingual> = {
-  AC: { en: 'Every test passed. Great work!', vi: 'Mọi test đều đạt. Làm tốt lắm!' },
-  WA: { en: 'The program runs but prints something else. Compare with an example.', vi: 'Chương trình chạy được nhưng in ra chưa đúng. Thử so với ví dụ mẫu nhé.' },
+  AC: { en: 'Your code passed every test, hidden ones included.', vi: 'Code đạt mọi test, kể cả test ẩn.' },
+  WA: { en: 'The program runs but prints something other than the answer. Compare your output with an example.', vi: 'Chương trình chạy được nhưng in ra khác đáp án. So output của bạn với ví dụ mẫu.' },
   TLE: { en: 'Too slow: look for a loop that runs too many times.', vi: 'Chạy quá lâu: xem lại vòng lặp nào chạy quá nhiều lần.' },
   MLE: { en: 'Uses too much memory: a list may be larger than it needs to be.', vi: 'Dùng quá nhiều bộ nhớ: có thể một danh sách đang lớn hơn cần thiết.' },
-  RE: { en: 'The program stopped with an error. Check indexes, division by zero and the input format.', vi: 'Chương trình dừng vì lỗi. Kiểm tra chỉ số mảng, phép chia cho 0 và cách đọc dữ liệu.' },
-  CE: { en: 'The code does not compile. Read the first error message below.', vi: 'Code chưa biên dịch được. Đọc lỗi đầu tiên bên dưới nhé.' },
+  RE: { en: 'The program stopped partway with an error. Most often: an index out of range, a division by zero, or input read in the wrong format.', vi: 'Chương trình dừng giữa chừng vì lỗi. Hay gặp nhất: chỉ số mảng vượt giới hạn, chia cho 0, đọc sai định dạng dữ liệu.' },
+  CE: { en: 'The code does not compile. Fix the first error in the message below first.', vi: 'Code chưa biên dịch được. Sửa lỗi đầu tiên trong thông báo bên dưới trước.' },
 };
 
 /** Tile and banner colours per verdict (theme tokens; the verdict is always written too). */
@@ -146,7 +146,7 @@ export const CodeResults = forwardRef<HTMLHeadingElement, { result: CodeResult; 
             Test {open + 1}: {t(VERDICT_TEXT[shown.verdict])}
           </p>
           <div>
-            <p className="text-xs font-bold uppercase tracking-wide text-ink">{t({ en: 'Your output', vi: 'Output của em' })}</p>
+            <p className="text-xs font-bold uppercase tracking-wide text-ink">{t({ en: 'Your output', vi: 'Output của bạn' })}</p>
             <pre className={PRE}>{shown.stdout || ' '}</pre>
           </div>
           <div>

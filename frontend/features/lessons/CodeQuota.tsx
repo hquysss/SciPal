@@ -54,9 +54,9 @@ export function CodeQuotaBar({ quota, t }: { quota: CodeQuota | null; t: (text: 
       </div>
       <p className={`text-xs ${out ? 'font-bold text-danger' : 'text-ink'}`} role={out ? 'status' : undefined}>
         {submitFull
-          ? t({ en: 'The judge is full for today. Try again tomorrow.', vi: 'Hôm nay hệ thống chấm bài đã đầy. Em thử lại vào ngày mai nhé.' })
+          ? t({ en: 'The judge has used up today’s runs for the whole site. New ones come at midnight.', vi: 'Hôm nay máy chấm đã hết lượt cho toàn hệ thống. Lượt mới có lúc 0 giờ.' })
           : out
-            ? t({ en: 'You have used all of today’s submits. They come back at midnight.', vi: 'Em đã dùng hết lượt nộp bài hôm nay. Lượt mới có lại lúc 0 giờ.' })
+            ? t({ en: 'You have used all of today’s submits. They come back at midnight.', vi: 'Bạn đã dùng hết lượt nộp bài hôm nay. Lượt mới có lúc 0 giờ.' })
             : t({ en: 'Counted per day (Vietnam time); new runs at midnight.', vi: 'Tính theo ngày (giờ Việt Nam), có lượt mới lúc 0 giờ.' })}
       </p>
     </section>

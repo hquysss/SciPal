@@ -233,7 +233,7 @@ export function CodeAnswer({ question, answer, result, onAnswer, onResult, t }: 
           value={source}
           onChange={(next) => write({ source: next })}
           language={language}
-          label={t({ en: 'Your code', vi: 'Code của em' })}
+          label={t({ en: 'Your code', vi: 'Code của bạn' })}
           describedBy={`${id}-keys`}
           tools={
             <>
@@ -311,7 +311,7 @@ export function CodeAnswer({ question, answer, result, onAnswer, onResult, t }: 
 
       <div className="flex flex-col gap-3 rounded-2xl bg-surface-sunken p-3 sm:flex-row sm:items-center sm:justify-between sm:p-4">
         <p className="text-sm text-ink">
-          {t({ en: 'Submitting runs your code on every test, hidden ones too.', vi: 'Nộp bài sẽ chạy code của em trên mọi test, kể cả test ẩn.' })}
+          {t({ en: 'Submitting runs your code on every test, hidden ones too.', vi: 'Nộp bài sẽ chạy code của bạn trên mọi test, kể cả test ẩn.' })}
         </p>
         <div className="flex flex-wrap justify-end gap-2">
           <button type="button" disabled={!!busy || !source.trim() || (!!quota?.run && runsLeft(quota.run) === 0)} onClick={trial} className={`${buttonVariants({ variant: 'ghost' })} gap-2 bg-surface`}>
