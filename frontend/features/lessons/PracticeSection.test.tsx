@@ -153,25 +153,27 @@ describe('code questions in the paper', () => {
     expect(responseOf(codeQ, { code: { language: 'cpp', source: 'int main(){}' } })).toEqual({ code: { language: 'cpp', source: 'int main(){}' } });
   });
 
-  it('leaves code questions out of the hand-in-everything button', () => {
-    const html = render({
-      load: { ok: true, questions: [questions[0]!, codeQ] },
-      state: state({ answers: { q1: { selected_option: 'a' }, q5: { code: { language: 'python', source: 'print(1)' } } } }),
-    });
-    expect(html).toContain('Nộp bài (1 câu)');
+  it('splits Informatics practice into a problem set and the other questions', () => {
+    const html = render({ load: { ok: true, questions: [questions[0]!, codeQ] } });
+    expect(html).toContain('Bài lập trình (1)');
+    expect(html).toContain('Trắc nghiệm (1)');
+    expect(html).toContain('Nhân đôi');
+    expect(html).not.toContain('2 + 2 bằng?');
   });
 });
 
-describe('a code question card', () => {
-  it('shows the statement above the code box and no Check button', () => {
+describe('a lesson with only programming questions', () => {
+  it('shows the problem set, with difficulty and XP, and no status panel', () => {
     const codeQ: PublicPracticeQuestion = {
-      id: 'q6', type: 'code', difficulty: 1,
-      data: { stem: { vi: 'Nhân đôi một số.', en: 'Double.' }, input_spec: { vi: 'n', en: 'n' }, output_spec: { vi: '2n', en: '2n' }, time_limit_ms: 2000, memory_limit_mb: 128, starter: { python: 'n = 1' }, samples: [] },
+      id: 'q6', type: 'code', difficulty: 2,
+      data: { stem: { vi: 'Nhân đôi một số. Cho n…', en: 'Double.' }, input_spec: { vi: 'n', en: 'n' }, output_spec: { vi: '2n', en: '2n' }, time_limit_ms: 2000, memory_limit_mb: 128, starter: { python: 'n = 1' }, samples: [] },
     };
     const html = render({ load: { ok: true, questions: [codeQ] } });
-    expect(html.indexOf('Nhân đôi một số.')).toBeLessThan(html.indexOf('Code của em'));
-    expect(html).toContain('Nộp bài');
-    expect(html).not.toMatch(/>Kiểm tra</);
+    expect(html).toContain('Nhân đôi một số');
+    expect(html).not.toContain('Cho n');
+    expect(html).toContain('Vừa');
+    expect(html).toContain('35 XP');
+    expect(html).not.toContain('Trạng thái các câu');
     expect(countRawColors(html).total).toBe(0);
   });
 });

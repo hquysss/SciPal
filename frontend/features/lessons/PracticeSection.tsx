@@ -9,7 +9,7 @@ import { MathText } from '@/components/math/MathText';
 import { QuestionFigure, QuestionSource } from '@/components/math/QuestionFigure';
 import { useShuffledOptions } from '@/lib/useShuffledOptions';
 import { checkPractice, type PracticeLoad } from './practiceApi';
-import { CodeAnswer } from './CodeAnswer';
+import { CodePracticeBoard } from './CodePracticeBoard';
 import { WritingAnswer, type WritingFeedbackState } from './WritingAnswer';
 import styles from './practice.module.css';
 
@@ -117,7 +117,45 @@ const PART_TITLE: Record<(typeof PART_ORDER)[number], Bilingual> = {
 
 const CARD ='rounded-xl border border-line bg-surface p-4 sm:p-5';
 
-export function PracticeSection({ load, state, onAnswer, onResult, onRetry, onQuestion, onWritingFeedback, lang }: PracticeSectionProps) {
+/**
+ * A lesson's Tự luyện. Programming questions (Tin học) get their own problem set, like an online
+ * judge; every other question is done one at a time with the status panel beside it.
+ */
+export function PracticeSection(props: PracticeSectionProps) {
+  const { t: readerT } = useLanguage();
+  const t = props.lang ? (text: Bilingual) => text[props.lang!] || text.vi : readerT;
+  const [view, setView] = useState<'code' | 'quiz'>('code');
+  const code = props.load.ok ? props.load.questions.filter((q) => q.type === 'code') : [];
+  if (!props.load.ok || code.length === 0) return <QuestionPractice {...props} />;
+  const quiz = props.load.questions.filter((q) => q.type !== 'code');
+  const board = <CodePracticeBoard questions={code} answers={props.state.answers} results={props.state.results} onAnswer={props.onAnswer} onResult={props.onResult} t={t} />;
+  if (quiz.length === 0) return board;
+  const tabs: Array<{ id: 'code' | 'quiz'; label: Bilingual }> = [
+    { id: 'code', label: { en: `Programming (${code.length})`, vi: `Bài lập trình (${code.length})` } },
+    { id: 'quiz', label: { en: `Questions (${quiz.length})`, vi: `Trắc nghiệm (${quiz.length})` } },
+  ];
+  return (
+    <div className="flex flex-col gap-5">
+      <div role="tablist" aria-label={t({ en: 'Practice kind', vi: 'Dạng luyện tập' })} className="inline-flex self-start rounded-xl bg-surface-sunken p-1">
+        {tabs.map((tab) => (
+          <button
+            key={tab.id}
+            type="button"
+            role="tab"
+            aria-selected={view === tab.id}
+            onClick={() => setView(tab.id)}
+            className={`min-h-11 rounded-lg px-4 text-sm font-semibold transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus motion-reduce:transition-none ${view === tab.id ? 'bg-surface text-ink shadow-sm' : 'text-ink hover:bg-surface/60'}`}
+          >
+            {t(tab.label)}
+          </button>
+        ))}
+      </div>
+      {view === 'code' ? board : <QuestionPractice {...props} load={{ ok: true, questions: quiz }} />}
+    </div>
+  );
+}
+
+function QuestionPractice({ load, state, onAnswer, onResult, onRetry, onQuestion, onWritingFeedback, lang }: PracticeSectionProps) {
   const { t: readerT, lang: readerLang } = useLanguage();
   const t = lang ? (text: Bilingual) => text[lang] || text.vi : readerT;
   const shownLang = lang ?? (readerLang === 'en' ? 'en' : 'vi');
@@ -161,9 +199,8 @@ export function PracticeSection({ load, state, onAnswer, onResult, onRetry, onQu
     positionRef.current?.focus({ preventScroll: true });
   };
   // Hand in the whole set: every answered question not checked yet goes to the server at once.
-  // Programming questions have their own Submit button: judging is slow and limited per minute.
   const pending = questions.flatMap((q) => {
-    const response = state.results[q.id] || q.type === 'code' ? null : responseOf(q, state.answers[q.id]);
+    const response = state.results[q.id] ? null : responseOf(q, state.answers[q.id]);
     return response ? [{ id: q.id, response, checked: state.answers[q.id] }] : [];
   });
   const submitAll = async () => {
@@ -426,8 +463,6 @@ function QuestionCard({ question, options, answer, result, writingFeedback, onWr
           onFeedback={onWritingFeedback}
         />
       )}
-
-      {question.type === 'code' && <CodeAnswer question={question} answer={answer} result={result} onAnswer={answerWith} onResult={onResult} t={t} />}
 
       {question.type !== 'writing' && question.type !== 'code' && checkRow}
       {result?.explanation && (

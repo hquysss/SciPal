@@ -96,3 +96,16 @@ export async function submitCode(questionId: string, code: CodeAnswer): Promise<
   if (typeof res.data.correct !== 'boolean') return { ok: false, error: { en: 'Could not judge the code.', vi: 'Chưa chấm được code.' }, signIn: false };
   return { ok: true, result: res.data as unknown as PracticeCheckResult };
 }
+
+/** The programming questions this learner has solved (XP already given). Empty for a visitor or on any failure. */
+export async function fetchSolvedCode(): Promise<string[]> {
+  const token = await getAccessToken().catch(() => null);
+  if (!token) return [];
+  try {
+    const res = await fetch(`${API_BASE}/api/practice/code/solved`, { headers: { Authorization: `Bearer ${token}` }, cache: 'no-store' });
+    const data = (await res.json().catch(() => ({}))) as { question_ids?: unknown };
+    return res.ok && Array.isArray(data.question_ids) ? data.question_ids.filter((id): id is string => typeof id === 'string') : [];
+  } catch {
+    return [];
+  }
+}

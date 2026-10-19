@@ -144,3 +144,14 @@ describe('CodeResults', () => {
     expect(screen.getByText('error: expected ;')).toBeTruthy();
   });
 });
+
+describe('XP on the verdict', () => {
+  it('shows the XP the server gave for a first solve', () => {
+    render(<CodeResults t={t} xpEarned={35} result={{ status: 'AC', tests: [{ verdict: 'AC', time_ms: 1, memory_kb: 1, stdout: '1', expected: '1' }] }} />);
+    expect(screen.getByText('+35 XP')).toBeTruthy();
+  });
+  it('shows no XP when none was given', () => {
+    render(<CodeResults t={t} xpEarned={0} result={{ status: 'AC', tests: [{ verdict: 'AC', time_ms: 1, memory_kb: 1 }] }} />);
+    expect(screen.queryByText(/XP/)).toBeNull();
+  });
+});

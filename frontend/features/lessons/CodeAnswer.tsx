@@ -18,10 +18,10 @@ const LANGUAGE_OPTIONS: Array<{ value: CodeLanguage; label: string }> = [
   { value: 'cpp', label: 'C++' },
 ];
 const TOO_BIG: Bilingual = { en: 'That file is too large (64 KB at most).', vi: 'File quá lớn (tối đa 64 KB).' };
-const SECTION = 'flex flex-col gap-2 rounded-xl border border-line bg-surface p-3 sm:p-4';
+const SECTION = 'flex flex-col gap-2 rounded-2xl bg-surface-sunken p-3 sm:p-4';
 const HEADING = 'flex items-center gap-2 text-sm font-bold text-ink';
 const ICON = 'h-4 w-4 shrink-0 text-accent';
-const PRE = 'min-h-11 overflow-auto whitespace-pre-wrap break-words rounded-lg border border-edge bg-surface-sunken px-3 py-2 font-mono text-sm text-ink';
+const PRE = 'min-h-11 overflow-auto whitespace-pre-wrap break-words rounded-lg bg-surface px-3 py-2 font-mono text-sm text-ink';
 
 interface CodeAnswerProps {
   question: PublicPracticeQuestion;
@@ -117,7 +117,7 @@ export function CodeAnswer({ question, answer, result, onAnswer, onResult, t }: 
   };
 
   const lineCount = source === '' ? 0 : source.replace(/\n$/, '').split('\n').length;
-  const chip = 'inline-flex items-center gap-1.5 rounded-full border border-line bg-surface-sunken px-3 py-1 text-xs font-semibold text-ink';
+  const chip = 'inline-flex items-center gap-1.5 rounded-full bg-surface-sunken px-3 py-1 text-xs font-semibold text-ink';
 
   return (
     <div className="mt-3 flex flex-col gap-4">
@@ -158,7 +158,7 @@ export function CodeAnswer({ question, answer, result, onAnswer, onResult, t }: 
         <section key={i} className={SECTION} aria-label={t({ en: `Example ${i + 1}`, vi: `Ví dụ ${i + 1}` })}>
           <div className="flex flex-wrap items-center justify-between gap-2">
             <h4 className={HEADING}>
-              <span className="inline-flex h-6 min-w-6 items-center justify-center rounded-full border-2 border-accent bg-surface-sunken px-2 text-xs font-bold text-ink">{i + 1}</span>
+              <span className="inline-flex h-6 min-w-6 items-center justify-center rounded-full bg-surface px-2 text-xs font-bold text-ink">{i + 1}</span>
               {t({ en: `Example ${i + 1}`, vi: `Ví dụ ${i + 1}` })}
             </h4>
             <button
@@ -250,7 +250,7 @@ export function CodeAnswer({ question, answer, result, onAnswer, onResult, t }: 
               maxLength={MAX_CODE_CHARS}
               spellCheck={false}
               onChange={(e) => setStdin(e.target.value)}
-              className="w-full flex-1 rounded-lg border border-edge bg-surface px-3 py-2 font-mono text-base text-ink focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
+              className="w-full flex-1 rounded-lg bg-surface px-3 py-2 font-mono text-base text-ink focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
             />
           </div>
           <div className="flex flex-col gap-1" aria-live="polite">
@@ -268,12 +268,12 @@ export function CodeAnswer({ question, answer, result, onAnswer, onResult, t }: 
         </div>
       </section>
 
-      <div className="flex flex-col gap-3 rounded-xl border-2 border-accent bg-surface p-3">
+      <div className="flex flex-col gap-3 rounded-2xl bg-surface-sunken p-3 sm:flex-row sm:items-center sm:justify-between sm:p-4">
         <p className="text-sm text-ink">
           {t({ en: 'Submitting runs your code on every test, hidden ones too.', vi: 'Nộp bài sẽ chạy code của em trên mọi test, kể cả test ẩn.' })}
         </p>
         <div className="flex flex-wrap justify-end gap-2">
-          <button type="button" disabled={!!busy || !source.trim()} onClick={trial} className={`${buttonVariants({ variant: 'outline' })} gap-2`}>
+          <button type="button" disabled={!!busy || !source.trim()} onClick={trial} className={`${buttonVariants({ variant: 'ghost' })} gap-2 bg-surface`}>
             {busy === 'run' ? <LoaderCircle aria-hidden="true" className="h-4 w-4 animate-spin motion-reduce:animate-none" /> : <Play aria-hidden="true" className="h-4 w-4" />}
             {busy === 'run' ? t({ en: 'Running…', vi: 'Đang chạy…' }) : t({ en: 'Try it', vi: 'Chạy thử' })}
           </button>
@@ -286,7 +286,7 @@ export function CodeAnswer({ question, answer, result, onAnswer, onResult, t }: 
 
       <div aria-live="polite" className="flex flex-col gap-3">
         {problem && (
-          <p role="alert" className="rounded-lg border border-danger bg-danger-surface px-3 py-2 text-sm font-medium text-danger">
+          <p role="alert" className="rounded-xl bg-danger-surface px-3 py-2 text-sm font-medium text-danger">
             {t(problem.error)}{' '}
             {problem.signIn && (
               <Link href="/login" className="font-bold underline">
@@ -295,7 +295,7 @@ export function CodeAnswer({ question, answer, result, onAnswer, onResult, t }: 
             )}
           </p>
         )}
-        {result?.code && <CodeResults key={JSON.stringify(result.code.tests.map((x) => x.verdict))} result={result.code} t={t} />}
+        {result?.code && <CodeResults key={JSON.stringify(result.code.tests.map((x) => x.verdict))} result={result.code} xpEarned={result.xp_earned} t={t} />}
       </div>
     </div>
   );

@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { CircleAlert, CircleCheck, CircleX, Clock, Lock, Trophy } from 'lucide-react';
+import { CircleAlert, CircleCheck, CircleX, Clock, Lock, Sparkles, Trophy } from 'lucide-react';
 import type { CodeResult, CodeVerdict } from '@scipal/types';
 import styles from './practice.module.css';
 
@@ -28,15 +28,15 @@ const VERDICT_HINT: Record<CodeVerdict, Bilingual> = {
 
 /** Tile and banner colours per verdict (theme tokens; the verdict is always written too). */
 const TONE: Record<CodeVerdict, { tile: string; ink: string }> = {
-  AC: { tile: 'border-success bg-success-surface', ink: 'text-success' },
-  WA: { tile: 'border-danger bg-danger-surface', ink: 'text-danger' },
-  RE: { tile: 'border-danger bg-danger-surface', ink: 'text-danger' },
-  TLE: { tile: 'border-warning bg-warning-surface', ink: 'text-warning' },
-  MLE: { tile: 'border-warning bg-warning-surface', ink: 'text-warning' },
-  CE: { tile: 'border-warning bg-warning-surface', ink: 'text-warning' },
+  AC: { tile: 'bg-success-surface', ink: 'text-success' },
+  WA: { tile: 'bg-danger-surface', ink: 'text-danger' },
+  RE: { tile: 'bg-danger-surface', ink: 'text-danger' },
+  TLE: { tile: 'bg-warning-surface', ink: 'text-warning' },
+  MLE: { tile: 'bg-warning-surface', ink: 'text-warning' },
+  CE: { tile: 'bg-warning-surface', ink: 'text-warning' },
 };
 
-const PRE = 'mt-1 max-h-48 overflow-auto whitespace-pre-wrap break-words rounded-lg border border-edge bg-surface px-3 py-2 font-mono text-sm text-ink';
+const PRE = 'mt-1 max-h-48 overflow-auto whitespace-pre-wrap break-words rounded-lg bg-surface px-3 py-2 font-mono text-sm text-ink';
 
 function VerdictIcon({ verdict, className }: { verdict: CodeVerdict; className: string }) {
   if (verdict === 'AC') return <CircleCheck aria-hidden="true" className={className} />;
@@ -46,7 +46,7 @@ function VerdictIcon({ verdict, className }: { verdict: CodeVerdict; className: 
 }
 
 /** The judge's answer: a verdict banner, a bar of passed tests, and one tile per test. Only example tests open to show output. */
-export function CodeResults({ result, t }: { result: CodeResult; t: (text: Bilingual) => string }) {
+export function CodeResults({ result, xpEarned, t }: { result: CodeResult; xpEarned?: number; t: (text: Bilingual) => string }) {
   const total = result.tests.length;
   const passed = result.tests.filter((test) => test.verdict === 'AC').length;
   const firstOpen = result.tests.findIndex((test) => test.stdout !== undefined && test.verdict !== 'AC');
@@ -56,7 +56,7 @@ export function CodeResults({ result, t }: { result: CodeResult; t: (text: Bilin
 
   return (
     <section aria-label={t({ en: 'Judge result', vi: 'Kết quả chấm' })} className={`flex flex-col gap-4 ${styles.result}`}>
-      <div className={`flex items-start gap-3 rounded-xl border-2 p-4 ${tone.tile}`}>
+      <div className={`flex items-start gap-3 rounded-2xl p-4 ${tone.tile}`}>
         {result.status === 'AC' ? <Trophy aria-hidden="true" className={`h-8 w-8 shrink-0 ${tone.ink}`} /> : <VerdictIcon verdict={result.status} className={`h-8 w-8 shrink-0 ${tone.ink}`} />}
         <div className="flex min-w-0 flex-1 flex-col gap-1">
           <p className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
@@ -64,6 +64,12 @@ export function CodeResults({ result, t }: { result: CodeResult; t: (text: Bilin
             <span className="font-mono text-sm font-bold text-ink">{result.status}</span>
           </p>
           <p className="text-sm text-ink">{t(VERDICT_HINT[result.status])}</p>
+          {!!xpEarned && xpEarned > 0 && (
+            <p className="mt-1 inline-flex items-center gap-1.5 self-start rounded-full bg-surface px-3 py-1 text-sm font-extrabold text-ink">
+              <Sparkles aria-hidden="true" className="h-4 w-4 text-accent" />
+              {t({ en: `+${xpEarned} XP`, vi: `+${xpEarned} XP` })}
+            </p>
+          )}
         </div>
         <p className="shrink-0 text-right">
           <span className="block font-mono text-2xl font-extrabold tabular-nums text-ink">
@@ -108,7 +114,7 @@ export function CodeResults({ result, t }: { result: CodeResult; t: (text: Bilin
               </span>
             </>
           );
-          const tile = `flex w-full flex-col items-start gap-0.5 rounded-lg border-2 px-3 py-2 text-left ${TONE[test.verdict].tile}`;
+          const tile = `flex w-full flex-col items-start gap-0.5 rounded-xl px-3 py-2 text-left ${TONE[test.verdict].tile}`;
           return (
             <li key={i}>
               {visible ? (
@@ -129,7 +135,7 @@ export function CodeResults({ result, t }: { result: CodeResult; t: (text: Bilin
       </ol>
 
       {shown && open !== null && (
-        <div className="grid gap-3 rounded-xl border border-line bg-surface-sunken p-3 sm:grid-cols-2">
+        <div className="grid gap-3 rounded-2xl bg-surface-sunken p-3 sm:grid-cols-2">
           <p className="text-sm font-bold text-ink sm:col-span-2">
             Test {open + 1}: {t(VERDICT_TEXT[shown.verdict])}
           </p>
