@@ -48,7 +48,8 @@ const judgeDown = msg('Chưa chấm được lúc này, em thử lại sau nhé.
 /** XP for the first accepted answer, by difficulty (1 easy, 2 medium, 3 hard). */
 export const CODE_XP: Record<number, number> = { 1: 20, 2: 35, 3: 50 };
 
-const noTests = msg('Câu này chưa có bộ test.', 'This question has no tests yet.');
+const NDJSON = 'application/x-ndjson';
+const noTests =msg('Câu này chưa có bộ test.', 'This question has no tests yet.');
 
 /** A stored code question as the judge reads it; stored data is lenient, so every field is checked. */
 function judgeData(data: unknown): { tests: CodeTest[]; time_limit_ms: number; memory_limit_mb: number } {
@@ -170,16 +171,40 @@ export const practiceCodeRoutes: FastifyPluginAsync = async (app) => {
     const question = await codeQuestion(request, reply, input.question_id);
     if (!question) return reply;
     if (!(await admit(request, reply, 'submit'))) return reply;
-    try {
-      const result = await gradeSubmission({ client: app.judge0!, language: input.language, source: input.source, ...question.data, reveal: 'samples' });
-      const { correct, ...code } = result;
-      if (!correct) return reply.send({ correct, code });
+    const judge = async (onTest?: Parameters<typeof gradeSubmission>[0]['onTest']) => {
+      const { correct, ...code } = await gradeSubmission({ client: app.judge0!, language: input.language, source: input.source, ...question.data, reveal: 'samples', onTest });
+      if (!correct) return { correct, code };
       const explanation = explanationOf(question.row.data as Record<string, unknown>);
       const xp_earned = await grantXp(request, question.row);
-      return reply.send({ correct, code, xp_earned, ...(explanation ? { explanation } : {}) });
-    } catch (err) {
-      return unreachable(request, reply, err);
+      return { correct, code, xp_earned, ...(explanation ? { explanation } : {}) };
+    };
+    if (!String(request.headers.accept ?? '').includes(NDJSON)) {
+      try {
+        return reply.send(await judge());
+      } catch (err) {
+        return unreachable(request, reply, err);
+      }
     }
+
+    // Live progress, one JSON object per line: {type:'start', total}, one {type:'test', index, verdict, time_ms}
+    // per test as it finishes, then {type:'result', ...the JSON reply} or {type:'error', ...message}.
+    reply.hijack();
+    const raw = reply.raw;
+    // hijack() skips onSend hooks: carry the headers already set on the reply (CORS) by hand.
+    raw.writeHead(200, { ...(reply.getHeaders() as Record<string, string | string[]>), 'Content-Type': `${NDJSON}; charset=utf-8`, 'Cache-Control': 'no-cache, no-transform' });
+    const line = (data: Record<string, unknown>) => {
+      if (!raw.writableEnded && !raw.destroyed) raw.write(`${JSON.stringify(data)}\n`);
+    };
+    line({ type: 'start', total: question.data.tests.length });
+    try {
+      line({ type: 'result', ...(await judge((index, test) => line({ type: 'test', index, ...test }))) });
+    } catch (err) {
+      request.log.error({ err }, err instanceof Judge0Unavailable ? 'Judge0 unavailable' : 'Code submit failed');
+      line({ type: 'error', ...judgeDown });
+    } finally {
+      raw.end();
+    }
+    return reply;
   });
 
   // A teacher or admin tries a model solution against a test set before saving the question.

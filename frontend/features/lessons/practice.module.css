@@ -18,11 +18,21 @@
 /* Judging: a soft ring around the spinner and a bar that sweeps while the judge works. */
 .halo {
   animation: halo 1.6s ease-out infinite;
-  box-shadow: 0 0 0 0 color-mix(in srgb, var(--accent) 45%, transparent);
+  box-shadow: 0 0 0 0 color-mix(in srgb, var(--sky) 60%, transparent);
 }
 
 .sweep {
   animation: sweep 1.2s cubic-bezier(.45, 0, .55, 1) infinite;
+}
+
+/* A test still running breathes (staggered by --i); a test that just got its verdict lands. */
+.waiting {
+  animation: waiting 1.4s ease-in-out infinite;
+  animation-delay: calc(var(--i, 0) * -120ms);
+}
+
+.landed {
+  animation: landed 420ms cubic-bezier(.34, 1.56, .64, 1);
 }
 
 /* Verdict arrival: the banner pops, the bar and the tiles come in one after another (--i is the index). */
@@ -55,8 +65,18 @@
   to { opacity: 1; transform: translateY(0); }
 }
 
+@keyframes waiting {
+  0%, 100% { opacity: 1; }
+  50% { opacity: .75; }
+}
+
+@keyframes landed {
+  0% { opacity: .4; transform: scale(.85); }
+  100% { opacity: 1; transform: scale(1); }
+}
+
 @keyframes halo {
-  0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--accent) 45%, transparent); }
+  0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--sky) 60%, transparent); }
   100% { box-shadow: 0 0 0 12px transparent; }
 }
 
@@ -87,7 +107,7 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .question, .result, .halo, .verdict, .segment, .tile, .trophy { animation: none; }
+  .question, .result, .halo, .verdict, .segment, .tile, .trophy, .waiting, .landed { animation: none; }
   .sweep { animation: none; width: 100%; opacity: .5; }
   .progress { transition: none; }
 }

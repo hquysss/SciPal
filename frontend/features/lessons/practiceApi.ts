@@ -66,17 +66,53 @@ export type CodeRun = { ok: true; run: CodeRunOutput } | CodeFailure;
 
 const SIGN_IN: Bilingual = { en: 'Sign in to run and submit code.', vi: 'Đăng nhập để chạy và nộp code.' };
 
-async function codeCall(path: string, body: Record<string, unknown>): Promise<{ ok: true; data: Record<string, unknown> } | CodeFailure> {
+const NOT_JUDGED: Bilingual = { en: 'Could not judge the code.', vi: 'Chưa chấm được code.' };
+const NDJSON = 'application/x-ndjson';
+
+/** Live judging news: how many tests there are, then each test's verdict as it finishes (in any order). */
+export type JudgeProgress = { type: 'start'; total: number } | { type: 'test'; index: number; verdict: CodeVerdict; time_ms: number };
+
+/** Reads a streamed reply: progress lines go to `onProgress`, the closing line is the answer. */
+async function readLines(body: ReadableStream<Uint8Array>, onProgress: (p: JudgeProgress) => void): Promise<{ ok: true; data: Record<string, unknown> } | CodeFailure> {
+  const reader = body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = '';
+  for (;;) {
+    const { done, value } = await reader.read();
+    buffer += decoder.decode(value, { stream: !done });
+    let end: number;
+    while ((end = buffer.indexOf('\n')) >= 0 || (done && buffer.trim())) {
+      const text = end >= 0 ? buffer.slice(0, end) : buffer;
+      buffer = end >= 0 ? buffer.slice(end + 1) : '';
+      let line: Record<string, unknown>;
+      try {
+        line = JSON.parse(text);
+      } catch {
+        continue;
+      }
+      const { type, ...rest } = line;
+      if (type === 'result') return { ok: true, data: rest };
+      if (type === 'error') return { ok: false, error: errorOf(rest, NOT_JUDGED), signIn: false };
+      if (type === 'start' && typeof rest.total === 'number') onProgress({ type, total: rest.total });
+      if (type === 'test' && typeof rest.index === 'number' && typeof rest.verdict === 'string') onProgress({ type, index: rest.index, verdict: rest.verdict as CodeVerdict, time_ms: Number(rest.time_ms ?? 0) });
+    }
+    if (done) return { ok: false, error: NOT_JUDGED, signIn: false };
+  }
+}
+
+async function codeCall(path: string, body: Record<string, unknown>, onProgress?: (p: JudgeProgress) => void): Promise<{ ok: true; data: Record<string, unknown> } | CodeFailure> {
   const token = await getAccessToken().catch(() => null);
   if (!token) return { ok: false, error: SIGN_IN, signIn: true };
   try {
     const res = await fetch(`${API_BASE}${path}`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}`, ...(onProgress ? { Accept: `${NDJSON}, application/json` } : {}) },
       body: JSON.stringify(body),
     });
+    // A server without live progress answers plain JSON; both end the same way.
+    if (onProgress && res.ok && res.body && res.headers.get('content-type')?.includes(NDJSON)) return await readLines(res.body, onProgress);
     const data = (await res.json().catch(() => ({}))) as Record<string, unknown>;
-    if (!res.ok) return { ok: false, error: errorOf(data, { en: 'Could not judge the code.', vi: 'Chưa chấm được code.' }), signIn: res.status === 401 };
+    if (!res.ok) return { ok: false, error: errorOf(data, NOT_JUDGED), signIn: res.status === 401 };
     return { ok: true, data };
   } catch {
     return { ok: false, error: UNREACHABLE, signIn: false };
@@ -90,10 +126,10 @@ export async function runCode(questionId: string, code: CodeAnswer, stdin: strin
 }
 
 /** Judge the code on every test. The verdict for each test comes back; hidden tests show no output. */
-export async function submitCode(questionId: string, code: CodeAnswer): Promise<CodeCheck> {
-  const res = await codeCall('/api/practice/code/submit', { question_id: questionId, ...code });
+export async function submitCode(questionId: string, code: CodeAnswer, onProgress?: (p: JudgeProgress) => void): Promise<CodeCheck> {
+  const res = await codeCall('/api/practice/code/submit', { question_id: questionId, ...code }, onProgress);
   if (!res.ok) return res;
-  if (typeof res.data.correct !== 'boolean') return { ok: false, error: { en: 'Could not judge the code.', vi: 'Chưa chấm được code.' }, signIn: false };
+  if (typeof res.data.correct !== 'boolean') return { ok: false, error: NOT_JUDGED, signIn: false };
   return { ok: true, result: res.data as unknown as PracticeCheckResult };
 }
 

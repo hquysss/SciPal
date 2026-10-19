@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { PracticeCheckResult, PracticeResponse, PublicPracticeQuestion } from '@scipal/types';
 import { CodeAnswer } from './CodeAnswer';
@@ -94,6 +94,15 @@ describe('CodeAnswer', () => {
     // The old verdict is hidden so it cannot pass for the new one.
     expect(screen.queryByRole('region', { name: 'Kết quả chấm' })).toBeNull();
     await waitFor(() => expect(scrolled.length).toBeGreaterThan(0));
+    // Live progress: the count, then each test as the judge finishes it.
+    const onProgress = api.submit.mock.calls[0]![2] as (p: unknown) => void;
+    act(() => {
+      onProgress({ type: 'start', total: 2 });
+      onProgress({ type: 'test', index: 1, verdict: 'WA', time_ms: 3 });
+    });
+    expect(screen.getByText('Đã chấm 1/2 test')).toBeTruthy();
+    expect(screen.getByText('1 chưa đạt')).toBeTruthy();
+    expect(screen.getByText('1 đang chạy')).toBeTruthy();
     finish({ ok: true, result: passed });
     await waitFor(() => expect(onResult).toHaveBeenCalled());
     view.rerender({ answer, result: { ...passed } });

@@ -27,7 +27,7 @@ const VERDICT_HINT: Record<CodeVerdict, Bilingual> = {
 };
 
 /** Tile and banner colours per verdict (theme tokens; the verdict is always written too). */
-const TONE: Record<CodeVerdict, { tile: string; ink: string }> = {
+export const TONE: Record<CodeVerdict, { tile: string; ink: string }> = {
   AC: { tile: 'bg-success-surface', ink: 'text-success' },
   WA: { tile: 'bg-danger-surface', ink: 'text-danger' },
   RE: { tile: 'bg-danger-surface', ink: 'text-danger' },
@@ -38,7 +38,10 @@ const TONE: Record<CodeVerdict, { tile: string; ink: string }> = {
 
 const PRE = 'mt-1 max-h-48 overflow-auto whitespace-pre-wrap break-words rounded-lg bg-surface px-3 py-2 font-mono text-sm text-ink';
 
-function VerdictIcon({ verdict, className }: { verdict: CodeVerdict; className: string }) {
+/** The bar colour of a verdict: green passed, amber limits and compile errors, red wrong or crashed. */
+export const barTone = (verdict: CodeVerdict) => (verdict === 'AC' ? 'bg-success' : TONE[verdict].ink === 'text-warning' ? 'bg-warning' : 'bg-danger');
+
+export function VerdictIcon({ verdict, className }: { verdict: CodeVerdict; className: string }) {
   if (verdict === 'AC') return <CircleCheck aria-hidden="true" className={className} />;
   if (verdict === 'TLE') return <Clock aria-hidden="true" className={className} />;
   if (verdict === 'CE' || verdict === 'MLE') return <CircleAlert aria-hidden="true" className={className} />;
@@ -84,7 +87,7 @@ export const CodeResults = forwardRef<HTMLHeadingElement, { result: CodeResult; 
 
       <div className="flex h-2.5 gap-1 overflow-hidden rounded-full" aria-hidden="true">
         {result.tests.map((test, i) => (
-          <span key={i} style={{ '--i': i } as CSSProperties} className={`flex-1 ${styles.segment} ${test.verdict === 'AC' ? 'bg-success' : TONE[test.verdict].ink === 'text-warning' ? 'bg-warning' : 'bg-danger'}`} />
+          <span key={i} style={{ '--i': i } as CSSProperties} className={`flex-1 ${styles.segment} ${barTone(test.verdict)}`} />
         ))}
       </div>
 

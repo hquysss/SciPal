@@ -94,6 +94,36 @@ describe('POST /api/practice/code/submit', () => {
     expect(res.statusCode).toBe(502);
     expect(res.json().error).toMatch(/thử lại/);
   });
+
+  const streamed = (app: Awaited<ReturnType<typeof build>>['app']) =>
+    app.inject({ method: 'POST', url: '/api/practice/code/submit', payload: submitBody, headers: { accept: 'application/x-ndjson' } });
+  const lines = (body: string) => body.trim().split('\n').map((l) => JSON.parse(l));
+
+  it('streams each test verdict as it finishes, then the verdict, without hidden output', async () => {
+    // Test 2 finishes before test 1, as Judge0 may do.
+    const runBatch = async (_jobs: unknown[], onDone?: (i: number, o: RunOutcome) => void) => {
+      onDone?.(1, out('HIDDEN-EXPECTED-7\n', { time_ms: 7 }));
+      onDone?.(0, out('4\n'));
+      return [out('4\n'), out('HIDDEN-EXPECTED-7\n')];
+    };
+    const { app } = await build({ user: student, judge0: { runBatch } });
+    const res = await streamed(app);
+    expect(res.headers['content-type']).toContain('application/x-ndjson');
+    expect(lines(res.body)).toEqual([
+      { type: 'start', total: 2 },
+      { type: 'test', index: 1, verdict: 'AC', time_ms: 7 },
+      { type: 'test', index: 0, verdict: 'AC', time_ms: 10 },
+      expect.objectContaining({ type: 'result', correct: true, code: expect.objectContaining({ status: 'AC' }) }),
+    ]);
+    expect(res.body).not.toContain('HIDDEN-EXPECTED-7');
+  });
+
+  it('ends a stream with an error line, not a wrong verdict, when Judge0 goes down', async () => {
+    const { app } = await build({ user: student, judge0: { runBatch: async () => { throw new Judge0Unavailable('down'); } } });
+    const all = lines((await streamed(app)).body);
+    expect(all.at(-1)).toMatchObject({ type: 'error', error: expect.stringMatching(/thử lại/) });
+    expect(all.some((l) => l.type === 'result')).toBe(false);
+  });
 });
 
 describe('POST /api/practice/code/run', () => {

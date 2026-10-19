@@ -9,7 +9,7 @@ import { MathText } from '@/components/math/MathText';
 import { runCode, submitCode, type CodeRunOutput } from './practiceApi';
 import { CodeEditor, ToolbarSelect, toolbarControl } from './CodeEditor';
 import { CodeResults, VERDICT_TEXT } from './CodeResults';
-import { CodeJudging } from './CodeJudging';
+import { CodeJudging, type JudgingProgress } from './CodeJudging';
 
 type Bilingual = { en: string; vi: string };
 type CodeData = Extract<PublicPracticeQuestion['data'], { samples: unknown }>;
@@ -71,6 +71,7 @@ export function CodeAnswer({ question, answer, result, onAnswer, onResult, t }: 
   const outcome = useRef<HTMLDivElement>(null);
   const verdictHeading = useRef<HTMLHeadingElement>(null);
   const [fresh, setFresh] = useState(false);
+  const [progress, setProgress] = useState<JudgingProgress | null>(null);
   useEffect(() => {
     latest.current = answer;
   });
@@ -126,8 +127,15 @@ export function CodeAnswer({ question, answer, result, onAnswer, onResult, t }: 
     if (busy || !source.trim()) return;
     setBusy('submit');
     setProblem(null);
+    setProgress(null);
     const checked = answer;
-    const res = await submitCode(question.id, { language, source });
+    const res = await submitCode(question.id, { language, source }, (p) =>
+      setProgress((prev) =>
+        p.type === 'start'
+          ? { total: p.total, tests: Array.from({ length: p.total }, () => undefined) }
+          : prev && { ...prev, tests: prev.tests.map((test, i) => (i === p.index ? { verdict: p.verdict, time_ms: p.time_ms } : test)) },
+      ),
+    );
     setBusy(null);
     // The code changed while it was being judged: that verdict belongs to the old code.
     if (latest.current !== checked) return;
@@ -309,7 +317,7 @@ export function CodeAnswer({ question, answer, result, onAnswer, onResult, t }: 
       </div>
 
       <div ref={outcome} aria-live="polite" className="flex scroll-mt-24 flex-col gap-3">
-        {busy === 'submit' && <CodeJudging t={t} />}
+        {busy === 'submit' && <CodeJudging t={t} progress={progress} />}
         {problem && (
           <p role="alert" className="rounded-xl bg-danger-surface px-3 py-2 text-sm font-medium text-danger">
             {t(problem.error)}{' '}

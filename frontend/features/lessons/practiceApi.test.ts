@@ -58,6 +58,27 @@ describe('code API', () => {
     expect((init!.headers as Record<string, string>).Authorization).toBe('Bearer tok');
   });
 
+  it('passes on live progress from a streamed verdict, even split across chunks', async () => {
+    session.token = 'tok';
+    const result = { correct: false, code: { status: 'WA', tests: [] } };
+    const text = [{ type: 'start', total: 2 }, { type: 'test', index: 1, verdict: 'WA', time_ms: 4 }, { type: 'result', ...result }].map((l) => JSON.stringify(l)).join('\n');
+    const encoder = new TextEncoder();
+    const body = new ReadableStream({
+      start(c) {
+        c.enqueue(encoder.encode(text.slice(0, 30)));
+        c.enqueue(encoder.encode(text.slice(30)));
+        c.close();
+      },
+    });
+    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response(body, { status: 200, headers: { 'content-type': 'application/x-ndjson; charset=utf-8' } }));
+    const seen: unknown[] = [];
+    expect(await submitCode('q1', code, (p) => seen.push(p))).toEqual({ ok: true, result });
+    expect(seen).toEqual([{ type: 'start', total: 2 }, { type: 'test', index: 1, verdict: 'WA', time_ms: 4 }]);
+    expect((fetchSpy.mock.calls[0]![1]!.headers as Record<string, string>).Accept).toContain('application/x-ndjson');
+    vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(new Response('{"type":"start","total":1}\n{"type":"error","error":"Thử lại sau.","error_en":"Later."}\n', { status: 200, headers: { 'content-type': 'application/x-ndjson' } }));
+    expect(await submitCode('q1', code, () => {})).toEqual({ ok: false, signIn: false, error: { vi: 'Thử lại sau.', en: 'Later.' } });
+  });
+
   it('runs the code on the typed input and keeps the server message when it refuses', async () => {
     session.token = 'tok';
     const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(new Response(JSON.stringify({ status: 'AC', stdout: '6\n', stderr: '', time_ms: 5, memory_kb: 100 }), { status: 200 }));

@@ -1,10 +1,10 @@
 'use client';
 
-import { useState } from 'react';
-import type { CodeResult } from '@scipal/types';
+import { useEffect, useState } from 'react';
+import type { CodeResult, CodeVerdict } from '@scipal/types';
 import { SubjectProvider } from '@scipal/ui';
 import { useLanguage } from '@scipal/hooks';
-import { CodeJudging } from '@/features/lessons/CodeJudging';
+import { CodeJudging, type JudgingProgress } from '@/features/lessons/CodeJudging';
 import { CodeResults } from '@/features/lessons/CodeResults';
 
 const passed: CodeResult = {
@@ -28,11 +28,29 @@ const wrong: CodeResult = {
   ],
 };
 
+/** Replays a judge that answers in 0.8 s, then finishes the 8 tests out of order, one every 0.6 s. */
+function useFakeProgress(run: number, on: boolean): JudgingProgress | null {
+  const [progress, setProgress] = useState<JudgingProgress | null>(null);
+  useEffect(() => {
+    setProgress(null);
+    if (!on) return;
+    const order = [2, 0, 1, 5, 3, 4, 7, 6];
+    const verdicts: CodeVerdict[] = ['AC', 'AC', 'AC', 'WA', 'AC', 'TLE', 'AC', 'AC'];
+    const timers = [window.setTimeout(() => setProgress({ total: 8, tests: Array.from({ length: 8 }, () => undefined) }), 800)];
+    order.forEach((index, k) =>
+      timers.push(window.setTimeout(() => setProgress((p) => p && { ...p, tests: p.tests.map((x, i) => (i === index ? { verdict: verdicts[i]!, time_ms: 3 + i } : x)) }), 1400 + k * 600)),
+    );
+    return () => timers.forEach((id) => window.clearTimeout(id));
+  }, [run, on]);
+  return progress;
+}
+
 /** Dev-only: the judging panel and both verdicts, replayable, to check the motion. */
 export function CodeJudgingPreview() {
   const { t } = useLanguage();
   const [phase, setPhase] = useState<'judging' | 'ac' | 'wa'>('judging');
   const [run, setRun] = useState(0);
+  const progress = useFakeProgress(run, phase === 'judging');
   const button = 'min-h-11 rounded-lg border border-edge bg-surface px-4 text-sm font-semibold text-ink hover:bg-surface-sunken';
   return (
     <SubjectProvider slug="informatics">
@@ -44,7 +62,7 @@ export function CodeJudgingPreview() {
             </button>
           ))}
         </div>
-        {phase === 'judging' ? <CodeJudging key={run} t={t} /> : <CodeResults key={run} result={phase === 'ac' ? passed : wrong} xpEarned={phase === 'ac' ? 20 : 0} t={t} />}
+        {phase === 'judging' ? <CodeJudging key={run} t={t} progress={progress} /> : <CodeResults key={run} result={phase === 'ac' ? passed : wrong} xpEarned={phase === 'ac' ? 20 : 0} t={t} />}
       </div>
     </SubjectProvider>
   );

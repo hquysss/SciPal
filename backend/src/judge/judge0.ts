@@ -7,7 +7,8 @@ export class Judge0Unavailable extends Error {}
 
 export interface RunJob { language: CodeLanguage; source: string; stdin: string; time_limit_ms: number; memory_limit_mb: number }
 export interface RunOutcome { status_id: number; stdout: string; stderr: string; compile_output: string; time_ms: number; memory_kb: number }
-export interface Judge0Client { runBatch(jobs: RunJob[]): Promise<RunOutcome[]> }
+/** `onDone` hears about each job once, as soon as it leaves the queue (in any order). */
+export interface Judge0Client { runBatch(jobs: RunJob[], onDone?: (index: number, outcome: RunOutcome) => void): Promise<RunOutcome[]> }
 
 /** Judge0 CE language ids: Python 3.8.1 and C++ (GCC 9.2.0). */
 const LANGUAGE_ID: Record<CodeLanguage, number> = { python: 71, cpp: 54 };
@@ -40,7 +41,17 @@ export function createJudge0Client(opts: { url: string; token?: string; /** Extr
   }
 
   /** Judge0 takes at most 20 submissions per batch by default. */
-  async function runChunk(jobs: RunJob[]): Promise<RunOutcome[]> {
+  const toOutcome = (row: Record<string, unknown>): RunOutcome => ({
+    status_id: row.status_id as number,
+    stdout: unb64(row.stdout),
+    stderr: unb64(row.stderr),
+    compile_output: unb64(row.compile_output),
+    time_ms: Math.round(Number(row.time ?? 0) * 1000),
+    memory_kb: Number(row.memory ?? 0),
+  });
+  const finished = (row: Record<string, unknown> | undefined) => typeof row?.status_id === 'number' && row.status_id > 2;
+
+  async function runChunk(jobs: RunJob[], offset: number, onDone?: (index: number, outcome: RunOutcome) => void): Promise<RunOutcome[]> {
     {
       const submissions = jobs.map((job) => ({
         language_id: LANGUAGE_ID[job.language],
@@ -55,24 +66,19 @@ export function createJudge0Client(opts: { url: string; token?: string; /** Extr
       if (tokens.length !== jobs.length || tokens.some((token) => !token)) throw new Judge0Unavailable('Judge0 did not accept the jobs');
 
       const deadline = Date.now() + waitMs;
+      const told = new Set<number>();
       for (;;) {
         const polled = (await call(`/submissions/batch?tokens=${tokens.join(',')}&base64_encoded=true&fields=${FIELDS}`)) as { submissions?: Array<Record<string, unknown>> };
         const rows = polled.submissions ?? [];
-        const done = rows.length === jobs.length && rows.every((row) => typeof row.status_id === 'number' && row.status_id > 2);
-        if (done) {
-          const byToken = new Map(rows.map((row) => [row.token, row]));
-          return tokens.map((token) => {
-            const row = byToken.get(token)!;
-            return {
-              status_id: row.status_id as number,
-              stdout: unb64(row.stdout),
-              stderr: unb64(row.stderr),
-              compile_output: unb64(row.compile_output),
-              time_ms: Math.round(Number(row.time ?? 0) * 1000),
-              memory_kb: Number(row.memory ?? 0),
-            };
-          });
-        }
+        const byToken = new Map(rows.map((row) => [row.token, row]));
+        tokens.forEach((token, i) => {
+          const row = byToken.get(token);
+          if (onDone && !told.has(i) && finished(row)) {
+            told.add(i);
+            onDone(offset + i, toOutcome(row!));
+          }
+        });
+        if (tokens.every((token) => finished(byToken.get(token)))) return tokens.map((token) => toOutcome(byToken.get(token)!));
         if (Date.now() >= deadline) throw new Judge0Unavailable('Judge0 took too long');
         await new Promise((resolve) => setTimeout(resolve, pollMs));
       }
@@ -80,10 +86,10 @@ export function createJudge0Client(opts: { url: string; token?: string; /** Extr
   }
 
   return {
-    async runBatch(jobs) {
-      const chunks: RunJob[][] = [];
-      for (let i = 0; i < jobs.length; i += MAX_BATCH) chunks.push(jobs.slice(i, i + MAX_BATCH));
-      return (await Promise.all(chunks.map(runChunk))).flat();
+    async runBatch(jobs, onDone) {
+      const chunks: Array<Promise<RunOutcome[]>> = [];
+      for (let i = 0; i < jobs.length; i += MAX_BATCH) chunks.push(runChunk(jobs.slice(i, i + MAX_BATCH), i, onDone));
+      return (await Promise.all(chunks)).flat();
     },
   };
 }
