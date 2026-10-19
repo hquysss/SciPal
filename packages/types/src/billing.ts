@@ -21,6 +21,9 @@ export const QuotaMetricSchema = z.enum([
   'active_authored_exams',
   'author_ai_requests',
   'voice_minutes',
+  // Code submits and trial runs a day (the code judge).
+  'code_submits',
+  'code_runs',
 ]);
 export const QuotaKindSchema = z.enum(['daily', 'monthly', 'capacity']);
 export const QuotaSourceSchema = z.enum(['plan', 'override']);

@@ -3,12 +3,12 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import { DEFAULT_JUDGE_LIMITS, JUDGE_COLUMNS, JUDGE_LIMIT_MAX, JUDGE_LIMIT_MIN, resolveJudgeLimits, type JudgeSettingsRow } from '../judge/limits.js';
 import { vietnamDayStart } from '../tutor/limits.js';
 
-// Admin settings of the code judge (/admin/judge): how many runs a person and the whole site may start
-// a day. The judge is a paid service; these caps keep its bill in check.
+// Admin settings of the code judge (/admin/judge): how many runs the whole site may start a day. The judge is a
+// paid service; this cap keeps its bill in check. What one person may run is a quota of their plan (/admin/plans).
 
 const msg = (error: string, error_en: string) => ({ error, error_en });
 const unavailable = msg('Dịch vụ lưu trữ chưa sẵn sàng.', 'Storage is not available.');
-const FIELDS = ['person_submits_per_day', 'person_runs_per_day', 'global_submits_per_day', 'global_runs_per_day'] as const;
+const FIELDS = ['global_submits_per_day', 'global_runs_per_day'] as const;
 
 /** A field the page sent: an integer in range, or null/missing to go back to the default. */
 function parsePatch(body: unknown): Record<(typeof FIELDS)[number], number | null> | null {

@@ -1,9 +1,9 @@
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import Fastify from 'fastify';
 import { practiceCodeRoutes } from '../routes/practiceCode.js';
 import { practiceRoutes } from '../routes/practice.js';
 import { Judge0Unavailable, type Judge0Client, type RunOutcome } from '../judge/judge0.js';
-import { mockQuery, mockSupabase, type MockBuilder } from './helpers/supabaseMock.js';
+import { mockQuery, mockSupabase, rpcCalls, type MockBuilder } from './helpers/supabaseMock.js';
 
 const Q = '99999999-9999-4999-8999-999999999999';
 const LESSON = '22222222-2222-4222-8222-222222222222';
@@ -23,18 +23,26 @@ const codeRow = {
 const ok = (data: unknown = null, count?: number) => mockQuery({ data, error: null, ...(count !== undefined ? { count } : {}) });
 const out = (stdout: string, over: Partial<RunOutcome> = {}): RunOutcome => ({ status_id: 3, stdout, stderr: '', compile_output: '', time_ms: 10, memory_kb: 2000, ...over });
 
-/** `n` runs of the person, all within the last few seconds (what code_runs holds when they are counted). */
-const recentRuns = (n: number, agoMs = 5000) => Array.from({ length: n }, () => ({ created_at: new Date(Date.now() - agoMs).toISOString() }));
-/** What counting one run reads: the person's runs today, the site's count, then the insert. */
-const slot = (person: unknown[], site = 0) => [ok(person), ok(null, site), ok()];
+/** What starting one run reads from code_runs: this person's runs in the last minute, then the site's today, then the insert. */
+const slot = (minute: number, site: number) => [ok(null, minute), ok(null, site), ok()];
 
-function build(opts: { user?: object; judge0?: Judge0Client | null; row?: unknown; used?: number; usedToday?: number; siteToday?: number; limits?: object | null; xp?: MockBuilder | MockBuilder[]; lessons?: unknown[] }) {
+const OP = '33333333-3333-4333-8333-333333333333';
+const reserved = { operation_id: OP, state: 'reserved', kind: 'daily', remaining: 4, resets_at: null };
+/** A plan quota as billing_get_effective_quotas reports it. */
+const planQuota = (metric: string, used: number, limit: number) => ({ metric, kind: 'daily', quota_limit: limit, used, reserved: 0, source: 'plan', expires_at: null, resets_at: '2099-01-01T17:00:00+00:00' });
+/** The billing calls made with this name, in order. */
+const billingCalls = (name: string) => rpcCalls.filter(([n]) => n === name).map(([, args]) => args as Record<string, unknown>);
+
+function build(opts: { user?: object; judge0?: Judge0Client | null; row?: unknown; used?: number; siteToday?: number; limits?: object | null; planExceeded?: boolean; quotas?: unknown[]; xp?: MockBuilder | MockBuilder[]; lessons?: unknown[] }) {
   const tables: Record<string, MockBuilder | MockBuilder[]> = {
     questions: ok(opts.row === undefined ? codeRow : opts.row),
     lessons: ok(opts.lessons ?? [{ id: LESSON }]),
     judge_settings: ok(opts.limits ?? null),
-    // Two counts per test, in case a test calls twice (run then submit).
-    code_runs: [...slot(opts.usedToday ? recentRuns(opts.usedToday, 3_600_000) : recentRuns(opts.used ?? 0), opts.siteToday), ...slot(opts.usedToday ? recentRuns(opts.usedToday, 3_600_000) : recentRuns(opts.used ?? 0), opts.siteToday)],
+    // Two runs' worth per test, in case a test calls twice (run then submit).
+    code_runs: [...slot(opts.used ?? 0, opts.siteToday ?? 0), ...slot(opts.used ?? 0, opts.siteToday ?? 0)],
+    'rpc:billing_reserve_quota': opts.planExceeded ? mockQuery({ data: null, error: { message: 'QUOTA_EXCEEDED' } }) : mockQuery({ data: reserved, error: null }),
+    'rpc:billing_settle_quota': mockQuery({ data: true, error: null }),
+    'rpc:billing_get_effective_quotas': mockQuery({ data: opts.quotas ?? [planQuota('code_submits', 3, 20), planQuota('code_runs', 7, 50)], error: null }),
     xp_log: opts.xp ?? ok(),
     streaks: [ok(null), ok()],
   };
@@ -46,6 +54,10 @@ function build(opts: { user?: object; judge0?: Judge0Client | null; row?: unknow
 }
 const post = (app: Awaited<ReturnType<typeof build>>['app'], url: string, payload: object) => app.inject({ method: 'POST', url, payload: payload as Record<string, unknown> });
 const submitBody = { question_id: Q, language: 'python', source: 'print(int(input())*2)' };
+
+beforeEach(() => {
+  rpcCalls.length = 0;
+});
 
 describe('POST /api/practice/code/submit', () => {
   it('needs a signed-in user and never reaches Judge0 without one', async () => {
@@ -95,35 +107,54 @@ describe('POST /api/practice/code/submit', () => {
     expect(judge0.runBatch).not.toHaveBeenCalled();
   });
 
-  it('stops at the daily limit, with its own message, before calling Judge0', async () => {
+  it('stops when the plan’s code quota for the day is used up, with its own message, before calling Judge0', async () => {
     const judge0 = { runBatch: vi.fn() };
-    const { app } = await build({ user: student, judge0, usedToday: 20 });
+    const { app } = await build({ user: student, judge0, planExceeded: true });
     const res = await post(app, '/api/practice/code/submit', submitBody);
     expect(res.statusCode).toBe(429);
     expect(res.json().error).toMatch(/hôm nay/i);
     expect(judge0.runBatch).not.toHaveBeenCalled();
+    expect(billingCalls('billing_settle_quota')).toEqual([]);
   });
 
-  it('uses the daily limit an admin set instead of the default', async () => {
-    const judge0 = { runBatch: vi.fn() };
-    // 5 runs today is fine by default (20) but over an admin's limit of 5.
-    const { app } = await build({ user: student, judge0, usedToday: 5, limits: { person_submits_per_day: 5, person_runs_per_day: null, global_submits_per_day: null, global_runs_per_day: null } });
-    expect((await post(app, '/api/practice/code/submit', submitBody)).statusCode).toBe(429);
-    expect(judge0.runBatch).not.toHaveBeenCalled();
+  it('holds one unit of code_submits before judging and counts it once the judge has answered', async () => {
+    const { app } = await build({ user: student });
+    expect((await post(app, '/api/practice/code/submit', submitBody)).statusCode).toBe(200);
+    expect(billingCalls('billing_reserve_quota')).toEqual([expect.objectContaining({ p_user_id: 'student-1', p_metric: 'code_submits', p_units: 1 })]);
+    expect(billingCalls('billing_settle_quota')).toEqual([{ p_operation_id: expect.any(String), p_outcome: 'commit' }]);
   });
 
-  it('says the judge is full when the whole site has used its day, and spends nothing', async () => {
+  it('counts a wrong answer, but gives the unit back when the judge is down', async () => {
+    const wrong = await build({ user: student, judge0: { runBatch: async () => [out('4\n'), out('no\n')] } });
+    await post(wrong.app, '/api/practice/code/submit', submitBody);
+    expect(billingCalls('billing_settle_quota').map((c) => c.p_outcome)).toEqual(['commit']);
+    rpcCalls.length = 0;
+    const down = await build({ user: student, judge0: { runBatch: async () => { throw new Judge0Unavailable('down'); } } });
+    await post(down.app, '/api/practice/code/submit', submitBody);
+    expect(billingCalls('billing_settle_quota').map((c) => c.p_outcome)).toEqual(['release']);
+  });
+
+  it('holds no quota for an admin, who has no plan', async () => {
+    const { app } = await build({ user: { id: 'admin-1', app_metadata: { app_role: 'admin' } } });
+    expect((await post(app, '/api/practice/code/submit', submitBody)).statusCode).toBe(200);
+    expect(billingCalls('billing_reserve_quota')).toEqual([]);
+  });
+
+  it('says the judge is full when the whole site has used its day, and holds nothing', async () => {
     const judge0 = { runBatch: vi.fn() };
     const { app } = await build({ user: student, judge0, siteToday: 300 });
     const res = await post(app, '/api/practice/code/submit', submitBody);
     expect(res.statusCode).toBe(429);
     expect(res.json().error).toMatch(/đã đầy/);
     expect(judge0.runBatch).not.toHaveBeenCalled();
+    expect(billingCalls('billing_reserve_quota')).toEqual([]);
   });
 
-  it('judges under the default limits when none were saved', async () => {
-    const { app } = await build({ user: student });
-    expect((await post(app, '/api/practice/code/submit', submitBody)).statusCode).toBe(200);
+  it('uses the site cap an admin set instead of the default', async () => {
+    const judge0 = { runBatch: vi.fn() };
+    const { app } = await build({ user: student, judge0, siteToday: 50, limits: { global_submits_per_day: 50, global_runs_per_day: null } });
+    expect((await post(app, '/api/practice/code/submit', submitBody)).statusCode).toBe(429);
+    expect(judge0.runBatch).not.toHaveBeenCalled();
   });
 
   it('answers 502, not a wrong verdict, when Judge0 is down', async () => {
@@ -166,7 +197,7 @@ describe('POST /api/practice/code/submit', () => {
 
 describe('GET /api/practice/code/quota', () => {
   const quota = (app: Awaited<ReturnType<typeof build>>['app']) => app.inject({ method: 'GET', url: '/api/practice/code/quota' });
-  // The counts are asked in this order: submits (person, site), then trial runs (person, site).
+  // The site counts are asked in this order: submits, then trial runs.
   const counts = (...n: number[]) => n.map((count) => ok(null, count));
 
   it('needs a signed-in user', async () => {
@@ -174,22 +205,36 @@ describe('GET /api/practice/code/quota', () => {
     expect((await quota(app)).statusCode).toBe(401);
   });
 
-  it('tells how many submits and trial runs are used today against the limits, and when the day ends', async () => {
+  it('reports the plan’s code quota used today, and when the day ends', async () => {
     const { app, tables } = await build({ user: student });
-    tables.code_runs = counts(3, 40, 7, 120);
+    tables.code_runs = counts(40, 120);
     const body = (await quota(app)).json();
     expect(body.submit).toEqual({ used: 3, limit: 20, site_full: false });
     expect(body.run).toEqual({ used: 7, limit: 50, site_full: false });
-    expect(Date.parse(body.resets_at)).toBeGreaterThan(Date.now());
-    expect(Date.parse(body.resets_at)).toBeLessThanOrEqual(Date.now() + 86_400_000);
+    expect(body.resets_at).toBe('2099-01-01T17:00:00.000Z');
+  });
+
+  it('counts what is held as used, so the bar cannot show more left than there is', async () => {
+    const { app, tables } = await build({ user: student, quotas: [{ ...planQuota('code_submits', 3, 20), reserved: 2 }, planQuota('code_runs', 0, 50)] });
+    tables.code_runs = counts(0, 0);
+    expect((await quota(app)).json().submit.used).toBe(5);
   });
 
   it('says the site is full for the kind whose site cap is used up', async () => {
     const { app, tables } = await build({ user: student });
-    tables.code_runs = counts(0, 300, 0, 10);
+    tables.code_runs = counts(300, 10);
     const body = (await quota(app)).json();
     expect(body.submit.site_full).toBe(true);
     expect(body.run.site_full).toBe(false);
+  });
+
+  it('has no quota to show for an admin, or for a plan without the code metrics yet', async () => {
+    const admin = await build({ user: { id: 'admin-1', app_metadata: { app_role: 'admin' } } });
+    admin.tables.code_runs = counts(0, 0);
+    expect(await quota(admin.app).then((r) => r.json())).toMatchObject({ submit: null, run: null });
+    const old = await build({ user: student, quotas: [] });
+    old.tables.code_runs = counts(0, 0);
+    expect(await quota(old.app).then((r) => r.json())).toMatchObject({ submit: null, run: null });
   });
 });
 

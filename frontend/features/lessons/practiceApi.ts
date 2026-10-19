@@ -134,8 +134,11 @@ export async function submitCode(questionId: string, code: CodeAnswer, onProgres
 }
 
 export type CodeQuotaPart = { used: number; limit: number; site_full: boolean };
-/** What this learner has left of today's runs; `resets_at` is the next Vietnam midnight. */
-export type CodeQuota = { submit: CodeQuotaPart; run: CodeQuotaPart; resets_at: string };
+/**
+ * What this learner has left of today's runs, from their plan; `resets_at` is the next Vietnam midnight.
+ * A part is null when the account has no quota of that kind (an admin, or a plan before the migration).
+ */
+export type CodeQuota = { submit: CodeQuotaPart | null; run: CodeQuotaPart | null; resets_at: string };
 
 /** Today's quota, or null for a visitor or on any failure (the bar then simply does not show). */
 export async function fetchCodeQuota(): Promise<CodeQuota | null> {
@@ -144,8 +147,8 @@ export async function fetchCodeQuota(): Promise<CodeQuota | null> {
   try {
     const res = await fetch(`${API_BASE}/api/practice/code/quota`, { headers: { Authorization: `Bearer ${token}` }, cache: 'no-store' });
     const data = (await res.json().catch(() => null)) as Partial<CodeQuota> | null;
-    const part = (p: unknown): p is CodeQuotaPart => typeof (p as CodeQuotaPart)?.used === 'number' && typeof (p as CodeQuotaPart)?.limit === 'number';
-    return res.ok && data && part(data.submit) && part(data.run) && typeof data.resets_at === 'string' ? (data as CodeQuota) : null;
+    const part = (p: unknown) => p === null || (typeof (p as CodeQuotaPart)?.used === 'number' && typeof (p as CodeQuotaPart)?.limit === 'number');
+    return res.ok && data && part(data.submit) && part(data.run) && typeof data.resets_at === 'string' && (data.submit || data.run) ? (data as CodeQuota) : null;
   } catch {
     return null;
   }

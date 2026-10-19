@@ -1,8 +1,7 @@
 import { authoringCall } from '../authoring/apiClient';
 
+/** What the whole site may run a day. A person's share is a quota of their plan (/admin/plans). */
 export interface JudgeLimits {
-  personSubmitsPerDay: number;
-  personRunsPerDay: number;
   globalSubmitsPerDay: number;
   globalRunsPerDay: number;
 }
@@ -16,8 +15,6 @@ export interface JudgeSettingsSnapshot {
 }
 
 export interface JudgeSettingsInput {
-  person_submits_per_day: number | null;
-  person_runs_per_day: number | null;
   global_submits_per_day: number | null;
   global_runs_per_day: number | null;
 }

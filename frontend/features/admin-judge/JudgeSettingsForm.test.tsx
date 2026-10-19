@@ -7,7 +7,7 @@ import type { JudgeSettingsSnapshot } from './api';
 vi.mock('@scipal/hooks', () => ({ useLanguage: () => ({ lang: 'vi', t: (o: { vi: string }) => o.vi }) }));
 vi.mock('@scipal/supabase', () => ({ createBrowserClient: () => ({}) }));
 
-const defaults = { personSubmitsPerDay: 20, personRunsPerDay: 50, globalSubmitsPerDay: 300, globalRunsPerDay: 1000 };
+const defaults = { globalSubmitsPerDay: 300, globalRunsPerDay: 1000 };
 const snapshot: JudgeSettingsSnapshot = { effective: { ...defaults, globalSubmitsPerDay: 150 }, defaults, usage: { submits: 140, runs: 12 } };
 
 const control = (html: string, label: string) => {
@@ -17,10 +17,11 @@ const control = (html: string, label: string) => {
 };
 
 describe('JudgeSettingsForm', () => {
-  it('shows the four limits in force with their defaults, today’s use against the site cap, and a disabled save', () => {
+  it('shows the two site limits in force with their defaults, today’s use against the cap, a way to the plans, and a disabled save', () => {
     const html = renderToStaticMarkup(<JudgeSettingsForm initial={snapshot} />);
-    expect(control(html, 'Lượt nộp bài mỗi người mỗi ngày')).toContain('value="20"');
     expect(control(html, 'Lượt nộp bài cả hệ thống mỗi ngày')).toContain('value="150"');
+    expect(control(html, 'Lượt chạy thử cả hệ thống mỗi ngày')).toContain('value="1000"');
+    expect(html).toContain('href="/admin/plans"');
     expect(html).toContain('Mặc định 300.');
     expect(html).toMatch(/140[\s\S]*\/ 150/);
     expect(html).toMatch(/<button[^>]*disabled=""[^>]*>Lưu giới hạn/);

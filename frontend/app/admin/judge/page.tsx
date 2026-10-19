@@ -22,8 +22,8 @@ export default async function AdminJudgePage() {
         </h1>
         <p className="mt-2 text-base text-ink-muted">
           <Bi
-            en="How many times a day each person, and the whole site, may submit or try code. The judge is paid per run, so this is a spending cap."
-            vi="Mỗi người, và cả hệ thống, được nộp hoặc chạy thử code bao nhiêu lần mỗi ngày. Máy chấm tính tiền theo lượt chạy nên đây là trần chi phí."
+            en="How many times a day the whole site may submit or try code. The judge is paid per run, so this is a spending cap. Each person's share comes from their plan."
+            vi="Cả hệ thống được nộp hoặc chạy thử code bao nhiêu lần mỗi ngày. Máy chấm tính tiền theo lượt chạy nên đây là trần chi phí. Phần của từng người lấy theo gói của họ."
           />
         </p>
       </header>

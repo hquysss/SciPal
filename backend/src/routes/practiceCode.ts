@@ -1,9 +1,11 @@
+import { createHash, randomUUID } from 'node:crypto';
 import type { FastifyPluginAsync, FastifyReply, FastifyRequest } from 'fastify';
 import { z } from 'zod';
 import { gradeSubmission } from '../judge/grade.js';
 import { Judge0Unavailable, verdictOf, type Judge0Client } from '../judge/judge0.js';
 import { capsFor, createJudgeLimitsStore, DEFAULT_JUDGE_LIMITS } from '../judge/limits.js';
-import { consumeRateSlot, runsToday, type RunKind } from '../judge/rateLimit.js';
+import { checkRateSlot, recordRun, runsToday, type RunKind } from '../judge/rateLimit.js';
+import { BillingRepositoryError, createBillingRepository } from '../billing/repository.js';
 import { vietnamDayStart } from '../tutor/limits.js';
 import { getUser, ID, msg, servableQuestion, unavailable } from '../practice/servable.js';
 import { CODE_LANGUAGES, MAX_CODE_CHARS, MAX_CODE_TESTS, type CodeTest } from '../schemas/questions.js';
@@ -53,7 +55,7 @@ const judgeDown = msg('Chưa chấm được lúc này, em thử lại sau nhé.
 export const CODE_XP: Record<number, number> = { 1: 20, 2: 35, 3: 50 };
 
 const NDJSON = 'application/x-ndjson';
-const noTests =msg('Câu này chưa có bộ test.', 'This question has no tests yet.');
+const noTests = msg('Câu này chưa có bộ test.', 'This question has no tests yet.');
 
 /** A stored code question as the judge reads it; stored data is lenient, so every field is checked. */
 function judgeData(data: unknown): { tests: CodeTest[]; time_limit_ms: number; memory_limit_mb: number } {
@@ -74,8 +76,15 @@ export const practiceCodeRoutes: FastifyPluginAsync = async (app) => {
     return readLimits();
   };
 
-  /** The signed-in user with a free run slot, or the reply has been sent. */
-  async function admit(request: FastifyRequest, reply: FastifyReply, kind: RunKind): Promise<{ id: string } | null> {
+  /** Metrics of a plan: the learner's daily share of each kind of run. Teacher test checks are not a plan quota. */
+  const METRIC = { submit: 'code_submits', run: 'code_runs' } as const;
+
+  /**
+   * The signed-in user with a free run slot, or the reply has been sent. A learner's day is a quota of their
+   * plan: one unit is held now, `settle('commit')` counts it once the judge has answered and `settle('release')`
+   * gives it back when it could not (a judge outage is never charged). Admins have no plan, so no quota.
+   */
+  async function admit(request: FastifyRequest, reply: FastifyReply, kind: RunKind): Promise<{ id: string; settle: (outcome: 'commit' | 'release') => Promise<void> } | null> {
     const user = getUser(request);
     if (!user?.id) {
       reply.code(401).send(signIn);
@@ -85,20 +94,44 @@ export const practiceCodeRoutes: FastifyPluginAsync = async (app) => {
       reply.code(503).send(off);
       return null;
     }
+    const supabase = app.supabase;
+    let operationId: string | null = null;
     try {
-      const slot = await consumeRateSlot(app.supabase, user.id, kind, capsFor(kind, await limitsInForce()));
+      const slot = await checkRateSlot(supabase, user.id, kind, capsFor(kind, await limitsInForce()));
       if (slot !== 'ok') {
         reply.code(429).send(slot === 'day' ? tooManyToday : slot === 'busy' ? siteFull : tooMany);
         return null;
       }
+      if (kind !== 'verify' && user.app_metadata?.app_role !== 'admin') {
+        operationId = randomUUID();
+        try {
+          await createBillingRepository((name, args) => supabase.rpc(name, args)).reserveQuota(user.id, METRIC[kind], operationId, 1, createHash('sha256').update(`${user.id}:code:${kind}:${operationId}`).digest('hex'));
+        } catch (err) {
+          if (err instanceof BillingRepositoryError && err.code === 'QUOTA_EXCEEDED') {
+            reply.code(429).send(tooManyToday);
+            return null;
+          }
+          throw err;
+        }
+      }
+      await recordRun(supabase, user.id, kind);
     } catch (err) {
       request.log.error({ err }, 'Failed to count code runs');
+      if (operationId) await settleHold(request, operationId, 'release');
       reply.code(500).send(judgeDown);
       return null;
     }
-    return { id: user.id };
+    const held = operationId;
+    return { id: user.id, settle: async (outcome) => (held ? settleHold(request, held, outcome) : undefined) };
   }
 
+  async function settleHold(request: FastifyRequest, operationId: string, outcome: 'commit' | 'release') {
+    try {
+      await createBillingRepository((name, args) => app.supabase!.rpc(name, args)).settleQuota(operationId, outcome);
+    } catch (err) {
+      request.log.error({ err }, 'Failed to settle a code run');
+    }
+  }
   const unreachable = (request: FastifyRequest, reply: FastifyReply, err: unknown) => {
     if (!(err instanceof Judge0Unavailable)) throw err;
     request.log.error({ err }, 'Judge0 unavailable');
@@ -151,20 +184,24 @@ export const practiceCodeRoutes: FastifyPluginAsync = async (app) => {
     return reply.send({ question_ids: [...new Set(ids)] });
   });
 
-  // What a learner has left today: their own runs against their cap, and whether the whole judge is full.
+  // What a learner has left today: their plan's code quota (null for an admin, who has none), and whether the whole judge is full.
   app.get('/api/practice/code/quota', async (request, reply) => {
-    const userId = getUser(request)?.id;
-    if (!userId) return reply.code(401).send(signIn);
+    const user = getUser(request);
+    if (!user?.id) return reply.code(401).send(signIn);
     if (!app.supabase) return reply.code(503).send(off);
+    const supabase = app.supabase;
     try {
       const limits = await limitsInForce();
+      const quotas = user.app_metadata?.app_role === 'admin' ? [] : await createBillingRepository((name, args) => supabase.rpc(name, args)).getEffectiveQuotas(user.id, new Date());
       const of = async (kind: 'submit' | 'run') => {
-        const caps = capsFor(kind, limits);
-        const [used, site] = await Promise.all([runsToday(app.supabase!, kind, userId), runsToday(app.supabase!, kind)]);
-        return { used, limit: caps.person, site_full: caps.global !== null && site >= caps.global };
+        const quota = quotas.find((q) => q.metric === METRIC[kind]);
+        const cap = capsFor(kind, limits).global;
+        const site_full = cap !== null && (await runsToday(supabase, kind)) >= cap;
+        return quota ? { used: quota.used + quota.reserved, limit: quota.limit, site_full } : null;
       };
       const [submit, run] = [await of('submit'), await of('run')];
-      return reply.send({ submit, run, resets_at: new Date(vietnamDayStart(new Date()).getTime() + 86_400_000).toISOString() });
+      const resets = quotas.find((q) => q.metric === METRIC.submit)?.resetsAt ?? new Date(vietnamDayStart(new Date()).getTime() + 86_400_000).toISOString();
+      return reply.send({ submit, run, resets_at: resets });
     } catch (err) {
       request.log.error({ err }, 'Failed to read the code quota');
       return reply.code(500).send(judgeDown);
@@ -179,18 +216,22 @@ export const practiceCodeRoutes: FastifyPluginAsync = async (app) => {
     if (!app.supabase) return reply.code(503).send(off);
     const question = await codeQuestion(request, reply, input.question_id);
     if (!question) return reply;
-    if (!(await admit(request, reply, 'run'))) return reply;
+    const hold = await admit(request, reply, 'run');
+    if (!hold) return reply;
     const limits = { memory_limit_mb: question.data.memory_limit_mb };
     try {
       const [outcome] = await app.judge0!.runBatch([{ language: input.language, source: input.source, stdin: input.stdin, time_limit_ms: question.data.time_limit_ms, ...limits }]);
-      return reply.send({
+      const answer = {
         status: verdictOf(outcome!, limits, true),
         stdout: outcome!.stdout,
         stderr: outcome!.compile_output || outcome!.stderr,
         time_ms: outcome!.time_ms,
         memory_kb: outcome!.memory_kb,
-      });
+      };
+      await hold.settle('commit');
+      return reply.send(answer);
     } catch (err) {
+      await hold.settle('release');
       return unreachable(request, reply, err);
     }
   });
@@ -203,7 +244,8 @@ export const practiceCodeRoutes: FastifyPluginAsync = async (app) => {
     if (!app.supabase) return reply.code(503).send(off);
     const question = await codeQuestion(request, reply, input.question_id);
     if (!question) return reply;
-    if (!(await admit(request, reply, 'submit'))) return reply;
+    const hold = await admit(request, reply, 'submit');
+    if (!hold) return reply;
     const judge = async (onTest?: Parameters<typeof gradeSubmission>[0]['onTest']) => {
       const { correct, ...code } = await gradeSubmission({ client: app.judge0!, language: input.language, source: input.source, ...question.data, reveal: 'samples', onTest });
       if (!correct) return { correct, code };
@@ -213,8 +255,11 @@ export const practiceCodeRoutes: FastifyPluginAsync = async (app) => {
     };
     if (!String(request.headers.accept ?? '').includes(NDJSON)) {
       try {
-        return reply.send(await judge());
+        const answer = await judge();
+        await hold.settle('commit');
+        return reply.send(answer);
       } catch (err) {
+        await hold.settle('release');
         return unreachable(request, reply, err);
       }
     }
@@ -230,8 +275,11 @@ export const practiceCodeRoutes: FastifyPluginAsync = async (app) => {
     };
     line({ type: 'start', total: question.data.tests.length });
     try {
-      line({ type: 'result', ...(await judge((index, test) => line({ type: 'test', index, ...test }))) });
+      const answer = await judge((index, test) => line({ type: 'test', index, ...test }));
+      await hold.settle('commit');
+      line({ type: 'result', ...answer });
     } catch (err) {
+      await hold.settle('release');
       request.log.error({ err }, err instanceof Judge0Unavailable ? 'Judge0 unavailable' : 'Code submit failed');
       line({ type: 'error', ...judgeDown });
     } finally {
@@ -249,6 +297,7 @@ export const practiceCodeRoutes: FastifyPluginAsync = async (app) => {
     const parsed = VerifyBody.safeParse(request.body);
     if (!parsed.success) return reply.code(400).send(badRequest);
     if (!(await admit(request, reply, 'verify'))) return reply;
+    // A teacher's test check holds no plan quota (admit gave none), so there is nothing to settle.
     try {
       const { correct: _correct, ...code } = await gradeSubmission({ client: app.judge0!, ...parsed.data, reveal: 'all' });
       return reply.send(code);

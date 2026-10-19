@@ -314,11 +314,11 @@ export function CodeAnswer({ question, answer, result, onAnswer, onResult, t }: 
           {t({ en: 'Submitting runs your code on every test, hidden ones too.', vi: 'Nộp bài sẽ chạy code của em trên mọi test, kể cả test ẩn.' })}
         </p>
         <div className="flex flex-wrap justify-end gap-2">
-          <button type="button" disabled={!!busy || !source.trim() || (!!quota && runsLeft(quota.run) === 0)} onClick={trial} className={`${buttonVariants({ variant: 'ghost' })} gap-2 bg-surface`}>
+          <button type="button" disabled={!!busy || !source.trim() || (!!quota?.run && runsLeft(quota.run) === 0)} onClick={trial} className={`${buttonVariants({ variant: 'ghost' })} gap-2 bg-surface`}>
             {busy === 'run' ? <LoaderCircle aria-hidden="true" className="h-4 w-4 animate-spin motion-reduce:animate-none" /> : <Play aria-hidden="true" className="h-4 w-4" />}
             {busy === 'run' ? t({ en: 'Running…', vi: 'Đang chạy…' }) : t({ en: 'Try it', vi: 'Chạy thử' })}
           </button>
-          <button type="button" disabled={!!busy || !source.trim() || (!!quota && runsLeft(quota.submit) === 0)} onClick={submit} className={`${buttonVariants()} gap-2 px-6`}>
+          <button type="button" disabled={!!busy || !source.trim() || (!!quota?.submit && runsLeft(quota.submit) === 0)} onClick={submit} className={`${buttonVariants()} gap-2 px-6`}>
             {busy === 'submit' ? <LoaderCircle aria-hidden="true" className="h-4 w-4 animate-spin motion-reduce:animate-none" /> : <Send aria-hidden="true" className="h-4 w-4" />}
             {busy === 'submit' ? t({ en: 'Judging…', vi: 'Đang chấm…' }) : t({ en: 'Submit', vi: 'Nộp bài' })}
           </button>
