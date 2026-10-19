@@ -17,12 +17,12 @@ const FIELDS = 'token,status_id,stdout,stderr,compile_output,time,memory';
 const b64 = (text: string) => Buffer.from(text, 'utf8').toString('base64');
 const unb64 = (text: unknown) => (typeof text === 'string' ? Buffer.from(text, 'base64').toString('utf8').slice(0, MAX_OUTPUT) : '');
 
-export function createJudge0Client(opts: { url: string; token?: string; fetch?: typeof fetch; waitMs?: number; pollMs?: number }): Judge0Client {
+export function createJudge0Client(opts: { url: string; token?: string; /** Extra request headers, for a hosted Judge0 that wants its own (e.g. a RapidAPI key and host). */ headers?: Record<string, string>; fetch?: typeof fetch; waitMs?: number; pollMs?: number }): Judge0Client {
   const doFetch = opts.fetch ?? fetch;
   const base = opts.url.replace(/\/+$/, '');
   const waitMs = opts.waitMs ?? 20_000;
   const pollMs = opts.pollMs ?? 500;
-  const headers: Record<string, string> = { 'Content-Type': 'application/json', ...(opts.token ? { 'X-Auth-Token': opts.token } : {}) };
+  const headers: Record<string, string> = { 'Content-Type': 'application/json', ...(opts.token ? { 'X-Auth-Token': opts.token } : {}), ...opts.headers };
 
   async function call(path: string, init?: RequestInit): Promise<unknown> {
     let res: Response;

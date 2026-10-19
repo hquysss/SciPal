@@ -104,7 +104,14 @@ await app.register(billingVnpayRoutes);
 await app.register(billingReconciliationRoutes);
 await app.register(authorAiRoutes);
 await app.register(practiceRoutes);
-if (process.env.JUDGE0_URL) app.decorate('judge0', createJudge0Client({ url: process.env.JUDGE0_URL, token: process.env.JUDGE0_TOKEN }));
+if (process.env.JUDGE0_URL) {
+  try {
+    const headers = process.env.JUDGE0_HEADERS ? (JSON.parse(process.env.JUDGE0_HEADERS) as Record<string, string>) : undefined;
+    app.decorate('judge0', createJudge0Client({ url: process.env.JUDGE0_URL, token: process.env.JUDGE0_TOKEN, headers }));
+  } catch (err) {
+    app.log.error({ err }, 'JUDGE0_HEADERS is not valid JSON; code judging stays off');
+  }
+}
 await app.register(practiceCodeRoutes);
 await app.register(lessonVideoRoutes);
 await app.register(dictionaryRoutes);

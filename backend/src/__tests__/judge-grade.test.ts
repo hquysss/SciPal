@@ -78,6 +78,16 @@ describe('createJudge0Client', () => {
     expect(sent).toMatchObject({ language_id: 71, source_code: b64('print(4)'), stdin: b64('2\n'), cpu_time_limit: 2, memory_limit: 131072 });
     expect(polls).toBe(2);
   });
+  it('sends extra headers a hosted Judge0 asks for', async () => {
+    const seen: Array<Record<string, string>> = [];
+    const fakeFetch = (async (_u: string, init?: RequestInit) => {
+      seen.push(init!.headers as Record<string, string>);
+      return init?.method === 'POST' ? reply([{ token: 't' }]) : reply({ submissions: [{ token: 't', status_id: 3, stdout: b64('1'), time: '0', memory: 1 }] });
+    }) as unknown as typeof fetch;
+    const judge = createJudge0Client({ url: 'https://j.test', headers: { 'X-RapidAPI-Key': 'k', 'X-RapidAPI-Host': 'h' }, fetch: fakeFetch, pollMs: 1 });
+    await judge.runBatch([{ language: 'python', source: 'x', stdin: '', time_limit_ms: 1000, memory_limit_mb: 64 }]);
+    expect(seen[0]).toMatchObject({ 'X-RapidAPI-Key': 'k', 'X-RapidAPI-Host': 'h' });
+  });
   it('treats a 5xx as unavailable', async () => {
     const judge = createJudge0Client({ url: 'https://j.test', fetch: (async () => reply({}, 502)) as unknown as typeof fetch });
     await expect(judge.runBatch([{ language: 'cpp', source: 'x', stdin: '', time_limit_ms: 1000, memory_limit_mb: 64 }])).rejects.toThrow(Judge0Unavailable);

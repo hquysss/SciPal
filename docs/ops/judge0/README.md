@@ -52,3 +52,12 @@ A submission waits for Judge0 for up to 20 seconds, so the backend's Vercel func
 3. Deploy the backend with `JUDGE0_URL` / `JUDGE0_TOKEN`, then the frontend.
 
 Rollback: unset `JUDGE0_URL`. Programming questions then say judging is off; nothing else changes.
+
+## Using a hosted Judge0 instead of your own machine
+
+Skip sections 1–4. Take the base URL and key from the provider and set, on the backend:
+
+- A provider that uses `X-Auth-Token`: `JUDGE0_URL` and `JUDGE0_TOKEN`.
+- A provider that uses its own headers (RapidAPI): `JUDGE0_URL=https://judge0-ce.p.rapidapi.com` and `JUDGE0_HEADERS={"X-RapidAPI-Key":"<key>","X-RapidAPI-Host":"judge0-ce.p.rapidapi.com"}`.
+
+Learners' code then leaves SciPal for that provider, and each test is one billed submission. Check the plan's rate limit against SciPal's own limit (5 submissions a minute per learner, up to 25 tests each).
