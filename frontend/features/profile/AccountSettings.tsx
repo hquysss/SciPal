@@ -49,20 +49,20 @@ export function AccountSettings({ currentRole = 'student', educationPreference, 
     }
   };
 
-  const rowLabel = 'flex items-center gap-1.5 text-sm font-semibold text-ink';
-  const rowHint = 'text-sm text-ink-muted';
+  const rowLabel = 'flex items-center gap-1.5 text-sm font-semibold text-pretty text-ink';
+  const rowHint = 'text-sm text-pretty text-ink-muted';
   const langButton = (active: boolean) =>
     `min-h-11 rounded-md px-3 text-sm font-semibold transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus ${
       active ? 'bg-action text-action-ink' : 'text-ink-muted hover:text-ink'
     }`;
 
-  const group = 'flex flex-col gap-4 rounded-xl border border-line bg-surface-sunken p-4 sm:p-5';
+  const group = 'flex flex-col gap-4 border-t border-edge pt-6';
   const groupTitle = 'flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-ink-muted';
   const row = 'flex flex-col justify-between gap-3 sm:flex-row sm:items-center';
 
   return (
     <>
-      <section aria-labelledby="settings-title" className="flex flex-col gap-5 rounded-2xl border border-line bg-surface p-5 sm:p-7">
+      <section aria-labelledby="settings-title" className="flex flex-col gap-6 rounded-2xl border border-line bg-surface p-5 sm:p-7">
         <div>
           <h2 id="settings-title" className="text-lg font-bold text-ink">{t({ en: 'Settings', vi: 'Cài đặt' })}</h2>
           <p className={rowHint}>
@@ -108,7 +108,7 @@ export function AccountSettings({ currentRole = 'student', educationPreference, 
           </h3>
           <EducationLevelSetting preference={educationPreference} isAuthenticated={isAuthenticated} />
           {isAuthenticated && <GradeSetting />}
-          <div className="flex items-center justify-between gap-3">
+          <div className="flex items-center justify-between gap-3 border-t border-line pt-4">
             <div>
               <div className={rowLabel}>
                 <BookOpen aria-hidden="true" className="h-4 w-4" />

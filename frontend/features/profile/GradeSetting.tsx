@@ -44,13 +44,14 @@ export function GradeSetting() {
   };
 
   return (
-    <section className="flex flex-col gap-4 rounded-lg border border-line bg-surface-sunken p-4" aria-labelledby="grade-title">
+    <section className="flex flex-col gap-4 border-t border-line pt-4" aria-labelledby="grade-title">
       <div className="flex flex-wrap items-start justify-between gap-2">
         <div>
           <h3 id="grade-title" className="text-sm font-bold text-ink">{t({ en: 'Your grade', vi: 'Khối học của bạn' })}</h3>
           <p className="mt-1 text-sm text-ink-muted">{t({ en: 'Used for your grade chat room and shown on your profile.', vi: 'Dùng để vào phòng chat của khối và hiện trên hồ sơ của bạn.' })}</p>
         </div>
-        <span className="rounded-full border border-line bg-surface px-2.5 py-1 text-sm font-semibold text-ink-muted" aria-live="polite">
+        <span className="inline-flex items-center gap-1 text-sm font-semibold text-ink-muted" aria-live="polite">
+          {grade && state !== 'loading' && state !== 'loadError' && <Check aria-hidden="true" className="size-4 text-success" />}
           {state === 'loading'
             ? t({ en: 'Loading…', vi: 'Đang tải…' })
             : state === 'loadError'

@@ -8,6 +8,47 @@ import { useLanguage } from '@scipal/hooks';
 import { createBrowserClient } from '@scipal/supabase';
 import { clearNotifications, deleteNotification, listNotifications, markNotificationsRead, type Notification } from './gamesApi';
 
+// The nav mounts two bells (desktop and phone, one hidden by CSS); both load on the same events,
+// so they share one request while it is in flight instead of fetching twice.
+let inflight: ReturnType<typeof listNotifications> | null = null;
+export function loadNotificationsShared(): ReturnType<typeof listNotifications> {
+  inflight ??= listNotifications().finally(() => { inflight = null; });
+  return inflight;
+}
+
+// One realtime channel for every bell on the page, opened by the first and closed with the last.
+const listeners = new Set<() => void>();
+let closeChannel: (() => void) | null = null;
+let channelSeq = 0;
+export function subscribeNotifications(onInsert: () => void): () => void {
+  listeners.add(onInsert);
+  if (!closeChannel) {
+    const supabase = createBrowserClient();
+    let channel: ReturnType<typeof supabase.channel> | null = null;
+    let closed = false;
+    void supabase.auth.getSession().then(({ data }) => {
+      const userId = data.session?.user.id;
+      if (closed || !userId) return;
+      // A new row for this user (RLS filters the rest) refreshes the list at once.
+      channel = supabase
+        .channel(`notifications:${userId}:${++channelSeq}`)
+        .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'notifications', filter: `user_id=eq.${userId}` }, () => listeners.forEach((l) => l()))
+        .subscribe();
+    });
+    closeChannel = () => {
+      closed = true;
+      if (channel) void supabase.removeChannel(channel);
+    };
+  }
+  return () => {
+    listeners.delete(onInsert);
+    if (listeners.size === 0) {
+      closeChannel?.();
+      closeChannel = null;
+    }
+  };
+}
+
 /** The signed-in user's notifications; opening the list marks them read. */
 export function NotificationBell({ className = '' }: { className?: string }) {
   const { t } = useLanguage();
@@ -21,33 +62,21 @@ export function NotificationBell({ className = '' }: { className?: string }) {
   const [shift, setShift] = useState(0);
 
   const load = useCallback(async () => {
-    const r = await listNotifications();
+    const r = await loadNotificationsShared();
     if (r.ok) { setItems(r.data.notifications); setUnread(r.data.unread); }
   }, []);
 
   useEffect(() => {
     void load();
-    // A new row for this user (RLS filters the rest) refreshes the list at once.
-    const supabase = createBrowserClient();
-    let channel: ReturnType<typeof supabase.channel> | null = null;
-    let cancelled = false;
-    void supabase.auth.getSession().then(({ data }) => {
-      const userId = data.session?.user.id;
-      if (cancelled || !userId) return;
-      channel = supabase
-        .channel(`notifications:${userId}:${instanceId}`)
-        .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'notifications', filter: `user_id=eq.${userId}` }, () => void load())
-        .subscribe();
-    });
+    const unsubscribe = subscribeNotifications(() => void load());
     // Catch up on anything missed while the tab was hidden or the socket dropped.
     const visible = () => { if (document.visibilityState === 'visible') void load(); };
     document.addEventListener('visibilitychange', visible);
     return () => {
-      cancelled = true;
+      unsubscribe();
       document.removeEventListener('visibilitychange', visible);
-      if (channel) void supabase.removeChannel(channel);
     };
-  }, [load, instanceId]);
+  }, [load]);
 
   useEffect(() => {
     if (!open) return;

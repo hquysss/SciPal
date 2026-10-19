@@ -39,7 +39,7 @@ export function ProfileHero({ headingId, name, initials, avatarUrl, coverUrl, ba
           <div className="relative z-10 -mt-12 grid size-24 shrink-0 place-items-center overflow-hidden rounded-full border-4 border-surface bg-surface-sunken text-3xl font-extrabold text-ink sm:-mt-16 sm:size-32 sm:text-4xl">
             {avatarUrl
               // eslint-disable-next-line @next/next/no-img-element -- media store image
-              ? <img src={avatarUrl} alt={name} className="size-full object-cover" />
+              ? <img src={avatarUrl} alt="" className="size-full object-cover" />
               : <span aria-hidden="true">{initials}</span>}
           </div>
           {actions && <div className="flex flex-wrap items-center justify-end gap-2 pt-3">{actions}</div>}

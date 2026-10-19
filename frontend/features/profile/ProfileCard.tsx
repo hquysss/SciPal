@@ -158,7 +158,7 @@ export function ProfileCard({ displayName, role, email, joinedAt, avatarUrl, cov
       <ProfileTabs
         label={t({ en: 'Profile sections', vi: 'Các mục hồ sơ' })}
         idPrefix="profile"
-        tabs={[{ id: 'shortcuts', label: t({ vi: 'Đi nhanh', en: 'Shortcuts' }) }, { id: 'badges', label: t({ en: 'Badges', vi: 'Danh hiệu' }) }]}
+        tabs={[{ id: 'shortcuts', label: t({ vi: 'Lối tắt', en: 'Shortcuts' }) }, { id: 'badges', label: t({ en: 'Badges', vi: 'Danh hiệu' }) }]}
         active={tab}
         onChange={setTab}
       />

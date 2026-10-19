@@ -97,7 +97,7 @@ export function EducationLevelSetting({ preference, isAuthenticated }: Education
         : t({ en: 'No level selected yet', vi: 'Chưa chọn cấp học' });
 
   return (
-    <section className="flex flex-col gap-4 rounded-lg border border-line bg-surface-sunken p-4" aria-labelledby="education-level-title">
+    <section className="flex flex-col gap-4" aria-labelledby="education-level-title">
       <div className="flex flex-wrap items-start justify-between gap-2">
         <div>
           <h3 id="education-level-title" className="text-sm font-bold text-ink">
@@ -107,7 +107,8 @@ export function EducationLevelSetting({ preference, isAuthenticated }: Education
             {t({ en: 'Choose the subject catalog shown on the home page.', vi: 'Chọn danh mục môn học hiển thị ở trang chủ.' })}
           </p>
         </div>
-        <span className="rounded-full border border-line bg-surface px-2.5 py-1 text-sm font-semibold text-ink-muted" aria-live="polite">
+        <span className="inline-flex items-center gap-1 text-sm font-semibold text-ink-muted" aria-live="polite">
+          {(saveState === 'saved' || source !== 'none') && <Check aria-hidden="true" className="size-4 text-success" />}
           {sourceLabel}
         </span>
       </div>
