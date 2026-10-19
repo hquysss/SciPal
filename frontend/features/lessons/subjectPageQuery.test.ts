@@ -46,7 +46,7 @@ describe('groupTopicsByGrade', () => {
 
   it('puts the content tags on each lesson and drops unknown ones', () => {
     const topics: TopicRow[] = [{ id: 't', name_en: 'T', name_vi: 'T', sort_order: 1, grade: 10, lessons: [lesson('a', 10, 1), lesson('b', 10, 2)] }];
-    const [group] = groupTopicsByGrade(topics, [{ lesson_id: 'a', tags: ['code', 'hot', 'mystery', '3d'] }]);
-    expect(group!.topics[0]!.lessons.map((l) => l.tags)).toEqual([['hot', '3d', 'code'], []]);
+    const [group] = groupTopicsByGrade(topics, [{ lesson_id: 'a', tags: ['code', 'hot', 'mystery', 'sim'] }]);
+    expect(group!.topics[0]!.lessons.map((l) => l.tags)).toEqual([['hot', 'sim', 'code'], []]);
   });
 });

@@ -1,7 +1,7 @@
 'use client';
 import { useState } from 'react';
 import Link from 'next/link';
-import { Box, ChevronDown, ChevronRight, Code2, Dumbbell, Flame, PlayCircle, type LucideIcon } from 'lucide-react';
+import { ChevronDown, ChevronRight, Code2, Dumbbell, FlaskConical, Flame, PlayCircle, type LucideIcon } from 'lucide-react';
 import type { LessonTag } from './groupTopics';
 import { useLanguage } from '@scipal/hooks';
 
@@ -17,7 +17,7 @@ interface Lesson {
 
 const TAG_LOOK: Record<LessonTag, { label: { en: string; vi: string }; icon: LucideIcon; tone: string }> = {
   hot: { label: { en: 'Hot', vi: 'Hot' }, icon: Flame, tone: 'bg-warning-surface text-warning' },
-  '3d': { label: { en: '3D', vi: '3D' }, icon: Box, tone: 'bg-[color-mix(in_srgb,var(--action)_12%,var(--surface))] text-action' },
+  sim: { label: { en: 'Simulation', vi: 'Mô phỏng' }, icon: FlaskConical, tone: 'bg-[color-mix(in_srgb,var(--action)_12%,var(--surface))] text-action' },
   video: { label: { en: 'Video', vi: 'Video' }, icon: PlayCircle, tone: 'bg-surface-sunken text-ink' },
   practice: { label: { en: 'Practice', vi: 'Luyện tập' }, icon: Dumbbell, tone: 'bg-success-surface text-success' },
   code: { label: { en: 'Code', vi: 'Code' }, icon: Code2, tone: 'bg-surface-sunken text-ink' },
