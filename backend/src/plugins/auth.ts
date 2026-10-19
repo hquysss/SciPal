@@ -21,6 +21,8 @@ const isPublicPath = (path: string): boolean => {
   if (path === '/api/dictionary/lookup') return true;
   // Lesson practice works for visitors too; checking gives no XP.
   if (path.startsWith('/api/practice/')) return true;
+  // A lesson's video: the handler decides from the viewer's plan whether the address is sent.
+  if (path === '/api/lessons/:id/video') return true;
   return false;
 };
 
