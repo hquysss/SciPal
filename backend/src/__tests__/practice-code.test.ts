@@ -24,13 +24,17 @@ const ok = (data: unknown = null, count?: number) => mockQuery({ data, error: nu
 const out = (stdout: string, over: Partial<RunOutcome> = {}): RunOutcome => ({ status_id: 3, stdout, stderr: '', compile_output: '', time_ms: 10, memory_kb: 2000, ...over });
 
 /** `n` runs of the person, all within the last few seconds (what code_runs holds when they are counted). */
-const recentRuns = (n: number) => Array.from({ length: n }, () => ({ created_at: new Date(Date.now() - 5000).toISOString() }));
+const recentRuns = (n: number, agoMs = 5000) => Array.from({ length: n }, () => ({ created_at: new Date(Date.now() - agoMs).toISOString() }));
+/** What counting one run reads: the person's runs today, the site's count, then the insert. */
+const slot = (person: unknown[], site = 0) => [ok(person), ok(null, site), ok()];
 
-function build(opts: { user?: object; judge0?: Judge0Client | null; row?: unknown; used?: number; usedToday?: number; xp?: MockBuilder | MockBuilder[]; lessons?: unknown[] }) {
+function build(opts: { user?: object; judge0?: Judge0Client | null; row?: unknown; used?: number; usedToday?: number; siteToday?: number; limits?: object | null; xp?: MockBuilder | MockBuilder[]; lessons?: unknown[] }) {
   const tables: Record<string, MockBuilder | MockBuilder[]> = {
     questions: ok(opts.row === undefined ? codeRow : opts.row),
     lessons: ok(opts.lessons ?? [{ id: LESSON }]),
-    code_runs: [ok(opts.usedToday ? recentRuns(opts.usedToday).map((r, i) => ({ created_at: new Date(Date.now() - 3_600_000 - i).toISOString() })) : recentRuns(opts.used ?? 0)), ok(), ok(opts.usedToday ? recentRuns(opts.usedToday) : recentRuns(opts.used ?? 0)), ok()],
+    judge_settings: ok(opts.limits ?? null),
+    // Two counts per test, in case a test calls twice (run then submit).
+    code_runs: [...slot(opts.usedToday ? recentRuns(opts.usedToday, 3_600_000) : recentRuns(opts.used ?? 0), opts.siteToday), ...slot(opts.usedToday ? recentRuns(opts.usedToday, 3_600_000) : recentRuns(opts.used ?? 0), opts.siteToday)],
     xp_log: opts.xp ?? ok(),
     streaks: [ok(null), ok()],
   };
@@ -93,11 +97,33 @@ describe('POST /api/practice/code/submit', () => {
 
   it('stops at the daily limit, with its own message, before calling Judge0', async () => {
     const judge0 = { runBatch: vi.fn() };
-    const { app } = await build({ user: student, judge0, usedToday: 40 });
+    const { app } = await build({ user: student, judge0, usedToday: 20 });
     const res = await post(app, '/api/practice/code/submit', submitBody);
     expect(res.statusCode).toBe(429);
     expect(res.json().error).toMatch(/hôm nay/i);
     expect(judge0.runBatch).not.toHaveBeenCalled();
+  });
+
+  it('uses the daily limit an admin set instead of the default', async () => {
+    const judge0 = { runBatch: vi.fn() };
+    // 5 runs today is fine by default (20) but over an admin's limit of 5.
+    const { app } = await build({ user: student, judge0, usedToday: 5, limits: { person_submits_per_day: 5, person_runs_per_day: null, global_submits_per_day: null, global_runs_per_day: null } });
+    expect((await post(app, '/api/practice/code/submit', submitBody)).statusCode).toBe(429);
+    expect(judge0.runBatch).not.toHaveBeenCalled();
+  });
+
+  it('says the judge is full when the whole site has used its day, and spends nothing', async () => {
+    const judge0 = { runBatch: vi.fn() };
+    const { app } = await build({ user: student, judge0, siteToday: 300 });
+    const res = await post(app, '/api/practice/code/submit', submitBody);
+    expect(res.statusCode).toBe(429);
+    expect(res.json().error).toMatch(/đã đầy/);
+    expect(judge0.runBatch).not.toHaveBeenCalled();
+  });
+
+  it('judges under the default limits when none were saved', async () => {
+    const { app } = await build({ user: student });
+    expect((await post(app, '/api/practice/code/submit', submitBody)).statusCode).toBe(200);
   });
 
   it('answers 502, not a wrong verdict, when Judge0 is down', async () => {

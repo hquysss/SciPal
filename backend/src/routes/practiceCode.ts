@@ -2,6 +2,7 @@ import type { FastifyPluginAsync, FastifyReply, FastifyRequest } from 'fastify';
 import { z } from 'zod';
 import { gradeSubmission } from '../judge/grade.js';
 import { Judge0Unavailable, verdictOf, type Judge0Client } from '../judge/judge0.js';
+import { capsFor, createJudgeLimitsStore, DEFAULT_JUDGE_LIMITS } from '../judge/limits.js';
 import { consumeRateSlot, type RunKind } from '../judge/rateLimit.js';
 import { getUser, ID, msg, servableQuestion, unavailable } from '../practice/servable.js';
 import { CODE_LANGUAGES, MAX_CODE_CHARS, MAX_CODE_TESTS, type CodeTest } from '../schemas/questions.js';
@@ -45,7 +46,8 @@ const badRequest = msg('Yêu cầu không đúng định dạng (code tối đa 
 const off = msg('Chấm code chưa được bật.', 'Code judging is not switched on.');
 const tooMany = msg('Em thao tác nhanh quá, đợi một phút rồi thử lại.', 'Too many tries, wait a minute and try again.');
 const tooManyToday = msg('Hôm nay em đã dùng hết lượt chấm code, mai thử lại nhé.', 'You have used all of today’s code runs, try again tomorrow.');
-const judgeDown =msg('Chưa chấm được lúc này, em thử lại sau nhé. Lần này không bị tính là sai.', 'Could not judge right now, try again later. This does not count as a wrong answer.');
+const siteFull = msg('Hôm nay hệ thống chấm bài đã đầy, em thử lại vào ngày mai nhé.', 'The judge is full for today, try again tomorrow.');
+const judgeDown = msg('Chưa chấm được lúc này, em thử lại sau nhé. Lần này không bị tính là sai.', 'Could not judge right now, try again later. This does not count as a wrong answer.');
 /** XP for the first accepted answer, by difficulty (1 easy, 2 medium, 3 hard). */
 export const CODE_XP: Record<number, number> = { 1: 20, 2: 35, 3: 50 };
 
@@ -63,6 +65,14 @@ function judgeData(data: unknown): { tests: CodeTest[]; time_limit_ms: number; m
 }
 
 export const practiceCodeRoutes: FastifyPluginAsync = async (app) => {
+  // Admins change the daily limits at /admin/judge; they reach every instance within 30 s.
+  let readLimits: ReturnType<typeof createJudgeLimitsStore> | undefined;
+  const limitsInForce = async () => {
+    if (!app.supabase) return DEFAULT_JUDGE_LIMITS;
+    readLimits ??= createJudgeLimitsStore(app.supabase, (err) => app.log.error({ err }, 'Failed to read the judge limits'));
+    return readLimits();
+  };
+
   /** The signed-in user with a free run slot, or the reply has been sent. */
   async function admit(request: FastifyRequest, reply: FastifyReply, kind: RunKind): Promise<{ id: string } | null> {
     const user = getUser(request);
@@ -75,9 +85,9 @@ export const practiceCodeRoutes: FastifyPluginAsync = async (app) => {
       return null;
     }
     try {
-      const slot = await consumeRateSlot(app.supabase, user.id, kind);
+      const slot = await consumeRateSlot(app.supabase, user.id, kind, capsFor(kind, await limitsInForce()));
       if (slot !== 'ok') {
-        reply.code(429).send(slot === 'day' ? tooManyToday : tooMany);
+        reply.code(429).send(slot === 'day' ? tooManyToday : slot === 'busy' ? siteFull : tooMany);
         return null;
       }
     } catch (err) {

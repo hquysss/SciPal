@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import {
-  Award, BookA, Bot, Highlighter, ClipboardCheck, Megaphone, MessagesSquare, FlaskConical, FolderTree, Library, NotebookPen, ReceiptText, Settings2, ToggleRight, Users, type LucideIcon } from 'lucide-react';
+  Award, BookA, Bot, Gauge, Highlighter, ClipboardCheck, Megaphone, MessagesSquare, FlaskConical, FolderTree, Library, NotebookPen, ReceiptText, Settings2, ToggleRight, Users, type LucideIcon } from 'lucide-react';
 import { useLanguage } from '@scipal/hooks';
 import { countOpenSimulationRequests } from '@/features/authoring/simulationRequests/api';
 
@@ -45,6 +45,7 @@ export const ADMIN_GROUPS: Group[] = [
     title: { vi: 'Hệ thống', en: 'System' },
     tools: [
       { href: '/admin/ai', label: { vi: 'Cài đặt AI', en: 'AI settings' }, hint: { vi: 'Giáo sư AI, dịch tự động, hội thoại', en: 'Professor, translation, conversations' }, Icon: Bot },
+      { href: '/admin/judge', label: { vi: 'Giới hạn chấm code', en: 'Code judge limits' }, hint: { vi: 'Lượt nộp và chạy thử mỗi ngày, mỗi người và cả hệ thống', en: 'Daily submits and trial runs, per person and site-wide' }, Icon: Gauge },
       { href: '/admin/announcements', label: { vi: 'Thông báo', en: 'Announcements' }, hint: { vi: 'Gửi thông báo trong app và email tới người nhận tin', en: 'Send in-app notices and e-mail to subscribers' }, Icon: Megaphone },
       { href: '/admin/chat', label: { vi: 'Kiểm duyệt chat', en: 'Chat moderation' }, hint: { vi: 'Xem báo cáo, xoá tin, cấm chat', en: 'Review reports, delete messages, ban from chat' }, Icon: MessagesSquare },
       { href: '/admin/feedback', label: { vi: 'Đánh giá website', en: 'Website reviews' }, hint: { vi: 'Sao trung bình, góp ý và tài khoản gửi', en: 'Average stars, comments and sending accounts' }, Icon: ClipboardCheck },
