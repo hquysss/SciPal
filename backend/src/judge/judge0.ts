@@ -20,7 +20,8 @@ const unb64 = (text: unknown) => (typeof text === 'string' ? Buffer.from(text, '
 
 export function createJudge0Client(opts: { url: string; token?: string; /** Extra request headers, for a hosted Judge0 that wants its own (e.g. a RapidAPI key and host). */ headers?: Record<string, string>; fetch?: typeof fetch; waitMs?: number; pollMs?: number }): Judge0Client {
   const doFetch = opts.fetch ?? fetch;
-  const base = opts.url.replace(/\/+$/, '');
+  // A host copied without its scheme (e.g. a RapidAPI host) would fail every request to parse as a URL.
+  const base = (/^https?:\/\//i.test(opts.url.trim()) ? opts.url.trim() : `https://${opts.url.trim()}`).replace(/\/+$/, '');
   const waitMs = opts.waitMs ?? 20_000;
   const pollMs = opts.pollMs ?? 500;
   const headers: Record<string, string> = { 'Content-Type': 'application/json', ...(opts.token ? { 'X-Auth-Token': opts.token } : {}), ...opts.headers };
