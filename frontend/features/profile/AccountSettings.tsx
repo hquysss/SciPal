@@ -9,6 +9,7 @@ import { buttonVariants } from '@/components/ui/button';
 import { createBrowserClient } from '@/lib/supabase';
 import { AccountHelpModal } from '@/features/auth/AccountHelpModal';
 import { EducationLevelSetting } from './EducationLevelSetting';
+import { tint } from './ProfileHero';
 import { GradeSetting } from './GradeSetting';
 import type { resolveEducationLevel } from '@/features/landing/educationLevel';
 import { ThemeToggle } from '@/components/nav/ThemeToggle';
@@ -49,20 +50,20 @@ export function AccountSettings({ currentRole = 'student', educationPreference, 
     }
   };
 
-  const rowLabel = 'flex items-center gap-1.5 text-sm font-semibold text-ink';
-  const rowHint = 'text-sm text-ink-muted';
+  const rowLabel = 'flex items-center gap-1.5 text-sm font-semibold text-pretty text-ink';
+  const rowHint = 'text-sm text-pretty text-ink-muted';
   const langButton = (active: boolean) =>
     `min-h-11 rounded-md px-3 text-sm font-semibold transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus ${
       active ? 'bg-action text-action-ink' : 'text-ink-muted hover:text-ink'
     }`;
 
-  const group = 'flex flex-col gap-4 rounded-xl border border-line bg-surface-sunken p-4 sm:p-5';
-  const groupTitle = 'flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-ink-muted';
+  const group = 'flex flex-col gap-4 border-t border-edge pt-6';
+  const groupTitle = 'flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-ink';
   const row = 'flex flex-col justify-between gap-3 sm:flex-row sm:items-center';
 
   return (
     <>
-      <section aria-labelledby="settings-title" className="flex flex-col gap-5 rounded-2xl border border-line bg-surface p-5 sm:p-7">
+      <section aria-labelledby="settings-title" className="flex flex-col gap-6 rounded-2xl border border-line bg-surface p-5 sm:p-7">
         <div>
           <h2 id="settings-title" className="text-lg font-bold text-ink">{t({ en: 'Settings', vi: 'Cài đặt' })}</h2>
           <p className={rowHint}>
@@ -72,7 +73,7 @@ export function AccountSettings({ currentRole = 'student', educationPreference, 
 
         <div className={group}>
           <h3 className={groupTitle}>
-            <Palette aria-hidden="true" className="h-4 w-4" />
+            <span aria-hidden="true" className={`grid size-7 place-items-center rounded-md text-ink ${tint(0)}`}><Palette className="h-4 w-4" /></span>
             {t({ en: 'Appearance', vi: 'Giao diện' })}
           </h3>
           <div className={row}>
@@ -103,12 +104,12 @@ export function AccountSettings({ currentRole = 'student', educationPreference, 
 
         <div className={group}>
           <h3 className={groupTitle}>
-            <GraduationCap aria-hidden="true" className="h-4 w-4" />
+            <span aria-hidden="true" className={`grid size-7 place-items-center rounded-md text-ink ${tint(1)}`}><GraduationCap className="h-4 w-4" /></span>
             {t({ en: 'Learning', vi: 'Học tập' })}
           </h3>
           <EducationLevelSetting preference={educationPreference} isAuthenticated={isAuthenticated} />
           {isAuthenticated && <GradeSetting />}
-          <div className="flex items-center justify-between gap-3">
+          <div className="flex items-center justify-between gap-3 border-t border-line pt-4">
             <div>
               <div className={rowLabel}>
                 <BookOpen aria-hidden="true" className="h-4 w-4" />
@@ -148,7 +149,7 @@ export function AccountSettings({ currentRole = 'student', educationPreference, 
 
         <div className={group}>
           <h3 className={groupTitle}>
-            <UserRound aria-hidden="true" className="h-4 w-4" />
+            <span aria-hidden="true" className={`grid size-7 place-items-center rounded-md text-ink ${tint(2)}`}><UserRound className="h-4 w-4" /></span>
             {t({ en: 'Account', vi: 'Tài khoản' })}
           </h3>
           <div>

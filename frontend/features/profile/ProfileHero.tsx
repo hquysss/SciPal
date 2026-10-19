@@ -1,4 +1,4 @@
-import type { ComponentType, ReactNode } from 'react';
+import type { ComponentType, KeyboardEvent, ReactNode } from 'react';
 
 type Icon = ComponentType<{ className?: string; 'aria-hidden'?: boolean | 'true' }>;
 
@@ -6,6 +6,14 @@ type Icon = ComponentType<{ className?: string; 'aria-hidden'?: boolean | 'true'
 export const roundAction = 'inline-flex size-11 shrink-0 items-center justify-center rounded-full border border-edge bg-surface text-ink transition-colors hover:bg-surface-sunken focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus [&_svg]:size-5';
 /** Pill shape for a profile's main action, on top of buttonVariants. */
 export const pill = 'rounded-full px-5 font-bold';
+
+/**
+ * The level's supporting trio as solid icon chips, rotated by position: sun, sky, coral. Wayfinding
+ * only; the glyph on them is --ink in light and --paper in dark (DESIGN.md: never a text colour).
+ */
+const ON_TRIO = 'text-[light-dark(var(--ink),var(--paper))]';
+export const TINTS = [`bg-sun ${ON_TRIO}`, `bg-sky ${ON_TRIO}`, `bg-coral ${ON_TRIO}`] as const;
+export const tint = (i: number) => TINTS[i % TINTS.length];
 
 const DEFAULT_COVER =
   'radial-gradient(120% 140% at 0% 0%, color-mix(in srgb, var(--sun) 55%, transparent), transparent 60%), radial-gradient(120% 140% at 100% 0%, color-mix(in srgb, var(--sky) 55%, transparent), transparent 60%), linear-gradient(120deg, color-mix(in srgb, var(--action) 30%, var(--surface)), color-mix(in srgb, var(--coral) 35%, var(--surface)))';
@@ -22,7 +30,7 @@ export function ProfileHero({ headingId, name, initials, avatarUrl, coverUrl, ba
   handle?: ReactNode;
   bio?: string | null;
   meta: Array<{ Icon: Icon; text: ReactNode }>;
-  stats: Array<{ value: string; label: string }>;
+  stats: Array<{ value: string; label: string; Icon?: Icon }>;
   actions?: ReactNode;
 }) {
   return (
@@ -39,7 +47,7 @@ export function ProfileHero({ headingId, name, initials, avatarUrl, coverUrl, ba
           <div className="relative z-10 -mt-12 grid size-24 shrink-0 place-items-center overflow-hidden rounded-full border-4 border-surface bg-surface-sunken text-3xl font-extrabold text-ink sm:-mt-16 sm:size-32 sm:text-4xl">
             {avatarUrl
               // eslint-disable-next-line @next/next/no-img-element -- media store image
-              ? <img src={avatarUrl} alt={name} className="size-full object-cover" />
+              ? <img src={avatarUrl} alt="" className="size-full object-cover" />
               : <span aria-hidden="true">{initials}</span>}
           </div>
           {actions && <div className="flex flex-wrap items-center justify-end gap-2 pt-3">{actions}</div>}
@@ -64,11 +72,19 @@ export function ProfileHero({ headingId, name, initials, avatarUrl, coverUrl, ba
         )}
 
         {stats.length > 0 && (
-          <dl className="flex flex-wrap gap-x-5 gap-y-1 text-sm">
-            {stats.map(({ value, label }) => (
-              <div key={label} className="flex items-baseline gap-1">
-                <dd className="font-bold tabular-nums text-ink">{value}</dd>
-                <dt className="order-last text-ink-muted">{label}</dt>
+          <dl className="grid grid-cols-3 gap-2 text-ink">
+            {stats.map(({ value, label, Icon: StatIcon }, i) => (
+              <div key={label} className="flex flex-col gap-1.5 rounded-xl border border-line bg-surface-sunken p-2.5 sm:flex-row sm:items-center sm:gap-2.5">
+                {StatIcon && (
+                  <span aria-hidden="true" className={`grid size-8 shrink-0 place-items-center rounded-lg ${tint(i)}`}>
+                    <StatIcon className="size-4" />
+                  </span>
+                )}
+                {/* dt before dd for valid markup; the number reads first. */}
+                <div className="flex min-w-0 flex-col-reverse">
+                  <dt className="text-xs leading-snug text-pretty text-ink-muted">{label}</dt>
+                  <dd className="text-lg font-extrabold leading-tight tabular-nums">{value}</dd>
+                </div>
               </div>
             ))}
           </dl>
@@ -86,8 +102,19 @@ export function ProfileTabs<T extends string>({ label, tabs, active, onChange, i
   onChange: (id: T) => void;
   idPrefix: string;
 }) {
+  // WAI-ARIA tabs: one tab stop, arrows/Home/End move between tabs and select them.
+  const onKeyDown = (e: KeyboardEvent<HTMLDivElement>) => {
+    const i = tabs.findIndex((tab) => tab.id === active);
+    const next = ({ ArrowRight: i + 1, ArrowLeft: i - 1, Home: 0, End: tabs.length - 1 } as Record<string, number>)[e.key];
+    if (next === undefined) return;
+    e.preventDefault();
+    const tab = tabs[(next + tabs.length) % tabs.length];
+    onChange(tab.id);
+    document.getElementById(`${idPrefix}-tab-${tab.id}`)?.focus();
+  };
+
   return (
-    <div role="tablist" aria-label={label} className="flex border-b border-line">
+    <div role="tablist" aria-label={label} onKeyDown={onKeyDown} className="flex border-b border-line">
       {tabs.map((tab) => {
         const on = tab.id === active;
         return (
@@ -97,6 +124,7 @@ export function ProfileTabs<T extends string>({ label, tabs, active, onChange, i
             role="tab"
             id={`${idPrefix}-tab-${tab.id}`}
             aria-selected={on}
+            tabIndex={on ? 0 : -1}
             aria-controls={`${idPrefix}-panel`}
             onClick={() => onChange(tab.id)}
             className={`relative flex min-h-12 flex-1 items-center justify-center text-sm transition-colors hover:bg-surface-sunken focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-focus ${on ? 'font-bold text-ink' : 'font-medium text-ink-muted'}`}

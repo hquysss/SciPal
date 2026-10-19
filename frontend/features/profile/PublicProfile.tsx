@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
-import { Mail, School, UserPlus } from 'lucide-react';
+import { Flame, Mail, School, Trophy, UserPlus, Zap } from 'lucide-react';
 import { useLanguage } from '@scipal/hooks';
 import { Alert } from '@/components/ui/alert';
 import { Button, buttonVariants } from '@/components/ui/button';
@@ -64,11 +64,11 @@ export function PublicProfile({ userId }: { userId: string }) {
         bio={p.bio}
         meta={p.school ? [{ Icon: School, text: p.school }] : []}
         stats={[
-          { value: String(p.streak.current), label: t({ en: 'day streak', vi: 'ngày liên tiếp' }) },
-          { value: String(p.streak.best), label: t({ en: 'best streak', vi: 'ngày kỉ lục' }) },
+          { value: String(p.streak.current), label: t({ en: 'day streak', vi: 'ngày liên tiếp' }), Icon: Flame },
+          { value: String(p.streak.best), label: t({ en: 'best streak', vi: 'ngày kỉ lục' }), Icon: Zap },
           p.rank
-            ? { value: `#${p.rank.position}`, label: t({ en: 'on the leaderboard', vi: 'trên bảng xếp hạng' }) }
-            : { value: '—', label: t({ en: 'not ranked yet', vi: 'chưa có hạng' }) },
+            ? { value: `#${p.rank.position}`, label: t({ en: 'on the leaderboard', vi: 'trên bảng xếp hạng' }), Icon: Trophy }
+            : { value: '—', label: t({ en: 'not ranked yet', vi: 'chưa có hạng' }), Icon: Trophy },
         ]}
         actions={action}
       />

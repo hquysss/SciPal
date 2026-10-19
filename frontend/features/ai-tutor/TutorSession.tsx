@@ -79,7 +79,13 @@ export function TutorProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     if (!signedIn) return;
-    const refresh = () => { if (document.visibilityState === 'visible') void refreshQuota(); };
+    // Returning to the tab fires both focus and visibilitychange: one refresh per return, not two.
+    let last = 0;
+    const refresh = () => {
+      if (document.visibilityState !== 'visible' || Date.now() - last < 2000) return;
+      last = Date.now();
+      void refreshQuota();
+    };
     window.addEventListener('focus', refresh);
     document.addEventListener('visibilitychange', refresh);
     return () => {

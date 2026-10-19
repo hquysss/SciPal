@@ -3,10 +3,12 @@
 import Link from 'next/link';
 import { useEffect, useState, type ComponentType } from 'react';
 import {
+  BookOpenCheck,
   BookmarkCheck,
   CalendarDays,
   ChevronRight,
   ClipboardCheck,
+  Flame,
   Eye,
   Gauge,
   GraduationCap,
@@ -17,13 +19,14 @@ import {
   PlayCircle,
   Repeat,
   School,
+  Zap,
 } from 'lucide-react';
 import { useLanguage } from '@scipal/hooks';
 import { ProfileBadges } from './RoleBadge';
 import { buttonVariants } from '../../components/ui/button';
 import { BadgeShowcase } from './BadgeShowcase';
 import { ProfileEditor } from './ProfileEditor';
-import { ProfileHero, ProfileTabs, pill, roundAction } from './ProfileHero';
+import { ProfileHero, ProfileTabs, pill, roundAction, tint } from './ProfileHero';
 import { getProfile, type PublicProfile } from './profileApi';
 
 interface ProfileCardProps {
@@ -63,13 +66,13 @@ function ShortcutGrid({ items }: { items: Shortcut[] }) {
   const { t } = useLanguage();
   return (
     <ul className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-      {items.map(({ href, label, hint, Icon }) => (
+      {items.map(({ href, label, hint, Icon }, i) => (
         <li key={href}>
           <Link
             href={href}
-            className="group flex min-h-14 items-center gap-3 rounded-xl border border-line bg-surface px-3 py-2.5 transition hover:-translate-y-0.5 hover:border-edge hover:shadow-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus motion-reduce:transition-none motion-reduce:hover:translate-y-0"
+            className="group flex min-h-14 items-center gap-3 rounded-xl border border-line bg-surface-sunken px-3 py-2.5 transition hover:-translate-y-0.5 hover:border-edge hover:shadow-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus motion-reduce:transition-none motion-reduce:hover:translate-y-0"
           >
-            <span className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-surface-sunken text-action">
+            <span className={`grid h-9 w-9 shrink-0 place-items-center rounded-lg text-ink ${tint(i)}`}>
               <Icon aria-hidden className="h-[18px] w-[18px]" />
             </span>
             <span className="flex min-w-0 flex-1 flex-col">
@@ -122,9 +125,9 @@ export function ProfileCard({ displayName, role, email, joinedAt, avatarUrl, cov
     ...(joinedText ? [{ Icon: CalendarDays, text: joinedText }] : []),
   ];
   const stats3 = [
-    { value: stats.totalXP.toLocaleString(lang === 'en' ? 'en-US' : 'vi-VN'), label: t({ en: 'Total XP', vi: 'Tổng điểm XP' }) },
-    { value: String(stats.completedLessons), label: t({ en: 'Lessons done', vi: 'Bài đã học' }) },
-    { value: String(stats.longestStreak), label: t({ en: 'Best streak', vi: 'Chuỗi ngày kỉ lục' }) },
+    { value: stats.totalXP.toLocaleString(lang === 'en' ? 'en-US' : 'vi-VN'), label: t({ en: 'Total XP', vi: 'Tổng điểm XP' }), Icon: Zap },
+    { value: String(stats.completedLessons), label: t({ en: 'Lessons done', vi: 'Bài đã học' }), Icon: BookOpenCheck },
+    { value: String(stats.longestStreak), label: t({ en: 'Best streak', vi: 'Chuỗi ngày kỉ lục' }), Icon: Flame },
   ];
 
   return (
@@ -158,7 +161,7 @@ export function ProfileCard({ displayName, role, email, joinedAt, avatarUrl, cov
       <ProfileTabs
         label={t({ en: 'Profile sections', vi: 'Các mục hồ sơ' })}
         idPrefix="profile"
-        tabs={[{ id: 'shortcuts', label: t({ vi: 'Đi nhanh', en: 'Shortcuts' }) }, { id: 'badges', label: t({ en: 'Badges', vi: 'Danh hiệu' }) }]}
+        tabs={[{ id: 'shortcuts', label: t({ vi: 'Lối tắt', en: 'Shortcuts' }) }, { id: 'badges', label: t({ en: 'Badges', vi: 'Danh hiệu' }) }]}
         active={tab}
         onChange={setTab}
       />

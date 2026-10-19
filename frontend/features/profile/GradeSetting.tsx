@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { Check } from 'lucide-react';
 import { useLanguage } from '@scipal/hooks';
 import { Alert } from '@/components/ui/alert';
+import { Button } from '@/components/ui/button';
 import { setChatGrade } from '../community/chatApi';
 import { getProfile } from './profileApi';
 
@@ -13,22 +14,29 @@ const GRADES = [10, 11, 12] as const;
 export function GradeSetting() {
   const { t } = useLanguage();
   const [grade, setGrade] = useState<number | null>(null);
-  const [state, setState] = useState<'loading' | 'idle' | 'saving' | 'saved' | 'error'>('loading');
+  // 'loadError' means the saved grade is unknown, not that a save failed: the copy and the status pill differ.
+  const [state, setState] = useState<'loading' | 'loadError' | 'idle' | 'saving' | 'saved' | 'error'>('loading');
+  const [attempt, setAttempt] = useState(0);
 
   useEffect(() => {
     let live = true;
     void getProfile('me').then((result) => {
       if (!live) return;
       if (result.ok) setGrade(result.data.grade);
-      setState(result.ok ? 'idle' : 'error');
+      setState(result.ok ? 'idle' : 'loadError');
     });
     return () => {
       live = false;
     };
-  }, []);
+  }, [attempt]);
+
+  const retryLoad = () => {
+    setState('loading');
+    setAttempt((n) => n + 1);
+  };
 
   const choose = async (next: number) => {
-    if (state === 'saving' || state === 'loading' || next === grade) return;
+    if (state === 'saving' || state === 'loading' || state === 'loadError' || next === grade) return;
     setState('saving');
     const result = await setChatGrade(next);
     if (result.ok) setGrade(next);
@@ -36,14 +44,21 @@ export function GradeSetting() {
   };
 
   return (
-    <section className="flex flex-col gap-4 rounded-lg border border-line bg-surface-sunken p-4" aria-labelledby="grade-title">
+    <section className="flex flex-col gap-4 border-t border-line pt-4" aria-labelledby="grade-title">
       <div className="flex flex-wrap items-start justify-between gap-2">
         <div>
           <h3 id="grade-title" className="text-sm font-bold text-ink">{t({ en: 'Your grade', vi: 'Khối học của bạn' })}</h3>
           <p className="mt-1 text-sm text-ink-muted">{t({ en: 'Used for your grade chat room and shown on your profile.', vi: 'Dùng để vào phòng chat của khối và hiện trên hồ sơ của bạn.' })}</p>
         </div>
-        <span className="rounded-full border border-line bg-surface px-2.5 py-1 text-sm font-semibold text-ink-muted" aria-live="polite">
-          {grade ? t({ en: 'Saved to account', vi: 'Đã lưu vào tài khoản' }) : t({ en: 'No grade selected yet', vi: 'Chưa chọn khối' })}
+        <span className="inline-flex items-center gap-1 text-sm font-semibold text-ink-muted" aria-live="polite">
+          {grade && state !== 'loading' && state !== 'loadError' && <Check aria-hidden="true" className="size-4 text-success" />}
+          {state === 'loading'
+            ? t({ en: 'Loading…', vi: 'Đang tải…' })
+            : state === 'loadError'
+              ? t({ en: 'Not loaded', vi: 'Chưa tải được' })
+              : grade
+                ? t({ en: 'Saved to account', vi: 'Đã lưu vào tài khoản' })
+                : t({ en: 'No grade selected yet', vi: 'Chưa chọn khối' })}
         </span>
       </div>
       <div role="group" aria-label={t({ en: 'Your grade', vi: 'Khối học của bạn' })} className="grid grid-cols-3 gap-2">
@@ -52,7 +67,7 @@ export function GradeSetting() {
             key={g}
             type="button"
             aria-pressed={grade === g}
-            disabled={state === 'saving' || state === 'loading'}
+            disabled={state === 'saving' || state === 'loading' || state === 'loadError'}
             onClick={() => void choose(g)}
             className={`flex min-h-12 items-center justify-center gap-2 rounded-lg border px-3 text-sm font-bold transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus disabled:cursor-wait disabled:opacity-60 ${
               grade === g ? 'border-action bg-action text-action-ink' : 'border-edge bg-surface text-ink hover:bg-surface-sunken'
@@ -64,6 +79,14 @@ export function GradeSetting() {
         ))}
       </div>
       {state === 'saved' && <Alert tone="success">{t({ en: 'Saved. Your grade room is ready.', vi: 'Đã lưu. Phòng chat của khối đã sẵn sàng.' })}</Alert>}
+      {state === 'loadError' && (
+        <Alert tone="danger">
+          <span className="flex flex-wrap items-center justify-between gap-2">
+            {t({ en: 'Could not load your grade. Your saved choice is unchanged.', vi: 'Chưa tải được khối của bạn. Lựa chọn đã lưu vẫn còn nguyên.' })}
+            <Button variant="outline" onClick={retryLoad}>{t({ en: 'Try again', vi: 'Thử lại' })}</Button>
+          </span>
+        </Alert>
+      )}
       {state === 'error' && <Alert tone="danger">{t({ en: 'Could not save your grade. Choose it again to retry.', vi: 'Chưa lưu được khối. Hãy chọn lại để thử lại.' })}</Alert>}
     </section>
   );

@@ -6,7 +6,7 @@ import { AiTutorButton } from './AiTutorButton';
 import { TutorPage } from './TutorPage';
 import { GuestTutorView } from '../guest/GuestTutor';
 
-const quota = vi.hoisted(() => ({ delayed: false, release: () => {} }));
+const quota = vi.hoisted(() => ({ delayed: false, release: () => {}, calls: 0 }));
 const env = vi.hoisted(() => ({ path: '/', holdConversation: false, changedAccount: false, releaseConversation: () => {}, auth: (_event: string, _session: { user: { id: string } } | null) => {}, events: (_event: unknown) => {} }));
 vi.mock('next/navigation', () => ({ usePathname: () => env.path, useRouter: () => ({ replace: () => {} }) }));
 vi.mock('@scipal/hooks', () => ({ useLanguage: () => ({ lang: 'vi', t: (o: { vi: string }) => o.vi }) }));
@@ -23,6 +23,7 @@ vi.mock('./api', () => ({ getConversation: async (id: string) => {
   if (env.changedAccount) return { ok: false, status: 404, error: { vi: 'Không tìm thấy hội thoại này.', en: 'Not found' } };
   return { ok: true, data: { conversation: { id, lesson_id: null }, messages: [{ role: 'user', content: 'Đã tải ' + id }] } };
 }, listConversations: async () => ({ ok: true, data: { conversations: [] } }), getTutorQuota: async () => {
+  quota.calls += 1;
   if (quota.delayed) await new Promise<void>((resolve) => { quota.release = resolve; });
   return { ok: true, data: { remaining: 3, period: 'day' } };
 } }));
@@ -47,6 +48,18 @@ function Probe() {
 afterEach(() => { cleanup(); env.path = '/'; quota.delayed = false; env.holdConversation = false; env.changedAccount = false; });
 
 describe('shared tutor session', () => {
+  it('refreshes quota once when returning to the tab, though focus and visibilitychange both fire', async () => {
+    render(<TutorProvider><Probe /></TutorProvider>);
+    await waitFor(() => expect(quota.calls).toBeGreaterThan(0));
+    await act(async () => { await new Promise((r) => setTimeout(r, 50)); });
+    const before = quota.calls;
+    await act(async () => {
+      window.dispatchEvent(new Event('focus'));
+      document.dispatchEvent(new Event('visibilitychange'));
+    });
+    expect(quota.calls - before).toBe(1);
+  });
+
   it('loads quota before asking and preserves a stream and draft across routes', async () => {
     const ui = (lesson: boolean) => <TutorProvider><Probe />{lesson && <AiTutorButton lessonId="l2" lessonTitle={{ vi: 'Bài mới', en: 'New lesson' }} level="upper_secondary" />}</TutorProvider>;
     const view = render(ui(false));
