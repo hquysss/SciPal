@@ -357,6 +357,8 @@ export interface PracticeCheckResult {
   writing?: { used: string[]; missing: string[]; sample_answer: string };
   /** A code answer: the overall verdict and one result per test. */
   code?: CodeResult;
+  /** XP the server gave for this answer (a programming question solved for the first time); 0 when already solved. */
+  xp_earned?: number;
 }
 
 /** `stdout` and `expected` come only with tests a learner may see (the examples). */

@@ -23,11 +23,13 @@ const codeRow = {
 const ok = (data: unknown = null, count?: number) => mockQuery({ data, error: null, ...(count !== undefined ? { count } : {}) });
 const out = (stdout: string, over: Partial<RunOutcome> = {}): RunOutcome => ({ status_id: 3, stdout, stderr: '', compile_output: '', time_ms: 10, memory_kb: 2000, ...over });
 
-function build(opts: { user?: object; judge0?: Judge0Client | null; row?: unknown; used?: number }) {
+function build(opts: { user?: object; judge0?: Judge0Client | null; row?: unknown; used?: number; xp?: MockBuilder | MockBuilder[] }) {
   const tables: Record<string, MockBuilder | MockBuilder[]> = {
     questions: ok(opts.row === undefined ? codeRow : opts.row),
     lessons: ok([{ id: LESSON }]),
     code_runs: [ok(null, opts.used ?? 0), ok(), ok(null, opts.used ?? 0), ok()],
+    xp_log: opts.xp ?? ok(),
+    streaks: [ok(null), ok()],
   };
   const app = Fastify();
   app.decorate('supabase', mockSupabase(tables));
@@ -132,3 +134,44 @@ describe('POST /api/practice/check', () => {
     expect(res.statusCode).toBe(400);
   });
 });
+
+describe('XP for a programming question', () => {
+  it('gives XP by difficulty the first time every test passes, once per question', async () => {
+    const xp = ok();
+    const { app } = await build({ user: student, xp, row: { ...codeRow, difficulty: 2 } });
+    const body = (await post(app, '/api/practice/code/submit', submitBody)).json();
+    expect(body.xp_earned).toBe(35);
+    expect(xp.inserted[0]).toEqual({ user_id: 'student-1', subject_id: 's', delta: 35, reason: `code_ac:${Q}` });
+  });
+
+  it('gives nothing when the question was already solved', async () => {
+    const xp = mockQuery({ data: null, error: { code: '23505', message: 'duplicate' } });
+    const { app } = await build({ user: student, xp });
+    const res = await post(app, '/api/practice/code/submit', submitBody);
+    expect(res.statusCode).toBe(200);
+    expect(res.json()).toMatchObject({ correct: true, xp_earned: 0 });
+  });
+
+  it('gives nothing for a wrong answer or an author trying an unpublished question', async () => {
+    const xp = ok();
+    const wrong = await build({ user: student, xp, judge0: { runBatch: async () => [out('4\n'), out('no\n')] } });
+    expect((await post(wrong.app, '/api/practice/code/submit', submitBody)).json().xp_earned).toBeUndefined();
+    const draft = await build({ user: { id: 'teacher-1', app_metadata: { app_role: 'teacher' } }, xp, row: { ...codeRow, status: 'draft' } });
+    expect((await post(draft.app, '/api/practice/code/submit', submitBody)).json()).toMatchObject({ correct: true, xp_earned: 0 });
+    expect(xp.inserted).toHaveLength(0);
+  });
+});
+
+describe('GET /api/practice/code/solved', () => {
+  it('lists the programming questions the learner has solved', async () => {
+    const { app } = await build({ user: student, xp: ok([{ reason: `code_ac:${Q}` }, { reason: 'code_ac:not-an-id' }]) });
+    const res = await app.inject({ method: 'GET', url: '/api/practice/code/solved' });
+    expect(res.json()).toEqual({ question_ids: [Q] });
+  });
+
+  it('needs a signed-in learner', async () => {
+    const { app } = await build({});
+    expect((await app.inject({ method: 'GET', url: '/api/practice/code/solved' })).statusCode).toBe(401);
+  });
+});
+

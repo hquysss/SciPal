@@ -6,11 +6,13 @@ import { consumeRateSlot, type RunKind } from '../judge/rateLimit.js';
 import { getUser, ID, msg, servableQuestion, unavailable } from '../practice/servable.js';
 import { CODE_LANGUAGES, MAX_CODE_CHARS, MAX_CODE_TESTS, type CodeTest } from '../schemas/questions.js';
 import { explanationOf } from './practice.js';
+import { touchStreak } from '../streaks/touchStreak.js';
 
 // Programming questions in lesson practice. Signed-in learners run their code on an input they
 // type, or submit it to be judged on every test (hidden ones included). Judging is Judge0's job;
 // this file only decides who may ask, how often, and what the answer may show. Like all of
-// Tự luyện nothing is stored and no XP is given.
+// Tự luyện nothing about the answer is stored. A published question solved for the first time gives XP
+// by its difficulty, once per learner (a unique index on xp_log makes a second grant fail).
 
 declare module 'fastify' {
   interface FastifyInstance {
@@ -43,6 +45,9 @@ const badRequest = msg('Yêu cầu không đúng định dạng (code tối đa 
 const off = msg('Chấm code chưa được bật.', 'Code judging is not switched on.');
 const tooMany = msg('Em thao tác nhanh quá, đợi một phút rồi thử lại.', 'Too many tries, wait a minute and try again.');
 const judgeDown = msg('Chưa chấm được lúc này, em thử lại sau nhé. Lần này không bị tính là sai.', 'Could not judge right now, try again later. This does not count as a wrong answer.');
+/** XP for the first accepted answer, by difficulty (1 easy, 2 medium, 3 hard). */
+export const CODE_XP: Record<number, number> = { 1: 20, 2: 35, 3: 50 };
+
 const noTests = msg('Câu này chưa có bộ test.', 'This question has no tests yet.');
 
 /** A stored code question as the judge reads it; stored data is lenient, so every field is checked. */
@@ -86,6 +91,23 @@ export const practiceCodeRoutes: FastifyPluginAsync = async (app) => {
     return reply.code(502).send(judgeDown);
   };
 
+  /**
+   * XP for a published question solved for the first time. A grant that already exists, or one that
+   * fails, gives 0: the verdict still stands and the learner can be granted on a later accepted submit.
+   */
+  async function grantXp(request: FastifyRequest, row: { id: string; status: string; subject_id: string; difficulty: number }): Promise<number> {
+    const userId = getUser(request)?.id;
+    const delta = CODE_XP[row.difficulty] ?? CODE_XP[1]!;
+    if (!userId || row.status !== 'published') return 0;
+    const { error } = await app.supabase!.from('xp_log').insert({ user_id: userId, subject_id: row.subject_id, delta, reason: `code_ac:${row.id}` });
+    if (error) {
+      if (error.code !== '23505') request.log.warn({ err: error }, 'XP insert failed for a solved code question');
+      return 0;
+    }
+    await touchStreak(app.supabase!, userId, row.subject_id, new Date(), request.log);
+    return delta;
+  }
+
   /** A code question the caller may use, after the signed-in and rate checks. */
   async function codeQuestion(request: FastifyRequest, reply: FastifyReply, questionId: string) {
     const row = await servableQuestion(app, request, reply, questionId, judgeDown);
@@ -101,6 +123,19 @@ export const practiceCodeRoutes: FastifyPluginAsync = async (app) => {
     }
     return { row, data };
   }
+
+  app.get('/api/practice/code/solved', async (request, reply) => {
+    const userId = getUser(request)?.id;
+    if (!userId) return reply.code(401).send(signIn);
+    if (!app.supabase) return reply.code(503).send(off);
+    const { data, error } = await app.supabase.from('xp_log').select('reason').eq('user_id', userId).ilike('reason', 'code_ac:%');
+    if (error) {
+      request.log.error({ err: error }, 'Failed to list solved code questions');
+      return reply.code(500).send(msg('Chưa tải được các bài đã giải.', 'Could not load your solved problems.'));
+    }
+    const ids = ((data ?? []) as Array<{ reason: string }>).map((row) => row.reason.slice('code_ac:'.length)).filter((id) => ID.test(id));
+    return reply.send({ question_ids: [...new Set(ids)] });
+  });
 
   app.post('/api/practice/code/run', { bodyLimit: BODY_LIMIT }, async (request, reply) => {
     const parsed = RunBody.safeParse(request.body);
@@ -138,8 +173,10 @@ export const practiceCodeRoutes: FastifyPluginAsync = async (app) => {
     try {
       const result = await gradeSubmission({ client: app.judge0!, language: input.language, source: input.source, ...question.data, reveal: 'samples' });
       const { correct, ...code } = result;
-      const explanation = correct ? explanationOf(question.row.data as Record<string, unknown>) : undefined;
-      return reply.send({ correct, code, ...(explanation ? { explanation } : {}) });
+      if (!correct) return reply.send({ correct, code });
+      const explanation = explanationOf(question.row.data as Record<string, unknown>);
+      const xp_earned = await grantXp(request, question.row);
+      return reply.send({ correct, code, xp_earned, ...(explanation ? { explanation } : {}) });
     } catch (err) {
       return unreachable(request, reply, err);
     }

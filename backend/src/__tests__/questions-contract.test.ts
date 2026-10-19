@@ -91,3 +91,10 @@ describe('code questions migration contract', () => {
     expect(codeSql).not.toMatch(/create policy/);
   });
 });
+
+describe('code XP migration contract', () => {
+  it('lets each learner get XP once per programming question', () => {
+    const xpSql = readFileSync('../supabase/migrations/20261020090000_code_xp_once.sql', 'utf8').toLowerCase();
+    expect(xpSql).toMatch(/create unique index if not exists xp_log_code_once_idx\s+on public\.xp_log \(user_id, reason\)\s+where reason like 'code_ac:%'/);
+  });
+});
