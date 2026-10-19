@@ -1,4 +1,4 @@
-import { EXAM_QUESTION_TYPES, QUESTION_TYPES, storedQuestionData, validateQuestionInput, type QuestionType } from '@scipal/types';
+import { EXAM_QUESTION_TYPES, QUESTION_TYPES, storedQuestionData, validateQuestionInput, type CodeTest, type QuestionType } from '@scipal/types';
 import type { QuestionPayload } from './api';
 
 type Bilingual = { en: string; vi: string };
@@ -17,6 +17,13 @@ export interface QuestionDraft {
     /** Writing: the English answer shown after checking, and the terms the answer should use. */
     sample_answer?: string;
     key_terms?: string[];
+    /** Code: the statement of input and output, the limits, the starter code per language and the judged tests. */
+    input_spec?: Bilingual;
+    output_spec?: Bilingual;
+    time_limit_ms?: number;
+    memory_limit_mb?: number;
+    starter?: { python?: string; cpp?: string };
+    tests?: CodeTest[];
     explanation?: Bilingual;
     /** A figure under the question, uploaded to SciPal. */
     image?: { url: string; alt?: Bilingual };
@@ -42,6 +49,9 @@ function answerFields(type: QuestionType): Omit<QuestionDraft['data'], 'stem' | 
   if (type === 'mc') return { options: ['a', 'b', 'c', 'd'].map((id) => ({ id, text: blank() })), answer: 'a' };
   if (type === 'truefalse') return { items: ['1', '2', '3', '4'].map((id) => ({ id, text: blank(), correct: true })) };
   if (type === 'writing') return { sample_answer: '', key_terms: [] };
+  if (type === 'code') {
+    return { input_spec: blank(), output_spec: blank(), time_limit_ms: 2000, memory_limit_mb: 128, starter: {}, tests: [{ input: '', expected: '', sample: true, points: 1 }] };
+  }
   return { answer_key: '' };
 }
 
@@ -79,12 +89,19 @@ function keyTermsField(terms: string[] | undefined): { key_terms?: string[] } {
   return clean.length ? { key_terms: clean } : {};
 }
 
+/** Starter code as sent: only the languages that have some; left out when there is none. */
+function starterField(starter: { python?: string; cpp?: string } | undefined): { starter?: { python?: string; cpp?: string } } {
+  const kept = Object.fromEntries(Object.entries(starter ?? {}).filter(([, code]) => code?.trim()));
+  return Object.keys(kept).length ? { starter: kept } : {};
+}
+
 /** Where a question lives: a lesson's practice part, or the exam bank (with an optional grade). */
 export type QuestionContext = { subjectId: string } & ({ usage: 'practice'; lessonId: string } | { usage: 'exam'; grade: number | null });
 
 /** What the API receives: only this type's fields; an unwritten explanation or note is left out. */
 export function questionInput(draft: QuestionDraft, ctx: QuestionContext): QuestionPayload {
   const { stem, options, answer, items, answer_key, rubric, sample_answer, key_terms, explanation, image, source } = draft.data;
+  const { input_spec, output_spec, time_limit_ms, memory_limit_mb, starter, tests } = draft.data;
   const extra = {
     ...(written(explanation) ? { explanation } : {}),
     ...(image?.url ? { image } : {}),
@@ -97,7 +114,9 @@ export function questionInput(draft: QuestionDraft, ctx: QuestionContext): Quest
         ? { stem, items, ...extra }
         : draft.type === 'writing'
           ? { stem, sample_answer, ...keyTermsField(key_terms), ...extra }
-          : { stem, answer_key, ...(written(rubric) ? { rubric } : {}), ...extra };
+          : draft.type === 'code'
+            ? { stem, input_spec, output_spec, time_limit_ms, memory_limit_mb, ...starterField(starter), tests, ...extra }
+            : { stem, answer_key, ...(written(rubric) ? { rubric } : {}), ...extra };
   const place = ctx.usage === 'practice' ? { usage: 'practice' as const, lesson_id: ctx.lessonId } : { usage: 'exam' as const, grade: ctx.grade };
   return { ...place, subject_id: ctx.subjectId, type: draft.type, difficulty: draft.difficulty, data };
 }

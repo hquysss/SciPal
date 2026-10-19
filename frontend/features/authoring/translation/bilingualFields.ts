@@ -45,9 +45,10 @@ export function setLessonField(doc: LessonDoc, key: string, text: Bilingual): Le
 
 /** The question's bilingual fields; the short answer key is never translated. */
 export function draftFields(draft: QuestionDraft): Field[] {
-  const { stem, options, items, rubric, explanation } = draft.data;
+  const { stem, options, items, rubric, explanation, input_spec, output_spec } = draft.data;
   return [
     { path: 'stem', text: stem },
+    ...(draft.type === 'code' && input_spec && output_spec ? [{ path: 'input_spec', text: input_spec }, { path: 'output_spec', text: output_spec }] : []),
     ...(draft.type === 'mc' ? (options ?? []).map((o) => ({ path: `options.${o.id}`, text: o.text })) : []),
     ...(draft.type === 'truefalse' ? (items ?? []).map((o) => ({ path: `items.${o.id}`, text: o.text })) : []),
     ...(draft.type === 'short' && rubric ? [{ path: 'rubric', text: rubric }] : []),
