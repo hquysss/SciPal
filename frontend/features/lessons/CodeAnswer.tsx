@@ -9,6 +9,7 @@ import { MathText } from '@/components/math/MathText';
 import { runCode, submitCode, type CodeRunOutput } from './practiceApi';
 import { CodeEditor, ToolbarSelect, toolbarControl } from './CodeEditor';
 import { CodeResults, VERDICT_TEXT } from './CodeResults';
+import { CodeJudging } from './CodeJudging';
 
 type Bilingual = { en: string; vi: string };
 type CodeData = Extract<PublicPracticeQuestion['data'], { samples: unknown }>;
@@ -67,9 +68,27 @@ export function CodeAnswer({ question, answer, result, onAnswer, onResult, t }: 
   const [busy, setBusy] = useState<'run' | 'submit' | null>(null);
   const [problem, setProblem] = useState<{ error: Bilingual; signIn: boolean } | null>(null);
   const latest = useRef(answer);
+  const outcome = useRef<HTMLDivElement>(null);
+  const verdictHeading = useRef<HTMLHeadingElement>(null);
+  const [fresh, setFresh] = useState(false);
   useEffect(() => {
     latest.current = answer;
   });
+  // Submitting moves the learner to where judging happens, and a fresh verdict to the verdict:
+  // without this the result appears below the fold and nothing seems to happen.
+  const reveal = (el: Element | null) => {
+    const still = typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+    el?.scrollIntoView?.({ behavior: still ? 'auto' : 'smooth', block: 'center' });
+  };
+  useEffect(() => {
+    if (busy === 'submit') reveal(outcome.current);
+  }, [busy]);
+  useEffect(() => {
+    if (!fresh || !result?.code) return;
+    setFresh(false);
+    reveal(verdictHeading.current);
+    verdictHeading.current?.focus({ preventScroll: true });
+  }, [fresh, result]);
 
   const write = (next: { language?: CodeLanguage; source: string }) => {
     setProblem(null);
@@ -112,8 +131,13 @@ export function CodeAnswer({ question, answer, result, onAnswer, onResult, t }: 
     setBusy(null);
     // The code changed while it was being judged: that verdict belongs to the old code.
     if (latest.current !== checked) return;
-    if (res.ok) onResult(res.result, checked);
-    else setProblem({ error: res.error, signIn: res.signIn });
+    if (res.ok) {
+      setFresh(true);
+      onResult(res.result, checked);
+    } else {
+      setProblem({ error: res.error, signIn: res.signIn });
+      window.setTimeout(() => reveal(outcome.current), 0);
+    }
   };
 
   const lineCount = source === '' ? 0 : source.replace(/\n$/, '').split('\n').length;
@@ -284,7 +308,8 @@ export function CodeAnswer({ question, answer, result, onAnswer, onResult, t }: 
         </div>
       </div>
 
-      <div aria-live="polite" className="flex flex-col gap-3">
+      <div ref={outcome} aria-live="polite" className="flex scroll-mt-24 flex-col gap-3">
+        {busy === 'submit' && <CodeJudging t={t} />}
         {problem && (
           <p role="alert" className="rounded-xl bg-danger-surface px-3 py-2 text-sm font-medium text-danger">
             {t(problem.error)}{' '}
@@ -295,7 +320,9 @@ export function CodeAnswer({ question, answer, result, onAnswer, onResult, t }: 
             )}
           </p>
         )}
-        {result?.code && <CodeResults key={JSON.stringify(result.code.tests.map((x) => x.verdict))} result={result.code} xpEarned={result.xp_earned} t={t} />}
+        {busy !== 'submit' && result?.code && (
+          <CodeResults ref={verdictHeading} key={JSON.stringify(result.code.tests.map((x) => x.verdict))} result={result.code} xpEarned={result.xp_earned} t={t} />
+        )}
       </div>
     </div>
   );

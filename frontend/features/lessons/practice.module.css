@@ -15,6 +15,36 @@
   animation: result-enter 180ms ease-out;
 }
 
+/* Judging: a soft ring around the spinner and a bar that sweeps while the judge works. */
+.halo {
+  animation: halo 1.6s ease-out infinite;
+  box-shadow: 0 0 0 0 color-mix(in srgb, var(--accent) 45%, transparent);
+}
+
+.sweep {
+  animation: sweep 1.2s cubic-bezier(.45, 0, .55, 1) infinite;
+}
+
+/* Verdict arrival: the banner pops, the bar and the tiles come in one after another (--i is the index). */
+.verdict {
+  animation: verdict-pop 360ms cubic-bezier(.34, 1.56, .64, 1);
+}
+
+.segment {
+  transform-origin: left;
+  animation: segment-fill 320ms cubic-bezier(.22, 1, .36, 1) both;
+  animation-delay: calc(var(--i, 0) * 70ms);
+}
+
+.tile {
+  animation: tile-reveal 280ms cubic-bezier(.22, 1, .36, 1) both;
+  animation-delay: calc(120ms + var(--i, 0) * 70ms);
+}
+
+.trophy {
+  animation: trophy 700ms cubic-bezier(.34, 1.56, .64, 1) 200ms both;
+}
+
 @keyframes question-enter {
   from { opacity: 0; transform: translateX(var(--practice-shift)); }
   to { opacity: 1; transform: translateX(0); }
@@ -25,7 +55,39 @@
   to { opacity: 1; transform: translateY(0); }
 }
 
+@keyframes halo {
+  0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--accent) 45%, transparent); }
+  100% { box-shadow: 0 0 0 12px transparent; }
+}
+
+@keyframes sweep {
+  from { transform: translateX(-100%); }
+  to { transform: translateX(300%); }
+}
+
+@keyframes verdict-pop {
+  from { opacity: 0; transform: scale(.96); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+@keyframes segment-fill {
+  from { transform: scaleX(0); }
+  to { transform: scaleX(1); }
+}
+
+@keyframes tile-reveal {
+  from { opacity: 0; transform: translateY(8px) scale(.97); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@keyframes trophy {
+  0% { transform: scale(.4) rotate(-12deg); }
+  60% { transform: scale(1.15) rotate(4deg); }
+  100% { transform: scale(1) rotate(0); }
+}
+
 @media (prefers-reduced-motion: reduce) {
-  .question, .result { animation: none; }
+  .question, .result, .halo, .verdict, .segment, .tile, .trophy { animation: none; }
+  .sweep { animation: none; width: 100%; opacity: .5; }
   .progress { transition: none; }
 }

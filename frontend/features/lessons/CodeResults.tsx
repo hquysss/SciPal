@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { forwardRef, useState, type CSSProperties } from 'react';
 import { CircleAlert, CircleCheck, CircleX, Clock, Lock, Sparkles, Trophy } from 'lucide-react';
 import type { CodeResult, CodeVerdict } from '@scipal/types';
 import styles from './practice.module.css';
@@ -46,7 +46,8 @@ function VerdictIcon({ verdict, className }: { verdict: CodeVerdict; className: 
 }
 
 /** The judge's answer: a verdict banner, a bar of passed tests, and one tile per test. Only example tests open to show output. */
-export function CodeResults({ result, xpEarned, t }: { result: CodeResult; xpEarned?: number; t: (text: Bilingual) => string }) {
+/** `ref` is the summary heading, focused when a fresh verdict arrives so it is read out and in view. */
+export const CodeResults = forwardRef<HTMLHeadingElement, { result: CodeResult; xpEarned?: number; t: (text: Bilingual) => string }>(function CodeResults({ result, xpEarned, t }, ref) {
   const total = result.tests.length;
   const passed = result.tests.filter((test) => test.verdict === 'AC').length;
   const firstOpen = result.tests.findIndex((test) => test.stdout !== undefined && test.verdict !== 'AC');
@@ -56,13 +57,15 @@ export function CodeResults({ result, xpEarned, t }: { result: CodeResult; xpEar
 
   return (
     <section aria-label={t({ en: 'Judge result', vi: 'Kết quả chấm' })} className={`flex flex-col gap-4 ${styles.result}`}>
-      <div className={`flex items-start gap-3 rounded-2xl p-4 ${tone.tile}`}>
-        {result.status === 'AC' ? <Trophy aria-hidden="true" className={`h-8 w-8 shrink-0 ${tone.ink}`} /> : <VerdictIcon verdict={result.status} className={`h-8 w-8 shrink-0 ${tone.ink}`} />}
+      <div className={`flex items-start gap-3 rounded-2xl p-4 ${tone.tile} ${styles.verdict}`}>
+        {result.status === 'AC' ? <Trophy aria-hidden="true" className={`h-8 w-8 shrink-0 ${tone.ink} ${styles.trophy}`} /> : <VerdictIcon verdict={result.status} className={`h-8 w-8 shrink-0 ${tone.ink}`} />}
         <div className="flex min-w-0 flex-1 flex-col gap-1">
-          <p className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+          <h4 ref={ref} tabIndex={-1} className="flex flex-wrap items-baseline gap-x-3 gap-y-1 rounded focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus">
+            <span className="sr-only">{t({ en: 'Judged: ', vi: 'Đã chấm xong: ' })}</span>
             <span className={`text-lg font-extrabold ${tone.ink}`}>{t(VERDICT_TEXT[result.status])}</span>
             <span className="font-mono text-sm font-bold text-ink">{result.status}</span>
-          </p>
+            <span className="sr-only">, {t({ en: `${passed} of ${total} tests passed`, vi: `${passed}/${total} test đạt` })}</span>
+          </h4>
           <p className="text-sm text-ink">{t(VERDICT_HINT[result.status])}</p>
           {!!xpEarned && xpEarned > 0 && (
             <p className="mt-1 inline-flex items-center gap-1.5 self-start rounded-full bg-surface px-3 py-1 text-sm font-extrabold text-ink">
@@ -81,7 +84,7 @@ export function CodeResults({ result, xpEarned, t }: { result: CodeResult; xpEar
 
       <div className="flex h-2.5 gap-1 overflow-hidden rounded-full" aria-hidden="true">
         {result.tests.map((test, i) => (
-          <span key={i} className={`flex-1 ${test.verdict === 'AC' ? 'bg-success' : TONE[test.verdict].ink === 'text-warning' ? 'bg-warning' : 'bg-danger'}`} />
+          <span key={i} style={{ '--i': i } as CSSProperties} className={`flex-1 ${styles.segment} ${test.verdict === 'AC' ? 'bg-success' : TONE[test.verdict].ink === 'text-warning' ? 'bg-warning' : 'bg-danger'}`} />
         ))}
       </div>
 
@@ -116,7 +119,7 @@ export function CodeResults({ result, xpEarned, t }: { result: CodeResult; xpEar
           );
           const tile = `flex w-full flex-col items-start gap-0.5 rounded-xl px-3 py-2 text-left ${TONE[test.verdict].tile}`;
           return (
-            <li key={i}>
+            <li key={i} style={{ '--i': i } as CSSProperties} className={styles.tile}>
               {visible ? (
                 <button
                   type="button"
@@ -151,4 +154,4 @@ export function CodeResults({ result, xpEarned, t }: { result: CodeResult; xpEar
       )}
     </section>
   );
-}
+});

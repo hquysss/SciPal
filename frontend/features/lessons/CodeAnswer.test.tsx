@@ -79,6 +79,29 @@ describe('CodeAnswer', () => {
     await waitFor(() => expect(onResult).toHaveBeenCalledWith(passed, answer));
   });
 
+  it('shows where judging happens while it runs, then moves to the fresh verdict', async () => {
+    const scrolled: Element[] = [];
+    Element.prototype.scrollIntoView = function (this: Element) { scrolled.push(this); };
+    let finish!: (v: unknown) => void;
+    api.submit.mockReturnValue(new Promise((resolve) => { finish = resolve; }));
+    const answer = { code: { language: 'python' as const, source: 'print(1)' } };
+    const onResult = vi.fn();
+    const view = renderAnswer({ answer, onResult, result: passed });
+    fireEvent.click(screen.getByRole('button', { name: 'Nộp bài' }));
+    const judging = screen.getByRole('region', { name: 'Đang chấm bài' });
+    expect(judging.getAttribute('aria-busy')).toBe('true');
+    expect(screen.getByText('Đang chạy trên bộ test').closest('li')!.getAttribute('aria-current')).toBe('step');
+    // The old verdict is hidden so it cannot pass for the new one.
+    expect(screen.queryByRole('region', { name: 'Kết quả chấm' })).toBeNull();
+    await waitFor(() => expect(scrolled.length).toBeGreaterThan(0));
+    finish({ ok: true, result: passed });
+    await waitFor(() => expect(onResult).toHaveBeenCalled());
+    view.rerender({ answer, result: { ...passed } });
+    const heading = await screen.findByRole('heading', { name: /Đã chấm xong:\s*Đạt/ });
+    await waitFor(() => expect(document.activeElement).toBe(heading));
+    expect(screen.queryByRole('region', { name: 'Đang chấm bài' })).toBeNull();
+  });
+
   it('drops a verdict that arrives after the code was changed', async () => {
     let finish!: (v: unknown) => void;
     api.submit.mockReturnValue(new Promise((resolve) => { finish = resolve; }));
