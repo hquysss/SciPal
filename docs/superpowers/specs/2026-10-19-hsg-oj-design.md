@@ -10,7 +10,7 @@ Ngày 2026-10-19. Trạng thái: chờ duyệt. Dựa trên mục HSG (`2026-10-
 ## Giao diện
 **`/exam`, nhóm "Bồi dưỡng HSG"** (vẫn đứng đầu):
 - Trong nhóm có tiêu đề phụ theo môn (Tin học, Toán, …), chỉ hiện môn có nội dung.
-- Tin học: thẻ đầu tiên "Luyện lập trình · n bài" dẫn tới `/exam/hsg/informatics`; các đề HSG Tin khác (như đề trả lời ngắn Sàng nguyên tố hiện có) nằm cạnh như thẻ đề thường.
+- Tin học: thẻ đầu tiên "Luyện lập trình · n bài" dẫn tới `/exam/hsg/informatics`; đề HSG Tin khác (nếu có) nằm cạnh như thẻ đề thường.
 - Môn khác: các đề HSG như thẻ đề hiện tại.
 - Bộ lọc môn hiện có vẫn áp dụng.
 
@@ -37,7 +37,7 @@ Theo hệ thiết kế hiện có: token màu, `--accent` môn Tin từ `Subject
 - 16 bài Sàng nguyên tố thành câu `code`: đề song ngữ, đọc bàn phím/ghi màn hình (thay tệp `.INP/.OUT`, ghi rõ trong đề), giới hạn 1 giây / 256 MB.
 - Ví dụ từ PDF, đã sửa 3 ví dụ sai (ISOPRIME, FREEPRIME, CPRIME); thêm 10–15 test ẩn mỗi bài sinh bằng lời giải đã kiểm, gồm test lớn theo ràng buộc PDF (N tới 10⁶, Aᵢ tới 10¹²).
 - Lời giải mẫu chạy AC trên mọi test trước khi nạp.
-- Đề trả lời ngắn "Luyện thi HSG Tin học: Sàng nguyên tố" giữ nguyên trong nhóm HSG.
+- Môn Tin không dùng câu điền đáp án: đề trả lời ngắn "Luyện thi HSG Tin học: Sàng nguyên tố" đã bị xoá (19/10), 16 bài lập trình thay cho nó.
 
 ## Ngoài phạm vi
 Danh sách bài nộp, bảng xếp hạng, kỳ thi có giờ, trạng thái "đã AC" trên danh sách (cần lưu kết quả, hiện Tự luyện không lưu), HSG môn khác ngoài thẻ đề.
