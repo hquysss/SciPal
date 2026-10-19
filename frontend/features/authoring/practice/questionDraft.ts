@@ -31,6 +31,7 @@ export const QUESTION_TYPE_LABEL: Record<QuestionType, Bilingual> = {
   truefalse: { en: 'True / false', vi: 'Đúng / sai' },
   short: { en: 'Short answer', vi: 'Trả lời ngắn' },
   writing: { en: 'English writing', vi: 'Viết tiếng Anh' },
+  code: { en: 'Programming', vi: 'Lập trình' },
 };
 
 /** The types a question may take where it lives: writing is for lesson practice only. */

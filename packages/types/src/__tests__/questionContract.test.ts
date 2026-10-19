@@ -102,3 +102,52 @@ describe('storedQuestionData', () => {
     expect(storedQuestionData('short', { stem: { vi: 'C', en: 'Q' }, answer_key: 'k', answer: 'old' })).toEqual({ stem: { vi: 'C', en: 'Q' }, answer_key: 'k' });
   });
 });
+
+describe('code questions', () => {
+  const base = {
+    usage: 'practice',
+    subject_id: '11111111-1111-4111-8111-111111111111',
+    type: 'code',
+    difficulty: 1,
+    data: {
+      stem: { vi: 'Nhân đôi.', en: 'Double.' },
+      input_spec: { vi: 'n', en: 'n' },
+      output_spec: { vi: '2n', en: '2n' },
+      time_limit_ms: 2000,
+      memory_limit_mb: 128,
+      explanation: { vi: 'HIDDEN-EXPLANATION', en: 'HIDDEN-EXPLANATION' },
+      tests: [
+        { input: '2\n', expected: '4\n', sample: true, points: 1 },
+        { input: '9\n', expected: 'HIDDEN-EXPECTED-7\n', sample: false, points: 1 },
+      ],
+    },
+  };
+  const withTests = (tests: unknown[]) => ({ ...base, data: { ...base.data, tests } });
+
+  it('rejects more than 25 tests and a test larger than 64 KB', () => {
+    const one = { input: '1', expected: '1', sample: true, points: 1 };
+    expect(validateQuestionInput(withTests(Array.from({ length: 25 }, () => one))).ok).toBe(true);
+    expect(validateQuestionInput(withTests(Array.from({ length: 26 }, () => one))).ok).toBe(false);
+    expect(validateQuestionInput(withTests([{ ...one, input: 'x'.repeat(65537) }])).ok).toBe(false);
+  });
+
+  it('shows a learner the example tests only, never a hidden expected output or the explanation', () => {
+    const shown = toPublicPracticeQuestion({ id: 'q', type: 'code', difficulty: 1, data: base.data });
+    expect(shown.data).toMatchObject({ samples: [{ input: '2\n', expected: '4\n' }], time_limit_ms: 2000, memory_limit_mb: 128 });
+    const json = JSON.stringify(shown);
+    expect(json).not.toContain('HIDDEN-EXPECTED-7');
+    expect(json).not.toContain('HIDDEN-EXPLANATION');
+    expect(json).not.toContain('"9\n"');
+  });
+
+  it('asks for the English input and output description before review', () => {
+    const result = validateQuestionInput({ ...base, data: { ...base.data, input_spec: { vi: 'n', en: '' } } });
+    if (!result.ok) throw new Error('should be a valid draft');
+    expect(questionIncomplete(result.value)?.vi).toMatch(/vào\/ra/);
+  });
+
+  it('accepts a code answer in a practice response and rejects another language', () => {
+    expect(PracticeResponseSchema.safeParse({ code: { language: 'cpp', source: 'int main(){}' } }).success).toBe(true);
+    expect(PracticeResponseSchema.safeParse({ code: { language: 'java', source: 'x' } }).success).toBe(false);
+  });
+});

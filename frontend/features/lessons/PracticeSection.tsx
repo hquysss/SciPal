@@ -110,6 +110,7 @@ const PART_TITLE: Record<(typeof PART_ORDER)[number], Bilingual> = {
   truefalse: { en: 'True / false', vi: 'Trắc nghiệm đúng sai' },
   short: { en: 'Short answer', vi: 'Trắc nghiệm trả lời ngắn' },
   writing: { en: 'Write in English', vi: 'Viết tiếng Anh' },
+  code: { en: 'Programming', vi: 'Lập trình' },
 };
 
 const CARD ='rounded-xl border border-line bg-surface p-4 sm:p-5';

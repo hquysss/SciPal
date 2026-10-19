@@ -79,3 +79,15 @@ describe('writing questions migration contract', () => {
     expect(writing()).toMatch(/check \(type <> 'writing' or usage = 'practice'\)/);
   });
 });
+
+const codeSql = readFileSync('../supabase/migrations/20261019120000_code_questions.sql', 'utf8').toLowerCase();
+
+describe('code questions migration contract', () => {
+  it('adds the code type, keeps it out of exams, and locks code_runs to the service role', () => {
+    expect(codeSql).toMatch(/check \(type in \('mc', 'truefalse', 'short', 'writing', 'code'\)\)/);
+    expect(codeSql).toMatch(/check \(type <> 'code' or usage = 'practice'\)/);
+    expect(codeSql).toMatch(/create table if not exists public\.code_runs/);
+    expect(codeSql).toMatch(/alter table public\.code_runs enable row level security/);
+    expect(codeSql).not.toMatch(/create policy/);
+  });
+});
