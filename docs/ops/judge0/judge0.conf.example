@@ -1,0 +1,22 @@
+# Copy to judge0.conf on the VM and fill every CHANGE_ME with a long random value. Never commit judge0.conf.
+
+# Only the backend knows this token; it goes in the backend's JUDGE0_TOKEN.
+AUTHN_TOKEN=CHANGE_ME
+AUTHN_HEADER=X-Auth-Token
+
+REDIS_HOST=redis
+REDIS_PORT=6379
+REDIS_PASSWORD=CHANGE_ME
+
+POSTGRES_HOST=db
+POSTGRES_PORT=5432
+POSTGRES_DB=judge0
+POSTGRES_USER=judge0
+POSTGRES_PASSWORD=CHANGE_ME
+
+# Learners' code never gets a network: Judge0 only allows it when a submission asks for it, and SciPal never does.
+# A few jobs wait in line when many learners submit at once; more than this is refused and shows as "try again".
+MAX_QUEUE_SIZE=200
+# SciPal asks for at most 5 s of CPU and 256 MB per test.
+MAX_CPU_TIME_LIMIT=5
+MAX_MEMORY_LIMIT=262144
