@@ -29,8 +29,8 @@ describe('PublicProfile', () => {
     expect(screen.getByText('Lớp 11')).toBeTruthy();
     expect(screen.getByText('THPT B')).toBeTruthy();
     expect(screen.getByText('Thích Tin học')).toBeTruthy();
-    expect(screen.getByText('ngày liên tiếp').parentElement?.textContent).toBe('3ngày liên tiếp');
-    expect(screen.getByText('ngày kỉ lục').parentElement?.textContent).toBe('9ngày kỉ lục');
+    expect(screen.getByText('ngày liên tiếp').parentElement?.textContent).toBe('ngày liên tiếp3');
+    expect(screen.getByText('ngày kỉ lục').parentElement?.textContent).toBe('ngày kỉ lục9');
     fireEvent.click(screen.getByRole('button', { name: 'Kết bạn' }));
     await waitFor(() => expect(screen.getByRole('button', { name: 'Đã gửi lời mời' })).toBeTruthy());
     expect(sendRequest).toHaveBeenCalledWith('u2');
@@ -40,7 +40,7 @@ describe('PublicProfile', () => {
     getProfile.mockResolvedValue({ ok: true, data: profile({ role: 'admin', rank: { position: 2, xp: 500, week: 1 } }) });
     render(<PublicProfile userId="u2" />);
     expect(await screen.findByText('Admin')).toBeTruthy();
-    expect(screen.getByText('trên bảng xếp hạng').parentElement?.textContent).toBe('#2trên bảng xếp hạng');
+    expect(screen.getByText('trên bảng xếp hạng').parentElement?.textContent).toBe('trên bảng xếp hạng#2');
     expect(screen.getByText('Thủ khoa tuần')).toBeTruthy();
     cleanup();
     getProfile.mockResolvedValue({ ok: true, data: profile({ rank: { position: 4, xp: 90, week: 3 } }) });
