@@ -23,10 +23,10 @@ const codeRow = {
 const ok = (data: unknown = null, count?: number) => mockQuery({ data, error: null, ...(count !== undefined ? { count } : {}) });
 const out = (stdout: string, over: Partial<RunOutcome> = {}): RunOutcome => ({ status_id: 3, stdout, stderr: '', compile_output: '', time_ms: 10, memory_kb: 2000, ...over });
 
-function build(opts: { user?: object; judge0?: Judge0Client | null; row?: unknown; used?: number; xp?: MockBuilder | MockBuilder[] }) {
+function build(opts: { user?: object; judge0?: Judge0Client | null; row?: unknown; used?: number; xp?: MockBuilder | MockBuilder[]; lessons?: unknown[] }) {
   const tables: Record<string, MockBuilder | MockBuilder[]> = {
     questions: ok(opts.row === undefined ? codeRow : opts.row),
-    lessons: ok([{ id: LESSON }]),
+    lessons: ok(opts.lessons ?? [{ id: LESSON }]),
     code_runs: [ok(null, opts.used ?? 0), ok(), ok(null, opts.used ?? 0), ok()],
     xp_log: opts.xp ?? ok(),
     streaks: [ok(null), ok()],
@@ -175,3 +175,24 @@ describe('GET /api/practice/code/solved', () => {
   });
 });
 
+
+describe('Bồi dưỡng HSG problems', () => {
+  const hsgRow = { ...codeRow, lesson_id: null, data: { ...codeRow.data, track: 'hsg' } };
+
+  it('judges a published hsg problem that is in no lesson', async () => {
+    const { app } = await build({ user: student, row: hsgRow, lessons: [] });
+    const res = await post(app, '/api/practice/code/submit', submitBody);
+    expect(res.statusCode).toBe(200);
+    expect(res.json().correct).toBe(true);
+  });
+
+  it('still refuses a code question in no published lesson without the hsg track', async () => {
+    const { app } = await build({ user: student, row: { ...codeRow, lesson_id: null }, lessons: [] });
+    expect((await post(app, '/api/practice/code/submit', submitBody)).statusCode).toBe(404);
+  });
+
+  it('refuses an unpublished hsg problem to a learner', async () => {
+    const { app } = await build({ user: student, row: { ...hsgRow, status: 'draft', created_by: 'someone' }, lessons: [] });
+    expect((await post(app, '/api/practice/code/submit', submitBody)).statusCode).toBe(404);
+  });
+});
