@@ -33,4 +33,17 @@ describe('GradeSetting', () => {
     expect(await screen.findByText(/Chưa lưu được khối/)).toBeTruthy();
     expect(screen.getByText('Chưa chọn khối')).toBeTruthy();
   });
+
+  it('says loading failed, not saving, and retries the load', async () => {
+    getProfile.mockResolvedValueOnce({ ok: false, status: 500, error: { en: 'x', vi: 'x' } });
+    render(<GradeSetting />);
+    expect(await screen.findByText(/Chưa tải được khối của bạn/)).toBeTruthy();
+    expect(screen.queryByText(/Chưa lưu được khối/)).toBeNull();
+    expect(screen.queryByText('Chưa chọn khối')).toBeNull();
+    expect((screen.getByRole('button', { name: 'Khối 12' }) as HTMLButtonElement).disabled).toBe(true);
+    getProfile.mockResolvedValueOnce({ ok: true, data: { grade: 12 } });
+    fireEvent.click(screen.getByRole('button', { name: 'Thử lại' }));
+    await waitFor(() => expect(screen.getByRole('button', { name: /Khối 12/ }).getAttribute('aria-pressed')).toBe('true'));
+    expect(getProfile).toHaveBeenCalledTimes(2);
+  });
 });

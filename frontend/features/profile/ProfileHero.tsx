@@ -1,4 +1,4 @@
-import type { ComponentType, ReactNode } from 'react';
+import type { ComponentType, KeyboardEvent, ReactNode } from 'react';
 
 type Icon = ComponentType<{ className?: string; 'aria-hidden'?: boolean | 'true' }>;
 
@@ -86,8 +86,19 @@ export function ProfileTabs<T extends string>({ label, tabs, active, onChange, i
   onChange: (id: T) => void;
   idPrefix: string;
 }) {
+  // WAI-ARIA tabs: one tab stop, arrows/Home/End move between tabs and select them.
+  const onKeyDown = (e: KeyboardEvent<HTMLDivElement>) => {
+    const i = tabs.findIndex((tab) => tab.id === active);
+    const next = ({ ArrowRight: i + 1, ArrowLeft: i - 1, Home: 0, End: tabs.length - 1 } as Record<string, number>)[e.key];
+    if (next === undefined) return;
+    e.preventDefault();
+    const tab = tabs[(next + tabs.length) % tabs.length];
+    onChange(tab.id);
+    document.getElementById(`${idPrefix}-tab-${tab.id}`)?.focus();
+  };
+
   return (
-    <div role="tablist" aria-label={label} className="flex border-b border-line">
+    <div role="tablist" aria-label={label} onKeyDown={onKeyDown} className="flex border-b border-line">
       {tabs.map((tab) => {
         const on = tab.id === active;
         return (
@@ -97,6 +108,7 @@ export function ProfileTabs<T extends string>({ label, tabs, active, onChange, i
             role="tab"
             id={`${idPrefix}-tab-${tab.id}`}
             aria-selected={on}
+            tabIndex={on ? 0 : -1}
             aria-controls={`${idPrefix}-panel`}
             onClick={() => onChange(tab.id)}
             className={`relative flex min-h-12 flex-1 items-center justify-center text-sm transition-colors hover:bg-surface-sunken focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-focus ${on ? 'font-bold text-ink' : 'font-medium text-ink-muted'}`}

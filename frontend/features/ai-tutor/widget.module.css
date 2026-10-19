@@ -16,6 +16,8 @@
   cursor: pointer;
   transition: transform 200ms ease-out, box-shadow 200ms ease-out, opacity 160ms ease-out;
 }
+/* The button floats over every page: leave room under the last content so it never covers the final action. */
+:global(body):has(.trigger) :global([data-app-shell]) { padding-bottom: calc(5.5rem + env(safe-area-inset-bottom)); }
 .trigger:hover { transform: translateY(-3px); box-shadow: 0 16px 32px -12px color-mix(in srgb, var(--action) 42%, transparent); }
 .trigger:active { transform: scale(0.96); }
 .trigger:focus-visible { outline: 3px solid var(--focus); outline-offset: 4px; }
