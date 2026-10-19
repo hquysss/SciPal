@@ -10,7 +10,7 @@ export interface TopicRow {
 }
 
 /** Labels on a lesson row, worked out from its content by `subject_lesson_tags` (SQL). */
-export const LESSON_TAGS = ['hot', '3d', 'video', 'practice', 'code'] as const;
+export const LESSON_TAGS = ['hot', 'sim', 'video', 'practice', 'code'] as const;
 export type LessonTag = (typeof LESSON_TAGS)[number];
 export interface LessonTagRow {
   lesson_id: string;

@@ -51,10 +51,10 @@ describe('TopicAccordion', () => {
 
   it('shows the content tags of a lesson', () => {
     lang = 'vi';
-    const tagged = [{ ...topics[0]!, lessons: [{ ...topics[0]!.lessons[0]!, tags: ['hot' as const, '3d' as const, 'practice' as const] }] }];
+    const tagged = [{ ...topics[0]!, lessons: [{ ...topics[0]!.lessons[0]!, tags: ['hot' as const, 'sim' as const, 'practice' as const] }] }];
     const html = renderToStaticMarkup(<TopicAccordion topics={tagged} subjectSlug="informatics" />);
     expect(html).toContain('Hot');
-    expect(html).toContain('3D');
+    expect(html).toContain('Mô phỏng');
     expect(html).toContain('Luyện tập');
     expect(countRawColors(html).total).toBe(0);
   });
