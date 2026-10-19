@@ -64,7 +64,7 @@
   text-align: right;
   white-space: pre;
   user-select: none;
-  color: color-mix(in srgb, var(--fg) 50%, var(--base));
+  color: color-mix(in srgb, var(--fg) 62%, var(--base));
 }
 .code { position: relative; flex: 1 0 auto; min-width: 0; }
 .shown, .input {

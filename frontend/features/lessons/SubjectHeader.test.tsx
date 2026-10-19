@@ -49,6 +49,16 @@ describe('TopicAccordion', () => {
     expect(countRawColors(html).total).toBe(0);
   });
 
+  it('shows the content tags of a lesson', () => {
+    lang = 'vi';
+    const tagged = [{ ...topics[0]!, lessons: [{ ...topics[0]!.lessons[0]!, tags: ['hot' as const, '3d' as const, 'practice' as const] }] }];
+    const html = renderToStaticMarkup(<TopicAccordion topics={tagged} subjectSlug="informatics" />);
+    expect(html).toContain('Hot');
+    expect(html).toContain('3D');
+    expect(html).toContain('Luyện tập');
+    expect(countRawColors(html).total).toBe(0);
+  });
+
   it('uses topic sort_order and extracts lesson number when present', () => {
     lang = 'vi';
     const customTopics = [

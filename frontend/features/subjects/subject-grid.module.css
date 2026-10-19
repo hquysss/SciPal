@@ -183,8 +183,9 @@
 }
 
 .activeAction {
-  background: var(--accent, var(--action));
-  color: var(--action-ink);
+  /* The subject colour, darkened so white text reads at 4.5:1 or more on every accent, in light and dark. */
+  background: color-mix(in srgb, var(--accent, var(--action)) 68%, black);
+  color: white;
   transition: filter var(--landing-motion-fast, 150ms) ease-out, transform var(--landing-motion-fast, 150ms) ease-out;
 }
 
@@ -232,6 +233,51 @@
 .retryAction:focus-visible {
   outline: var(--landing-focus-width, 3px) solid var(--landing-focus, var(--focus));
   outline-offset: var(--landing-focus-offset, 3px);
+}
+
+/* Phones: two compact cards per row instead of one tall card, so a grade's subjects fit in about a screen. */
+@media (max-width: 639px) {
+  .levelGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--landing-space-3, 0.75rem);
+  }
+
+  .card {
+    min-height: 0;
+    padding: var(--landing-space-3, 0.75rem);
+  }
+
+  /* The heading above the grid already names the grade. */
+  .cardTopline .grade {
+    display: none;
+  }
+
+  .cardTopline {
+    justify-content: center;
+  }
+
+  .subjectInfo {
+    padding: var(--landing-space-3, 0.75rem) 0;
+  }
+
+  .subjectIcon {
+    width: 2.75rem;
+    height: 2.75rem;
+    --subject-icon: 2.25rem;
+  }
+
+  .subjectInfo h3 {
+    margin-top: var(--landing-space-2, 0.5rem);
+    font-size: 1rem;
+  }
+
+  .subjectInfo p {
+    font-size: var(--landing-type-micro, 0.75rem);
+  }
+
+  .cardAction {
+    padding-top: var(--landing-space-2, 0.5rem);
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {

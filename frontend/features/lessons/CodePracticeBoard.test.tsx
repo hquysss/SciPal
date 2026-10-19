@@ -43,7 +43,7 @@ describe('CodePracticeBoard', () => {
   it('opens a problem at full width and goes back to the list', () => {
     board();
     fireEvent.click(screen.getByRole('button', { name: /Bài 2: Số nguyên tố/ }));
-    expect(screen.getByRole('heading', { name: 'Số nguyên tố. Kiểm tra n' })).toBeTruthy();
+    expect(screen.getByRole('heading', { name: 'Số nguyên tố' })).toBeTruthy();
     expect(screen.getByText('Bài 2 / 2')).toBeTruthy();
     expect(screen.getByLabelText('Code của em')).toBeTruthy();
     fireEvent.click(screen.getByRole('button', { name: 'Bài trước' }));
