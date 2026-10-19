@@ -71,6 +71,8 @@ export const METRIC: Record<QuotaMetric, { title: Bilingual; unit: Bilingual }> 
   graded_exam_attempts: { title: { vi: 'Lượt thi có chấm điểm', en: 'Graded exam attempts' }, unit: { vi: 'lượt thi có chấm điểm', en: 'graded exam attempts' } },
   import_files: { title: { vi: 'Tệp nhập', en: 'Imported files' }, unit: { vi: 'tệp nhập', en: 'imported files' } },
   voice_minutes: { title: { vi: 'Phút nói chuyện với Giáo sư AI', en: 'Minutes talking with the AI Professor' }, unit: { vi: 'phút nói chuyện với Giáo sư AI', en: 'minutes talking with the AI Professor' } },
+  code_submits: { title: { vi: 'Lượt nộp bài code', en: 'Code submits' }, unit: { vi: 'lượt nộp bài code', en: 'code submits' } },
+  code_runs: { title: { vi: 'Lượt chạy thử code', en: 'Code trial runs' }, unit: { vi: 'lượt chạy thử code', en: 'code trial runs' } },
   author_ai_requests: { title: { vi: 'Lượt AI soạn bài', en: 'Lesson-drafting AI requests' }, unit: { vi: 'lượt AI soạn bài', en: 'lesson-drafting AI requests' } },
   active_classes: { title: { vi: 'Lớp đang hoạt động', en: 'Active classes' }, unit: { vi: 'lớp đang hoạt động', en: 'active classes' } },
   students_per_class: { title: { vi: 'Học sinh mỗi lớp', en: 'Students per class' }, unit: { vi: 'học sinh mỗi lớp', en: 'students per class' } },

@@ -88,7 +88,7 @@ const LEVEL_EXAMPLES: Record<EducationLevel, LevelExample> = {
     term: { vi: 'Độ phức tạp thời gian', en: 'Time complexity' },
     definition: {
       vi: 'Thước đo mô tả thời gian máy tính cần để thực thi một thuật toán theo kích thước đầu vào.',
-      en: 'The computational complexity that describes the amount of computer time it takes to run an algorithm.',
+      en: 'How the running time of an algorithm grows with the size of its input.',
     },
     example: {
       vi: 'Ví dụ: độ phức tạp thời gian của tìm kiếm nhị phân là O(log n).',

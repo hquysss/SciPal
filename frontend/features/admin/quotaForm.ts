@@ -13,6 +13,8 @@ const METRIC_NAME: Record<QuotaMetric, Bilingual> = {
   import_files: { vi: 'Tệp nhập', en: 'Imported files' },
   author_ai_requests: { vi: 'Lượt AI soạn bài', en: 'Authoring AI requests' },
   voice_minutes: { vi: 'Phút nói chuyện với Giáo sư AI', en: 'Voice minutes with the Professor' },
+  code_submits: { vi: 'Lượt nộp bài code', en: 'Code submits' },
+  code_runs: { vi: 'Lượt chạy thử code', en: 'Code trial runs' },
   active_classes: { vi: 'Lớp đang hoạt động', en: 'Active classes' },
   students_per_class: { vi: 'Học sinh mỗi lớp', en: 'Students per class' },
   active_authored_exams: { vi: 'Đề tự soạn đang hoạt động', en: 'Active authored exams' },

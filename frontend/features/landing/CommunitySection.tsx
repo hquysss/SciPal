@@ -111,7 +111,7 @@ export function CommunitySection() {
           {t({ en: 'Learn together', vi: 'Học cùng nhau' })}
         </h2>
         <p className={sections.sectionLead}>
-          {t({ en: 'A community for students and teachers: ask, explain and keep each other going.', vi: 'Cộng đồng của học sinh và thầy cô: hỏi bài, giảng cho nhau và cùng giữ chuỗi học.' })}
+          {t({ en: 'Students and teachers ask and explain, by grade and by class.', vi: 'Học sinh và thầy cô hỏi bài, giảng bài cho nhau theo khối và theo lớp.' })}
         </p>
         <ul className={styles.points}>
           {POINTS.map(({ Icon, title, text }) => (

@@ -1,6 +1,6 @@
 import type { CodeLanguage, CodeResult, CodeTest, CodeTestResult, CodeVerdict } from '../schemas/questions.js';
 import { outputsMatch } from './compare.js';
-import { verdictOf, type Judge0Client } from './judge0.js';
+import { verdictOf, type Judge0Client, type RunOutcome } from './judge0.js';
 
 export interface GradeArgs {
   client: Judge0Client;
@@ -11,14 +11,28 @@ export interface GradeArgs {
   memory_limit_mb: number;
   /** Learners see output only for the example tests; a teacher checking a test set sees all of it. */
   reveal: 'samples' | 'all';
+  /** Hears each test's verdict as soon as that test is judged, for live progress. Never output. */
+  onTest?: (index: number, test: { verdict: CodeVerdict; time_ms: number }) => void;
 }
 
 const MAX_COMPILE_MESSAGE = 2048;
 
 /** Runs every test in one batch and folds the results into a verdict. A Judge0 outage throws; it is never a wrong answer. */
 export async function gradeSubmission(args: GradeArgs): Promise<CodeResult & { correct: boolean }> {
+  const onDone = args.onTest
+    ? (i: number, outcome: RunOutcome) => {
+        let verdict: CodeVerdict;
+        try {
+          verdict = verdictOf(outcome, args, outputsMatch(outcome.stdout, args.tests[i]!.expected));
+        } catch {
+          return; // The judge failed this job: the final grading reports it.
+        }
+        args.onTest!(i, { verdict, time_ms: outcome.time_ms });
+      }
+    : undefined;
   const outcomes = await args.client.runBatch(
     args.tests.map((test) => ({ language: args.language, source: args.source, stdin: test.input, time_limit_ms: args.time_limit_ms, memory_limit_mb: args.memory_limit_mb })),
+    onDone,
   );
   let compileMessage: string | undefined;
   const tests = args.tests.map((test, i): CodeTestResult => {

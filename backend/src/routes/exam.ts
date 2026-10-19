@@ -280,7 +280,7 @@ export const examRoutes: FastifyPluginAsync = async (app) => {
           const words = periodWords(refusedPeriod);
           return reply.code(429).send({
             code: 'QUOTA_EXCEEDED',
-            ...bi(`Em đã dùng hết ${limit} lượt thi chấm điểm ${words.vi}.`, `You have used your ${limit} graded exam attempts ${words.en}.`),
+            ...bi(`Bạn đã dùng hết ${limit} lượt thi chấm điểm ${words.vi}.`, `You have used your ${limit} graded exam attempts ${words.en}.`),
             remaining: 0,
             period: refusedPeriod,
             limit,

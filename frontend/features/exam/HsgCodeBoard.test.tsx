@@ -6,7 +6,7 @@ import { HsgCodeBoard } from './HsgCodeBoard';
 
 vi.mock('@scipal/hooks', () => ({ useLanguage: () => ({ lang: 'vi', t: (o: { vi: string }) => o.vi }) }));
 vi.mock('../../lib/theme/useShellDark', () => ({ useShellDark: () => false }));
-vi.mock('@/features/lessons/practiceApi', () => ({ fetchSolvedCode: vi.fn(async () => []), runCode: vi.fn(), submitCode: vi.fn() }));
+vi.mock('@/features/lessons/practiceApi', () => ({ fetchSolvedCode: vi.fn(async () => []), fetchCodeQuota: vi.fn(async () => null), runCode: vi.fn(), submitCode: vi.fn() }));
 
 afterEach(cleanup);
 

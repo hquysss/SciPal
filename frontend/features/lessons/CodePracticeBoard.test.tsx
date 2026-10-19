@@ -6,7 +6,7 @@ import { CodePracticeBoard, problemTitle } from './CodePracticeBoard';
 
 vi.mock('../../lib/theme/useShellDark', () => ({ useShellDark: () => false }));
 const api = vi.hoisted(() => ({ solved: vi.fn(async () => [] as string[]) }));
-vi.mock('./practiceApi', () => ({ fetchSolvedCode: api.solved, runCode: vi.fn(), submitCode: vi.fn() }));
+vi.mock('./practiceApi', () => ({ fetchSolvedCode: api.solved, fetchCodeQuota: vi.fn(async () => null), runCode: vi.fn(), submitCode: vi.fn() }));
 
 const problem = (id: string, stem: string, difficulty = 1): PublicPracticeQuestion => ({
   id, type: 'code', difficulty,
@@ -45,7 +45,7 @@ describe('CodePracticeBoard', () => {
     fireEvent.click(screen.getByRole('button', { name: /Bài 2: Số nguyên tố/ }));
     expect(screen.getByRole('heading', { name: 'Số nguyên tố' })).toBeTruthy();
     expect(screen.getByText('Bài 2 / 2')).toBeTruthy();
-    expect(screen.getByLabelText('Code của em')).toBeTruthy();
+    expect(screen.getByLabelText('Code của bạn')).toBeTruthy();
     fireEvent.click(screen.getByRole('button', { name: 'Bài trước' }));
     expect(screen.getByText('Bài 1 / 2')).toBeTruthy();
     fireEvent.click(screen.getByRole('button', { name: 'Danh sách bài' }));

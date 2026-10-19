@@ -66,7 +66,10 @@ export function PlanCard({ plan, onSaved }: { plan: AdminPlan; onSaved: () => vo
             <div key={l.metric} className="flex flex-wrap items-center gap-2">
               <label htmlFor={id(l.metric)} className="min-w-0 flex-1 basis-40 text-sm text-ink">{label}</label>
               <Input id={id(l.metric)} inputMode="numeric" value={row.limit} onChange={(e) => setLimit(l.metric, { limit: e.target.value })} className="w-24 text-right tabular-nums" />
-              {row.kind !== 'capacity' ? (
+              {/* Code runs are counted per day only: the learner's bar and messages say "today". */}
+              {l.metric === 'code_submits' || l.metric === 'code_runs' ? (
+                <span className="w-24 text-sm text-ink-muted">{t({ vi: 'Mỗi ngày', en: 'A day' })}</span>
+              ) : row.kind !== 'capacity' ? (
                 <select aria-label={t({ vi: `Chu kỳ tính lượt: ${label}`, en: `Counting period: ${label}` })} value={row.kind} onChange={(e) => setLimit(l.metric, { kind: e.target.value as 'daily' | 'monthly' })} className={selectClass}>
                   <option value="daily">{t({ vi: 'Mỗi ngày', en: 'A day' })}</option>
                   <option value="monthly">{t({ vi: 'Mỗi tháng', en: 'A month' })}</option>

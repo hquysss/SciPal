@@ -116,6 +116,23 @@ describe('createJudge0Client', () => {
     expect(sizes.sort((a, b) => b - a)).toEqual([20, 5]);
     expect(out).toHaveLength(25);
   });
+  it('tells about each job once, as it finishes, with its index across batches', async () => {
+    let next = 0;
+    let polls = 0;
+    const fakeFetch = (async (url: string, init?: RequestInit) => {
+      if (init?.method === 'POST') return reply(JSON.parse(init.body as string).submissions.map(() => ({ token: `t${next++}` })));
+      polls += 1;
+      // t21 (the second job of the second batch) finishes first; the rest on the next poll.
+      const tokens = new URL(url).searchParams.get('tokens')!.split(',');
+      return reply({ submissions: tokens.map((token) => ({ token, status_id: polls > 2 || token === 't21' ? 3 : 2, stdout: b64(token), time: '0', memory: 1 })) });
+    }) as unknown as typeof fetch;
+    const judge = createJudge0Client({ url: 'https://j.test', fetch: fakeFetch, pollMs: 1 });
+    const seen: number[] = [];
+    const jobs = Array.from({ length: 22 }, () => ({ language: 'python' as const, source: 'x', stdin: '', time_limit_ms: 1000, memory_limit_mb: 64 }));
+    await judge.runBatch(jobs, (i) => seen.push(i));
+    expect(seen[0]).toBe(21);
+    expect([...seen].sort((a, b) => a - b)).toEqual(Array.from({ length: 22 }, (_, i) => i));
+  });
   it('treats a 5xx as unavailable', async () => {
     const judge = createJudge0Client({ url: 'https://j.test', fetch: (async () => reply({}, 502)) as unknown as typeof fetch });
     await expect(judge.runBatch([{ language: 'cpp', source: 'x', stdin: '', time_limit_ms: 1000, memory_limit_mb: 64 }])).rejects.toThrow(Judge0Unavailable);

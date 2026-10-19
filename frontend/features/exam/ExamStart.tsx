@@ -33,8 +33,8 @@ export function ExamStart({
   const rules: Bilingual[] = [
     { en: `The clock starts when you press Start and cannot be paused: ${durationMinutes} minutes.`, vi: `Đồng hồ bắt đầu chạy khi bạn bấm Bắt đầu và không tạm dừng được: ${durationMinutes} phút.` },
     { en: 'The exam is submitted by itself when time runs out. You can also submit earlier.', vi: 'Hết giờ bài tự động nộp. Bạn cũng có thể nộp sớm.' },
-    { en: 'Use the question grid to jump between questions. Unanswered ones stay marked.', vi: 'Dùng bảng câu hỏi để chuyển câu. Câu chưa làm được đánh dấu riêng.' },
-    { en: 'Scoring happens on the server right after you submit. A graded attempt counts toward your limit.', vi: 'Điểm được chấm ngay trên máy chủ khi nộp bài. Mỗi lượt thi chấm điểm được tính vào giới hạn của bạn.' },
+    { en: 'Use the question grid to jump between questions. Unanswered ones have their own colour on the grid.', vi: 'Dùng bảng câu hỏi để chuyển câu. Câu chưa trả lời có màu riêng trên bảng câu hỏi.' },
+    { en: 'Your score appears right after you submit. Each submit uses 1 graded attempt; the attempts left show at the top of the exam.', vi: 'Điểm có ngay khi nộp bài. Mỗi lần nộp bài trừ 1 lượt thi chấm điểm. Số lượt còn lại hiện ở đầu bài thi.' },
     { en: 'Do not close this tab or reload: your answers are only kept while the page is open.', vi: 'Đừng đóng tab hay tải lại trang: câu trả lời chỉ được giữ khi trang còn mở.' },
   ];
 
