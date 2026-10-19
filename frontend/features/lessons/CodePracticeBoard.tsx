@@ -62,7 +62,7 @@ export function CodePracticeBoard({ questions, answers, results, onAnswer, onRes
     const difficulty = DIFFICULTY[open.difficulty] ?? DIFFICULTY[1]!;
     const nav = 'inline-flex min-h-11 items-center gap-1.5 rounded-lg px-3 text-sm font-semibold text-ink hover:bg-surface-sunken disabled:opacity-40 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus';
     return (
-      <section aria-labelledby="code-problem-title" className={`flex flex-col gap-4 ${styles.question}`}>
+      <section aria-labelledby="code-problem-title" className={`flex flex-col gap-4 pb-20 ${styles.question}`}>
         <div className="flex flex-wrap items-center justify-between gap-2">
           <button type="button" onClick={() => go(null)} className={nav}>
             <ArrowLeft aria-hidden="true" className="h-4 w-4" />
@@ -96,8 +96,13 @@ export function CodePracticeBoard({ questions, answers, results, onAnswer, onRes
             )}
           </div>
           <h3 id="code-problem-title" className="text-xl font-bold leading-snug text-ink sm:text-2xl">
-            <MathText text={t(open.data.stem)} />
+            {problemTitle(t(open.data.stem))}
           </h3>
+          {problemTitle(t(open.data.stem)) !== t(open.data.stem).trim() && (
+            <p className="text-base leading-relaxed text-ink">
+              <MathText text={t(open.data.stem)} />
+            </p>
+          )}
         </div>
 
         <CodeAnswer
@@ -117,7 +122,7 @@ export function CodePracticeBoard({ questions, answers, results, onAnswer, onRes
     <section aria-labelledby="code-board-title" className="flex flex-col gap-4">
       <div className="flex flex-wrap items-end justify-between gap-3 rounded-2xl bg-surface-sunken p-4 sm:p-5">
         <div className="flex items-center gap-3">
-          <span className="grid h-12 w-12 shrink-0 place-items-center rounded-xl bg-surface text-accent">
+          <span className="grid h-12 w-12 shrink-0 place-items-center rounded-xl bg-[color-mix(in_srgb,var(--accent)_18%,var(--surface))] text-accent-ink">
             <Code2 aria-hidden="true" className="h-6 w-6" />
           </span>
           <div>
@@ -127,7 +132,7 @@ export function CodePracticeBoard({ questions, answers, results, onAnswer, onRes
             <p className="text-sm text-ink">{t({ en: 'Write code, submit, and the judge checks it on hidden tests.', vi: 'Viết code, nộp bài, hệ thống chấm bằng bộ test ẩn.' })}</p>
           </div>
         </div>
-        <div className="flex gap-4 text-right">
+        <div className="flex gap-6 sm:text-right">
           <p>
             <span className="block font-mono text-2xl font-extrabold tabular-nums text-ink">
               {solvedCount}/{questions.length}

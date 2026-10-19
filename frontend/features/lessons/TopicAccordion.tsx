@@ -1,7 +1,8 @@
 'use client';
 import { useState } from 'react';
 import Link from 'next/link';
-import { ChevronDown, ChevronRight } from 'lucide-react';
+import { Box, ChevronDown, ChevronRight, Code2, Dumbbell, Flame, PlayCircle, type LucideIcon } from 'lucide-react';
+import type { LessonTag } from './groupTopics';
 import { useLanguage } from '@scipal/hooks';
 
 interface Lesson {
@@ -11,6 +12,31 @@ interface Lesson {
   title_vi: string;
   source?: string | null;
   sort_order: number;
+  tags?: LessonTag[];
+}
+
+const TAG_LOOK: Record<LessonTag, { label: { en: string; vi: string }; icon: LucideIcon; tone: string }> = {
+  hot: { label: { en: 'Hot', vi: 'Hot' }, icon: Flame, tone: 'bg-warning-surface text-warning' },
+  '3d': { label: { en: '3D', vi: '3D' }, icon: Box, tone: 'bg-[color-mix(in_srgb,var(--action)_12%,var(--surface))] text-action' },
+  video: { label: { en: 'Video', vi: 'Video' }, icon: PlayCircle, tone: 'bg-surface-sunken text-ink' },
+  practice: { label: { en: 'Practice', vi: 'Luyện tập' }, icon: Dumbbell, tone: 'bg-success-surface text-success' },
+  code: { label: { en: 'Code', vi: 'Code' }, icon: Code2, tone: 'bg-surface-sunken text-ink' },
+};
+
+function LessonTags({ tags, t }: { tags: LessonTag[]; t: (text: { en: string; vi: string }) => string }) {
+  return (
+    <span className="mt-1 flex flex-wrap gap-1.5">
+      {tags.map((tag) => {
+        const { label, icon: Icon, tone } = TAG_LOOK[tag];
+        return (
+          <span key={tag} className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[0.6875rem] font-bold leading-4 ${tone}`}>
+            <Icon aria-hidden="true" className="h-3 w-3" />
+            {t(label)}
+          </span>
+        );
+      })}
+    </span>
+  );
 }
 
 interface Topic {
@@ -109,6 +135,7 @@ export function TopicAccordion({ topics, subjectSlug }: { topics: Topic[]; subje
                           <span className="block text-xs leading-tight text-ink-muted">
                             {cleanLessonTitle(lang === 'en' ? lesson.title_vi : lesson.title_en)}
                           </span>
+                          {!!lesson.tags?.length && <LessonTags tags={lesson.tags} t={t} />}
                           {lesson.source && (
                             <span className="mt-0.5 block text-xs italic text-ink-muted">
                               {lang === 'en' ? 'Source' : 'Nguồn'}: {lesson.source}
