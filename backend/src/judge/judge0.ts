@@ -12,6 +12,7 @@ export interface Judge0Client { runBatch(jobs: RunJob[]): Promise<RunOutcome[]> 
 /** Judge0 CE language ids: Python 3.8.1 and C++ (GCC 9.2.0). */
 const LANGUAGE_ID: Record<CodeLanguage, number> = { python: 71, cpp: 54 };
 const MAX_OUTPUT = 65536;
+const MAX_BATCH = 20;
 const FIELDS = 'token,status_id,stdout,stderr,compile_output,time,memory';
 
 const b64 = (text: string) => Buffer.from(text, 'utf8').toString('base64');
@@ -37,8 +38,9 @@ export function createJudge0Client(opts: { url: string; token?: string; /** Extr
     });
   }
 
-  return {
-    async runBatch(jobs) {
+  /** Judge0 takes at most 20 submissions per batch by default. */
+  async function runChunk(jobs: RunJob[]): Promise<RunOutcome[]> {
+    {
       const submissions = jobs.map((job) => ({
         language_id: LANGUAGE_ID[job.language],
         source_code: b64(job.source),
@@ -73,6 +75,14 @@ export function createJudge0Client(opts: { url: string; token?: string; /** Extr
         if (Date.now() >= deadline) throw new Judge0Unavailable('Judge0 took too long');
         await new Promise((resolve) => setTimeout(resolve, pollMs));
       }
+    }
+  }
+
+  return {
+    async runBatch(jobs) {
+      const chunks: RunJob[][] = [];
+      for (let i = 0; i < jobs.length; i += MAX_BATCH) chunks.push(jobs.slice(i, i + MAX_BATCH));
+      return (await Promise.all(chunks.map(runChunk))).flat();
     },
   };
 }

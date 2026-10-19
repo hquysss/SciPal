@@ -88,6 +88,24 @@ describe('createJudge0Client', () => {
     await judge.runBatch([{ language: 'python', source: 'x', stdin: '', time_limit_ms: 1000, memory_limit_mb: 64 }]);
     expect(seen[0]).toMatchObject({ 'X-RapidAPI-Key': 'k', 'X-RapidAPI-Host': 'h' });
   });
+  it('splits more than 20 jobs into batches of at most 20, keeping the order', async () => {
+    const sizes: number[] = [];
+    let next = 0;
+    const fakeFetch = (async (url: string, init?: RequestInit) => {
+      if (init?.method === 'POST') {
+        const n = JSON.parse(init.body as string).submissions.length;
+        sizes.push(n);
+        return reply(Array.from({ length: n }, () => ({ token: `t${next++}` })));
+      }
+      const tokens = new URL(url).searchParams.get('tokens')!.split(',');
+      return reply({ submissions: tokens.map((token) => ({ token, status_id: 3, stdout: b64(token), time: '0', memory: 1 })) });
+    }) as unknown as typeof fetch;
+    const judge = createJudge0Client({ url: 'https://j.test', fetch: fakeFetch, pollMs: 1 });
+    const jobs = Array.from({ length: 25 }, () => ({ language: 'python' as const, source: 'x', stdin: '', time_limit_ms: 1000, memory_limit_mb: 64 }));
+    const out = await judge.runBatch(jobs);
+    expect(sizes.sort((a, b) => b - a)).toEqual([20, 5]);
+    expect(out).toHaveLength(25);
+  });
   it('treats a 5xx as unavailable', async () => {
     const judge = createJudge0Client({ url: 'https://j.test', fetch: (async () => reply({}, 502)) as unknown as typeof fetch });
     await expect(judge.runBatch([{ language: 'cpp', source: 'x', stdin: '', time_limit_ms: 1000, memory_limit_mb: 64 }])).rejects.toThrow(Judge0Unavailable);
