@@ -88,6 +88,16 @@ describe('createJudge0Client', () => {
     await judge.runBatch([{ language: 'python', source: 'x', stdin: '', time_limit_ms: 1000, memory_limit_mb: 64 }]);
     expect(seen[0]).toMatchObject({ 'X-RapidAPI-Key': 'k', 'X-RapidAPI-Host': 'h' });
   });
+  it('adds https:// when the configured host has no scheme (a RapidAPI host copied as is)', async () => {
+    const urls: string[] = [];
+    const fakeFetch = (async (url: string, init?: RequestInit) => {
+      urls.push(url);
+      return init?.method === 'POST' ? reply([{ token: 't' }]) : reply({ submissions: [{ token: 't', status_id: 3, stdout: b64('1'), time: '0', memory: 1 }] });
+    }) as unknown as typeof fetch;
+    const judge = createJudge0Client({ url: ' judge0-ce.p.rapidapi.com/ ', fetch: fakeFetch, pollMs: 1 });
+    await judge.runBatch([{ language: 'python', source: 'x', stdin: '', time_limit_ms: 1000, memory_limit_mb: 64 }]);
+    expect(urls[0]).toBe('https://judge0-ce.p.rapidapi.com/submissions/batch?base64_encoded=true');
+  });
   it('splits more than 20 jobs into batches of at most 20, keeping the order', async () => {
     const sizes: number[] = [];
     let next = 0;
