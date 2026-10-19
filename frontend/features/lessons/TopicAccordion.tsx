@@ -15,12 +15,13 @@ interface Lesson {
   tags?: LessonTag[];
 }
 
+// Solid chips: each colour is mixed toward --ink, so the text (--surface) reads in light and dark alike.
 const TAG_LOOK: Record<LessonTag, { label: { en: string; vi: string }; icon: LucideIcon; tone: string }> = {
-  hot: { label: { en: 'Hot', vi: 'Hot' }, icon: Flame, tone: 'bg-warning-surface text-warning' },
-  sim: { label: { en: 'Simulation', vi: 'Mô phỏng' }, icon: FlaskConical, tone: 'bg-[color-mix(in_srgb,var(--action)_12%,var(--surface))] text-action' },
-  video: { label: { en: 'Video', vi: 'Video' }, icon: PlayCircle, tone: 'bg-surface-sunken text-ink' },
-  practice: { label: { en: 'Practice', vi: 'Luyện tập' }, icon: Dumbbell, tone: 'bg-success-surface text-success' },
-  code: { label: { en: 'Code', vi: 'Code' }, icon: Code2, tone: 'bg-surface-sunken text-ink' },
+  hot: { label: { en: 'Hot', vi: 'Hot' }, icon: Flame, tone: 'bg-[color-mix(in_srgb,var(--warning)_70%,var(--ink))] text-surface' },
+  sim: { label: { en: 'Simulation', vi: 'Mô phỏng' }, icon: FlaskConical, tone: 'bg-[color-mix(in_srgb,var(--action)_70%,var(--ink))] text-surface' },
+  video: { label: { en: 'Video', vi: 'Video' }, icon: PlayCircle, tone: 'bg-ink text-surface' },
+  practice: { label: { en: 'Practice', vi: 'Luyện tập' }, icon: Dumbbell, tone: 'bg-[color-mix(in_srgb,var(--success)_70%,var(--ink))] text-surface' },
+  code: { label: { en: 'Code', vi: 'Code' }, icon: Code2, tone: 'bg-ink text-surface' },
 };
 
 function LessonTags({ tags, t }: { tags: LessonTag[]; t: (text: { en: string; vi: string }) => string }) {
