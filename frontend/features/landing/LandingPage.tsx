@@ -514,9 +514,8 @@ export function LandingPage({ level, catalog, onChangeLevel, pricing = null, sho
 
           {/* ---------- stats ---------- */}
           <section className={styles.stats} aria-labelledby="stats-title">
-            <p className={styles.eyebrowLight}>{t({ en: 'By the numbers', vi: 'Những con số' })}</p>
             <h2 id="stats-title" className={styles.sectionTitle} data-clip>
-              <ClipLines lines={[t({ en: 'Learning that', vi: 'Học tập' }), t({ en: 'adds up', vi: 'có số liệu' })]} />
+              <ClipLines lines={[t({ en: 'SciPal today', vi: 'SciPal hiện có' })]} />
             </h2>
             <dl className={styles.statGrid}>
               {stats.map((stat) => (
@@ -543,11 +542,11 @@ export function LandingPage({ level, catalog, onChangeLevel, pricing = null, sho
             <div className={styles.finalBody}>
               <div>
                 <p className={styles.eyebrowLight}>{t({ en: 'Get started', vi: 'Bắt đầu' })}</p>
-                <h2 id="start-title" className={styles.finalTitle}>{t({ en: 'Ready?', vi: 'Sẵn sàng chưa?' })}</h2>
+                <h2 id="start-title" className={styles.finalTitle}>{t({ en: 'Take your first lesson, free.', vi: 'Học bài đầu tiên, miễn phí.' })}</h2>
                 <p className={styles.finalLead}>
                   {t({
-                    en: 'Every lesson is free; a paid plan only adds AI Professor questions, graded exams and teacher tools.',
-                    vi: 'Mọi bài học đều miễn phí; gói trả phí chỉ thêm lượt hỏi Giáo sư AI, chấm đề và công cụ cho giáo viên.',
+                    en: 'No card and no install needed for your first lesson.',
+                    vi: 'Không cần thẻ, không cần cài app để học bài đầu tiên.',
                   })}
                 </p>
               </div>

@@ -48,7 +48,7 @@ describe('LandingPage', () => {
   it('keeps the subject carousel between the hero and learning sections', () => {
     lang = 'vi';
     const html = render('upper_secondary');
-    const order = ['data-hero-stage', 'id="mon-hoc"', 'id="cach-hoc"', 'Hỏi bất cứ lúc nào', 'id="tinh-nang"', 'id="hoi-dap"', 'Sẵn sàng chưa?', 'id="danh-gia"', '<footer'];
+    const order = ['data-hero-stage', 'id="mon-hoc"', 'id="cach-hoc"', 'Hỏi bất cứ lúc nào', 'id="tinh-nang"', 'id="hoi-dap"', 'Học bài đầu tiên, miễn phí.', 'id="danh-gia"', '<footer'];
     const positions = order.map((marker) => html.indexOf(marker));
     positions.forEach((position, index) => expect(position, order[index]).toBeGreaterThan(-1));
     expect([...positions].sort((a, b) => a - b)).toEqual(positions);
@@ -63,7 +63,7 @@ describe('LandingPage', () => {
     lang = 'vi';
     const html = render('upper_secondary');
     const cta = html.match(/<section[^>]*aria-labelledby="start-title"[\s\S]*?<\/section>\s*<section[^>]*id="danh-gia"/)?.[0] ?? '';
-    expect(cta).toContain('Mọi bài học đều miễn phí');
+    expect(cta).toContain('Không cần thẻ, không cần cài app');
     expect(cta).toMatch(/<a[^>]*href="\/tutor"[^>]*>[\s\S]*?Hỏi Giáo sư AI/);
     expect(cta).toContain('data-poll');
     expect(cta).toContain('data-cta-float');

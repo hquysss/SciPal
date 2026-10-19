@@ -12,7 +12,7 @@ const FEATURES: Array<{ href: string; Icon: LucideIcon; title: Copy; text: Copy 
     href: '/exam',
     Icon: ClipboardList,
     title: { vi: 'Luyện đề thi thử', en: 'Practice exams' },
-    text: { vi: 'Làm đề thi thử, được chấm điểm ngay và xem lại từng câu.', en: 'Take practice exams, get scored right away and review every question.' },
+    text: { vi: 'Làm đề thi thử có bấm giờ, có điểm ngay khi nộp, kèm điểm từng phần.', en: 'Timed mock exams, scored the moment you submit, with a score for each part.' },
   },
   {
     href: '/lab',
@@ -24,13 +24,13 @@ const FEATURES: Array<{ href: string; Icon: LucideIcon; title: Copy; text: Copy 
     href: '/games',
     Icon: Gamepad2,
     title: { vi: 'Trò chơi ôn bài', en: 'Review games' },
-    text: { vi: 'Đố vui và ghép thuật ngữ Anh–Việt để nhớ lâu hơn.', en: 'Quizzes and English–Vietnamese term matching to remember more.' },
+    text: { vi: 'Đố vui và trò ghép thuật ngữ Anh–Việt.', en: 'Quizzes and English–Vietnamese term matching.' },
   },
   {
     href: '/progress',
     Icon: Trophy,
     title: { vi: 'Tiến độ và bảng xếp hạng', en: 'Progress and leaderboard' },
-    text: { vi: 'Tích XP, giữ chuỗi ngày học, mở huy hiệu và đua top tuần để thành Thủ khoa tuần.', en: 'Earn XP, keep your streak, unlock badges and race for Top of the week.' },
+    text: { vi: 'Tích XP, giữ chuỗi ngày học, mở huy hiệu và đua danh hiệu Thủ khoa tuần.', en: 'Earn XP, keep your streak, unlock badges and race for Top of the week.' },
   },
   {
     href: '/community',
