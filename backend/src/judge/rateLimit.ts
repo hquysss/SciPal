@@ -8,6 +8,15 @@ export const RATE_PER_MINUTE: Record<RunKind, number> = { run: 10, submit: 5, ve
 /** Which limit said no: the minute's, the person's day, or the whole site's day. */
 export type RateSlot = 'ok' | 'minute' | 'day' | 'busy';
 
+/** How many runs of this kind were started today, by one person or (no `userId`) by everyone. */
+export async function runsToday(supabase: SupabaseClient, kind: RunKind, userId?: string): Promise<number> {
+  let query = supabase.from('code_runs').select('id', { count: 'exact', head: true }).eq('kind', kind).gte('created_at', vietnamDayStart(new Date()).toISOString());
+  if (userId) query = query.eq('user_id', userId);
+  const { count, error } = await query;
+  if (error) throw error;
+  return count ?? 0;
+}
+
 /**
  * Takes one of the person's runs of this kind, or says which limit stopped it. Days are Vietnam days,
  * the same as the tutor's. Counted in the database because serverless instances share no memory.

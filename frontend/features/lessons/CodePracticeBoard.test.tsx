@@ -6,7 +6,7 @@ import { CodePracticeBoard, problemTitle } from './CodePracticeBoard';
 
 vi.mock('../../lib/theme/useShellDark', () => ({ useShellDark: () => false }));
 const api = vi.hoisted(() => ({ solved: vi.fn(async () => [] as string[]) }));
-vi.mock('./practiceApi', () => ({ fetchSolvedCode: api.solved, runCode: vi.fn(), submitCode: vi.fn() }));
+vi.mock('./practiceApi', () => ({ fetchSolvedCode: api.solved, fetchCodeQuota: vi.fn(async () => null), runCode: vi.fn(), submitCode: vi.fn() }));
 
 const problem = (id: string, stem: string, difficulty = 1): PublicPracticeQuestion => ({
   id, type: 'code', difficulty,

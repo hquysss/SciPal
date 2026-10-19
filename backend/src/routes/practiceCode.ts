@@ -3,7 +3,8 @@ import { z } from 'zod';
 import { gradeSubmission } from '../judge/grade.js';
 import { Judge0Unavailable, verdictOf, type Judge0Client } from '../judge/judge0.js';
 import { capsFor, createJudgeLimitsStore, DEFAULT_JUDGE_LIMITS } from '../judge/limits.js';
-import { consumeRateSlot, type RunKind } from '../judge/rateLimit.js';
+import { consumeRateSlot, runsToday, type RunKind } from '../judge/rateLimit.js';
+import { vietnamDayStart } from '../tutor/limits.js';
 import { getUser, ID, msg, servableQuestion, unavailable } from '../practice/servable.js';
 import { CODE_LANGUAGES, MAX_CODE_CHARS, MAX_CODE_TESTS, type CodeTest } from '../schemas/questions.js';
 import { explanationOf } from './practice.js';
@@ -148,6 +149,26 @@ export const practiceCodeRoutes: FastifyPluginAsync = async (app) => {
     }
     const ids = ((data ?? []) as Array<{ reason: string }>).map((row) => row.reason.slice('code_ac:'.length)).filter((id) => ID.test(id));
     return reply.send({ question_ids: [...new Set(ids)] });
+  });
+
+  // What a learner has left today: their own runs against their cap, and whether the whole judge is full.
+  app.get('/api/practice/code/quota', async (request, reply) => {
+    const userId = getUser(request)?.id;
+    if (!userId) return reply.code(401).send(signIn);
+    if (!app.supabase) return reply.code(503).send(off);
+    try {
+      const limits = await limitsInForce();
+      const of = async (kind: 'submit' | 'run') => {
+        const caps = capsFor(kind, limits);
+        const [used, site] = await Promise.all([runsToday(app.supabase!, kind, userId), runsToday(app.supabase!, kind)]);
+        return { used, limit: caps.person, site_full: caps.global !== null && site >= caps.global };
+      };
+      const [submit, run] = [await of('submit'), await of('run')];
+      return reply.send({ submit, run, resets_at: new Date(vietnamDayStart(new Date()).getTime() + 86_400_000).toISOString() });
+    } catch (err) {
+      request.log.error({ err }, 'Failed to read the code quota');
+      return reply.code(500).send(judgeDown);
+    }
   });
 
   app.post('/api/practice/code/run', { bodyLimit: BODY_LIMIT }, async (request, reply) => {

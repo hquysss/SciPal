@@ -6,7 +6,8 @@ import { Check, Code2, Copy, Cpu, LoaderCircle, LogIn, LogOut, Play, RotateCcw, 
 import { MAX_CODE_CHARS, type CodeLanguage, type PracticeCheckResult, type PracticeResponse, type PublicPracticeQuestion } from '@scipal/types';
 import { buttonVariants } from '@/components/ui/button';
 import { MathText } from '@/components/math/MathText';
-import { runCode, submitCode, type CodeRunOutput } from './practiceApi';
+import { fetchCodeQuota, runCode, submitCode, type CodeQuota, type CodeRunOutput } from './practiceApi';
+import { CodeQuotaBar, runsLeft } from './CodeQuota';
 import { CodeEditor, ToolbarSelect, toolbarControl } from './CodeEditor';
 import { CodeResults, VERDICT_TEXT } from './CodeResults';
 import { CodeJudging, type JudgingProgress } from './CodeJudging';
@@ -72,6 +73,10 @@ export function CodeAnswer({ question, answer, result, onAnswer, onResult, t }: 
   const verdictHeading = useRef<HTMLHeadingElement>(null);
   const [fresh, setFresh] = useState(false);
   const [progress, setProgress] = useState<JudgingProgress | null>(null);
+  const [quota, setQuota] = useState<CodeQuota | null>(null);
+  // The server counts runs, so the bar is read from it: on open, and again after every run or submit.
+  const loadQuota = () => void fetchCodeQuota().then(setQuota);
+  useEffect(loadQuota, []);
   useEffect(() => {
     latest.current = answer;
   });
@@ -120,6 +125,7 @@ export function CodeAnswer({ question, answer, result, onAnswer, onResult, t }: 
     setProblem(null);
     const res = await runCode(question.id, { language, source }, stdin);
     setBusy(null);
+    loadQuota();
     if (res.ok) setRun(res.run);
     else setProblem({ error: res.error, signIn: res.signIn });
   };
@@ -137,6 +143,7 @@ export function CodeAnswer({ question, answer, result, onAnswer, onResult, t }: 
       ),
     );
     setBusy(null);
+    loadQuota();
     // The code changed while it was being judged: that verdict belongs to the old code.
     if (latest.current !== checked) return;
     if (res.ok) {
@@ -300,16 +307,18 @@ export function CodeAnswer({ question, answer, result, onAnswer, onResult, t }: 
         </div>
       </section>
 
+      <CodeQuotaBar quota={quota} t={t} />
+
       <div className="flex flex-col gap-3 rounded-2xl bg-surface-sunken p-3 sm:flex-row sm:items-center sm:justify-between sm:p-4">
         <p className="text-sm text-ink">
           {t({ en: 'Submitting runs your code on every test, hidden ones too.', vi: 'Nộp bài sẽ chạy code của em trên mọi test, kể cả test ẩn.' })}
         </p>
         <div className="flex flex-wrap justify-end gap-2">
-          <button type="button" disabled={!!busy || !source.trim()} onClick={trial} className={`${buttonVariants({ variant: 'ghost' })} gap-2 bg-surface`}>
+          <button type="button" disabled={!!busy || !source.trim() || (!!quota && runsLeft(quota.run) === 0)} onClick={trial} className={`${buttonVariants({ variant: 'ghost' })} gap-2 bg-surface`}>
             {busy === 'run' ? <LoaderCircle aria-hidden="true" className="h-4 w-4 animate-spin motion-reduce:animate-none" /> : <Play aria-hidden="true" className="h-4 w-4" />}
             {busy === 'run' ? t({ en: 'Running…', vi: 'Đang chạy…' }) : t({ en: 'Try it', vi: 'Chạy thử' })}
           </button>
-          <button type="button" disabled={!!busy || !source.trim()} onClick={submit} className={`${buttonVariants()} gap-2 px-6`}>
+          <button type="button" disabled={!!busy || !source.trim() || (!!quota && runsLeft(quota.submit) === 0)} onClick={submit} className={`${buttonVariants()} gap-2 px-6`}>
             {busy === 'submit' ? <LoaderCircle aria-hidden="true" className="h-4 w-4 animate-spin motion-reduce:animate-none" /> : <Send aria-hidden="true" className="h-4 w-4" />}
             {busy === 'submit' ? t({ en: 'Judging…', vi: 'Đang chấm…' }) : t({ en: 'Submit', vi: 'Nộp bài' })}
           </button>

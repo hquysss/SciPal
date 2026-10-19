@@ -133,6 +133,24 @@ export async function submitCode(questionId: string, code: CodeAnswer, onProgres
   return { ok: true, result: res.data as unknown as PracticeCheckResult };
 }
 
+export type CodeQuotaPart = { used: number; limit: number; site_full: boolean };
+/** What this learner has left of today's runs; `resets_at` is the next Vietnam midnight. */
+export type CodeQuota = { submit: CodeQuotaPart; run: CodeQuotaPart; resets_at: string };
+
+/** Today's quota, or null for a visitor or on any failure (the bar then simply does not show). */
+export async function fetchCodeQuota(): Promise<CodeQuota | null> {
+  const token = await getAccessToken().catch(() => null);
+  if (!token) return null;
+  try {
+    const res = await fetch(`${API_BASE}/api/practice/code/quota`, { headers: { Authorization: `Bearer ${token}` }, cache: 'no-store' });
+    const data = (await res.json().catch(() => null)) as Partial<CodeQuota> | null;
+    const part = (p: unknown): p is CodeQuotaPart => typeof (p as CodeQuotaPart)?.used === 'number' && typeof (p as CodeQuotaPart)?.limit === 'number';
+    return res.ok && data && part(data.submit) && part(data.run) && typeof data.resets_at === 'string' ? (data as CodeQuota) : null;
+  } catch {
+    return null;
+  }
+}
+
 /** The programming questions this learner has solved (XP already given). Empty for a visitor or on any failure. */
 export async function fetchSolvedCode(): Promise<string[]> {
   const token = await getAccessToken().catch(() => null);

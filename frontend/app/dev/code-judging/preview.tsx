@@ -6,6 +6,7 @@ import { SubjectProvider } from '@scipal/ui';
 import { useLanguage } from '@scipal/hooks';
 import { CodeJudging, type JudgingProgress } from '@/features/lessons/CodeJudging';
 import { CodeResults } from '@/features/lessons/CodeResults';
+import { CodeQuotaBar } from '@/features/lessons/CodeQuota';
 
 const passed: CodeResult = {
   status: 'AC',
@@ -62,6 +63,8 @@ export function CodeJudgingPreview() {
             </button>
           ))}
         </div>
+        <CodeQuotaBar t={t} quota={{ submit: { used: 3, limit: 20, site_full: false }, run: { used: 41, limit: 50, site_full: false }, resets_at: '' }} />
+        <CodeQuotaBar t={t} quota={{ submit: { used: 20, limit: 20, site_full: false }, run: { used: 12, limit: 50, site_full: false }, resets_at: '' }} />
         {phase === 'judging' ? <CodeJudging key={run} t={t} progress={progress} /> : <CodeResults key={run} result={phase === 'ac' ? passed : wrong} xpEarned={phase === 'ac' ? 20 : 0} t={t} />}
       </div>
     </SubjectProvider>

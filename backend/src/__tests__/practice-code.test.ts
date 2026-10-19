@@ -164,6 +164,35 @@ describe('POST /api/practice/code/submit', () => {
   });
 });
 
+describe('GET /api/practice/code/quota', () => {
+  const quota = (app: Awaited<ReturnType<typeof build>>['app']) => app.inject({ method: 'GET', url: '/api/practice/code/quota' });
+  // The counts are asked in this order: submits (person, site), then trial runs (person, site).
+  const counts = (...n: number[]) => n.map((count) => ok(null, count));
+
+  it('needs a signed-in user', async () => {
+    const { app } = await build({});
+    expect((await quota(app)).statusCode).toBe(401);
+  });
+
+  it('tells how many submits and trial runs are used today against the limits, and when the day ends', async () => {
+    const { app, tables } = await build({ user: student });
+    tables.code_runs = counts(3, 40, 7, 120);
+    const body = (await quota(app)).json();
+    expect(body.submit).toEqual({ used: 3, limit: 20, site_full: false });
+    expect(body.run).toEqual({ used: 7, limit: 50, site_full: false });
+    expect(Date.parse(body.resets_at)).toBeGreaterThan(Date.now());
+    expect(Date.parse(body.resets_at)).toBeLessThanOrEqual(Date.now() + 86_400_000);
+  });
+
+  it('says the site is full for the kind whose site cap is used up', async () => {
+    const { app, tables } = await build({ user: student });
+    tables.code_runs = counts(0, 300, 0, 10);
+    const body = (await quota(app)).json();
+    expect(body.submit.site_full).toBe(true);
+    expect(body.run.site_full).toBe(false);
+  });
+});
+
 describe('POST /api/practice/code/run', () => {
   it('runs the code once with the typed input', async () => {
     const runBatch = vi.fn(async () => [out('6\n')]);

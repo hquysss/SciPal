@@ -7,8 +7,8 @@ import { CodeResults } from './CodeResults';
 
 vi.mock('@scipal/hooks', () => ({ useLanguage: () => ({ lang: 'vi', t: (text: { vi: string }) => text.vi }) }));
 vi.mock('../../lib/theme/useShellDark', () => ({ useShellDark: () => false }));
-const api = vi.hoisted(() => ({ run: vi.fn(), submit: vi.fn() }));
-vi.mock('./practiceApi', () => ({ runCode: api.run, submitCode: api.submit }));
+const api = vi.hoisted(() => ({ run: vi.fn(), submit: vi.fn(), quota: vi.fn() }));
+vi.mock('./practiceApi', () => ({ runCode: api.run, submitCode: api.submit, fetchCodeQuota: api.quota }));
 
 const question = {
   id: 'q5', type: 'code', difficulty: 1,
@@ -34,6 +34,8 @@ function renderAnswer(props: { answer?: PracticeResponse; result?: PracticeCheck
 beforeEach(() => {
   api.run.mockReset();
   api.submit.mockReset();
+  api.quota.mockReset();
+  api.quota.mockResolvedValue(null);
 });
 afterEach(cleanup);
 
@@ -109,6 +111,29 @@ describe('CodeAnswer', () => {
     const heading = await screen.findByRole('heading', { name: /Đã chấm xong:\s*Đạt/ });
     await waitFor(() => expect(document.activeElement).toBe(heading));
     expect(screen.queryByRole('region', { name: 'Đang chấm bài' })).toBeNull();
+  });
+
+  it('shows the runs left today, reads them again after a submit, and stops submitting at none', async () => {
+    const part = (used: number, limit: number) => ({ used, limit, site_full: false });
+    api.quota.mockResolvedValueOnce({ submit: part(3, 20), run: part(10, 50), resets_at: '2026-10-20T17:00:00Z' });
+    api.submit.mockResolvedValue({ ok: true, result: passed });
+    const view = renderAnswer({ answer: { code: { language: 'python', source: 'print(1)' } } });
+    expect(await screen.findByRole('progressbar', { name: 'Nộp bài' })).toBeTruthy();
+    expect(screen.getByText(/^17\/20/)).toBeTruthy();
+    expect(screen.getByText(/^40\/50/)).toBeTruthy();
+    api.quota.mockResolvedValueOnce({ submit: part(20, 20), run: part(11, 50), resets_at: '2026-10-20T17:00:00Z' });
+    fireEvent.click(screen.getByRole('button', { name: 'Nộp bài' }));
+    await waitFor(() => expect(api.quota).toHaveBeenCalledTimes(2));
+    expect(await screen.findByText(/^0\/20/)).toBeTruthy();
+    expect((screen.getByRole('button', { name: 'Nộp bài' }) as HTMLButtonElement).disabled).toBe(true);
+    expect((screen.getByRole('button', { name: 'Chạy thử' }) as HTMLButtonElement).disabled).toBe(false);
+    view.unmount();
+  });
+
+  it('shows no bar for a visitor', async () => {
+    renderAnswer();
+    await waitFor(() => expect(api.quota).toHaveBeenCalled());
+    expect(screen.queryByRole('region', { name: 'Lượt còn lại hôm nay' })).toBeNull();
   });
 
   it('drops a verdict that arrives after the code was changed', async () => {
