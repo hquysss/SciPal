@@ -23,11 +23,14 @@ const codeRow = {
 const ok = (data: unknown = null, count?: number) => mockQuery({ data, error: null, ...(count !== undefined ? { count } : {}) });
 const out = (stdout: string, over: Partial<RunOutcome> = {}): RunOutcome => ({ status_id: 3, stdout, stderr: '', compile_output: '', time_ms: 10, memory_kb: 2000, ...over });
 
-function build(opts: { user?: object; judge0?: Judge0Client | null; row?: unknown; used?: number; xp?: MockBuilder | MockBuilder[]; lessons?: unknown[] }) {
+/** `n` runs of the person, all within the last few seconds (what code_runs holds when they are counted). */
+const recentRuns = (n: number) => Array.from({ length: n }, () => ({ created_at: new Date(Date.now() - 5000).toISOString() }));
+
+function build(opts: { user?: object; judge0?: Judge0Client | null; row?: unknown; used?: number; usedToday?: number; xp?: MockBuilder | MockBuilder[]; lessons?: unknown[] }) {
   const tables: Record<string, MockBuilder | MockBuilder[]> = {
     questions: ok(opts.row === undefined ? codeRow : opts.row),
     lessons: ok(opts.lessons ?? [{ id: LESSON }]),
-    code_runs: [ok(null, opts.used ?? 0), ok(), ok(null, opts.used ?? 0), ok()],
+    code_runs: [ok(opts.usedToday ? recentRuns(opts.usedToday).map((r, i) => ({ created_at: new Date(Date.now() - 3_600_000 - i).toISOString() })) : recentRuns(opts.used ?? 0)), ok(), ok(opts.usedToday ? recentRuns(opts.usedToday) : recentRuns(opts.used ?? 0)), ok()],
     xp_log: opts.xp ?? ok(),
     streaks: [ok(null), ok()],
   };
@@ -85,6 +88,15 @@ describe('POST /api/practice/code/submit', () => {
     const { app } = await build({ user: student, judge0, used: 5 });
     const res = await post(app, '/api/practice/code/submit', submitBody);
     expect(res.statusCode).toBe(429);
+    expect(judge0.runBatch).not.toHaveBeenCalled();
+  });
+
+  it('stops at the daily limit, with its own message, before calling Judge0', async () => {
+    const judge0 = { runBatch: vi.fn() };
+    const { app } = await build({ user: student, judge0, usedToday: 40 });
+    const res = await post(app, '/api/practice/code/submit', submitBody);
+    expect(res.statusCode).toBe(429);
+    expect(res.json().error).toMatch(/hôm nay/i);
     expect(judge0.runBatch).not.toHaveBeenCalled();
   });
 

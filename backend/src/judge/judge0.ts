@@ -24,7 +24,8 @@ export function createJudge0Client(opts: { url: string; token?: string; /** Extr
   // A host copied without its scheme (e.g. a RapidAPI host) would fail every request to parse as a URL.
   const base = (/^https?:\/\//i.test(opts.url.trim()) ? opts.url.trim() : `https://${opts.url.trim()}`).replace(/\/+$/, '');
   const waitMs = opts.waitMs ?? 20_000;
-  const pollMs = opts.pollMs ?? 500;
+  // Every poll is one request on a hosted judge's quota, so ask once a second, not faster.
+  const pollMs = opts.pollMs ?? 1000;
   const headers: Record<string, string> = { 'Content-Type': 'application/json', ...(opts.token ? { 'X-Auth-Token': opts.token } : {}), ...opts.headers };
 
   async function call(path: string, init?: RequestInit): Promise<unknown> {

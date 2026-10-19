@@ -44,7 +44,8 @@ const signIn = msg('Đăng nhập để chạy và nộp code.', 'Sign in to run
 const badRequest = msg('Yêu cầu không đúng định dạng (code tối đa 64 KB).', 'The request is not valid (code up to 64 KB).');
 const off = msg('Chấm code chưa được bật.', 'Code judging is not switched on.');
 const tooMany = msg('Em thao tác nhanh quá, đợi một phút rồi thử lại.', 'Too many tries, wait a minute and try again.');
-const judgeDown = msg('Chưa chấm được lúc này, em thử lại sau nhé. Lần này không bị tính là sai.', 'Could not judge right now, try again later. This does not count as a wrong answer.');
+const tooManyToday = msg('Hôm nay em đã dùng hết lượt chấm code, mai thử lại nhé.', 'You have used all of today’s code runs, try again tomorrow.');
+const judgeDown =msg('Chưa chấm được lúc này, em thử lại sau nhé. Lần này không bị tính là sai.', 'Could not judge right now, try again later. This does not count as a wrong answer.');
 /** XP for the first accepted answer, by difficulty (1 easy, 2 medium, 3 hard). */
 export const CODE_XP: Record<number, number> = { 1: 20, 2: 35, 3: 50 };
 
@@ -74,8 +75,9 @@ export const practiceCodeRoutes: FastifyPluginAsync = async (app) => {
       return null;
     }
     try {
-      if (!(await consumeRateSlot(app.supabase, user.id, kind))) {
-        reply.code(429).send(tooMany);
+      const slot = await consumeRateSlot(app.supabase, user.id, kind);
+      if (slot !== 'ok') {
+        reply.code(429).send(slot === 'day' ? tooManyToday : tooMany);
         return null;
       }
     } catch (err) {
