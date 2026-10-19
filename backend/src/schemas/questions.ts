@@ -60,9 +60,9 @@ export type WritingData   = z.infer<typeof WritingDataSchema>;
 
 export const QUESTION_USAGES = ['practice', 'exam'] as const;
 export type QuestionUsage = (typeof QUESTION_USAGES)[number];
-export const QUESTION_TYPES = ['mc', 'truefalse', 'short', 'writing'] as const;
+export const QUESTION_TYPES = ['mc', 'truefalse', 'short', 'writing', 'code'] as const;
 export type QuestionType = (typeof QUESTION_TYPES)[number];
-/** Types an exam may hold; a writing question is for lesson practice only. */
+/** Types an exam may hold; writing and code questions are for lesson practice only. */
 export const EXAM_QUESTION_TYPES = ['mc', 'truefalse', 'short'] as const satisfies readonly QuestionType[];
 export type ExamQuestionType = (typeof EXAM_QUESTION_TYPES)[number];
 export const QUESTION_STATUSES = ['draft', 'pending_review', 'published'] as const;
@@ -76,6 +76,13 @@ export const MAX_WRITING_ANSWER = 1000;
 export const MAX_KEY_TERMS = 8;
 export const MAX_KEY_TERM = 60;
 export const MAX_SOURCE = 300;
+export const CODE_LANGUAGES = ['python', 'cpp'] as const;
+export type CodeLanguage = (typeof CODE_LANGUAGES)[number];
+export const MAX_CODE_CHARS = 65536;
+export const MAX_CODE_TESTS = 25;
+export type CodeVerdict = 'AC' | 'WA' | 'TLE' | 'MLE' | 'RE' | 'CE';
+/** One judged test. Hidden tests are the ones with `sample: false`; their input and expected output never reach a learner. */
+export interface CodeTest { input: string; expected: string; sample: boolean; points: number }
 const CHOICE_ID = /^[A-Za-z0-9_-]{1,20}$/;
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -120,6 +127,24 @@ const WritingQuestionData = z.object({
   ...Extras,
 });
 
+const CodeTestData = z.object({
+  input: z.string().max(MAX_CODE_CHARS),
+  expected: z.string().max(MAX_CODE_CHARS),
+  sample: z.boolean(),
+  points: z.number().int().min(1).max(100),
+});
+const CodeQuestionData = z.object({
+  stem: Text(MAX_QUESTION_TEXT),
+  input_spec: Text(MAX_QUESTION_TEXT),
+  output_spec: Text(MAX_QUESTION_TEXT),
+  time_limit_ms: z.number().int().min(500).max(5000),
+  memory_limit_mb: z.number().int().min(16).max(256),
+  starter: z.object({ python: z.string().max(MAX_CODE_CHARS).optional(), cpp: z.string().max(MAX_CODE_CHARS).optional() }).optional(),
+  tests: z.array(CodeTestData).min(1).max(MAX_CODE_TESTS),
+  explanation: OptionalText(MAX_QUESTION_TEXT).optional(),
+  ...Extras,
+});
+
 const Base = {
   usage: z.enum(QUESTION_USAGES),
   subject_id: z.string().regex(UUID),
@@ -133,6 +158,7 @@ const AuthorQuestionSchema = z.discriminatedUnion('type', [
   z.object({ ...Base, type: z.literal('truefalse'), data: TrueFalseData }),
   z.object({ ...Base, type: z.literal('short'), data: ShortAnswerData }),
   z.object({ ...Base, type: z.literal('writing'), data: WritingQuestionData }),
+  z.object({ ...Base, type: z.literal('code'), data: CodeQuestionData }),
 ]);
 
 export type AuthorQuestionInput = z.infer<typeof AuthorQuestionSchema>;
@@ -148,6 +174,12 @@ const FIELD_NAMES: Record<string, Message> = {
   key_terms: { en: 'key terms', vi: 'thuật ngữ cần dùng' },
   explanation: { en: 'explanation', vi: 'lời giải thích' },
   rubric: { en: 'marking note', vi: 'hướng dẫn chấm' },
+  input_spec: { en: 'input and output description', vi: 'mô tả dữ liệu vào/ra' },
+  output_spec: { en: 'input and output description', vi: 'mô tả dữ liệu vào/ra' },
+  tests: { en: 'tests', vi: 'bộ test' },
+  time_limit_ms: { en: 'time limit', vi: 'giới hạn thời gian' },
+  memory_limit_mb: { en: 'memory limit', vi: 'giới hạn bộ nhớ' },
+  starter: { en: 'starter code', vi: 'code mẫu' },
   usage: { en: 'question pool', vi: 'loại câu hỏi' },
   subject_id: { en: 'subject', vi: 'môn học' },
   lesson_id: { en: 'lesson', vi: 'bài học' },
@@ -175,8 +207,11 @@ export function validateQuestionInput(value: unknown, opts: { mediaBase?: string
     return { ok: false, message: { en: `Check the ${name.en}.`, vi: `Kiểm tra lại ${name.vi}.` } };
   }
   const question = parsed.data;
-  if (question.type === 'writing' && question.usage !== 'practice') {
+  if ((question.type === 'writing' || question.type === 'code') && question.usage !== 'practice') {
     return { ok: false, message: { en: 'This type is for lesson practice only.', vi: 'Dạng này chỉ dùng cho Tự luyện.' } };
+  }
+  if (question.type === 'code' && !question.data.tests.some((test) => test.sample)) {
+    return { ok: false, message: { en: 'Mark at least one test as an example.', vi: 'Cần đánh dấu ít nhất một test mẫu.' } };
   }
   if (question.data.image && 'mediaBase' in opts && !isLessonMediaUrl(question.data.image.url, opts.mediaBase)) {
     return { ok: false, message: { en: 'Upload the image to SciPal.', vi: 'Ảnh phải được tải lên SciPal.' } };
@@ -212,6 +247,7 @@ export function questionIncomplete(question: Pick<AuthorQuestionInput, 'type' | 
   const { data } = question;
   let part: Message | null = null;
   if (missing(data.stem)) part = FIELD_NAMES.stem!;
+  else if ('input_spec' in data && (missing(data.input_spec) || missing(data.output_spec))) part = FIELD_NAMES.input_spec!;
   else if ('options' in data && data.options.some((o) => missing(o.text))) part = FIELD_NAMES.options!;
   else if ('items' in data && data.items.some((i) => missing(i.text))) part = FIELD_NAMES.items!;
   else if (halfWritten(data.explanation)) part = FIELD_NAMES.explanation!;
@@ -236,6 +272,16 @@ export interface PublicPracticeQuestion {
     (
       | { stem: Message; options: Array<{ id: string; text: Message }> }
       | { stem: Message; items: Array<{ id: string; text: Message }> }
+      | {
+          stem: Message;
+          input_spec: Message;
+          output_spec: Message;
+          time_limit_ms: number;
+          memory_limit_mb: number;
+          starter: { python?: string; cpp?: string };
+          /** The example tests only; hidden tests never leave the server. */
+          samples: Array<{ input: string; expected: string }>;
+        }
       | { stem: Message }
     );
 }
@@ -246,6 +292,24 @@ const text = (value: unknown): Message => {
 };
 const choices = (value: unknown) =>
   (Array.isArray(value) ? value : []).map((c: { id?: unknown; text?: unknown }) => ({ id: String(c?.id ?? ''), text: text(c?.text) }));
+
+const str = (value: unknown) => (typeof value === 'string' ? value : '');
+const num = (value: unknown, fallback: number) => (typeof value === 'number' && Number.isFinite(value) ? value : fallback);
+
+/** What a learner sees of a code question: the statement, the limits, the starter code and the example tests. */
+function codeShown(stem: Message, data: Record<string, unknown>) {
+  const starter = (data.starter ?? {}) as Record<string, unknown>;
+  const tests = (Array.isArray(data.tests) ? data.tests : []) as Array<Record<string, unknown>>;
+  return {
+    stem,
+    input_spec: text(data.input_spec),
+    output_spec: text(data.output_spec),
+    time_limit_ms: num(data.time_limit_ms, 2000),
+    memory_limit_mb: num(data.memory_limit_mb, 128),
+    starter: { ...(str(starter.python) ? { python: str(starter.python) } : {}), ...(str(starter.cpp) ? { cpp: str(starter.cpp) } : {}) },
+    samples: tests.filter((test) => test?.sample === true).map((test) => ({ input: str(test.input), expected: str(test.expected) })),
+  };
+}
 
 /** The image and source of stored data, when they are well formed. */
 export function questionExtras(data: Record<string, unknown>): QuestionExtras {
@@ -262,7 +326,13 @@ export function toPublicPracticeQuestion(row: { id: string; type: string; diffic
   const stem = text(data.stem);
   const type = row.type as QuestionType;
   const shown =
-    type === 'mc' ? { stem, options: choices(data.options) } : type === 'truefalse' ? { stem, items: choices(data.items) } : { stem };
+    type === 'mc'
+      ? { stem, options: choices(data.options) }
+      : type === 'truefalse'
+        ? { stem, items: choices(data.items) }
+        : type === 'code'
+          ? codeShown(stem, data)
+          : { stem };
   return { id: row.id, type, difficulty: row.difficulty, data: { ...shown, ...questionExtras(data) } };
 }
 
@@ -273,6 +343,7 @@ export const PracticeResponseSchema = z
     items: z.array(z.object({ id: z.string().max(20), selected: z.boolean() })).max(MAX_CHOICES).optional(),
     short_answer: z.string().max(MAX_SHORT_ANSWER).optional(),
     writing_answer: z.string().max(MAX_WRITING_ANSWER).optional(),
+    code: z.object({ language: z.enum(CODE_LANGUAGES), source: z.string().max(MAX_CODE_CHARS) }).strict().optional(),
   })
   .strict();
 export type PracticeResponse = z.infer<typeof PracticeResponseSchema>;
@@ -284,4 +355,12 @@ export interface PracticeCheckResult {
   explanation?: Message;
   /** A writing answer: the key terms it used and missed, and the sample answer to compare with. */
   writing?: { used: string[]; missing: string[]; sample_answer: string };
+  /** A code answer: the overall verdict and one result per test. */
+  code?: CodeResult;
+  /** XP the server gave for this answer (a programming question solved for the first time); 0 when already solved. */
+  xp_earned?: number;
 }
+
+/** `stdout` and `expected` come only with tests a learner may see (the examples). */
+export interface CodeTestResult { verdict: CodeVerdict; time_ms: number; memory_kb: number; stdout?: string; expected?: string }
+export interface CodeResult { status: CodeVerdict; compile_message?: string; tests: CodeTestResult[] }

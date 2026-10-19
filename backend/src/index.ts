@@ -47,6 +47,8 @@ import { authorAiRoutes } from './routes/authorAi.js';
 import { createSettingsStore } from './tutor/settings.js';
 import { questionRoutes } from './routes/questions.js';
 import { practiceRoutes } from './routes/practice.js';
+import { practiceCodeRoutes } from './routes/practiceCode.js';
+import { createJudge0Client } from './judge/judge0.js';
 import { dictionaryRoutes } from './routes/dictionary.js';
 import { profileRoutes } from './routes/profile.js';
 import { gameRoutes } from './routes/games.js';
@@ -102,6 +104,15 @@ await app.register(billingVnpayRoutes);
 await app.register(billingReconciliationRoutes);
 await app.register(authorAiRoutes);
 await app.register(practiceRoutes);
+if (process.env.JUDGE0_URL) {
+  try {
+    const headers = process.env.JUDGE0_HEADERS ? (JSON.parse(process.env.JUDGE0_HEADERS) as Record<string, string>) : undefined;
+    app.decorate('judge0', createJudge0Client({ url: process.env.JUDGE0_URL, token: process.env.JUDGE0_TOKEN, headers }));
+  } catch (err) {
+    app.log.error({ err }, 'JUDGE0_HEADERS is not valid JSON; code judging stays off');
+  }
+}
+await app.register(practiceCodeRoutes);
 await app.register(lessonVideoRoutes);
 await app.register(dictionaryRoutes);
 await app.register(gameRoutes);

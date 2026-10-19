@@ -129,7 +129,7 @@ export const gameRoutes: FastifyPluginAsync = async (app) => {
     const { data, error: qError } = await db().from('questions').select('id, type, difficulty, data').in('id', ids).eq('usage', 'practice').eq('status', 'published').eq('subject_id', row.subject_id);
     if (qError) throw qError;
     // An English writing answer has no right or wrong to score, so it stays out of quiz games.
-    const rows = ((data ?? []) as Array<{ id: string; type: string; difficulty: number; data: unknown }>).filter((q) => q.type !== 'writing');
+    const rows = ((data ?? []) as Array<{ id: string; type: string; difficulty: number; data: unknown }>).filter((q) => q.type !== 'writing' && q.type !== 'code');
     const byId = new Map(rows.map((q) => [q.id, q]));
     return { subjectId: row.subject_id, questions: ids.flatMap((id) => (byId.has(id) ? [byId.get(id)!] : [])) };
   };

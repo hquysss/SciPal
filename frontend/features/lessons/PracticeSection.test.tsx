@@ -140,3 +140,40 @@ describe('a verdict that arrives late', () => {
     expect(withResult(changed, 'q1', { correct: true }, checked)).toBe(changed);
   });
 });
+
+describe('code questions in the paper', () => {
+  const codeQ: PublicPracticeQuestion = {
+    id: 'q5', type: 'code', difficulty: 1,
+    data: { stem: { vi: 'Nhân đôi', en: 'Double' }, input_spec: { vi: 'n', en: 'n' }, output_spec: { vi: '2n', en: '2n' }, time_limit_ms: 2000, memory_limit_mb: 128, starter: {}, samples: [{ input: '2\n', expected: '4\n' }] },
+  };
+
+  it('counts a code question as answered only once it has code', () => {
+    expect(responseOf(codeQ, undefined)).toBeNull();
+    expect(responseOf(codeQ, { code: { language: 'python', source: '   ' } })).toBeNull();
+    expect(responseOf(codeQ, { code: { language: 'cpp', source: 'int main(){}' } })).toEqual({ code: { language: 'cpp', source: 'int main(){}' } });
+  });
+
+  it('splits Informatics practice into a problem set and the other questions', () => {
+    const html = render({ load: { ok: true, questions: [questions[0]!, codeQ] } });
+    expect(html).toContain('Bài lập trình (1)');
+    expect(html).toContain('Trắc nghiệm (1)');
+    expect(html).toContain('Nhân đôi');
+    expect(html).not.toContain('2 + 2 bằng?');
+  });
+});
+
+describe('a lesson with only programming questions', () => {
+  it('shows the problem set, with difficulty and XP, and no status panel', () => {
+    const codeQ: PublicPracticeQuestion = {
+      id: 'q6', type: 'code', difficulty: 2,
+      data: { stem: { vi: 'Nhân đôi một số. Cho n…', en: 'Double.' }, input_spec: { vi: 'n', en: 'n' }, output_spec: { vi: '2n', en: '2n' }, time_limit_ms: 2000, memory_limit_mb: 128, starter: { python: 'n = 1' }, samples: [] },
+    };
+    const html = render({ load: { ok: true, questions: [codeQ] } });
+    expect(html).toContain('Nhân đôi một số');
+    expect(html).not.toContain('Cho n');
+    expect(html).toContain('Vừa');
+    expect(html).toContain('35 XP');
+    expect(html).not.toContain('Trạng thái các câu');
+    expect(countRawColors(html).total).toBe(0);
+  });
+});

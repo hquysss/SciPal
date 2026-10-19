@@ -9,6 +9,7 @@ import { MathText } from '@/components/math/MathText';
 import { QuestionFigure, QuestionSource } from '@/components/math/QuestionFigure';
 import { useShuffledOptions } from '@/lib/useShuffledOptions';
 import { checkPractice, type PracticeLoad } from './practiceApi';
+import { CodePracticeBoard } from './CodePracticeBoard';
 import { WritingAnswer, type WritingFeedbackState } from './WritingAnswer';
 import styles from './practice.module.css';
 
@@ -66,6 +67,7 @@ export function responseOf(question: PublicPracticeQuestion, answer: PracticeRes
   if (question.type === 'mc') return answer?.selected_option ? { selected_option: answer.selected_option } : null;
   if (question.type === 'truefalse') return answer?.items?.length ? { items: answer.items } : null;
   if (question.type === 'writing') return answer?.writing_answer?.trim() ? { writing_answer: answer.writing_answer } : null;
+  if (question.type === 'code') return answer?.code?.source.trim() ? { code: answer.code } : null;
   return answer?.short_answer?.trim() ? { short_answer: answer.short_answer } : null;
 }
 
@@ -104,17 +106,56 @@ interface PracticeSectionProps {
   lang?: 'en' | 'vi';
 }
 
-const PART_ORDER =['mc', 'truefalse', 'short', 'writing'] as const;
+const PART_ORDER = ['mc', 'truefalse', 'short', 'writing', 'code'] as const;
 const PART_TITLE: Record<(typeof PART_ORDER)[number], Bilingual> = {
   mc: { en: 'Multiple choice', vi: 'Trắc nghiệm nhiều phương án lựa chọn' },
   truefalse: { en: 'True / false', vi: 'Trắc nghiệm đúng sai' },
   short: { en: 'Short answer', vi: 'Trắc nghiệm trả lời ngắn' },
   writing: { en: 'Write in English', vi: 'Viết tiếng Anh' },
+  code: { en: 'Programming', vi: 'Lập trình' },
 };
 
 const CARD ='rounded-xl border border-line bg-surface p-4 sm:p-5';
 
-export function PracticeSection({ load, state, onAnswer, onResult, onRetry, onQuestion, onWritingFeedback, lang }: PracticeSectionProps) {
+/**
+ * A lesson's Tự luyện. Programming questions (Tin học) get their own problem set, like an online
+ * judge; every other question is done one at a time with the status panel beside it.
+ */
+export function PracticeSection(props: PracticeSectionProps) {
+  const { t: readerT } = useLanguage();
+  const t = props.lang ? (text: Bilingual) => text[props.lang!] || text.vi : readerT;
+  const [view, setView] = useState<'code' | 'quiz'>('code');
+  const code = props.load.ok ? props.load.questions.filter((q) => q.type === 'code') : [];
+  if (!props.load.ok || code.length === 0) return <QuestionPractice {...props} />;
+  const quiz = props.load.questions.filter((q) => q.type !== 'code');
+  const board = <CodePracticeBoard questions={code} answers={props.state.answers} results={props.state.results} onAnswer={props.onAnswer} onResult={props.onResult} t={t} />;
+  if (quiz.length === 0) return board;
+  const tabs: Array<{ id: 'code' | 'quiz'; label: Bilingual }> = [
+    { id: 'code', label: { en: `Programming (${code.length})`, vi: `Bài lập trình (${code.length})` } },
+    { id: 'quiz', label: { en: `Questions (${quiz.length})`, vi: `Trắc nghiệm (${quiz.length})` } },
+  ];
+  return (
+    <div className="flex flex-col gap-5">
+      <div role="tablist" aria-label={t({ en: 'Practice kind', vi: 'Dạng luyện tập' })} className="inline-flex self-start rounded-xl bg-surface-sunken p-1">
+        {tabs.map((tab) => (
+          <button
+            key={tab.id}
+            type="button"
+            role="tab"
+            aria-selected={view === tab.id}
+            onClick={() => setView(tab.id)}
+            className={`min-h-11 rounded-lg px-4 text-sm font-semibold transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus motion-reduce:transition-none ${view === tab.id ? 'bg-surface text-ink shadow-sm' : 'text-ink hover:bg-surface/60'}`}
+          >
+            {t(tab.label)}
+          </button>
+        ))}
+      </div>
+      {view === 'code' ? board : <QuestionPractice {...props} load={{ ok: true, questions: quiz }} />}
+    </div>
+  );
+}
+
+function QuestionPractice({ load, state, onAnswer, onResult, onRetry, onQuestion, onWritingFeedback, lang }: PracticeSectionProps) {
   const { t: readerT, lang: readerLang } = useLanguage();
   const t = lang ? (text: Bilingual) => text[lang] || text.vi : readerT;
   const shownLang = lang ?? (readerLang === 'en' ? 'en' : 'vi');
@@ -423,7 +464,7 @@ function QuestionCard({ question, options, answer, result, writingFeedback, onWr
         />
       )}
 
-      {question.type !== 'writing' && checkRow}
+      {question.type !== 'writing' && question.type !== 'code' && checkRow}
       {result?.explanation && (
         <p className="mt-3 rounded-lg bg-surface-sunken px-3 py-2 text-sm text-ink">
           <MathText text={t(result.explanation)} />

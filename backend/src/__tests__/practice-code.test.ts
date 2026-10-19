@@ -1,0 +1,177 @@
+import { describe, expect, it, vi } from 'vitest';
+import Fastify from 'fastify';
+import { practiceCodeRoutes } from '../routes/practiceCode.js';
+import { practiceRoutes } from '../routes/practice.js';
+import { Judge0Unavailable, type Judge0Client, type RunOutcome } from '../judge/judge0.js';
+import { mockQuery, mockSupabase, type MockBuilder } from './helpers/supabaseMock.js';
+
+const Q = '99999999-9999-4999-8999-999999999999';
+const LESSON = '22222222-2222-4222-8222-222222222222';
+const student = { id: 'student-1', app_metadata: { app_role: 'student' } };
+const teacher = { id: 'teacher-1', app_metadata: { app_role: 'teacher' } };
+const codeRow = {
+  id: Q, usage: 'practice', status: 'published', subject_id: 's', lesson_id: LESSON, created_by: 'teacher-1', type: 'code', difficulty: 1,
+  data: {
+    stem: { vi: 'Nhân đôi.', en: 'Double.' }, input_spec: { vi: 'n', en: 'n' }, output_spec: { vi: '2n', en: '2n' },
+    time_limit_ms: 2000, memory_limit_mb: 128, explanation: { vi: 'Nhân 2.', en: 'Times two.' },
+    tests: [
+      { input: '2\n', expected: '4\n', sample: true, points: 1 },
+      { input: '9\n', expected: 'HIDDEN-EXPECTED-7\n', sample: false, points: 1 },
+    ],
+  },
+};
+const ok = (data: unknown = null, count?: number) => mockQuery({ data, error: null, ...(count !== undefined ? { count } : {}) });
+const out = (stdout: string, over: Partial<RunOutcome> = {}): RunOutcome => ({ status_id: 3, stdout, stderr: '', compile_output: '', time_ms: 10, memory_kb: 2000, ...over });
+
+function build(opts: { user?: object; judge0?: Judge0Client | null; row?: unknown; used?: number; xp?: MockBuilder | MockBuilder[] }) {
+  const tables: Record<string, MockBuilder | MockBuilder[]> = {
+    questions: ok(opts.row === undefined ? codeRow : opts.row),
+    lessons: ok([{ id: LESSON }]),
+    code_runs: [ok(null, opts.used ?? 0), ok(), ok(null, opts.used ?? 0), ok()],
+    xp_log: opts.xp ?? ok(),
+    streaks: [ok(null), ok()],
+  };
+  const app = Fastify();
+  app.decorate('supabase', mockSupabase(tables));
+  if (opts.judge0 !== null) app.decorate('judge0', opts.judge0 ?? { runBatch: vi.fn(async () => [out('4\n'), out('HIDDEN-EXPECTED-7\n')]) });
+  if (opts.user) app.addHook('onRequest', async (req) => { (req as any).user = opts.user; });
+  return app.register(practiceCodeRoutes).register(practiceRoutes).ready().then(() => ({ app, tables }));
+}
+const post = (app: Awaited<ReturnType<typeof build>>['app'], url: string, payload: object) => app.inject({ method: 'POST', url, payload: payload as Record<string, unknown> });
+const submitBody = { question_id: Q, language: 'python', source: 'print(int(input())*2)' };
+
+describe('POST /api/practice/code/submit', () => {
+  it('needs a signed-in user and never reaches Judge0 without one', async () => {
+    const judge0 = { runBatch: vi.fn() };
+    const { app } = await build({ judge0 });
+    const res = await post(app, '/api/practice/code/submit', submitBody);
+    expect(res.statusCode).toBe(401);
+    expect(judge0.runBatch).not.toHaveBeenCalled();
+  });
+
+  it('says so when judging is switched off', async () => {
+    const { app } = await build({ user: student, judge0: null });
+    expect((await post(app, '/api/practice/code/submit', submitBody)).statusCode).toBe(503);
+  });
+
+  it('rejects an empty source, another language and a question that is not code', async () => {
+    const { app } = await build({ user: student });
+    expect((await post(app, '/api/practice/code/submit', { ...submitBody, source: '   ' })).statusCode).toBe(400);
+    expect((await post(app, '/api/practice/code/submit', { ...submitBody, language: 'java' })).statusCode).toBe(400);
+    const mc = await build({ user: student, row: { ...codeRow, type: 'mc' } });
+    expect((await post(mc.app, '/api/practice/code/submit', submitBody)).statusCode).toBe(404);
+  });
+
+  it('is correct when every test passes, then shows the explanation and still hides hidden tests', async () => {
+    const { app } = await build({ user: student });
+    const res = await post(app, '/api/practice/code/submit', submitBody);
+    const body = res.json();
+    expect(res.statusCode).toBe(200);
+    expect(body).toMatchObject({ correct: true, code: { status: 'AC' }, explanation: { vi: 'Nhân 2.' } });
+    expect(res.body).not.toContain('HIDDEN-EXPECTED-7');
+  });
+
+  it('is not correct and shows no explanation when a test fails', async () => {
+    const { app } = await build({ user: student, judge0: { runBatch: async () => [out('4\n'), out('wrong\n')] } });
+    const body = (await post(app, '/api/practice/code/submit', submitBody)).json();
+    expect(body.correct).toBe(false);
+    expect(body.code.status).toBe('WA');
+    expect(body).not.toHaveProperty('explanation');
+    expect(JSON.stringify(body)).not.toContain('HIDDEN-EXPECTED-7');
+  });
+
+  it('stops at the per-minute limit before calling Judge0', async () => {
+    const judge0 = { runBatch: vi.fn() };
+    const { app } = await build({ user: student, judge0, used: 5 });
+    const res = await post(app, '/api/practice/code/submit', submitBody);
+    expect(res.statusCode).toBe(429);
+    expect(judge0.runBatch).not.toHaveBeenCalled();
+  });
+
+  it('answers 502, not a wrong verdict, when Judge0 is down', async () => {
+    const { app } = await build({ user: student, judge0: { runBatch: async () => { throw new Judge0Unavailable('down'); } } });
+    const res = await post(app, '/api/practice/code/submit', submitBody);
+    expect(res.statusCode).toBe(502);
+    expect(res.json().error).toMatch(/thử lại/);
+  });
+});
+
+describe('POST /api/practice/code/run', () => {
+  it('runs the code once with the typed input', async () => {
+    const runBatch = vi.fn(async () => [out('6\n')]);
+    const { app } = await build({ user: student, judge0: { runBatch } });
+    const res = await post(app, '/api/practice/code/run', { ...submitBody, stdin: '3\n' });
+    expect(res.json()).toMatchObject({ status: 'AC', stdout: '6\n' });
+    expect(runBatch).toHaveBeenCalledWith([expect.objectContaining({ stdin: '3\n', time_limit_ms: 2000, memory_limit_mb: 128 })]);
+  });
+
+  it('shows the compiler message when the code does not build', async () => {
+    const { app } = await build({ user: student, judge0: { runBatch: async () => [out('', { status_id: 6, compile_output: 'error: expected ;' })] } });
+    expect((await post(app, '/api/practice/code/run', { ...submitBody, stdin: '' })).json()).toMatchObject({ status: 'CE', stderr: 'error: expected ;' });
+  });
+});
+
+describe('POST /api/practice/code/verify', () => {
+  const body = { language: 'python', source: 'print(4)', time_limit_ms: 2000, memory_limit_mb: 128, tests: codeRow.data.tests };
+
+  it('is for teachers and admins only', async () => {
+    const { app } = await build({ user: student });
+    expect((await post(app, '/api/practice/code/verify', body)).statusCode).toBe(403);
+  });
+
+  it('shows a teacher the output of every test, hidden ones included', async () => {
+    const { app } = await build({ user: teacher });
+    const res = await post(app, '/api/practice/code/verify', body);
+    expect(res.statusCode).toBe(200);
+    expect(res.json().tests[1]).toMatchObject({ verdict: 'AC', expected: 'HIDDEN-EXPECTED-7\n' });
+  });
+});
+
+describe('POST /api/practice/check', () => {
+  it('sends a code question to its own Submit button', async () => {
+    const { app } = await build({ user: student });
+    const res = await post(app, '/api/practice/check', { question_id: Q, response: { code: { language: 'python', source: 'x' } } });
+    expect(res.statusCode).toBe(400);
+  });
+});
+
+describe('XP for a programming question', () => {
+  it('gives XP by difficulty the first time every test passes, once per question', async () => {
+    const xp = ok();
+    const { app } = await build({ user: student, xp, row: { ...codeRow, difficulty: 2 } });
+    const body = (await post(app, '/api/practice/code/submit', submitBody)).json();
+    expect(body.xp_earned).toBe(35);
+    expect(xp.inserted[0]).toEqual({ user_id: 'student-1', subject_id: 's', delta: 35, reason: `code_ac:${Q}` });
+  });
+
+  it('gives nothing when the question was already solved', async () => {
+    const xp = mockQuery({ data: null, error: { code: '23505', message: 'duplicate' } });
+    const { app } = await build({ user: student, xp });
+    const res = await post(app, '/api/practice/code/submit', submitBody);
+    expect(res.statusCode).toBe(200);
+    expect(res.json()).toMatchObject({ correct: true, xp_earned: 0 });
+  });
+
+  it('gives nothing for a wrong answer or an author trying an unpublished question', async () => {
+    const xp = ok();
+    const wrong = await build({ user: student, xp, judge0: { runBatch: async () => [out('4\n'), out('no\n')] } });
+    expect((await post(wrong.app, '/api/practice/code/submit', submitBody)).json().xp_earned).toBeUndefined();
+    const draft = await build({ user: { id: 'teacher-1', app_metadata: { app_role: 'teacher' } }, xp, row: { ...codeRow, status: 'draft' } });
+    expect((await post(draft.app, '/api/practice/code/submit', submitBody)).json()).toMatchObject({ correct: true, xp_earned: 0 });
+    expect(xp.inserted).toHaveLength(0);
+  });
+});
+
+describe('GET /api/practice/code/solved', () => {
+  it('lists the programming questions the learner has solved', async () => {
+    const { app } = await build({ user: student, xp: ok([{ reason: `code_ac:${Q}` }, { reason: 'code_ac:not-an-id' }]) });
+    const res = await app.inject({ method: 'GET', url: '/api/practice/code/solved' });
+    expect(res.json()).toEqual({ question_ids: [Q] });
+  });
+
+  it('needs a signed-in learner', async () => {
+    const { app } = await build({});
+    expect((await app.inject({ method: 'GET', url: '/api/practice/code/solved' })).statusCode).toBe(401);
+  });
+});
+

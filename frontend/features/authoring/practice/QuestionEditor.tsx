@@ -8,6 +8,7 @@ import { questionIncomplete, validateQuestionInput, type QuestionType } from '@s
 import { buttonVariants } from '@/components/ui/button';
 import { MathText } from '@/components/math/MathText';
 import { hasMath } from '@/lib/mathText';
+import { CodeQuestionFields } from './CodeQuestionFields';
 import { QuestionImageField } from './QuestionImageField';
 import { LangTabs } from '../editor/editors/LangTabs';
 import { LABEL, SMALL_BUTTON, TEXTAREA } from '../editor/editors/styles';
@@ -294,6 +295,8 @@ export function QuestionEditor({ context, question, initial, onSaved, onCancel }
           </div>
         </>
       )}
+
+      {draft.type === 'code' && <CodeQuestionFields data={data} lang={lang} onData={setData} />}
 
       <MathPreview draft={draft} lang={lang} />
 
