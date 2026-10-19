@@ -65,6 +65,43 @@
   to { opacity: 1; transform: translateY(0); }
 }
 
+/* A column of words that rolls upward one at a time; the first word is repeated last so the loop is seamless. */
+.words {
+  position: relative;
+  display: inline-block;
+  height: 1.75rem;
+  overflow: hidden;
+  vertical-align: bottom;
+}
+
+.words::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(var(--surface-sunken) 10%, transparent 30%, transparent 70%, var(--surface-sunken) 90%);
+  pointer-events: none;
+}
+
+.word {
+  display: block;
+  height: 1.75rem;
+  line-height: 1.75rem;
+  white-space: nowrap;
+  color: var(--accent-ink, var(--ink));
+  animation: roll 4s infinite;
+}
+
+@keyframes roll {
+  10% { transform: translateY(-102%); }
+  25% { transform: translateY(-100%); }
+  35% { transform: translateY(-202%); }
+  50% { transform: translateY(-200%); }
+  60% { transform: translateY(-302%); }
+  75% { transform: translateY(-300%); }
+  85% { transform: translateY(-402%); }
+  100% { transform: translateY(-400%); }
+}
+
 @keyframes waiting {
   0%, 100% { opacity: 1; }
   50% { opacity: .75; }
@@ -107,7 +144,9 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .question, .result, .halo, .verdict, .segment, .tile, .trophy, .waiting, .landed { animation: none; }
+  .question, .result, .halo, .verdict, .segment, .tile, .trophy, .waiting, .landed, .word { animation: none; }
+  .words::after { display: none; }
+  .words { height: 1.75rem; }
   .sweep { animation: none; width: 100%; opacity: .5; }
   .progress { transition: none; }
 }

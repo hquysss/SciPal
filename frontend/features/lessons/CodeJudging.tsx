@@ -21,6 +21,13 @@ const STEPS: Array<{ icon: typeof Send; label: Bilingual; hint: Bilingual }> = [
   { icon: Trophy, label: { en: 'Result', vi: 'Trả kết quả' }, hint: { en: 'Each test gets a verdict.', vi: 'Mỗi test có một kết luận.' } },
 ];
 
+const DOING: Bilingual[] = [
+  { en: 'compiling', vi: 'biên dịch code' },
+  { en: 'running every test', vi: 'chạy từng test' },
+  { en: 'comparing output', vi: 'so kết quả' },
+  { en: 'scoring', vi: 'chấm điểm' },
+];
+
 /** Running tests are sky blue, so they never read as passed (green) or the subject colour. */
 const RUNNING = 'bg-[color-mix(in_srgb,var(--sky)_28%,var(--surface))]';
 
@@ -53,7 +60,18 @@ export function CodeJudging({ t, progress }: { t: (text: Bilingual) => string; p
           <LoaderCircle aria-hidden="true" className="h-6 w-6 animate-spin motion-reduce:animate-none" />
         </span>
         <div className="flex min-w-0 flex-1 flex-col">
-          <p className="text-lg font-extrabold text-ink">{t({ en: 'Judging your code…', vi: 'Đang chấm bài…' })}</p>
+          <p className="sr-only">{t({ en: 'Judging your code…', vi: 'Đang chấm bài…' })}</p>
+          {/* What the judge is doing, rolling by. Decorative: the real progress is the counts and tiles below. */}
+          <p aria-hidden="true" className="flex items-center gap-2 text-lg font-extrabold text-ink">
+            {t({ en: 'Now', vi: 'Đang' })}
+            <span className={styles.words}>
+              {[...DOING, DOING[0]!].map((word, i) => (
+                <span key={i} className={styles.word}>
+                  {t(word)}
+                </span>
+              ))}
+            </span>
+          </p>
           <p className="text-sm text-ink">
             {progress
               ? t({ en: `${done} of ${total} tests judged`, vi: `Đã chấm ${done}/${total} test` })
