@@ -48,6 +48,7 @@ import { createSettingsStore } from './tutor/settings.js';
 import { questionRoutes } from './routes/questions.js';
 import { practiceRoutes } from './routes/practice.js';
 import { practiceCodeRoutes } from './routes/practiceCode.js';
+import { hsgProblemRoutes } from './routes/hsgProblems.js';
 import { createJudge0Client } from './judge/judge0.js';
 import { dictionaryRoutes } from './routes/dictionary.js';
 import { profileRoutes } from './routes/profile.js';
@@ -113,6 +114,7 @@ if (process.env.JUDGE0_URL) {
   }
 }
 await app.register(practiceCodeRoutes);
+await app.register(hsgProblemRoutes);
 await app.register(lessonVideoRoutes);
 await app.register(dictionaryRoutes);
 await app.register(gameRoutes);

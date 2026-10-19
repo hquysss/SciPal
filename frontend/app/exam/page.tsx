@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import { getExamBlueprints } from '@/features/exam/examQueries';
-import { ExamBlueprintList, ExamListHeader, NoExamsNotice } from '@/features/exam/ExamListNotices';
+import { getHsgProblems } from '@/features/exam/hsgQueries';
+import { ExamBlueprintList, ExamListHeader, NoExamsNotice, type HsgCoding } from '@/features/exam/ExamListNotices';
 import { LoadErrorNotice } from '@/components/feedback/LoadErrorNotice';
 import { pageTitle } from '@/lib/pageTitle';
 
@@ -8,8 +9,16 @@ export const metadata: Metadata = { ...pageTitle('Mock exams', 'Thi thử') };
 
 export const dynamic = 'force-dynamic';
 
+/** Subjects whose Bồi dưỡng HSG has programming problems. */
+const HSG_CODING_SUBJECTS = ['informatics'];
+
 export default async function ExamListPage() {
-  const result = await getExamBlueprints();
+  const [result, ...coding] = await Promise.all([getExamBlueprints(), ...HSG_CODING_SUBJECTS.map(getHsgProblems)]);
+  // A subject whose problems fail to load is left out; the exams still show.
+  const hsgCoding: HsgCoding[] = coding.flatMap((c) =>
+    c.kind === 'ok' ? [{ slug: c.subject.slug, name_vi: c.subject.name_vi, name_en: c.subject.name_en, count: c.questions.length }] : [],
+  );
+  const empty = result.kind === 'ok' && result.blueprints.length === 0 && hsgCoding.every((c) => c.count === 0);
   return (
     <main className="mx-auto flex w-full max-w-4xl flex-col gap-8 px-4 pb-20 pt-8 sm:px-6 sm:pt-12">
       <ExamListHeader />
@@ -20,10 +29,10 @@ export default async function ExamListPage() {
             message={{ en: 'Could not load exams.', vi: 'Chưa tải được danh sách đề thi.' }}
             retryHref="/exam"
           />
-        ) : result.blueprints.length === 0 ? (
+        ) : empty ? (
           <NoExamsNotice />
         ) : (
-          <ExamBlueprintList blueprints={result.blueprints} />
+          <ExamBlueprintList blueprints={result.blueprints} hsgCoding={hsgCoding} />
         )}
       </section>
     </main>

@@ -21,7 +21,12 @@ export interface BlueprintSummary {
   format: ExamFormat;
   /** Sections and passage groups of a laid-out exam (ids only, never answers); null for a generic exam. */
   layout: ExamSection[] | null;
+  /** Display group in the exam room: gifted-student training ('hsg') gets its own list. */
+  category: ExamCategory;
 }
+
+export const EXAM_CATEGORIES = ['standard', 'hsg'] as const;
+export type ExamCategory = (typeof EXAM_CATEGORIES)[number];
 
 interface SubjectRef {
   slug: string;
@@ -46,6 +51,8 @@ export interface BlueprintRow {
   /** Absent before the exam-formats migration: treated as a generic exam without a layout. */
   format?: string | null;
   layout?: unknown;
+  /** Absent before the exam-category migration: treated as a standard exam. */
+  category?: string | null;
   /** Absent on a database that has not run the exam-import migration: treated as published. */
   status?: string | null;
   created_by?: string | null;
@@ -88,6 +95,10 @@ export function blueprintFormat(row: Pick<BlueprintRow, 'format'>): ExamFormat {
   return (EXAM_FORMATS as readonly string[]).includes(row.format ?? '') ? (row.format as ExamFormat) : 'generic';
 }
 
+export function blueprintCategory(row: Pick<BlueprintRow, 'category'>): ExamCategory {
+  return (EXAM_CATEGORIES as readonly string[]).includes(row.category ?? '') ? (row.category as ExamCategory) : 'standard';
+}
+
 export function toBlueprintSummary(row: BlueprintRow): BlueprintSummary {
   const subject = Array.isArray(row.subjects) ? row.subjects[0] : row.subjects;
   const questionIds = blueprintQuestionIds(row);
@@ -107,5 +118,6 @@ export function toBlueprintSummary(row: BlueprintRow): BlueprintSummary {
     duration_minutes: row.duration_minutes ?? null,
     format: blueprintFormat(row),
     layout: Array.isArray(row.layout) ? (row.layout as ExamSection[]) : null,
+    category: blueprintCategory(row),
   };
 }

@@ -31,7 +31,10 @@ export function getUser(request: FastifyRequest): PracticeUser | undefined {
 }
 export const isAdmin = (user: PracticeUser | undefined) => user?.app_metadata?.app_role === 'admin';
 /** Authors and admins may try unpublished questions while previewing. */
-export const mayPreview = (user: PracticeUser | undefined, createdBy: string | null) => isAdmin(user) || (!!user?.id && user.id === createdBy);
+/** A programming problem of Bồi dưỡng HSG (exam room), served without a lesson. */
+export const isHsgProblem = (row: Pick<PracticeRow, 'type' | 'data'>) =>
+  row.type === 'code' && (row.data as { track?: unknown } | null)?.track === 'hsg';
+export const mayPreview =(user: PracticeUser | undefined, createdBy: string | null) => isAdmin(user) || (!!user?.id && user.id === createdBy);
 
 /**
  * A practice question the caller may use: published and in a published lesson, or the author's
@@ -63,6 +66,8 @@ export async function servableQuestion(
       reply.code(404).send(unavailable);
       return null;
     }
+    // A gifted-student training problem lives in the exam room, not in a lesson.
+    if (isHsgProblem(row)) return row;
     const { data: lessons, error: lessonError } = await supabase
       .from('lessons')
       .select('id')

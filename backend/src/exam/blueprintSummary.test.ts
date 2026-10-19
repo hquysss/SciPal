@@ -32,3 +32,14 @@ describe('toBlueprintSummary format and layout', () => {
     expect(summary.layout).toBeNull();
   });
 });
+
+describe('toBlueprintSummary category', () => {
+  it('carries an hsg exam', () => {
+    expect(toBlueprintSummary({ ...base, category: 'hsg' }).category).toBe('hsg');
+  });
+
+  it('treats a missing or unknown category as standard', () => {
+    expect(toBlueprintSummary(base).category).toBe('standard');
+    expect(toBlueprintSummary({ ...base, category: 'mystery' }).category).toBe('standard');
+  });
+});
