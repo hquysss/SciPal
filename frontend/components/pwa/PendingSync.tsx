@@ -5,11 +5,8 @@ import { CloudUpload } from 'lucide-react';
 import { useLanguage } from '@scipal/hooks';
 import { postPracticeSync } from '@/features/lessons/practiceApi';
 import { clearPacks } from '../../lib/pwa/practicePacks';
-import { flushPractice, PENDING_CHANGED, pendingFor, type SyncResult } from '../../lib/pwa/pendingPractice';
+import { flushPractice, PENDING_CHANGED, pendingFor, PRACTICE_SYNCED, type SyncResult } from '../../lib/pwa/pendingPractice';
 import { createBrowserClient } from '../../lib/supabase';
-
-/** Fired with the server's results (`detail: SyncResult[]`) after answers made offline were synced. */
-export const PRACTICE_SYNCED = 'scipal:practice-synced';
 
 /** Sends practice answers made offline when the connection returns, and says how many wait and what the server granted. */
 export function PendingSync() {

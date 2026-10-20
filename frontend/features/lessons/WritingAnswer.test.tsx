@@ -117,6 +117,14 @@ describe('WritingAnswer', () => {
     expect(await screen.findByText('Em đã dùng hết token Giáo sư AI hôm nay.')).toBeTruthy();
   });
 
+  it('cannot ask the Professor without a connection, and says why', async () => {
+    const onLine = vi.spyOn(navigator, 'onLine', 'get').mockReturnValue(false);
+    renderAnswer({ value: 'A loop.', result });
+    expect((await screen.findByRole('button', { name: 'Nhờ Giáo sư nhận xét' })).hasAttribute('disabled')).toBe(true);
+    expect(screen.getByText('Giáo sư AI cần có mạng để nhận xét.')).toBeTruthy();
+    onLine.mockRestore();
+  });
+
   it('a guest is asked to sign in instead', async () => {
     api.token.mockResolvedValue(undefined);
     renderAnswer({ value: 'A loop.', result });

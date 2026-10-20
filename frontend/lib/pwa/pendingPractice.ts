@@ -11,6 +11,8 @@ const BATCH = 100;
 
 /** Fired when the queue changes, so the sync banner updates and tries to send. */
 export const PENDING_CHANGED = 'scipal:pending-changed';
+/** Fired with the server's results (`detail: SyncResult[]`) after answers made offline were synced. */
+export const PRACTICE_SYNCED = 'scipal:practice-synced';
 
 export type PendingAnswer = {
   user_id: string;

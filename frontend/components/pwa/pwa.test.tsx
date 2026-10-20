@@ -1,7 +1,7 @@
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it, vi } from 'vitest';
 import { OfflineBannerView } from './OfflineBanner';
-import { SaveOfflineView } from '@/features/lessons/SaveOfflineButton';
+import { saveLessonsOffline, SaveOfflineView } from '@/features/lessons/SaveOfflineButton';
 
 vi.mock('@scipal/hooks', () => ({ useLanguage: () => ({ lang: 'vi', t: (o: { vi: string }) => o.vi }) }));
 
@@ -29,5 +29,18 @@ describe('save a subject for offline', () => {
 
   it('cannot start without a connection', () => {
     expect(renderToStaticMarkup(<SaveOfflineView state={{ kind: 'idle' }} count={12} online={false} onSave={noop} />)).toMatch(/<button[^>]*disabled=""/);
+  });
+});
+
+describe('saving lessons with their practice', () => {
+  it('counts a lesson as failed when its page or its practice pack could not be kept', async () => {
+    const lessons = [{ url: '/informatics/a', id: 'a' }, { url: '/informatics/b', id: 'b' }, { url: '/informatics/c', id: 'c' }];
+    const progress: number[] = [];
+    const result = await saveLessonsOffline(lessons, (done) => progress.push(done), {
+      savePage: async (url) => url !== '/informatics/c',
+      savePacks: async (ids) => ({ saved: ids.filter((id) => id !== 'b'), failed: ['b'] }),
+    });
+    expect(result).toEqual({ saved: 1, failed: 2 });
+    expect(progress.at(-1)).toBe(3);
   });
 });

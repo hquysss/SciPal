@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useId, useRef, useState } from 'react';
+import { useCallback, useEffect, useId, useRef, useState } from 'react';
 import { CircleCheck, CircleX } from 'lucide-react';
 import { useLanguage } from '@scipal/hooks';
 import type { PracticeCheckResult, PracticeResponse, PublicPracticeQuestion } from '@scipal/types';
@@ -8,17 +8,25 @@ import { buttonVariants } from '@/components/ui/button';
 import { MathText } from '@/components/math/MathText';
 import { QuestionFigure, QuestionSource } from '@/components/math/QuestionFigure';
 import { useShuffledOptions } from '@/lib/useShuffledOptions';
-import { checkPractice, type PracticeLoad } from './practiceApi';
+import { checkPractice, type PracticeCheck, type PracticeLoad } from './practiceApi';
+import { PRACTICE_SYNCED, type SyncResult } from '../../lib/pwa/pendingPractice';
 import { CodePracticeBoard } from './CodePracticeBoard';
 import { WritingAnswer, type WritingFeedbackState } from './WritingAnswer';
 import styles from './practice.module.css';
 
 type Bilingual = { en: string; vi: string };
 
+/** A verdict; `provisional` when it was graded on this device without a connection (XP and streak are estimates). */
+export type PracticeResult = PracticeCheckResult & { provisional?: { xp: number; streak: number | null } };
+
+/** The verdict to keep from a successful check, with its provisional estimate when there is one. */
+export const resultOf = (res: Extract<PracticeCheck, { ok: true }>): PracticeResult =>
+  res.provisional ? { ...res.result, provisional: res.provisional } : res.result;
+
 /** This visit's answers and latest verdicts. Kept by the lesson view so switching parts loses nothing; never stored. */
 export interface PracticeState {
   answers: Record<string, PracticeResponse>;
-  results: Record<string, PracticeCheckResult>;
+  results: Record<string, PracticeResult>;
   activeQuestionId?: string;
   writingFeedback?: Record<string, WritingFeedbackState>;
 }
@@ -27,7 +35,7 @@ export interface PracticeState {
  * Record a verdict only if the answer is still the one that was checked: a reply arriving after
  * the learner changed the answer belongs to the old answer and is dropped.
  */
-export function withResult(state: PracticeState, id: string, result: PracticeCheckResult, checked: PracticeResponse | undefined): PracticeState {
+export function withResult(state: PracticeState, id: string, result: PracticeResult, checked: PracticeResponse | undefined): PracticeState {
   if (state.answers[id] !== checked) return state;
   return { ...state, results: { ...state.results, [id]: result } };
 }
@@ -42,8 +50,24 @@ export function usePracticeState() {
       return { ...old, answers: { ...old.answers, [id]: answer }, results, writingFeedback };
     });
   }, []);
-  const onResult = useCallback((id: string, result: PracticeCheckResult, checked: PracticeResponse | undefined) => {
+  const onResult = useCallback((id: string, result: PracticeResult, checked: PracticeResponse | undefined) => {
     setState((old) => withResult(old, id, result, checked));
+  }, []);
+  // Answers made offline were synced: the server's verdicts replace the provisional ones on screen.
+  useEffect(() => {
+    const onSynced = (event: Event) => {
+      const synced = (event as CustomEvent<SyncResult[]>).detail ?? [];
+      setState((old) => {
+        let results = old.results;
+        for (const { question_id, status, counted: _counted, ...server } of synced) {
+          if (status !== 'ok' || !results[question_id]?.provisional || typeof server.correct !== 'boolean') continue;
+          results = { ...results, [question_id]: server as PracticeCheckResult };
+        }
+        return results === old.results ? old : { ...old, results };
+      });
+    };
+    window.addEventListener(PRACTICE_SYNCED, onSynced);
+    return () => window.removeEventListener(PRACTICE_SYNCED, onSynced);
   }, []);
   const onQuestion = useCallback((id: string) => {
     setState((old) => ({ ...old, activeQuestionId: id }));
@@ -57,7 +81,7 @@ export function usePracticeState() {
 }
 
 /** Right answers of this visit over all questions (unanswered ones count in the total). */
-export function practiceSummary(ids: string[], results: Record<string, PracticeCheckResult>) {
+export function practiceSummary(ids: string[], results: Record<string, PracticeResult>) {
   const checked = ids.filter((id) => results[id]);
   return { right: checked.filter((id) => results[id]!.correct).length, total: ids.length, checked: checked.length };
 }
@@ -95,10 +119,12 @@ export function questionStatus(question: PublicPracticeQuestion, state: Practice
 
 interface PracticeSectionProps {
   load: PracticeLoad;
+  /** The lesson, so an answer made offline can be graded from its saved pack. */
+  lessonId?: string;
   state: PracticeState;
   onAnswer: (id: string, answer: PracticeResponse) => void;
   /** `checked` is the answer object the verdict is for. */
-  onResult: (id: string, result: PracticeCheckResult, checked: PracticeResponse | undefined) => void;
+  onResult: (id: string, result: PracticeResult, checked: PracticeResponse | undefined) => void;
   onRetry?: () => void;
   onQuestion?: (id: string) => void;
   onWritingFeedback?: (id: string, feedback: WritingFeedbackState) => void;
@@ -155,7 +181,7 @@ export function PracticeSection(props: PracticeSectionProps) {
   );
 }
 
-function QuestionPractice({ load, state, onAnswer, onResult, onRetry, onQuestion, onWritingFeedback, lang }: PracticeSectionProps) {
+function QuestionPractice({ load, lessonId, state, onAnswer, onResult, onRetry, onQuestion, onWritingFeedback, lang }: PracticeSectionProps) {
   const { t: readerT, lang: readerLang } = useLanguage();
   const t = lang ? (text: Bilingual) => text[lang] || text.vi : readerT;
   const shownLang = lang ?? (readerLang === 'en' ? 'en' : 'vi');
@@ -183,7 +209,7 @@ function QuestionPractice({ load, state, onAnswer, onResult, onRetry, onQuestion
     );
   }
   if (!question) {
-    return <p className={`${CARD} text-sm text-ink-muted`}>{t({ en: 'The practice questions are not ready yet.', vi: 'Câu tự luyện của bài này chưa sẵn sàng.' })}</p>;
+    return <p className={`${CARD} text-sm text-ink-muted`}>{t({ en: 'This lesson has no practice yet.', vi: 'Bài này chưa có bài tập.' })}</p>;
   }
 
   const summary = practiceSummary(
@@ -207,9 +233,9 @@ function QuestionPractice({ load, state, onAnswer, onResult, onRetry, onQuestion
     if (!pending.length || submitting) return;
     setSubmitting(true);
     setSubmitError(false);
-    const replies = await Promise.all(pending.map(async (p) => ({ ...p, res: await checkPractice(p.id, p.response) })));
+    const replies = await Promise.all(pending.map(async (p) => ({ ...p, res: await checkPractice(lessonId, p.id, p.response) })));
     setSubmitting(false);
-    for (const { id, res, checked } of replies) if (res.ok) onResult(id, res.result, checked);
+    for (const { id, res, checked } of replies) if (res.ok) onResult(id, resultOf(res), checked);
     setSubmitError(replies.some(({ res }) => !res.ok));
   };
   return (
@@ -229,6 +255,7 @@ function QuestionPractice({ load, state, onAnswer, onResult, onRetry, onQuestion
         <div key={question.id} className={styles.question} data-backward={backward}>
           <QuestionCard
             question={question}
+            lessonId={lessonId}
             options={options}
             answer={state.answers[question.id]}
             result={state.results[question.id]}
@@ -298,16 +325,17 @@ interface QuestionCardProps {
   question: PublicPracticeQuestion;
   options: Array<{ id: string; text: Bilingual }>;
   answer: PracticeResponse | undefined;
-  result: PracticeCheckResult | undefined;
+  lessonId?: string;
+  result: PracticeResult | undefined;
   writingFeedback?: WritingFeedbackState;
   onWritingFeedback?: (feedback: WritingFeedbackState) => void;
   onAnswer: (answer: PracticeResponse) => void;
-  onResult: (result: PracticeCheckResult, checked: PracticeResponse | undefined) => void;
+  onResult: (result: PracticeResult, checked: PracticeResponse | undefined) => void;
   t: (text: Bilingual) => string;
   lang: 'vi' | 'en';
 }
 
-function QuestionCard({ question, options, answer, result, writingFeedback, onWritingFeedback, onAnswer, onResult, t, lang }: QuestionCardProps) {
+function QuestionCard({ question, lessonId, options, answer, result, writingFeedback, onWritingFeedback, onAnswer, onResult, t, lang }: QuestionCardProps) {
   const id = useId();
   const [checking, setChecking] = useState(false);
   const [error, setError] = useState<Bilingual | null>(null);
@@ -320,9 +348,9 @@ function QuestionCard({ question, options, answer, result, writingFeedback, onWr
     setChecking(true);
     setError(null);
     const checked = answer;
-    const res = await checkPractice(question.id, response);
+    const res = await checkPractice(lessonId, question.id, response);
     setChecking(false);
-    if (res.ok) onResult(res.result, checked);
+    if (res.ok) onResult(resultOf(res), checked);
     else setError(res.error);
   };
   const answerWith = (next: PracticeResponse) => {
@@ -351,6 +379,7 @@ function QuestionCard({ question, options, answer, result, writingFeedback, onWr
               {t({ en: 'Not quite — change your answer and try again.', vi: 'Chưa đúng. Sửa câu trả lời rồi thử lại.' })}
             </span>
           ))}
+        {result && <ResultNote result={result} t={t} />}
         {error && <span className="text-danger">{t(error)}</span>}
       </div>
     </div>
@@ -476,5 +505,25 @@ function QuestionCard({ question, options, answer, result, writingFeedback, onWr
         </div>
       )}
     </section>
+  );
+}
+
+/** What the answer earned: a provisional estimate offline, or the server's XP and a completed lesson. */
+function ResultNote({ result, t }: { result: PracticeResult; t: (text: Bilingual) => string }) {
+  const { provisional } = result;
+  if (provisional) {
+    const xp = provisional.xp > 0 ? { en: ` · +${provisional.xp} XP (estimate)`, vi: ` · +${provisional.xp} XP tạm tính` } : { en: '', vi: '' };
+    const streak = provisional.streak ? { en: ` · ${provisional.streak}-day streak (estimate)`, vi: ` · chuỗi ${provisional.streak} ngày (tạm tính)` } : { en: '', vi: '' };
+    return (
+      <span className="mt-1 block text-ink-muted">
+        {t({ en: `Provisional · waiting to sync${xp.en}${streak.en}`, vi: `Kết quả tạm · chờ đồng bộ${xp.vi}${streak.vi}` })}
+      </span>
+    );
+  }
+  return (
+    <>
+      {(result.xp_earned ?? 0) > 0 && !result.code && <span className="mt-1 block font-semibold text-ink">{`+${result.xp_earned} XP`}</span>}
+      {result.lesson_completed && <span className="mt-1 block font-semibold text-success">{t({ en: 'You have completed this lesson.', vi: 'Bạn đã hoàn thành bài này.' })}</span>}
+    </>
   );
 }

@@ -81,6 +81,7 @@ export function LessonPartsView({ blocks: written, part, sheet, lang, practice, 
         <LessonVideoPanel lessonId={lessonId} video={lessonVideo.video} onChanged={lessonVideo.reload} />
       ) : showPractice && practiceLoad ? (
         <PracticeSection
+          lessonId={lessonId}
           load={practiceLoad}
           state={practiceState.state}
           onAnswer={practiceState.onAnswer}

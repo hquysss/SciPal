@@ -93,7 +93,7 @@ describe('PracticeSection', () => {
     const failed = render({ load: { ok: false, error: { vi: 'Không kết nối được máy chủ.', en: 'x' } }, onRetry: () => {} });
     expect(failed).toContain('Chưa tải được câu tự luyện');
     expect(failed).toContain('Thử lại');
-    expect(render({ load: { ok: true, questions: [] } })).toContain('chưa sẵn sàng');
+    expect(render({ load: { ok: true, questions: [] } })).toContain('Bài này chưa có bài tập.');
   });
 });
 
