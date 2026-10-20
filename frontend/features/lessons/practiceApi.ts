@@ -1,16 +1,21 @@
-import type { CodeLanguage, CodeVerdict, PracticeCheckResult, PracticeResponse, PublicPracticeQuestion } from '@scipal/types';
+import { checkPracticeAnswer, PRACTICE_XP, responseProblem, type CodeLanguage, type CodeVerdict, type PracticeCheckResult, type PracticeResponse, type PublicPracticeQuestion } from '@scipal/types';
 import { authoringCall, type ApiResult } from '@/features/authoring/apiClient';
 import { getAccessToken } from '../../lib/session';
+import { createBrowserClient } from '../../lib/supabase';
+import { loadPack, type PracticePack } from '../../lib/pwa/practicePacks';
+import { estimateStreak, PENDING_CHANGED, queueFirstAnswer, type SyncAttempt, type SyncResult } from '../../lib/pwa/pendingPractice';
 
-// Lesson practice (Tự luyện): open to visitors. The server holds the answers and decides; a
-// session token, when present, only lets authors check questions that are not published yet.
+// Lesson practice (Tự luyện). The server holds the answers and decides, and counts a signed-in
+// learner's first answer to each question. Without a connection, a lesson saved for offline is
+// graded on the device from its pack, labelled provisional, and its first answers wait to sync.
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL ?? 'https://sci-pal-backend.vercel.app';
 
 type Bilingual = { en: string; vi: string };
 
 export type PracticeLoad = { ok: true; questions: PublicPracticeQuestion[] } | { ok: false; error: Bilingual };
-export type PracticeCheck = { ok: true; result: PracticeCheckResult } | { ok: false; error: Bilingual };
+/** `provisional`: graded on this device without a connection; the XP and streak are estimates. */
+export type PracticeCheck = { ok: true; result: PracticeCheckResult; provisional?: { xp: number; streak: number | null } } | { ok: false; error: Bilingual };
 
 const UNREACHABLE: Bilingual = { en: 'Could not reach the server.', vi: 'Không kết nối được máy chủ.' };
 
@@ -36,21 +41,89 @@ export async function fetchLessonPractice(lessonId: string): Promise<PracticeLoa
   }
 }
 
-/** Ask the server whether one answer is right. Nothing is stored and no XP is given. */
-export async function checkPractice(questionId: string, response: PracticeResponse): Promise<PracticeCheck> {
+const NO_PACK: Bilingual = { vi: 'Tải bài này khi có mạng để làm offline.', en: 'Save this lesson while online to practise offline.' };
+
+type CheckDeps = {
+  online: () => boolean;
+  userId: () => Promise<string | null>;
+  store: Storage;
+  now: () => Date;
+  fetch: typeof fetch;
+};
+
+const browserDeps = (): CheckDeps => ({
+  online: () => globalThis.navigator?.onLine !== false,
+  userId: async () => {
+    try {
+      const { data } = await createBrowserClient().auth.getSession();
+      return data.session?.user.id ?? null;
+    } catch {
+      return null;
+    }
+  },
+  store: globalThis.localStorage,
+  now: () => new Date(),
+  fetch: (...args) => globalThis.fetch(...args),
+});
+
+/** Grades on this device from the lesson's pack and queues the first answer for the server. */
+async function checkOffline(lessonId: string | undefined, questionId: string, response: PracticeResponse, deps: CheckDeps): Promise<PracticeCheck> {
+  const userId = await deps.userId();
+  const pack: PracticePack | null = userId && lessonId ? loadPack(userId, lessonId, deps.store) : null;
+  const key = pack?.keys[questionId];
+  if (!userId || !pack || !key) return { ok: false, error: NO_PACK };
+  const problem = responseProblem(key, response);
+  if (problem) return { ok: false, error: { vi: problem.error, en: problem.error_en } };
+  const result = checkPracticeAnswer(key, response);
+  const now = deps.now();
+  const queued = queueFirstAnswer({ user_id: userId, question_id: questionId, lesson_id: pack.lesson_id, subject_id: pack.subject_id, response, answered_at: now.toISOString() }, deps.store);
+  if (queued === 'failed') return { ok: false, error: { vi: 'Máy hết chỗ lưu nên chưa giữ được câu trả lời này.', en: 'This device is out of storage, so the answer could not be kept.' } };
+  if (typeof window !== 'undefined') window.dispatchEvent(new Event(PENDING_CHANGED));
+  const xp = queued === 'queued' && result.correct ? (PRACTICE_XP[key.difficulty] ?? PRACTICE_XP[1]!) : 0;
+  return { ok: true, result, provisional: { xp, streak: estimateStreak(userId, pack.subject_id, now, deps.store) } };
+}
+
+/**
+ * Whether one answer is right. Online the server decides and counts a signed-in learner's first
+ * answer; without a connection (or when the request cannot reach the server) a lesson saved for
+ * offline is graded on this device instead.
+ */
+export async function checkPractice(lessonId: string | undefined, questionId: string, response: PracticeResponse, deps: CheckDeps = browserDeps()): Promise<PracticeCheck> {
+  if (!deps.online()) return checkOffline(lessonId, questionId, response, deps);
+  let res: Response;
   try {
     const token = await getAccessToken().catch(() => null);
-    const res = await fetch(`${API_BASE}/api/practice/check`, {
+    res = await deps.fetch(`${API_BASE}/api/practice/check`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
       body: JSON.stringify({ question_id: questionId, response }),
     });
-    const data = (await res.json().catch(() => ({}))) as Record<string, unknown>;
-    if (!res.ok || typeof data.correct !== 'boolean') return { ok: false, error: errorOf(data, { en: 'Could not check the answer.', vi: 'Không kiểm tra được câu trả lời.' }) };
-    return { ok: true, result: data as unknown as PracticeCheckResult };
   } catch {
-    return { ok: false, error: UNREACHABLE };
+    const offline = await checkOffline(lessonId, questionId, response, deps);
+    return offline.ok ? offline : { ok: false, error: UNREACHABLE };
   }
+  const data = (await res.json().catch(() => ({}))) as Record<string, unknown>;
+  if (!res.ok || typeof data.correct !== 'boolean') return { ok: false, error: errorOf(data, { en: 'Could not check the answer.', vi: 'Không kiểm tra được câu trả lời.' }) };
+  return { ok: true, result: data as unknown as PracticeCheckResult };
+}
+
+/** A lesson's offline pack (questions and what grades them), for the signed-in learner. */
+export async function fetchPracticePack(lessonId: string, token: string): Promise<Omit<PracticePack, 'user_id'>> {
+  const res = await fetch(`${API_BASE}/api/practice/lessons/${encodeURIComponent(lessonId)}/offline`, { headers: { Authorization: `Bearer ${token}` }, cache: 'no-store' });
+  if (!res.ok) throw Object.assign(new Error(`offline pack failed: ${res.status}`), { status: res.status });
+  return res.json();
+}
+
+/** Sends answers made offline; the server grades them again. Throws with `status` on an HTTP error. */
+export async function postPracticeSync(attempts: SyncAttempt[], token: string): Promise<SyncResult[]> {
+  const res = await fetch(`${API_BASE}/api/practice/sync`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+    body: JSON.stringify({ attempts }),
+  });
+  if (!res.ok) throw Object.assign(new Error(`practice sync failed: ${res.status}`), { status: res.status });
+  const data = (await res.json()) as { results?: SyncResult[] };
+  return Array.isArray(data.results) ? data.results : [];
 }
 
 /** The AI Professor's comments on an English writing answer (signed in; paid from the Professor's tokens). */
