@@ -319,7 +319,7 @@ describe('rename and delete a class', () => {
     const rooms = mockQuery({ data: { id: CLASS_ID }, error: null });
     const app = Fastify();
     app.decorate('supabase', mockSupabase({ class_rooms: rooms }));
-    app.decorate('siteSettings', { get: async () => ({ signupEnabled: true, maintenance: false, features: { glossary: true, exam: true, pricing: true, classes: false, tutor: true } }) });
+    app.decorate('siteSettings', { get: async () => ({ signupEnabled: true, maintenance: false, features: { glossary: true, exam: true, pricing: true, classes: false, tutor: true } }), invalidate: () => {} });
     app.addHook('onRequest', async (request) => { (request as any).user = teacher; });
     await app.register(classRoutes);
     await app.ready();
