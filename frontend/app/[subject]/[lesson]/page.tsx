@@ -7,7 +7,6 @@ import { getLessonDetail } from '@/features/lessons/lessonDetailQuery';
 import { getSubjectTermIndex } from '@/features/lessons/termIndexQuery';
 import { LessonPartsView } from '@/features/lessons/LessonPartsView';
 import { AiTutorButton } from '@/features/ai-tutor/AiTutorButton';
-import { LessonCompletionBar } from '@/features/lessons/LessonCompletionBar';
 import { LessonHeader } from '@/features/lessons/LessonHeader';
 import { fetchLessonPractice } from '@/features/lessons/practiceApi';
 import { levelOfGrade } from '@/features/landing/educationLevel';
@@ -66,7 +65,6 @@ export default async function LessonPage({
             practice={practice}
             lessonId={lesson.id}
             termIndex={termIndex}
-            completion={<LessonCompletionBar lessonId={lesson.id} subjectSlug={subjectSlug} />}
           />
           <AiTutorButton lessonId={lesson.id} lessonTitle={{ vi: lesson.title_vi, en: lesson.title_en }} level={level} />
         </main>

@@ -36,8 +36,9 @@ Mọi phần tử trong `lessons.blocks` (JSONB) bắt buộc phải thỏa mãn
 ## 5. Ranh giới bảo mật & Ẩn đáp án (Exam & Secret Security)
 - **Cấm rò rỉ khóa Service Role**: `grep -rn "SERVICE_ROLE" frontend/ mobile/ packages/` phải luôn trả về 0 kết quả.
 - **Ẩn đáp án đề thi**: Khi người dùng vào làm bài thi (`/exam/[blueprintId]`), API trả về danh sách câu hỏi **BẮT BUỘC** phải xóa bỏ trường `answer` và `answer_key`.
-- **Chấm điểm tại Server**: Toàn bộ điểm số, XP, streak chỉ được tính toán và lưu trong backend qua `POST /api/score/lesson` và `POST /api/score/exam`.
-  - Ngoại lệ hiển thị: hoàn thành bài khi mất mạng được xếp hàng (`frontend/lib/pwa/pendingCompletions.ts`) và hiện XP/streak "tạm tính · chờ đồng bộ" (XP từ `LESSON_COMPLETE_XP` trong `@scipal/types`). Đó chỉ là ước tính để xem; backend vẫn là nơi duy nhất tính và lưu.
+- **Đáp án và gói offline**: Đáp án không xuống client, ngoại lệ duy nhất: gói offline do học sinh đã đăng nhập tải chủ động, dùng để chấm hiển thị tạm; XP, streak, badge, tiến độ chính thức luôn do server quyết định theo câu trả lời đầu tiên nhận được. Gói lấy qua `GET /api/practice/lessons/:id/offline` (chỉ `mc`, `truefalse`, `short`, `writing`; không câu lập trình).
+- **Chấm điểm tại Server**: điểm số, XP, streak, tiến độ chỉ được tính và lưu ở backend. XP bài học đến từ câu trả lời đầu tiên của mỗi câu Tự luyện (`/api/practice/check` khi online, `/api/practice/sync` khi đồng bộ bài làm offline, tính theo lúc làm); điểm thi qua `POST /api/score/exam`. Không còn nút "Đánh dấu hoàn thành": bài hoàn thành khi đúng-lần-đầu ≥ 80% số câu Tự luyện.
+  - Ngoại lệ hiển thị: kết quả chấm tại máy khi offline (`@scipal/types` `practiceGrading.ts`, XP từ `PRACTICE_XP`) gắn nhãn "Kết quả tạm · chờ đồng bộ"; không lưu thành dữ liệu XP, server thay thế hoàn toàn.
 
 ## 6. Xử lý khi mất kết nối mạng (Offline Fallback)
 - Các khối nội dung văn bản (`theory`, `formula`, `code`) phải đọc được offline khi đã tải về.

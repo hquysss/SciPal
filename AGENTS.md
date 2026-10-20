@@ -7,7 +7,7 @@
 1. **Nội dung là dữ liệu, không phải code**: Thêm môn học/bài học mới chỉ nạp dữ liệu vào database/JSONB, tuyệt đối không dựng lại hay sửa code giao diện.
 2. **Không hard-code màu môn học**: Mọi thành phần phụ thuộc môn học đều đọc qua biến `--accent` được định phạm vi qua `SubjectProvider` (`packages/ui`). Không gán `--accent` lên `:root`.
 3. **Song ngữ chuẩn hóa (Bilingual First-Class)**: Toàn bộ nội dung và thuật ngữ có cấu trúc `{ en: string, vi: string }` hoặc cột `_en`/`_vi`.
-4. **Chấm điểm & XP do Server quyết định (Server-Authoritative)**: Client không bao giờ ghi/cấp XP, streak hay badge. Riêng khi offline, client chỉ được *hiển thị ước tính có nhãn* "tạm tính" (không lưu thành dữ liệu, không gửi lên); số của server thay thế hoàn toàn khi đồng bộ. Đáp án câu hỏi (`answer`, `answer_key`) không bao giờ được gửi xuống client.
+4. **Chấm điểm & XP do Server quyết định (Server-Authoritative)**: Client không bao giờ ghi/cấp XP, streak hay badge. Riêng khi offline, client chỉ được *hiển thị ước tính có nhãn* "tạm tính" (không lưu thành dữ liệu, không gửi lên); số của server thay thế hoàn toàn khi đồng bộ. Đáp án không xuống client, ngoại lệ duy nhất: gói offline do học sinh đã đăng nhập tải chủ động, dùng để chấm hiển thị tạm; XP, streak, badge, tiến độ chính thức luôn do server quyết định theo câu trả lời đầu tiên nhận được.
 5. **Cô lập bí mật tuyệt đối**: `SUPABASE_SERVICE_ROLE_KEY` và các AI API keys chỉ tồn tại ở `backend/.env`. Cấm xuất hiện trong `frontend/`, `mobile/` hoặc `packages/`.
 
 ## Hướng dẫn định hướng (Navigation)
