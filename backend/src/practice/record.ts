@@ -12,7 +12,7 @@ import { ID, type PracticeRow } from './servable.js';
 /** Share of a lesson's practice questions right the first time that completes the lesson. */
 export const LESSON_DONE_SHARE = 0.8;
 
-type Log = { warn: (obj: object, msg: string) => void };
+type Log = { warn: (obj: object, msg: string) => void; error?: (obj: object, msg: string) => void };
 
 export type PracticeRecord = { counted: boolean; xp_earned: number; new_streak: number; lesson_completed: boolean };
 
@@ -39,14 +39,16 @@ export async function recordPractice(
   let xpEarned = 0;
   let newStreak = 0;
   const delta = PRACTICE_XP[row.difficulty] ?? PRACTICE_XP[1]!;
-  const { error: xpError } = await supabase
-    .from('xp_log')
-    .insert({ user_id: userId, subject_id: row.subject_id, delta, reason: `practice_ok:${row.id}`, created_at: when });
+  const grant = () =>
+    supabase.from('xp_log').insert({ user_id: userId, subject_id: row.subject_id, delta, reason: `practice_ok:${row.id}`, created_at: when });
+  // The first answer is already kept, so a lost grant could never be earned again: try once more.
+  let { error: xpError } = await grant();
+  if (xpError && xpError.code !== '23505') ({ error: xpError } = await grant());
   if (!xpError) {
     xpEarned = delta;
     newStreak = await touchStreak(supabase, userId, row.subject_id, at, log);
   } else if (xpError.code !== '23505') {
-    log.warn({ err: xpError, questionId: row.id }, 'Practice XP insert failed');
+    (log.error ?? log.warn)({ err: xpError, questionId: row.id }, 'Practice XP insert failed twice; the XP is lost');
   }
   const lessonCompleted = await completeLessons(supabase, userId, row.id, at, log);
   return { counted: true, xp_earned: xpEarned, new_streak: newStreak, lesson_completed: lessonCompleted };

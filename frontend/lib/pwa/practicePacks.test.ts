@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { clearPacks, downloadPacks, loadPack, savePack, type PracticePack } from './practicePacks';
 
 function memory() {
@@ -46,6 +46,18 @@ describe('practice packs', () => {
     expect(store.getItem('scipal-pending-practice')).toBe('[]');
   });
 
+  it('stops downloading once storage is full, so offline answers keep room', async () => {
+    let saves = 0;
+    const store = { ...memory(), setItem: () => { saves += 1; if (saves > 1) throw new Error('QuotaExceededError'); } };
+    const fetchPack = vi.fn(async (lessonId: string) => {
+      const { user_id: _u, ...rest } = pack(lessonId);
+      return rest;
+    });
+    const res = await downloadPacks(['l1', 'l2', 'l3'], 'token', 'u1', fetchPack, store);
+    expect(res).toEqual({ saved: ['l1'], failed: ['l2', 'l3'], full: true });
+    expect(fetchPack).toHaveBeenCalledTimes(2);
+  });
+
   it('downloads each lesson and reports the ones that failed', async () => {
     const store = memory();
     const fetchPack = async (lessonId: string) => {
@@ -54,7 +66,7 @@ describe('practice packs', () => {
       return rest;
     };
     const res = await downloadPacks(['l1', 'bad'], 'token', 'u1', fetchPack, store);
-    expect(res).toEqual({ saved: ['l1'], failed: ['bad'] });
+    expect(res).toEqual({ saved: ['l1'], failed: ['bad'], full: false });
     expect(loadPack('u1', 'l1', store)?.keys.q1).toBeDefined();
   });
 });

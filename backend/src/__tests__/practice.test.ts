@@ -79,8 +79,8 @@ describe('POST /api/practice/check', () => {
     await app.close();
   });
 
-  it('records nothing for a visitor or for the author trying their own question', async () => {
-    for (const [user, tables] of [[undefined, servable(mc)], [author, { questions: mockQuery({ data: mc, error: null }) }]] as const) {
+  it('records nothing for a visitor, the author trying their own question, or an admin', async () => {
+    for (const [user, tables] of [[undefined, servable(mc)], [author, { questions: mockQuery({ data: mc, error: null }) }], [admin, { questions: mockQuery({ data: mc, error: null }) }]] as const) {
       const app = await build(user, tables);
       const res = await check(app, Q_MC, { selected_option: 'b' });
       expect(res.json()).toEqual({ correct: true, explanation });

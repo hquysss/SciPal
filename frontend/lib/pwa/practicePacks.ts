@@ -51,23 +51,33 @@ export function clearPacks(store: Store = defaultStore()): void {
   }
 }
 
-/** Downloads and keeps each lesson's pack; says which lessons were kept and which failed. */
+/**
+ * Downloads and keeps each lesson's pack; says which lessons were kept and which failed. Stops once
+ * storage is full (`full`), so the offline answer queue keeps room.
+ */
 export async function downloadPacks(
   lessonIds: string[],
   token: string,
   userId: string,
   fetchPack: (lessonId: string, token: string) => Promise<Omit<PracticePack, 'user_id'>>,
   store: Store = defaultStore(),
-): Promise<{ saved: string[]; failed: string[] }> {
+): Promise<{ saved: string[]; failed: string[]; full: boolean }> {
   const saved: string[] = [];
   const failed: string[] = [];
-  for (const lessonId of lessonIds) {
+  for (const [index, lessonId] of lessonIds.entries()) {
+    let pack: Omit<PracticePack, 'user_id'>;
     try {
-      const pack = await fetchPack(lessonId, token);
-      (savePack({ ...pack, user_id: userId }, store) ? saved : failed).push(lessonId);
+      pack = await fetchPack(lessonId, token);
     } catch {
       failed.push(lessonId);
+      continue;
     }
+    if (savePack({ ...pack, user_id: userId }, store)) {
+      saved.push(lessonId);
+      continue;
+    }
+    failed.push(...lessonIds.slice(index));
+    return { saved, failed, full: true };
   }
-  return { saved, failed };
+  return { saved, failed, full: false };
 }

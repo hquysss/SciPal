@@ -12,7 +12,7 @@ import {
 import { checkPracticeAnswer, keyTermsOf, responseProblem } from '../schemas/practiceGrading.js';
 import { MAX_LESSON_QUESTIONS, quizQuestionIds } from '../authoring/quizReferences.js';
 import { clampAnsweredAt, recordPractice } from '../practice/record.js';
-import { COLUMNS, getUser, ID, isHsgProblem, loadPracticeRow, mayPreview, msg, servableQuestion as loadServable, type PracticeRow } from '../practice/servable.js';
+import { COLUMNS, getUser, ID, isAdmin, isHsgProblem, loadPracticeRow, mayPreview, msg, servableQuestion as loadServable, type PracticeRow, type PracticeUser } from '../practice/servable.js';
 
 // Practice in a lesson's Tự luyện part. Learners (signed in or not) load the questions of a
 // published lesson without answers and check one answer at a time; the server decides and says
@@ -58,9 +58,9 @@ const FEEDBACK_FAILED = msg(
 
 export { checkPracticeAnswer, explanationOf, keyTermsUsed, responseProblem } from '../schemas/practiceGrading.js';
 
-/** A signed-in learner's answer earns XP on a published lesson question, never on the author's own or a programming one. */
-export const countsForXp = (row: PracticeRow, userId: string) =>
-  row.status === 'published' && row.created_by !== userId && row.type !== 'code' && !isHsgProblem(row);
+/** A signed-in learner's answer earns XP on a published lesson question; never the author's own, an admin's (who may open any question), or a programming one. */
+export const countsForXp = (row: PracticeRow, user: PracticeUser & { id: string }) =>
+  !isAdmin(user) && row.status === 'published' && row.created_by !== user.id && row.type !== 'code' && !isHsgProblem(row);
 
 export const practiceRoutes: FastifyPluginAsync = async (app) => {
   const servableQuestion = (request: FastifyRequest, reply: FastifyReply, questionId: string, failure: { error: string; error_en: string }) =>
@@ -216,7 +216,7 @@ export const practiceRoutes: FastifyPluginAsync = async (app) => {
       }
       const result = checkPracticeAnswer(row, attempt.response);
       const at = clampAnsweredAt(attempt.answered_at, await downloadOf(attempt.lesson_id, question_id), now);
-      const record = countsForXp(row, userId)
+      const record = countsForXp(row, { ...user, id: userId })
         ? await recordPractice(supabase, { userId, row, correct: result.correct, at }, request.log)
         : { counted: false, xp_earned: 0, new_streak: 0, lesson_completed: false };
       results.push({ question_id, status: 'ok', ...result, ...record });
@@ -239,7 +239,7 @@ export const practiceRoutes: FastifyPluginAsync = async (app) => {
     if (problem) return reply.code(400).send(problem);
     const result = checkPracticeAnswer(row, parsed.data);
     const userId = getUser(request)?.id;
-    if (!userId || !countsForXp(row, userId)) return reply.send(result);
+    if (!userId || !countsForXp(row, { ...getUser(request), id: userId })) return reply.send(result);
     const record = await recordPractice(app.supabase, { userId, row, correct: result.correct, at: new Date() }, request.log);
     return reply.send({ ...result, xp_earned: record.xp_earned, new_streak: record.new_streak, lesson_completed: record.lesson_completed });
   });

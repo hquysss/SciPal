@@ -3,7 +3,7 @@ import { authoringCall, type ApiResult } from '@/features/authoring/apiClient';
 import { getAccessToken } from '../../lib/session';
 import { createBrowserClient } from '../../lib/supabase';
 import { loadPack, type PracticePack } from '../../lib/pwa/practicePacks';
-import { estimateStreak, PENDING_CHANGED, queueFirstAnswer, type SyncAttempt, type SyncResult } from '../../lib/pwa/pendingPractice';
+import { estimateStreak, flushPractice, PENDING_CHANGED, pendingFor, queueFirstAnswer, type SyncAttempt, type SyncResult } from '../../lib/pwa/pendingPractice';
 
 // Lesson practice (Tự luyện). The server holds the answers and decides, and counts a signed-in
 // learner's first answer to each question. Without a connection, a lesson saved for offline is
@@ -49,6 +49,8 @@ type CheckDeps = {
   store: Storage;
   now: () => Date;
   fetch: typeof fetch;
+  /** Sends this user's queued offline answers now. */
+  flush: (userId: string) => Promise<void>;
 };
 
 const browserDeps = (): CheckDeps => ({
@@ -64,6 +66,10 @@ const browserDeps = (): CheckDeps => ({
   store: globalThis.localStorage,
   now: () => new Date(),
   fetch: (...args) => globalThis.fetch(...args),
+  flush: async (userId) => {
+    const token = await getAccessToken().catch(() => undefined);
+    if (token) await flushPractice(userId, (attempts) => postPracticeSync(attempts, token)).catch(() => undefined);
+  },
 });
 
 /** Grades on this device from the lesson's pack and queues the first answer for the server. */
@@ -77,10 +83,11 @@ async function checkOffline(lessonId: string | undefined, questionId: string, re
   const result = checkPracticeAnswer(key, response);
   const now = deps.now();
   const queued = queueFirstAnswer({ user_id: userId, question_id: questionId, lesson_id: pack.lesson_id, subject_id: pack.subject_id, response, answered_at: now.toISOString() }, deps.store);
-  if (queued === 'failed') return { ok: false, error: { vi: 'Máy hết chỗ lưu nên chưa giữ được câu trả lời này.', en: 'This device is out of storage, so the answer could not be kept.' } };
+  if (queued === 'failed') return { ok: false, error: { vi: 'Máy hết chỗ lưu nên chưa giữ được câu trả lời này. Xoá bớt dữ liệu trang rồi thử lại.', en: 'This device is out of storage, so the answer could not be kept. Clear some site data and try again.' } };
   if (typeof window !== 'undefined') window.dispatchEvent(new Event(PENDING_CHANGED));
   const xp = queued === 'queued' && result.correct ? (PRACTICE_XP[key.difficulty] ?? PRACTICE_XP[1]!) : 0;
-  return { ok: true, result, provisional: { xp, streak: estimateStreak(userId, pack.subject_id, now, deps.store) } };
+  // The server moves the streak only when an answer earns XP; the estimate follows the same rule.
+  return { ok: true, result, provisional: { xp, streak: xp > 0 ? estimateStreak(userId, pack.subject_id, now, deps.store) : null } };
 }
 
 /**
@@ -90,6 +97,9 @@ async function checkOffline(lessonId: string | undefined, questionId: string, re
  */
 export async function checkPractice(lessonId: string | undefined, questionId: string, response: PracticeResponse, deps: CheckDeps = browserDeps()): Promise<PracticeCheck> {
   if (!deps.online()) return checkOffline(lessonId, questionId, response, deps);
+  // An offline answer to this question still waiting must reach the server first: it is the first answer.
+  const userId = await deps.userId();
+  if (userId && pendingFor(userId, deps.store).some((a) => a.question_id === questionId)) await deps.flush(userId);
   let res: Response;
   try {
     const token = await getAccessToken().catch(() => null);

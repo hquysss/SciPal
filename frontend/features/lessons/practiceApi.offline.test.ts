@@ -4,7 +4,7 @@ vi.mock('../../lib/session', () => ({ getAccessToken: async () => 'token' }));
 
 import { checkPractice } from './practiceApi';
 import { savePack } from '../../lib/pwa/practicePacks';
-import { pendingFor } from '../../lib/pwa/pendingPractice';
+import { pendingFor, queueFirstAnswer, recordStreak } from '../../lib/pwa/pendingPractice';
 
 function memory() {
   const data = new Map<string, string>();
@@ -40,6 +40,7 @@ const deps = (store: ReturnType<typeof memory>, online: boolean, fetcher: typeof
   store,
   now: () => new Date('2026-10-20T08:00:00.000Z'),
   fetch: fetcher,
+  flush: vi.fn(async () => {}),
 });
 
 describe('checkPractice without a connection', () => {
@@ -69,6 +70,37 @@ describe('checkPractice without a connection', () => {
     const store = withPack();
     const res = await checkPractice('l1', 'q1', { selected_option: 'b' }, deps(store, true, vi.fn().mockRejectedValue(new TypeError('Failed to fetch'))));
     expect(res).toMatchObject({ ok: true, provisional: { xp: 15 } });
+  });
+
+  it('estimates the streak only for an answer that earns XP', async () => {
+    const store = withPack();
+    recordStreak('u1', 's1', 4, new Date('2026-10-20T01:00:00.000Z'), store);
+    const wrong = await checkPractice('l1', 'q1', { selected_option: 'a' }, deps(store, false));
+    expect(wrong).toMatchObject({ provisional: { xp: 0, streak: null } });
+    const store2 = withPack();
+    recordStreak('u1', 's1', 4, new Date('2026-10-20T01:00:00.000Z'), store2);
+    const right = await checkPractice('l1', 'q1', { selected_option: 'b' }, deps(store2, false));
+    expect(right).toMatchObject({ provisional: { xp: 15, streak: 4 } });
+  });
+
+  it('online, sends a queued offline answer to the same question first, so it stays the first answer', async () => {
+    const store = withPack();
+    queueFirstAnswer({ user_id: 'u1', question_id: 'q1', lesson_id: 'l1', subject_id: 's1', response: { selected_option: 'a' }, answered_at: '2026-10-20T07:00:00.000Z' }, store);
+    const order: string[] = [];
+    const fetcher = vi.fn(async () => {
+      order.push('check');
+      return new Response(JSON.stringify({ correct: true }), { status: 200 });
+    });
+    const d = { ...deps(store, true, fetcher as unknown as typeof fetch), flush: vi.fn(async () => void order.push('flush')) };
+    await checkPractice('l1', 'q1', { selected_option: 'b' }, d);
+    expect(order).toEqual(['flush', 'check']);
+  });
+
+  it('online, does not wait for a sync when the question is not queued', async () => {
+    const store = withPack();
+    const d = deps(store, true, vi.fn().mockResolvedValue(new Response(JSON.stringify({ correct: true }), { status: 200 })));
+    await checkPractice('l1', 'q1', { selected_option: 'b' }, d);
+    expect(d.flush).not.toHaveBeenCalled();
   });
 
   it('uses the server when online, without queuing', async () => {

@@ -44,7 +44,7 @@ export type OfflineLesson = { url: string; id: string };
 export async function saveLessonsOffline(
   lessons: OfflineLesson[],
   onProgress: (done: number, total: number) => void,
-  deps: { savePage: (url: string) => Promise<boolean>; savePacks: (ids: string[]) => Promise<{ saved: string[]; failed: string[] }> },
+  deps: { savePage: (url: string) => Promise<boolean>; savePacks: (ids: string[]) => Promise<{ saved: string[]; failed: string[]; full?: boolean }> },
 ): Promise<{ saved: number; failed: number }> {
   const pagesKept = new Set<string>();
   for (const [index, lesson] of lessons.entries()) {
@@ -58,7 +58,7 @@ export async function saveLessonsOffline(
 }
 
 /** The signed-in learner's practice packs; none (all failed) without a session. */
-async function savePacksForSession(ids: string[]): Promise<{ saved: string[]; failed: string[] }> {
+async function savePacksForSession(ids: string[]): Promise<{ saved: string[]; failed: string[]; full?: boolean }> {
   const { data } = await createBrowserClient().auth.getSession().catch(() => ({ data: { session: null } }));
   const session = data.session;
   if (!session) return { saved: [], failed: ids };

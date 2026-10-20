@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { CloudUpload } from 'lucide-react';
 import { useLanguage } from '@scipal/hooks';
 import { postPracticeSync } from '@/features/lessons/practiceApi';
@@ -14,7 +14,11 @@ export function PendingSync() {
   const [waiting, setWaiting] = useState(0);
   const [done, setDone] = useState<{ synced: number; xp: number } | null>(null);
 
+  // One sync at a time: answers queued meanwhile go out with the next run.
+  const running = useRef(false);
   const sync = useCallback(async () => {
+    if (running.current) return;
+    running.current = true;
     try {
       const { data: { session } } = await createBrowserClient().auth.getSession();
       if (!session) return;
@@ -29,6 +33,8 @@ export function PendingSync() {
       }
     } catch {
       // Not signed in or storage blocked: nothing to send, nothing to tell.
+    } finally {
+      running.current = false;
     }
   }, []);
 
@@ -62,10 +68,10 @@ export function PendingSync() {
   const text = done
     ? t({
         vi: `Đã đồng bộ ${done.synced} câu, +${done.xp} XP (theo máy chủ).`,
-        en: `Synced ${done.synced} answer(s), +${done.xp} XP (from the server).`,
+        en: `Synced ${done.synced} ${done.synced === 1 ? 'answer' : 'answers'}, +${done.xp} XP (from the server).`,
       })
     : waiting > 0
-      ? t({ vi: `${waiting} câu đang chờ đồng bộ.`, en: `${waiting} answer(s) waiting to sync.` })
+      ? t({ vi: `${waiting} câu đang chờ đồng bộ.`, en: `${waiting} ${waiting === 1 ? 'answer' : 'answers'} waiting to sync.` })
       : null;
   if (!text) return null;
   return (
