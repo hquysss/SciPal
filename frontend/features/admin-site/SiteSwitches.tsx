@@ -59,11 +59,11 @@ export function SiteSwitches({ initial }: { initial?: SiteSettings }) {
     return message ? <Alert tone="danger">{t(message.text)}</Alert> : <p className="text-sm text-ink-muted">{t({ vi: 'Đang tải…', en: 'Loading…' })}</p>;
   }
 
-  const dirty = form.signupEnabled !== saved.signupEnabled || form.maintenance !== saved.maintenance || SITE_FEATURES.some((f) => form.features[f] !== saved.features[f]);
+  const dirty = form.signupEnabled !== saved.signupEnabled || form.maintenance !== saved.maintenance || form.freeAccess !== saved.freeAccess || SITE_FEATURES.some((f) => form.features[f] !== saved.features[f]);
   const save = async () => {
     setBusy(true);
     setMessage(null);
-    const res = await saveSiteSettings({ signup_enabled: form.signupEnabled, maintenance: form.maintenance, features: form.features });
+    const res = await saveSiteSettings({ signup_enabled: form.signupEnabled, maintenance: form.maintenance, free_access: form.freeAccess, features: form.features });
     setBusy(false);
     if (res.ok) {
       setSaved(res.data);
@@ -89,6 +89,19 @@ export function SiteSwitches({ initial }: { initial?: SiteSettings }) {
           hint={t({
             vi: 'Bật thì mọi người chỉ vào được trang đăng nhập, các trang còn lại hiện “đang bảo trì” và backend trả lỗi 503. Admin vẫn dùng bình thường (đăng nhập rồi vào lại).',
             en: 'On: everyone can only open the sign-in page; every other page shows “under maintenance” and the backend answers 503. Admins still use the site as normal (sign in, then come back).',
+          })}
+        />
+      </fieldset>
+
+      <fieldset className="rounded-2xl border border-line bg-surface px-4 py-1">
+        <legend className="px-1 text-sm font-semibold text-ink">{t({ vi: 'Gói', en: 'Plans' })}</legend>
+        <Switch
+          checked={form.freeAccess}
+          onChange={(on) => setForm({ ...form, freeAccess: on })}
+          label={t({ vi: 'Mở miễn phí (trừ AI)', en: 'Free access (except AI)' })}
+          hint={t({
+            vi: 'Bật thì mọi tài khoản đã đăng nhập dùng không giới hạn lượt thi, chấm code, lớp học, đề tự soạn, nhập tệp và video bài học, không cần gói. Giáo sư AI, giọng nói và AI soạn bài vẫn theo hạn mức của gói. Khách chưa đăng nhập không đổi.',
+            en: 'On: every signed-in account gets unlimited exams, code judging, classes, authored exams, imports and lesson videos without a plan. The AI Professor, voice and AI drafting keep their plan limits. Visitors who are not signed in see no change.',
           })}
         />
       </fieldset>
