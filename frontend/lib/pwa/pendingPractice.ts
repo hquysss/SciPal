@@ -134,3 +134,63 @@ export async function flushPractice(
   }
   return { synced: results.length, xp, results };
 }
+
+// Exams submitted offline wait here, one per attempt, until the server scores them.
+
+const EXAMS_KEY = 'scipal-pending-exams';
+
+export type PendingExam = {
+  user_id: string;
+  attempt_id: string;
+  blueprint_id: string;
+  answers: Array<{ question_id: string; selected_option?: string; items?: Array<{ id: string; selected: boolean }>; short_answer?: string }>;
+  finished_at: string;
+};
+/** What the server said about one exam: its stored result, or that the exam was removed. */
+export type ExamSyncResult = { blueprint_id: string; attempt_id: string; result?: unknown; gone?: true };
+/** Fired with `detail: ExamSyncResult[]` after exams taken offline were sent. */
+export const EXAM_SYNCED = 'scipal:exam-synced';
+
+export function pendingExamsFor(userId: string, store: Store = defaultStore()): PendingExam[] {
+  return read<PendingExam[]>(store, EXAMS_KEY, []).filter((row) => row.user_id === userId);
+}
+
+/** Queues an exam once per attempt: an attempt has one submission. */
+export function queueExam(row: PendingExam, store: Store = defaultStore()): 'queued' | 'kept' | 'failed' {
+  const all = read<PendingExam[]>(store, EXAMS_KEY, []);
+  if (all.some((item) => item.attempt_id === row.attempt_id)) return 'kept';
+  return write(store, EXAMS_KEY, [...all, row]) ? 'queued' : 'failed';
+}
+
+function removeExam(attemptId: string, store: Store): void {
+  write(store, EXAMS_KEY, read<PendingExam[]>(store, EXAMS_KEY, []).filter((item) => item.attempt_id !== attemptId));
+}
+
+/**
+ * Sends one user's queued exams in order. An exam leaves the queue once the server scored it, or
+ * said the exam is gone (404) or the submission is malformed (400); a lost connection, an expired
+ * session or a server error stops the run and keeps the rest.
+ */
+export async function flushExams(
+  userId: string,
+  post: (row: PendingExam) => Promise<unknown>,
+  store: Store = defaultStore(),
+): Promise<{ synced: number; results: ExamSyncResult[] }> {
+  const results: ExamSyncResult[] = [];
+  for (const row of pendingExamsFor(userId, store)) {
+    try {
+      const result = await post(row);
+      removeExam(row.attempt_id, store);
+      results.push({ blueprint_id: row.blueprint_id, attempt_id: row.attempt_id, result });
+    } catch (error) {
+      const status = (error as { status?: number }).status;
+      if (status === 404 || status === 400) {
+        removeExam(row.attempt_id, store);
+        results.push({ blueprint_id: row.blueprint_id, attempt_id: row.attempt_id, gone: true });
+        continue;
+      }
+      break;
+    }
+  }
+  return { synced: results.filter((r) => !r.gone).length, results };
+}

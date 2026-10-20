@@ -1,9 +1,10 @@
 import type { PublicPracticeQuestion } from '@scipal/types';
+import { EXAM_DRAFT_PREFIX, EXAM_PACK_PREFIX } from './examPacks';
 
 // "Tải để học offline" for practice: a lesson's questions and what grades them, kept on this device
 // for the signed-in learner who downloaded them. The answers inside are readable by anyone with the
 // device (an accepted risk); they are only used to show a provisional result, never to grant XP.
-// Signing out removes every pack.
+// Signing out removes every pack, exam packs and exam drafts included.
 
 const PREFIX = 'scipal-practice-pack:';
 
@@ -43,7 +44,7 @@ export function clearPacks(store: Store = defaultStore()): void {
     const keys: string[] = [];
     for (let i = 0; i < store.length; i++) {
       const key = store.key(i);
-      if (key?.startsWith(PREFIX)) keys.push(key);
+      if (key && [PREFIX, EXAM_PACK_PREFIX, EXAM_DRAFT_PREFIX].some((prefix) => key.startsWith(prefix))) keys.push(key);
     }
     for (const key of keys) store.removeItem(key);
   } catch {
