@@ -1,5 +1,6 @@
 import type { FastifyPluginAsync, FastifyRequest } from 'fastify';
 import { touchStreak } from '../streaks/touchStreak.js';
+import { LESSON_COMPLETE_XP } from '../schemas/progress.js';
 
 const unavailable = { error: 'Lesson progress could not be saved. Please try again.' };
 
@@ -55,7 +56,7 @@ export const scoreRoutes: FastifyPluginAsync = async (app) => {
       return reply.code(503).send(unavailable);
     }
 
-    const xpEarned = 100;
+    const xpEarned = LESSON_COMPLETE_XP;
     const { error: xpError } = await app.supabase.from('xp_log').insert({
       user_id: userId,
       subject_id: lesson.subject_id,

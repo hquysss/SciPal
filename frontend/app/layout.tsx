@@ -3,6 +3,7 @@ import { Be_Vietnam_Pro, JetBrains_Mono } from 'next/font/google';
 import './globals.css';
 import { TabTitle } from '@/components/nav/TabTitle';
 import { OfflineBanner } from '@/components/pwa/OfflineBanner';
+import { PendingSync } from '@/components/pwa/PendingSync';
 import { PwaRegister } from '@/components/pwa/PwaRegister';
 import { APP_THEME_COLOR } from '@/lib/pwa/brand';
 import { TutorProvider } from '@/features/ai-tutor/TutorSession';
@@ -61,6 +62,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <PwaRegister />
           <NavBar />
           <OfflineBanner />
+          <PendingSync />
           <div className="flex flex-1 flex-col">{children}</div>
           <TutorWidget />
           <LiveToasts />

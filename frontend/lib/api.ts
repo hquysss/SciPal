@@ -12,7 +12,7 @@ export async function postScoreLesson(
     headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
     body: JSON.stringify(body),
   });
-  if (!res.ok) throw new Error(`score/lesson failed: ${res.status}`);
+  if (!res.ok) throw Object.assign(new Error(`score/lesson failed: ${res.status}`), { status: res.status });
   return res.json();
 }
 

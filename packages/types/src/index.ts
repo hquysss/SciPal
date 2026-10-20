@@ -9,3 +9,4 @@ export * from './examImportLayout.js';
 export * from './websiteFeedback.js';
 export * from './historyMap.js';
 export * from './historyWorld.js';
+export * from './progress.js';

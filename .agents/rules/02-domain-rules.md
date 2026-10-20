@@ -37,6 +37,7 @@ Mọi phần tử trong `lessons.blocks` (JSONB) bắt buộc phải thỏa mãn
 - **Cấm rò rỉ khóa Service Role**: `grep -rn "SERVICE_ROLE" frontend/ mobile/ packages/` phải luôn trả về 0 kết quả.
 - **Ẩn đáp án đề thi**: Khi người dùng vào làm bài thi (`/exam/[blueprintId]`), API trả về danh sách câu hỏi **BẮT BUỘC** phải xóa bỏ trường `answer` và `answer_key`.
 - **Chấm điểm tại Server**: Toàn bộ điểm số, XP, streak chỉ được tính toán và lưu trong backend qua `POST /api/score/lesson` và `POST /api/score/exam`.
+  - Ngoại lệ hiển thị: hoàn thành bài khi mất mạng được xếp hàng (`frontend/lib/pwa/pendingCompletions.ts`) và hiện XP/streak "tạm tính · chờ đồng bộ" (XP từ `LESSON_COMPLETE_XP` trong `@scipal/types`). Đó chỉ là ước tính để xem; backend vẫn là nơi duy nhất tính và lưu.
 
 ## 6. Xử lý khi mất kết nối mạng (Offline Fallback)
 - Các khối nội dung văn bản (`theory`, `formula`, `code`) phải đọc được offline khi đã tải về.

@@ -2,10 +2,13 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { CircleCheck } from 'lucide-react';
+import { CircleCheck, CloudOff } from 'lucide-react';
+import { LESSON_COMPLETE_XP } from '@scipal/types';
 import { useLanguage } from '@scipal/hooks';
 import { postScoreLesson } from '../../lib/api';
 import { createBrowserClient } from '../../lib/supabase';
+import { estimateStreak, queueCompletion, recordStreak } from '../../lib/pwa/pendingCompletions';
+import { PENDING_CHANGED } from '../../components/pwa/PendingSync';
 import { PostLessonSurvey } from '../survey/PostLessonSurvey';
 import { Alert } from '../../components/ui/alert';
 import { buttonVariants } from '../../components/ui/button';
@@ -23,7 +26,8 @@ export function LessonCompletionBar({
   const [completed, setCompleted] = useState(false);
   const [loading, setLoading] = useState(false);
   const [xp, setXp] = useState(0);
-  const [error, setError] = useState(false);
+  const [error, setError] = useState<false | 'save' | 'auth'>(false);
+  const [queued, setQueued] = useState<{ streak: number | null } | null>(null);
 
   const handleComplete = async () => {
     setError(false);
@@ -31,18 +35,29 @@ export function LessonCompletionBar({
     try {
       const { data: { session } } = await createBrowserClient().auth.getSession();
       if (!session) {
-        router.push(`/login?redirect=${encodeURIComponent(pathname)}`);
+        if (!navigator.onLine) setError('auth');
+        else router.push(`/login?redirect=${encodeURIComponent(pathname)}`);
         return;
       }
 
-      const res = await postScoreLesson({ lesson_id: lessonId, answers: [] }, session.access_token);
-      if (!Number.isFinite(res.xp_earned) || res.xp_earned < 0) {
-        throw new Error('Invalid score response');
+      try {
+        const res = await postScoreLesson({ lesson_id: lessonId, answers: [] }, session.access_token);
+        if (!Number.isFinite(res.xp_earned) || res.xp_earned < 0) {
+          throw new Error('Invalid score response');
+        }
+        recordStreak(session.user.id, subjectSlug, res.new_streak);
+        setXp(res.xp_earned);
+        setCompleted(true);
+      } catch (cause) {
+        // Only a lost connection waits for later; an answer from the server (even an error) is shown as is.
+        if ((cause as { status?: number }).status !== undefined || navigator.onLine) throw cause;
+        const saved = queueCompletion({ user_id: session.user.id, lesson_id: lessonId, subject: subjectSlug, queued_at: new Date().toISOString() });
+        if (!saved) throw cause;
+        window.dispatchEvent(new Event(PENDING_CHANGED));
+        setQueued({ streak: estimateStreak(session.user.id, subjectSlug) });
       }
-      setXp(res.xp_earned);
-      setCompleted(true);
     } catch {
-      setError(true);
+      setError('save');
     } finally {
       setLoading(false);
     }
@@ -50,7 +65,26 @@ export function LessonCompletionBar({
 
   return (
     <div className="mt-10 rounded-xl border border-line bg-surface p-6 text-center">
-      {!completed ? (
+      {queued ? (
+        <div className="flex flex-col items-center gap-3">
+          <CloudOff aria-hidden="true" className="mx-auto h-10 w-10 text-warning" />
+          <h2 className="text-lg font-bold text-ink">
+            {t({ en: 'Saved on this device', vi: 'Đã lưu trên máy' })}
+          </h2>
+          <p className="text-sm font-semibold text-warning">
+            {t({ en: `~+${LESSON_COMPLETE_XP} XP`, vi: `~+${LESSON_COMPLETE_XP} XP` })}
+            {queued.streak !== null && t({ en: ` · ~${queued.streak}-day streak`, vi: ` · chuỗi ~${queued.streak} ngày` })}
+            {' '}
+            {t({ en: '(estimate, waiting to sync)', vi: '(tạm tính, chờ đồng bộ)' })}
+          </p>
+          <p className="text-sm text-ink-muted">
+            {t({
+              en: 'It will be sent when you are back online. The server decides the real XP and streak.',
+              vi: 'Sẽ gửi khi có mạng lại. XP và chuỗi ngày chính thức do máy chủ quyết định.',
+            })}
+          </p>
+        </div>
+      ) : !completed ? (
         <div className="flex flex-col items-center gap-3">
           <h2 className="text-lg font-bold text-ink">
             {t({ en: 'Have you got the hang of this lesson?', vi: 'Bạn đã hiểu bài này chưa?' })}
@@ -66,10 +100,15 @@ export function LessonCompletionBar({
           </button>
           {error && (
             <Alert tone="danger" className="mt-3 text-left">
-              {t({
-                en: 'Could not save your progress. Check your connection and try again.',
-                vi: 'Chưa lưu được tiến trình. Kiểm tra kết nối rồi thử lại nhé.',
-              })}
+              {error === 'auth'
+                ? t({
+                    en: 'Go online once to confirm your sign-in, then mark this lesson done.',
+                    vi: 'Cần có mạng một lần để xác nhận đăng nhập, rồi hãy đánh dấu hoàn thành.',
+                  })
+                : t({
+                    en: 'Could not save your progress. Check your connection and try again.',
+                    vi: 'Chưa lưu được tiến trình. Kiểm tra kết nối rồi thử lại nhé.',
+                  })}
             </Alert>
           )}
         </div>
