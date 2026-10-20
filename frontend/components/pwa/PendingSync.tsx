@@ -4,15 +4,17 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { CloudUpload } from 'lucide-react';
 import { useLanguage } from '@scipal/hooks';
 import { postPracticeSync } from '@/features/lessons/practiceApi';
+import { postExamSubmit } from '@/features/exam/offlineExam';
 import { clearPacks } from '../../lib/pwa/practicePacks';
-import { flushPractice, PENDING_CHANGED, pendingFor, PRACTICE_SYNCED, type SyncResult } from '../../lib/pwa/pendingPractice';
+import { EXAM_SYNCED, flushExams, flushPractice, PENDING_CHANGED, pendingExamsFor, pendingFor, PRACTICE_SYNCED, type ExamSyncResult, type SyncResult } from '../../lib/pwa/pendingPractice';
 import { createBrowserClient } from '../../lib/supabase';
 
-/** Sends practice answers made offline when the connection returns, and says how many wait and what the server granted. */
+/** Sends practice answers and exams made offline when the connection returns, and says how many wait and what the server granted. */
 export function PendingSync() {
   const { t } = useLanguage();
-  const [waiting, setWaiting] = useState(0);
+  const [waiting, setWaiting] = useState({ answers: 0, exams: 0 });
   const [done, setDone] = useState<{ synced: number; xp: number } | null>(null);
+  const [examsDone, setExamsDone] = useState<{ synced: number; gone: number } | null>(null);
 
   // One sync at a time: answers queued meanwhile go out with the next run.
   const running = useRef(false);
@@ -23,10 +25,16 @@ export function PendingSync() {
       const { data: { session } } = await createBrowserClient().auth.getSession();
       if (!session) return;
       const userId = session.user.id;
-      setWaiting(pendingFor(userId).length);
-      if (!navigator.onLine || pendingFor(userId).length === 0) return;
+      const waitingNow = () => ({ answers: pendingFor(userId).length, exams: pendingExamsFor(userId).length });
+      setWaiting(waitingNow());
+      if (!navigator.onLine || waitingNow().answers + waitingNow().exams === 0) return;
       const result = await flushPractice(userId, (attempts) => postPracticeSync(attempts, session.access_token));
-      setWaiting(pendingFor(userId).length);
+      const exams = await flushExams(userId, (row) => postExamSubmit(row, session.access_token));
+      setWaiting(waitingNow());
+      if (exams.results.length > 0) {
+        window.dispatchEvent(new CustomEvent<ExamSyncResult[]>(EXAM_SYNCED, { detail: exams.results }));
+        setExamsDone({ synced: exams.synced, gone: exams.results.length - exams.synced });
+      }
       if (result.synced > 0) {
         window.dispatchEvent(new CustomEvent<SyncResult[]>(PRACTICE_SYNCED, { detail: result.results }));
         setDone(result);
@@ -60,18 +68,28 @@ export function PendingSync() {
   }, [sync]);
 
   useEffect(() => {
-    if (!done) return;
-    const timer = setTimeout(() => setDone(null), 8000);
+    if (!done && !examsDone) return;
+    const timer = setTimeout(() => {
+      setDone(null);
+      setExamsDone(null);
+    }, 8000);
     return () => clearTimeout(timer);
-  }, [done]);
+  }, [done, examsDone]);
 
-  const text = done
+  const text = examsDone?.gone
+    ? t({ vi: 'Một đề đã bị gỡ nên bài làm offline không được chấm.', en: 'An exam was removed, so the answers made offline could not be graded.' })
+    : examsDone?.synced
+      ? t({ vi: `Đã đồng bộ ${examsDone.synced} bài thi (điểm theo máy chủ).`, en: `Synced ${examsDone.synced} ${examsDone.synced === 1 ? 'exam' : 'exams'} (scored by the server).` })
+      : done
     ? t({
         vi: `Đã đồng bộ ${done.synced} câu, +${done.xp} XP (theo máy chủ).`,
         en: `Synced ${done.synced} ${done.synced === 1 ? 'answer' : 'answers'}, +${done.xp} XP (from the server).`,
       })
-    : waiting > 0
-      ? t({ vi: `${waiting} câu đang chờ đồng bộ.`, en: `${waiting} ${waiting === 1 ? 'answer' : 'answers'} waiting to sync.` })
+    : waiting.answers + waiting.exams > 0
+      ? t({
+          vi: `${[waiting.answers ? `${waiting.answers} câu` : '', waiting.exams ? `${waiting.exams} bài thi` : ''].filter(Boolean).join(', ')} đang chờ đồng bộ.`,
+          en: `${[waiting.answers ? `${waiting.answers} ${waiting.answers === 1 ? 'answer' : 'answers'}` : '', waiting.exams ? `${waiting.exams} ${waiting.exams === 1 ? 'exam' : 'exams'}` : ''].filter(Boolean).join(', ')} waiting to sync.`,
+        })
       : null;
   if (!text) return null;
   return (

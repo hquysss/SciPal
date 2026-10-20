@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import type { ReactNode } from 'react';
 import { Clock, ListChecks, Play } from 'lucide-react';
 import { useLanguage } from '@scipal/hooks';
 import type { ExamSection } from '@scipal/types';
@@ -20,12 +21,15 @@ export function ExamStart({
   durationMinutes,
   layout,
   onStart,
+  offline,
 }: {
   title?: Bilingual;
   questionCount: number;
   durationMinutes: number;
   layout: ExamSection[] | null;
   onStart: () => void;
+  /** Saving the exam to take it without a connection. */
+  offline?: ReactNode;
 }) {
   const { lang, t } = useLanguage();
   const sections = (layout ?? []).filter((s) => s.count > 0);
@@ -106,6 +110,7 @@ export function ExamStart({
           {t({ en: 'Back to the list', vi: 'Quay lại danh sách' })}
         </Link>
       </div>
+      {offline}
     </section>
   );
 }

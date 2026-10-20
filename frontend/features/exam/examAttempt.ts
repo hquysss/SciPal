@@ -1,6 +1,9 @@
 // A graded exam attempt (backend POST /api/exam/:id/attempts): created before the exam starts,
 // sent with the answers. Its id is kept for the tab so a reload resumes the same attempt.
 
+import type { ExamQuestionItem } from './ExamRunner';
+import type { BlueprintSummary } from './examQueries';
+
 type Bilingual = { vi: string; en: string };
 type Store = Pick<Storage, 'getItem' | 'setItem' | 'removeItem'>;
 
@@ -66,4 +69,16 @@ export async function startExamAttempt(blueprintId: string, token: string, stora
 /** After the result is shown, the next visit starts a new attempt. */
 export function forgetExamAttempt(blueprintId: string, storage: Store | undefined = session()) {
   write(storage, key(blueprintId), null);
+}
+
+/** The exam of an attempt this learner started, with what grades it (to take it offline). */
+export async function fetchExamPack(attemptId: string, token: string): Promise<{
+  attempt_id: string;
+  blueprint: BlueprintSummary;
+  questions: ExamQuestionItem[];
+  keys: Record<string, { type: string; data: Record<string, unknown> }>;
+}> {
+  const res = await fetch(`${API_BASE}/api/exam/attempts/${encodeURIComponent(attemptId)}/offline`, { headers: { Authorization: `Bearer ${token}` }, cache: 'no-store' });
+  if (!res.ok) throw Object.assign(new Error(`exam pack failed: ${res.status}`), { status: res.status });
+  return res.json();
 }

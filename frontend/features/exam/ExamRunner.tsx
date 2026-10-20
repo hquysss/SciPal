@@ -9,6 +9,10 @@ import type { ExamSection } from '@scipal/types';
 import { AnswerPalette, type AnswerPaletteSection } from './AnswerPalette';
 import { forgetExamAttempt, startExamAttempt } from './examAttempt';
 import { ExamStart } from './ExamStart';
+import { scoreOffline } from './offlineExam';
+import { SaveExamOffline } from './SaveExamOffline';
+import { dropExam, loadDraft, loadExamPack, saveDraft, type ExamPack } from '../../lib/pwa/examPacks';
+import { EXAM_SYNCED, PENDING_CHANGED, queueExam, type ExamSyncResult } from '../../lib/pwa/pendingPractice';
 import { useShuffledOptions } from '../../lib/useShuffledOptions';
 import { createBrowserClient } from '../../lib/supabase';
 import { Alert } from '../../components/ui/alert';
@@ -267,6 +271,27 @@ export function ExamRunner({
   // The graded attempt (created before the exam for a signed-in student; guests sign in at submit).
   const [attempt, setAttempt] = useState<{ id: string; remaining: number | null; period: 'day' | 'month' | null } | null>(null);
   const [attemptProblem, setAttemptProblem] = useState<{ error: Bilingual; blocked: boolean } | null>(null);
+  // An exam saved for offline: its attempt is used instead of starting one, and a submission made
+  // without a connection is scored here (provisional) until the server's result arrives.
+  const [userId, setUserId] = useState<string | null>(null);
+  const [pack, setPack] = useState<ExamPack | null>(null);
+  const [provisional, setProvisional] = useState(false);
+
+  const currentSession = useCallback(async () => {
+    const session = (await createBrowserClient().auth.getSession()).data.session;
+    const authToken = token ?? session?.access_token;
+    return { token: authToken, userId: session?.user.id ?? null };
+  }, [token]);
+
+  const reloadPack = useCallback(async () => {
+    const { userId: id } = await currentSession().catch(() => ({ userId: null }));
+    setUserId(id);
+    setPack(id ? loadExamPack(id, blueprintId) : null);
+  }, [blueprintId, currentSession]);
+
+  useEffect(() => {
+    void reloadPack();
+  }, [reloadPack]);
 
   const begin = useCallback(async (authToken: string) => {
     const res = await startExamAttempt(blueprintId, authToken);
@@ -283,13 +308,47 @@ export function ExamRunner({
     if (!started) return;
     let active = true;
     void (async () => {
-      const authToken = token ?? (await createBrowserClient().auth.getSession()).data.session?.access_token;
-      if (active && authToken) await begin(authToken);
+      const session = await currentSession();
+      if (!active) return;
+      const saved = session.userId ? loadExamPack(session.userId, blueprintId) : null;
+      if (saved) {
+        setUserId(session.userId);
+        setPack(saved);
+        setAttempt({ id: saved.attempt_id, remaining: null, period: null });
+        const draft = loadDraft(saved.attempt_id);
+        if (draft) setAnswers(draft);
+        return;
+      }
+      if (session.token) {
+        const id = await begin(session.token);
+        const draft = id ? loadDraft(id) : null;
+        if (active && draft) setAnswers(draft);
+      }
     })();
     return () => {
       active = false;
     };
-  }, [begin, started, token]);
+  }, [begin, blueprintId, currentSession, started]);
+
+  // The answers being written survive closing the tab (offline above all).
+  useEffect(() => {
+    if (attempt && !result && Object.keys(answers).length > 0) saveDraft(attempt.id, answers);
+  }, [answers, attempt, result]);
+
+  // An exam taken offline was synced: the server's result replaces the provisional one.
+  useEffect(() => {
+    const onSynced = (event: Event) => {
+      const mine = ((event as CustomEvent<ExamSyncResult[]>).detail ?? []).find((r) => r.attempt_id === attempt?.id);
+      if (!mine) return;
+      const server = mine.result ? normalizeResult(mine.result) : null;
+      if (server) {
+        setResult(server);
+        setProvisional(false);
+      }
+    };
+    window.addEventListener(EXAM_SYNCED, onSynced);
+    return () => window.removeEventListener(EXAM_SYNCED, onSynced);
+  }, [attempt]);
 
   const handleSubmit = useCallback(async () => {
     if (submitting) return;
@@ -297,6 +356,27 @@ export function ExamRunner({
     setSubmitting(true);
 
     const formatted = toSubmission(questions, answers);
+    const finishedAt = new Date().toISOString();
+    // Without a connection: score on this device from the saved exam and queue it for the server.
+    const submitOffline = () => {
+      if (!pack || !userId) {
+        setSubmissionError(t({ en: 'Save this exam while online to take it offline.', vi: 'Tải đề này khi có mạng để thi offline.' }));
+        return;
+      }
+      const queued = queueExam({ user_id: userId, attempt_id: pack.attempt_id, blueprint_id: blueprintId, answers: formatted, finished_at: finishedAt });
+      if (queued === 'failed') {
+        setSubmissionError(t({ en: 'This device is out of storage, so the exam could not be kept. Clear some site data and try again.', vi: 'Máy hết chỗ lưu nên chưa giữ được bài thi. Xoá bớt dữ liệu trang rồi thử lại.' }));
+        return;
+      }
+      window.dispatchEvent(new Event(PENDING_CHANGED));
+      setResult(scoreOffline(pack, formatted));
+      setProvisional(true);
+    };
+    if (typeof navigator !== 'undefined' && navigator.onLine === false) {
+      submitOffline();
+      setSubmitting(false);
+      return;
+    }
 
       const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL ?? 'https://sci-pal-backend.vercel.app';
     try {
@@ -309,20 +389,31 @@ export function ExamRunner({
       const attemptId = attempt?.id ?? (await begin(authToken));
       if (!attemptId) return;
 
-      const res = await fetch(`${API_BASE}/api/score/exam`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${authToken}`,
-        },
-        body: JSON.stringify({ blueprint_id: blueprintId, attempt_id: attemptId, answers: formatted }),
-      });
+      let res: Response;
+      try {
+        res = await fetch(`${API_BASE}/api/score/exam`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${authToken}`,
+          },
+          body: JSON.stringify({ blueprint_id: blueprintId, attempt_id: attemptId, answers: formatted }),
+        });
+      } catch (error) {
+        // The connection dropped while submitting: a saved exam is scored here instead.
+        if (pack && pack.attempt_id === attemptId) {
+          submitOffline();
+          return;
+        }
+        throw error;
+      }
 
       if (!res.ok) throw new Error(`Exam scoring failed: ${res.status}`);
       const data = normalizeResult(await res.json());
       if (!data) throw new Error('Invalid exam score response');
       setResult(data);
       forgetExamAttempt(blueprintId);
+      if (userId) dropExam(userId, blueprintId, attemptId);
     } catch {
       setSubmissionError(t({
         en: 'Your exam could not be submitted. Your answers are still on the page; press Submit to try again.',
@@ -331,7 +422,7 @@ export function ExamRunner({
     } finally {
       setSubmitting(false);
     }
-  }, [answers, attempt, begin, blueprintId, pathname, questions, router, submitting, t, token]);
+  }, [answers, attempt, begin, blueprintId, pack, pathname, questions, router, submitting, t, token, userId]);
 
   // Countdown timer with auto-submit
   useEffect(() => {
@@ -364,7 +455,7 @@ export function ExamRunner({
     return (
       <div className="mx-auto flex w-full max-w-3xl flex-col gap-6">
         {header}
-        <ExamResultView result={result} title={title} layout={layout} />
+        <ExamResultView result={result} title={title} layout={layout} provisional={provisional} />
       </div>
     );
   }
@@ -373,7 +464,14 @@ export function ExamRunner({
     return (
       <div className="mx-auto flex w-full max-w-3xl flex-col gap-6">
         {header}
-        <ExamStart title={blueprintTitle} questionCount={questions.length} durationMinutes={durationMinutes} layout={layout} onStart={() => setStarted(true)} />
+        <ExamStart
+          title={blueprintTitle}
+          questionCount={questions.length}
+          durationMinutes={durationMinutes}
+          layout={layout}
+          onStart={() => setStarted(true)}
+          offline={userId ? <SaveExamOffline blueprintId={blueprintId} saved={pack !== null} onSaved={() => void reloadPack()} /> : null}
+        />
       </div>
     );
   }
@@ -630,10 +728,13 @@ export function ExamResultView({
   result,
   title,
   layout = null,
+  provisional = false,
 }: {
   result: ExamResult;
   title: string;
   layout?: ExamSection[] | null;
+  /** Scored on this device without a connection; the server's result replaces it. */
+  provisional?: boolean;
 }) {
   const { lang, t } = useLanguage();
   const band = scoreBand(result.score, result.max_score);
@@ -644,6 +745,11 @@ export function ExamResultView({
     <section className="rounded-xl border border-line bg-surface p-8 text-center sm:p-12">
       <h2 className="text-2xl font-bold text-ink sm:text-3xl">{t({ en: 'Exam result', vi: 'Kết quả bài thi thử' })}</h2>
       <p className="mt-1 text-sm text-ink-muted">{title}</p>
+      {provisional && (
+        <p role="status" className="mt-3 text-sm font-semibold text-ink-muted">
+          {t({ en: 'Provisional · waiting to sync. XP is an estimate.', vi: 'Kết quả tạm · chờ đồng bộ. XP là tạm tính.' })}
+        </p>
+      )}
 
       <div className="my-6 flex flex-col items-center">
         <span data-testid="exam-score" className="text-6xl font-bold tabular-nums text-ink">
