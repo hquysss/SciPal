@@ -7,8 +7,15 @@ describe('site switches', () => {
     expect(resolveSiteSettings({ signup_enabled: false, features: { exam: false, glossary: 'no' } })).toEqual({
       signupEnabled: false,
       maintenance: false,
+      freeAccess: false,
       features: { ...ALL_ON.features, exam: false },
     });
+  });
+
+  it('reads free access, off unless it is exactly true', () => {
+    expect(resolveSiteSettings({ free_access: true }).freeAccess).toBe(true);
+    expect(resolveSiteSettings({ free_access: 'true' }).freeAccess).toBe(false);
+    expect(resolveSiteSettings(null).freeAccess).toBe(false);
   });
 
   it('reads maintenance mode, off unless it is exactly true', () => {

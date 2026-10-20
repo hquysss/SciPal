@@ -35,12 +35,13 @@ describe('CommunitySection', () => {
 });
 
 describe('FaqSection', () => {
-  it('has six questions, each answered in both languages', () => {
-    expect(FAQ).toHaveLength(6);
+  it('has seven questions, each answered in both languages', () => {
+    expect(FAQ).toHaveLength(7);
     for (const { q, a } of FAQ) for (const copy of [q, a]) expect(copy.vi && copy.en).toBeTruthy();
     lang = 'vi';
     const html = renderToStaticMarkup(<FaqSection />);
-    expect(html.match(/<details/g)).toHaveLength(6);
+    expect(html.match(/<details/g)).toHaveLength(7);
+    expect(html).toContain('href="/glossary#nguon-tham-khao"');
     expect(html).toContain('Câu hỏi thường gặp');
   });
 

@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import { getAllTerms } from '@/features/glossary/termQueries';
 import { GlossaryHeader } from '@/features/glossary/GlossaryHeader';
 import { GlossarySearch } from '@/features/glossary/GlossarySearch';
+import { ReferenceSources } from '@/features/glossary/ReferenceSources';
 import { pageTitle } from '@/lib/pageTitle';
 import { LoadErrorNotice } from '@/components/feedback/LoadErrorNotice';
 
@@ -21,6 +22,7 @@ export default async function GlossaryPage() {
     <main className="mx-auto w-full max-w-3xl px-4 pb-20 pt-8 sm:px-6 sm:pt-12">
       <GlossaryHeader />
       {content}
+      <ReferenceSources />
     </main>
   );
 }
