@@ -924,6 +924,19 @@
   line-height: 1.65;
 }
 
+.faqLink {
+  color: var(--ink);
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.faqLink:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .faqQuestion svg {
     transition: none;
