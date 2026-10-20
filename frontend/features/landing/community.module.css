@@ -1,0 +1,172 @@
+/* Community showcase: the demo sits left on wide screens (the Professor's sits right), text right. */
+.section {
+  grid-template-columns: minmax(0, 1.1fr) minmax(0, 0.9fr);
+  align-items: center;
+}
+.intro {
+  display: grid;
+  justify-items: start;
+  gap: 1.25rem;
+}
+.points {
+  display: grid;
+  gap: 0.875rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.point {
+  display: grid;
+  grid-template-columns: 2.5rem 1fr;
+  gap: 0.75rem;
+  align-items: start;
+}
+.pointIcon {
+  display: grid;
+  place-items: center;
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: 0.875rem;
+  background: color-mix(in srgb, var(--action) 16%, var(--surface));
+  color: var(--action);
+}
+.pointTitle { display: block; color: var(--ink); font-weight: 700; }
+.pointText { display: block; color: var(--ink-muted); font-size: 0.9375rem; line-height: 1.5; }
+
+/* ---------- the demo messenger ---------- */
+.stage { position: relative; padding-bottom: 2.5rem; }
+.demo {
+  display: grid;
+  grid-template-columns: 11rem 1fr;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 1.25rem;
+  background: var(--surface);
+  box-shadow: 0 24px 48px -28px color-mix(in srgb, var(--ink) 40%, transparent);
+}
+.list {
+  display: grid;
+  align-content: start;
+  gap: 0.25rem;
+  border-right: 1px solid var(--line);
+  padding: 0.75rem 0.5rem;
+}
+.listTitle { padding: 0 0.5rem 0.25rem; color: var(--ink); font-size: 0.875rem; font-weight: 700; }
+.row {
+  display: grid;
+  grid-template-columns: 2rem 1fr auto;
+  gap: 0.5rem;
+  align-items: center;
+  border-radius: 0.75rem;
+  padding: 0.4rem 0.5rem;
+}
+.rowActive { background: var(--surface-sunken); }
+.room {
+  display: grid;
+  place-items: center;
+  width: 2rem;
+  height: 2rem;
+  border-radius: 0.625rem;
+  background: color-mix(in srgb, var(--tone, var(--action)) 26%, var(--surface));
+  color: color-mix(in srgb, var(--tone, var(--action)) 70%, var(--ink));
+  font-size: 0.75rem;
+  font-weight: 800;
+}
+.rowName { overflow: hidden; color: var(--ink); font-size: 0.8125rem; font-weight: 600; text-overflow: ellipsis; white-space: nowrap; }
+.rowNameUnread { font-weight: 800; }
+.count {
+  display: inline-grid;
+  place-items: center;
+  min-width: 1.25rem;
+  height: 1.25rem;
+  padding: 0 0.35rem;
+  border-radius: 999px;
+  font-size: 0.6875rem;
+  font-weight: 700;
+}
+
+.chat { display: grid; grid-template-rows: auto 1fr; min-width: 0; }
+.chatHead { display: flex; align-items: center; gap: 0.5rem; border-bottom: 1px solid var(--line); padding: 0.75rem 1rem; }
+.chatTitle { color: var(--ink); font-size: 0.9375rem; font-weight: 700; }
+.chatSub { color: var(--ink-muted); font-size: 0.75rem; }
+.log { display: grid; align-content: end; gap: 0.75rem; padding: 1rem; }
+.msg { display: grid; grid-template-columns: 1.75rem 1fr; gap: 0.5rem; align-items: start; }
+.msgMine { grid-template-columns: 1fr; justify-items: end; }
+.avatar {
+  display: grid;
+  place-items: center;
+  width: 1.75rem;
+  height: 1.75rem;
+  border-radius: 999px;
+  background: var(--surface-sunken);
+  color: var(--ink);
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+.who { display: flex; flex-wrap: wrap; align-items: center; gap: 0.375rem; margin-bottom: 0.25rem; color: var(--ink); font-size: 0.75rem; font-weight: 700; }
+.role { border: 1px solid currentColor; border-radius: 999px; padding: 0 0.4rem; font-size: 0.6875rem; font-weight: 700; }
+.bubble {
+  width: fit-content;
+  max-width: 100%;
+  border-radius: 1rem;
+  border-top-left-radius: 0.25rem;
+  padding: 0.5rem 0.75rem;
+  background: var(--surface-sunken);
+  color: var(--ink);
+  font-size: 0.8125rem;
+  line-height: 1.45;
+}
+.bubbleMine {
+  border-top-left-radius: 1rem;
+  border-top-right-radius: 0.25rem;
+  background: var(--action);
+  color: var(--action-ink);
+}
+.reactions { display: flex; gap: 0.25rem; margin-top: 0.25rem; font-size: 0.75rem; }
+
+/* The pop-up for a new message, like the real one: bottom left, sliding in. */
+.toast {
+  position: absolute;
+  left: -0.75rem;
+  bottom: 0;
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  width: min(17rem, 80%);
+  border: 1px solid var(--line);
+  border-radius: 0.875rem;
+  padding: 0.625rem 0.875rem;
+  background: var(--surface);
+  box-shadow: 0 12px 28px -14px color-mix(in srgb, var(--ink) 45%, transparent);
+  animation: toast-in 0.6s cubic-bezier(0.2, 0.8, 0.2, 1) both 0.8s;
+}
+.toastIcon {
+  display: grid;
+  flex-shrink: 0;
+  place-items: center;
+  width: 2rem;
+  height: 2rem;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--action) 22%, var(--surface));
+  color: color-mix(in srgb, var(--action) 75%, var(--ink));
+}
+.toastTitle { display: block; color: var(--ink); font-size: 0.8125rem; font-weight: 700; }
+.toastText { display: block; overflow: hidden; color: var(--ink-muted); font-size: 0.75rem; text-overflow: ellipsis; white-space: nowrap; }
+
+@keyframes toast-in {
+  from { opacity: 0; transform: translateX(-2rem); }
+  to { opacity: 1; transform: none; }
+}
+
+@media (max-width: 960px) {
+  .section { grid-template-columns: minmax(0, 1fr); }
+  .stage { order: 2; }
+}
+@media (max-width: 520px) {
+  .demo { grid-template-columns: 1fr; }
+  .list { display: none; }
+  .toast { left: 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .toast { animation: none; }
+}

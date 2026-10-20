@@ -22,6 +22,8 @@ export interface BlueprintSummary {
   format: ExamFormat;
   /** The exam's sections and passage groups; null for a generic exam. */
   layout: ExamSection[] | null;
+  /** Gifted-student training ('hsg') is listed on its own; older servers send nothing (standard). */
+  category?: 'standard' | 'hsg';
 }
 
 export type BlueprintListResult = { kind: 'ok'; blueprints: BlueprintSummary[] } | { kind: 'error' };

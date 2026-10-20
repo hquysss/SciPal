@@ -325,8 +325,8 @@ export function ExamRunner({
       forgetExamAttempt(blueprintId);
     } catch {
       setSubmissionError(t({
-        en: 'Your exam could not be submitted. Answers are still here; please try again.',
-        vi: 'Chưa nộp được bài thi. Câu trả lời vẫn được giữ, bạn thử lại nhé.',
+        en: 'Your exam could not be submitted. Your answers are still on the page; press Submit to try again.',
+        vi: 'Chưa nộp được bài thi. Câu trả lời vẫn còn trên trang, bấm Nộp bài để thử lại.',
       }));
     } finally {
       setSubmitting(false);
@@ -395,7 +395,7 @@ export function ExamRunner({
       {attemptProblem && (
         <Alert tone="warning">
           {t(attemptProblem.error)}{' '}
-          {t({ en: 'Your answers are kept; submitting will try again.', vi: 'Câu trả lời vẫn được giữ; khi nộp bài sẽ thử lại.' })}
+          {t({ en: 'Your answers are still on this page. When you submit, SciPal tries again.', vi: 'Câu trả lời vẫn còn trên trang này. Khi bạn nộp bài, SciPal sẽ thử lại.' })}
         </Alert>
       )}
       {/* Top sticky timer bar */}
@@ -652,10 +652,10 @@ export function ExamResultView({
         </span>
         <span className="mt-2 text-base font-semibold text-ink-muted">
           {band === 'high'
-            ? t({ en: 'Very good! You know this well.', vi: 'Rất tốt! Bạn nắm chắc phần này.' })
+            ? t({ en: 'Good result.', vi: 'Đạt mức tốt.' })
             : band === 'medium'
-              ? t({ en: 'Passed. Look over the questions you missed.', vi: 'Đạt rồi. Xem lại các câu sai nhé.' })
-              : t({ en: 'Needs revision', vi: 'Cần ôn tập thêm các chủ đề' })}
+              ? t({ en: 'Passed.', vi: 'Đạt.' })
+              : t({ en: 'Not passed yet. Revise before the next try.', vi: 'Chưa đạt. Nên ôn lại trước khi thi tiếp.' })}
         </span>
         {result.estimated && (
           <p className="mt-3 max-w-md text-sm text-ink-muted">

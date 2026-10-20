@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { Crown, Trophy } from 'lucide-react';
 import { useLanguage } from '@scipal/hooks';
 import type { LeaderRow, ProgressSummary } from './progressQueries';
+import { WeeklyTrophy } from './WeeklyTrophy';
 
 type Period = 'week' | 'all';
 
@@ -29,21 +30,26 @@ function You() {
   return <span className="font-normal text-ink-muted"> ({t({ en: 'you', vi: 'bạn' })})</span>;
 }
 
-function Podium({ rows }: { rows: LeaderRow[] }) {
+function Podium({ rows, weekly }: { rows: LeaderRow[]; weekly: boolean }) {
   return (
     <ol className="mb-4 grid grid-cols-3 items-end gap-2" aria-label="Top 3">
-      {rows.slice(0, 3).map((row, i) => <PodiumPlace key={i} row={row} place={i} />)}
+      {rows.slice(0, 3).map((row, i) => <PodiumPlace key={i} row={row} place={i} weekly={weekly} />)}
     </ol>
   );
 }
 
-function PodiumPlace({ row, place }: { row: LeaderRow; place: number }) {
+function PodiumPlace({ row, place, weekly }: { row: LeaderRow; place: number; weekly: boolean }) {
   const { t } = useLanguage();
   const name = useName(row);
   const p = PODIUM[place];
   return (
     <li aria-current={row.is_me ? 'true' : undefined} className={`flex min-w-0 flex-col items-center text-center ${p.order}`}>
-      {place === 0 && <Crown aria-hidden="true" className="mb-1 h-5 w-5 text-ink" />}
+      {place === 0 && (weekly ? (
+        <span className="mb-1 flex flex-col items-center">
+          <WeeklyTrophy size="3rem" />
+          <span className="text-xs font-bold text-ink">{t({ en: 'Top of the week', vi: 'Thủ khoa tuần' })}</span>
+        </span>
+      ) : <Crown aria-hidden="true" className="mb-1 h-5 w-5 text-ink" />)}
       <span
         aria-hidden="true"
         style={{ background: `color-mix(in srgb, ${p.tone} 55%, var(--surface))`, boxShadow: `0 0 0 3px ${p.tone}` }}
@@ -140,7 +146,7 @@ export function Leaderboard({ board }: { board: ProgressSummary['leaderboard'] }
         </p>
       ) : (
         <div key={period} className="motion-safe:animate-[page-rise_320ms_cubic-bezier(0.22,1,0.36,1)]">
-          <Podium rows={top} />
+          <Podium rows={top} weekly={period === 'week'} />
           {top.length > 3 && (
             <ol start={4} className="flex flex-col gap-0.5 border-t border-line pt-3">
               {top.slice(3).map((r, i) => <Row key={i} row={r} />)}

@@ -75,5 +75,7 @@ export type AnnouncementInput = {
 
 export const fetchAnnouncements = () =>
   authoringCall<{ announcements: Announcement[]; audience: AnnouncementAudience; emailReady: boolean }>('/api/admin/announcements', 'GET');
+export const deleteAnnouncement = (id: string): Promise<ApiResult<Record<string, never>>> =>
+  authoringCall(`/api/admin/announcements/${encodeURIComponent(id)}`, 'DELETE');
 export const sendAnnouncement = (input: AnnouncementInput): Promise<ApiResult<{ announcement: Announcement; warning?: 'email_not_configured' | 'email_failed'; repeated?: boolean }>> =>
   authoringCall('/api/admin/announcements', 'POST', input);

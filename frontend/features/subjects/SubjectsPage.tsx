@@ -25,6 +25,8 @@ const FIRST_GRADE: Record<EducationLevel, number> = { primary: 1, lower_secondar
 
 interface SubjectsPageProps {
   accountLevel: EducationLevel | null;
+  /** The grade saved on the account, if any: the page opens on its tab. */
+  accountGrade?: number | null;
   catalog: LandingCatalog;
   /** Kept for the route's data contract; grade cards read availability from `liveGrades`. */
   informatics?: InformaticsAvailability;
@@ -76,15 +78,23 @@ function GradeSubjectCard({ subject, grade }: { subject: LandingSubject; grade: 
   );
 }
 
+/** The grade tab to open on: the account's own grade when it belongs to the level shown, else that level's first. */
+export function openingGrade(accountLevel: EducationLevel | null, accountGrade: number | null | undefined): number {
+  const own = GRADE_GROUPS.flatMap((g) => g.grades).find((g) => g === accountGrade);
+  if (own && (!accountLevel || levelOfGrade(own) === accountLevel)) return own;
+  return FIRST_GRADE[accountLevel ?? 'upper_secondary'];
+}
+
 /**
  * The navbar's Subjects page: pick a grade, see its subjects. Follows the chosen level (account
  * level, else the one picked this session): only that level's grades are offered, opening on
- * its first. With no level chosen yet, every grade is offered, opening on grade 10.
+ * the account's own grade, else the level's first. With no level chosen yet, every grade is
+ * offered, opening on the account's grade, else grade 10.
  */
-export function SubjectsPage({ accountLevel, catalog }: SubjectsPageProps) {
+export function SubjectsPage({ accountLevel, accountGrade = null, catalog }: SubjectsPageProps) {
   const { lang, t } = useLanguage();
   const [level, setLevel] = useState<EducationLevel | null>(accountLevel);
-  const [grade, setGrade] = useState<number>(FIRST_GRADE[accountLevel ?? 'upper_secondary']);
+  const [grade, setGrade] = useState<number>(openingGrade(accountLevel, accountGrade));
 
   useEffect(() => {
     if (accountLevel) return;
@@ -92,12 +102,12 @@ export function SubjectsPage({ accountLevel, catalog }: SubjectsPageProps) {
       const sessionLevel = readSessionEducationLevel(window.sessionStorage);
       if (sessionLevel) {
         setLevel(sessionLevel);
-        setGrade(FIRST_GRADE[sessionLevel]);
+        setGrade(openingGrade(sessionLevel, accountGrade));
       }
     } catch {
       // Storage blocked: offer every grade.
     }
-  }, [accountLevel]);
+  }, [accountLevel, accountGrade]);
 
   const groups = level ? GRADE_GROUPS.filter((group) => group.level === level) : GRADE_GROUPS;
   const subjects = subjectsForGrade(catalog, grade);

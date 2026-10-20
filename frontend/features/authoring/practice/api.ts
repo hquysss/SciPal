@@ -1,4 +1,4 @@
-import type { AuthorQuestionInput, QuestionStatus, QuestionType } from '@scipal/types';
+import type { AuthorQuestionInput, CodeLanguage, CodeResult, CodeTest, QuestionStatus, QuestionType } from '@scipal/types';
 import { authoringCall, queryString, type ApiResult } from '../apiClient';
 
 /** A question as the authoring API returns it: answers only when `mine` or for an admin. */
@@ -68,3 +68,7 @@ export const createQuestion = (input: QuestionPayload) => authoringCall<{ questi
 
 export const updateQuestion = (id: string, input: QuestionPayload) =>
   authoringCall<{ question: AuthorQuestion }>(`/api/authoring/questions/${encodeURIComponent(id)}`, 'PATCH', input);
+
+/** Try a model solution against a draft's tests, before the question is saved (teachers and admins). */
+export const verifyCode = (body: { language: CodeLanguage; source: string; tests: CodeTest[]; time_limit_ms: number; memory_limit_mb: number }) =>
+  authoringCall<CodeResult>('/api/practice/code/verify', 'POST', body);

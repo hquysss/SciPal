@@ -82,9 +82,23 @@ main[class*='mx-auto'] > :nth-child(n + 5) { animation-delay: 240ms; }
 }
 .answer-pop { animation: answer-pop 260ms cubic-bezier(0.22, 1, 0.36, 1); }
 
+/* Chat: a new message rises in; pickers, menus and reaction chips pop from where they were opened. */
+@keyframes chat-in {
+  from { opacity: 0; translate: 0 8px; }
+  to { opacity: 1; translate: 0 0; }
+}
+@keyframes chat-pop {
+  0% { opacity: 0; scale: 0.6; }
+  70% { opacity: 1; scale: 1.06; }
+  100% { scale: 1; }
+}
+.chat-in { animation: chat-in 220ms cubic-bezier(0.22, 1, 0.36, 1); }
+.chat-pop { animation: chat-pop 200ms cubic-bezier(0.22, 1, 0.36, 1); }
+
 @media (prefers-reduced-motion: reduce) {
   main[class*='mx-auto'] > * { animation: none; }
   .answer-pop { animation: none; }
+  .chat-in, .chat-pop { animation: none; }
 }
 
 @media (prefers-contrast: more), print {

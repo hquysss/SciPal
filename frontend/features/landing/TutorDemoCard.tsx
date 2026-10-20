@@ -13,7 +13,7 @@ const EXCHANGES: Record<EducationLevel, { question: Copy; answer: Copy; next: Co
   primary: {
     question: { vi: 'Vì sao máy tính cần làm theo từng bước?', en: 'Why does a computer need step-by-step instructions?' },
     answer: {
-      vi: 'Máy tính không tự đoán được ý em. Em chỉ dẫn rõ từng bước, đúng thứ tự, thì máy mới làm đúng.',
+      vi: 'Máy tính không tự đoán được ý bạn. Bạn chỉ dẫn rõ từng bước, đúng thứ tự, thì máy mới làm đúng.',
       en: "A computer can't guess what you mean. Give clear steps in the right order and it does the job right.",
     },
     next: { vi: 'Thử: hướng dẫn một người bạn vẽ ngôi nhà trong 3 bước.', en: 'Try: tell a friend how to draw a house in 3 steps.' },

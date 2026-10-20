@@ -1,14 +1,17 @@
 'use client';
 
 import Link from 'next/link';
-import { useState, type ComponentType, type CSSProperties } from 'react';
+import { useEffect, useState, type ComponentType } from 'react';
 import {
-  BookCheck,
+  BookOpenCheck,
   BookmarkCheck,
+  CalendarDays,
   ChevronRight,
   ClipboardCheck,
   Flame,
+  Eye,
   Gauge,
+  GraduationCap,
   LineChart,
   MessageCircleQuestion,
   NotebookPen,
@@ -16,12 +19,15 @@ import {
   PlayCircle,
   Repeat,
   School,
-  Sparkles,
+  Zap,
 } from 'lucide-react';
 import { useLanguage } from '@scipal/hooks';
-import { Badge } from '../../components/ui/badge';
+import { ProfileBadges } from './RoleBadge';
 import { buttonVariants } from '../../components/ui/button';
+import { BadgeShowcase } from './BadgeShowcase';
 import { ProfileEditor } from './ProfileEditor';
+import { ProfileHero, ProfileTabs, pill, roundAction, tint } from './ProfileHero';
+import { getProfile, type PublicProfile } from './profileApi';
 
 interface ProfileCardProps {
   displayName: string;
@@ -60,13 +66,13 @@ function ShortcutGrid({ items }: { items: Shortcut[] }) {
   const { t } = useLanguage();
   return (
     <ul className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-      {items.map(({ href, label, hint, Icon }) => (
+      {items.map(({ href, label, hint, Icon }, i) => (
         <li key={href}>
           <Link
             href={href}
-            className="group flex min-h-14 items-center gap-3 rounded-xl border border-line bg-surface px-3 py-2.5 transition hover:-translate-y-0.5 hover:border-edge hover:shadow-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus motion-reduce:transition-none motion-reduce:hover:translate-y-0"
+            className="group flex min-h-14 items-center gap-3 rounded-xl border border-line bg-surface-sunken px-3 py-2.5 transition hover:-translate-y-0.5 hover:border-edge hover:shadow-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus motion-reduce:transition-none motion-reduce:hover:translate-y-0"
           >
-            <span className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-surface-sunken text-action">
+            <span className={`grid h-9 w-9 shrink-0 place-items-center rounded-lg text-ink ${tint(i)}`}>
               <Icon aria-hidden className="h-[18px] w-[18px]" />
             </span>
             <span className="flex min-w-0 flex-1 flex-col">
@@ -85,6 +91,19 @@ function ShortcutGrid({ items }: { items: Shortcut[] }) {
 export function ProfileCard({ displayName, role, email, joinedAt, avatarUrl, coverUrl, stats }: ProfileCardProps) {
   const { t, lang } = useLanguage();
   const [editing, setEditing] = useState(false);
+  const [tab, setTab] = useState<'shortcuts' | 'badges'>('shortcuts');
+  // Grade, school and bio come from the community profile; the card shows without them until they load.
+  const [about, setAbout] = useState<Pick<PublicProfile, 'grade' | 'school' | 'bio' | 'rank'> | null>(null);
+
+  useEffect(() => {
+    let live = true;
+    void getProfile('me').then((result) => {
+      if (live && result.ok) setAbout(result.data);
+    });
+    return () => {
+      live = false;
+    };
+  }, [editing]);
 
   const initials =
     displayName
@@ -95,93 +114,74 @@ export function ProfileCard({ displayName, role, email, joinedAt, avatarUrl, cov
       .join('')
       .toUpperCase() || 'SP';
 
-  const roleBadge =
-    role === 'admin'
-      ? { variant: 'default' as const, label: t({ en: 'Admin', vi: 'Quản trị viên' }) }
-      : role === 'teacher'
-        ? { variant: 'outline' as const, label: t({ en: 'Teacher', vi: 'Giáo viên' }) }
-        : { variant: 'secondary' as const, label: t({ en: 'Student', vi: 'Học sinh' }) };
-
   const joined = joinedAt ? new Date(joinedAt) : null;
   const joinedText = joined && !Number.isNaN(joined.getTime())
     ? t({ vi: `Tham gia ${joined.getUTCMonth() + 1}/${joined.getUTCFullYear()}`, en: `Joined ${joined.toLocaleDateString('en-GB', { month: 'short', year: 'numeric', timeZone: 'UTC' })}` })
     : null;
 
-  const numbers = [
-    { value: stats.totalXP.toLocaleString(lang === 'en' ? 'en-US' : 'vi-VN'), label: { en: 'Total XP', vi: 'Tổng điểm XP' }, Icon: Sparkles, tone: 'var(--sun)' },
-    { value: String(stats.completedLessons), label: { en: 'Lessons done', vi: 'Bài đã học' }, Icon: BookCheck, tone: 'var(--sky)' },
-    { value: String(stats.longestStreak), label: { en: 'Best streak', vi: 'Chuỗi ngày kỉ lục' }, Icon: Flame, tone: 'var(--coral)' },
+  const meta = [
+    ...(about?.grade ? [{ Icon: GraduationCap, text: t({ en: `Grade ${about.grade}`, vi: `Lớp ${about.grade}` }) }] : []),
+    ...(about?.school ? [{ Icon: School, text: about.school }] : []),
+    ...(joinedText ? [{ Icon: CalendarDays, text: joinedText }] : []),
+  ];
+  const stats3 = [
+    { value: stats.totalXP.toLocaleString(lang === 'en' ? 'en-US' : 'vi-VN'), label: t({ en: 'Total XP', vi: 'Tổng điểm XP' }), Icon: Zap },
+    { value: String(stats.completedLessons), label: t({ en: 'Lessons done', vi: 'Bài đã học' }), Icon: BookOpenCheck },
+    { value: String(stats.longestStreak), label: t({ en: 'Best streak', vi: 'Chuỗi ngày kỉ lục' }), Icon: Flame },
   ];
 
   return (
     <section aria-labelledby="profile-name" className="overflow-hidden rounded-2xl border border-line bg-surface">
-      {/* The owner's cover photo, or a banner in the level's supporting colours; decoration only. */}
-      {coverUrl ? (
-        // eslint-disable-next-line @next/next/no-img-element -- media store image
-        <img src={coverUrl} alt="" aria-hidden="true" className="h-24 w-full bg-surface-sunken object-cover sm:h-28" />
-      ) : (
-      <div
-        aria-hidden="true"
-        className="relative h-24 sm:h-28"
-        style={{
-          background:
-            'radial-gradient(120% 140% at 0% 0%, color-mix(in srgb, var(--sun) 55%, transparent), transparent 60%), radial-gradient(120% 140% at 100% 0%, color-mix(in srgb, var(--sky) 55%, transparent), transparent 60%), linear-gradient(120deg, color-mix(in srgb, var(--action) 30%, var(--surface)), color-mix(in srgb, var(--coral) 35%, var(--surface)))',
-        }}
-      />
-      )}
-
-      <div className="flex flex-col gap-6 px-5 pb-6 sm:px-7">
-        <div className="-mt-10 flex flex-col gap-3 sm:-mt-12">
-          <div className="relative z-10 grid h-20 w-20 place-items-center overflow-hidden rounded-2xl border-4 border-surface bg-surface-sunken text-2xl font-extrabold text-ink shadow-md sm:h-24 sm:w-24">
-            {avatarUrl ? <img src={avatarUrl} alt={displayName} className="h-full w-full object-cover" /> : <span aria-hidden="true">{initials}</span>}
-          </div>
-          <div className="flex flex-col gap-1">
-            <div className="flex flex-wrap items-center gap-2">
-              <h1 id="profile-name" className="text-2xl font-extrabold tracking-tight text-ink sm:text-3xl">{displayName}</h1>
-              <Badge variant={roleBadge.variant}>{roleBadge.label}</Badge>
-            </div>
-            <p className="flex flex-wrap gap-x-3 gap-y-1 text-sm text-ink-muted">
-              {email && <span className="break-all">{email}</span>}
-              {joinedText && <span>{joinedText}</span>}
-            </p>
-          </div>
-          {!editing && (
-            <button type="button" onClick={() => setEditing(true)} className={`${buttonVariants({ variant: 'outline' })} self-start`}>
+      <ProfileHero
+        headingId="profile-name"
+        name={displayName}
+        initials={initials}
+        avatarUrl={avatarUrl}
+        coverUrl={coverUrl}
+        badge={<ProfileBadges role={role} weekRank={about?.rank?.week} />}
+        handle={email}
+        bio={about?.bio}
+        meta={meta}
+        stats={stats3}
+        actions={!editing && (
+          <>
+            <Link href="/community/u/me" aria-label={t({ en: 'See your public profile', vi: 'Xem hồ sơ công khai' })} title={t({ en: 'See your public profile', vi: 'Xem hồ sơ công khai' })} className={roundAction}>
+              <Eye aria-hidden="true" />
+            </Link>
+            <button type="button" onClick={() => setEditing(true)} className={buttonVariants({ variant: 'outline', className: pill })}>
               <Pencil aria-hidden="true" className="h-4 w-4" />
               {t({ en: 'Edit profile', vi: 'Sửa hồ sơ' })}
             </button>
-          )}
-        </div>
-
-        {editing && <ProfileEditor displayName={displayName} avatarUrl={avatarUrl ?? null} coverUrl={coverUrl ?? null} onClose={() => setEditing(false)} />}
-
-        <dl className="grid grid-cols-3 gap-2 sm:gap-3">
-          {numbers.map(({ value, label, Icon, tone }) => (
-            <div key={label.en} className="flex flex-col gap-1 rounded-xl border border-line bg-surface-sunken p-3 sm:p-4" style={{ '--stat-tone': tone } as CSSProperties}>
-              <Icon aria-hidden="true" className="h-5 w-5 text-[color:var(--stat-tone)]" />
-              <dt className="order-last text-xs text-ink-muted sm:text-sm">{t(label)}</dt>
-              <dd className="text-xl font-extrabold tabular-nums text-ink sm:text-2xl">{value}</dd>
-            </div>
-          ))}
-        </dl>
-
-        <div className="flex flex-col gap-2">
-          <h2 className="text-xs font-bold uppercase tracking-wider text-ink-muted">{t({ vi: 'Đi nhanh', en: 'Shortcuts' })}</h2>
-          <ShortcutGrid items={LEARNING} />
-        </div>
-
-        {role === 'teacher' && (
-          <div className="flex flex-col gap-2">
-            <h2 className="text-xs font-bold uppercase tracking-wider text-ink-muted">{t({ vi: 'Không gian giáo viên', en: 'Teaching' })}</h2>
-            <ShortcutGrid items={TEACHING} />
-          </div>
+          </>
         )}
+      />
 
-        {role === 'admin' && (
-          <div className="flex flex-col gap-2">
-            <h2 className="text-xs font-bold uppercase tracking-wider text-ink-muted">{t({ vi: 'Quản trị', en: 'Administration' })}</h2>
-            <ShortcutGrid items={REVIEWING} />
-          </div>
+      {editing && <div className="px-4 pb-6 sm:px-6"><ProfileEditor displayName={displayName} avatarUrl={avatarUrl ?? null} coverUrl={coverUrl ?? null} onClose={() => setEditing(false)} /></div>}
+
+      <ProfileTabs
+        label={t({ en: 'Profile sections', vi: 'Các mục hồ sơ' })}
+        idPrefix="profile"
+        tabs={[{ id: 'shortcuts', label: t({ vi: 'Lối tắt', en: 'Shortcuts' }) }, { id: 'badges', label: t({ en: 'Badges', vi: 'Danh hiệu' }) }]}
+        active={tab}
+        onChange={setTab}
+      />
+      <div role="tabpanel" id="profile-panel" aria-labelledby={`profile-tab-${tab}`} className="flex flex-col gap-6 px-4 py-5 sm:px-6">
+        {tab === 'badges' ? <BadgeShowcase userId="me" /> : (
+          <>
+            <ShortcutGrid items={LEARNING} />
+            {role === 'teacher' && (
+              <div className="flex flex-col gap-2">
+                <h2 className="text-xs font-bold uppercase tracking-wider text-ink-muted">{t({ vi: 'Không gian giáo viên', en: 'Teaching' })}</h2>
+                <ShortcutGrid items={TEACHING} />
+              </div>
+            )}
+            {role === 'admin' && (
+              <div className="flex flex-col gap-2">
+                <h2 className="text-xs font-bold uppercase tracking-wider text-ink-muted">{t({ vi: 'Quản trị', en: 'Administration' })}</h2>
+                <ShortcutGrid items={REVIEWING} />
+              </div>
+            )}
+          </>
         )}
       </div>
     </section>

@@ -12,6 +12,8 @@ const QuotaMetricSchema = z.enum([
   'active_authored_exams',
   'author_ai_requests',
   'voice_minutes',
+  'code_submits',
+  'code_runs',
 ]);
 const EffectiveQuotaRowSchema = z.object({
   metric: QuotaMetricSchema,

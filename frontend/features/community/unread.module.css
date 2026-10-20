@@ -1,0 +1,24 @@
+/* Unread messages are blue in every theme (the subject palettes have no fixed blue), white text at 4.5:1, no outline.
+   A soft ring spreads from it like the Professor's online dot. */
+.badge {
+  position: relative;
+  isolation: isolate;
+  background: #1a73e8;
+  color: #fff;
+}
+.badge::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border-radius: inherit;
+  background: inherit;
+  animation: unread-ping 1.6s cubic-bezier(0, 0, 0.2, 1) infinite;
+}
+@keyframes unread-ping {
+  0% { transform: scale(1); opacity: 0.55; }
+  75%, 100% { transform: scale(1.7); opacity: 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .badge::before { animation: none; opacity: 0; }
+}

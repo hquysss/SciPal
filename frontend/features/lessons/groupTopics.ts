@@ -9,6 +9,14 @@ export interface TopicRow {
   lessons: Array<{ id: string; slug: string; title_en: string; title_vi: string; source?: string | null; sort_order: number; grade: number }>;
 }
 
+/** Labels on a lesson row, worked out from its content by `subject_lesson_tags` (SQL). */
+export const LESSON_TAGS = ['hot', 'sim', 'video', 'practice', 'code'] as const;
+export type LessonTag = (typeof LESSON_TAGS)[number];
+export interface LessonTagRow {
+  lesson_id: string;
+  tags: string[];
+}
+
 export interface GradeGroup {
   grade: number;
   topics: Array<{
@@ -16,11 +24,12 @@ export interface GradeGroup {
     name_en: string;
     name_vi: string;
     sort_order: number;
-    lessons: Array<{ id: string; slug: string; title_en: string; title_vi: string; source?: string | null; sort_order: number }>;
+    lessons: Array<{ id: string; slug: string; title_en: string; title_vi: string; source?: string | null; sort_order: number; tags?: LessonTag[] }>;
   }>;
 }
 
-export function groupTopicsByGrade(topics: TopicRow[]): GradeGroup[] {
+export function groupTopicsByGrade(topics: TopicRow[], tagRows: LessonTagRow[] = []): GradeGroup[] {
+  const tagsOf = new Map(tagRows.map((row) => [row.lesson_id, LESSON_TAGS.filter((tag) => row.tags?.includes(tag))]));
   const groups = new Map<number, Map<string, GradeGroup['topics'][number]>>();
 
   for (const topic of [...topics].sort((a, b) => a.sort_order - b.sort_order)) {
@@ -43,6 +52,7 @@ export function groupTopicsByGrade(topics: TopicRow[]): GradeGroup[] {
         title_vi: lesson.title_vi,
         source: lesson.source ?? null,
         sort_order: lesson.sort_order,
+        tags: tagsOf.get(lesson.id) ?? [],
       });
     }
   }
@@ -53,7 +63,13 @@ export function groupTopicsByGrade(topics: TopicRow[]): GradeGroup[] {
       grade,
       topics: [...byTopic.values()].map((topic) => ({
         ...topic,
-        lessons: [...topic.lessons].sort((a, b) => a.sort_order - b.sort_order),
+        lessons: [...topic.lessons].sort((a, b) => {
+          if (a.sort_order !== b.sort_order) return a.sort_order - b.sort_order;
+          const numA = parseInt(a.title_vi.match(/^(?:Bài|Lesson)\s*(\d+)/i)?.[1] ?? a.title_en.match(/^(?:Bài|Lesson)\s*(\d+)/i)?.[1] ?? '0', 10);
+          const numB = parseInt(b.title_vi.match(/^(?:Bài|Lesson)\s*(\d+)/i)?.[1] ?? b.title_en.match(/^(?:Bài|Lesson)\s*(\d+)/i)?.[1] ?? '0', 10);
+          if (numA !== numB) return numA - numB;
+          return a.title_vi.localeCompare(b.title_vi);
+        }),
       })),
     }));
 }

@@ -7,6 +7,7 @@ import { useLanguage } from '@scipal/hooks';
 import { createBrowserClient } from '@scipal/supabase';
 import { Alert } from '@/components/ui/alert';
 import { buttonVariants } from '@/components/ui/button';
+import { ProfileAboutEditor } from './ProfileAboutEditor';
 import { NAME_MAX, profileNameProblem, removeProfileImage, saveDisplayName, uploadProfileImage, type ProfileImageKind } from './profileApi';
 
 type Bilingual = { en: string; vi: string };
@@ -135,6 +136,8 @@ export function ProfileEditor({
           <p className="text-xs text-ink-muted">{t(PICTURE[kind].hint)}</p>
         </div>
       ))}
+
+      <ProfileAboutEditor />
 
       {error && <Alert tone="danger">{t(error)}</Alert>}
       {done && (

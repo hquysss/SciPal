@@ -124,6 +124,87 @@ async function recipientIds(supabase: NonNullable<FastifyInstance['supabase']>, 
   return ids;
 }
 
+export type AnnouncementInput = {
+  requestId: string; titleVi: string; titleEn: string; bodyVi: string; bodyEn: string; link: string | null;
+  level: (typeof NEWSLETTER_LEVELS)[number] | null; audience: Audience; sendApp: boolean; sendEmail: boolean;
+};
+
+/** An announcement from a request body (or a scheduled payload); null when any field is invalid. A scheduled one passes its own request id. */
+export function parseAnnouncement(raw: unknown, fallbackRequestId?: string): AnnouncementInput | null {
+  const body = (raw ?? {}) as Record<string, unknown>;
+  const requestId = typeof body.client_request_id === 'string' && ID.test(body.client_request_id) ? body.client_request_id : fallbackRequestId ?? null;
+  const titleVi = text(body.title_vi, 120, 1);
+  const titleEn = text(body.title_en, 120, 1);
+  const bodyVi = text(body.body_vi ?? '', 1000);
+  const bodyEn = text(body.body_en ?? '', 1000);
+  const link = safeLink(body.link);
+  const level = body.level === undefined || body.level === null || body.level === '' ? null : NEWSLETTER_LEVELS.find((l) => l === body.level);
+  const audience = readAudience(body.audience);
+  const sendApp = body.send_app === true;
+  const sendEmail = body.send_email === true;
+  if (!requestId || !titleVi || !titleEn || bodyVi === null || bodyEn === null || link === undefined || level === undefined || audience === null || (!sendApp && !sendEmail)) return null;
+  return { requestId, titleVi, titleEn, bodyVi, bodyEn, link, level, audience, sendApp, sendEmail };
+}
+
+/** Stores the announcement, writes its bell notices and sends its e-mail. Null when it could not even be stored. */
+export async function deliverAnnouncement(
+  supabase: NonNullable<FastifyInstance['supabase']>,
+  log: Log,
+  createdBy: string | null,
+  input: AnnouncementInput,
+): Promise<{ announcement: Row; warning?: 'email_not_configured' | 'email_failed' } | null> {
+  const { titleVi, titleEn, link, level, audience, sendApp, sendEmail } = input;
+  const created = await supabase
+    .from('announcements')
+    .insert({
+      client_request_id: input.requestId, created_by: createdBy,
+      title_vi: titleVi, title_en: titleEn, body_vi: input.bodyVi, body_en: input.bodyEn, link, level,
+      send_app: sendApp, send_email: sendEmail,
+    })
+    .select(COLUMNS)
+    .single();
+  if (created.error || !created.data) {
+    log.error({ err: created.error }, 'Failed to store an announcement');
+    return null;
+  }
+  const row = created.data as Row;
+
+  let appCount = 0;
+  if (sendApp) {
+    const ids = await recipientIds(supabase, audience, log);
+    for (let from = 0; from < ids.length; from += PAGE) {
+      const chunk = ids.slice(from, from + PAGE);
+      const { error: insertError } = await supabase.from('notifications').insert(
+        chunk.map((id) => ({ user_id: id, kind: 'announcement', title_en: titleEn, title_vi: titleVi, link: link ?? '/' })),
+      );
+      if (insertError) log.error({ err: insertError }, 'Failed to store announcement notifications');
+      else appCount += chunk.length;
+    }
+  }
+
+  let emailCount = 0;
+  let warning: 'email_not_configured' | 'email_failed' | undefined;
+  if (sendEmail) {
+    if (!emailConfigured()) warning = 'email_not_configured';
+    else {
+      const { data, error } = await supabase.from('newsletter_subscribers').select('id, email, locale, levels').eq('status', 'confirmed');
+      if (error) {
+        log.error({ err: error }, 'Failed to read subscribers for an announcement');
+        warning = 'email_failed';
+      } else {
+        const subscribers = ((data ?? []) as Subscriber[]).filter((s) => !level || s.levels.includes(level));
+        const emails = subscribers.map((s) => announcementEmail(row, s, newsletterLink('unsubscribe', s.id)));
+        if (await sendEmails(emails, log)) emailCount = emails.length;
+        else warning = 'email_failed';
+      }
+    }
+  }
+
+  const done = await supabase.from('announcements').update({ app_count: appCount, email_count: emailCount }).eq('id', row.id);
+  if (done.error) log.error({ err: done.error }, 'Failed to store announcement counts');
+  return { announcement: { ...row, app_count: appCount, email_count: emailCount }, ...(warning ? { warning } : {}) };
+}
+
 export const adminAnnouncementRoutes: FastifyPluginAsync = async (app) => {
   const caller = (request: FastifyRequest) => (request as FastifyRequest & { user?: { id?: string; app_metadata?: { app_role?: string } } }).user;
   const requireAdmin = async (request: FastifyRequest, reply: FastifyReply) => {
@@ -159,78 +240,54 @@ export const adminAnnouncementRoutes: FastifyPluginAsync = async (app) => {
   });
 
   app.post('/api/admin/announcements', { preHandler: [requireAdmin] }, async (request, reply) => {
-    const body = (request.body ?? {}) as Record<string, unknown>;
-    const requestId = typeof body.client_request_id === 'string' && ID.test(body.client_request_id) ? body.client_request_id : null;
-    const titleVi = text(body.title_vi, 120, 1);
-    const titleEn = text(body.title_en, 120, 1);
-    const bodyVi = text(body.body_vi ?? '', 1000);
-    const bodyEn = text(body.body_en ?? '', 1000);
-    const link = safeLink(body.link);
-    const level = body.level === undefined || body.level === null || body.level === '' ? null : NEWSLETTER_LEVELS.find((l) => l === body.level);
-    const audience = readAudience(body.audience);
-    const sendApp = body.send_app === true;
-    const sendEmail = body.send_email === true;
-    if (!requestId || !titleVi || !titleEn || bodyVi === null || bodyEn === null || link === undefined || level === undefined || audience === null || (!sendApp && !sendEmail)) {
-      return reply.code(400).send(INVALID);
-    }
+    const input = parseAnnouncement(request.body);
+    if (!input) return reply.code(400).send(INVALID);
     const supabase = app.supabase;
     if (!supabase) return reply.code(503).send(unavailable);
 
-    const earlier = await supabase.from('announcements').select(COLUMNS).eq('client_request_id', requestId).maybeSingle();
+    const earlier = await supabase.from('announcements').select(COLUMNS).eq('client_request_id', input.requestId).maybeSingle();
     if (earlier.error) {
       request.log.error({ err: earlier.error }, 'Failed to look up an announcement');
       return reply.code(500).send(unavailable);
     }
     if (earlier.data) return reply.send({ announcement: earlier.data, repeated: true });
 
-    const created = await supabase
-      .from('announcements')
-      .insert({
-        client_request_id: requestId, created_by: caller(request)?.id ?? null,
-        title_vi: titleVi, title_en: titleEn, body_vi: bodyVi, body_en: bodyEn, link, level,
-        send_app: sendApp, send_email: sendEmail,
-      })
-      .select(COLUMNS)
-      .single();
-    if (created.error || !created.data) {
-      request.log.error({ err: created.error }, 'Failed to store an announcement');
+    const sent = await deliverAnnouncement(supabase, request.log, caller(request)?.id ?? null, input);
+    if (!sent) return reply.code(500).send(unavailable);
+    return reply.code(201).send({ announcement: sent.announcement, ...(sent.warning ? { warning: sent.warning } : {}) });
+  });
+
+  // Take an announcement back: its notices leave every bell and the row leaves the history.
+  // Notices carry no announcement id, so they are matched by kind, titles and the minutes after sending.
+  // E-mails already sent cannot be recalled.
+  app.delete('/api/admin/announcements/:id', { preHandler: [requireAdmin] }, async (request, reply) => {
+    const supabase = app.supabase;
+    if (!supabase) return reply.code(503).send(unavailable);
+    const { id } = request.params as { id: string };
+    if (!ID.test(id)) return reply.code(400).send(INVALID);
+    const found = await supabase.from('announcements').select(COLUMNS).eq('id', id).maybeSingle();
+    if (found.error) {
+      request.log.error({ err: found.error }, 'Failed to look up an announcement');
       return reply.code(500).send(unavailable);
     }
-    const row = created.data as Row;
-
-    let appCount = 0;
-    if (sendApp && audience) {
-      const ids = await recipientIds(supabase, audience, request.log);
-      for (let from = 0; from < ids.length; from += PAGE) {
-        const chunk = ids.slice(from, from + PAGE);
-        const { error: insertError } = await supabase.from('notifications').insert(
-          chunk.map((id) => ({ user_id: id, kind: 'announcement', title_en: titleEn, title_vi: titleVi, link: link ?? '/' })),
-        );
-        if (insertError) request.log.error({ err: insertError }, 'Failed to store announcement notifications');
-        else appCount += chunk.length;
+    const row = found.data as Row | null;
+    if (!row) return reply.code(404).send(msg('Không tìm thấy thông báo.', 'Announcement not found.'));
+    if (row.send_app) {
+      const from = new Date(row.created_at);
+      const until = new Date(from.getTime() + 10 * 60 * 1000);
+      const removed = await supabase.from('notifications').delete()
+        .eq('kind', 'announcement').eq('title_en', row.title_en).eq('title_vi', row.title_vi)
+        .gte('created_at', from.toISOString()).lte('created_at', until.toISOString());
+      if (removed.error) {
+        request.log.error({ err: removed.error }, 'Failed to remove announcement notifications');
+        return reply.code(500).send(unavailable);
       }
     }
-
-    let emailCount = 0;
-    let warning: 'email_not_configured' | 'email_failed' | undefined;
-    if (sendEmail) {
-      if (!emailConfigured()) warning = 'email_not_configured';
-      else {
-        const { data, error } = await supabase.from('newsletter_subscribers').select('id, email, locale, levels').eq('status', 'confirmed');
-        if (error) {
-          request.log.error({ err: error }, 'Failed to read subscribers for an announcement');
-          warning = 'email_failed';
-        } else {
-          const audience = ((data ?? []) as Subscriber[]).filter((s) => !level || s.levels.includes(level));
-          const emails = audience.map((s) => announcementEmail(row, s, newsletterLink('unsubscribe', s.id)));
-          if (await sendEmails(emails, request.log)) emailCount = emails.length;
-          else warning = 'email_failed';
-        }
-      }
+    const gone = await supabase.from('announcements').delete().eq('id', id);
+    if (gone.error) {
+      request.log.error({ err: gone.error }, 'Failed to delete an announcement');
+      return reply.code(500).send(unavailable);
     }
-
-    const done = await supabase.from('announcements').update({ app_count: appCount, email_count: emailCount }).eq('id', row.id);
-    if (done.error) request.log.error({ err: done.error }, 'Failed to store announcement counts');
-    return reply.code(201).send({ announcement: { ...row, app_count: appCount, email_count: emailCount }, ...(warning ? { warning } : {}) });
+    return reply.code(204).send();
   });
 };

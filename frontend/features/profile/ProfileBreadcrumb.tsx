@@ -12,7 +12,7 @@ export function ProfileBreadcrumb({ current }: { current?: { en: string; vi: str
         <li>
           <Link
             href="/"
-            className="rounded text-ink-muted underline-offset-4 hover:text-ink hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
+            className="inline-flex min-h-11 items-center rounded text-ink-muted underline-offset-4 hover:text-ink hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
           >
             {t({ en: 'Home', vi: 'Trang chủ' })}
           </Link>
@@ -23,7 +23,7 @@ export function ProfileBreadcrumb({ current }: { current?: { en: string; vi: str
             <li>
               <Link
                 href="/profile"
-                className="rounded text-ink-muted underline-offset-4 hover:text-ink hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
+                className="inline-flex min-h-11 items-center rounded text-ink-muted underline-offset-4 hover:text-ink hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
               >
                 {t({ en: 'Profile', vi: 'Hồ sơ cá nhân' })}
               </Link>

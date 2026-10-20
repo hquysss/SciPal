@@ -29,8 +29,8 @@ describe('groupTopicsByGrade', () => {
     ];
     expect(groupTopicsByGrade(topics)).toEqual([
       { grade: 10, topics: [{ id: 't1', name_en: 'A', name_vi: 'A', sort_order: 1, lessons: [
-        { id: 'a', slug: 'a', title_en: 'a', title_vi: 'a', source: null, sort_order: 1 },
-        { id: 'b', slug: 'b', title_en: 'b', title_vi: 'b', source: null, sort_order: 2 },
+        { id: 'a', slug: 'a', title_en: 'a', title_vi: 'a', source: null, sort_order: 1, tags: [] },
+        { id: 'b', slug: 'b', title_en: 'b', title_vi: 'b', source: null, sort_order: 2, tags: [] },
       ] }] },
     ]);
   });
@@ -42,5 +42,11 @@ describe('groupTopicsByGrade', () => {
     const groups = groupTopicsByGrade(topics);
     expect(groups.map((g) => g.grade)).toEqual([10, 11]);
     expect(groups.map((g) => g.topics[0]!.lessons.map((l) => l.id))).toEqual([['y'], ['x']]);
+  });
+
+  it('puts the content tags on each lesson and drops unknown ones', () => {
+    const topics: TopicRow[] = [{ id: 't', name_en: 'T', name_vi: 'T', sort_order: 1, grade: 10, lessons: [lesson('a', 10, 1), lesson('b', 10, 2)] }];
+    const [group] = groupTopicsByGrade(topics, [{ lesson_id: 'a', tags: ['code', 'hot', 'mystery', 'sim'] }]);
+    expect(group!.topics[0]!.lessons.map((l) => l.tags)).toEqual([['hot', 'sim', 'code'], []]);
   });
 });

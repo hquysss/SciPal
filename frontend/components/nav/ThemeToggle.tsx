@@ -1,69 +1,78 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Monitor, Moon, Sun } from 'lucide-react';
 import { useLanguage } from '@scipal/hooks';
 import {
   applyShellTheme,
   DARK_MODE_ENABLED,
   getShell,
+  isShellDark,
   readThemePreference,
   safeLocalStorage,
   writeThemePreference,
-  type ThemePreference,
 } from '../../lib/theme/shellTheme'; // relative: frontend vitest has no @/ alias
-import {
-  NAV_TOGGLE_GROUP,
-  navToggleButton,
-  SURFACE_TOGGLE_GROUP,
-  surfaceToggleButton,
-} from './navToggleStyles';
-
-const OPTIONS: { value: ThemePreference; icon: typeof Sun; label: { en: string; vi: string } }[] = [
-  { value: 'system', icon: Monitor, label: { en: 'Match system', vi: 'Theo hệ thống' } },
-  { value: 'light', icon: Sun, label: { en: 'Light', vi: 'Sáng' } },
-  { value: 'dark', icon: Moon, label: { en: 'Dark', vi: 'Tối' } },
-];
+import styles from './bb8Toggle.module.css';
 
 interface ThemeToggleProps {
-  tone?: 'nav' | 'surface';
   enabled?: boolean;
 }
 
-export function ThemeToggle({ tone = 'nav', enabled = DARK_MODE_ENABLED }: ThemeToggleProps) {
+/** BB-8 switch: light or dark. "Match system" is the default until the first click. */
+export function ThemeToggle({ enabled = DARK_MODE_ENABLED }: ThemeToggleProps) {
   const { t } = useLanguage();
-  const [preference, setPreference] = useState<ThemePreference>('system');
+  const [dark, setDark] = useState(false);
 
   useEffect(() => {
-    setPreference(readThemePreference(safeLocalStorage()));
+    const pref = readThemePreference(safeLocalStorage());
+    const systemDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+    setDark(isShellDark(pref === 'system' ? undefined : pref, systemDark));
   }, []);
 
   if (!enabled) return null;
 
-  const choose = (next: ThemePreference) => {
-    setPreference(next);
+  const choose = (nextDark: boolean) => {
+    const next = nextDark ? 'dark' : 'light';
+    setDark(nextDark);
     writeThemePreference(safeLocalStorage(), next);
     applyShellTheme(getShell(), next);
   };
 
-  const group = tone === 'nav' ? NAV_TOGGLE_GROUP : SURFACE_TOGGLE_GROUP;
-  const button = tone === 'nav' ? navToggleButton : surfaceToggleButton;
-
   return (
-    <div role="group" aria-label={t({ en: 'Colour mode', vi: 'Chế độ màu' })} className={group}>
-      {OPTIONS.map(({ value, icon: Icon, label }) => (
-        <button
-          key={value}
-          type="button"
-          aria-label={t(label)}
-          title={t(label)}
-          aria-pressed={preference === value}
-          onClick={() => choose(value)}
-          className={button(preference === value)}
-        >
-          <Icon className="h-4 w-4" aria-hidden="true" />
-        </button>
-      ))}
-    </div>
+    <label className={styles.toggle}>
+      <input
+        type="checkbox"
+        role="switch"
+        className={styles.checkbox}
+        checked={dark}
+        aria-label={t({ en: 'Dark mode', vi: 'Chế độ tối' })}
+        onChange={(e) => choose(e.target.checked)}
+      />
+      <span className={styles.container} aria-hidden="true">
+        <span className={styles.scenery}>
+          {[1, 2, 3, 4, 5, 6, 7].map((n) => (
+            <span key={n} className={styles.star} />
+          ))}
+          <span className={styles.sun} />
+          <span className={styles.sunLow} />
+          <span className={styles.gomrassen} />
+          <span className={styles.hermes} />
+          <span className={styles.chenini} />
+          {[1, 2, 3].map((n) => (
+            <span key={n} className={styles.cloud} />
+          ))}
+        </span>
+        <span className={styles.bb8}>
+          <span className={styles.headContainer}>
+            <span className={styles.antenna} />
+            <span className={styles.antenna} />
+            <span className={styles.head} />
+          </span>
+          <span className={styles.body} />
+        </span>
+        <span className={styles.hidden}>
+          <span className={styles.shadow} />
+        </span>
+      </span>
+    </label>
   );
 }

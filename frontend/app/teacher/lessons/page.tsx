@@ -3,27 +3,17 @@ import Link from 'next/link';
 import { TeacherAreaTabs } from '@/components/nav/TeacherAreaTabs';
 import { getTeacherLessons, AuthoringApiError } from '@/features/authoring/authoringQueries';
 import { getAuthoringSession } from '@/features/authoring/serverAuth';
-import { LessonStatusBadge } from '@/features/authoring/lessonStatusBadge';
-import { LessonDeleteActions } from '@/features/authoring/LessonDeleteActions';
+import { LessonList, type LessonListItem } from '@/features/authoring/LessonList';
 import { PageBreadcrumb } from '@/components/nav/PageBreadcrumb';
 import { Alert } from '@/components/ui/alert';
 import { Bi } from '@/components/ui/bilingual';
 import { buttonVariants } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { Card } from '@/components/ui/card';
 import { EmptyState } from '@/components/ui/empty-state';
 import { pageTitle } from '@/lib/pageTitle';
 
 export const metadata: Metadata = { ...pageTitle('Lessons', 'Bài giảng') };
 
 export const dynamic = 'force-dynamic';
-
-function formatUpdatedAt(value: string) {
-  const date = new Date(value);
-  return Number.isNaN(date.getTime())
-    ? '—'
-    : new Intl.DateTimeFormat('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' }).format(date);
-}
 
 export default async function TeacherLessonsPage() {
   const { token, role } = await getAuthoringSession('/teacher/lessons');
@@ -104,55 +94,27 @@ export default async function TeacherLessonsPage() {
             </Link>
           </Alert>
         ) : lessons?.length ? (
-          <ul className="flex flex-col gap-3">
-            {lessons.map((item) => (
-              <li key={item.id}>
-                <Card className="flex-col gap-4 px-5 sm:flex-row sm:items-center sm:justify-between">
-                  <div className="flex min-w-0 flex-col gap-1.5">
-                    <div className="flex flex-wrap items-center gap-2 text-sm">
-                      <span className="font-semibold text-ink-muted">{item.subject_name_vi} · <Bi en={`Grade ${item.grade}`} vi={`Lớp ${item.grade}`} /></span>
-                      <LessonStatusBadge status={item.status} />
-                      <span className="text-ink-muted"><Bi en="Updated" vi="Cập nhật" /> {formatUpdatedAt(item.updated_at)}</span>
-                      {item.delete_requested_at && (
-                        <Badge variant="warning">
-                          {role === 'admin' ? <Bi en="Teacher asked to delete" vi="Giáo viên yêu cầu xóa" /> : <Bi en="Deletion requested" vi="Đã gửi yêu cầu xóa" />}
-                        </Badge>
-                      )}
-                    </div>
-                    <h3 className="text-base font-semibold text-ink">{item.title_vi}</h3>
-                    <p className="text-sm text-ink-muted">
-                      {item.title_en} · {item.block_count} <Bi en="blocks" vi="khối nội dung" /> · {item.topic_name_vi}
-                    </p>
-                  </div>
-
-                  <div className="flex flex-col items-start gap-2 sm:items-end">
-                  <div className="flex flex-wrap items-center gap-2">
-                    {item.status === 'published' ? (
-                      <Link href={`/${item.subject_slug}/${item.slug}`} className={buttonVariants({ variant: 'outline' })}>
-                        <Bi en="View as student" vi="Xem như học sinh" />
-                      </Link>
-                    ) : (
-                      <span className="text-sm text-ink-muted"><Bi en="Not published yet" vi="Chưa xuất bản" /></span>
-                    )}
-                    <Link href={`/teacher/lessons/${item.id}`} className={buttonVariants()}>
-                      <Bi en="Open in studio" vi="Mở trong studio" />
-                    </Link>
-                  </div>
-                  {(role === 'admin' || role === 'teacher') && (
-                    <LessonDeleteActions
-                      lessonId={item.id}
-                      title={item.title_vi}
-                      role={role}
-                      status={item.status}
-                      publishedAt={item.published_at}
-                      deleteRequestedAt={item.delete_requested_at ?? null}
-                    />
-                  )}
-                  </div>
-                </Card>
-              </li>
-            ))}
-          </ul>
+          <LessonList
+            lessons={lessons.map((item): LessonListItem => ({
+              id: item.id,
+              subject_id: item.subject_id,
+              subject_slug: item.subject_slug,
+              subject_name_en: item.subject_name_en,
+              subject_name_vi: item.subject_name_vi,
+              topic_name_en: item.topic_name_en,
+              topic_name_vi: item.topic_name_vi,
+              slug: item.slug,
+              title_vi: item.title_vi,
+              title_en: item.title_en,
+              grade: item.grade,
+              status: item.status,
+              published_at: item.published_at,
+              delete_requested_at: item.delete_requested_at,
+              updated_at: item.updated_at,
+              block_count: item.block_count,
+            }))}
+            role={role}
+          />
         ) : (
           <EmptyState
             title={role === 'admin' ? <Bi en="No lessons yet" vi="Chưa có bài giảng nào" /> : <Bi en="You have not written a lesson yet" vi="Bạn chưa soạn bài giảng nào" />}

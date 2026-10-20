@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import { redirect } from 'next/navigation';
 import { getAuthoringSession } from '@/features/authoring/serverAuth';
 import { SiteSwitches } from '@/features/admin-site/SiteSwitches';
+import { MaintenanceSchedule } from '@/features/admin-site/MaintenanceSchedule';
 import { PageBreadcrumb } from '@/components/nav/PageBreadcrumb';
 import { Bi } from '@/components/ui/bilingual';
 import { pageTitle } from '@/lib/pageTitle';
@@ -25,6 +26,7 @@ export default async function AdminSitePage() {
         </p>
       </header>
       <SiteSwitches />
+      <MaintenanceSchedule />
     </main>
   );
 }

@@ -48,6 +48,18 @@ describe('admin announcements', () => {
     await app.close();
   });
 
+  it('lets only an admin take an announcement back, clearing its bell notices', async () => {
+    const ID = '88888888-8888-4888-8888-888888888888';
+    expect((await (await build(teacher, {})).inject({ method: 'DELETE', url: `/api/admin/announcements/${ID}` })).statusCode).toBe(403);
+    const notifications = ok();
+    const app = await build(admin, { announcements: [ok({ ...stored, id: ID }), ok(null)], notifications });
+    expect((await app.inject({ method: 'DELETE', url: `/api/admin/announcements/${ID}` })).statusCode).toBe(204);
+    expect(notifications.eqCalls).toContainEqual(['kind', 'announcement']);
+    expect(notifications.eqCalls).toContainEqual(['title_en', 'New lessons']);
+    expect((await app.inject({ method: 'DELETE', url: '/api/admin/announcements/not-an-id' })).statusCode).toBe(400);
+    await app.close();
+  });
+
   it('writes a bell notification per account and e-mails confirmed subscribers with their unsubscribe link', async () => {
     const notifications = ok();
     const subscribers = ok([

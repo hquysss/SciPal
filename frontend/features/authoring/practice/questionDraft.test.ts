@@ -102,3 +102,50 @@ describe('exam question drafts', () => {
     expect(input).not.toHaveProperty('lesson_id');
   });
 });
+
+describe('code question drafts', () => {
+  const written = (): QuestionDraft => {
+    const draft = emptyQuestion('code');
+    draft.data.stem = { vi: 'Nhân đôi.', en: 'Double.' };
+    draft.data.input_spec = { vi: 'n', en: 'n' };
+    draft.data.output_spec = { vi: '2n', en: '2n' };
+    draft.data.tests = [{ input: '2\n', expected: '4\n', sample: true, points: 1 }];
+    return draft;
+  };
+
+  it('starts empty and is valid once the statement and a test are written', () => {
+    expect(draftProblem(emptyQuestion('code'), ctx)).not.toBeNull();
+    expect(draftProblem(written(), ctx)).toBeNull();
+  });
+
+  it('starts with one example test and the default limits', () => {
+    const { data } = emptyQuestion('code');
+    expect(data.tests).toEqual([{ input: '', expected: '', sample: true, points: 1 }]);
+    expect(data).toMatchObject({ time_limit_ms: 2000, memory_limit_mb: 128 });
+  });
+
+  it('sends the code fields, with only the starter code that was written', () => {
+    const draft = written();
+    draft.data.starter = { python: 'n = int(input())\n', cpp: '  ' };
+    expect(questionInput(draft, ctx).data).toMatchObject({
+      input_spec: { vi: 'n', en: 'n' },
+      time_limit_ms: 2000,
+      tests: [{ input: '2\n', expected: '4\n', sample: true, points: 1 }],
+      starter: { python: 'n = int(input())\n' },
+    });
+  });
+
+  it('asks for an example test', () => {
+    const draft = written();
+    draft.data.tests = [{ input: '2\n', expected: '4\n', sample: false, points: 1 }];
+    expect(draftProblem(draft, ctx)).not.toBeNull();
+  });
+
+  it('is for lesson practice only, and drops its tests when the type changes', () => {
+    expect(questionTypesFor('practice')).toContain('code');
+    expect(questionTypesFor('exam')).not.toContain('code');
+    const mc = switchQuestionType(written(), 'mc');
+    expect(mc.data).not.toHaveProperty('tests');
+    expect(mc.data.stem).toEqual({ vi: 'Nhân đôi.', en: 'Double.' });
+  });
+});

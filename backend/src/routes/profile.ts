@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import type { FastifyPluginAsync, FastifyReply, FastifyRequest } from 'fastify';
+import { orderPair } from './friends.js';
 import { sniffImageType } from './media.js';
 
 // A signed-in user's own name, avatar and cover photo. Pictures go to the R2 media store under
@@ -10,6 +11,9 @@ export const PROFILE_IMAGE_LIMITS = { avatar: 1024 * 1024, cover: 2 * 1024 * 102
 type Kind = keyof typeof PROFILE_IMAGE_LIMITS;
 const COLUMN = { avatar: 'avatar_url', cover: 'cover_url' } as const;
 const NAME_MAX = 50;
+const SCHOOL_MAX = 100;
+const BIO_MAX = 250;
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const MIME = { png: 'image/png', jpeg: 'image/jpeg', webp: 'image/webp' } as const;
 
 const unauthorized = { error: 'Hãy đăng nhập lại.', error_en: 'Sign in again.' };
@@ -139,5 +143,99 @@ export const profileRoutes: FastifyPluginAsync = async (app) => {
     await removeQuietly(request, ownKey((current as Record<string, string | null> | null)?.[COLUMN[kind]], id));
     if (kind === 'avatar') await mirrorAvatar(request, id, null);
     return reply.code(204).send();
+  });
+
+  // The "about" part of the profile: grade, school and bio, each of school and bio hidden from others on request.
+  app.patch('/api/profile/about', async (request, reply) => {
+    const id = userId(request);
+    if (!id) return reply.code(401).send(unauthorized);
+    const b = (request.body ?? {}) as Record<string, unknown>;
+    const text = (v: unknown, max: number): string | null | undefined =>
+      v === null ? null : typeof v === 'string' && v.trim().length <= max ? v.trim() || null : undefined;
+    const grade = b.grade === null || b.grade === 10 || b.grade === 11 || b.grade === 12 ? b.grade : undefined;
+    const school = text(b.school, SCHOOL_MAX);
+    const bio = text(b.bio, BIO_MAX);
+    if (grade === undefined || school === undefined || bio === undefined || typeof b.show_school !== 'boolean' || typeof b.show_bio !== 'boolean') {
+      return reply.code(400).send({ error: 'Thông tin chưa hợp lệ.', error_en: 'Some details are not valid.' });
+    }
+    const supabase = app.supabase;
+    if (!supabase) return reply.code(503).send({ error: 'Dịch vụ chưa sẵn sàng.', error_en: 'The service is not available.' });
+    const { error } = await supabase.from('profiles')
+      .update({ grade, school, bio, show_school: b.show_school, show_bio: b.show_bio }).eq('id', id).select('id').maybeSingle();
+    if (error) {
+      request.log.error({ err: error }, 'Profile about update failed');
+      return reply.code(500).send(notSaved);
+    }
+    return reply.send({});
+  });
+
+  // Anyone signed in can open a profile ("me" is the caller). Hidden school or bio are left out unless it is your own.
+  app.get('/api/profile/:user_id', async (request, reply) => {
+    const me = userId(request);
+    if (!me) return reply.code(401).send(unauthorized);
+    const param = (request.params as { user_id: string }).user_id;
+    const target = param === 'me' ? me : param;
+    if (!UUID_PATTERN.test(target)) return reply.code(404).send({ error: 'Không tìm thấy.', error_en: 'Not found.' });
+    const supabase = app.supabase;
+    if (!supabase) return reply.code(503).send({ error: 'Dịch vụ chưa sẵn sàng.', error_en: 'The service is not available.' });
+
+    const profile = await supabase.from('profiles')
+      .select('id, display_name, avatar_url, cover_url, role, grade, school, bio, show_school, show_bio').eq('id', target).maybeSingle();
+    if (profile.error) return reply.code(500).send(notSaved);
+    const p = profile.data as {
+      id: string; display_name: string | null; avatar_url: string | null; cover_url: string | null; role: string | null;
+      grade: number | null; school: string | null; bio: string | null; show_school: boolean; show_bio: boolean;
+    } | null;
+    if (!p) return reply.code(404).send({ error: 'Không tìm thấy.', error_en: 'Not found.' });
+    const isMe = target === me;
+
+    let relation: 'me' | 'none' | 'friend' | 'pending_out' | 'pending_in' | 'blocked' = 'me';
+    let friendshipId: string | null = null;
+    if (!isMe) {
+      const [a, b] = orderPair(me, target);
+      const [pair, blocks] = await Promise.all([
+        supabase.from('friendships').select('id, requested_by, status').eq('user_a', a).eq('user_b', b).maybeSingle(),
+        supabase.from('chat_blocks').select('blocker_id')
+          .or(`and(blocker_id.eq.${me},blocked_id.eq.${target}),and(blocker_id.eq.${target},blocked_id.eq.${me})`).limit(1),
+      ]);
+      if (pair.error || blocks.error) return reply.code(500).send(notSaved);
+      const row = pair.data as { id: string; requested_by: string; status: string } | null;
+      friendshipId = row?.id ?? null;
+      relation = ((blocks.data as unknown[] | null) ?? []).length > 0 ? 'blocked'
+        : !row ? 'none' : row.status === 'accepted' ? 'friend' : row.requested_by === me ? 'pending_out' : 'pending_in';
+    }
+
+    const streaks = await supabase.from('streaks').select('current_streak, longest_streak').eq('user_id', target);
+    if (streaks.error) return reply.code(500).send(notSaved);
+    const rows = (streaks.data ?? []) as Array<{ current_streak: number; longest_streak: number }>;
+
+    // All-time XP rank; a failed lookup only leaves it out, the profile still opens.
+    let rank: { position: number; xp: number; week: number | null } | null = null;
+    try {
+      const ranked = await supabase.rpc('xp_rank_of', { p_user: target });
+      const hit = ((ranked.data as Array<{ rank: number | string; xp: number | string; week_rank?: number | string | null }> | null) ?? [])[0];
+      if (ranked.error) request.log.warn({ err: ranked.error }, 'XP rank lookup failed');
+      else if (hit) rank = { position: Number(hit.rank), xp: Number(hit.xp), week: hit.week_rank == null ? null : Number(hit.week_rank) };
+    } catch (err) {
+      request.log.warn({ err }, 'XP rank lookup failed');
+    }
+
+    return reply.send({
+      user_id: p.id,
+      display_name: p.display_name,
+      avatar_url: p.avatar_url,
+      cover_url: p.cover_url,
+      role: p.role,
+      grade: p.grade,
+      school: isMe || p.show_school ? p.school : null,
+      bio: isMe || p.show_bio ? p.bio : null,
+      show_school: isMe ? p.show_school : null,
+      show_bio: isMe ? p.show_bio : null,
+      is_me: isMe,
+      relation,
+      friendship_id: friendshipId,
+      streak: { current: Math.max(0, ...rows.map((r) => r.current_streak)), best: Math.max(0, ...rows.map((r) => r.longest_streak)) },
+      rank,
+    });
   });
 };

@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 
 const session = vi.hoisted(() => ({ token: null as string | null }));
 vi.mock('../../lib/session', () => ({ getAccessToken: async () => session.token }));
-import { checkPractice, fetchLessonPractice } from './practiceApi';
+import { checkPractice, fetchLessonPractice, runCode, submitCode } from './practiceApi';
 
 afterEach(() => {
   vi.restoreAllMocks();
@@ -34,5 +34,57 @@ describe('practice API', () => {
     vi.spyOn(globalThis, 'fetch').mockRejectedValueOnce(new Error('offline'));
     const offline = await fetchLessonPractice('lesson-1');
     expect(offline.ok).toBe(false);
+  });
+});
+
+describe('code API', () => {
+  const code = { language: 'python' as const, source: 'print(1)' };
+
+  it('asks a visitor to sign in without calling the server', async () => {
+    const fetchSpy = vi.spyOn(globalThis, 'fetch');
+    const res = await submitCode('q1', code);
+    expect(res).toMatchObject({ ok: false, signIn: true });
+    expect(fetchSpy).not.toHaveBeenCalled();
+  });
+
+  it('submits the code with the token and returns the verdicts', async () => {
+    session.token = 'tok';
+    const result = { correct: true, code: { status: 'AC', tests: [] } };
+    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response(JSON.stringify(result), { status: 200 }));
+    expect(await submitCode('q1', code)).toEqual({ ok: true, result });
+    const [url, init] = fetchSpy.mock.calls[0]!;
+    expect(String(url)).toMatch(/\/api\/practice\/code\/submit$/);
+    expect(JSON.parse(String(init!.body))).toEqual({ question_id: 'q1', language: 'python', source: 'print(1)' });
+    expect((init!.headers as Record<string, string>).Authorization).toBe('Bearer tok');
+  });
+
+  it('passes on live progress from a streamed verdict, even split across chunks', async () => {
+    session.token = 'tok';
+    const result = { correct: false, code: { status: 'WA', tests: [] } };
+    const text = [{ type: 'start', total: 2 }, { type: 'test', index: 1, verdict: 'WA', time_ms: 4 }, { type: 'result', ...result }].map((l) => JSON.stringify(l)).join('\n');
+    const encoder = new TextEncoder();
+    const body = new ReadableStream({
+      start(c) {
+        c.enqueue(encoder.encode(text.slice(0, 30)));
+        c.enqueue(encoder.encode(text.slice(30)));
+        c.close();
+      },
+    });
+    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response(body, { status: 200, headers: { 'content-type': 'application/x-ndjson; charset=utf-8' } }));
+    const seen: unknown[] = [];
+    expect(await submitCode('q1', code, (p) => seen.push(p))).toEqual({ ok: true, result });
+    expect(seen).toEqual([{ type: 'start', total: 2 }, { type: 'test', index: 1, verdict: 'WA', time_ms: 4 }]);
+    expect((fetchSpy.mock.calls[0]![1]!.headers as Record<string, string>).Accept).toContain('application/x-ndjson');
+    vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(new Response('{"type":"start","total":1}\n{"type":"error","error":"Thử lại sau.","error_en":"Later."}\n', { status: 200, headers: { 'content-type': 'application/x-ndjson' } }));
+    expect(await submitCode('q1', code, () => {})).toEqual({ ok: false, signIn: false, error: { vi: 'Thử lại sau.', en: 'Later.' } });
+  });
+
+  it('runs the code on the typed input and keeps the server message when it refuses', async () => {
+    session.token = 'tok';
+    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(new Response(JSON.stringify({ status: 'AC', stdout: '6\n', stderr: '', time_ms: 5, memory_kb: 100 }), { status: 200 }));
+    expect(await runCode('q1', code, '3\n')).toMatchObject({ ok: true, run: { stdout: '6\n' } });
+    expect(JSON.parse(String(fetchSpy.mock.calls[0]![1]!.body))).toMatchObject({ stdin: '3\n' });
+    vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(new Response(JSON.stringify({ error: 'Đợi một phút.', error_en: 'Wait a minute.' }), { status: 429 }));
+    expect(await runCode('q1', code, '')).toEqual({ ok: false, signIn: false, error: { vi: 'Đợi một phút.', en: 'Wait a minute.' } });
   });
 });

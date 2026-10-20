@@ -1,0 +1,57 @@
+/* The weekly champion: a trophy over a slowly turning eight-point star. Hover tilts the star back and the
+   trophy wobbles. Colours come from the level theme (sun for the star, coral for the cup). */
+.trophy {
+  --size: 3rem;
+  position: relative;
+  display: inline-grid;
+  place-items: center;
+  width: var(--size);
+  height: var(--size);
+  flex-shrink: 0;
+  perspective: calc(var(--size) * 4);
+}
+
+.star {
+  position: absolute;
+  inset: 18%;
+  transition: transform 0.7s ease-in-out;
+}
+.star::before,
+.star::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: var(--sun);
+  animation: turn 3s ease-in-out infinite;
+}
+.star::after { transform: rotate(45deg); animation-name: turn-offset; }
+
+.cup {
+  position: relative;
+  z-index: 1;
+  width: 78%;
+  height: 78%;
+  fill: color-mix(in srgb, var(--coral) 80%, var(--ink));
+}
+
+.trophy:hover .star { transform: rotateX(60deg) translateY(18%); }
+.trophy:hover .cup { animation: wobble 1s linear infinite; }
+
+@keyframes turn {
+  0%, 100% { transform: rotate(0deg); }
+  50% { transform: rotate(340deg); }
+}
+@keyframes turn-offset {
+  0%, 100% { transform: rotate(45deg); }
+  50% { transform: rotate(385deg); }
+}
+@keyframes wobble {
+  25% { transform: rotate(-6deg); }
+  75% { transform: rotate(6deg); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .star::before, .star::after, .trophy:hover .cup { animation: none; }
+  .star { transition: none; }
+  .trophy:hover .star { transform: none; }
+}

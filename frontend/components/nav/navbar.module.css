@@ -12,7 +12,7 @@
   display: none;
 }
 
-@media (min-width: 1536px) {
+@media (min-width: 1280px) {
   .header {
     padding-inline: 3.75rem;
   }
@@ -20,6 +20,7 @@
   /* Folds the bar up out of the way; the toggle stays in the top-right corner to bring it back. */
   .barToggle {
     position: fixed;
+    overflow: visible;
     z-index: 60;
     top: 1.25rem;
     right: 0.75rem;
@@ -223,7 +224,7 @@
 .dropdownEnd {
   left: auto;
   right: 0;
-  width: 15rem;
+  width: 18rem;
 }
 
 .menuItem {
@@ -239,8 +240,43 @@
   text-align: left;
   transition: background-color 160ms ease-out;
 }
-.menuItem:hover,
-.menuItem[aria-current='page'] { background: var(--surface-sunken); }
+.menuItem:hover { background: var(--surface-sunken); }
+.menuItem > svg { flex-shrink: 0; color: var(--ink-muted); transition: color 160ms ease-out, transform 160ms ease-out; }
+.menuItem:hover > svg { transform: translateX(1px) scale(1.08); }
+/* The page you are on: tinted row, accent bar on the left, accent icon. */
+.menuItem[aria-current='page'] {
+  background: color-mix(in srgb, var(--action) 10%, var(--surface));
+  color: var(--action);
+  font-weight: 700;
+  box-shadow: inset 3px 0 0 var(--action);
+}
+.menuItem[aria-current='page'] > svg { color: var(--action); }
+.menuDanger > svg { color: var(--danger); }
+
+.menuHeader {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin: -0.375rem -0.375rem 0.375rem;
+  padding: 0.875rem 1rem;
+  border-radius: 0.875rem 0.875rem 0 0;
+  border-bottom: 1px solid var(--line);
+  background: var(--surface-sunken);
+}
+.menuAvatar {
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  width: 2.5rem;
+  height: 2.5rem;
+  overflow: hidden;
+  border-radius: 9999px;
+  background: var(--surface);
+  color: var(--ink);
+  font-weight: 800;
+}
+.menuGroup { padding-block: 0.25rem; }
+.menuGroup + .menuGroup { border-top: 1px solid var(--line); }
 .menuItem:focus-visible { outline: 2px solid var(--focus); outline-offset: -2px; }
 .menuItem:disabled { cursor: wait; opacity: 0.6; }
 .menuDanger { color: var(--danger); }
@@ -429,3 +465,20 @@
 @supports not (color: light-dark(white, black)) {
   .bar { background: var(--nav); }
 }
+
+/* The landing hero folds the bar away while its photo is on screen (see useHeroNav). */
+:global([data-app-shell][data-hero-nav='hidden']) .header .bar {
+  visibility: hidden;
+  opacity: 0;
+  translate: 0 -130%;
+  transition: translate 420ms cubic-bezier(0.16, 1, 0.3, 1), opacity 300ms ease, visibility 0s linear 420ms;
+}
+
+/* Its own fold toggle would sit under the hero's one. */
+:global([data-app-shell][data-hero-nav='hidden']) .header .barToggle {
+  display: none;
+}
+
+/* Category menus carry a line under each entry, so they are wider than the account menu. */
+.dropdownWide { width: 17rem; }
+

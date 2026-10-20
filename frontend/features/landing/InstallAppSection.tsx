@@ -222,7 +222,7 @@ export function InstallAppSection() {
             ? t({ vi: 'Cài SciPal cho Windows từ Microsoft Store, hoặc cài thẳng từ trình duyệt. Miễn phí.', en: 'Get SciPal for Windows from the Microsoft Store, or install it straight from your browser. Free.' })
             : t({
                 vi: 'Cài lên điện thoại, máy tính bảng hay máy tính chỉ trong vài giây: cài thẳng từ trình duyệt, không tốn phí.',
-                en: 'Install it on a phone, tablet or computer in seconds: no app store, no cost.',
+                en: 'Install it on a phone, tablet or computer in seconds, straight from the browser, for free.',
               })}
         </p>
         <ul className={styles.perks}>

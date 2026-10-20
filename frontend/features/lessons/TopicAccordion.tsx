@@ -1,7 +1,8 @@
 'use client';
 import { useState } from 'react';
 import Link from 'next/link';
-import { ChevronDown, ChevronRight } from 'lucide-react';
+import { ChevronDown, ChevronRight, Code2, Dumbbell, FlaskConical, Flame, PlayCircle, type LucideIcon } from 'lucide-react';
+import type { LessonTag } from './groupTopics';
 import { useLanguage } from '@scipal/hooks';
 
 interface Lesson {
@@ -11,13 +12,55 @@ interface Lesson {
   title_vi: string;
   source?: string | null;
   sort_order: number;
+  tags?: LessonTag[];
+}
+
+// Solid chips: each colour is mixed toward --ink, so the text (--surface) reads in light and dark alike.
+const TAG_LOOK: Record<LessonTag, { label: { en: string; vi: string }; icon: LucideIcon; tone: string }> = {
+  hot: { label: { en: 'Hot', vi: 'Hot' }, icon: Flame, tone: 'bg-[color-mix(in_srgb,var(--warning)_70%,var(--ink))] text-surface' },
+  sim: { label: { en: 'Simulation', vi: 'Mô phỏng' }, icon: FlaskConical, tone: 'bg-[color-mix(in_srgb,var(--action)_70%,var(--ink))] text-surface' },
+  video: { label: { en: 'Video', vi: 'Video' }, icon: PlayCircle, tone: 'bg-ink text-surface' },
+  practice: { label: { en: 'Practice', vi: 'Luyện tập' }, icon: Dumbbell, tone: 'bg-[color-mix(in_srgb,var(--success)_70%,var(--ink))] text-surface' },
+  code: { label: { en: 'Code', vi: 'Code' }, icon: Code2, tone: 'bg-ink text-surface' },
+};
+
+function LessonTags({ tags, t }: { tags: LessonTag[]; t: (text: { en: string; vi: string }) => string }) {
+  return (
+    <span className="mt-1 flex flex-wrap gap-1.5">
+      {tags.map((tag) => {
+        const { label, icon: Icon, tone } = TAG_LOOK[tag];
+        return (
+          <span key={tag} className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[0.6875rem] font-bold leading-4 ${tone}`}>
+            <Icon aria-hidden="true" className="h-3 w-3" />
+            {t(label)}
+          </span>
+        );
+      })}
+    </span>
+  );
 }
 
 interface Topic {
   id: string;
   name_en: string;
   name_vi: string;
+  sort_order?: number;
   lessons: Lesson[];
+}
+
+function lessonDisplayNumber(lesson: Lesson, fallbackIndex: number): number {
+  const match = lesson.title_vi.match(/^(?:Bài|Lesson)\s*(\d+)/i) ?? lesson.title_en.match(/^(?:Bài|Lesson)\s*(\d+)/i);
+  if (match) {
+    const parsed = parseInt(match[1], 10);
+    if (!Number.isNaN(parsed) && parsed > 0) return parsed;
+  }
+  if (lesson.sort_order && lesson.sort_order > 0) return lesson.sort_order;
+  return fallbackIndex;
+}
+
+export function cleanLessonTitle(title: string): string {
+  if (!title) return '';
+  return title.replace(/^(?:(?:Bài|Lesson)\s*\d+|\d+)[\s.:-]+\s*/i, '').trim();
 }
 
 /**
@@ -34,6 +77,7 @@ export function TopicAccordion({ topics, subjectSlug }: { topics: Topic[]; subje
       {topics.map((topic, topicIdx) => {
         const isOpen = open === topic.id;
         const panelId = `topic-${topic.id}`;
+        const topicNumber = topic.sort_order && topic.sort_order > 0 ? topic.sort_order : topicIdx + 1;
         return (
           <section key={topic.id} className="overflow-hidden rounded-xl border border-line bg-surface">
             <h3>
@@ -45,11 +89,11 @@ export function TopicAccordion({ topics, subjectSlug }: { topics: Topic[]; subje
                 aria-controls={panelId}
               >
                 <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-action text-sm font-bold text-action-ink">
-                  {topicIdx + 1}
+                  {topicNumber}
                 </span>
                 <span className="flex-1">
                   <span className="block text-xs font-semibold uppercase tracking-widest text-action">
-                    {t({ en: 'Topic', vi: 'Chủ đề' })} {topicIdx + 1}
+                    {t({ en: 'Topic', vi: 'Chủ đề' })} {topicNumber}
                   </span>
                   <span className="block text-lg font-bold leading-snug text-ink">{lang === 'en' ? topic.name_en : topic.name_vi}</span>
                   <span className="block text-sm text-ink-muted">
@@ -80,19 +124,26 @@ export function TopicAccordion({ topics, subjectSlug }: { topics: Topic[]; subje
                     >
                       <Link
                         href={`/${subjectSlug}/${lesson.slug}`}
-                        className="flex min-h-11 items-center gap-3 rounded-lg px-3 py-2.5 transition-colors hover:bg-surface-sunken focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-focus"
+                        className="group flex min-h-12 items-center gap-3.5 rounded-xl px-3 py-2.5 transition-colors hover:bg-surface-sunken focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-focus"
                       >
-                        <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md border border-line text-xs font-semibold text-ink-muted">{lessonIdx + 1}</span>
-                        <span className="flex-1">
-                          <span className="block text-sm font-semibold text-ink">{lang === 'en' ? lesson.title_en : lesson.title_vi}</span>
-                          <span className="block text-sm text-ink-muted">{lang === 'en' ? lesson.title_vi : lesson.title_en}</span>
+                        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-action/30 bg-surface text-xs font-semibold tabular-nums text-ink transition-colors group-hover:border-action/60">
+                          {lessonDisplayNumber(lesson, lessonIdx + 1)}
+                        </span>
+                        <span className="flex flex-1 flex-col justify-center">
+                          <span className="block text-sm font-semibold leading-tight text-ink">
+                            {cleanLessonTitle(lang === 'en' ? lesson.title_en : lesson.title_vi)}
+                          </span>
+                          <span className="block text-xs leading-tight text-ink-muted">
+                            {cleanLessonTitle(lang === 'en' ? lesson.title_vi : lesson.title_en)}
+                          </span>
+                          {!!lesson.tags?.length && <LessonTags tags={lesson.tags} t={t} />}
                           {lesson.source && (
-                            <span className="block text-xs italic text-ink-muted">
+                            <span className="mt-0.5 block text-xs italic text-ink-muted">
                               {lang === 'en' ? 'Source' : 'Nguồn'}: {lesson.source}
                             </span>
                           )}
                         </span>
-                        <ChevronRight aria-hidden="true" className="h-4 w-4 shrink-0 text-action" />
+                        <ChevronRight aria-hidden="true" className="h-4 w-4 shrink-0 text-action transition-transform duration-200 group-hover:translate-x-0.5" />
                       </Link>
                     </li>
                   ))}

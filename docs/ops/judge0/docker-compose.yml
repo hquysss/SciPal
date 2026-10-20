@@ -1,0 +1,36 @@
+# Judge0 CE for SciPal's programming practice questions. Run on a Linux VM of its own, behind HTTPS
+# (see README.md); the backend (Vercel) calls it with JUDGE0_URL and JUDGE0_TOKEN.
+# Judge0 1.13.x sandboxes code with isolate, which needs `privileged` and cgroup v1.
+services:
+  server:
+    image: judge0/judge0:1.13.1
+    env_file: judge0.conf
+    ports:
+      - "127.0.0.1:2358:2358"
+    privileged: true
+    restart: always
+    depends_on: [db, redis]
+
+  workers:
+    image: judge0/judge0:1.13.1
+    command: ["./scripts/workers"]
+    env_file: judge0.conf
+    privileged: true
+    restart: always
+    depends_on: [db, redis]
+
+  db:
+    image: postgres:16.2
+    env_file: judge0.conf
+    volumes:
+      - judge0-data:/var/lib/postgresql/data/
+    restart: always
+
+  redis:
+    image: redis:7.2.4
+    command: ["bash", "-c", 'docker-entrypoint.sh --appendonly no --requirepass "$$REDIS_PASSWORD"']
+    env_file: judge0.conf
+    restart: always
+
+volumes:
+  judge0-data:

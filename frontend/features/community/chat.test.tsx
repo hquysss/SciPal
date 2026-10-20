@@ -2,7 +2,7 @@
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ChatPaneView } from './ChatPane';
-import { mergeMessages } from './useChatRoom';
+import { groupReactions, mergeMessages } from './useChatRoom';
 import type { ChatMessage } from './chatApi';
 
 vi.mock('@scipal/hooks', () => ({ useLanguage: () => ({ lang: 'vi', t: (o: { vi: string }) => o.vi }) }));
@@ -30,13 +30,36 @@ describe('mergeMessages', () => {
 const handlers = () => ({ onSend: vi.fn().mockResolvedValue(true), onReport: vi.fn(), onBlock: vi.fn() });
 
 describe('ChatPaneView', () => {
-  it('is a log; others show their name and get Chặn, your own do not, and no message has its own Báo cáo', () => {
-    render(<ChatPaneView messages={[msg('1', 'me', '2026-10-12T10:00:00Z'), msg('2', 'them', '2026-10-12T10:00:01Z')]} meId="me" {...handlers()} />);
+  it('is a log; others show their name and their message menu reports that one message', () => {
+    const onReportMessage = vi.fn();
+    render(<ChatPaneView messages={[msg('1', 'me', '2026-10-12T10:00:00Z'), msg('2', 'them', '2026-10-12T10:00:01Z')]} meId="me" {...handlers()} onReportMessage={onReportMessage} />);
     expect(screen.getByRole('log')).toBeTruthy();
     expect(screen.getByText('Tên them')).toBeTruthy();
     expect(screen.queryByText('Tên me')).toBeNull();
-    expect(screen.queryByRole('button', { name: 'Báo cáo' })).toBeNull();
-    expect(screen.getAllByRole('button', { name: 'Chặn' })).toHaveLength(1);
+    // Your own message has no menu without onRecall; theirs offers "Báo cáo" behind Thêm, not Chặn.
+    expect(screen.getAllByRole('button', { name: 'Thêm' })).toHaveLength(1);
+    fireEvent.click(screen.getByRole('button', { name: 'Thêm' }));
+    expect(screen.queryByRole('menuitem', { name: 'Chặn' })).toBeNull();
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Báo cáo' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Spam' }));
+    expect(onReportMessage).toHaveBeenCalledWith('2', 'Spam');
+  });
+
+  it("opens a sender's menu from the name: profile, message a friend or add a stranger, block", () => {
+    const onOpenDm = vi.fn();
+    const onAddFriend = vi.fn();
+    const { unmount } = render(<ChatPaneView messages={[msg('2', 'them', '2026-10-12T10:00:01Z')]} meId="me" {...handlers()} friendships={{ them: 'f1' }} onOpenDm={onOpenDm} onAddFriend={onAddFriend} />);
+    fireEvent.click(screen.getAllByRole('button', { name: 'Tên them' })[0]);
+    expect(screen.getByRole('menuitem', { name: 'Xem hồ sơ' }).getAttribute('href')).toBe('/community/u/them');
+    expect(screen.queryByRole('menuitem', { name: 'Kết bạn' })).toBeNull();
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Nhắn tin' }));
+    expect(onOpenDm).toHaveBeenCalledWith('f1');
+    unmount();
+    render(<ChatPaneView messages={[msg('2', 'them', '2026-10-12T10:00:01Z')]} meId="me" {...handlers()} onAddFriend={onAddFriend} />);
+    fireEvent.click(screen.getAllByRole('button', { name: 'Tên them' })[0]);
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Kết bạn' }));
+    expect(onAddFriend).toHaveBeenCalledWith('them');
+    expect(screen.getByRole('menuitem', { name: 'Đã gửi lời mời' })).toBeTruthy();
   });
 
   it('sends the trimmed text on submit, keeps the box locked while empty, and clears after sending', async () => {
@@ -48,7 +71,7 @@ describe('ChatPaneView', () => {
     fireEvent.change(box, { target: { value: '  chào cả nhà  ' } });
     expect(send.disabled).toBe(false);
     fireEvent.submit(box.closest('form')!);
-    expect(h.onSend).toHaveBeenCalledWith('chào cả nhà');
+    expect(h.onSend).toHaveBeenCalledWith('chào cả nhà', undefined);
     await waitFor(() => expect(box.value).toBe(''));
   });
 
@@ -75,10 +98,24 @@ describe('ChatPaneView', () => {
   it('blocks only on the second click, since there is no undo', () => {
     const h = handlers();
     render(<ChatPaneView messages={[msg('2', 'them', '2026-10-12T10:00:01Z')]} meId="me" {...h} />);
-    fireEvent.click(screen.getByRole('button', { name: 'Chặn' }));
+    fireEvent.click(screen.getAllByRole('button', { name: 'Tên them' })[0]);
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Chặn' }));
     expect(h.onBlock).not.toHaveBeenCalled();
-    fireEvent.click(screen.getByRole('button', { name: /Chắc chắn chặn/ }));
+    fireEvent.click(screen.getByRole('menuitem', { name: /Chắc chắn chặn/ }));
     expect(h.onBlock).toHaveBeenCalledWith('them');
+  });
+
+  it('unsends your own message after confirming, and shows a recalled one as a note without actions', () => {
+    const onRecall = vi.fn();
+    const recalled = { ...msg('3', 'them', '2026-10-12T10:00:02Z', ''), recalled_at: '2026-10-12T10:01:00Z' };
+    render(<ChatPaneView messages={[msg('1', 'me', '2026-10-12T10:00:00Z'), recalled]} meId="me" {...handlers()} onRecall={onRecall} />);
+    expect(screen.getByText('Tên them đã thu hồi một tin nhắn')).toBeTruthy();
+    expect(screen.getAllByRole('button', { name: 'Trả lời' })).toHaveLength(1);
+    fireEvent.click(screen.getByRole('button', { name: 'Thêm' }));
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Thu hồi' }));
+    expect(onRecall).not.toHaveBeenCalled();
+    fireEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Thu hồi' }));
+    expect(onRecall).toHaveBeenCalledWith('1');
   });
 });
 
@@ -192,5 +229,88 @@ describe('messenger layout', () => {
     await act(async () => { finish(true); });
     expect((screen.getByRole('button', { name: 'Gửi' }) as HTMLButtonElement).disabled).toBe(true); // box is empty again
     expect(box.value).toBe('');
+  });
+});
+
+describe('sender header', () => {
+  it('shows the sender avatar, name and role beside the first message, and the initial until the lookup arrives', () => {
+    const run = [msg('1', 'them', '2026-10-12T03:00:00Z')];
+    const senders = { them: { user_id: 'them', avatar_url: 'https://m.test/a.webp', role: 'teacher' as const } };
+    const { container, rerender } = render(<ChatPaneView messages={run} meId="me" {...handlers()} showNames />);
+    expect(screen.getByText('Tên them')).toBeTruthy();
+    expect(screen.queryByText('Giáo viên')).toBeNull();
+    expect(container.querySelector('img')).toBeNull();
+    rerender(<ChatPaneView messages={run} meId="me" {...handlers()} showNames senders={senders} />);
+    expect(screen.getByText('Giáo viên')).toBeTruthy();
+    expect(container.querySelector('img')?.getAttribute('src')).toBe('https://m.test/a.webp');
+    rerender(<ChatPaneView messages={run} meId="me" {...handlers()} showNames senders={{ them: { ...senders.them, role: 'student' } }} />);
+    expect(screen.getByText('Học sinh')).toBeTruthy();
+  });
+
+  it('shows reactions as bare emoji under the message, with the count revealed on hover', () => {
+    render(<ChatPaneView messages={[msg('1', 'them', '2026-10-12T03:00:00Z')]} meId="me" {...handlers()} onReact={vi.fn()} reactions={{ '1': [{ emoji: '🔥', count: 2, mine: false }] }} />);
+    const chip = screen.getByRole('button', { name: '🔥 2' });
+    const [emoji, count] = Array.from(chip.children);
+    expect(emoji.textContent).toBe('🔥');
+    expect(count.textContent).toBe('2');
+    expect(count.className).toContain('group-hover/chip:inline');
+    expect(chip.className).not.toMatch(/ring|border|bg-/);
+  });
+});
+
+describe('loading', () => {
+  it('shows skeleton bubbles, not the empty note, while the first page loads', () => {
+    render(<ChatPaneView messages={[]} meId="me" {...handlers()} loading />);
+    expect(screen.getByRole('log').getAttribute('aria-busy')).toBe('true');
+    expect(screen.queryByText(/Chưa có tin nhắn/)).toBeNull();
+  });
+
+  it('asks for the older page when scrolled near the top, and marks the start once there is none', () => {
+    const onLoadOlder = vi.fn();
+    const one = [msg('1', 'them', '2026-10-12T10:00:00Z')];
+    const { rerender } = render(<ChatPaneView messages={one} meId="me" {...handlers()} hasOlder onLoadOlder={onLoadOlder} />);
+    const log = screen.getByRole('log');
+    log.scrollTop = 0;
+    fireEvent.scroll(log);
+    expect(onLoadOlder).toHaveBeenCalledTimes(1);
+    rerender(<ChatPaneView messages={one} meId="me" {...handlers()} hasOlder={false} onLoadOlder={onLoadOlder} />);
+    expect(screen.getByText('Đầu cuộc trò chuyện')).toBeTruthy();
+  });
+
+  it('mergeMessages keeps every older page the reader asked for', () => {
+    const many = Array.from({ length: 250 }, (_, i) => msg(`m${i}`, 'u1', new Date(Date.UTC(2026, 9, 12, 10, 0, i)).toISOString()));
+    expect(mergeMessages([], many, Infinity)).toHaveLength(250);
+  });
+});
+
+describe('replies and reactions', () => {
+  const a = msg('a', 'them', '2026-10-12T10:00:00Z', 'đề này khó');
+  const b = { ...msg('b', 'me', '2026-10-12T10:00:01Z', 'mình cũng thấy'), reply_to: 'a' };
+
+  it('groupReactions counts per emoji and marks the reader\'s own', () => {
+    const chips = groupReactions([
+      { message_id: 'a', user_id: 'me', emoji: '👍' }, { message_id: 'a', user_id: 'x', emoji: '👍' }, { message_id: 'a', user_id: 'x', emoji: '🔥' },
+    ], 'me');
+    expect(chips.a).toEqual([{ emoji: '👍', count: 2, mine: true }, { emoji: '🔥', count: 1, mine: false }]);
+  });
+
+  it('shows the replied-to message above a reply, and sends reply_to after pressing Trả lời', async () => {
+    const h = handlers();
+    render(<ChatPaneView messages={[a, b]} meId="me" {...h} />);
+    expect(screen.getByText('Tên them: đề này khó', { selector: 'p' })).toBeTruthy();
+    fireEvent.click(screen.getAllByRole('button', { name: 'Trả lời' })[0]);
+    fireEvent.change(screen.getByRole('textbox'), { target: { value: 'đúng rồi' } });
+    fireEvent.submit(screen.getByRole('textbox').closest('form')!);
+    expect(h.onSend).toHaveBeenCalledWith('đúng rồi', 'a');
+  });
+
+  it('picks an emoji and toggles an existing chip through onReact', () => {
+    const onReact = vi.fn();
+    render(<ChatPaneView messages={[a]} meId="me" {...handlers()} onReact={onReact} reactions={{ a: [{ emoji: '🔥', count: 2, mine: false }] }} />);
+    fireEvent.click(screen.getByRole('button', { name: 'Thả cảm xúc' }));
+    fireEvent.click(screen.getByRole('button', { name: '👍' }));
+    expect(onReact).toHaveBeenCalledWith('a', '👍');
+    fireEvent.click(screen.getByRole('button', { name: /🔥 2/ }));
+    expect(onReact).toHaveBeenCalledWith('a', '🔥');
   });
 });

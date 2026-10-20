@@ -799,6 +799,11 @@ export interface Database {
           cover_url: string | null;
           chat_banned: boolean;
           preferred_education_level: EducationLevel | null;
+          grade: number | null;
+          school: string | null;
+          bio: string | null;
+          show_school: boolean;
+          show_bio: boolean;
           preferred_code_language: CodeLanguage | null;
           created_at: string;
         };
@@ -810,6 +815,11 @@ export interface Database {
           cover_url?: string | null;
           chat_banned?: boolean;
           preferred_education_level?: EducationLevel | null;
+          grade?: number | null;
+          school?: string | null;
+          bio?: string | null;
+          show_school?: boolean;
+          show_bio?: boolean;
           preferred_code_language?: CodeLanguage | null;
           created_at?: string;
         };
@@ -821,6 +831,11 @@ export interface Database {
           cover_url?: string | null;
           chat_banned?: boolean;
           preferred_education_level?: EducationLevel | null;
+          grade?: number | null;
+          school?: string | null;
+          bio?: string | null;
+          show_school?: boolean;
+          show_bio?: boolean;
           preferred_code_language?: CodeLanguage | null;
           created_at?: string;
         };
@@ -954,6 +969,13 @@ export interface Database {
           name_vi: string;
           icon: string;
           condition: Json;
+          slug: string | null;
+          category: string;
+          tier: string;
+          description_vi: string;
+          description_en: string;
+          is_system: boolean;
+          sort_order: number;
         };
         Insert: {
           id?: string;
@@ -962,6 +984,13 @@ export interface Database {
           name_vi: string;
           icon: string;
           condition: Json;
+          slug?: string | null;
+          category?: string;
+          tier?: string;
+          description_vi?: string;
+          description_en?: string;
+          is_system?: boolean;
+          sort_order?: number;
         };
         Update: {
           id?: string;
@@ -970,6 +999,13 @@ export interface Database {
           name_vi?: string;
           icon?: string;
           condition?: Json;
+          slug?: string | null;
+          category?: string;
+          tier?: string;
+          description_vi?: string;
+          description_en?: string;
+          is_system?: boolean;
+          sort_order?: number;
         };
         Relationships: [
           {
@@ -986,16 +1022,22 @@ export interface Database {
           user_id: string;
           badge_id: string;
           earned_at: string;
+          awarded_by: string | null;
+          reason: string | null;
         };
         Insert: {
           user_id: string;
           badge_id: string;
           earned_at?: string;
+          awarded_by?: string | null;
+          reason?: string | null;
         };
         Update: {
           user_id?: string;
           badge_id?: string;
           earned_at?: string;
+          awarded_by?: string | null;
+          reason?: string | null;
         };
         Relationships: [
           {
@@ -1102,6 +1144,9 @@ export interface Database {
           image_url: string | null;
           created_at: string;
           deleted_at: string | null;
+          room_grade: number | null;
+          reply_to: string | null;
+          recalled_at: string | null;
         };
         Insert: {
           id?: string;
@@ -1115,6 +1160,9 @@ export interface Database {
           image_url?: string | null;
           created_at?: string;
           deleted_at?: string | null;
+          room_grade?: number | null;
+          reply_to?: string | null;
+          recalled_at?: string | null;
         };
         Update: {
           id?: string;
@@ -1128,6 +1176,9 @@ export interface Database {
           image_url?: string | null;
           created_at?: string;
           deleted_at?: string | null;
+          room_grade?: number | null;
+          reply_to?: string | null;
+          recalled_at?: string | null;
         };
         Relationships: [
           {
@@ -1156,6 +1207,20 @@ export interface Database {
             columns: ['sender_id'];
             isOneToOne: false;
             referencedRelation: 'profiles';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
+      chat_reactions: {
+        Row: { message_id: string; user_id: string; emoji: string; created_at: string };
+        Insert: { message_id: string; user_id: string; emoji: string; created_at?: string };
+        Update: { message_id?: string; user_id?: string; emoji?: string; created_at?: string };
+        Relationships: [
+          {
+            foreignKeyName: 'chat_reactions_message_id_fkey';
+            columns: ['message_id'];
+            isOneToOne: false;
+            referencedRelation: 'chat_messages';
             referencedColumns: ['id'];
           },
         ];

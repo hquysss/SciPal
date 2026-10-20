@@ -12,6 +12,7 @@ import {
   type PracticeResponse,
 } from '../schemas/questions.js';
 import { MAX_LESSON_QUESTIONS, quizQuestionIds } from '../authoring/quizReferences.js';
+import { COLUMNS, getUser, ID, mayPreview, msg, servableQuestion as loadServable, type PracticeRow } from '../practice/servable.js';
 
 // Practice in a lesson's Tự luyện part. Learners (signed in or not) load the questions of a
 // published lesson without answers and check one answer at a time; the server decides and says
@@ -20,38 +21,10 @@ import { MAX_LESSON_QUESTIONS, quizQuestionIds } from '../authoring/quizReferenc
 // written or spoken) is checked for its key terms; a signed-in learner may then ask the AI
 // Professor to comment on it, paid from the Professor's token quota.
 
-interface PracticeUser {
-  id?: string;
-  app_metadata?: { app_role?: string };
-}
-
-interface PracticeRow {
-  id: string;
-  usage: string;
-  status: string;
-  subject_id: string;
-  lesson_id: string | null;
-  created_by: string | null;
-  type: string;
-  difficulty: number;
-  data: unknown;
-}
-
-const ID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-const COLUMNS = 'id, usage, status, subject_id, lesson_id, created_by, type, difficulty, data';
 const CHECK_BODY_LIMIT = 8 * 1024;
 
-const msg = (error: string, error_en: string) => ({ error, error_en });
-const unavailable = msg('Câu hỏi này không còn dùng để luyện tập.', 'This question is not available for practice.');
 const lessonNotFound = msg('Không tìm thấy bài học.', 'Lesson not found.');
 const serviceDown = msg('Dịch vụ luyện tập chưa sẵn sàng.', 'Practice is not available right now.');
-
-function getUser(request: FastifyRequest): PracticeUser | undefined {
-  return (request as FastifyRequest & { user?: PracticeUser }).user;
-}
-const isAdmin = (user: PracticeUser | undefined) => user?.app_metadata?.app_role === 'admin';
-/** Authors and admins may try unpublished questions while previewing. */
-const mayPreview = (user: PracticeUser | undefined, createdBy: string | null) => isAdmin(user) || (!!user?.id && user.id === createdBy);
 
 const normalize = (value: string) => value.normalize('NFC').trim().replace(/\s+/g, ' ').toLowerCase();
 // A short numeric answer: a decimal comma is the same number as a decimal point (0,12 = 0.12).
@@ -77,7 +50,7 @@ export function keyTermsUsed(answer: string, terms: string[]): { used: string[];
 const keyTermsOf = (data: Record<string, unknown>) =>
   Array.isArray(data.key_terms) ? data.key_terms.filter((t): t is string => typeof t === 'string' && t.trim() !== '') : [];
 
-function explanationOf(data: Record<string, unknown>): { en: string; vi: string } | undefined {
+export function explanationOf(data: Record<string, unknown>): { en: string; vi: string } | undefined {
   const e = data.explanation as { en?: unknown; vi?: unknown } | undefined;
   if (!e || typeof e.vi !== 'string' || !e.vi.trim()) return undefined;
   return { vi: e.vi, en: typeof e.en === 'string' ? e.en : '' };
@@ -87,6 +60,8 @@ function explanationOf(data: Record<string, unknown>): { en: string; vi: string 
 export function responseProblem(row: Pick<PracticeRow, 'type' | 'data'>, response: PracticeResponse): { error: string; error_en: string } | null {
   const data = (row.data ?? {}) as Record<string, unknown>;
   const others = (keys: Array<keyof PracticeResponse>) => keys.some((key) => response[key] !== undefined);
+  // A programming question is judged by its own routes (they take far larger bodies than this one).
+  if (row.type === 'code' || response.code !== undefined) return msg('Câu lập trình được nộp bằng nút Nộp bài của chính câu đó.', 'A programming question is submitted with its own Submit button.');
   if (row.type === 'mc') {
     if (others(['items', 'short_answer', 'writing_answer']) || !response.selected_option) return msg('Hãy chọn một phương án.', 'Choose an option.');
     return null;
@@ -150,54 +125,8 @@ const FEEDBACK_FAILED = msg(
 );
 
 export const practiceRoutes: FastifyPluginAsync = async (app) => {
-  /**
-   * A practice question the caller may use: published and in a published lesson, or the author's
-   * (or an admin's) own while previewing. Otherwise the reply is sent here and null comes back.
-   */
-  async function servableQuestion(
-    request: FastifyRequest,
-    reply: FastifyReply,
-    questionId: string,
-    failure: { error: string; error_en: string },
-  ): Promise<PracticeRow | null> {
-    const supabase = app.supabase!;
-    const user = getUser(request);
-    const { data, error } = await supabase.from('questions').select(COLUMNS).eq('id', questionId).maybeSingle();
-    if (error) {
-      request.log.error({ err: error, questionId }, 'Failed to load practice question');
-      reply.code(500).send(failure);
-      return null;
-    }
-    const row = data as PracticeRow | null;
-    // Exam questions, and anything not published, answer "unavailable" alike: nothing to probe.
-    if (!row || row.usage !== 'practice') {
-      reply.code(404).send(unavailable);
-      return null;
-    }
-    if (!mayPreview(user, row.created_by)) {
-      if (row.status !== 'published') {
-        reply.code(404).send(unavailable);
-        return null;
-      }
-      const { data: lessons, error: lessonError } = await supabase
-        .from('lessons')
-        .select('id')
-        .eq('status', 'published')
-        // jsonb containment: postgrest-js sends a JS array as a Postgres array literal, so pass JSON.
-        .contains('blocks', JSON.stringify([{ type: 'quiz', question_id: row.id }]))
-        .limit(1);
-      if (lessonError) {
-        request.log.error({ err: lessonError, questionId: row.id }, 'Failed to find the lesson of a practice question');
-        reply.code(500).send(failure);
-        return null;
-      }
-      if ((lessons ?? []).length === 0) {
-        reply.code(404).send(unavailable);
-        return null;
-      }
-    }
-    return row;
-  }
+  const servableQuestion = (request: FastifyRequest, reply: FastifyReply, questionId: string, failure: { error: string; error_en: string }) =>
+    loadServable(app, request, reply, questionId, failure);
 
   app.get('/api/practice/lessons/:lessonId/questions', async (request, reply) => {
     const { lessonId } = request.params as { lessonId: string };

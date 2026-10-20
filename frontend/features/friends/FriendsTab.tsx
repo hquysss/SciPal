@@ -11,7 +11,7 @@ import { Input } from '@/components/ui/input';
 import type { ApiResult } from '../authoring/apiClient';
 import { blockUser } from '../community/chatApi';
 import { BlockedList } from './BlockedList';
-import { ChatPane } from '../community/ChatPane';
+import { PresenceAvatar } from '../community/presence';
 import {
   acceptRequest, listFriends, removeFriendship, searchUsers, sendRequest,
   type FriendEntry, type FriendsList, type SearchUser,
@@ -35,10 +35,10 @@ function Avatar({ name, url }: { name: string; url: string | null }) {
   );
 }
 
-function Person({ name, url, children }: { name: string; url: string | null; children: ReactNode }) {
+function Person({ name, url, userId, children }: { name: string; url: string | null; userId?: string; children: ReactNode }) {
   return (
     <li className="flex min-h-14 items-center gap-3 py-2">
-      <Avatar name={name} url={url} />
+      <PresenceAvatar userId={userId}><Avatar name={name} url={url} /></PresenceAvatar>
       <span className="min-w-0 flex-1 truncate font-semibold text-ink">{name}</span>
       <span className="flex shrink-0 items-center gap-2">{children}</span>
     </li>
@@ -148,7 +148,7 @@ export function FriendsTabView({ state, onSearch, onSend, onAccept, onRemove, on
           ) : (
             <Section title={t({ en: 'Friends', vi: 'Bạn bè' })}>
               {state.friends.map((p) => (
-                <Person key={p.id} name={nameOf(p)} url={p.avatar_url}>
+                <Person key={p.id} name={nameOf(p)} url={p.avatar_url} userId={p.user_id}>
                   <Button type="button" onClick={() => onMessage(p.id)}>{t({ en: 'Message', vi: 'Nhắn tin' })}</Button>
                   <Button type="button" variant="outline" onClick={() => onRemove(p.id)}>{t({ en: 'Unfriend', vi: 'Huỷ kết bạn' })}</Button>
                 </Person>
@@ -161,8 +161,8 @@ export function FriendsTabView({ state, onSearch, onSend, onAccept, onRemove, on
   );
 }
 
-/** `dm` is the friendship whose chat is open (kept in the URL by the community page); `onDm` opens or closes one. */
-export function FriendsTab({ dm = null, onDm }: { dm?: string | null; onDm?: (friendshipId: string | null) => void }) {
+/** Finding people and handling requests; `onDm` opens the chat with a friend (the community page shows it). */
+export function FriendsTab({ onDm }: { onDm?: (friendshipId: string | null) => void }) {
   const [state, setState] = useState<FriendsState>({ status: 'loading' });
   const [notice, setNotice] = useState<Bilingual | null>(null);
   const [blockVersion, setBlockVersion] = useState(0);
@@ -206,19 +206,6 @@ export function FriendsTab({ dm = null, onDm }: { dm?: string | null; onDm?: (fr
     setBlockVersion((v) => v + 1);
     setState((prev) => (prev.status === 'ready' && prev.results ? { ...prev, results: prev.results.filter((u) => u.user_id !== userId) } : prev));
   };
-
-  if (dm) {
-    const friend = state.status === 'ready' ? state.friends.find((f) => f.id === dm) : undefined;
-    return (
-      <ChatPane
-        key={dm}
-        target={{ friendship_id: dm }}
-        title={friend?.display_name?.trim() || t({ en: 'User', vi: 'Người dùng' })}
-        onBack={() => onDm?.(null)}
-        onBlocked={() => { onDm?.(null); void load(); }}
-      />
-    );
-  }
 
   return (
     <div className="flex flex-col gap-4">

@@ -1,21 +1,26 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { ArrowRight, ChevronDown, ChevronUp, CircleHelp, Gauge, LogOut, Menu, UserRound, Users, X } from 'lucide-react';
+import { ArrowRight, BookOpen, House, Users, ReceiptText, ChevronDown, ChevronUp, CircleHelp, ClipboardCheck, FlaskConical, Gauge, Library, LineChart, Menu, MessageCircle, MessageCircleQuestion, School, Tag, Trophy, UserRound, X } from 'lucide-react';
 import { useParams, usePathname, useRouter } from 'next/navigation';
 import { useLanguage } from '@scipal/hooks';
 import { LanguageToggle } from './LanguageToggle';
 import { NotificationBell } from '@/features/games/NotificationBell';
 import { ThemeToggle } from './ThemeToggle';
+import { LogoutButton, LogoutConfirm } from './LogoutButton';
 import { OnlinePill } from './OnlinePill';
 import navStyles from './navbar.module.css';
+import roleColors from '../ui/roleColors.module.css';
 import type { SubjectSlug } from '@/lib/subject-config';
 import { createBrowserClient } from '@/lib/supabase';
 import { adoptAccountLevel, forgetAccountLevel, getShell, safeSessionStorage } from '@/lib/theme/shellTheme';
 import { countOpenSimulationRequests } from '@/features/authoring/simulationRequests/api';
 import { FRIENDS_CHANGED_EVENT, listFriends } from '@/features/friends/friendsApi';
+import { badgeText, UNREAD_BADGE, useChatUnread } from '@/features/community/unread';
+import { fetchMyPlan, PLAN_NAME } from '@/features/billing/billingApi';
+import type { BillingAccount } from '@scipal/types';
 
 /** The admin entry: one link to the page with every admin tool, with the requests still waiting. */
 export function adminLinkLabel(lang: 'en' | 'vi', open: number): string {
@@ -70,41 +75,52 @@ export function pricingLink(lang: 'en' | 'vi') {
   return { href: '/pricing', label: lang === 'en' ? 'Pricing' : 'Bảng giá' };
 }
 
-/** "Cộng đồng (2)": friend requests waiting for an answer. */
-export function communityLabel(lang: 'en' | 'vi', pending: number) {
+/** "Cộng đồng (2)": friend requests waiting for an answer, then unread messages ("Cộng đồng (2), 5 tin nhắn mới"). */
+export function communityLabel(lang: 'en' | 'vi', pending: number, unread = 0) {
   const base = lang === 'en' ? 'Community' : 'Cộng đồng';
-  return pending > 0 ? `${base} (${pending})` : base;
+  const withPending = pending > 0 ? `${base} (${pending})` : base;
+  if (unread <= 0) return withPending;
+  return `${withPending}, ${badgeText(unread)} ${lang === 'en' ? 'new messages' : 'tin nhắn mới'}`;
 }
 
-/** The main links after Home and Subjects: what a student opens every day. */
-export function primaryLinks(lang: 'en' | 'vi') {
+/** Learn: what a student opens to study, as a category with a line saying what each page is for. */
+export function learnLinks(lang: 'en' | 'vi') {
   const label = (en: string, vi: string) => (lang === 'en' ? en : vi);
   return [
-    { href: '/lab', label: label('Simulations', 'Mô phỏng') },
-    { href: '/exam', label: label('Exams', 'Thi thử') },
-    tutorLink(lang),
+    { href: '/subjects', label: label('Subjects', 'Môn học'), hint: label('Lessons by subject', 'Bài học theo môn') },
+    { href: '/lab', label: label('Simulations', 'Mô phỏng'), hint: label('Try it, see it move', 'Thử nghiệm trực quan') },
+    { href: '/exam', label: label('Exams', 'Thi thử'), hint: label('Practise with graded tests', 'Luyện đề có chấm điểm') },
+    { ...tutorLink(lang), hint: label('Ask when you are stuck', 'Hỏi khi bí bài') },
   ];
 }
 
-/**
- * The "More" menu: reference and personal pages. On the desktop bar Profile and Community are in the account
- * menu (the avatar), which keeps a full admin bar from overflowing at 1366px; the mobile menu lists them here.
- */
-export function moreLinks(lang: 'en' | 'vi', signedIn: boolean, place: 'desktop' | 'mobile', role: string | null = null, pendingFriends = 0) {
+/** Community is its own category, for members: chat, grade rooms, friends. */
+export function communityLink(lang: 'en' | 'vi') {
+  return { href: '/community', label: lang === 'en' ? 'Community' : 'Cộng đồng' };
+}
+
+/** The reference menu: pages to look things up in, the same for everyone. Personal pages live in the account menu. */
+export function moreLinks(lang: 'en' | 'vi') {
   const label = (en: string, vi: string) => (lang === 'en' ? en : vi);
-  // Teachers and admins reach classes from their own menu.
+  return [
+    { href: '/glossary', label: label('Glossary', 'Từ điển'), hint: label('Scientific terms, EN and VI', 'Thuật ngữ khoa học song ngữ') },
+    { ...pricingLink(lang), hint: label('Plans and what they include', 'Các gói và quyền lợi') },
+    { href: '/help', label: label('Help', 'Hướng dẫn'), hint: label('How to use SciPal', 'Cách dùng SciPal') },
+  ];
+}
+
+/** The account menu (and the mobile "Mine" group): everything personal, in two sections. */
+export function accountLinks(lang: 'en' | 'vi', role: string | null) {
+  const label = (en: string, vi: string) => (lang === 'en' ? en : vi);
+  // Teachers and admins reach classes from their own menu, and have no plan quota page.
   const isStudent = role !== null && role !== 'teacher' && role !== 'admin';
   return [
-    { href: '/glossary', label: label('Glossary', 'Từ điển') },
-    pricingLink(lang),
-    ...(signedIn
-      ? [
-          { href: '/progress', label: label('Progress', 'Tiến trình') },
-          { href: '/games', label: label('Gamification', 'Gamification') },
-          ...(isStudent ? [{ href: '/classes', label: label('My classes', 'Lớp của em') }] : []),
-          ...(place === 'mobile' ? [{ href: '/community', label: communityLabel(lang, pendingFriends) }, { href: '/profile', label: label('Profile', 'Hồ sơ') }] : []),
-        ]
-      : []),
+    { href: '/progress', label: label('Progress', 'Tiến trình'), group: 'study' as const },
+    { href: '/games', label: label('Gamification', 'Gamification'), group: 'study' as const },
+    ...(isStudent ? [{ href: '/classes', label: label('My classes', 'Lớp của em'), group: 'study' as const }] : []),
+    { href: '/profile', label: label('Profile', 'Hồ sơ'), group: 'account' as const },
+    ...(isStudent ? [{ href: '/profile/plan', label: label('My plan', 'Gói của tôi'), group: 'account' as const }] : []),
+    ...(role !== 'admin' ? [{ href: '/profile/orders', label: label('Orders', 'Đơn hàng'), group: 'account' as const }] : []),
   ];
 }
 
@@ -133,19 +149,23 @@ export function NavBar({ currentSubject }: NavBarProps) {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [barHidden, setBarHidden] = useState(false);
   const [wideBar, setWideBar] = useState(false);
-  const [openNavGroup, setOpenNavGroup] = useState<'admin' | 'teacher' | 'account' | 'more' | null>(null);
+  const [openNavGroup, setOpenNavGroup] = useState<'admin' | 'teacher' | 'account' | 'more' | 'learn' | null>(null);
   const [appRole, setAppRole] = useState<AppRole | null>(null);
   const [displayName, setDisplayName] = useState<string | null>(null);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+  const [email, setEmail] = useState<string | null>(null);
+  const [plan, setPlan] = useState<BillingAccount | null>(null);
   const [signingOut, setSigningOut] = useState(false);
+  const [confirmSignOut, setConfirmSignOut] = useState(false);
   const [openRequests, setOpenRequests] = useState(0);
   const [pendingFriends, setPendingFriends] = useState(0);
+  const { total: unreadMessages } = useChatUnread(Boolean(appRole));
   const mobileMenuButtonRef = useRef<HTMLButtonElement>(null);
   const openNavTriggerRef = useRef<HTMLButtonElement>(null);
 
-  // The fold-away toggle exists only where the full bar shows (matches the 1536px rule in the stylesheet).
+  // The fold-away toggle exists only where the full bar shows (matches the 1280px rule in the stylesheet).
   useEffect(() => {
-    const wide = window.matchMedia('(min-width: 1536px)');
+    const wide = window.matchMedia('(min-width: 1280px)');
     const sync = () => setWideBar(wide.matches);
     sync();
     wide.addEventListener('change', sync);
@@ -247,6 +267,7 @@ export function NavBar({ currentSubject }: NavBarProps) {
           setAppRole(getAppRole(user));
           setDisplayName(getDisplayName(user));
           setAvatarUrl(getAvatarUrl(user));
+          setEmail(user?.email ?? null);
           if (user?.id) {
             void supabase
               .from('profiles')
@@ -272,6 +293,7 @@ export function NavBar({ currentSubject }: NavBarProps) {
           setAppRole(getAppRole(user));
           setDisplayName(getDisplayName(user));
           setAvatarUrl(getAvatarUrl(user));
+          setEmail(user?.email ?? null);
           setSigningOut(false);
         }
       });
@@ -285,6 +307,22 @@ export function NavBar({ currentSubject }: NavBarProps) {
           setAvatarUrl(null);
     }
   }, [pathname]);
+
+  // The plan line in the account menu: who pays through when. Admins have no plan; a failed lookup just hides the line.
+  useEffect(() => {
+    if (!appRole || appRole === 'admin') {
+      setPlan(null);
+      return;
+    }
+    let live = true;
+    void fetchMyPlan().then((result) => {
+      if (!result.ok) console.warn('Plan lookup failed', result.status, result.error.en);
+      if (live) setPlan(result.ok ? result.data : null);
+    });
+    return () => {
+      live = false;
+    };
+  }, [appRole]);
 
   const handleSignOut = async () => {
     setSigningOut(true);
@@ -314,27 +352,145 @@ export function NavBar({ currentSubject }: NavBarProps) {
 
   if (pathname === '/login') return null;
 
-  const homeLinkLabel = lang === 'en' ? 'Home' : 'Trang chủ';
-  const subjectsLabel = lang === 'en' ? 'Subjects' : 'Môn học';
-  // The Subjects tab stays marked inside any subject or lesson, not only on /subjects.
-  const subjectsActive = pathname === '/subjects' || Boolean(currentSubject ?? params?.subject);
-  const accountName = displayName ?? (lang === 'en' ? 'Account' : 'Tài khoản');
   const navLang = lang === 'en' ? 'en' : 'vi';
-  const links = primaryLinks(navLang);
-  const moreDesktop = moreLinks(navLang, Boolean(appRole), 'desktop', appRole);
-  const moreMobile = moreLinks(navLang, Boolean(appRole), 'mobile', appRole, pendingFriends);
-  const moreLabel = lang === 'en' ? 'More' : 'Thêm';
-  const moreMenuOpen = openNavGroup === 'more';
-  const moreRouteActive = moreDesktop.some((link) => pathname === link.href);
-  const { teacherLinks, adminLinks } = roleLinks(appRole, lang === 'en' ? 'en' : 'vi', openRequests);
-  const teacherMenuOpen = openNavGroup === 'teacher';
-  const accountMenuOpen = openNavGroup === 'account';
+  const t = (en: string, vi: string) => (lang === 'en' ? en : vi);
+  const accountName = displayName ?? t('Account', 'Tài khoản');
+  const signedIn = Boolean(appRole);
+  // Categories, each with one place: Learn and Resources are menus, Community a link, My stuff is the avatar menu, staff after a divider.
+  const learn = learnLinks(navLang);
+  // The Subjects entry stays marked inside any subject or lesson, not only on /subjects.
+  const subjectsActive = pathname === '/subjects' || Boolean(currentSubject ?? params?.subject);
+  const inSection = (href: string) => (href === '/subjects' ? subjectsActive : pathname === href || pathname.startsWith(`${href}/`));
+  const learnActive = learn.some((link) => inSection(link.href));
+  const community = communityLink(navLang);
+  const communityActive = pathname === community.href;
+  const communityText = communityLabel(navLang, pendingFriends, unreadMessages);
+  const more = moreLinks(navLang);
+  const moreActive = more.some((link) => pathname === link.href);
+  const mine = accountLinks(navLang, appRole);
+  const study = mine.filter((link) => link.group === 'study');
+  const accountItems = mine.filter((link) => link.group === 'account');
+  const { teacherLinks, adminLinks } = roleLinks(appRole, navLang, openRequests);
+  const hasStaff = teacherLinks.length > 0 || adminLinks.length > 0;
   const teacherRouteActive = teacherLinks.some((link) => pathname === link.href || pathname.startsWith(`${link.href}/`));
   const adminRouteActive = pathname === '/admin' || pathname.startsWith('/admin/');
-  const toggleNavGroup = (group: 'admin' | 'teacher' | 'account' | 'more', trigger: HTMLButtonElement) => {
+  const accountMenuOpen = openNavGroup === 'account';
+  // A loaded account with no plan on record is on the free plan of its role.
+  const planCode = plan ? plan.plan ?? (plan.role === 'teacher' ? 'teacher_free' : 'student_free') : null;
+  const planName = planCode ? t(PLAN_NAME[planCode]?.en ?? planCode, PLAN_NAME[planCode]?.vi ?? planCode) : null;
+  // The plan and its end date; until it loads (or when it cannot), the role, so the line never goes missing.
+  const roleLabel = appRole === 'admin' ? 'Admin' : appRole === 'teacher' ? t('Teacher', 'Giáo viên') : t('Student', 'Học sinh');
+  const planDetail = appRole === 'admin'
+    ? t('no limits', 'không giới hạn')
+    : planName
+    ? plan?.paidThrough
+      ? `${planName} · ${t('until', 'đến')} ${new Date(plan.paidThrough).toLocaleDateString(lang === 'en' ? 'en-GB' : 'vi-VN')}`
+      : planName
+    : null;
+  const roleClass = `font-extrabold ${appRole === 'admin' ? roleColors.admin : appRole === 'teacher' ? roleColors.teacher : roleColors.student}`;
+  const teacherMenuOpen = openNavGroup === 'teacher';
+  const toggleNavGroup = (group: 'admin' | 'teacher' | 'account' | 'more' | 'learn', trigger: HTMLButtonElement) => {
     openNavTriggerRef.current = trigger;
     setOpenNavGroup((current) => current === group ? null : group);
   };
+  // Folded bar or phone menu: a red dot says something waits in Community.
+  const waitingDot = signedIn && unreadMessages + pendingFriends > 0 ? <span aria-hidden="true" className="absolute -right-0.5 -top-0.5 size-2.5 rounded-full bg-danger ring-2 ring-[var(--surface)]" /> : null;
+  const countBadge = pendingFriends > 0 ? (
+    <span aria-hidden="true" className="ml-0.5 inline-grid h-5 min-w-5 place-items-center rounded-full bg-danger-surface px-1 text-xs font-bold leading-none text-danger ring-1 ring-danger">{pendingFriends}</span>
+  ) : null;
+  // New messages: a chat icon with the count, so it reads apart from the friend-request number.
+  const messageBadge = unreadMessages > 0 ? (
+    <span aria-hidden="true" className={`ml-0.5 gap-0.5 !inline-flex items-center ${UNREAD_BADGE}`}><MessageCircle size={12} strokeWidth={2.5} />{badgeText(unreadMessages)}</span>
+  ) : null;
+
+  const icons: Record<string, ReactNode> = {
+    '/subjects': <Library aria-hidden="true" size={16} />,
+    '/lab': <FlaskConical aria-hidden="true" size={16} />,
+    '/exam': <ClipboardCheck aria-hidden="true" size={16} />,
+    '/tutor': <MessageCircleQuestion aria-hidden="true" size={16} />,
+    '/glossary': <BookOpen aria-hidden="true" size={16} />,
+    '/pricing': <Tag aria-hidden="true" size={16} />,
+    '/help': <CircleHelp aria-hidden="true" size={16} />,
+    '/profile': <UserRound aria-hidden="true" size={16} />,
+    '/progress': <LineChart aria-hidden="true" size={16} />,
+    '/games': <Trophy aria-hidden="true" size={16} />,
+    '/classes': <School aria-hidden="true" size={16} />,
+    '/profile/plan': <Gauge aria-hidden="true" size={16} />,
+    '/': <House aria-hidden="true" size={16} />,
+    '/community': <Users aria-hidden="true" size={16} />,
+    '/profile/orders': <ReceiptText aria-hidden="true" size={16} />,
+  };
+  const accountHeader = (
+  <div className={navStyles.menuHeader}>
+    <span aria-hidden="true" className={navStyles.menuAvatar}>
+      {avatarUrl ? (
+        // eslint-disable-next-line @next/next/no-img-element -- media store image
+        <img src={avatarUrl} alt="" className="h-full w-full rounded-full object-cover" />
+      ) : (
+        accountName.trim().charAt(0).toUpperCase()
+      )}
+    </span>
+    <span className="flex min-w-0 flex-col">
+      <span className="truncate text-sm font-bold text-ink">{accountName}</span>
+      {email && <span className="truncate text-xs text-ink-muted">{email}</span>}
+      {appRole && (
+        <span className="mt-0.5 flex items-center gap-1.5 text-xs font-semibold text-ink-muted">
+          <span aria-hidden="true" className="h-2 w-2 shrink-0 rounded-full bg-success" />
+          <span className="truncate">
+            <span className={roleClass}>{roleLabel}</span>
+            {planDetail && ` · ${planDetail}`}
+          </span>
+        </span>
+      )}
+    </span>
+  </div>
+  );
+  const themeRow = (
+    <div className={`${navStyles.menuGroup} flex items-center justify-between gap-3 px-3 py-3`}>
+      <span className="text-xs font-extrabold uppercase tracking-wider text-ink-muted">{t('Theme', 'Giao diện')}</span>
+      <ThemeToggle />
+    </div>
+  );
+  const closeMenus = () => setOpenNavGroup(null);
+  const heading = (title: string) => <p className="px-3 pb-1 pt-2 text-xs font-extrabold uppercase tracking-wider text-action">{title}</p>;
+  const menuLink = (link: { href: string; label: string; hint?: string }, icon: ReactNode = icons[link.href]) => (
+    <Link key={link.href} href={link.href} prefetch={false} onClick={closeMenus} aria-current={pathname === link.href ? 'page' : undefined} className={navStyles.menuItem}>
+      {icon}
+      <span className="flex min-w-0 flex-col">
+        <span>{link.label}</span>
+        {link.hint && <span className="text-xs font-medium text-ink-muted">{link.hint}</span>}
+      </span>
+    </Link>
+  );
+  /** A bar category that opens a short list; the active one stays marked while you are inside it. */
+  const barMenu = (id: 'learn' | 'more' | 'teacher', label: string, active: boolean, children: ReactNode) => {
+    const open = openNavGroup === id;
+    return (
+      <div className="relative" data-nav-group={id}>
+        <button
+          type="button"
+          aria-expanded={open}
+          aria-controls={`desktop-${id}-navigation`}
+          onClick={(event) => toggleNavGroup(id, event.currentTarget)}
+          data-active={active || undefined}
+          className={navStyles.navLink}
+        >
+          {label}
+          <ChevronDown aria-hidden="true" className={`h-4 w-4 transition-transform duration-150 motion-reduce:transition-none ${open ? 'rotate-180' : ''}`} />
+        </button>
+        <div id={`desktop-${id}-navigation`} inert={!open} className={`${navStyles.dropdown} ${navStyles.dropdownWide} ${open ? navStyles.dropdownOpen : ''}`}>
+          {children}
+        </div>
+      </div>
+    );
+  };
+
+  const mobileSection = (title: string, children: ReactNode) => (
+    <div role="group" aria-label={title} className={navStyles.menuGroup}>
+      {heading(title)}
+      {children}
+    </div>
+  );
 
   return (
     <header className={`${navStyles.header} sticky top-0 z-40 w-full text-nav-ink`} data-bar-hidden={barHidden && wideBar ? '' : undefined}>
@@ -343,12 +499,13 @@ export function NavBar({ currentSubject }: NavBarProps) {
         className={navStyles.barToggle}
         onClick={toggleBar}
         aria-pressed={barHidden}
-        aria-label={barHidden ? (lang === 'en' ? 'Show navigation bar' : 'Hiện thanh điều hướng') : (lang === 'en' ? 'Hide navigation bar' : 'Ẩn thanh điều hướng')}
-        title={barHidden ? (lang === 'en' ? 'Show navigation bar' : 'Hiện thanh điều hướng') : (lang === 'en' ? 'Hide navigation bar' : 'Ẩn thanh điều hướng')}
+        aria-label={barHidden ? t('Show navigation bar', 'Hiện thanh điều hướng') : t('Hide navigation bar', 'Ẩn thanh điều hướng')}
+        title={barHidden ? t('Show navigation bar', 'Hiện thanh điều hướng') : t('Hide navigation bar', 'Ẩn thanh điều hướng')}
       >
         {barHidden ? <ChevronDown size={14} aria-hidden="true" /> : <ChevronUp size={14} aria-hidden="true" />}
+        {barHidden && waitingDot}
       </button>
-      <div inert={barHidden && wideBar} className={`${navStyles.bar} relative z-10 mx-auto flex h-14 max-w-5xl 2xl:max-w-[90rem] items-center justify-between gap-3 px-3 sm:px-4`}>
+      <div inert={barHidden && wideBar} className={`${navStyles.bar} relative z-10 mx-auto flex h-14 max-w-5xl xl:max-w-[90rem] items-center justify-between gap-3 px-3 sm:px-4`}>
         <Link href="/" prefetch={pathname !== '/'} className={`${navStyles.rise} group flex shrink-0 items-center gap-3 font-bold text-nav-ink`}>
           <Image
             src="/logo.svg"
@@ -361,99 +518,36 @@ export function NavBar({ currentSubject }: NavBarProps) {
           <span className="text-xl font-black leading-tight tracking-tight">SciPal</span>
         </Link>
 
-        <nav aria-label={lang === 'en' ? 'Main navigation' : 'Điều hướng chính'} className={`${navStyles.navList} hidden items-center gap-1 2xl:ml-4 2xl:flex`}>
-          <Link
-            href="/"
-            prefetch={pathname !== '/'}
-            aria-current={pathname === '/' ? 'page' : undefined}
-            className={navStyles.navLink}
-          >
-            {homeLinkLabel}
+        <nav aria-label={t('Main navigation', 'Điều hướng chính')} className={`${navStyles.navList} hidden items-center gap-1 xl:ml-4 xl:flex`}>
+          <Link href="/" prefetch={pathname !== '/'} aria-current={pathname === '/' ? 'page' : undefined} className={navStyles.navLink}>
+            {t('Home', 'Trang chủ')}
           </Link>
-          <Link
-            href="/subjects"
-            prefetch={pathname !== '/'}
-            aria-current={pathname === '/subjects' ? 'page' : undefined}
-            data-active={subjectsActive || undefined}
-            className={navStyles.navLink}
-          >
-            {subjectsLabel}
-          </Link>
-          {links.map((link) => (
-            <Link
-              key={link.href}
-              href={link.href}
-              prefetch={pathname !== '/'}
-              aria-current={pathname === link.href ? 'page' : undefined}
-              className={navStyles.navLink}
-            >
-              {link.label}
-            </Link>
+          {barMenu('learn', t('Learn', 'Học tập'), learnActive, (
+            <>
+              {heading(t('Learn', 'Học tập'))}
+              {learn.map((link) => menuLink(link))}
+            </>
           ))}
-          <div className="relative" data-nav-group="more">
-            <button
-              type="button"
-              aria-expanded={moreMenuOpen}
-              aria-controls="desktop-more-navigation"
-              onClick={(event) => toggleNavGroup('more', event.currentTarget)}
-              data-active={moreRouteActive || undefined}
-              className={navStyles.navLink}
-            >
-              {moreLabel}
-              <ChevronDown aria-hidden="true" className={`h-4 w-4 transition-transform duration-150 motion-reduce:transition-none ${moreMenuOpen ? 'rotate-180' : ''}`} />
-            </button>
-            <div
-              id="desktop-more-navigation"
-              aria-hidden={!moreMenuOpen}
-              className={`${navStyles.dropdown} ${moreMenuOpen ? navStyles.dropdownOpen : ''}`}
-            >
-              {moreDesktop.map((link) => (
-                <Link
-                  key={link.href}
-                  href={link.href}
-                  prefetch={pathname !== '/'}
-                  onClick={() => setOpenNavGroup(null)}
-                  aria-current={pathname === link.href ? 'page' : undefined}
-                  className={`block rounded-lg px-3 py-2.5 text-sm font-semibold transition hover:bg-surface-sunken focus-visible:outline focus-visible:outline-2 focus-visible:outline-focus ${pathname === link.href ? 'bg-surface-sunken text-action' : 'text-ink'}`}
-                >
-                  {link.label}
-                </Link>
-              ))}
-            </div>
-          </div>
-          {teacherLinks.length > 0 && (
-            <div className="relative" data-nav-group="teacher">
-              <button
-                type="button"
-                aria-expanded={teacherMenuOpen}
-                aria-controls="desktop-teacher-navigation"
-                onClick={(event) => toggleNavGroup('teacher', event.currentTarget)}
-                data-active={teacherRouteActive || undefined}
-                className={navStyles.navLink}
-              >
-                {lang === 'en' ? 'Teacher' : 'Giáo viên'}
-                <ChevronDown aria-hidden="true" className={`h-4 w-4 transition-transform duration-150 motion-reduce:transition-none ${teacherMenuOpen ? 'rotate-180' : ''}`} />
-              </button>
-              <div
-                id="desktop-teacher-navigation"
-                aria-hidden={!teacherMenuOpen}
-                className={`${navStyles.dropdown} ${teacherMenuOpen ? navStyles.dropdownOpen : ''}`}
-              >
-                {teacherLinks.map((link) => (
-                  <Link
-                    key={link.href}
-                    href={link.href}
-                    prefetch={pathname !== '/'}
-                    onClick={() => setOpenNavGroup(null)}
-                    aria-current={pathname === link.href ? 'page' : undefined}
-                    className={`block rounded-lg px-3 py-2.5 text-sm font-semibold transition hover:bg-surface-sunken focus-visible:outline focus-visible:outline-2 focus-visible:outline-focus ${pathname === link.href ? 'bg-surface-sunken text-action' : 'text-ink'}`}
-                  >
-                    {link.label}
-                  </Link>
-                ))}
-              </div>
-            </div>
+          {signedIn && (
+            <Link href={community.href} prefetch={pathname !== '/'} aria-current={communityActive ? 'page' : undefined} aria-label={communityText} className={navStyles.navLink}>
+              {community.label}
+              {countBadge}
+              {messageBadge}
+            </Link>
           )}
+          {barMenu('more', t('Resources', 'Tra cứu'), moreActive, (
+            <>
+              {heading(t('Resources', 'Tra cứu'))}
+              {more.map((link) => menuLink(link))}
+            </>
+          ))}
+          {hasStaff && <span aria-hidden="true" className={`${navStyles.divider} mx-1`} />}
+          {teacherLinks.length > 0 && barMenu('teacher', t('Teacher', 'Giáo viên'), teacherRouteActive, (
+            <>
+              {heading(t('Teaching', 'Giảng dạy'))}
+              {teacherLinks.map((link) => menuLink(link, <School aria-hidden="true" size={16} />))}
+            </>
+          ))}
           {adminLinks.map((link) => (
             <Link
               key={link.href}
@@ -468,24 +562,18 @@ export function NavBar({ currentSubject }: NavBarProps) {
           ))}
         </nav>
 
-        <div className={`${navStyles.rise} ml-auto hidden shrink-0 items-center justify-end gap-2 2xl:gap-3 2xl:flex`} style={{ '--i': 8 } as React.CSSProperties}>
-            {/* Signed in, Help is in the account menu. */}
-          {!appRole && (
-            <Link href="/help" prefetch={false} aria-label={lang === 'en' ? 'Help' : 'Hướng dẫn'} title={lang === 'en' ? 'Help' : 'Hướng dẫn'} aria-current={pathname === '/help' ? 'page' : undefined} className={`${navStyles.navLink} min-h-11 min-w-11 justify-center`}>
-            <CircleHelp aria-hidden="true" className="h-5 w-5" />
-          </Link>
-          )}
+        <div className={`${navStyles.rise} ml-auto hidden shrink-0 items-center justify-end gap-2 xl:gap-3 xl:flex`} style={{ '--i': 8 } as React.CSSProperties}>
           <OnlinePill />
-          {appRole && <NotificationBell className={navStyles.navLink} />}
+          {signedIn && <NotificationBell className={navStyles.navLink} />}
           <LanguageToggle />
-          {!appRole && <ThemeToggle />}
-          {appRole ? (
+          {!signedIn && <ThemeToggle />}
+          {signedIn ? (
             <div className="relative" data-nav-group="account">
               <button
                 type="button"
                 aria-expanded={accountMenuOpen}
                 aria-controls="desktop-account-menu"
-                aria-label={`${lang === 'en' ? 'Account menu' : 'Menu tài khoản'} · ${accountName}`}
+                aria-label={`${t('Account menu', 'Menu tài khoản')} · ${accountName}`}
                 title={displayName ?? undefined}
                 onClick={(event) => toggleNavGroup('account', event.currentTarget)}
                 className={navStyles.account}
@@ -503,208 +591,85 @@ export function NavBar({ currentSubject }: NavBarProps) {
               </button>
               <div
                 id="desktop-account-menu"
-                aria-hidden={!accountMenuOpen}
+                inert={!accountMenuOpen}
                 className={`${navStyles.dropdown} ${navStyles.dropdownEnd} ${accountMenuOpen ? navStyles.dropdownOpen : ''}`}
               >
-                <p className="truncate px-3 pb-2 pt-1.5 text-sm font-bold text-ink">{accountName}</p>
-                <Link
-                  href="/profile"
-                  onClick={() => setOpenNavGroup(null)}
-                  aria-current={pathname === '/profile' ? 'page' : undefined}
-                  className={navStyles.menuItem}
-                >
-                  <UserRound aria-hidden="true" size={16} />
-                  {lang === 'en' ? 'Profile' : 'Hồ sơ'}
-                </Link>
-                <Link href="/help" prefetch={false} onClick={() => setOpenNavGroup(null)} aria-current={pathname === '/help' ? 'page' : undefined} className={navStyles.menuItem}>
-                  <CircleHelp aria-hidden="true" size={16} />
-                  {lang === 'en' ? 'Help' : 'Hướng dẫn'}
-                </Link>
-                <Link href="/community" onClick={() => setOpenNavGroup(null)} aria-current={pathname === '/community' ? 'page' : undefined} className={navStyles.menuItem}>
-                  <Users aria-hidden="true" size={16} />
-                  {communityLabel(lang === 'en' ? 'en' : 'vi', pendingFriends)}
-                  {pendingFriends > 0 && <span aria-hidden="true" className="ml-auto h-2 w-2 rounded-full bg-danger" />}
-                </Link>
-                {appRole === 'student' && (
-                  <Link href="/profile/plan" onClick={() => setOpenNavGroup(null)} aria-current={pathname === '/profile/plan' ? 'page' : undefined} className={navStyles.menuItem}>
-                    <Gauge aria-hidden="true" size={16} />
-                    {lang === 'en' ? 'My plan' : 'Gói của tôi'}
-                  </Link>
-                )}
-                <div className="flex items-center justify-between gap-3 border-y border-line px-3 py-2 my-1">
-                  <span className="text-sm font-semibold text-ink-muted">{lang === 'en' ? 'Theme' : 'Giao diện'}</span>
-                  <ThemeToggle tone="surface" />
+                {accountHeader}
+                <div className={navStyles.menuGroup}>{accountItems.map((link) => menuLink(link))}</div>
+                <div className={navStyles.menuGroup}>{study.map((link) => menuLink(link))}</div>
+                <div className={`${navStyles.menuGroup} flex items-center justify-between gap-3 px-3 py-3`}>
+                  <span className="text-xs font-extrabold uppercase tracking-wider text-ink-muted">{t('Theme', 'Giao diện')}</span>
+                  <ThemeToggle />
                 </div>
-                <button type="button" onClick={handleSignOut} disabled={signingOut} className={`${navStyles.menuItem} ${navStyles.menuDanger}`}>
-                  <LogOut aria-hidden="true" size={16} />
-                  {signingOut
-                    ? (lang === 'en' ? 'Signing out…' : 'Đang đăng xuất…')
-                    : (lang === 'en' ? 'Sign out' : 'Đăng xuất')}
-                </button>
+                <div className={`${navStyles.menuGroup} px-3 pb-2 pt-3`}>
+                  <LogoutButton onClick={() => setConfirmSignOut(true)} busy={signingOut} />
+                </div>
               </div>
             </div>
           ) : (
-            <Link
-              href="/login"
-              prefetch={pathname !== '/'}
-              className={navStyles.primaryPill}
-            >
-              <span>{lang === 'en' ? 'Sign In' : 'Đăng nhập'}</span>
+            <Link href="/login" prefetch={pathname !== '/'} className={navStyles.primaryPill}>
+              <span>{t('Sign In', 'Đăng nhập')}</span>
               <ArrowRight aria-hidden="true" size={16} />
             </Link>
           )}
         </div>
 
-        <div className={`${navStyles.rise} flex shrink-0 items-center gap-2 2xl:hidden`} style={{ '--i': 1 } as React.CSSProperties}>
-          {appRole && <NotificationBell />}
+        <div className={`${navStyles.rise} flex shrink-0 items-center gap-2 xl:hidden`} style={{ '--i': 1 } as React.CSSProperties}>
+          {signedIn && <NotificationBell />}
           <LanguageToggle />
           <button
             type="button"
-            aria-label={mobileOpen ? (lang === 'en' ? 'Close menu' : 'Đóng menu') : (lang === 'en' ? 'Open menu' : 'Mở menu')}
+            aria-label={mobileOpen ? t('Close menu', 'Đóng menu') : t('Open menu', 'Mở menu')}
             aria-expanded={mobileOpen}
             aria-controls="mobile-navigation"
             ref={mobileMenuButtonRef}
             onClick={() => setMobileOpen((value) => !value)}
-            className="flex h-9 w-9 items-center justify-center rounded-full bg-[color-mix(in_srgb,var(--nav-ink)_12%,transparent)] text-nav-ink text-xl transition hover:bg-[color-mix(in_srgb,var(--nav-ink)_12%,transparent)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-nav-ink"
+            className="relative flex h-9 w-9 items-center justify-center rounded-full bg-[color-mix(in_srgb,var(--nav-ink)_12%,transparent)] text-nav-ink text-xl transition hover:bg-[color-mix(in_srgb,var(--nav-ink)_12%,transparent)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-nav-ink"
           >
             {mobileOpen ? <X aria-hidden="true" size={18} /> : <Menu aria-hidden="true" size={18} />}
+            {!mobileOpen && waitingDot}
           </button>
         </div>
       </div>
 
       <nav
         id="mobile-navigation"
-        aria-label={lang === 'en' ? 'Mobile navigation' : 'Điều hướng di động'}
-        aria-hidden={!mobileOpen}
-        className={`${navStyles.mobilePanel} 2xl:hidden ${mobileOpen ? navStyles.mobilePanelOpen : ''}`}
+        aria-label={t('Mobile navigation', 'Điều hướng di động')}
+        inert={!mobileOpen}
+        className={`${navStyles.mobilePanel} xl:hidden ${mobileOpen ? navStyles.mobilePanelOpen : ''}`}
       >
-          <div className="space-y-1">
-            <div className="flex justify-end pb-2">
-              <ThemeToggle tone="surface" />
+        <div className="pb-20">
+          {signedIn && <div className="-mx-4 -mt-4 mb-1 overflow-hidden rounded-t-[1.25rem]">{accountHeader}</div>}
+          <div className={navStyles.menuGroup}>{menuLink({ href: '/', label: t('Home', 'Trang chủ') })}</div>
+          {signedIn && <div className={navStyles.menuGroup}>{accountItems.map((link) => menuLink(link))}</div>}
+          {signedIn && <div className={navStyles.menuGroup}>{study.map((link) => menuLink(link))}</div>}
+          {mobileSection(t('Learn', 'Học tập'), learn.map((link) => menuLink(link)))}
+          {signedIn && mobileSection(t('Connect', 'Kết nối'), menuLink({ href: community.href, label: communityText }))}
+          {mobileSection(t('Resources', 'Tra cứu'), more.map((link) => menuLink(link)))}
+          {hasStaff && mobileSection(t('Manage', 'Quản lý'), (
+            <>
+              {teacherLinks.map((link) => menuLink(link, <School aria-hidden="true" size={16} />))}
+              {adminLinks.map((link) => menuLink(link, null))}
+            </>
+          ))}
+          {themeRow}
+          {signedIn ? (
+            <div className={`${navStyles.menuGroup} px-3 pb-2 pt-3`}>
+              <LogoutButton onClick={() => setConfirmSignOut(true)} busy={signingOut} />
             </div>
+          ) : (
             <Link
-              href="/"
+              href="/login"
               prefetch={pathname !== '/'}
               onClick={() => setMobileOpen(false)}
-              aria-current={pathname === '/' ? 'page' : undefined}
-              className={`block rounded-xl px-4 py-2 text-sm font-semibold transition hover:bg-surface-sunken focus-visible:outline focus-visible:outline-2 focus-visible:outline-focus ${pathname === '/' ? 'bg-surface-sunken text-action' : 'text-ink'}`}
+              className="mt-3 flex min-h-11 items-center justify-center gap-2 rounded-xl bg-gradient-to-br from-sun to-coral px-4 py-2 text-sm font-extrabold text-ink shadow-[0_10px_24px_-12px_var(--coral)] transition hover:brightness-105 focus-visible:outline focus-visible:outline-2 focus-visible:outline-focus"
             >
-              {homeLinkLabel}
+              {t('Sign In', 'Đăng nhập')} <ArrowRight aria-hidden="true" size={16} />
             </Link>
-            <Link
-              href="/subjects"
-              prefetch={pathname !== '/'}
-              onClick={() => setMobileOpen(false)}
-              aria-current={pathname === '/subjects' ? 'page' : undefined}
-              className={`block rounded-xl px-4 py-2 text-sm font-semibold transition hover:bg-surface-sunken focus-visible:outline focus-visible:outline-2 focus-visible:outline-focus ${subjectsActive ? 'bg-surface-sunken text-action' : 'text-ink'}`}
-            >
-              {subjectsLabel}
-            </Link>
-            {links.map((link) => (
-              <Link
-                key={link.href}
-                href={link.href}
-                prefetch={pathname !== '/'}
-                onClick={() => setMobileOpen(false)}
-                aria-current={pathname === link.href ? 'page' : undefined}
-                className={`block rounded-xl px-4 py-2 text-sm font-semibold transition hover:bg-surface-sunken focus-visible:outline focus-visible:outline-2 focus-visible:outline-focus ${pathname === link.href ? 'bg-surface-sunken text-action' : 'text-ink'}`}
-              >
-                {link.label}
-              </Link>
-            ))}
-            <p className="px-4 pb-1 pt-3 text-xs font-bold uppercase tracking-wide text-ink-muted">{moreLabel}</p>
-            {moreMobile.map((link) => (
-              <Link
-                key={link.href}
-                href={link.href}
-                prefetch={pathname !== '/'}
-                onClick={() => setMobileOpen(false)}
-                aria-current={pathname === link.href ? 'page' : undefined}
-                className={`block rounded-xl px-4 py-2 text-sm font-semibold transition hover:bg-surface-sunken focus-visible:outline focus-visible:outline-2 focus-visible:outline-focus ${pathname === link.href ? 'bg-surface-sunken text-action' : 'text-ink'}`}
-              >
-                {link.label}
-              </Link>
-            ))}
-            <Link href="/help" prefetch={false} onClick={() => setMobileOpen(false)} aria-current={pathname === '/help' ? 'page' : undefined}
-              aria-label={lang === 'en' ? 'Help' : 'Hướng dẫn'} title={lang === 'en' ? 'Help' : 'Hướng dẫn'}
-              className={`flex min-h-9 items-center rounded-xl px-4 py-2 transition hover:bg-surface-sunken focus-visible:outline focus-visible:outline-2 focus-visible:outline-focus ${pathname === '/help' ? 'bg-surface-sunken text-action' : 'text-ink'}`}>
-              <CircleHelp aria-hidden="true" className="h-5 w-5" />
-            </Link>
-            {teacherLinks.length > 0 && (
-              <div data-nav-group="teacher">
-                <button
-                  type="button"
-                  aria-expanded={teacherMenuOpen}
-                  aria-controls="mobile-teacher-navigation"
-                  onClick={(event) => toggleNavGroup('teacher', event.currentTarget)}
-                  className={`flex w-full items-center justify-between rounded-xl px-4 py-3 text-left text-sm font-bold transition hover:bg-surface-sunken focus-visible:outline focus-visible:outline-2 focus-visible:outline-focus ${teacherRouteActive ? 'bg-surface-sunken text-action' : 'text-ink'}`}
-                >
-                  {lang === 'en' ? 'Teacher' : 'Giáo viên'}
-                  <ChevronDown aria-hidden="true" className={`h-4 w-4 transition-transform duration-150 motion-reduce:transition-none ${teacherMenuOpen ? 'rotate-180' : ''}`} />
-                </button>
-                <div
-                  id="mobile-teacher-navigation"
-                  aria-hidden={!teacherMenuOpen}
-                  className={`ml-3 mt-1 overflow-hidden border-l border-line transition-[max-height,opacity,visibility] duration-200 ease-out motion-reduce:transition-none ${teacherMenuOpen ? 'visible max-h-80 opacity-100' : 'invisible max-h-0 opacity-0'}`}
-                >
-                  <div className="space-y-1 pl-3">
-                    {teacherLinks.map((link) => (
-                      <Link
-                        key={link.href}
-                        href={link.href}
-                        prefetch={pathname !== '/'}
-                        onClick={() => { setOpenNavGroup(null); setMobileOpen(false); }}
-                        aria-current={pathname === link.href ? 'page' : undefined}
-                        className={`block rounded-xl px-4 py-2 text-sm font-semibold transition hover:bg-surface-sunken focus-visible:outline focus-visible:outline-2 focus-visible:outline-focus ${pathname === link.href ? 'bg-surface-sunken text-action' : 'text-ink'}`}
-                      >
-                        {link.label}
-                      </Link>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            )}
-            {adminLinks.map((link) => (
-              <Link
-                key={link.href}
-                href={link.href}
-                prefetch={pathname !== '/'}
-                onClick={() => setMobileOpen(false)}
-                aria-current={pathname === link.href ? 'page' : undefined}
-                className={`block rounded-xl px-4 py-2 text-sm font-bold transition hover:bg-surface-sunken focus-visible:outline focus-visible:outline-2 focus-visible:outline-focus ${adminRouteActive ? 'bg-surface-sunken text-action' : 'text-ink'}`}
-              >
-                {link.label}
-              </Link>
-            ))}
-            {appRole && (
-              <div className="mt-3 flex items-center justify-between gap-3 border-t border-line px-2 pt-4">
-                <span className="min-w-0 truncate text-sm font-bold text-ink" title={displayName ?? undefined}>
-                  {displayName ?? (lang === 'en' ? 'Account' : 'Tài khoản')}
-                </span>
-                <button
-                  type="button"
-                  onClick={handleSignOut}
-                  disabled={signingOut}
-                  className="min-h-11 shrink-0 rounded-xl border border-[color-mix(in_srgb,var(--danger)_30%,transparent)] bg-danger-surface px-4 py-2.5 text-sm font-bold text-danger transition hover:bg-[color-mix(in_srgb,var(--danger-surface),var(--danger)_10%)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-danger disabled:cursor-wait disabled:opacity-60"
-                >
-                  {signingOut
-                    ? (lang === 'en' ? 'Signing out…' : 'Đang đăng xuất…')
-                    : (lang === 'en' ? 'Sign out' : 'Đăng xuất')}
-                </button>
-              </div>
-            )}
-            {!appRole && (
-              <Link
-                href="/login"
-                prefetch={pathname !== '/'}
-                onClick={() => setMobileOpen(false)}
-                className="flex items-center justify-center gap-2 rounded-xl bg-gradient-to-br from-sun to-coral px-4 py-2 text-sm font-extrabold text-ink shadow-[0_10px_24px_-12px_var(--coral)] transition hover:brightness-105 focus-visible:outline focus-visible:outline-2 focus-visible:outline-focus"
-              >
-                {lang === 'en' ? 'Sign In' : 'Đăng nhập'} <ArrowRight aria-hidden="true" size={16} />
-              </Link>
-            )}
-          </div>
+          )}
+        </div>
       </nav>
+      <LogoutConfirm open={confirmSignOut} onClose={() => setConfirmSignOut(false)} onConfirm={() => void handleSignOut()} />
     </header>
   );
 }

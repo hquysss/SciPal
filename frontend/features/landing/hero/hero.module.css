@@ -1,287 +1,315 @@
 .stage {
   --hero-ease: cubic-bezier(0.16, 1, 0.3, 1);
   --hero-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+  /* Cards are drawn from the level's tokens, so they read in light and dark alike. */
+  --card-line: var(--glass-edge, color-mix(in srgb, var(--ink) 12%, transparent));
 
   position: relative;
   isolation: isolate;
   width: 100%;
-  aspect-ratio: 480 / 312;
-  perspective: 1000px;
+  aspect-ratio: 1;
+  container-type: inline-size;
+  perspective: 1200px;
 }
 
-/* A pool of plain paper behind the scene keeps the page pattern from crowding the drawing. */
-.stage::before {
-  content: '';
+/* ---------- depth: the whole stack tilts, each layer drifts by its own amount ---------- */
+
+.cards {
   position: absolute;
-  inset: -6% -8%;
-  z-index: -1;
-  background:
-    radial-gradient(circle closest-side at 76% 30%, color-mix(in srgb, var(--sun) 34%, transparent), transparent),
-    radial-gradient(circle closest-side at 22% 74%, color-mix(in srgb, var(--sky) 26%, transparent), transparent),
-    radial-gradient(closest-side, var(--paper) 58%, transparent);
-}
-
-.art {
-  display: block;
-  width: 100%;
-  height: 100%;
-  overflow: visible;
+  inset: 0;
+  transform-style: preserve-3d;
   transform: rotateX(calc(var(--py, 0) * -5deg)) rotateY(calc(var(--px, 0) * 7deg));
   transition: transform 700ms var(--hero-ease);
 }
 
-/* Pointer depth: each layer drifts by a different amount, so the scene reads as stacked planes. */
-.layerBook,
-.layerBack,
-.layerFront {
+.layer {
+  position: absolute;
+  inset: 0;
+  transform-style: preserve-3d;
   transition: transform 700ms var(--hero-ease);
 }
 
-.layerBook { transform: translate(calc(var(--px, 0) * -4px), calc(var(--py, 0) * -3px)); }
-.layerBack { transform: translate(calc(var(--px, 0) * -10px), calc(var(--py, 0) * -7px)); }
-.layerFront { transform: translate(calc(var(--px, 0) * 12px), calc(var(--py, 0) * 8px)); }
+.layerBack { transform: translate3d(calc(var(--px, 0) * -8px), calc(var(--py, 0) * -6px), -40px); }
+.layerMid { transform: translate3d(calc(var(--px, 0) * 8px), calc(var(--py, 0) * 6px), 0); }
+.layerFront { transform: translate3d(calc(var(--px, 0) * 18px), calc(var(--py, 0) * 12px), 50px); }
 
-/* ---------- build-up, played once on arrival ---------- */
+/* ---------- cards ---------- */
 
-.bookRise {
-  animation: book-rise 800ms var(--hero-ease) both;
+.card {
+  position: absolute;
+  border: 1px solid var(--card-line);
+  border-radius: 1.5rem;
+  padding: clamp(0.9rem, 4.5cqi, 1.5rem);
+  background:
+    linear-gradient(140deg, color-mix(in srgb, var(--surface) 40%, transparent), transparent 45%),
+    var(--glass, var(--surface));
+  color: var(--ink);
+  box-shadow: var(--glass-shadow, 0 1.5rem 3rem -1rem color-mix(in srgb, var(--ink) 22%, transparent));
+  backdrop-filter: blur(22px) saturate(180%);
+  -webkit-backdrop-filter: blur(22px) saturate(180%);
+  animation: card-in 1000ms var(--hero-ease) var(--d, 0ms) both;
 }
 
-@keyframes book-rise {
-  from { opacity: 0; translate: 0 28px; }
-  to { opacity: 1; translate: 0 0; }
+@keyframes card-in {
+  from { opacity: 0; translate: 0 3rem; scale: 0.92; }
 }
 
-/* Pages open outward from the spine. */
-.pageOpen {
-  transform-box: view-box;
-  transform-origin: 240px 190px;
-  animation: page-open 750ms var(--hero-ease) var(--d, 0ms) both;
+.termCard {
+  top: 3%;
+  left: 0;
+  width: 66%;
+  rotate: -4deg;
 }
 
-@keyframes page-open {
-  from { opacity: 0; scale: 0.06 1; }
-  30% { opacity: 1; }
-  to { opacity: 1; scale: 1 1; }
+.quizCard {
+  top: 40%;
+  right: 0;
+  width: 60%;
+  rotate: 3deg;
 }
 
-/* Strokes carry pathLength="1", so a dash of 1 with a longer gap draws the whole line. */
-.draw,
-.drawSlow {
-  stroke-dasharray: 1 2;
-  stroke-dashoffset: 0;
-  animation: stroke-draw 420ms var(--hero-ease) var(--d, 0ms) both;
+/* Leaves room for the VI/EN switch pinned to the card's corner. */
+.termCard .cardLabel {
+  padding-right: 4.5rem;
 }
 
-.drawSlow {
-  animation-duration: 800ms;
-  animation-timing-function: cubic-bezier(0.45, 0, 0.2, 1);
+.cardLabel {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin: 0 0 0.5rem;
+  color: var(--ink-muted);
+  font-size: clamp(0.68rem, 2.6cqi, 0.8rem);
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
 }
 
-@keyframes stroke-draw {
-  from { stroke-dashoffset: 1; }
-  to { stroke-dashoffset: 0; }
+/* ---------- term card: the word flips Vietnamese ↔ English ---------- */
+
+.flip {
+  height: 1.25em;
+  margin: 0.15rem 0 0.6rem;
+  perspective: 600px;
+  font-size: clamp(1.5rem, 8.5cqi, 2.6rem);
+  font-weight: 800;
+  line-height: 1.2;
+  letter-spacing: -0.03em;
 }
 
-.fade {
-  animation: fade-in 300ms ease-out var(--d, 0ms) both;
+.flipInner {
+  position: relative;
+  height: 100%;
+  transform-style: preserve-3d;
+  transition: transform 800ms var(--hero-ease);
 }
 
-@keyframes fade-in {
-  from { opacity: 0; }
-  to { opacity: 1; }
+.cards[data-en] .flipInner {
+  transform: rotateX(180deg);
 }
 
-.pop {
-  transform-box: fill-box;
-  transform-origin: center;
-  animation: pop-in 520ms var(--hero-spring) var(--d, 0ms) both;
+.face {
+  position: absolute;
+  inset: 0;
+  white-space: nowrap;
+  backface-visibility: hidden;
 }
 
-@keyframes pop-in {
-  from { opacity: 0; scale: 0; }
-  40% { opacity: 1; }
-  to { opacity: 1; scale: 1; }
+.faceBack {
+  color: var(--action);
+  transform: rotateX(180deg);
 }
 
-.ribbon {
-  transform-box: fill-box;
-  transform-origin: top;
-  animation: ribbon-fall 600ms var(--hero-spring) var(--d, 0ms) both;
+.definition {
+  margin: 0;
+  color: var(--ink-muted);
+  font-size: clamp(0.76rem, 3cqi, 0.9rem);
+  line-height: 1.5;
 }
 
-@keyframes ribbon-fall {
-  from { scale: 1 0; }
-  to { scale: 1 1; }
+.langSwitch {
+  position: absolute;
+  top: clamp(0.8rem, 4cqi, 1.3rem);
+  right: clamp(0.8rem, 4cqi, 1.3rem);
+  display: inline-grid;
+  grid-template-columns: 1fr 1fr;
+  border: 1px solid var(--card-line);
+  border-radius: 999px;
+  padding: 2px;
+  font-size: clamp(0.6rem, 2.2cqi, 0.7rem);
+  font-weight: 800;
+  letter-spacing: 0.04em;
 }
 
-.barGrow {
-  transform-box: fill-box;
-  transform-origin: bottom;
-  animation: bar-grow 600ms var(--hero-spring) var(--d, 0ms) both;
+.langSwitch::before {
+  content: '';
+  position: absolute;
+  top: 2px;
+  bottom: 2px;
+  left: 2px;
+  width: calc(50% - 2px);
+  border-radius: 999px;
+  background: var(--action);
+  transition: translate 600ms var(--hero-ease);
 }
 
-@keyframes bar-grow {
-  from { scale: 1 0; }
-  to { scale: 1 1; }
+.cards[data-en] .langSwitch::before {
+  translate: 100% 0;
 }
 
-.roundJoinSoft {
+.langSwitch span {
+  position: relative;
+  padding: 0.2rem 0.5rem;
+  text-align: center;
+  transition: color 400ms ease;
+}
+
+.cards:not([data-en]) .langSwitch span:first-child,
+.cards[data-en] .langSwitch span:last-child {
+  color: var(--action-ink);
+}
+
+/* ---------- quiz card: the right answer is tapped, checked and rewarded ---------- */
+
+.question {
+  margin: 0 0 0.7rem;
+  font-size: clamp(0.85rem, 3.4cqi, 1rem);
+  font-weight: 700;
+  line-height: 1.35;
+}
+
+.options {
+  display: grid;
+  gap: 0.4rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.options li {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 2.1em;
+  border: 1px solid var(--card-line);
+  border-radius: 0.8rem;
+  padding: 0.4rem 0.75rem;
+  background: color-mix(in srgb, var(--surface) 45%, transparent);
+  font-size: clamp(0.76rem, 3cqi, 0.9rem);
+  font-weight: 600;
+  transition: background-color 400ms ease, border-color 400ms ease, color 400ms ease;
+}
+
+.cards[data-answered] .options li[data-correct] {
+  border-color: var(--sun);
+  background: color-mix(in srgb, var(--sun) 32%, var(--surface));
+}
+
+.check {
+  width: 1.15em;
+  height: 1.15em;
+  fill: none;
   stroke: currentColor;
-  stroke-width: 0;
-  stroke-linejoin: round;
-}
-
-/* Objects fall onto the desk and settle past zero; the shadow tightens as they land. */
-.drop {
-  animation: object-drop 760ms var(--hero-spring) var(--d, 0ms) both;
-}
-
-@keyframes object-drop {
-  from { opacity: 0; translate: 0 -64px; }
-  25% { opacity: 1; }
-  to { opacity: 1; translate: 0 0; }
-}
-
-.shadowGrow {
-  transform-box: fill-box;
-  transform-origin: center;
-  animation: shadow-grow 760ms var(--hero-ease) var(--d, 0ms) both;
-}
-
-@keyframes shadow-grow {
-  from { opacity: 0; scale: 0.35; }
-  to { opacity: 1; scale: 1; }
-}
-
-.paper { fill: var(--art-paper, var(--paper)); }
-.surface { fill: var(--art-surface, var(--surface)); }
-.ink { fill: var(--ink); }
-.nav { fill: var(--nav); }
-.action { fill: var(--action); }
-.sun { fill: var(--sun); }
-.coral { fill: var(--coral); }
-.sky { fill: var(--sky); }
-
-.navSide { fill: color-mix(in srgb, var(--nav) 68%, var(--ink)); }
-.actionSide { fill: color-mix(in srgb, var(--action) 68%, var(--ink)); }
-.inkSide { fill: color-mix(in srgb, var(--ink) 78%, var(--nav)); }
-.surfaceSide { fill: color-mix(in srgb, var(--art-surface, var(--surface)) 78%, var(--art-ink, var(--ink))); }
-.sunSide { fill: color-mix(in srgb, var(--sun) 70%, var(--ink)); }
-.coralSide { fill: color-mix(in srgb, var(--coral) 70%, var(--ink)); }
-.skySide { fill: color-mix(in srgb, var(--sky) 70%, var(--ink)); }
-
-.surfaceTile,
-.paperTile,
-.navInkTile,
-.sunTile,
-.coralTile {
-  stroke: color-mix(in srgb, var(--ink) 14%, transparent);
-  stroke-width: 1;
-}
-
-.surfaceTile { fill: var(--art-surface, var(--surface)); }
-.paperTile { fill: var(--art-paper, var(--paper)); }
-.navInkTile { fill: var(--nav-ink); }
-.sunTile { fill: var(--sun); }
-.coralTile { fill: var(--coral); }
-
-.pageEdge { fill: color-mix(in srgb, var(--surface) 80%, var(--ink)); }
-.pageEdgeLight { fill: color-mix(in srgb, var(--surface) 90%, var(--ink)); }
-
-.wood { fill: color-mix(in srgb, var(--surface) 62%, var(--action)); }
-.metal { fill: color-mix(in srgb, var(--surface) 55%, var(--ink)); }
-
-.glass {
-  fill: color-mix(in srgb, var(--surface) 72%, var(--nav));
-  fill-opacity: 0.88;
-}
-
-.glassEdge {
-  fill: none;
-  stroke: color-mix(in srgb, var(--nav) 55%, var(--surface));
-  stroke-width: 2;
-  stroke-linejoin: round;
-}
-
-.liquidTop { fill: color-mix(in srgb, var(--sky) 65%, var(--surface)); }
-.bubble { fill: var(--surface); fill-opacity: 0.8; }
-
-.contact { fill: var(--ink); fill-opacity: 0.16; }
-
-.stopShade { stop-color: var(--art-ink, var(--ink)); stop-opacity: 0.16; }
-.stopClear { stop-color: var(--art-ink, var(--ink)); stop-opacity: 0; }
-
-.roundJoin {
-  stroke-linejoin: round;
-  stroke-width: 8;
-}
-
-.roundJoin.action { stroke: var(--action); }
-.roundJoin.actionSide { stroke: color-mix(in srgb, var(--action) 68%, var(--ink)); }
-.roundJoin.sky { stroke: var(--sky); }
-.roundJoin.skySide { stroke: color-mix(in srgb, var(--sky) 70%, var(--ink)); }
-
-.ring,
-.ringSide {
-  fill: none;
-  stroke-width: 7;
-}
-
-.ring { stroke: var(--ink); }
-.ringSide { stroke: color-mix(in srgb, var(--ink) 78%, var(--nav)); }
-
-.strokeRule,
-.strokeTitle,
-.strokeAxis,
-.strokeCurve,
-.strokeGuide,
-.strokeSpine,
-.strokeTick,
-.strokeGlint,
-.strokeLeg,
-.strokeLegSide,
-.strokeNeedle,
-.strokeDigit,
-.strokeActionInk {
-  fill: none;
+  stroke-width: 3;
   stroke-linecap: round;
   stroke-linejoin: round;
 }
 
-.strokeRule { stroke: color-mix(in srgb, var(--art-ink, var(--ink)) 16%, var(--art-paper, var(--paper))); stroke-width: 1.4; }
-.strokeTitle { stroke: var(--art-ink, var(--ink)); stroke-width: 4; }
-.strokeAxis { stroke: color-mix(in srgb, var(--art-ink, var(--ink)) 60%, var(--art-paper, var(--paper))); stroke-width: 1.6; }
-.strokeCurve { stroke: color-mix(in srgb, var(--action) 72%, var(--art-ink, var(--ink))); stroke-width: 3; }
-.strokeGuide { stroke: color-mix(in srgb, var(--art-ink, var(--ink)) 60%, var(--art-paper, var(--paper))); stroke-width: 1.4; stroke-dasharray: 2 3; }
-.strokeSpine { stroke: color-mix(in srgb, var(--ink) 22%, transparent); stroke-width: 1.2; }
-.strokeTick { stroke: var(--ink); stroke-width: 1.3; }
-.strokeGlint { stroke: var(--surface); stroke-width: 3; stroke-opacity: 0.9; }
-.strokeLeg { stroke: var(--ink); stroke-width: 6; }
-.strokeLegSide { stroke: color-mix(in srgb, var(--ink) 78%, var(--nav)); stroke-width: 6; }
-.strokeNeedle { stroke: var(--ink-muted); stroke-width: 2; }
-.strokeDigit { stroke: var(--ink); stroke-width: 2.2; }
-.strokeActionInk { stroke: var(--action-ink); stroke-width: 1.4; }
+.check path {
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+  transition: stroke-dashoffset 450ms var(--hero-ease) 120ms;
+}
+
+.cards[data-answered] .check path {
+  stroke-dashoffset: 0;
+}
+
+/* A fingertip that travels in, presses, and lifts away. */
+.tap {
+  position: absolute;
+  top: 50%;
+  right: 22%;
+  width: 1.35rem;
+  height: 1.35rem;
+  margin-top: -0.675rem;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--ink) 30%, transparent);
+  box-shadow: 0 0 0 0.45rem color-mix(in srgb, var(--ink) 10%, transparent);
+  opacity: 0;
+  translate: 0 0;
+  pointer-events: none;
+  transition: opacity 300ms ease, translate 600ms var(--hero-ease);
+}
+
+.cards:not([data-tap]):not([data-answered]) .tap {
+  translate: 3rem 3.5rem;
+}
+
+.cards[data-tap] .tap {
+  opacity: 1;
+  animation: tap-press 300ms ease-in-out 520ms both;
+}
+
+@keyframes tap-press {
+  50% { scale: 0.7; }
+}
+
+/* ---------- XP pill ---------- */
+
+.xp {
+  position: absolute;
+  bottom: 5%;
+  left: 8%;
+  animation: card-in 1000ms var(--hero-ease) var(--d, 0ms) both;
+}
+
+.xpInner {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  border-radius: 999px;
+  padding: 0.6rem 1.1rem;
+  border: 1px solid var(--card-line);
+  background: color-mix(in srgb, var(--action) 80%, transparent);
+  color: var(--action-ink);
+  box-shadow: var(--glass-shadow, 0 1rem 2rem -0.75rem color-mix(in srgb, var(--ink) 35%, transparent));
+  backdrop-filter: blur(18px) saturate(180%);
+  -webkit-backdrop-filter: blur(18px) saturate(180%);
+  font-size: clamp(0.85rem, 3.4cqi, 1.05rem);
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  opacity: 0;
+  scale: 0.6;
+  translate: 0 0.75rem;
+  transition:
+    opacity 300ms ease,
+    scale 600ms var(--hero-spring),
+    translate 600ms var(--hero-ease);
+}
+
+.cards[data-xp] .xpInner {
+  opacity: 1;
+  scale: 1;
+  translate: 0 0;
+}
 
 @media (prefers-reduced-motion: reduce) {
-  .art,
-  .layerBook,
-  .layerBack,
-  .layerFront {
-    transform: none;
-    transition: none;
+  .card,
+  .xp,
+  .cards[data-tap] .tap {
+    animation: none;
   }
 
-  .bookRise,
-  .pageOpen,
-  .draw,
-  .drawSlow,
-  .fade,
-  .pop,
-  .ribbon,
-  .barGrow,
-  .drop,
-  .shadowGrow {
-    animation: none;
+  .cards,
+  .layer,
+  .flipInner,
+  .langSwitch::before,
+  .options li,
+  .check path,
+  .tap,
+  .xpInner {
+    transition: none;
   }
 }

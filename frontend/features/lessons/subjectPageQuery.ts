@@ -4,6 +4,7 @@ import { levelOfGrade, type EducationLevel } from '../landing/educationLevel';
 import { groupTopicsByGrade, type GradeGroup, type TopicRow } from './groupTopics';
 
 export { groupTopicsByGrade, type GradeGroup, type TopicRow } from './groupTopics';
+import type { LessonTagRow } from './groupTopics';
 
 export type QueryOutcome<T> = { data: T; error: unknown };
 
@@ -30,6 +31,7 @@ const LEVEL_ORDER: EducationLevel[] = ['primary', 'lower_secondary', 'upper_seco
 export function classifySubjectPage(
   subject: QueryOutcome<SubjectRow | null>,
   topics: QueryOutcome<TopicRow[] | null> | null,
+  tags: LessonTagRow[] = [],
 ): SubjectPageResult {
   if (subject.error) return { kind: 'error' };
   if (!subject.data) return { kind: 'not_found' };
@@ -40,7 +42,7 @@ export function classifySubjectPage(
   return {
     kind: 'ok',
     subject: { ...row, levels: LEVEL_ORDER.filter((level) => active.has(level)) },
-    gradeGroups: groupTopicsByGrade(topics.data ?? []),
+    gradeGroups: groupTopicsByGrade(topics.data ?? [], tags),
   };
 }
 
@@ -63,9 +65,13 @@ export async function getSubjectPage(slug: string): Promise<SubjectPageResult> {
       .eq('lessons.status', 'published')
       .order('sort_order');
 
+    // Tags are a nice-to-have: a failed call shows the lessons without them.
+    const tags = await supabase.rpc('subject_lesson_tags' as never, { p_subject: subject.data.id } as never);
+
     return classifySubjectPage(
       { data: subject.data as unknown as SubjectRow, error: null },
       { data: topics.data as unknown as TopicRow[] | null, error: topics.error },
+      tags.error ? [] : ((tags.data as unknown as LessonTagRow[] | null) ?? []),
     );
   } catch (error) {
     console.warn('Subject page query failed:', error);

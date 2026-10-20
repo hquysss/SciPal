@@ -129,7 +129,7 @@ export const gameRoutes: FastifyPluginAsync = async (app) => {
     const { data, error: qError } = await db().from('questions').select('id, type, difficulty, data').in('id', ids).eq('usage', 'practice').eq('status', 'published').eq('subject_id', row.subject_id);
     if (qError) throw qError;
     // An English writing answer has no right or wrong to score, so it stays out of quiz games.
-    const rows = ((data ?? []) as Array<{ id: string; type: string; difficulty: number; data: unknown }>).filter((q) => q.type !== 'writing');
+    const rows = ((data ?? []) as Array<{ id: string; type: string; difficulty: number; data: unknown }>).filter((q) => q.type !== 'writing' && q.type !== 'code');
     const byId = new Map(rows.map((q) => [q.id, q]));
     return { subjectId: row.subject_id, questions: ids.flatMap((id) => (byId.has(id) ? [byId.get(id)!] : [])) };
   };
@@ -418,6 +418,35 @@ export const gameRoutes: FastifyPluginAsync = async (app) => {
         notifications: rows.map((n) => ({ id: n.id, kind: n.kind, title: { vi: n.title_vi, en: n.title_en }, link: n.link, read: Boolean(n.read_at), createdAt: new Date(n.created_at).toISOString() })),
         unread: rows.filter((n) => !n.read_at).length,
       };
+    } catch (error) {
+      return fail(request, reply, error);
+    }
+  });
+
+  // Clear the reader's whole list.
+  app.delete('/api/notifications', { preHandler: [requireUser] }, async (request, reply) => {
+    if (!app.supabase) return reply.code(503).send(UNAVAILABLE);
+    try {
+      const { error } = await db().from('notifications').delete().eq('user_id', userOf(request)!.id!);
+      if (error) throw error;
+      return reply.code(204).send();
+    } catch (error) {
+      return fail(request, reply, error);
+    }
+  });
+
+  // Remove one notification: the owner's own, or any one for an admin.
+  app.delete('/api/notifications/:id', { preHandler: [requireUser] }, async (request, reply) => {
+    if (!app.supabase) return reply.code(503).send(UNAVAILABLE);
+    const { id } = request.params as { id: string };
+    if (!/^[0-9a-f-]{36}$/i.test(id)) return reply.code(400).send({ error: 'Mã thông báo không hợp lệ.', error_en: 'Invalid notification id.' });
+    const user = userOf(request)!;
+    try {
+      let query = db().from('notifications').delete().eq('id', id);
+      if (!isAdmin(user)) query = query.eq('user_id', user.id!);
+      const { error } = await query;
+      if (error) throw error;
+      return reply.code(204).send();
     } catch (error) {
       return fail(request, reply, error);
     }

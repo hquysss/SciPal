@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { ArrowRight, ClipboardList, FlaskConical, Gamepad2, School, TrendingUp, type LucideIcon } from 'lucide-react';
+import { ArrowRight, ClipboardList, FlaskConical, Gamepad2, MessagesSquare, School, Trophy, type LucideIcon } from 'lucide-react';
 import { useLanguage } from '@scipal/hooks';
 import styles from './sections.module.css';
 
@@ -12,7 +12,7 @@ const FEATURES: Array<{ href: string; Icon: LucideIcon; title: Copy; text: Copy 
     href: '/exam',
     Icon: ClipboardList,
     title: { vi: 'Luyện đề thi thử', en: 'Practice exams' },
-    text: { vi: 'Làm đề thi thử, được chấm điểm ngay và xem lại từng câu.', en: 'Take practice exams, get scored right away and review every question.' },
+    text: { vi: 'Làm đề thi thử có bấm giờ, có điểm ngay khi nộp, kèm điểm từng phần.', en: 'Timed mock exams, scored the moment you submit, with a score for each part.' },
   },
   {
     href: '/lab',
@@ -24,13 +24,19 @@ const FEATURES: Array<{ href: string; Icon: LucideIcon; title: Copy; text: Copy 
     href: '/games',
     Icon: Gamepad2,
     title: { vi: 'Trò chơi ôn bài', en: 'Review games' },
-    text: { vi: 'Đố vui và ghép thuật ngữ Anh–Việt để nhớ lâu hơn.', en: 'Quizzes and English–Vietnamese term matching to remember more.' },
+    text: { vi: 'Đố vui và trò ghép thuật ngữ Anh–Việt.', en: 'Quizzes and English–Vietnamese term matching.' },
   },
   {
     href: '/progress',
-    Icon: TrendingUp,
-    title: { vi: 'Theo dõi tiến độ', en: 'Track your progress' },
-    text: { vi: 'Xem điểm XP, chuỗi ngày học và huy hiệu của bạn.', en: 'See your XP, learning streak and badges.' },
+    Icon: Trophy,
+    title: { vi: 'Tiến độ và bảng xếp hạng', en: 'Progress and leaderboard' },
+    text: { vi: 'Tích XP, giữ chuỗi ngày học, mở huy hiệu và đua danh hiệu Thủ khoa tuần.', en: 'Earn XP, keep your streak, unlock badges and race for Top of the week.' },
+  },
+  {
+    href: '/community',
+    Icon: MessagesSquare,
+    title: { vi: 'Cộng đồng học tập', en: 'Study community' },
+    text: { vi: 'Phòng chat theo khối và lớp, kết bạn, nhắn riêng, có thông báo tin mới ngay khi đến.', en: 'Chat rooms by grade and class, friends and direct messages, with new messages announced as they arrive.' },
   },
   {
     href: '/teacher',
