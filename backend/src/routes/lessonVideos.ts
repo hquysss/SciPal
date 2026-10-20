@@ -38,11 +38,13 @@ export const lessonVideoRoutes: FastifyPluginAsync = async (app) => {
     if (!isAdmin(request)) return reply.code(403).send(FORBIDDEN);
   };
 
-  const readMode = async (): Promise<Mode> => {
-    const { data, error } = await app.supabase!.from('site_settings').select('lesson_videos_access').eq('id', 1).maybeSingle();
+  const readAccess = async (): Promise<{ mode: Mode; freeAccess: boolean }> => {
+    const { data, error } = await app.supabase!.from('site_settings').select('lesson_videos_access, free_access').eq('id', 1).maybeSingle();
     if (error) throw error;
-    return (data as { lesson_videos_access?: Mode } | null)?.lesson_videos_access === 'free' ? 'free' : 'plus';
+    const row = data as { lesson_videos_access?: Mode; free_access?: boolean } | null;
+    return { mode: row?.lesson_videos_access === 'free' ? 'free' : 'plus', freeAccess: row?.free_access === true };
   };
+  const readMode = async (): Promise<Mode> => (await readAccess()).mode;
 
   /** Học sinh Plus with time left on the plan. */
   const hasPlus = async (userId: string): Promise<boolean> => {
@@ -75,9 +77,10 @@ export const lessonVideoRoutes: FastifyPluginAsync = async (app) => {
       // A draft is for admins only; to everyone else the lesson simply has no video.
       if (!row || (row.status !== 'published' && !admin)) return { available: false, admin };
 
-      const mode = await readMode();
+      const { mode, freeAccess } = await readAccess();
       const user = actor(request);
-      const allowed = admin || mode === 'free' || (!!user?.id && (await hasPlus(user.id)));
+      // Free access (admin switch) opens videos to signed-in accounts only; the 'free' mode opens them to everyone.
+      const allowed = admin || mode === 'free' || (!!user?.id && (freeAccess || (await hasPlus(user.id))));
       const poster = await sign(row.poster_path);
       const base = { available: true, admin, mode, locked: !allowed, status: row.status, durationSeconds: row.duration_s, poster };
       if (!allowed) return { ...base, playback: null };

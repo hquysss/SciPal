@@ -1127,3 +1127,5 @@ $$;
 \ir tutor_token_cases.sql
 
 \ir user_terms_cases.sql
+
+\ir free_access_cases.sql
