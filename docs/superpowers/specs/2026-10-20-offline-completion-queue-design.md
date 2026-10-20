@@ -1,6 +1,6 @@
 # Hàng đợi hoàn thành bài khi mất mạng (E4, web)
 
-Ngày 20/10/2026. Trạng thái: **đã duyệt, đã làm (chưa kiểm tra bằng trình duyệt)**. Nối tiếp §11 và E4 của `2026-09-22-scipal-foundation-design.md`.
+Ngày 20/10/2026. Trạng thái: **đã hủy, thay bằng `2026-10-20-practice-xp-replaces-lesson-complete-design.md`** (phần đã làm trong `80f589b` sẽ được gỡ hoặc dùng lại theo spec mới). Trước đó: đã duyệt, đã làm. Nối tiếp §11 và E4 của `2026-09-22-scipal-foundation-design.md`.
 
 ## Hiện trạng
 - Đã có: service worker `public/sw.js`, nút "Tải để học offline", trang `/offline`, `OfflineBanner`. Bài đã tải đọc được khi mất mạng.

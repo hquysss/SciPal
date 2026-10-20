@@ -1,6 +1,6 @@
 # XP theo câu Tự luyện, bỏ nút "Đánh dấu hoàn thành", Tự luyện và Thi thử dùng được offline
 
-Ngày 20/10/2026 (bản 3: thêm Thi thử offline). Trạng thái: **chờ duyệt**. Thay `2026-10-20-offline-completion-queue-design.md`.
+Ngày 20/10/2026 (bản 3: thêm Thi thử offline). Trạng thái: **đã duyệt 20/10/2026** (kèm mục 10b). Thay `2026-10-20-offline-completion-queue-design.md`.
 
 ## Vấn đề
 1. `LessonCompletionBar` gọi `POST /api/score/lesson`, cộng 100 XP cho bất kỳ ai bấm, không kiểm tra đã học.
@@ -20,6 +20,7 @@ Ngày 20/10/2026 (bản 3: thêm Thi thử offline). Trạng thái: **chờ duy�
 8. **Một nguồn chấm.** `checkPracticeAnswer`, `responseProblem`, `keyTermsUsed`, `normalize`, `normalizeShort` chuyển vào `packages/types/src/practiceGrading.ts` và bản sao y hệt `backend/src/schemas/practiceGrading.ts` (test so byte như `simulations.ts`). Server và máy dùng cùng hàm, nên kết quả offline khớp kết quả server.
 9. **Làm offline.** Khi mất mạng (hoặc gọi API lỗi mạng) mà đã có gói của bài: chấm tại chỗ, hiện đúng/sai và lời giải ngay, gắn nhãn "kết quả tạm · chờ đồng bộ". Khoá **câu trả lời đầu tiên** của mỗi câu vào hàng đợi `{user_id, question_id, response, answered_at}`; làm lại tại chỗ vẫn thấy kết quả nhưng **không** thay câu đã khoá. Chưa có gói thì báo "Tải bài này khi có mạng để làm offline".
 10. **Đồng bộ.** `POST /api/practice/sync {attempts: [≤ 100]}` (cần đăng nhập): với mỗi mục server tải câu, kiểm `responseProblem`, chấm, chèn `practice_attempts` (người đến trước thắng, kể cả khi đã làm online ở máy khác), cộng XP như mục 3, trả `[{question_id, correct, xp_earned, counted}]` và `lesson_completed`. Client thay kết quả tạm bằng kết quả server rồi xoá mục khỏi hàng đợi. Lỗi mạng/5xx/401 thì giữ; 404 (câu đã gỡ) thì bỏ. Chạy khi mở trang và khi có sự kiện `online`.
+10b. **Làm offline tính như làm online tại lúc làm (chủ dự án chốt).** Server dùng thời điểm học sinh làm (`answered_at`, với bài thi là `finished_at`) chứ không dùng lúc đồng bộ: `practice_attempts.created_at`, `xp_log.created_at`, ngày streak (`touchStreak(..., now = answered_at)`), `exam_attempts.submitted_at`. Hàng đợi gửi theo thứ tự thời gian. Chặn giờ giả: thời điểm trong tương lai (quá 5 phút lệch đồng hồ) thì dùng giờ server; bài thi kẹp trong `[started_at, giờ server]`; câu Tự luyện không được sớm hơn lúc tải gói (server ghi lúc tải vào bảng `offline_downloads (user_id, lesson_id, downloaded_at)`), sớm hơn thì dùng lúc tải. Streak: ngày làm cũ hơn `last_active` thì không lùi streak; nếu đã online ngày sau trước khi đồng bộ ngày trước (hiếm, vì mở trang là đồng bộ trước) thì streak không được nối lại, chấp nhận.
 11. **XP/streak tạm tính chỉ để hiển thị:** `PRACTICE_XP` theo độ khó của câu có trong gói; streak ước tính theo quy tắc ngày UTC của `touchStreak` (dùng lại `recordStreak`/`estimateStreak`). Không ghi dữ liệu XP cục bộ, không gửi lên server; server thay thế hoàn toàn.
 12. **Không làm offline:** câu `code` (Judge0) và các bài HSG lập trình, nhận xét AI cho câu `writing` (nút bị vô hiệu), Giáo sư AI.
 13. **Bất biến #4 sửa lần 2:** "Đáp án không xuống client, ngoại lệ duy nhất: gói offline do học sinh đã đăng nhập tải chủ động, dùng để chấm hiển thị tạm; XP, streak, badge, tiến độ chính thức luôn do server quyết định theo câu trả lời đầu tiên nhận được." Cập nhật `AGENTS.md` và `.agents/rules/02-domain-rules.md`.
@@ -40,14 +41,14 @@ Ngày 20/10/2026 (bản 3: thêm Thi thử offline). Trạng thái: **chờ duy�
 - Xoá `LessonCompletionBar`, `LESSON_COMPLETE_XP` (types + bản sao backend + test so byte), `postScoreLesson`, route `score.ts` và test của nó.
 
 ## Thay đổi
-- Migration: bảng `practice_attempts` (RLS bật, chỉ backend ghi), unique index `xp_log_practice_once_idx`.
+- Migration: bảng `practice_attempts` (RLS bật, chỉ backend ghi), unique index `xp_log_practice_once_idx`, bảng `offline_downloads` (RLS bật, chỉ backend ghi).
 - Backend: `practiceGrading.ts` và `examScoring.ts` (bản sao), `routes/practice.ts` (check ghi attempt + XP + progress, route `offline`, route `sync`), `routes/exam.ts` (route `attempts/:id/offline`, dùng `examScoring` chung), xoá `routes/score.ts` (chỉ route `/api/score/lesson`; `/api/score/exam` giữ).
 - Frontend: `packages/types/src/practiceGrading.ts` và `examScoring.ts`; `ExamRunner`/`ExamStart` (tải đề, chạy offline, nhãn tạm, lưu dở dang); `public/sw.js` bỏ `/exam` khỏi `NOT_KEPT`; `PracticeSection` (chế độ offline, nhãn kết quả tạm, XP, hoàn thành); `SaveOfflineButton`/`saveOffline.ts` tải gói; xoá `LessonCompletionBar` và chỗ gắn ở trang bài.
 - Chuỗi EN/VI, token màu sẵn có.
 
 ## Kiểm thử
 - `practiceGrading`: các test chấm hiện có chuyển sang nguồn chung; bản sao backend khớp byte.
-- Backend: lần đầu đúng → XP + streak; lần đầu sai rồi đúng → 0 XP; gọi lặp/song song không cộng đôi; tác giả xem trước không XP; câu `code` không vào gói/sync; sync nhiều mục, mục trùng người-đến-trước, mục lỗi định dạng bị từ chối từng mục; đạt 80% → `progress` ghi một lần; gói không có câu code/HSG và không lộ khi chưa đăng nhập.
+- Backend: lần đầu đúng → XP + streak; lần đầu sai rồi đúng → 0 XP; gọi lặp/song song không cộng đôi; tác giả xem trước không XP; câu `code` không vào gói/sync; sync nhiều mục, mục trùng người-đến-trước, mục lỗi định dạng bị từ chối từng mục; đạt 80% → `progress` ghi một lần; sync ghi XP/streak theo `answered_at` (làm hôm qua, đồng bộ hôm nay → streak tính hôm qua), giờ tương lai hoặc sớm hơn lúc tải gói bị kẹp; gói không có câu code/HSG và không lộ khi chưa đăng nhập.
 - Frontend: offline có gói → kết quả ngay + nhãn tạm, câu đầu bị khoá, làm lại không đổi hàng đợi; offline không gói → thông báo; online lại → đồng bộ, kết quả server thay kết quả tạm, XP hiện theo server; `writing` AI bị vô hiệu offline.
 - Thi thử: route `offline` từ chối phiên của người khác, phiên đã nộp và người chưa đăng nhập; không trả đáp án khi chưa có phiên; chấm chung `examScoring` khớp bản backend; offline chấm tại chỗ + hàng đợi; `POST /api/score/exam` phát lại không cộng đôi XP/lượt thi; 404 bỏ mục; phiên dở dang mở lại còn đáp án.
 - Kiểm tay bằng Browser ở bản production build: tải bài và đề, tắt mạng, làm Tự luyện và thi, bật mạng, thấy XP và điểm theo server.
