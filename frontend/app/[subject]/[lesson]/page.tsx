@@ -1,6 +1,8 @@
 import { cache } from 'react';
 import type { Metadata } from 'next';
+import { cookies } from 'next/headers';
 import { notFound } from 'next/navigation';
+import { createServerClient } from '@scipal/supabase';
 import { LevelScope, SubjectProvider } from '@scipal/ui';
 import { LoadErrorNotice } from '@/components/feedback/LoadErrorNotice';
 import { getLessonDetail } from '@/features/lessons/lessonDetailQuery';
@@ -47,8 +49,9 @@ export default async function LessonPage({
   const subject = lesson.subjects;
   const level = levelOfGrade(lesson.grade);
   // One request for the Tự luyện questions (answers stay on the server); a failure offers a retry.
+  const token = (await createServerClient(await cookies()).auth.getSession()).data.session?.access_token;
   const [practice, termIndex] = await Promise.all([
-    lesson.blocks.some((block) => block.type === 'quiz') ? fetchLessonPractice(lesson.id) : { ok: true as const, questions: [] },
+    lesson.blocks.some((block) => block.type === 'quiz') ? fetchLessonPractice(lesson.id, token) : { ok: true as const, questions: [] },
     // A lesson that switched tagging off does not even read the terms.
     lesson.auto_terms === false ? [] : getSubjectTermIndex(subjectSlug),
   ]);

@@ -10,6 +10,13 @@ const respond = (status: number, body: unknown) =>
 afterEach(() => vi.unstubAllGlobals());
 
 describe('getExamBlueprints', () => {
+  it('sends the viewer’s session, which the API now requires', async () => {
+    respond(200, { blueprints: [] });
+    await getExamBlueprints('tok');
+    const [, init] = (fetch as unknown as { mock: { calls: Array<[string, RequestInit]> } }).mock.calls[0]!;
+    expect((init.headers as Record<string, string>).Authorization).toBe('Bearer tok');
+  });
+
   it('returns the list, including an empty one', async () => {
     respond(200, { blueprints: [summary] });
     await expect(getExamBlueprints()).resolves.toEqual({ kind: 'ok', blueprints: [summary] });

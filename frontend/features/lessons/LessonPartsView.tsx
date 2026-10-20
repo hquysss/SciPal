@@ -15,6 +15,7 @@ import { LessonTermsSection } from './LessonTermsSection';
 import { LessonVideoPanel, useLessonVideo } from './LessonVideoPanel';
 import { PracticeSection, usePracticeState } from './PracticeSection';
 import { fetchLessonPractice, type PracticeLoad } from './practiceApi';
+import { getAccessToken } from '../../lib/session';
 
 interface LessonPartsProps {
   blocks: Block[];
@@ -88,7 +89,7 @@ export function LessonPartsView({ blocks: written, part, sheet, lang, practice, 
           onResult={practiceState.onResult}
           onQuestion={practiceState.onQuestion}
           onWritingFeedback={practiceState.onWritingFeedback}
-          onRetry={lessonId ? () => void fetchLessonPractice(lessonId).then(setReloaded) : undefined}
+          onRetry={lessonId ? () => void getAccessToken().then((token) => fetchLessonPractice(lessonId, token)).then(setReloaded) : undefined}
           lang={lang}
         />
       ) : (

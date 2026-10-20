@@ -26,11 +26,12 @@ function errorOf(data: Record<string, unknown>, fallback: Bilingual): Bilingual 
   };
 }
 
-/** The published lesson's practice questions, without answers, in lesson order. */
-export async function fetchLessonPractice(lessonId: string): Promise<PracticeLoad> {
+/** The published lesson's practice questions, without answers, in lesson order. `token`: the viewer's session; the API needs one. */
+export async function fetchLessonPractice(lessonId: string, token?: string): Promise<PracticeLoad> {
   try {
     const res = await fetch(`${API_BASE}/api/practice/lessons/${encodeURIComponent(lessonId)}/questions`, {
       cache: 'no-store',
+      ...(token ? { headers: { Authorization: `Bearer ${token}` } } : {}),
       signal: AbortSignal.timeout(8000),
     });
     const data = (await res.json().catch(() => ({}))) as Record<string, unknown>;

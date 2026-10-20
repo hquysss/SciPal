@@ -65,4 +65,34 @@ describe('authPlugin', () => {
     expect((await billing.inject({ method: 'POST', url: '/api/billing/checkout', payload: {} })).statusCode).toBe(401);
     await billing.close();
   });
+
+  it('closes the exam and practice routes to visitors, and leaves the other public ones open', async () => {
+    const api = Fastify();
+    await api.register(authPlugin);
+    const closed: Array<['get' | 'post', string]> = [
+      ['get', '/api/exam/blueprints'],
+      ['get', '/api/exam/:blueprintId/questions'],
+      ['get', '/api/exam/hsg/problems'],
+      ['get', '/api/exam/attempts/:attemptId/offline'],
+      ['get', '/api/practice/lessons/:lessonId/questions'],
+      ['get', '/api/practice/lessons/:lessonId/offline'],
+      ['post', '/api/practice/check'],
+      ['post', '/api/practice/sync'],
+      ['post', '/api/score/exam'],
+    ];
+    const open: Array<['get' | 'post', string]> = [
+      ['post', '/api/dictionary/lookup'],
+      ['get', '/api/lessons/:id/video'],
+      ['get', '/api/billing/plans'],
+      ['post', '/api/survey/website'],
+      ['post', '/api/problem-reports'],
+      ['get', '/health'],
+    ];
+    for (const [method, path] of [...closed, ...open]) api[method](path, async () => ({ ok: true }));
+    await api.ready();
+    const call = (method: 'get' | 'post', path: string) => api.inject({ method: method.toUpperCase() as 'GET' | 'POST', url: path.replace(/:w+/g, 'x'), ...(method === 'post' ? { payload: {} } : {}) });
+    for (const [method, path] of closed) expect((await call(method, path)).statusCode, path).toBe(401);
+    for (const [method, path] of open) expect((await call(method, path)).statusCode, path).toBe(200);
+    await api.close();
+  });
 });
