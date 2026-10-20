@@ -5,12 +5,11 @@ import { useLanguage } from '@scipal/hooks';
 import { AiTutorPanel } from '@/features/ai-tutor/AiTutorPanel';
 import { LANDING_QUESTIONS } from '@/features/ai-tutor/examples';
 import { TutorAvatarOnline } from '@/features/ai-tutor/TutorAvatar';
-import { GuestTutor } from '@/features/guest/GuestTutor';
 import type { EducationLevel } from './educationLevel';
 
 /**
  * A floating Professor on the landing page, the same panel as beside a lesson. Signed in, it is the
- * real tutor chat; a visitor gets the one-question trial (as on /tutor), then is sent to sign up.
+ * real tutor chat; a visitor is asked to sign in.
  */
 export function LandingTutor({ level, signedIn, hidden = false }: { level: EducationLevel; signedIn: boolean; hidden?: boolean }) {
   const { t } = useLanguage();
@@ -50,7 +49,6 @@ export function LandingTutor({ level, signedIn, hidden = false }: { level: Educa
           level={level}
           signedIn={signedIn}
           suggestions={LANDING_QUESTIONS[level]}
-          guest={<GuestTutor suggestions={LANDING_QUESTIONS[level]} />}
           onClose={() => setOpen(false)}
         />
       )}

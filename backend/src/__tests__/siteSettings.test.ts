@@ -10,11 +10,11 @@ const ok = (data: unknown = null) => mockQuery({ data, error: null });
 
 describe('resolveSiteSettings', () => {
   it('turns on whatever is not switched off, sign-up included', () => {
-    expect(resolveSiteSettings(null)).toEqual({ signupEnabled: true, maintenance: false, features: { glossary: true, exam: true, pricing: true, classes: true, tutor: true, guest_trial: true } });
-    expect(resolveSiteSettings({ signup_enabled: false, features: { exam: false, glossary: 'no', unknown: false } })).toEqual({
+    expect(resolveSiteSettings(null)).toEqual({ signupEnabled: true, maintenance: false, features: { glossary: true, exam: true, pricing: true, classes: true, tutor: true } });
+    expect(resolveSiteSettings({ signup_enabled: false, features: { exam: false, glossary: 'no', unknown: false, guest_trial: false } })).toEqual({
       signupEnabled: false,
       maintenance: false,
-      features: { glossary: true, exam: false, pricing: true, classes: true, tutor: true, guest_trial: true },
+      features: { glossary: true, exam: false, pricing: true, classes: true, tutor: true },
     });
   });
 });

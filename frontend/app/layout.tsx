@@ -10,7 +10,6 @@ import { TutorWidget } from '@/features/ai-tutor/TutorWidget';
 import { LiveToasts } from '@/features/notify/LiveToasts';
 import { NavBar } from '@/components/nav/NavBar';
 import { SkipLink } from '@/components/nav/SkipLink';
-import { GuestTrialBanner } from '@/features/guest/GuestTrialBanner';
 import { renderThemeCss } from '@scipal/ui';
 import { buildBootScript, DARK_MODE_ENABLED } from '@/lib/theme/shellTheme';
 
@@ -62,7 +61,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <PwaRegister />
           <NavBar />
           <OfflineBanner />
-          <GuestTrialBanner />
           <div className="flex flex-1 flex-col">{children}</div>
           <TutorWidget />
           <LiveToasts />

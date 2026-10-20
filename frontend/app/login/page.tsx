@@ -6,7 +6,6 @@ import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { useLanguage } from '@scipal/hooks';
 import { ThemeToggle } from '@/components/nav/ThemeToggle';
-import { TrialEndedNote } from '@/features/guest/TrialEndedNote';
 import { readAuthSettings, safeRedirect, type AuthSettings, type Bilingual } from '@/lib/authFlow';
 import { fetchSiteSettings } from '@/lib/siteSettings';
 import { AuthModeTabs, type AuthMode } from './AuthModeTabs';
@@ -23,7 +22,7 @@ function LoginContent() {
   const searchParams = useSearchParams();
   const destination = safeRedirect(searchParams.get('redirect'));
   const [mode, setMode] = useState<AuthMode>(
-    searchParams.get('mode') === 'signup' || searchParams.get('reason') === 'trial' ? 'signup' : 'signin',
+    searchParams.get('mode') === 'signup' ? 'signup' : 'signin',
   );
   const initialMode = useRef(mode);
   const signupPanel = useRef<HTMLDivElement>(null);
@@ -85,7 +84,6 @@ function LoginContent() {
       </header>
 
       <div className="login-mode-control"><AuthModeTabs mode={mode} onChange={switchMode} /></div>
-      {searchParams.get('reason') === 'trial' && <div className="login-global-notice"><TrialEndedNote /></div>}
       {notice && (
         <div role={notice.tone === 'danger' ? 'alert' : 'status'} className={`katha-auth-notice login-global-notice ${notice.tone === 'danger' ? 'is-danger' : 'is-info'}`}>
           <p>{t(notice)}</p>

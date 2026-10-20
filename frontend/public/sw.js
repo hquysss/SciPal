@@ -9,7 +9,7 @@
  * Cache names must match frontend/lib/pwa/cacheNames.ts (a test checks). Bump VERSION to drop old caches.
  */
 
-const VERSION = 'v1';
+const VERSION = 'v2';
 const PAGES = `scipal-pages-${VERSION}`;
 const STATIC = `scipal-static-${VERSION}`;
 const OFFLINE_URL = '/offline';

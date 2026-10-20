@@ -3,11 +3,10 @@
 import Link from 'next/link';
 import dynamic from 'next/dynamic';
 import { useTutorDrag } from './useTutorDrag';
-import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { ExternalLink, X } from 'lucide-react';
 import { useLanguage } from '@scipal/hooks';
 import type { EducationLevel } from '@/features/landing/educationLevel';
-import { GuestTutor } from '@/features/guest/GuestTutor';
 import { TutorAvatarOnline } from './TutorAvatar';
 import { TutorChat } from './TutorChat';
 import { lessonQuestions } from './examples';
@@ -25,7 +24,6 @@ interface AiTutorPanelProps {
   lessonId?: string;
   lessonTitle?: Bilingual;
   suggestions?: Bilingual[];
-  guest?: ReactNode;
   level: EducationLevel;
   signedIn: boolean | null;
   /** Unread community messages, shown on the Community tab. */
@@ -35,7 +33,7 @@ interface AiTutorPanelProps {
 const CONTROL = 'flex min-h-11 min-w-11 shrink-0 items-center justify-center rounded-full text-ink-muted transition-colors hover:bg-surface-sunken hover:text-ink focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-focus';
 
 /** A non-modal reading companion; visibility never owns the shared transcript. */
-export function AiTutorPanel({ id, visible = true, lessonId, lessonTitle, suggestions, guest, level, signedIn, communityUnread = 0, onClose }: AiTutorPanelProps) {
+export function AiTutorPanel({ id, visible = true, lessonId, lessonTitle, suggestions, level, signedIn, communityUnread = 0, onClose }: AiTutorPanelProps) {
   const { t } = useLanguage();
   const session = useTutorSession();
   const panel = useRef<HTMLDivElement>(null);
@@ -96,7 +94,7 @@ export function AiTutorPanel({ id, visible = true, lessonId, lessonTitle, sugges
     <div role={signedIn === true ? 'tabpanel' : undefined} id="bubble-panel-professor" hidden={onCommunity} className="min-h-0 flex-1">
       {signedIn === null ? <p role="status" className="p-5 text-sm text-ink-muted">{t({ en: 'Loading…', vi: 'Đang tải…' })}</p> : signedIn ? (
         <TutorChat active={visible && !onCommunity} lessonId={lessonId} lessonTitle={lessonTitle ? t(lessonTitle) : undefined} level={level} compact suggestions={questions} onConversation={onConversation} />
-      ) : guest || session ? <div className="h-full overflow-y-auto p-3">{guest ?? <GuestTutor suggestions={questions} />}</div> : (
+      ) : (
         <div className="flex h-full flex-col items-start justify-center gap-3 p-6">
           <p className="text-lg font-bold text-ink">{t({ en: 'Sign in to ask the Professor', vi: 'Đăng nhập để hỏi thầy' })}</p>
           <p className="text-sm text-ink-muted">{t({ en: 'Your questions about this lesson are kept so you can come back to them.', vi: 'Câu hỏi của em về bài này được lưu lại để em xem tiếp sau.' })}</p>

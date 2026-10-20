@@ -4,7 +4,6 @@ import { createContext, useCallback, useContext, useEffect, useRef, useState, ty
 import { usePathname } from 'next/navigation';
 import { createBrowserClient } from '@scipal/supabase';
 import type { EducationLevel } from '@/features/landing/educationLevel';
-import { useGuestTutor } from '@/features/guest/useGuestTutor';
 import { useTutorChat } from './useTutorChat';
 
 export type TutorLessonContext = {
@@ -14,7 +13,6 @@ export type TutorLessonContext = {
 };
 type Session = {
   readonly chat: ReturnType<typeof useTutorChat>;
-  readonly guest: ReturnType<typeof useGuestTutor>;
   readonly accountId: string | null;
   readonly isCurrentAccount: (id: string | null | undefined) => boolean;
   readonly signedIn: boolean | null;
@@ -40,12 +38,10 @@ export function TutorProvider({ children }: { children: ReactNode }) {
   const [registered, setRegistered] = useState<{ path: string; lesson: TutorLessonContext } | null>(null);
   const lesson = registered?.path === pathname ? registered.lesson : pathname === '/tutor' ? pickedLesson : null;
   const chat = useTutorChat({ lessonId: lesson?.id });
-  const guest = useGuestTutor();
   const userId = useRef<string | null | undefined>(undefined);
   const accountId = userId.current ?? null;
   const isCurrentAccount = useCallback((id: string | null | undefined) => userId.current === id, []);
   const { replace, refreshQuota } = chat;
-  const { reset } = guest;
   const registerLesson = useCallback((path: string, current: TutorLessonContext) => {
     setRegistered({ path, lesson: current });
     return () => setRegistered((old) => old?.lesson === current ? null : old);
@@ -59,7 +55,6 @@ export function TutorProvider({ children }: { children: ReactNode }) {
       if (!active) return;
       if (userId.current !== id) {
         replace([], null, true);
-        reset();
         setDraft('');
         setPickedLesson(null);
         userId.current = id;
@@ -75,7 +70,7 @@ export function TutorProvider({ children }: { children: ReactNode }) {
       if (version === authVersion) adopt(data.session?.user.id ?? null);
     }).catch(() => { if (version === authVersion) adopt(null); });
     return () => { active = false; subscription.unsubscribe(); };
-  }, [replace, refreshQuota, reset]);
+  }, [replace, refreshQuota]);
 
   useEffect(() => {
     if (!signedIn) return;
@@ -96,5 +91,5 @@ export function TutorProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => { if (signedIn) void refreshQuota(); }, [signedIn, accountId, open, pathname, refreshQuota]);
 
-  return <TutorSession.Provider value={{ chat, guest, accountId, isCurrentAccount, signedIn, open, setOpen, draft, setDraft, lesson, pickedLesson, setPickedLesson, registerLesson }}>{children}</TutorSession.Provider>;
+  return <TutorSession.Provider value={{ chat, accountId, isCurrentAccount, signedIn, open, setOpen, draft, setDraft, lesson, pickedLesson, setPickedLesson, registerLesson }}>{children}</TutorSession.Provider>;
 }
