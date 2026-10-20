@@ -359,6 +359,10 @@ export interface PracticeCheckResult {
   code?: CodeResult;
   /** XP the server gave for this answer (a programming question solved for the first time); 0 when already solved. */
   xp_earned?: number;
+  /** The streak after this answer, when it gave XP (0 otherwise). */
+  new_streak?: number;
+  /** This answer completed a lesson (80% of its practice right the first time). */
+  lesson_completed?: boolean;
 }
 
 /** `stdout` and `expected` come only with tests a learner may see (the examples). */

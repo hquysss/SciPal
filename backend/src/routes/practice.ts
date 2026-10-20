@@ -11,14 +11,16 @@ import {
 } from '../schemas/questions.js';
 import { checkPracticeAnswer, keyTermsOf, responseProblem } from '../schemas/practiceGrading.js';
 import { MAX_LESSON_QUESTIONS, quizQuestionIds } from '../authoring/quizReferences.js';
-import { COLUMNS, getUser, ID, mayPreview, msg, servableQuestion as loadServable, type PracticeRow } from '../practice/servable.js';
+import { recordPractice } from '../practice/record.js';
+import { COLUMNS, getUser, ID, isHsgProblem, mayPreview, msg, servableQuestion as loadServable, type PracticeRow } from '../practice/servable.js';
 
 // Practice in a lesson's Tự luyện part. Learners (signed in or not) load the questions of a
 // published lesson without answers and check one answer at a time; the server decides and says
-// only right or wrong (per statement for true/false), plus the explanation. Nothing is stored
-// and no XP is given. Exam questions are never served or checked here. A writing answer (English,
-// written or spoken) is checked for its key terms; a signed-in learner may then ask the AI
-// Professor to comment on it, paid from the Professor's token quota.
+// only right or wrong (per statement for true/false), plus the explanation. A signed-in learner's
+// first answer to each question is kept and earns XP (practice/record.ts). Exam questions are
+// never served or checked here. A writing answer (English, written or spoken) is checked for its
+// key terms; a signed-in learner may then ask the AI Professor to comment on it, paid from the
+// Professor's token quota.
 
 const CHECK_BODY_LIMIT = 8 * 1024;
 
@@ -39,6 +41,10 @@ const FEEDBACK_FAILED = msg(
 );
 
 export { checkPracticeAnswer, explanationOf, keyTermsUsed, responseProblem } from '../schemas/practiceGrading.js';
+
+/** A signed-in learner's answer earns XP on a published lesson question, never on the author's own or a programming one. */
+export const countsForXp = (row: PracticeRow, userId: string) =>
+  row.status === 'published' && row.created_by !== userId && row.type !== 'code' && !isHsgProblem(row);
 
 export const practiceRoutes: FastifyPluginAsync = async (app) => {
   const servableQuestion = (request: FastifyRequest, reply: FastifyReply, questionId: string, failure: { error: string; error_en: string }) =>
@@ -91,7 +97,11 @@ export const practiceRoutes: FastifyPluginAsync = async (app) => {
 
     const problem = responseProblem(row, parsed.data);
     if (problem) return reply.code(400).send(problem);
-    return reply.send(checkPracticeAnswer(row, parsed.data));
+    const result = checkPracticeAnswer(row, parsed.data);
+    const userId = getUser(request)?.id;
+    if (!userId || !countsForXp(row, userId)) return reply.send(result);
+    const record = await recordPractice(app.supabase, { userId, row, correct: result.correct, at: new Date() }, request.log);
+    return reply.send({ ...result, xp_earned: record.xp_earned, new_streak: record.new_streak, lesson_completed: record.lesson_completed });
   });
 
   // The AI Professor's comment on a writing answer. Tokens are held before asking, counted for
