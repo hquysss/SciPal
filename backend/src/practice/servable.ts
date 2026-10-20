@@ -1,3 +1,4 @@
+import type { SupabaseClient } from '@supabase/supabase-js';
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 
 // Which practice question a caller may use, shared by the checking routes (practice.ts) and the
@@ -37,9 +38,43 @@ export const isHsgProblem = (row: Pick<PracticeRow, 'type' | 'data'>) =>
 export const mayPreview =(user: PracticeUser | undefined, createdBy: string | null) => isAdmin(user) || (!!user?.id && user.id === createdBy);
 
 /**
- * A practice question the caller may use: published and in a published lesson, or the author's
- * (or an admin's) own while previewing. Otherwise the reply is sent here and null comes back.
+ * A practice question the user may use: published and in a published lesson (or a gifted-student
+ * problem), or the author's (or an admin's) own while previewing. 'gone' when it is not one of those,
+ * 'error' when the database failed (already logged).
  */
+export async function loadPracticeRow(
+  supabase: SupabaseClient,
+  user: PracticeUser | undefined,
+  questionId: string,
+  log: { error: (obj: object, msg: string) => void },
+): Promise<PracticeRow | 'gone' | 'error'> {
+  const { data, error } = await supabase.from('questions').select(COLUMNS).eq('id', questionId).maybeSingle();
+  if (error) {
+    log.error({ err: error, questionId }, 'Failed to load practice question');
+    return 'error';
+  }
+  const row = data as PracticeRow | null;
+  // Exam questions, and anything not published, answer "unavailable" alike: nothing to probe.
+  if (!row || row.usage !== 'practice') return 'gone';
+  if (mayPreview(user, row.created_by)) return row;
+  if (row.status !== 'published') return 'gone';
+  // A gifted-student training problem lives in the exam room, not in a lesson.
+  if (isHsgProblem(row)) return row;
+  const { data: lessons, error: lessonError } = await supabase
+    .from('lessons')
+    .select('id')
+    .eq('status', 'published')
+    // jsonb containment: postgrest-js sends a JS array as a Postgres array literal, so pass JSON.
+    .contains('blocks', JSON.stringify([{ type: 'quiz', question_id: row.id }]))
+    .limit(1);
+  if (lessonError) {
+    log.error({ err: lessonError, questionId: row.id }, 'Failed to find the lesson of a practice question');
+    return 'error';
+  }
+  return (lessons ?? []).length === 0 ? 'gone' : row;
+}
+
+/** loadPracticeRow for a route: on 'gone' or 'error' the reply is sent here and null comes back. */
 export async function servableQuestion(
   app: FastifyInstance,
   request: FastifyRequest,
@@ -47,43 +82,9 @@ export async function servableQuestion(
   questionId: string,
   failure: { error: string; error_en: string },
 ): Promise<PracticeRow | null> {
-  const supabase = app.supabase!;
-  const user = getUser(request);
-  const { data, error } = await supabase.from('questions').select(COLUMNS).eq('id', questionId).maybeSingle();
-  if (error) {
-    request.log.error({ err: error, questionId }, 'Failed to load practice question');
-    reply.code(500).send(failure);
-    return null;
-  }
-  const row = data as PracticeRow | null;
-  // Exam questions, and anything not published, answer "unavailable" alike: nothing to probe.
-  if (!row || row.usage !== 'practice') {
-    reply.code(404).send(unavailable);
-    return null;
-  }
-  if (!mayPreview(user, row.created_by)) {
-    if (row.status !== 'published') {
-      reply.code(404).send(unavailable);
-      return null;
-    }
-    // A gifted-student training problem lives in the exam room, not in a lesson.
-    if (isHsgProblem(row)) return row;
-    const { data: lessons, error: lessonError } = await supabase
-      .from('lessons')
-      .select('id')
-      .eq('status', 'published')
-      // jsonb containment: postgrest-js sends a JS array as a Postgres array literal, so pass JSON.
-      .contains('blocks', JSON.stringify([{ type: 'quiz', question_id: row.id }]))
-      .limit(1);
-    if (lessonError) {
-      request.log.error({ err: lessonError, questionId: row.id }, 'Failed to find the lesson of a practice question');
-      reply.code(500).send(failure);
-      return null;
-    }
-    if ((lessons ?? []).length === 0) {
-      reply.code(404).send(unavailable);
-      return null;
-    }
-  }
-  return row;
+  const row = await loadPracticeRow(app.supabase!, getUser(request), questionId, request.log);
+  if (row === 'error') reply.code(500).send(failure);
+  else if (row === 'gone') reply.code(404).send(unavailable);
+  else return row;
+  return null;
 }

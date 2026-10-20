@@ -95,3 +95,18 @@ async function completeLessons(supabase: SupabaseClient, userId: string, questio
   }
   return completed;
 }
+
+/** Clock drift allowed for an answer dated a little after the server's time. */
+const DRIFT_MS = 5 * 60 * 1000;
+
+/**
+ * When an offline answer counts: the time the device says it was answered, but never in the future
+ * (beyond clock drift) and never before the learner downloaded the lesson. Without a download on
+ * record, or a readable time, it counts now.
+ */
+export function clampAnsweredAt(answeredAt: string, downloadedAt: string | null, now: Date): Date {
+  const answered = Date.parse(answeredAt);
+  const downloaded = downloadedAt === null ? NaN : Date.parse(downloadedAt);
+  if (Number.isNaN(answered) || Number.isNaN(downloaded) || answered > now.getTime() + DRIFT_MS) return now;
+  return new Date(Math.max(answered, downloaded));
+}
