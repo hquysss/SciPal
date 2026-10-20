@@ -8,9 +8,8 @@ import {
   MAX_WRITING_ANSWER,
   PracticeResponseSchema,
   toPublicPracticeQuestion,
-  type PracticeCheckResult,
-  type PracticeResponse,
 } from '../schemas/questions.js';
+import { checkPracticeAnswer, keyTermsOf, responseProblem } from '../schemas/practiceGrading.js';
 import { MAX_LESSON_QUESTIONS, quizQuestionIds } from '../authoring/quizReferences.js';
 import { COLUMNS, getUser, ID, mayPreview, msg, servableQuestion as loadServable, type PracticeRow } from '../practice/servable.js';
 
@@ -26,91 +25,6 @@ const CHECK_BODY_LIMIT = 8 * 1024;
 const lessonNotFound = msg('Không tìm thấy bài học.', 'Lesson not found.');
 const serviceDown = msg('Dịch vụ luyện tập chưa sẵn sàng.', 'Practice is not available right now.');
 
-const normalize = (value: string) => value.normalize('NFC').trim().replace(/\s+/g, ' ').toLowerCase();
-// A short numeric answer: a decimal comma is the same number as a decimal point (0,12 = 0.12).
-const normalizeShort = (value: string) => normalize(value).replace(/(\d),(?=\d)/g, '$1.');
-const escapeRegExp = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-
-/**
- * The key terms an English answer uses, as whole words in any case; the last word may take an
- * s/es/ed/ing ending ("loops", "repeated").
- */
-export function keyTermsUsed(answer: string, terms: string[]): { used: string[]; missing: string[] } {
-  const text = normalize(answer);
-  const used: string[] = [];
-  const missing: string[] = [];
-  for (const term of terms) {
-    const words = normalize(term).split(' ').map(escapeRegExp).join('\\s+');
-    const found = words !== '' && new RegExp(`(^|[^\\p{L}\\p{N}])${words}(s|es|ed|ing)?($|[^\\p{L}\\p{N}])`, 'u').test(text);
-    (found ? used : missing).push(term);
-  }
-  return { used, missing };
-}
-
-const keyTermsOf = (data: Record<string, unknown>) =>
-  Array.isArray(data.key_terms) ? data.key_terms.filter((t): t is string => typeof t === 'string' && t.trim() !== '') : [];
-
-export function explanationOf(data: Record<string, unknown>): { en: string; vi: string } | undefined {
-  const e = data.explanation as { en?: unknown; vi?: unknown } | undefined;
-  if (!e || typeof e.vi !== 'string' || !e.vi.trim()) return undefined;
-  return { vi: e.vi, en: typeof e.en === 'string' ? e.en : '' };
-}
-
-/** The answer has the shape of the question type and is not empty; otherwise a reason. */
-export function responseProblem(row: Pick<PracticeRow, 'type' | 'data'>, response: PracticeResponse): { error: string; error_en: string } | null {
-  const data = (row.data ?? {}) as Record<string, unknown>;
-  const others = (keys: Array<keyof PracticeResponse>) => keys.some((key) => response[key] !== undefined);
-  // A programming question is judged by its own routes (they take far larger bodies than this one).
-  if (row.type === 'code' || response.code !== undefined) return msg('Câu lập trình được nộp bằng nút Nộp bài của chính câu đó.', 'A programming question is submitted with its own Submit button.');
-  if (row.type === 'mc') {
-    if (others(['items', 'short_answer', 'writing_answer']) || !response.selected_option) return msg('Hãy chọn một phương án.', 'Choose an option.');
-    return null;
-  }
-  if (row.type === 'truefalse') {
-    const ids = new Set((Array.isArray(data.items) ? data.items : []).map((item: { id?: unknown }) => String(item?.id)));
-    const given = response.items ?? [];
-    if (others(['selected_option', 'short_answer', 'writing_answer']) || given.length === 0) return msg('Hãy chọn Đúng hoặc Sai cho ít nhất một ý.', 'Mark at least one statement true or false.');
-    if (given.some((item) => !ids.has(item.id)) || new Set(given.map((item) => item.id)).size !== given.length) {
-      return msg('Câu trả lời không khớp với các ý của câu hỏi.', 'The answer does not match the statements.');
-    }
-    return null;
-  }
-  if (row.type === 'writing') {
-    if (others(['selected_option', 'items', 'short_answer']) || !normalize(response.writing_answer ?? '')) return msg('Hãy viết câu trả lời bằng tiếng Anh.', 'Write your answer in English.');
-    return null;
-  }
-  if (others(['selected_option', 'items', 'writing_answer']) || !normalize(response.short_answer ?? '')) return msg('Hãy nhập câu trả lời.', 'Type an answer.');
-  return null;
-}
-
-/** Server-side verdict. It never contains the expected option, truth values or answer key. */
-export function checkPracticeAnswer(row: Pick<PracticeRow, 'type' | 'data'>, response: PracticeResponse): PracticeCheckResult {
-  const data = (row.data ?? {}) as Record<string, unknown>;
-  const explanation = explanationOf(data);
-  const withExplanation = (result: PracticeCheckResult): PracticeCheckResult => (explanation ? { ...result, explanation } : result);
-
-  if (row.type === 'mc') {
-    return withExplanation({ correct: typeof data.answer === 'string' && response.selected_option === data.answer });
-  }
-  if (row.type === 'truefalse') {
-    const stored = (Array.isArray(data.items) ? data.items : []) as Array<{ id: string; correct: boolean }>;
-    // Every statement gets a result; one left unanswered is simply not correct.
-    const items = stored.map((item) => {
-      const given = response.items?.find((g) => g.id === item.id);
-      return { id: item.id, correct: given !== undefined && given.selected === item.correct };
-    });
-    return withExplanation({ correct: items.length > 0 && items.every((item) => item.correct), items });
-  }
-  if (row.type === 'writing') {
-    const { used, missing } = keyTermsUsed(response.writing_answer ?? '', keyTermsOf(data));
-    const sample = typeof data.sample_answer === 'string' ? data.sample_answer : '';
-    return withExplanation({ correct: missing.length === 0, writing: { used, missing, sample_answer: sample } });
-  }
-  const key = typeof data.answer_key === 'string' ? data.answer_key : typeof data.answer === 'string' ? data.answer : '';
-  const given = normalizeShort(response.short_answer ?? '');
-  return withExplanation({ correct: given !== '' && given === normalizeShort(key) });
-}
-
 const FeedbackBody = z
   .object({
     question_id: z.string().regex(ID),
@@ -123,6 +37,8 @@ const FEEDBACK_FAILED = msg(
   'Giáo sư AI chưa nhận xét được lúc này. Lần này không bị trừ token, em thử lại sau nhé.',
   'The Professor could not comment right now. No tokens were used, try again later.',
 );
+
+export { checkPracticeAnswer, explanationOf, keyTermsUsed, responseProblem } from '../schemas/practiceGrading.js';
 
 export const practiceRoutes: FastifyPluginAsync = async (app) => {
   const servableQuestion = (request: FastifyRequest, reply: FastifyReply, questionId: string, failure: { error: string; error_en: string }) =>
