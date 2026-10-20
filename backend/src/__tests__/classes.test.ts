@@ -235,3 +235,97 @@ describe('class route authorization', () => {
     await app.close();
   });
 });
+
+const admin = { id: 'admin-1', app_metadata: { app_role: 'admin' } };
+
+describe('rename and delete a class', () => {
+  const rename = (app: Awaited<ReturnType<typeof buildClassApp>>, name: unknown, id = CLASS_ID) =>
+    app.inject({ method: 'PATCH', url: `/api/classes/${id}`, payload: { name } });
+  const remove = (app: Awaited<ReturnType<typeof buildClassApp>>, id = CLASS_ID) => app.inject({ method: 'DELETE', url: `/api/classes/${id}` });
+
+  it('needs a signed-in teacher or admin', async () => {
+    const anon = await buildClassApp(null, {});
+    expect((await rename(anon, 'X')).statusCode).toBe(401);
+    expect((await remove(anon)).statusCode).toBe(401);
+    await anon.close();
+    const pupil = await buildClassApp(student, {});
+    expect((await rename(pupil, 'X')).statusCode).toBe(403);
+    expect((await remove(pupil)).statusCode).toBe(403);
+    await pupil.close();
+  });
+
+  it('renames the teacher’s own class, trimming the name', async () => {
+    const rooms = mockQuery({ data: { id: CLASS_ID, name: '10A2' }, error: null });
+    const app = await buildClassApp(teacher, { class_rooms: rooms });
+    const res = await rename(app, '  10A2  ');
+    expect(res.statusCode).toBe(200);
+    expect(res.json()).toEqual({ class_room: { id: CLASS_ID, name: '10A2' } });
+    expect(rooms.updated[0]).toEqual({ name: '10A2' });
+    expect(rooms.eqCalls).toContainEqual(['id', CLASS_ID]);
+    expect(rooms.eqCalls).toContainEqual(['teacher_id', 'teacher-1']);
+    await app.close();
+  });
+
+  it('lets an admin rename any class (no owner filter)', async () => {
+    const rooms = mockQuery({ data: { id: CLASS_ID, name: '10A2' }, error: null });
+    const app = await buildClassApp(admin, { class_rooms: rooms });
+    expect((await rename(app, '10A2')).statusCode).toBe(200);
+    expect(rooms.eqCalls.some(([column]) => column === 'teacher_id')).toBe(false);
+    await app.close();
+  });
+
+  it('refuses an empty, blank, non-text or over-long name before touching the database', async () => {
+    const rooms = mockQuery({ data: { id: CLASS_ID }, error: null });
+    const app = await buildClassApp(teacher, { class_rooms: rooms });
+    for (const name of ['', '   ', 5, undefined, 'x'.repeat(101)]) expect((await rename(app, name)).statusCode, String(name)).toBe(400);
+    expect(rooms.updated).toHaveLength(0);
+    await app.close();
+  });
+
+  it('answers 404 for another teacher’s class or a bad id, on rename and delete', async () => {
+    const rooms = mockQuery({ data: null, error: null });
+    const app = await buildClassApp(otherTeacher, { class_rooms: rooms });
+    expect((await rename(app, 'X')).statusCode).toBe(404);
+    expect((await remove(app)).statusCode).toBe(404);
+    expect((await rename(app, 'X', 'not-a-uuid')).statusCode).toBe(404);
+    expect((await remove(app, 'not-a-uuid')).statusCode).toBe(404);
+    await app.close();
+  });
+
+  it('deletes the teacher’s own class, and an admin’s delete has no owner filter', async () => {
+    const own = mockQuery({ data: { id: CLASS_ID }, error: null });
+    const app = await buildClassApp(teacher, { class_rooms: own });
+    expect((await remove(app)).statusCode).toBe(200);
+    expect(own.deleteCalls).toBe(1);
+    expect(own.eqCalls).toContainEqual(['teacher_id', 'teacher-1']);
+    await app.close();
+
+    const any = mockQuery({ data: { id: CLASS_ID }, error: null });
+    const adminApp = await buildClassApp(admin, { class_rooms: any });
+    expect((await remove(adminApp)).statusCode).toBe(200);
+    expect(any.eqCalls.some(([column]) => column === 'teacher_id')).toBe(false);
+    await adminApp.close();
+  });
+
+  it('reports a database error as 500 without claiming success', async () => {
+    const rooms = mockQuery({ data: null, error: { message: 'boom' } });
+    const app = await buildClassApp(teacher, { class_rooms: rooms });
+    expect((await rename(app, 'X')).statusCode).toBe(500);
+    expect((await remove(app)).statusCode).toBe(500);
+    await app.close();
+  });
+
+  it('is refused with the maintenance answer when the classes feature is off', async () => {
+    const rooms = mockQuery({ data: { id: CLASS_ID }, error: null });
+    const app = Fastify();
+    app.decorate('supabase', mockSupabase({ class_rooms: rooms }));
+    app.decorate('siteSettings', { get: async () => ({ signupEnabled: true, maintenance: false, features: { glossary: true, exam: true, pricing: true, classes: false, tutor: true } }) });
+    app.addHook('onRequest', async (request) => { (request as any).user = teacher; });
+    await app.register(classRoutes);
+    await app.ready();
+    expect((await rename(app, 'X')).statusCode).toBe(403);
+    expect((await remove(app)).statusCode).toBe(403);
+    expect(rooms.deleteCalls).toBe(0);
+    await app.close();
+  });
+});
