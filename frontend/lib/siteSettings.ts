@@ -4,18 +4,20 @@
 
 export const SITE_FEATURES = ['glossary', 'exam', 'pricing', 'classes', 'tutor'] as const;
 export type SiteFeature = (typeof SITE_FEATURES)[number];
-export type SiteSettings = { signupEnabled: boolean; maintenance: boolean; features: Record<SiteFeature, boolean> };
+/** freeAccess: paid features that call no AI are free for signed-in accounts; the backend decides, the web only says so. */
+export type SiteSettings = { signupEnabled: boolean; maintenance: boolean; freeAccess: boolean; features: Record<SiteFeature, boolean> };
 
 export const ALL_ON: SiteSettings = {
   signupEnabled: true,
   maintenance: false,
+  freeAccess: false,
   features: { glossary: true, exam: true, pricing: true, classes: true, tutor: true },
 };
 
-export function resolveSiteSettings(row: { signup_enabled?: unknown; features?: unknown; maintenance?: unknown } | null | undefined): SiteSettings {
+export function resolveSiteSettings(row: { signup_enabled?: unknown; features?: unknown; maintenance?: unknown; free_access?: unknown } | null | undefined): SiteSettings {
   const stored = row?.features && typeof row.features === 'object' ? (row.features as Record<string, unknown>) : {};
   const features = Object.fromEntries(SITE_FEATURES.map((f) => [f, stored[f] !== false])) as Record<SiteFeature, boolean>;
-  return { signupEnabled: row?.signup_enabled !== false, maintenance: row?.maintenance === true, features };
+  return { signupEnabled: row?.signup_enabled !== false, maintenance: row?.maintenance === true, freeAccess: row?.free_access === true, features };
 }
 
 const under = (pathname: string, prefix: string) => pathname === prefix || pathname.startsWith(`${prefix}/`);
@@ -42,7 +44,7 @@ export const FEATURE_LABEL: Record<SiteFeature, { vi: string; en: string }> = {
   tutor: { vi: 'Giáo sư AI', en: 'AI Professor' },
 };
 
-const COLUMNS = 'signup_enabled,features,maintenance';
+const COLUMNS = 'signup_enabled,features,maintenance,free_access';
 
 /** The switches, read with the public key (server or edge); everything on when they cannot be read. */
 export async function fetchSiteSettings(): Promise<SiteSettings> {

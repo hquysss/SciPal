@@ -20,8 +20,19 @@ function formatDate(value: string, lang: 'en' | 'vi') {
   }).format(new Date(value));
 }
 
+/** The limit the backend gives a metric while the admin's free access switch is on (migration 20261020180000). */
+const UNLIMITED = 2_147_483_647;
+
 function QuotaMeter({ quota }: { quota: EffectiveQuota }) {
   const { lang, t } = useLanguage();
+  if (quota.limit >= UNLIMITED) {
+    return (
+      <li className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1 border-b border-line py-3 last:border-b-0">
+        <span className="text-sm font-semibold text-ink">{t(METRIC[quota.metric]?.title ?? { vi: quota.metric, en: quota.metric })}</span>
+        <span className="text-sm text-ink-muted">{t({ vi: 'Không giới hạn', en: 'Unlimited' })}</span>
+      </li>
+    );
+  }
   const taken = quota.used + quota.reserved;
   const left = Math.max(0, quota.limit - taken);
   const share = quota.limit > 0 ? Math.min(100, Math.round((taken / quota.limit) * 100)) : 100;
@@ -151,6 +162,11 @@ export function MyPlanView({ state, onRetry, onCancelRenewal, cancelling = false
 
       <section aria-labelledby="my-plan-usage" className="rounded-xl border border-line bg-surface px-5 py-2">
         <h2 id="my-plan-usage" className="pt-3 text-base font-bold text-ink">{t({ vi: 'Lượt dùng', en: 'Usage' })}</h2>
+        {account.quotas.some((q) => q.limit >= UNLIMITED) && (
+          <p className="pt-1 text-sm text-ink-muted">
+            {t({ vi: 'SciPal đang mở miễn phí: mục ghi "Không giới hạn" không cần gói. Giáo sư AI vẫn theo hạn mức của gói.', en: 'SciPal is free for now: items marked "Unlimited" need no plan. The AI Professor keeps its plan limit.' })}
+          </p>
+        )}
         <ul>
           {account.quotas.map((quota) => <QuotaMeter key={quota.metric} quota={quota} />)}
         </ul>

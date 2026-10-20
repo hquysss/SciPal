@@ -52,6 +52,16 @@ describe('GET /api/lessons/:id/video', () => {
     expect((await get(expired)).json().locked).toBe(true);
   });
 
+  it('free access (admin switch) lets a signed-in account without Plus watch, not a visitor', async () => {
+    const settings = { lesson_videos_access: 'plus', free_access: true };
+    const student_ = await build(student, { lesson_videos: ok(fileRow), site_settings: ok(settings), billing_subscriptions: ok(null) });
+    expect((await get(student_)).json()).toMatchObject({ locked: false, playback: { kind: 'file' } });
+    const visitor = await build(null, { lesson_videos: ok(fileRow), site_settings: ok(settings) });
+    expect((await get(visitor)).json()).toMatchObject({ locked: true, playback: null });
+    const off = await build(student, { lesson_videos: ok(fileRow), site_settings: ok({ ...settings, free_access: false }), billing_subscriptions: ok(null) });
+    expect((await get(off)).json().locked).toBe(true);
+  });
+
   it('a teacher plan is not Học sinh Plus', async () => {
     const app = await build(student, { lesson_videos: ok(fileRow), site_settings: ok({ lesson_videos_access: 'plus' }), billing_subscriptions: ok({ ...plusSub, plan_code: 'teacher_pro' }) });
     expect((await get(app)).json().locked).toBe(true);

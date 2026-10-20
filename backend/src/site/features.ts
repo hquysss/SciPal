@@ -8,19 +8,22 @@ export interface SiteSettingsRow {
   signup_enabled: boolean | null;
   features: Record<string, unknown> | null;
   maintenance?: boolean | null;
+  free_access?: boolean | null;
 }
 
 export interface SiteSettings {
   signupEnabled: boolean;
   /** The whole site is closed to everyone but admins. */
   maintenance: boolean;
+  /** Paid features that call no AI are free for every signed-in account (the quotas live in SQL). */
+  freeAccess: boolean;
   features: Record<SiteFeature, boolean>;
 }
 
 export function resolveSiteSettings(row: SiteSettingsRow | null): SiteSettings {
   const stored = row?.features ?? {};
   const features = Object.fromEntries(SITE_FEATURES.map((f) => [f, stored[f] !== false])) as Record<SiteFeature, boolean>;
-  return { signupEnabled: row?.signup_enabled !== false, maintenance: row?.maintenance === true, features };
+  return { signupEnabled: row?.signup_enabled !== false, maintenance: row?.maintenance === true, freeAccess: row?.free_access === true, features };
 }
 
 /** The bilingual refusal when a feature is off. */

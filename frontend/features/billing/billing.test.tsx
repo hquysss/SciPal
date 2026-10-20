@@ -89,6 +89,15 @@ describe('MyPlanView', () => {
     expect(countRawColors(html).total).toBe(0);
   });
 
+  it('shows a lifted limit as unlimited and says SciPal is free for now', () => {
+    const html = renderToStaticMarkup(<MyPlanView state={{ status: 'ready', account: { role: 'student', plan: 'student_free', paidThrough: null, quotas: [quota('tutor_tokens', 'daily', 15000, 10), quota('graded_exam_attempts', 'monthly', 2147483647, 4)] } }} />);
+    expect(html).toContain('Không giới hạn');
+    expect(html).toContain('đang mở miễn phí');
+    expect(html).not.toContain('2147483647');
+    const plain = renderToStaticMarkup(<MyPlanView state={{ status: 'ready', account: { role: 'student', plan: 'student_free', paidThrough: null, quotas: [quota('graded_exam_attempts', 'monthly', 3, 1)] } }} />);
+    expect(plain).not.toContain('đang mở miễn phí');
+  });
+
   it('shows the active MoMo amount, next date and cancellation control', () => {
     const html = renderToStaticMarkup(<MyPlanView
       state={{ status: 'ready', account: {

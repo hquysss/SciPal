@@ -10,10 +10,11 @@ const ok = (data: unknown = null) => mockQuery({ data, error: null });
 
 describe('resolveSiteSettings', () => {
   it('turns on whatever is not switched off, sign-up included', () => {
-    expect(resolveSiteSettings(null)).toEqual({ signupEnabled: true, maintenance: false, features: { glossary: true, exam: true, pricing: true, classes: true, tutor: true } });
+    expect(resolveSiteSettings(null)).toEqual({ signupEnabled: true, maintenance: false, freeAccess: false, features: { glossary: true, exam: true, pricing: true, classes: true, tutor: true } });
     expect(resolveSiteSettings({ signup_enabled: false, features: { exam: false, glossary: 'no', unknown: false, guest_trial: false } })).toEqual({
       signupEnabled: false,
       maintenance: false,
+      freeAccess: false,
       features: { glossary: true, exam: false, pricing: true, classes: true, tutor: true },
     });
   });
@@ -65,5 +66,22 @@ describe('site settings routes', () => {
       expect((await app.inject({ method: 'PATCH', url: '/api/admin/site-settings', payload })).statusCode).toBe(400);
     }
     await app.close();
+  });
+
+  it('turns free access on and off, and only to a boolean', async () => {
+    for (const on of [true, false]) {
+      const upsert = ok({ signup_enabled: true, features: {}, free_access: on, updated_at: 't' });
+      const { app } = await build(admin, { site_settings: [upsert] });
+      const res = await app.inject({ method: 'PATCH', url: '/api/admin/site-settings', payload: { signup_enabled: true, features: {}, free_access: on } });
+      expect(res.json()).toMatchObject({ freeAccess: on });
+      expect(upsert.inserted[0]).toMatchObject({ free_access: on });
+      expect((await app.inject({ method: 'PATCH', url: '/api/admin/site-settings', payload: { signup_enabled: true, features: {}, free_access: 'yes' } })).statusCode).toBe(400);
+      await app.close();
+    }
+  });
+
+  it('keeps free access off when the switches cannot be read', async () => {
+    const broken = siteSettingsStore(async () => { throw new Error('down'); });
+    expect((await broken.get()).freeAccess).toBe(false);
   });
 });
