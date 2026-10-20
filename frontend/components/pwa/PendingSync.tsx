@@ -6,6 +6,7 @@ import { useLanguage } from '@scipal/hooks';
 import { postPracticeSync } from '@/features/lessons/practiceApi';
 import { postExamSubmit } from '@/features/exam/offlineExam';
 import { clearPacks } from '../../lib/pwa/practicePacks';
+import { clearExamPages } from '../../lib/pwa/examPacks';
 import { EXAM_SYNCED, flushExams, flushPractice, PENDING_CHANGED, pendingExamsFor, pendingFor, PRACTICE_SYNCED, type ExamSyncResult, type SyncResult } from '../../lib/pwa/pendingPractice';
 import { createBrowserClient } from '../../lib/supabase';
 
@@ -54,7 +55,10 @@ export function PendingSync() {
     try {
       // Offline packs hold answers: they leave the device with the account.
       const { data } = createBrowserClient().auth.onAuthStateChange((event) => {
-        if (event === 'SIGNED_OUT') clearPacks();
+        if (event === 'SIGNED_OUT') {
+          clearPacks();
+          void clearExamPages();
+        }
       });
       unsubscribe = () => data.subscription.unsubscribe();
     } catch {

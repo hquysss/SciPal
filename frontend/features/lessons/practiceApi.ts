@@ -2,7 +2,7 @@ import { checkPracticeAnswer, PRACTICE_XP, responseProblem, type CodeLanguage, t
 import { authoringCall, type ApiResult } from '@/features/authoring/apiClient';
 import { getAccessToken } from '../../lib/session';
 import { createBrowserClient } from '../../lib/supabase';
-import { loadPack, type PracticePack } from '../../lib/pwa/practicePacks';
+import { lastOfflineUser, loadPack, type PracticePack } from '../../lib/pwa/practicePacks';
 import { estimateStreak, flushPractice, PENDING_CHANGED, pendingFor, queueFirstAnswer, type SyncAttempt, type SyncResult } from '../../lib/pwa/pendingPractice';
 
 // Lesson practice (Tự luyện). The server holds the answers and decides, and counts a signed-in
@@ -58,10 +58,12 @@ const browserDeps = (): CheckDeps => ({
   userId: async () => {
     try {
       const { data } = await createBrowserClient().auth.getSession();
-      return data.session?.user.id ?? null;
+      if (data.session) return data.session.user.id;
     } catch {
-      return null;
+      // No session to read: fall through.
     }
+    // Offline an expired session cannot be refreshed; the learner who saved lessons here is still known.
+    return globalThis.navigator?.onLine === false ? lastOfflineUser() : null;
   },
   store: globalThis.localStorage,
   now: () => new Date(),

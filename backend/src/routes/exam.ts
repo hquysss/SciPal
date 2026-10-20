@@ -383,6 +383,20 @@ export const examRoutes: FastifyPluginAsync = async (app) => {
       request.log.error({ err: questions.kind === 'error' ? questions.err : null }, 'Failed to load the questions of an offline package');
       return reply.code(500).send(failed);
     }
+    // The keys leave the server only once the attempt is spent: its hold is committed now (a hold
+    // lapses after 3 hours and would give the attempt back). Committing again at submit is a no-op.
+    if (attempt.metered) {
+      const billing = createBillingRepository((name, args) => supabase.rpc(name, args));
+      try {
+        await billing.settleQuota(attempt.id, 'commit');
+      } catch (err) {
+        if (err instanceof BillingRepositoryError && err.code === 'QUOTA_SETTLEMENT_REJECTED') {
+          return reply.code(409).send({ code: 'ATTEMPT_EXPIRED', ...bi('Lượt thi này đã quá giờ giữ chỗ. Bấm Bắt đầu làm bài để mở lượt mới rồi tải lại đề.', 'This attempt is no longer held. Start the exam to open a new attempt, then save it again.') });
+        }
+        request.log.error({ err }, 'Failed to count an exam attempt for an offline package');
+        return reply.code(503).send({ code: 'BILLING_UNAVAILABLE', ...bi('Chưa kiểm tra được lượt thi. Thử lại sau ít phút nhé.', 'Could not check your exam attempts. Try again in a few minutes.') });
+      }
+    }
     reply.header('Cache-Control', 'no-store');
     return reply.send({
       attempt_id: attempt.id,

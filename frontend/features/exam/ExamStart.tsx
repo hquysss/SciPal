@@ -39,7 +39,7 @@ export function ExamStart({
     { en: 'The exam is submitted by itself when time runs out. You can also submit earlier.', vi: 'Hết giờ bài tự động nộp. Bạn cũng có thể nộp sớm.' },
     { en: 'Use the question grid to jump between questions. Unanswered ones have their own colour on the grid.', vi: 'Dùng bảng câu hỏi để chuyển câu. Câu chưa trả lời có màu riêng trên bảng câu hỏi.' },
     { en: 'Your score appears right after you submit. Each submit uses 1 graded attempt; the attempts left show at the top of the exam.', vi: 'Điểm có ngay khi nộp bài. Mỗi lần nộp bài trừ 1 lượt thi chấm điểm. Số lượt còn lại hiện ở đầu bài thi.' },
-    { en: 'Do not close this tab or reload: your answers are only kept while the page is open.', vi: 'Đừng đóng tab hay tải lại trang: câu trả lời chỉ được giữ khi trang còn mở.' },
+    { en: 'Your answers are kept on this device while you work, so a reload or a lost connection loses nothing.', vi: 'Câu trả lời được giữ trên máy trong lúc làm, nên tải lại trang hay mất mạng cũng không mất.' },
   ];
 
   return (

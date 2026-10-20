@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import Fastify from 'fastify';
 import { clampFinishedAt, examRoutes } from '../routes/exam.js';
-import { mockQuery, mockSupabase, type MockBuilder } from './helpers/supabaseMock.js';
+import { mockQuery, mockSupabase, rpcCalls, type MockBuilder } from './helpers/supabaseMock.js';
 
 const BP = '22222222-2222-4222-8222-222222222222';
 const A1 = '44444444-4444-4444-8444-444444444444';
@@ -37,7 +37,7 @@ describe('GET /api/exam/attempts/:id/offline', () => {
 
   it('sends the exam of a started attempt with what grades it, the questions without it, and no-store', async () => {
     const attempts = ok(started);
-    const app = await build({ exam_attempts: attempts, exam_blueprints: ok({ id: BP }), questions: ok([question]) });
+    const app = await build({ exam_attempts: attempts, exam_blueprints: ok({ id: BP }), questions: ok([question]), 'rpc:billing_settle_quota': ok(true) });
     const res = await pack(app);
     expect(res.statusCode).toBe(200);
     expect(res.headers['cache-control']).toBe('no-store');
@@ -48,6 +48,32 @@ describe('GET /api/exam/attempts/:id/offline', () => {
     expect(body.questions[0].data).not.toHaveProperty('explanation');
     expect(body.keys.q1).toEqual({ type: 'mc', data: question.data });
     expect(attempts.eqCalls).toContainEqual(['user_id', 'student-1']);
+    await app.close();
+  });
+});
+
+describe('saving an exam spends the attempt', () => {
+  it('counts the held attempt before any key leaves the server', async () => {
+    rpcCalls.length = 0;
+    const app = await build({ exam_attempts: ok(started), exam_blueprints: ok({ id: BP }), questions: ok([question]), 'rpc:billing_settle_quota': ok(true) });
+    expect((await pack(app)).statusCode).toBe(200);
+    expect(rpcCalls).toContainEqual(['billing_settle_quota', expect.objectContaining({ p_operation_id: A1, p_outcome: 'commit' })]);
+    await app.close();
+  });
+
+  it('sends no keys when the hold has run out, and says to start again', async () => {
+    const app = await build({ exam_attempts: ok(started), exam_blueprints: ok({ id: BP }), questions: ok([question]), 'rpc:billing_settle_quota': ok(false) });
+    const res = await pack(app);
+    expect(res.statusCode).toBe(409);
+    expect(res.body).not.toContain('"keys"');
+    await app.close();
+  });
+
+  it('counts nothing for an attempt that is not metered (teachers, admins)', async () => {
+    rpcCalls.length = 0;
+    const app = await build({ exam_attempts: ok({ ...started, metered: false }), exam_blueprints: ok({ id: BP }), questions: ok([question]) });
+    expect((await pack(app)).statusCode).toBe(200);
+    expect(rpcCalls).toEqual([]);
     await app.close();
   });
 });

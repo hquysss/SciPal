@@ -1,5 +1,7 @@
 import type { PublicPracticeQuestion } from '@scipal/types';
-import { EXAM_DRAFT_PREFIX, EXAM_PACK_PREFIX } from './examPacks';
+import { EXAM_DRAFT_PREFIX, EXAM_PACK_PREFIX, OFFLINE_USER_KEY, rememberOfflineUser } from './examPacks';
+
+export { lastOfflineUser } from './examPacks';
 
 // "Tải để học offline" for practice: a lesson's questions and what grades them, kept on this device
 // for the signed-in learner who downloaded them. The answers inside are readable by anyone with the
@@ -25,6 +27,7 @@ const keyOf = (userId: string, lessonId: string) => `${PREFIX}${userId}:${lesson
 export function savePack(pack: PracticePack, store: Store = defaultStore()): boolean {
   try {
     store.setItem(keyOf(pack.user_id, pack.lesson_id), JSON.stringify(pack));
+    rememberOfflineUser(pack.user_id, store);
     return true;
   } catch {
     return false;
@@ -44,7 +47,7 @@ export function clearPacks(store: Store = defaultStore()): void {
     const keys: string[] = [];
     for (let i = 0; i < store.length; i++) {
       const key = store.key(i);
-      if (key && [PREFIX, EXAM_PACK_PREFIX, EXAM_DRAFT_PREFIX].some((prefix) => key.startsWith(prefix))) keys.push(key);
+      if (key && (key === OFFLINE_USER_KEY || [PREFIX, EXAM_PACK_PREFIX, EXAM_DRAFT_PREFIX].some((prefix) => key.startsWith(prefix)))) keys.push(key);
     }
     for (const key of keys) store.removeItem(key);
   } catch {

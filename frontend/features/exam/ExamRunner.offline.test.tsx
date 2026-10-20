@@ -6,14 +6,15 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 vi.mock('@scipal/hooks', () => ({ useLanguage: () => ({ lang: 'vi', t: (o: { vi: string }) => o.vi }) }));
 vi.mock('next/navigation', () => ({ usePathname: () => '/exam/bp', useRouter: () => ({ push: vi.fn() }) }));
 vi.mock('next/link', () => ({ default: ({ href, children, ...rest }: { href: string; children: ReactNode }) => <a href={href} {...rest}>{children}</a> }));
+const auth = vi.hoisted(() => ({ session: { access_token: 'tok', user: { id: 'u1' } } as null | { access_token: string; user: { id: string } } }));
 vi.mock('../../lib/supabase', () => ({
-  createBrowserClient: () => ({ auth: { getSession: async () => ({ data: { session: { access_token: 'tok', user: { id: 'u1' } } } }) } }),
+  createBrowserClient: () => ({ auth: { getSession: async () => ({ data: { session: auth.session } }) } }),
 }));
 const attempts = vi.hoisted(() => ({ start: vi.fn() }));
 vi.mock('./examAttempt', async (load) => ({ ...(await load<typeof import('./examAttempt')>()), startExamAttempt: attempts.start }));
 
 import { ExamRunner, type ExamQuestionItem } from './ExamRunner';
-import { saveDraft, saveExamPack, type ExamPack } from '../../lib/pwa/examPacks';
+import { loadExamPack, saveDraft, saveExamPack, type ExamPack } from '../../lib/pwa/examPacks';
 import { EXAM_SYNCED, pendingExamsFor } from '../../lib/pwa/pendingPractice';
 
 const q = (id: string): ExamQuestionItem => ({ id, type: 'mc', data: { stem: { vi: `Câu hỏi ${id}`, en: `Question ${id}` }, options: [{ id: 'A', text: { vi: 'Lựa chọn A', en: 'A' } }, { id: 'B', text: { vi: 'Lựa chọn B', en: 'B' } }] } });
@@ -29,6 +30,7 @@ const pack: ExamPack = {
 let onLine: ReturnType<typeof vi.spyOn>;
 
 beforeEach(() => {
+  auth.session = { access_token: 'tok', user: { id: 'u1' } };
   localStorage.clear();
   attempts.start.mockReset();
   onLine = vi.spyOn(navigator, 'onLine', 'get').mockReturnValue(false);
@@ -80,6 +82,34 @@ describe('an exam saved for offline', () => {
     });
     expect(screen.queryByText(/Kết quả tạm/)).toBeNull();
     expect(screen.getByTestId('exam-score').textContent).toBe('7 / 10');
+  });
+
+  it('still opens the saved exam offline after the session has expired', async () => {
+    saveExamPack(pack);
+    auth.session = null;
+    await submitFirstRight();
+    expect(screen.getByText(/Kết quả tạm · chờ đồng bộ/)).toBeTruthy();
+    expect(pendingExamsFor('u1')).toHaveLength(1);
+  });
+
+  it('forgets the saved exam once it is submitted, so it is not taken again on the same attempt', async () => {
+    saveExamPack(pack);
+    await submitFirstRight();
+    expect(loadExamPack('u1', 'bp')).toBeNull();
+  });
+
+  it('keeps the clock running across closing and reopening the page', async () => {
+    saveExamPack({ ...pack, started_at: new Date(Date.now() - 40 * 60 * 1000).toISOString() });
+    render(<ExamRunner blueprintId="bp" questions={questions} durationMinutes={45} />);
+    await settle();
+    expect(screen.getByRole('timer').textContent).toMatch(/0[45]:\d\d/);
+  });
+
+  it('notes when the saved exam was started, the first time', async () => {
+    saveExamPack(pack);
+    render(<ExamRunner blueprintId="bp" questions={questions} />);
+    await settle();
+    expect(loadExamPack('u1', 'bp')?.started_at).toEqual(expect.any(String));
   });
 
   it('without a saved exam, says to save it while online', async () => {

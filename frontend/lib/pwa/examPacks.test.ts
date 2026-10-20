@@ -1,5 +1,6 @@
-import { describe, expect, it } from 'vitest';
-import { dropExam, loadDraft, loadExamPack, saveDraft, saveExamPack, type ExamPack } from './examPacks';
+import { describe, expect, it, vi } from 'vitest';
+import { clearExamPages, dropExam, loadDraft, loadExamPack, saveDraft, saveExamPack, type ExamPack } from './examPacks';
+import { lastOfflineUser } from './practicePacks';
 import { clearPacks } from './practicePacks';
 import { flushExams, pendingExamsFor, queueExam, type PendingExam } from './pendingPractice';
 
@@ -52,6 +53,23 @@ describe('exam packs', () => {
     clearPacks(store);
     expect(loadExamPack('u1', 'bp1', store)).toBeNull();
     expect(loadDraft('a1', store)).toBeNull();
+  });
+});
+
+describe('signing out', () => {
+  it('removes kept exam pages, and leaves lesson pages', async () => {
+    const urls = ['https://scipal.io.vn/exam/bp1', 'https://scipal.io.vn/informatics/vong-lap', 'https://scipal.io.vn/exam/bp2'];
+    const cache = { keys: async () => urls.map((url) => ({ url })), delete: vi.fn(async () => true) };
+    await clearExamPages({ open: async () => cache } as unknown as CacheStorage);
+    expect(cache.delete.mock.calls.map(([r]) => (r as { url: string }).url)).toEqual([urls[0], urls[2]]);
+  });
+
+  it('remembers who saved for offline until then', () => {
+    const store = memory();
+    saveExamPack(pack(), store);
+    expect(lastOfflineUser(store)).toBe('u1');
+    clearPacks(store);
+    expect(lastOfflineUser(store)).toBeNull();
   });
 });
 

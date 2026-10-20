@@ -11,7 +11,7 @@ import { forgetExamAttempt, startExamAttempt } from './examAttempt';
 import { ExamStart } from './ExamStart';
 import { scoreOffline } from './offlineExam';
 import { SaveExamOffline } from './SaveExamOffline';
-import { dropExam, loadDraft, loadExamPack, saveDraft, type ExamPack } from '../../lib/pwa/examPacks';
+import { dropExam, lastOfflineUser, loadDraft, loadExamPack, saveDraft, saveExamPack, type ExamPack } from '../../lib/pwa/examPacks';
 import { EXAM_SYNCED, PENDING_CHANGED, queueExam, type ExamSyncResult } from '../../lib/pwa/pendingPractice';
 import { useShuffledOptions } from '../../lib/useShuffledOptions';
 import { createBrowserClient } from '../../lib/supabase';
@@ -278,9 +278,11 @@ export function ExamRunner({
   const [provisional, setProvisional] = useState(false);
 
   const currentSession = useCallback(async () => {
-    const session = (await createBrowserClient().auth.getSession()).data.session;
+    const session = (await createBrowserClient().auth.getSession().catch(() => ({ data: { session: null } }))).data.session;
     const authToken = token ?? session?.access_token;
-    return { token: authToken, userId: session?.user.id ?? null };
+    // Offline an expired session cannot be refreshed; the learner who saved the exam is still known.
+    const offline = typeof navigator !== 'undefined' && navigator.onLine === false;
+    return { token: authToken, userId: session?.user.id ?? (offline ? lastOfflineUser() : null) };
   }, [token]);
 
   const reloadPack = useCallback(async () => {
@@ -312,8 +314,12 @@ export function ExamRunner({
       if (!active) return;
       const saved = session.userId ? loadExamPack(session.userId, blueprintId) : null;
       if (saved) {
+        // The clock runs from the first start of this attempt, so reopening the page gives no extra time.
+        const startedAt = saved.started_at ?? new Date().toISOString();
+        if (!saved.started_at) saveExamPack({ ...saved, started_at: startedAt });
+        setTimeLeft(Math.max(0, durationMinutes * 60 - Math.floor((Date.now() - Date.parse(startedAt)) / 1000)));
         setUserId(session.userId);
-        setPack(saved);
+        setPack({ ...saved, started_at: startedAt });
         setAttempt({ id: saved.attempt_id, remaining: null, period: null });
         const draft = loadDraft(saved.attempt_id);
         if (draft) setAnswers(draft);
@@ -328,7 +334,7 @@ export function ExamRunner({
     return () => {
       active = false;
     };
-  }, [begin, blueprintId, currentSession, started]);
+  }, [begin, blueprintId, currentSession, durationMinutes, started]);
 
   // The answers being written survive closing the tab (offline above all).
   useEffect(() => {
@@ -364,6 +370,10 @@ export function ExamRunner({
         return;
       }
       const queued = queueExam({ user_id: userId, attempt_id: pack.attempt_id, blueprint_id: blueprintId, answers: formatted, finished_at: finishedAt });
+      if (queued === 'kept') {
+        setSubmissionError(t({ en: 'This exam was already submitted and waits to sync.', vi: 'Bài thi này đã nộp và đang chờ đồng bộ.' }));
+        return;
+      }
       if (queued === 'failed') {
         setSubmissionError(t({ en: 'This device is out of storage, so the exam could not be kept. Clear some site data and try again.', vi: 'Máy hết chỗ lưu nên chưa giữ được bài thi. Xoá bớt dữ liệu trang rồi thử lại.' }));
         return;
@@ -371,6 +381,9 @@ export function ExamRunner({
       window.dispatchEvent(new Event(PENDING_CHANGED));
       setResult(scoreOffline(pack, formatted));
       setProvisional(true);
+      // Submitted: the attempt is not taken again from this device; the queue holds the answers.
+      dropExam(userId, blueprintId, pack.attempt_id);
+      forgetExamAttempt(blueprintId);
     };
     if (typeof navigator !== 'undefined' && navigator.onLine === false) {
       submitOffline();

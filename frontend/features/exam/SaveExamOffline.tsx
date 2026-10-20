@@ -29,7 +29,7 @@ export function SaveExamOffline({ blueprintId, saved, onSaved }: { blueprintId: 
     return (
       <p role="status" className="inline-flex items-center gap-2 text-sm font-semibold text-ink">
         <CheckCircle2 aria-hidden="true" className="h-4 w-4 shrink-0 text-action" />
-        {t({ vi: 'Đã lưu đề. Bạn có thể thi khi không có mạng; lượt thi đã được tính.', en: 'Exam saved. You can take it without a connection; the attempt is counted.' })}
+        {t({ vi: 'Đã lưu đề. Bạn có thể thi khi không có mạng. SciPal đã trừ một lượt thi.', en: 'Exam saved. You can take it without a connection. SciPal has used one graded attempt.' })}
       </p>
     );
   }
