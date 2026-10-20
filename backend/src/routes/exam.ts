@@ -169,10 +169,11 @@ type AttemptRow = {
   correct_count: number | null;
   total_questions: number | null;
   xp_earned: number | null;
+  created_at?: string | null;
 };
 type Caller = { id?: string; sub?: string; app_metadata?: { app_role?: string } };
 const bi = (error: string, error_en: string) => ({ error, error_en });
-const ATTEMPT_COLUMNS = 'id, user_id, blueprint_id, metered, status, score, max_score, section_scores, correct_count, total_questions, xp_earned';
+const ATTEMPT_COLUMNS = 'id, user_id, blueprint_id, metered, status, score, max_score, section_scores, correct_count, total_questions, xp_earned, created_at';
 const attemptNotFound = { code: 'ATTEMPT_NOT_FOUND', ...bi('Không tìm thấy lượt làm bài này.', 'This exam attempt was not found.') };
 
 /**
@@ -199,6 +200,39 @@ async function storedResult(supabase: SupabaseClient, log: { warn: (obj: object,
     sections,
     already_awarded: true,
     already_submitted: true,
+  };
+}
+
+/** Clock drift allowed for a submission dated a little after the server's time. */
+const DRIFT_MS = 5 * 60 * 1000;
+
+/**
+ * When a submission counts: the time the device says the exam was finished (an exam taken offline),
+ * but never in the future beyond clock drift and never before the attempt started. Without a
+ * readable time it counts now.
+ */
+export function clampFinishedAt(finishedAt: unknown, startedAt: string | null | undefined, now: Date): Date {
+  const finished = typeof finishedAt === 'string' && finishedAt.length <= 40 ? Date.parse(finishedAt) : NaN;
+  if (Number.isNaN(finished) || finished > now.getTime() + DRIFT_MS) return now;
+  const started = startedAt ? Date.parse(startedAt) : NaN;
+  return new Date(Number.isNaN(started) ? finished : Math.max(finished, started));
+}
+
+/** A question as a learner sees it: no key, no truth values, no explanation. */
+function toLearnerQuestion(q: ExamQuestionRow) {
+  const d = { ...(q.data ?? {}) };
+  for (const field of HIDDEN_QUESTION_FIELDS) delete d[field];
+  if (Array.isArray(d.items)) {
+    d.items = d.items.map((item: { id: string; text: unknown }) => ({
+      id: item.id,
+      text: item.text,
+    }));
+  }
+  return {
+    id: q.id,
+    type: q.type,
+    difficulty: q.difficulty,
+    data: d,
   };
 }
 
@@ -312,32 +346,60 @@ export const examRoutes: FastifyPluginAsync = async (app) => {
     }
 
     // Strip answer keys and correct fields strictly before sending to client
-    const sanitized = questions.value.map((q) => {
-      const d = { ...(q.data ?? {}) };
-      for (const field of HIDDEN_QUESTION_FIELDS) delete d[field];
-      if (Array.isArray(d.items)) {
-        d.items = d.items.map((item: { id: string; text: unknown }) => ({
-          id: item.id,
-          text: item.text,
-        }));
-      }
-      return {
-        id: q.id,
-        type: q.type,
-        difficulty: q.difficulty,
-        data: d,
-      };
-    });
+    const sanitized = questions.value.map(toLearnerQuestion);
 
     return reply.send({ blueprint: bp.value.summary, questions: sanitized });
   });
 
+  // The exam of an attempt the caller has started, with what grades it, to take it offline. The
+  // attempt (and so one graded attempt of the plan) is held before any answer leaves the server.
+  app.get('/api/exam/attempts/:attemptId/offline', async (request, reply) => {
+    const user = caller(request);
+    const uid = user?.id ?? user?.sub;
+    if (!uid) return reply.code(401).send({ code: 'AUTH_REQUIRED', ...bi('Hãy đăng nhập để tải đề thi.', 'Sign in to save an exam.') });
+    if (!(await featureAllowed(app, 'exam', user as never))) return reply.code(403).send(featureOff('exam'));
+    const supabase = app.supabase;
+    if (!supabase) return reply.code(503).send(bi('Dịch vụ đề thi chưa sẵn sàng.', 'The exam service is not available.'));
+    const { attemptId } = request.params as { attemptId: string };
+    if (!UUID_PATTERN.test(attemptId)) return reply.code(404).send(attemptNotFound);
+    const failed = bi('Chưa tải được đề để thi offline.', 'Could not save the exam for offline.');
+
+    const { data, error } = await supabase.from('exam_attempts').select(ATTEMPT_COLUMNS).eq('id', attemptId.toLowerCase()).eq('user_id', uid).maybeSingle();
+    if (error) {
+      request.log.error({ err: error }, 'Failed to read an exam attempt for offline');
+      return reply.code(500).send(failed);
+    }
+    const attempt = data as AttemptRow | null;
+    if (!attempt || attempt.user_id !== uid || attempt.status !== 'started') return reply.code(404).send(attemptNotFound);
+
+    const bp = await loadBlueprint(supabase, attempt.blueprint_id, { viewer: { id: uid, role: user?.app_metadata?.app_role } });
+    if (bp.kind === 'error') {
+      request.log.error({ err: bp.err, blueprintId: attempt.blueprint_id }, 'Failed to load the exam of an offline package');
+      return reply.code(500).send(failed);
+    }
+    if (bp.kind === 'not_found') return reply.code(404).send(bi('Không tìm thấy đề thi.', 'Exam not found.'));
+    const questions = await loadExamQuestions(supabase, bp.value);
+    if (questions.kind !== 'ok') {
+      request.log.error({ err: questions.kind === 'error' ? questions.err : null }, 'Failed to load the questions of an offline package');
+      return reply.code(500).send(failed);
+    }
+    reply.header('Cache-Control', 'no-store');
+    return reply.send({
+      attempt_id: attempt.id,
+      blueprint: bp.value.summary,
+      questions: questions.value.map(toLearnerQuestion),
+      keys: Object.fromEntries(questions.value.map((q) => [q.id, { type: q.type, data: q.data ?? {} }])),
+    });
+  });
+
   // Score exam server-side
   app.post('/api/score/exam', async (request, reply) => {
-    const { blueprint_id, attempt_id, answers } = (request.body ?? {}) as {
+    const { blueprint_id, attempt_id, answers, finished_at } = (request.body ?? {}) as {
       blueprint_id?: unknown;
       attempt_id?: unknown;
       answers?: unknown;
+      /** When an exam taken offline was finished on the device. */
+      finished_at?: unknown;
     };
 
     if (typeof blueprint_id !== 'string' || !blueprint_id.trim() || blueprint_id.length > 64) {
@@ -399,6 +461,7 @@ export const examRoutes: FastifyPluginAsync = async (app) => {
       answers: answersById,
       isCorrect: isCorrectAnswer,
     });
+    const submittedAt = clampFinishedAt(finished_at, attempt.created_at, new Date()).toISOString();
     const correctCount = scored.correct_count;
     const possibleXp = correctCount * 15;
     let xp_earned = 0;
@@ -413,6 +476,7 @@ export const examRoutes: FastifyPluginAsync = async (app) => {
           subject_id: [...subjectIds][0],
           delta: possibleXp,
           reason: `exam_complete:${blueprintId.toLowerCase()}`,
+          created_at: submittedAt,
         });
         if (error?.code === '23505') already_awarded = true;
         else if (error) app.log.warn({ err: error }, 'Exam XP logging failed');
@@ -431,7 +495,7 @@ export const examRoutes: FastifyPluginAsync = async (app) => {
     };
     const { data: saved, error: saveError } = await supabase
       .from('exam_attempts')
-      .update({ status: 'submitted', ...result, section_scores: scored.sections, submitted_at: new Date().toISOString() })
+      .update({ status: 'submitted', ...result, section_scores: scored.sections, submitted_at: submittedAt })
       .eq('id', attemptId)
       .eq('status', 'started')
       .select('id');
