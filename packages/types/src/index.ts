@@ -11,3 +11,4 @@ export * from './historyMap.js';
 export * from './historyWorld.js';
 export * from './progress.js';
 export * from './practiceGrading.js';
+export * from './examScoring.js';

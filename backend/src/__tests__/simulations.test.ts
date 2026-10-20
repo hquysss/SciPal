@@ -21,7 +21,7 @@ afterEach(() => {
 
 describe('backend mirror of the simulation contract', () => {
   it('is the same source as @scipal/types (Vercel cannot load the sibling package)', () => {
-    for (const file of ['simulations.ts', 'graphExpression.ts', 'historyMap.ts', 'historyWorld.ts', 'progress.ts', 'practiceGrading.ts']) {
+    for (const file of ['simulations.ts', 'graphExpression.ts', 'historyMap.ts', 'historyWorld.ts', 'progress.ts', 'practiceGrading.ts', 'examScoring.ts']) {
       expect(readFileSync(`src/schemas/${file}`, 'utf8').replace(/\r\n/g, '\n'), file).toBe(
         readFileSync(`${SHARED}/${file}`, 'utf8').replace(/\r\n/g, '\n'),
       );

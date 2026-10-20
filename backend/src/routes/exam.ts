@@ -15,7 +15,9 @@ import {
   type BlueprintRow,
   type BlueprintSummary,
 } from '../exam/blueprintSummary.js';
-import { isEstimatedFormat, scoreExam, type ExamAnswer, type ScoredSection } from '../exam/scoring.js';
+import { isCorrectAnswer, isEstimatedFormat, scoreExam, type ExamAnswer, type ScoredSection } from '../exam/scoring.js';
+
+export { isCorrectAnswer };
 import { featureAllowed, featureOff } from '../site/features.js';
 
 export const MAX_EXAM_ANSWERS = 200;
@@ -142,31 +144,6 @@ async function loadExamQuestions(
   });
   if (error) return { kind: 'error', err: error };
   return { kind: 'ok', value: (data ?? []) as ExamQuestionRow[] };
-}
-
-// A decimal comma is the same number as a decimal point (0,12 = 0.12).
-const normalizeShortAnswer = (value: string) => value.normalize('NFC').trim().replace(/\s+/g, ' ').toLowerCase().replace(/(\d),(?=\d)/g, '$1.');
-
-/** Server-side check of one answer against the stored key. */
-export function isCorrectAnswer(question: Pick<ExamQuestionRow, 'type' | 'data'>, answer: ExamAnswer): boolean {
-  const data = question.data ?? {};
-  if (question.type === 'mc') {
-    return typeof answer.selected_option === 'string' && answer.selected_option === data.answer;
-  }
-  if (question.type === 'truefalse') {
-    if (!Array.isArray(data.items) || data.items.length === 0 || !Array.isArray(answer.items)) return false;
-    return data.items.every((it: { id: string; correct: boolean }) => {
-      const userIt = answer.items?.find((ui) => ui?.id === it.id);
-      return userIt !== undefined && userIt.selected === it.correct;
-    });
-  }
-  if (question.type === 'short') {
-    const key = typeof data.answer === 'string' ? data.answer : data.answer_key;
-    if (typeof answer.short_answer !== 'string' || typeof key !== 'string') return false;
-    const given = normalizeShortAnswer(answer.short_answer);
-    return given !== '' && given === normalizeShortAnswer(key);
-  }
-  return false;
 }
 
 /** Keep the first answer per question; drop entries without a string question_id. */
