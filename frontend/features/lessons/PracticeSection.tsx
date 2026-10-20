@@ -59,9 +59,13 @@ export function usePracticeState() {
       const synced = (event as CustomEvent<SyncResult[]>).detail ?? [];
       setState((old) => {
         let results = old.results;
-        for (const { question_id, status, counted: _counted, ...server } of synced) {
-          if (status !== 'ok' || !results[question_id]?.provisional || typeof server.correct !== 'boolean') continue;
-          results = { ...results, [question_id]: server as PracticeCheckResult };
+        for (const { question_id, status, counted: _counted, response, ...server } of synced) {
+          const shown = results[question_id];
+          if (status !== 'ok' || !shown?.provisional || typeof server.correct !== 'boolean') continue;
+          // The server judged the first answer; a later one on screen keeps its own verdict, without the label.
+          const same = JSON.stringify(old.answers[question_id]) === JSON.stringify(response);
+          const { provisional: _provisional, ...local } = shown;
+          results = { ...results, [question_id]: same ? (server as PracticeCheckResult) : local };
         }
         return results === old.results ? old : { ...old, results };
       });

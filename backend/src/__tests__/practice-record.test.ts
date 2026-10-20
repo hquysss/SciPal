@@ -84,6 +84,17 @@ describe('recordPractice', () => {
     expect(res.lesson_completed).toBe(false);
   });
 
+  it('leaves ids that are not question ids out of the lesson count', async () => {
+    const { t, supabase } = tables({ rightSoFar: 4 });
+    (lesson.blocks as Array<{ type: string; question_id: string }>).push({ type: 'quiz', question_id: 'not-a-uuid' });
+    try {
+      await recordPractice(supabase, { userId: USER, row: row(), correct: true, at: AT }, log);
+      expect(t.questions.inCalls[0]![1]).toEqual(Q);
+    } finally {
+      (lesson.blocks as unknown[]).pop();
+    }
+  });
+
   it('uses at for every timestamp and the streak day', async () => {
     const { t, supabase } = tables({ rightSoFar: 4 });
     await recordPractice(supabase, { userId: USER, row: row(), correct: true, at: AT }, log);

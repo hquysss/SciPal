@@ -2,7 +2,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import { MAX_LESSON_QUESTIONS, quizQuestionIds } from '../authoring/quizReferences.js';
 import { PRACTICE_XP } from '../schemas/progress.js';
 import { touchStreak } from '../streaks/touchStreak.js';
-import type { PracticeRow } from './servable.js';
+import { ID, type PracticeRow } from './servable.js';
 
 // What a practice answer earns. Only a learner's first answer to each question counts: it is kept in
 // practice_attempts, gives XP by difficulty when right (once, guarded by xp_log_practice_once_idx),
@@ -66,7 +66,7 @@ async function completeLessons(supabase: SupabaseClient, userId: string, questio
   }
   let completed = false;
   for (const lesson of (lessons ?? []) as Array<{ id: string; blocks: unknown }>) {
-    const ids = quizQuestionIds(lesson.blocks).slice(0, MAX_LESSON_QUESTIONS);
+    const ids = quizQuestionIds(lesson.blocks).filter((id) => ID.test(id)).slice(0, MAX_LESSON_QUESTIONS);
     if (ids.length === 0) continue;
     const { data: counted, error: countedError } = await supabase
       .from('questions')

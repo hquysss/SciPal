@@ -43,6 +43,7 @@ describe('pending practice answers', () => {
     const post = async () => [ok('a', 15, 3), { question_id: 'b', status: 'gone' }, { question_id: 'c', status: 'rejected' }, { question_id: 'd', status: 'error' }] as SyncResult[];
     const res = await flushPractice('u1', post, new Date('2026-10-20T09:00:00Z'), store);
     expect(res).toMatchObject({ synced: 1, xp: 15 });
+    expect(res.results[0]!.response).toEqual({ selected_option: 'a' });
     expect(pendingFor('u1', store).map((a) => a.question_id)).toEqual(['d']);
     expect(estimateStreak('u1', 's1', new Date('2026-10-20T10:00:00Z'), store)).toBe(3);
   });

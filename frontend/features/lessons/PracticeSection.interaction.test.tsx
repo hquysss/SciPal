@@ -165,10 +165,19 @@ describe('results that count', () => {
   it('a PRACTICE_SYNCED event replaces it with the server result', async () => {
     await answerFirst({ ok: true, result: { correct: true }, provisional: { xp: 15, streak: null } });
     act(() => {
-      window.dispatchEvent(new CustomEvent('scipal:practice-synced', { detail: [{ question_id: 'q1', status: 'ok', correct: false, xp_earned: 0 }] }));
+      window.dispatchEvent(new CustomEvent('scipal:practice-synced', { detail: [{ question_id: 'q1', status: 'ok', correct: false, xp_earned: 0, response: { selected_option: 'a' } }] }));
     });
     expect(screen.queryByText(/Kết quả tạm/)).toBeNull();
     expect(screen.getByText('Chưa đúng. Sửa câu trả lời rồi thử lại.')).toBeTruthy();
+  });
+
+  it('keeps the verdict of a later answer when the synced one is for the first answer', async () => {
+    await answerFirst({ ok: true, result: { correct: true }, provisional: { xp: 0, streak: null } });
+    act(() => {
+      window.dispatchEvent(new CustomEvent('scipal:practice-synced', { detail: [{ question_id: 'q1', status: 'ok', correct: false, xp_earned: 0, response: { selected_option: 'b' } }] }));
+    });
+    expect(screen.queryByText(/Kết quả tạm/)).toBeNull();
+    expect(screen.getByText('Đúng rồi!')).toBeTruthy();
   });
 
   it('shows +XP and the completed message from the server', async () => {

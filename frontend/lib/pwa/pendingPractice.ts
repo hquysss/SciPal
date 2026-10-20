@@ -31,6 +31,8 @@ export type SyncResult = {
   xp_earned?: number;
   new_streak?: number;
   lesson_completed?: boolean;
+  /** The queued answer this verdict is for (added on the device). */
+  response?: PracticeResponse;
 } & Partial<PracticeCheckResult>;
 /** The streak the server last reported for a subject, and the UTC day it counted. */
 export type StreakMark = { streak: number; day: string };
@@ -122,9 +124,10 @@ export async function flushPractice(
       if (reply.status === 'error') continue;
       settled.add(reply.question_id);
       if (reply.status !== 'ok') continue;
-      results.push(reply);
+      const queued = batch.find((a) => a.question_id === reply.question_id);
+      results.push({ ...reply, response: queued?.response });
       xp += reply.xp_earned ?? 0;
-      const subject = batch.find((a) => a.question_id === reply.question_id)?.subject_id;
+      const subject = queued?.subject_id;
       if (subject && reply.new_streak) recordStreak(userId, subject, reply.new_streak, now, store);
     }
     remove(userId, settled, store);

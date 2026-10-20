@@ -110,7 +110,7 @@ describe('POST /api/practice/sync', () => {
     const app = await build(student, {
       offline_downloads: ok([{ lesson_id: LESSON, downloaded_at: '2026-10-18T07:00:00.000Z' }]),
       questions: ok(mc),
-      lessons: [ok([{ id: LESSON }]), ok([])],
+      lessons: [ok([{ id: LESSON }]), ok({ id: LESSON }), ok([])],
       practice_attempts: attempt,
       xp_log: xp,
       streaks: [ok(null), streakWrite],
@@ -120,6 +120,35 @@ describe('POST /api/practice/sync', () => {
     expect(res.json().results).toEqual([{ question_id: Q_MC, status: 'ok', correct: true, explanation, counted: true, xp_earned: 15, new_streak: 1, lesson_completed: false }]);
     expect(attempt.inserted[0]).toMatchObject({ created_at: '2026-10-19T09:00:00.000Z' });
     expect(streakWrite.inserted[0]).toMatchObject({ last_active: '2026-10-19' });
+    await app.close();
+  });
+
+  it('ignores the download of a lesson that does not hold the question (no backdating through another lesson)', async () => {
+    const attempt = ok([]);
+    const ownership = ok(null);
+    const app = await build(student, {
+      offline_downloads: ok([{ lesson_id: LESSON, downloaded_at: '2026-10-01T07:00:00.000Z' }]),
+      questions: ok(mc),
+      lessons: [ok([{ id: 'other' }]), ownership],
+      practice_attempts: attempt,
+    });
+    const before = Date.now();
+    await sync(app, [item(Q_MC, { selected_option: 'b' }, '2026-10-02T09:00:00.000Z')]);
+    expect(ownership.eqCalls).toContainEqual(['id', LESSON]);
+    expect(Date.parse((attempt.inserted[0] as { created_at: string }).created_at)).toBeGreaterThanOrEqual(before);
+    await app.close();
+  });
+
+  it('rejects a malformed item alone and still grades the others', async () => {
+    const app = await build(student, {
+      offline_downloads: ok([]),
+      questions: ok(mc),
+      lessons: [ok([{ id: LESSON }]), ok([])],
+      practice_attempts: ok([]),
+    });
+    const res = await sync(app, [{ ...item(Q_CODE, { selected_option: 'b' }), answered_at: 'x'.repeat(50) }, item(Q_MC, { selected_option: 'b' })]);
+    expect(res.statusCode).toBe(200);
+    expect(res.json().results.map((r: { question_id: string; status: string }) => [r.question_id, r.status])).toEqual([[Q_CODE, 'rejected'], [Q_MC, 'ok']]);
     await app.close();
   });
 

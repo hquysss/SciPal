@@ -28,21 +28,14 @@ const CHECK_BODY_LIMIT = 8 * 1024;
 const SYNC_BODY_LIMIT = 256 * 1024;
 const OFFLINE_TYPES = ['mc', 'truefalse', 'short', 'writing'];
 
-const SyncBody = z
+const SyncBody = z.object({ attempts: z.array(z.unknown()).min(1).max(100) }).strict();
+// Each answer is checked on its own: one malformed item is rejected without losing the others.
+const SyncItem = z
   .object({
-    attempts: z
-      .array(
-        z
-          .object({
-            question_id: z.string().regex(ID),
-            lesson_id: z.string().regex(ID),
-            response: PracticeResponseSchema,
-            answered_at: z.string().max(40),
-          })
-          .strict(),
-      )
-      .min(1)
-      .max(100),
+    question_id: z.string().regex(ID),
+    lesson_id: z.string().regex(ID),
+    response: PracticeResponseSchema,
+    answered_at: z.string().max(40),
   })
   .strict();
 
@@ -184,8 +177,28 @@ export const practiceRoutes: FastifyPluginAsync = async (app) => {
     }
     const downloadedAt = new Map(((marks ?? []) as Array<{ lesson_id: string; downloaded_at: string }>).map((m) => [m.lesson_id, m.downloaded_at]));
     const now = new Date();
-    const attempts = [...parsed.data.attempts].sort((a, b) => Date.parse(a.answered_at) - Date.parse(b.answered_at) || 0);
+    // The download time counts only for a published lesson that really holds the question; another
+    // lesson's earlier download must not date the answer.
+    const downloadOf = async (lessonId: string, questionId: string): Promise<string | null> => {
+      const at = downloadedAt.get(lessonId);
+      if (!at) return null;
+      const { data, error } = await supabase
+        .from('lessons')
+        .select('id')
+        .eq('id', lessonId)
+        .eq('status', 'published')
+        .contains('blocks', JSON.stringify([{ type: 'quiz', question_id: questionId }]))
+        .maybeSingle();
+      return !error && data ? at : null;
+    };
     const results: Array<Record<string, unknown>> = [];
+    const attempts: Array<z.infer<typeof SyncItem>> = [];
+    for (const raw of parsed.data.attempts) {
+      const item = SyncItem.safeParse(raw);
+      if (item.success) attempts.push(item.data);
+      else results.push({ question_id: String((raw as { question_id?: unknown } | null)?.question_id ?? ''), status: 'rejected' });
+    }
+    attempts.sort((a, b) => Date.parse(a.answered_at) - Date.parse(b.answered_at) || 0);
     for (const attempt of attempts) {
       const { question_id } = attempt;
       const row = await loadPracticeRow(supabase, user, question_id, request.log);
@@ -202,7 +215,7 @@ export const practiceRoutes: FastifyPluginAsync = async (app) => {
         continue;
       }
       const result = checkPracticeAnswer(row, attempt.response);
-      const at = clampAnsweredAt(attempt.answered_at, downloadedAt.get(attempt.lesson_id) ?? null, now);
+      const at = clampAnsweredAt(attempt.answered_at, await downloadOf(attempt.lesson_id, question_id), now);
       const record = countsForXp(row, userId)
         ? await recordPractice(supabase, { userId, row, correct: result.correct, at }, request.log)
         : { counted: false, xp_earned: 0, new_streak: 0, lesson_completed: false };
