@@ -29,8 +29,14 @@ describe('service worker policy', () => {
     }
   });
 
+  it('keeps an exam page saved for offline, not the exam list or the exam studio', () => {
+    expect(sw.pageKept('/exam/0b7c1d2e-1111-4111-8111-111111111111')).toBe(true);
+    expect(sw.pageKept('/exam')).toBe(false);
+    expect(sw.pageKept('/exam/manage/new')).toBe(false);
+  });
+
   it('never keeps personal, staff or server-only pages', () => {
-    for (const path of ['/profile', '/profile/plan', '/progress', '/teacher/lessons', '/admin/accounts', '/checkout/abc', '/classes', '/exam', '/exam/manage', '/login', '/auth/callback', '/tutor', '/dev/theme']) {
+    for (const path of ['/profile', '/profile/plan', '/progress', '/teacher/lessons', '/admin/accounts', '/checkout/abc', '/classes', '/exam', '/exam/manage', '/exam/manage/new', '/login', '/auth/callback', '/tutor', '/dev/theme']) {
       expect(sw.pageKept(path), path).toBe(false);
     }
   });

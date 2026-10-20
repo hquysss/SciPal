@@ -21,7 +21,7 @@ describe('practice API', () => {
   it('checks an answer, sending the token when there is a session', async () => {
     session.token = 'tok';
     const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response(JSON.stringify({ correct: true }), { status: 200 }));
-    expect(await checkPractice('q1', { selected_option: 'a' })).toEqual({ ok: true, result: { correct: true } });
+    expect(await checkPractice('lesson-1', 'q1', { selected_option: 'a' })).toEqual({ ok: true, result: { correct: true } });
     const [url, init] = fetchSpy.mock.calls[0]!;
     expect(String(url)).toMatch(/\/api\/practice\/check$/);
     expect(JSON.parse(String(init!.body))).toEqual({ question_id: 'q1', response: { selected_option: 'a' } });
@@ -30,7 +30,7 @@ describe('practice API', () => {
 
   it('keeps the server message in both languages, and survives a network failure', async () => {
     vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(new Response(JSON.stringify({ error: 'Hãy nhập câu trả lời.', error_en: 'Type an answer.' }), { status: 400 }));
-    expect(await checkPractice('q1', { short_answer: '' })).toEqual({ ok: false, error: { vi: 'Hãy nhập câu trả lời.', en: 'Type an answer.' } });
+    expect(await checkPractice('lesson-1', 'q1', { short_answer: '' })).toEqual({ ok: false, error: { vi: 'Hãy nhập câu trả lời.', en: 'Type an answer.' } });
     vi.spyOn(globalThis, 'fetch').mockRejectedValueOnce(new Error('offline'));
     const offline = await fetchLessonPractice('lesson-1');
     expect(offline.ok).toBe(false);

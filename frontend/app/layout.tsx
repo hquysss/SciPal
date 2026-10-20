@@ -3,6 +3,7 @@ import { Be_Vietnam_Pro, JetBrains_Mono } from 'next/font/google';
 import './globals.css';
 import { TabTitle } from '@/components/nav/TabTitle';
 import { OfflineBanner } from '@/components/pwa/OfflineBanner';
+import { PendingSync } from '@/components/pwa/PendingSync';
 import { PwaRegister } from '@/components/pwa/PwaRegister';
 import { APP_THEME_COLOR } from '@/lib/pwa/brand';
 import { TutorProvider } from '@/features/ai-tutor/TutorSession';
@@ -10,7 +11,6 @@ import { TutorWidget } from '@/features/ai-tutor/TutorWidget';
 import { LiveToasts } from '@/features/notify/LiveToasts';
 import { NavBar } from '@/components/nav/NavBar';
 import { SkipLink } from '@/components/nav/SkipLink';
-import { GuestTrialBanner } from '@/features/guest/GuestTrialBanner';
 import { renderThemeCss } from '@scipal/ui';
 import { buildBootScript, DARK_MODE_ENABLED } from '@/lib/theme/shellTheme';
 
@@ -62,7 +62,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <PwaRegister />
           <NavBar />
           <OfflineBanner />
-          <GuestTrialBanner />
+          <PendingSync />
           <div className="flex flex-1 flex-col">{children}</div>
           <TutorWidget />
           <LiveToasts />

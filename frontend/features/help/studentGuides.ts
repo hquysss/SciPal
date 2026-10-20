@@ -28,7 +28,7 @@ export const STUDENT_GUIDES = [
       { en: 'Enter your name, email and password. Confirm your email if SciPal asks you to.', vi: 'Nhập họ tên, email và mật khẩu. Xác nhận email nếu SciPal yêu cầu.' },
       { en: 'Google or Facebook sign-in appears when that provider is available.', vi: 'Nút đăng nhập Google hoặc Facebook hiện khi nhà cung cấp đó được bật.' },
     ],
-    note: { en: 'Guest trials do not save progress to an account.', vi: 'Lượt dùng thử của khách không lưu tiến trình vào tài khoản.' },
+    note: { en: 'Subjects, lessons, the Glossary, Exams and the Professor need an account.', vi: 'Môn học, bài học, Từ điển, Thi thử và Giáo sư cần có tài khoản.' },
     href: '/login', action: { en: 'Open sign in', vi: 'Mở trang đăng nhập' },
   },
   {

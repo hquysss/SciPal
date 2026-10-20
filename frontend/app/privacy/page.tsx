@@ -60,10 +60,10 @@ export default function PrivacyPage() {
           items={[
             { vi: 'Tài khoản: email, họ tên, mật khẩu (được mã hóa, SciPal không đọc được). Khi đăng nhập bằng Google: email, tên và ảnh đại diện mà Google chia sẻ.', en: 'Account: email, name, password (hashed; SciPal cannot read it). With Google sign-in: the email, name and profile picture Google shares.' },
             { vi: 'Việc học: cấp học đã chọn, tiến trình bài học, điểm và bài làm khi thi thử, lớp học tham gia.', en: 'Learning: chosen school level, lesson progress, exam answers and scores, classes joined.' },
-            { vi: 'Giáo sư AI: câu hỏi và câu trả lời trong các cuộc trò chuyện của tài khoản, để bạn xem lại. Câu hỏi thử của khách chưa đăng nhập không được lưu.', en: 'AI Professor: questions and answers in your account’s conversations, so you can come back to them. A visitor’s trial question is not stored.' },
+            { vi: 'Giáo sư AI: câu hỏi và câu trả lời trong các cuộc trò chuyện của tài khoản, để bạn xem lại.', en: 'AI Professor: questions and answers in your account’s conversations, so you can come back to them.' },
             { vi: 'Thanh toán: mã đơn, gói, số tiền và trạng thái giao dịch. SciPal không nhận và không lưu số thẻ hay thông tin ngân hàng.', en: 'Payments: order code, plan, amount and status. SciPal never receives or stores card or bank details.' },
             { vi: 'Đăng ký nhận tin: email, các cấp học bạn quan tâm và trạng thái xác nhận. SciPal chỉ gửi email tin tức tới người đã bấm xác nhận, mỗi email có liên kết hủy đăng ký.', en: 'Newsletter: your e-mail, the school levels you follow and whether you confirmed. SciPal sends news e-mail only to people who confirmed, and every e-mail has an unsubscribe link.' },
-            { vi: 'Khách dùng thử: một mã băm (HMAC) của địa chỉ IP để đếm lượt thử. SciPal không lưu địa chỉ IP gốc.', en: 'Trial visitors: a keyed hash (HMAC) of the IP address to count trials. SciPal does not store the IP address itself.' },
+            { vi: 'Khách gửi báo lỗi hoặc đăng ký nhận tin: một mã băm (HMAC) của địa chỉ IP để giới hạn lạm dụng. SciPal không lưu địa chỉ IP gốc.', en: 'Visitors who report a problem or sign up for news: a keyed hash (HMAC) of the IP address to limit abuse. SciPal does not store the IP address itself.' },
           ]}
         />
       </Section>
@@ -99,8 +99,8 @@ export default function PrivacyPage() {
       <Section title={{ vi: 'Cookie và bộ nhớ trình duyệt', en: 'Cookies and browser storage' }}>
         <p>
           {t({
-            vi: 'SciPal dùng cookie cần thiết để giữ phiên đăng nhập và đếm lượt dùng thử, và bộ nhớ trình duyệt để nhớ ngôn ngữ, giao diện sáng/tối, cấp học và email đăng nhập (nếu bạn chọn "Ghi nhớ đăng nhập"). SciPal không dùng cookie quảng cáo hay theo dõi của bên thứ ba.',
-            en: 'SciPal uses necessary cookies to keep you signed in and count trials, and browser storage to remember your language, light/dark theme, school level and sign-in email (if you choose “Remember login”). SciPal uses no advertising or third-party tracking cookies.',
+            vi: 'SciPal dùng cookie cần thiết để giữ phiên đăng nhập, và bộ nhớ trình duyệt để nhớ ngôn ngữ, giao diện sáng/tối, cấp học và email đăng nhập (nếu bạn chọn "Ghi nhớ đăng nhập"). SciPal không dùng cookie quảng cáo hay theo dõi của bên thứ ba.',
+            en: 'SciPal uses necessary cookies to keep you signed in, and browser storage to remember your language, light/dark theme, school level and sign-in email (if you choose “Remember login”). SciPal uses no advertising or third-party tracking cookies.',
           })}
         </p>
       </Section>

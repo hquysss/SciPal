@@ -1,8 +1,7 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { createServerClient } from '@scipal/supabase';
-import { fetchSubjectSlugs } from './lib/subjectSlugs';
 import { ALL_ON, featureOfPath, featureVisible, fetchSiteSettings, type SiteSettings } from './lib/siteSettings';
-import { TRIAL_COOKIE, TRIAL_UI_COOKIE, readTrials, routeAccess, signTrials, trialRenewable, type TrialFeature, type Trials } from './lib/guestTrial';
+import { routeAccess } from './lib/routeAccess';
 
 const LEGACY_LEVEL_COOKIE = 'scipal_education_level';
 
@@ -18,19 +17,11 @@ function clearLegacyLevelCookie(request: NextRequest, response: NextResponse) {
   });
 }
 
-const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL ?? 'https://sci-pal-backend.vercel.app';
-const TRIAL_COOKIE_DAYS = 30;
 type CookieUpdate = { name: string; value: string; options: Parameters<NextResponse['cookies']['set']>[2] };
 
-/** Vercel sets these to the client address; a browser cannot choose them. */
-function visitorIp(request: NextRequest) {
-  return request.headers.get('x-real-ip')?.trim() || request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown';
-}
-
-function loginRedirect(request: NextRequest, reason?: 'trial') {
+function loginRedirect(request: NextRequest) {
   const url = new URL('/login', request.url);
   url.searchParams.set('redirect', request.nextUrl.pathname + request.nextUrl.search);
-  if (reason) url.searchParams.set('reason', reason);
   return NextResponse.redirect(url);
 }
 
@@ -56,50 +47,6 @@ async function signedInUser(request: NextRequest, cookieUpdates: CookieUpdate[])
   }
 }
 
-async function rememberTrials(response: NextResponse, trials: Trials, secret: string) {
-  const options = { path: '/', maxAge: TRIAL_COOKIE_DAYS * 86_400, sameSite: 'lax' as const, secure: process.env.NODE_ENV === 'production' };
-  response.cookies.set(TRIAL_COOKIE, await signTrials(trials, secret), { ...options, httpOnly: true });
-  // The banner's copy: it shows the time left and grants nothing.
-  response.cookies.set(TRIAL_UI_COOKIE, JSON.stringify(trials), { ...options, httpOnly: false });
-}
-
-/**
- * A visitor on a feature page: within the feature's window the page opens; after it, sign in until
- * the window comes round again 24 hours after it opened.
- * The window comes from the signed cookie, else from the backend (which knows the visitor by IP).
- */
-async function guestTrial(request: NextRequest, feature: TrialFeature) {
-  const secret = process.env.GUEST_TRIAL_SECRET;
-  if (!secret || secret.length < 32) return loginRedirect(request);
-
-  const trials = await readTrials(request.cookies.get(TRIAL_COOKIE)?.value, secret);
-  const known = trials?.[feature];
-  if (known !== undefined && known > Date.now()) return NextResponse.next();
-  // An ended window stays ended until its 24 hours are up; then the backend opens a new one.
-  if (known !== undefined && !trialRenewable(known, Date.now())) return loginRedirect(request, 'trial');
-
-  let answer: { allowed?: unknown; expiresAt?: unknown };
-  try {
-    const res = await fetch(`${API_BASE}/api/guest/trial`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'x-guest-key': secret },
-      body: JSON.stringify({ feature, ip: visitorIp(request) }),
-      signal: AbortSignal.timeout(2500),
-    });
-    if (!res.ok) throw new Error(`guest trial ${res.status}`);
-    answer = (await res.json()) as typeof answer;
-  } catch {
-    // The backend is unreachable: let this page through without recording anything.
-    return NextResponse.next();
-  }
-  const until = typeof answer.expiresAt === 'string' ? Date.parse(answer.expiresAt) : NaN;
-  if (typeof answer.allowed !== 'boolean' || Number.isNaN(until)) return NextResponse.next();
-
-  const response = answer.allowed ? NextResponse.next() : loginRedirect(request, 'trial');
-  await rememberTrials(response, { ...(trials ?? {}), [feature]: until }, secret);
-  return response;
-}
-
 // The site switches, read at most every 30 seconds per server instance.
 let siteCache: { at: number; value: SiteSettings } | null = null;
 async function siteSettings(): Promise<SiteSettings> {
@@ -107,17 +54,6 @@ async function siteSettings(): Promise<SiteSettings> {
   const value = await fetchSiteSettings().catch(() => ALL_ON);
   siteCache = { at: Date.now(), value };
   return value;
-}
-
-// The subject slugs, read at most every minute per server instance.
-let subjectCache: { at: number; value: Set<string> } | null = null;
-async function subjectExists(slug: string): Promise<boolean> {
-  if (!subjectCache || Date.now() - subjectCache.at > 60_000) {
-    const value = await fetchSubjectSlugs();
-    if (!value) return true; // cannot tell: treat the address as real, as before
-    subjectCache = { at: Date.now(), value };
-  }
-  return subjectCache.value.has(slug);
 }
 
 /** A page of a feature an admin switched off: the notice page, at the same address. */
@@ -151,8 +87,7 @@ export async function middleware(request: NextRequest) {
     }
   }
 
-  // The landing page, sign-in (with its callback) and the tutor page (one guest question) are open to visitors,
-  // unless an admin switched the tutor off.
+  // The public pages (routeAccess) are open to visitors, unless an admin switched their feature off.
   if (access.kind === 'public' && featureOfPath(pathname) === null) {
     const response = NextResponse.next();
     clearLegacyLevelCookie(request, response);
@@ -162,19 +97,15 @@ export async function middleware(request: NextRequest) {
   const cookieUpdates: CookieUpdate[] = [];
   const user = hasSessionCookie(request) || access.kind === 'account' ? await signedInUser(request, cookieUpdates) : null;
   const feature = featureOfPath(pathname);
-  const site = feature || (!user && access.kind === 'trial') ? await siteSettings() : ALL_ON;
+  const site = feature ? await siteSettings() : ALL_ON;
 
   let response: NextResponse;
   if (!featureVisible(site, feature, user?.app_metadata?.app_role)) {
     response = featureOffPage(request, feature!);
   } else if (access.kind === 'public') {
     response = NextResponse.next();
-  } else if (!user && access.kind === 'trial' && access.feature === 'learn' && pathname !== '/subjects' && !(await subjectExists(pathname.split('/')[1]))) {
-    // Not a subject: the 404 page, which must not open a trial window.
-    response = NextResponse.next();
   } else if (!user) {
-    // With guest trials switched off, visitors sign in first.
-    response = access.kind !== 'trial' || !site.features.guest_trial ? loginRedirect(request) : await guestTrial(request, access.feature);
+    response = loginRedirect(request);
   } else if (
     (pathname === '/teacher' || pathname.startsWith('/teacher/')) &&
     !['teacher', 'admin'].includes(user.app_metadata?.app_role)

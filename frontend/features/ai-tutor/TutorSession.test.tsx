@@ -4,7 +4,6 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { TutorProvider, useTutorSession } from './TutorSession';
 import { AiTutorButton } from './AiTutorButton';
 import { TutorPage } from './TutorPage';
-import { GuestTutorView } from '../guest/GuestTutor';
 
 const quota = vi.hoisted(() => ({ delayed: false, release: () => {}, calls: 0 }));
 const env = vi.hoisted(() => ({ path: '/', holdConversation: false, changedAccount: false, releaseConversation: () => {}, auth: (_event: string, _session: { user: { id: string } } | null) => {}, events: (_event: unknown) => {} }));
@@ -137,16 +136,4 @@ describe('shared tutor session', () => {
     await waitFor(() => expect(screen.queryByText(/Câu trước/)).toBeNull());
     expect(screen.getByLabelText('Nháp')).toHaveProperty('value', '');
   });
-});
-
-it('gives each guest view its own input and heading associations', () => {
-  const props = { state: { status: 'idle' as const }, question: '', onQuestion: () => {}, onAsk: () => {} };
-  render(<><GuestTutorView {...props} /><GuestTutorView {...props} /></>);
-  const inputs = screen.getAllByRole('textbox');
-  const labels = screen.getAllByText('Câu hỏi của em');
-  labels.forEach((label, index) => { expect(label instanceof HTMLLabelElement && label.control === inputs[index]).toBe(true); });
-  const headings = screen.getAllByRole('heading', { name: 'Hỏi thử 1 câu' });
-  const regions = screen.getAllByRole('region', { name: 'Hỏi thử 1 câu' });
-  expect(new Set(headings.map((heading) => heading.id)).size).toBe(2);
-  regions.forEach((region, index) => expect(region.getAttribute('aria-labelledby')).toBe(headings[index]?.id));
 });

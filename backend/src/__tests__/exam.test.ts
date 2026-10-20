@@ -127,7 +127,7 @@ describe('POST /api/score/exam integrity', () => {
     expect(res.statusCode).toBe(200);
     expect(res.json()).toMatchObject({ correct_count: 1, total_questions: 1, xp_earned: 15, already_awarded: false });
     expect(xpLog.inserted).toEqual([
-      { user_id: 'student-1', subject_id: 'subject-1', delta: 15, reason: `exam_complete:${BLUEPRINT_ID.toLowerCase()}` },
+      { user_id: 'student-1', subject_id: 'subject-1', delta: 15, reason: `exam_complete:${BLUEPRINT_ID.toLowerCase()}`, created_at: expect.any(String) },
     ]);
     await scoringApp.close();
   });

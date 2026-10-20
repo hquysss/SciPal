@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { CreateClassModal } from './CreateClassModal';
+import { ClassManageButtons } from './ClassManageButtons';
 import { useLanguage } from '@scipal/hooks';
 import { Copy, Users } from 'lucide-react';
 import { Button, buttonVariants } from '@/components/ui/button';
@@ -35,6 +36,8 @@ export function ClassList({ initialClasses, token }: ClassListProps) {
   const handleCreated = (newClass: ClassRoomItem) => {
     setClasses((prev) => [newClass, ...prev]);
   };
+  const handleRenamed = (id: string, name: string) => setClasses((prev) => prev.map((cls) => (cls.id === id ? { ...cls, name } : cls)));
+  const handleDeleted = (id: string) => setClasses((prev) => prev.filter((cls) => cls.id !== id));
 
   const [copyFailed, setCopyFailed] = useState(false);
   const copyInviteCode = async (code: string) => {
@@ -111,6 +114,10 @@ export function ClassList({ initialClasses, token }: ClassListProps) {
                       {copiedCode === cls.invite_code ? t({ en: 'Copied', vi: 'Đã sao chép' }) : t({ en: 'Copy', vi: 'Sao chép' })}
                     </Button>
                   </div>
+                </div>
+
+                <div className="mt-2 border-t border-line pt-4">
+                  <ClassManageButtons classId={cls.id} name={cls.name} onRenamed={(name) => handleRenamed(cls.id, name)} onDeleted={() => handleDeleted(cls.id)} />
                 </div>
 
                 <div className="mt-2 flex items-center justify-between gap-3 border-t border-line pt-4">

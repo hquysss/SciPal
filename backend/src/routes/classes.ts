@@ -159,6 +159,58 @@ export const classRoutes: FastifyPluginAsync = async (app) => {
     return reply.code(500).send({ error: 'Không tạo được mã lớp. Vui lòng thử lại.' });
   });
 
+  // Rename or delete a class (owning teacher or admin). The owner filter is part of the statement,
+  // so a class that is not yours cannot be told apart from one that does not exist.
+  // Deleting cascades to the class's members, assignments, games and chat.
+  const ownClass = (request: FastifyRequest, reply: FastifyReply) => {
+    const { id } = request.params as { id: string };
+    if (!UUID_PATTERN.test(id)) {
+      void reply.code(404).send(notFound);
+      return null;
+    }
+    return { id, user: getUser(request)! };
+  };
+
+  app.patch('/api/classes/:id', { preHandler: [requireTeacher] }, async (request, reply) => {
+    const supabase = app.supabase;
+    if (!supabase) return reply.code(503).send(unavailable);
+    const target = ownClass(request, reply);
+    if (!target) return reply;
+    if (!(await featureAllowed(app, 'classes', target.user as never))) return reply.code(403).send(featureOff('classes'));
+
+    const { name: raw } = (request.body ?? {}) as { name?: unknown };
+    const name = typeof raw === 'string' ? raw.trim() : '';
+    if (!name || name.length > 100) return reply.code(400).send({ error: 'Tên lớp là bắt buộc (tối đa 100 ký tự).' });
+
+    let query = supabase.from('class_rooms').update({ name }).eq('id', target.id);
+    if (!isAdmin(target.user)) query = query.eq('teacher_id', target.user.id!);
+    const { data, error } = await query.select('id, name').maybeSingle();
+    if (error) {
+      request.log.error({ err: error }, 'Failed to rename class');
+      return reply.code(500).send({ error: 'Không đổi được tên lớp.' });
+    }
+    if (!data) return reply.code(404).send(notFound);
+    return reply.send({ class_room: data });
+  });
+
+  app.delete('/api/classes/:id', { preHandler: [requireTeacher] }, async (request, reply) => {
+    const supabase = app.supabase;
+    if (!supabase) return reply.code(503).send(unavailable);
+    const target = ownClass(request, reply);
+    if (!target) return reply;
+    if (!(await featureAllowed(app, 'classes', target.user as never))) return reply.code(403).send(featureOff('classes'));
+
+    let query = supabase.from('class_rooms').delete().eq('id', target.id);
+    if (!isAdmin(target.user)) query = query.eq('teacher_id', target.user.id!);
+    const { data, error } = await query.select('id').maybeSingle();
+    if (error) {
+      request.log.error({ err: error }, 'Failed to delete class');
+      return reply.code(500).send({ error: 'Không xoá được lớp học.' });
+    }
+    if (!data) return reply.code(404).send(notFound);
+    return reply.send({ success: true });
+  });
+
   // Join class (any signed-in user)
   app.post('/api/classes/join', { preHandler: [requireUser] }, async (request, reply) => {
     const supabase = app.supabase;

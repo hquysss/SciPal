@@ -22,7 +22,7 @@ function Practice({ list = questions }: { list?: PublicPracticeQuestion[] }) {
   const [visible, setVisible] = useState(true);
   return <>
     <button onClick={() => setVisible(!visible)}>{visible ? 'Bài học' : 'Tự luyện'}</button>
-    {visible && <PracticeSection load={{ ok: true, questions: list }} state={practice.state} onAnswer={practice.onAnswer} onResult={practice.onResult} onQuestion={practice.onQuestion} onWritingFeedback={practice.onWritingFeedback} />}
+    {visible && <PracticeSection lessonId="lesson-1" load={{ ok: true, questions: list }} state={practice.state} onAnswer={practice.onAnswer} onResult={practice.onResult} onQuestion={practice.onQuestion} onWritingFeedback={practice.onWritingFeedback} />}
   </>;
 }
 
@@ -89,7 +89,7 @@ describe('one question at a time', () => {
     fireEvent.click(screen.getByRole('radio', { name: 'Hai' }));
     fireEvent.click(screen.getByRole('button', { name: 'Kiểm tra', exact: true }));
     await screen.findByText('Đúng rồi!');
-    expect(api.check).toHaveBeenCalledWith('q1', { selected_option: 'a' });
+    expect(api.check).toHaveBeenCalledWith('lesson-1', 'q1', { selected_option: 'a' });
 
     fireEvent.click(screen.getByRole('button', { name: 'Câu tiếp' }));
     expect(screen.queryByText('Chọn số chẵn.')).toBeNull();
@@ -103,7 +103,7 @@ describe('one question at a time', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Câu tiếp' }));
     expect((screen.getByRole('textbox') as HTMLInputElement).value).toBe('0,12');
     fireEvent.keyDown(screen.getByRole('textbox'), { key: 'Enter' });
-    await waitFor(() => expect(api.check).toHaveBeenCalledWith('q2', { short_answer: '0,12' }));
+    await waitFor(() => expect(api.check).toHaveBeenCalledWith('lesson-1', 'q2', { short_answer: '0,12' }));
     await waitFor(() => expect(screen.getByRole('progressbar').getAttribute('aria-valuenow')).toBe('2'));
   });
 
@@ -138,5 +138,51 @@ describe('submitting the whole set', () => {
     expect(screen.getByRole('button', { name: 'Câu 1: đã làm, chưa kiểm tra' }).getAttribute('aria-current')).toBe('step');
     fireEvent.click(screen.getByRole('button', { name: 'Câu 2: chưa làm' }));
     expect(screen.getByText('Nhập kết quả.')).toBeTruthy();
+  });
+});
+
+describe('results that count', () => {
+  async function answerFirst(result: object) {
+    api.check.mockResolvedValue(result);
+    render(<Practice />);
+    fireEvent.click(screen.getByRole('radio', { name: 'Hai' }));
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'Kiểm tra' }));
+    });
+  }
+
+  it('sends the lesson with the answer, so an offline answer can be graded from its pack', async () => {
+    await answerFirst({ ok: true, result: { correct: true } });
+    expect(api.check).toHaveBeenCalledWith('lesson-1', 'q1', { selected_option: 'a' });
+  });
+
+  it('shows the provisional label and estimated XP for an offline result', async () => {
+    await answerFirst({ ok: true, result: { correct: true }, provisional: { xp: 15, streak: 3 } });
+    expect(screen.getByText(/Kết quả tạm · chờ đồng bộ/).textContent).toContain('+15 XP tạm tính');
+    expect(screen.getByText(/Kết quả tạm · chờ đồng bộ/).textContent).toContain('chuỗi 3 ngày');
+  });
+
+  it('a PRACTICE_SYNCED event replaces it with the server result', async () => {
+    await answerFirst({ ok: true, result: { correct: true }, provisional: { xp: 15, streak: null } });
+    act(() => {
+      window.dispatchEvent(new CustomEvent('scipal:practice-synced', { detail: [{ question_id: 'q1', status: 'ok', correct: false, xp_earned: 0, response: { selected_option: 'a' } }] }));
+    });
+    expect(screen.queryByText(/Kết quả tạm/)).toBeNull();
+    expect(screen.getByText('Chưa đúng. Sửa câu trả lời rồi thử lại.')).toBeTruthy();
+  });
+
+  it('keeps the verdict of a later answer when the synced one is for the first answer', async () => {
+    await answerFirst({ ok: true, result: { correct: true }, provisional: { xp: 0, streak: null } });
+    act(() => {
+      window.dispatchEvent(new CustomEvent('scipal:practice-synced', { detail: [{ question_id: 'q1', status: 'ok', correct: false, xp_earned: 0, response: { selected_option: 'b' } }] }));
+    });
+    expect(screen.queryByText(/Kết quả tạm/)).toBeNull();
+    expect(screen.getByText('Đúng rồi!')).toBeTruthy();
+  });
+
+  it('shows +XP and the completed message from the server', async () => {
+    await answerFirst({ ok: true, result: { correct: true, xp_earned: 10, new_streak: 2, lesson_completed: true } });
+    expect(screen.getByText('+10 XP')).toBeTruthy();
+    expect(screen.getByText('Bạn đã hoàn thành bài này.')).toBeTruthy();
   });
 });

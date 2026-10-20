@@ -61,7 +61,7 @@ export default async function SubjectPage({
         <SubjectHeader subject={subject} topicCount={topicCount} lessonCount={lessonCount} />
         {lessonCount > 0 && (
           <div className="-mt-4 mb-8">
-            <SaveOfflineButton urls={gradeGroups.flatMap((group) => group.topics.flatMap((topic) => topic.lessons.map((lesson) => `/${subject.slug}/${lesson.slug}`)))} />
+            <SaveOfflineButton lessons={gradeGroups.flatMap((group) => group.topics.flatMap((topic) => topic.lessons.map((lesson) => ({ url: `/${subject.slug}/${lesson.slug}`, id: lesson.id }))))} />
           </div>
         )}
         {picked && result.gradeGroups.length > 1 && <ShowAllGrades href={`/${subject.slug}`} />}

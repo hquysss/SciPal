@@ -4,8 +4,9 @@ const DAY_MS = 24 * 60 * 60 * 1000;
 
 /**
  * Marks today (UTC) as an active day in a subject: +1 after yesterday, unchanged on the same day,
- * back to 1 after a gap. Returns the current streak, or 0 when it could not be read or saved (the
- * activity itself is already saved by then, so a streak failure is logged, not raised).
+ * back to 1 after a gap; a day before the last active one leaves it as it is. Returns the current
+ * streak, or 0 when it could not be read or saved (the activity
+ * itself is already saved by then, so a streak failure is logged, not raised).
  */
 export async function touchStreak(
   supabase: SupabaseClient,
@@ -27,6 +28,8 @@ export async function touchStreak(
     return 0;
   }
   const row = streak as { current_streak: number; longest_streak: number; last_active: string } | null;
+  // A day before the last active one (an offline answer synced late) changes nothing.
+  if (row && row.last_active > today) return row.current_streak;
   const current = row?.last_active === yesterday ? row.current_streak + 1 : row?.last_active === today ? row.current_streak : 1;
   const { error: writeError } = await supabase.from('streaks').upsert(
     {

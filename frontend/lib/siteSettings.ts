@@ -2,7 +2,7 @@
 // backend's backend/src/site/features.ts holds the same list). Everyone may read them: the web hides
 // what is off, and the backend refuses it. A feature missing from the stored map is on.
 
-export const SITE_FEATURES = ['glossary', 'exam', 'pricing', 'classes', 'tutor', 'guest_trial'] as const;
+export const SITE_FEATURES = ['glossary', 'exam', 'pricing', 'classes', 'tutor'] as const;
 export type SiteFeature = (typeof SITE_FEATURES)[number];
 /** freeAccess: paid features that call no AI are free for signed-in accounts; the backend decides, the web only says so. */
 export type SiteSettings = { signupEnabled: boolean; maintenance: boolean; freeAccess: boolean; features: Record<SiteFeature, boolean> };
@@ -11,7 +11,7 @@ export const ALL_ON: SiteSettings = {
   signupEnabled: true,
   maintenance: false,
   freeAccess: false,
-  features: { glossary: true, exam: true, pricing: true, classes: true, tutor: true, guest_trial: true },
+  features: { glossary: true, exam: true, pricing: true, classes: true, tutor: true },
 };
 
 export function resolveSiteSettings(row: { signup_enabled?: unknown; features?: unknown; maintenance?: unknown; free_access?: unknown } | null | undefined): SiteSettings {
@@ -42,7 +42,6 @@ export const FEATURE_LABEL: Record<SiteFeature, { vi: string; en: string }> = {
   pricing: { vi: 'Bảng giá và thanh toán', en: 'Pricing and payments' },
   classes: { vi: 'Lớp học', en: 'Classes' },
   tutor: { vi: 'Giáo sư AI', en: 'AI Professor' },
-  guest_trial: { vi: 'Dùng thử cho khách', en: 'Guest trials' },
 };
 
 const COLUMNS = 'signup_enabled,features,maintenance,free_access';

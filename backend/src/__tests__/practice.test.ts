@@ -61,13 +61,31 @@ describe('POST /api/practice/check', () => {
     }
   });
 
-  it('gives the same verdict on every retry and writes nothing', async () => {
-    const app = await build(student, { questions: [mockQuery({ data: mc, error: null }), mockQuery({ data: mc, error: null })], lessons: [mockQuery({ data: [{ id: LESSON_ID }], error: null }), mockQuery({ data: [{ id: LESSON_ID }], error: null })] });
+  it('records the first answer of a signed-in learner: XP once, the same verdict on a retry', async () => {
+    const ok = (data: unknown) => mockQuery({ data, error: null });
+    const xp = ok(null);
+    const app = await build(student, {
+      questions: [ok(mc), ok(mc)],
+      lessons: [ok([{ id: LESSON_ID }]), ok([]), ok([{ id: LESSON_ID }])],
+      practice_attempts: [ok([{ question_id: Q_MC }]), ok([])],
+      xp_log: xp,
+      streaks: [ok(null), ok(null)],
+    });
     const first = await check(app, Q_MC, { selected_option: 'b' });
     const second = await check(app, Q_MC, { selected_option: 'b' });
-    expect(first.json()).toEqual(second.json());
-    expect(first.json()).toMatchObject({ correct: true });
+    expect(first.json()).toEqual({ correct: true, explanation, xp_earned: 10, new_streak: 1, lesson_completed: false });
+    expect(second.json()).toEqual({ correct: true, explanation, xp_earned: 0, new_streak: 0, lesson_completed: false });
+    expect(xp.inserted).toHaveLength(1);
     await app.close();
+  });
+
+  it('records nothing for a visitor, the author trying their own question, or an admin', async () => {
+    for (const [user, tables] of [[undefined, servable(mc)], [author, { questions: mockQuery({ data: mc, error: null }) }], [admin, { questions: mockQuery({ data: mc, error: null }) }]] as const) {
+      const app = await build(user, tables);
+      const res = await check(app, Q_MC, { selected_option: 'b' });
+      expect(res.json()).toEqual({ correct: true, explanation });
+      await app.close();
+    }
   });
 
   it.each([

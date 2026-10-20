@@ -18,9 +18,7 @@ import { fetchLessonPractice, type PracticeLoad } from './practiceApi';
 
 interface LessonPartsProps {
   blocks: Block[];
-  /** Shown after the last part (the learner's "complete lesson" bar). */
-  completion?: ReactNode;
-  /** Editor preview: show only this part, without tabs or completion. */
+  /** Editor preview: show only this part, without tabs. */
   part?: LessonPart;
   /** Preview in this language instead of the reader's. */
   lang?: 'en' | 'vi';
@@ -44,7 +42,7 @@ const STEP_LABEL: Record<Step, { en: string; vi: string }> = { ...PART_LABEL, vi
  * wrote them) → Tự luyện; a step without blocks is skipped. The editor previews one of its two
  * parts at a time through `part`.
  */
-export function LessonPartsView({ blocks: written, completion, part, sheet, lang, practice, lessonId, termIndex }: LessonPartsProps) {
+export function LessonPartsView({ blocks: written, part, sheet, lang, practice, lessonId, termIndex }: LessonPartsProps) {
   const { t, lang: readerLang } = useLanguage();
   // Owned here, above the tabs, so answers and verdicts survive switching parts during the visit.
   const practiceState = usePracticeState();
@@ -83,6 +81,7 @@ export function LessonPartsView({ blocks: written, completion, part, sheet, lang
         <LessonVideoPanel lessonId={lessonId} video={lessonVideo.video} onChanged={lessonVideo.reload} />
       ) : showPractice && practiceLoad ? (
         <PracticeSection
+          lessonId={lessonId}
           load={practiceLoad}
           state={practiceState.state}
           onAnswer={practiceState.onAnswer}
@@ -100,7 +99,7 @@ export function LessonPartsView({ blocks: written, completion, part, sheet, lang
   );
   const body = sheet ? <LessonSheet squared={sheet.squared}>{content}</LessonSheet> : content;
   if (part) return wrap(body);
-  if (!tabbed) return wrap(<>{body}{completion}</>);
+  if (!tabbed) return wrap(body);
 
   const position = present.indexOf(step);
   const next = present[position + 1];
@@ -131,12 +130,10 @@ export function LessonPartsView({ blocks: written, completion, part, sheet, lang
         ))}
       </div>
       {body}
-      {next ? (
+      {next && (
         <button type="button" onClick={() => go(next)} className={`${buttonVariants({ size: 'lg' })} self-end`}>
           {t({ en: 'Next', vi: 'Tiếp theo' })}: {t(STEP_LABEL[next])} →
         </button>
-      ) : (
-        completion
       )}
     </div>
   );

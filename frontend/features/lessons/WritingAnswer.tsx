@@ -4,6 +4,7 @@ import { useEffect, useId, useRef, useState, type ReactNode } from 'react';
 import { CircleCheck, CircleDashed, Mic, Square } from 'lucide-react';
 import type { PracticeCheckResult } from '@scipal/types';
 import { buttonVariants } from '@/components/ui/button';
+import { useOnline } from '@/components/pwa/OfflineBanner';
 import { getAccessToken } from '../../lib/session';
 import { writingFeedback } from './practiceApi';
 
@@ -62,6 +63,7 @@ export function WritingAnswer({ questionId, value, onChange, result, t, lang, ac
   const valueRef = useRef(value);
   valueRef.current = value;
 
+  const online = useOnline();
   const [signedIn, setSignedIn] = useState<boolean | null>(null);
   const [localFeedback, setLocalFeedback] = useState<WritingFeedbackState>();
   const storedFeedback = feedbackState ?? localFeedback;
@@ -116,7 +118,7 @@ export function WritingAnswer({ questionId, value, onChange, result, t, lang, ac
   };
 
   const ask = async () => {
-    if (asking || !value.trim()) return;
+    if (asking || !value.trim() || !online) return;
     saveFeedback({ answer: value, status: 'pending' });
     const res = await writingFeedback(questionId, value, lang);
     if (res.ok) saveFeedback({ answer: value, status: 'done', feedback: res.data.feedback });
@@ -198,9 +200,12 @@ export function WritingAnswer({ questionId, value, onChange, result, t, lang, ac
             {signedIn === false ? (
               <p className="text-ink-muted">{t({ en: "Sign in to get the Professor's comments.", vi: 'Đăng nhập để Giáo sư AI nhận xét bài viết.' })}</p>
             ) : signedIn ? (
-              <button type="button" disabled={asking || !value.trim()} onClick={() => void ask()} className={`${buttonVariants({ variant: 'outline' })} self-start`}>
+              <>
+              <button type="button" disabled={asking || !value.trim() || !online} onClick={() => void ask()} className={`${buttonVariants({ variant: 'outline' })} self-start`}>
                 {asking ? t({ en: 'The Professor is reading…', vi: 'Giáo sư đang đọc bài…' }) : t({ en: 'Ask the Professor to comment', vi: 'Nhờ Giáo sư nhận xét' })}
               </button>
+              {!online && <p className="text-ink-muted">{t({ en: 'The Professor needs a connection to comment.', vi: 'Giáo sư AI cần có mạng để nhận xét.' })}</p>}
+              </>
             ) : null}
             <div aria-live="polite">
               {feedback && (

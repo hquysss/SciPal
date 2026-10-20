@@ -9,16 +9,19 @@
  * Cache names must match frontend/lib/pwa/cacheNames.ts (a test checks). Bump VERSION to drop old caches.
  */
 
-const VERSION = 'v1';
+const VERSION = 'v4';
 const PAGES = `scipal-pages-${VERSION}`;
 const STATIC = `scipal-static-${VERSION}`;
 const OFFLINE_URL = '/offline';
 const PRECACHE = [OFFLINE_URL, '/icons/icon-192.png', '/logo.svg'];
 
 /** Paths whose pages hold personal or staff data, or need the server to work at all. */
-const NOT_KEPT = ['/profile', '/progress', '/teacher', '/admin', '/checkout', '/classes', '/exam', '/login', '/auth', '/api', '/dev', '/tutor'];
+const NOT_KEPT = ['/profile', '/progress', '/teacher', '/admin', '/checkout', '/classes', '/exam/manage', '/login', '/auth', '/api', '/dev', '/tutor'];
+/** Kept only below them: one exam page (saved to take offline) but not the exam list. */
+const NOT_KEPT_EXACT = ['/exam'];
 
 function pageKept(pathname) {
+  if (NOT_KEPT_EXACT.includes(pathname)) return false;
   return !NOT_KEPT.some((prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`));
 }
 

@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { StudentRoster } from '@/features/classes/StudentRoster';
+import { ClassDetailActions } from '@/features/classes/ClassDetailActions';
 import { ClassAssignments } from '@/features/classes/ClassAssignments';
 import { ClassGames } from '@/features/games/ClassGames';
 import { getClassRoster } from '@/features/classes/classQueries';
@@ -48,6 +49,8 @@ export default async function ClassDetailPage({
           { label: classRoom.name },
         ]}
       />
+
+      <ClassDetailActions classId={id} name={classRoom.name} />
 
       <StudentRoster
         classNameTitle={classRoom.name}

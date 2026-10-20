@@ -36,6 +36,12 @@ describe('touchStreak', () => {
     expect(write.inserted[0]).toMatchObject({ current_streak: 1, longest_streak: 9 });
   });
 
+  it('keeps the streak when the day is older than last_active (an offline answer synced late)', async () => {
+    const { streak, write } = await run({ current_streak: 4, longest_streak: 6, last_active: '2026-10-14' });
+    expect(streak).toBe(4);
+    expect(write.inserted).toEqual([]);
+  });
+
   it('answers 0 when the streak cannot be read or written', async () => {
     expect((await run(null, { readError: true })).streak).toBe(0);
     expect((await run(null, { writeError: true })).streak).toBe(0);

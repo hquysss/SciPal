@@ -8,108 +8,40 @@ import {
   MAX_WRITING_ANSWER,
   PracticeResponseSchema,
   toPublicPracticeQuestion,
-  type PracticeCheckResult,
-  type PracticeResponse,
 } from '../schemas/questions.js';
+import { checkPracticeAnswer, keyTermsOf, responseProblem } from '../schemas/practiceGrading.js';
 import { MAX_LESSON_QUESTIONS, quizQuestionIds } from '../authoring/quizReferences.js';
-import { COLUMNS, getUser, ID, mayPreview, msg, servableQuestion as loadServable, type PracticeRow } from '../practice/servable.js';
+import { clampAnsweredAt, recordPractice } from '../practice/record.js';
+import { COLUMNS, getUser, ID, isAdmin, isHsgProblem, loadPracticeRow, mayPreview, msg, servableQuestion as loadServable, type PracticeRow, type PracticeUser } from '../practice/servable.js';
 
 // Practice in a lesson's Tự luyện part. Learners (signed in or not) load the questions of a
 // published lesson without answers and check one answer at a time; the server decides and says
-// only right or wrong (per statement for true/false), plus the explanation. Nothing is stored
-// and no XP is given. Exam questions are never served or checked here. A writing answer (English,
-// written or spoken) is checked for its key terms; a signed-in learner may then ask the AI
-// Professor to comment on it, paid from the Professor's token quota.
+// only right or wrong (per statement for true/false), plus the explanation. A signed-in learner's
+// first answer to each question is kept and earns XP (practice/record.ts). Exam questions are
+// never served or checked here. A writing answer (English, written or spoken) is checked for its
+// key terms; a signed-in learner may then ask the AI Professor to comment on it, paid from the
+// Professor's token quota.
 
 const CHECK_BODY_LIMIT = 8 * 1024;
 
+// Up to 100 offline answers in one sync; a writing answer may take 1000 characters.
+const SYNC_BODY_LIMIT = 256 * 1024;
+const OFFLINE_TYPES = ['mc', 'truefalse', 'short', 'writing'];
+
+const SyncBody = z.object({ attempts: z.array(z.unknown()).min(1).max(100) }).strict();
+// Each answer is checked on its own: one malformed item is rejected without losing the others.
+const SyncItem = z
+  .object({
+    question_id: z.string().regex(ID),
+    lesson_id: z.string().regex(ID),
+    response: PracticeResponseSchema,
+    answered_at: z.string().max(40),
+  })
+  .strict();
+
 const lessonNotFound = msg('Không tìm thấy bài học.', 'Lesson not found.');
+const signIn = msg('Đăng nhập để lưu kết quả luyện tập.', 'Sign in to keep your practice results.');
 const serviceDown = msg('Dịch vụ luyện tập chưa sẵn sàng.', 'Practice is not available right now.');
-
-const normalize = (value: string) => value.normalize('NFC').trim().replace(/\s+/g, ' ').toLowerCase();
-// A short numeric answer: a decimal comma is the same number as a decimal point (0,12 = 0.12).
-const normalizeShort = (value: string) => normalize(value).replace(/(\d),(?=\d)/g, '$1.');
-const escapeRegExp = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-
-/**
- * The key terms an English answer uses, as whole words in any case; the last word may take an
- * s/es/ed/ing ending ("loops", "repeated").
- */
-export function keyTermsUsed(answer: string, terms: string[]): { used: string[]; missing: string[] } {
-  const text = normalize(answer);
-  const used: string[] = [];
-  const missing: string[] = [];
-  for (const term of terms) {
-    const words = normalize(term).split(' ').map(escapeRegExp).join('\\s+');
-    const found = words !== '' && new RegExp(`(^|[^\\p{L}\\p{N}])${words}(s|es|ed|ing)?($|[^\\p{L}\\p{N}])`, 'u').test(text);
-    (found ? used : missing).push(term);
-  }
-  return { used, missing };
-}
-
-const keyTermsOf = (data: Record<string, unknown>) =>
-  Array.isArray(data.key_terms) ? data.key_terms.filter((t): t is string => typeof t === 'string' && t.trim() !== '') : [];
-
-export function explanationOf(data: Record<string, unknown>): { en: string; vi: string } | undefined {
-  const e = data.explanation as { en?: unknown; vi?: unknown } | undefined;
-  if (!e || typeof e.vi !== 'string' || !e.vi.trim()) return undefined;
-  return { vi: e.vi, en: typeof e.en === 'string' ? e.en : '' };
-}
-
-/** The answer has the shape of the question type and is not empty; otherwise a reason. */
-export function responseProblem(row: Pick<PracticeRow, 'type' | 'data'>, response: PracticeResponse): { error: string; error_en: string } | null {
-  const data = (row.data ?? {}) as Record<string, unknown>;
-  const others = (keys: Array<keyof PracticeResponse>) => keys.some((key) => response[key] !== undefined);
-  // A programming question is judged by its own routes (they take far larger bodies than this one).
-  if (row.type === 'code' || response.code !== undefined) return msg('Câu lập trình được nộp bằng nút Nộp bài của chính câu đó.', 'A programming question is submitted with its own Submit button.');
-  if (row.type === 'mc') {
-    if (others(['items', 'short_answer', 'writing_answer']) || !response.selected_option) return msg('Hãy chọn một phương án.', 'Choose an option.');
-    return null;
-  }
-  if (row.type === 'truefalse') {
-    const ids = new Set((Array.isArray(data.items) ? data.items : []).map((item: { id?: unknown }) => String(item?.id)));
-    const given = response.items ?? [];
-    if (others(['selected_option', 'short_answer', 'writing_answer']) || given.length === 0) return msg('Hãy chọn Đúng hoặc Sai cho ít nhất một ý.', 'Mark at least one statement true or false.');
-    if (given.some((item) => !ids.has(item.id)) || new Set(given.map((item) => item.id)).size !== given.length) {
-      return msg('Câu trả lời không khớp với các ý của câu hỏi.', 'The answer does not match the statements.');
-    }
-    return null;
-  }
-  if (row.type === 'writing') {
-    if (others(['selected_option', 'items', 'short_answer']) || !normalize(response.writing_answer ?? '')) return msg('Hãy viết câu trả lời bằng tiếng Anh.', 'Write your answer in English.');
-    return null;
-  }
-  if (others(['selected_option', 'items', 'writing_answer']) || !normalize(response.short_answer ?? '')) return msg('Hãy nhập câu trả lời.', 'Type an answer.');
-  return null;
-}
-
-/** Server-side verdict. It never contains the expected option, truth values or answer key. */
-export function checkPracticeAnswer(row: Pick<PracticeRow, 'type' | 'data'>, response: PracticeResponse): PracticeCheckResult {
-  const data = (row.data ?? {}) as Record<string, unknown>;
-  const explanation = explanationOf(data);
-  const withExplanation = (result: PracticeCheckResult): PracticeCheckResult => (explanation ? { ...result, explanation } : result);
-
-  if (row.type === 'mc') {
-    return withExplanation({ correct: typeof data.answer === 'string' && response.selected_option === data.answer });
-  }
-  if (row.type === 'truefalse') {
-    const stored = (Array.isArray(data.items) ? data.items : []) as Array<{ id: string; correct: boolean }>;
-    // Every statement gets a result; one left unanswered is simply not correct.
-    const items = stored.map((item) => {
-      const given = response.items?.find((g) => g.id === item.id);
-      return { id: item.id, correct: given !== undefined && given.selected === item.correct };
-    });
-    return withExplanation({ correct: items.length > 0 && items.every((item) => item.correct), items });
-  }
-  if (row.type === 'writing') {
-    const { used, missing } = keyTermsUsed(response.writing_answer ?? '', keyTermsOf(data));
-    const sample = typeof data.sample_answer === 'string' ? data.sample_answer : '';
-    return withExplanation({ correct: missing.length === 0, writing: { used, missing, sample_answer: sample } });
-  }
-  const key = typeof data.answer_key === 'string' ? data.answer_key : typeof data.answer === 'string' ? data.answer : '';
-  const given = normalizeShort(response.short_answer ?? '');
-  return withExplanation({ correct: given !== '' && given === normalizeShort(key) });
-}
 
 const FeedbackBody = z
   .object({
@@ -123,6 +55,12 @@ const FEEDBACK_FAILED = msg(
   'Giáo sư AI chưa nhận xét được lúc này. Lần này không bị trừ token, em thử lại sau nhé.',
   'The Professor could not comment right now. No tokens were used, try again later.',
 );
+
+export { checkPracticeAnswer, explanationOf, keyTermsUsed, responseProblem } from '../schemas/practiceGrading.js';
+
+/** A signed-in learner's answer earns XP on a published lesson question; never the author's own, an admin's (who may open any question), or a programming one. */
+export const countsForXp = (row: PracticeRow, user: PracticeUser & { id: string }) =>
+  !isAdmin(user) && row.status === 'published' && row.created_by !== user.id && row.type !== 'code' && !isHsgProblem(row);
 
 export const practiceRoutes: FastifyPluginAsync = async (app) => {
   const servableQuestion = (request: FastifyRequest, reply: FastifyReply, questionId: string, failure: { error: string; error_en: string }) =>
@@ -162,6 +100,130 @@ export const practiceRoutes: FastifyPluginAsync = async (app) => {
     return reply.send({ questions: ids.flatMap((id) => (byId.has(id) ? [toPublicPracticeQuestion(byId.get(id)!)] : [])) });
   });
 
+  // The offline package of a published lesson: its practice questions, and what grades them, for a
+  // signed-in learner who chose to keep the lesson on the device. Programming questions stay online.
+  // The first download is recorded; an offline answer is never dated before it.
+  app.get('/api/practice/lessons/:lessonId/offline', async (request, reply) => {
+    const { lessonId } = request.params as { lessonId: string };
+    const userId = getUser(request)?.id;
+    if (!userId) return reply.code(401).send(signIn);
+    if (!ID.test(lessonId)) return reply.code(404).send(lessonNotFound);
+    const supabase = app.supabase;
+    if (!supabase) return reply.code(503).send(serviceDown);
+    const failed = msg('Không tải được bài để học offline.', 'Could not save the lesson for offline.');
+
+    const { data: lessonData, error: lessonError } = await supabase.from('lessons').select('id, subject_id, status, blocks').eq('id', lessonId).maybeSingle();
+    if (lessonError) {
+      request.log.error({ err: lessonError, lessonId }, 'Failed to load the offline lesson');
+      return reply.code(500).send(failed);
+    }
+    const lesson = lessonData as { id: string; subject_id: string; status: string; blocks: unknown } | null;
+    if (!lesson || lesson.status !== 'published') return reply.code(404).send(lessonNotFound);
+
+    const ids = quizQuestionIds(lesson.blocks).filter((id) => ID.test(id)).slice(0, MAX_LESSON_QUESTIONS);
+    let rows: PracticeRow[] = [];
+    if (ids.length > 0) {
+      const { data, error } = await supabase
+        .from('questions')
+        .select(COLUMNS)
+        .in('id', ids)
+        .eq('usage', 'practice')
+        .eq('subject_id', lesson.subject_id)
+        .eq('status', 'published')
+        .in('type', OFFLINE_TYPES);
+      if (error) {
+        request.log.error({ err: error, lessonId }, 'Failed to load the offline questions');
+        return reply.code(500).send(failed);
+      }
+      const byId = new Map(((data ?? []) as PracticeRow[]).map((row) => [row.id, row]));
+      rows = ids.flatMap((id) => (byId.has(id) ? [byId.get(id)!] : []));
+    }
+
+    const { error: markError } = await supabase
+      .from('offline_downloads')
+      .upsert({ user_id: userId, lesson_id: lesson.id }, { onConflict: 'user_id,lesson_id', ignoreDuplicates: true });
+    const { data: mark, error: readError } = markError
+      ? { data: null, error: markError }
+      : await supabase.from('offline_downloads').select('downloaded_at').eq('user_id', userId).eq('lesson_id', lesson.id).maybeSingle();
+    if (readError || !mark) {
+      request.log.error({ err: readError, lessonId }, 'Failed to record the offline download');
+      return reply.code(500).send(failed);
+    }
+    reply.header('Cache-Control', 'no-store');
+    return reply.send({
+      lesson_id: lesson.id,
+      subject_id: lesson.subject_id,
+      downloaded_at: (mark as { downloaded_at: string }).downloaded_at,
+      questions: rows.map(toPublicPracticeQuestion),
+      keys: Object.fromEntries(rows.map((row) => [row.id, { type: row.type, difficulty: row.difficulty, data: row.data }])),
+    });
+  });
+
+  // Answers made offline, sent when the connection returns. The server grades each again and is the
+  // only judge; an answer counts at the time it was made (clamped), as if it had been sent then.
+  app.post('/api/practice/sync', { bodyLimit: SYNC_BODY_LIMIT }, async (request, reply) => {
+    const user = getUser(request);
+    const userId = user?.id;
+    if (!userId) return reply.code(401).send(signIn);
+    const parsed = SyncBody.safeParse(request.body);
+    if (!parsed.success) return reply.code(400).send(msg('Danh sách câu trả lời không đúng định dạng.', 'The answers are not in a valid format.'));
+    const supabase = app.supabase;
+    if (!supabase) return reply.code(503).send(serviceDown);
+
+    const { data: marks, error: marksError } = await supabase.from('offline_downloads').select('lesson_id, downloaded_at').eq('user_id', userId);
+    if (marksError) {
+      request.log.error({ err: marksError }, 'Failed to read offline downloads');
+      return reply.code(500).send(serviceDown);
+    }
+    const downloadedAt = new Map(((marks ?? []) as Array<{ lesson_id: string; downloaded_at: string }>).map((m) => [m.lesson_id, m.downloaded_at]));
+    const now = new Date();
+    // The download time counts only for a published lesson that really holds the question; another
+    // lesson's earlier download must not date the answer.
+    const downloadOf = async (lessonId: string, questionId: string): Promise<string | null> => {
+      const at = downloadedAt.get(lessonId);
+      if (!at) return null;
+      const { data, error } = await supabase
+        .from('lessons')
+        .select('id')
+        .eq('id', lessonId)
+        .eq('status', 'published')
+        .contains('blocks', JSON.stringify([{ type: 'quiz', question_id: questionId }]))
+        .maybeSingle();
+      return !error && data ? at : null;
+    };
+    const results: Array<Record<string, unknown>> = [];
+    const attempts: Array<z.infer<typeof SyncItem>> = [];
+    for (const raw of parsed.data.attempts) {
+      const item = SyncItem.safeParse(raw);
+      if (item.success) attempts.push(item.data);
+      else results.push({ question_id: String((raw as { question_id?: unknown } | null)?.question_id ?? ''), status: 'rejected' });
+    }
+    attempts.sort((a, b) => Date.parse(a.answered_at) - Date.parse(b.answered_at) || 0);
+    for (const attempt of attempts) {
+      const { question_id } = attempt;
+      const row = await loadPracticeRow(supabase, user, question_id, request.log);
+      if (row === 'error') {
+        results.push({ question_id, status: 'error' });
+        continue;
+      }
+      if (row === 'gone' || row.type === 'code' || isHsgProblem(row)) {
+        results.push({ question_id, status: 'gone' });
+        continue;
+      }
+      if (responseProblem(row, attempt.response)) {
+        results.push({ question_id, status: 'rejected' });
+        continue;
+      }
+      const result = checkPracticeAnswer(row, attempt.response);
+      const at = clampAnsweredAt(attempt.answered_at, await downloadOf(attempt.lesson_id, question_id), now);
+      const record = countsForXp(row, { ...user, id: userId })
+        ? await recordPractice(supabase, { userId, row, correct: result.correct, at }, request.log)
+        : { counted: false, xp_earned: 0, new_streak: 0, lesson_completed: false };
+      results.push({ question_id, status: 'ok', ...result, ...record });
+    }
+    return reply.send({ results });
+  });
+
   app.post('/api/practice/check', { bodyLimit: CHECK_BODY_LIMIT }, async (request, reply) => {
     const body = (request.body ?? {}) as { question_id?: unknown; response?: unknown };
     if (typeof body.question_id !== 'string' || !ID.test(body.question_id)) {
@@ -175,7 +237,11 @@ export const practiceRoutes: FastifyPluginAsync = async (app) => {
 
     const problem = responseProblem(row, parsed.data);
     if (problem) return reply.code(400).send(problem);
-    return reply.send(checkPracticeAnswer(row, parsed.data));
+    const result = checkPracticeAnswer(row, parsed.data);
+    const userId = getUser(request)?.id;
+    if (!userId || !countsForXp(row, { ...getUser(request), id: userId })) return reply.send(result);
+    const record = await recordPractice(app.supabase, { userId, row, correct: result.correct, at: new Date() }, request.log);
+    return reply.send({ ...result, xp_earned: record.xp_earned, new_streak: record.new_streak, lesson_completed: record.lesson_completed });
   });
 
   // The AI Professor's comment on a writing answer. Tokens are held before asking, counted for
