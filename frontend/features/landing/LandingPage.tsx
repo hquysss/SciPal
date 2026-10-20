@@ -10,6 +10,8 @@ import { fetchWebsiteFeedback } from '@/features/website-feedback/api';
 import { WebsiteFeedbackBoard } from '@/features/website-feedback/WebsiteFeedbackBoard';
 import { WebsiteFeedbackForm } from '@/features/website-feedback/WebsiteFeedbackForm';
 import { SubjectMarquee } from '@/features/subjects/SubjectMarquee';
+import ScrollVelocity from '@/components/ScrollVelocity';
+import ShinyText from '@/components/ShinyText';
 import { applyShellLevel, getShell } from '@/lib/theme/shellTheme';
 import type { EducationLevel } from './educationLevel';
 import type { InformaticsAvailability, LandingCatalog } from './getLandingData';
@@ -501,6 +503,23 @@ export function LandingPage({ level, catalog, onChangeLevel, pricing = null, sho
             </div>
           </section>
 
+          {/* ---------- running line ---------- */}
+          <div className={styles.runningLine} aria-hidden="true">
+            <ScrollVelocity
+              texts={[t({ en: 'Bilingual lessons · Vietnam’s 2018 curriculum', vi: 'Học song ngữ · Theo Chương trình GDPT 2018' })]}
+              velocity={40}
+              numCopies={4}
+              separator="✦"
+              gap={48}
+              fontSize="clamp(2.25rem, 6vw, 5rem)"
+              fontWeight={800}
+              color="var(--line)"
+              parallaxClassName=""
+              scrollerClassName=""
+              scrollerStyle={{ filter: 'none', textTransform: 'uppercase', letterSpacing: '-0.03em' }}
+            />
+          </div>
+
           {/* ---------- existing feature sections on a lifted sheet ---------- */}
           <div className={styles.sheet}>
             <HowItWorks level={level} />
@@ -552,7 +571,9 @@ export function LandingPage({ level, catalog, onChangeLevel, pricing = null, sho
               </div>
               <div className={styles.finalActions}>
                 <Link href="/subjects" className={styles.pillLight}>
-                  {t({ en: 'Start learning', vi: 'Bắt đầu học' })}
+                  <ShinyText color="currentColor" shineColor="var(--sun)" speed={1.6} delay={3.5} shineWidth={50}>
+                    {t({ en: 'Start learning', vi: 'Bắt đầu học' })}
+                  </ShinyText>
                   <ArrowRight size={16} aria-hidden="true" />
                 </Link>
                 <Link href="/tutor" className={styles.pillGhost}>

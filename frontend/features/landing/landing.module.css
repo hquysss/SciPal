@@ -1422,3 +1422,11 @@
   }
 }
 
+
+/* ---------- running line ---------- */
+.runningLine {
+  overflow: hidden;
+  padding: clamp(1.5rem, 4vw, 3rem) 0;
+  pointer-events: none;
+  user-select: none;
+}
