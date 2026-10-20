@@ -64,7 +64,7 @@ const parseColor = (value: string): number[] | null => {
   if (typeof document === 'undefined') return null;
   if (!paint) paint = document.createElement('canvas').getContext('2d');
   if (!paint) return null;
-  paint.fillStyle = '#000000';
+  paint.fillStyle = 'black';
   paint.fillStyle = value;
   const resolved = String(paint.fillStyle);
   if (resolved.startsWith('#')) {
@@ -90,8 +90,8 @@ const blend = (from: number[], to: number[], amount: number) => {
 const ShinyText = ({
   text,
   children,
-  color = '#b5b5b5',
-  shineColor = '#ffffff',
+  color = 'currentColor',
+  shineColor = 'white',
   speed = 2,
   delay = 0,
   angle = 120,
