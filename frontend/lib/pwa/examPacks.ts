@@ -68,13 +68,14 @@ export const saveDraft = (attemptId: string, answers: Record<number, DraftAnswer
 
 export const loadDraft = (attemptId: string, store: Store = defaultStore()) => read<Record<number, DraftAnswer>>(store, draftKey(attemptId));
 
-/** Removes the exam pages the service worker kept (they may show a class's exam) when the learner signs out. */
+/** Removes the exam list and exam pages the service worker kept (they may show a class's exam) when the learner signs out. */
 export async function clearExamPages(cachesApi: CacheStorage | undefined = globalThis.caches): Promise<void> {
   try {
     if (!cachesApi) return;
     const cache = await cachesApi.open(PAGES_CACHE);
     for (const request of await cache.keys()) {
-      if (new URL(request.url).pathname.startsWith('/exam/')) await cache.delete(request);
+      const { pathname } = new URL(request.url);
+      if (pathname === '/exam' || pathname.startsWith('/exam/')) await cache.delete(request);
     }
   } catch {
     // No caches here: nothing was kept.

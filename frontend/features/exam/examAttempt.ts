@@ -71,14 +71,13 @@ export function forgetExamAttempt(blueprintId: string, storage: Store | undefine
   write(storage, key(blueprintId), null);
 }
 
-/** The exam of an attempt this learner started, with what grades it (to take it offline). */
-export async function fetchExamPack(attemptId: string, token: string): Promise<{
-  attempt_id: string;
+/** The exam with what grades it (to take it offline). Starts no attempt and uses no quota. */
+export async function fetchExamPack(blueprintId: string, token: string): Promise<{
   blueprint: BlueprintSummary;
   questions: ExamQuestionItem[];
   keys: Record<string, { type: string; data: Record<string, unknown> }>;
 }> {
-  const res = await fetch(`${API_BASE}/api/exam/attempts/${encodeURIComponent(attemptId)}/offline`, { headers: { Authorization: `Bearer ${token}` }, cache: 'no-store' });
+  const res = await fetch(`${API_BASE}/api/exam/${encodeURIComponent(blueprintId)}/offline`, { headers: { Authorization: `Bearer ${token}` }, cache: 'no-store' });
   if (!res.ok) throw Object.assign(new Error(`exam pack failed: ${res.status}`), { status: res.status });
   return res.json();
 }

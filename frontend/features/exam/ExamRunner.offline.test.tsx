@@ -112,6 +112,45 @@ describe('an exam saved for offline', () => {
     expect(loadExamPack('u1', 'bp')?.started_at).toEqual(expect.any(String));
   });
 
+  it('sends when the exam was started with the saved exam when it is submitted online', async () => {
+    onLine.mockReturnValue(true);
+    const startedAt = new Date(Date.now() - 10 * 60 * 1000).toISOString();
+    saveExamPack({ ...pack, started_at: startedAt });
+    const fetchMock = vi.fn().mockResolvedValue({ ok: true, json: async () => ({ score: 5, max_score: 10, correct_count: 1, total_questions: 2, xp_earned: 15 }) });
+    vi.stubGlobal('fetch', fetchMock);
+    await submitFirstRight();
+    const body = JSON.parse(fetchMock.mock.calls[0][1].body);
+    expect(body).toMatchObject({ attempt_id: 'att-1', started_at: startedAt });
+    vi.unstubAllGlobals();
+  });
+
+  it('queues the start time with an exam submitted offline', async () => {
+    const startedAt = new Date(Date.now() - 10 * 60 * 1000).toISOString();
+    saveExamPack({ ...pack, started_at: startedAt });
+    await submitFirstRight();
+    expect(pendingExamsFor('u1')[0]).toMatchObject({ started_at: startedAt });
+  });
+
+  it('says the exam was not counted when the plan has no attempt left, and keeps the answers on the page', async () => {
+    onLine.mockReturnValue(true);
+    saveExamPack(pack);
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: false, status: 409, json: async () => ({ code: 'QUOTA_EXCEEDED' }) }));
+    await submitFirstRight();
+    expect(screen.getByText(/chưa được tính/)).toBeTruthy();
+    expect(screen.getByRole('radio', { name: /Lựa chọn A/ })).toBeTruthy();
+    vi.unstubAllGlobals();
+  });
+
+  it('shows that a queued exam was not counted once the server says so', async () => {
+    saveExamPack(pack);
+    await submitFirstRight();
+    act(() => {
+      window.dispatchEvent(new CustomEvent(EXAM_SYNCED, { detail: [{ blueprint_id: 'bp', attempt_id: 'att-1', not_counted: true }] }));
+    });
+    expect(screen.getByText(/chưa được tính/)).toBeTruthy();
+    expect(screen.queryByText(/Kết quả tạm/)).toBeNull();
+  });
+
   it('without a saved exam, says to save it while online', async () => {
     attempts.start.mockResolvedValue({ ok: false, blocked: false, error: { vi: 'Không kết nối được máy chủ.', en: 'x' } });
     await submitFirstRight();

@@ -3,6 +3,7 @@ import { cookies } from 'next/headers';
 import { createServerClient } from '@scipal/supabase';
 import { getExamBlueprints } from '@/features/exam/examQueries';
 import { getHsgProblems } from '@/features/exam/hsgQueries';
+import { SaveExamsButton } from '@/features/exam/SaveExamsButton';
 import { ExamBlueprintList, ExamListHeader, NoExamsNotice, type HsgCoding } from '@/features/exam/ExamListNotices';
 import { LoadErrorNotice } from '@/components/feedback/LoadErrorNotice';
 import { pageTitle } from '@/lib/pageTitle';
@@ -36,7 +37,10 @@ export default async function ExamListPage() {
         ) : empty ? (
           <NoExamsNotice />
         ) : (
-          <ExamBlueprintList blueprints={result.blueprints} hsgCoding={hsgCoding} />
+          <>
+            <SaveExamsButton blueprintIds={result.blueprints.map((blueprint) => blueprint.id)} />
+            <ExamBlueprintList blueprints={result.blueprints} hsgCoding={hsgCoding} />
+          </>
         )}
       </section>
     </main>

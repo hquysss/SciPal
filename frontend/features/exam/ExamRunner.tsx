@@ -276,6 +276,8 @@ export function ExamRunner({
   const [userId, setUserId] = useState<string | null>(null);
   const [pack, setPack] = useState<ExamPack | null>(null);
   const [provisional, setProvisional] = useState(false);
+  // The plan had no graded attempt left when the exam was sent: the score here is for reference only.
+  const [notCounted, setNotCounted] = useState(false);
 
   const currentSession = useCallback(async () => {
     const session = (await createBrowserClient().auth.getSession().catch(() => ({ data: { session: null } }))).data.session;
@@ -346,6 +348,11 @@ export function ExamRunner({
     const onSynced = (event: Event) => {
       const mine = ((event as CustomEvent<ExamSyncResult[]>).detail ?? []).find((r) => r.attempt_id === attempt?.id);
       if (!mine) return;
+      if (mine.not_counted) {
+        setNotCounted(true);
+        setProvisional(false);
+        return;
+      }
       const server = mine.result ? normalizeResult(mine.result) : null;
       if (server) {
         setResult(server);
@@ -369,7 +376,7 @@ export function ExamRunner({
         setSubmissionError(t({ en: 'Save this exam while online to take it offline.', vi: 'Tải đề này khi có mạng để thi offline.' }));
         return;
       }
-      const queued = queueExam({ user_id: userId, attempt_id: pack.attempt_id, blueprint_id: blueprintId, answers: formatted, finished_at: finishedAt });
+      const queued = queueExam({ user_id: userId, attempt_id: pack.attempt_id, blueprint_id: blueprintId, answers: formatted, started_at: pack.started_at, finished_at: finishedAt });
       if (queued === 'kept') {
         setSubmissionError(t({ en: 'This exam was already submitted and waits to sync.', vi: 'Bài thi này đã nộp và đang chờ đồng bộ.' }));
         return;
@@ -410,7 +417,8 @@ export function ExamRunner({
             'Content-Type': 'application/json',
             Authorization: `Bearer ${authToken}`,
           },
-          body: JSON.stringify({ blueprint_id: blueprintId, attempt_id: attemptId, answers: formatted }),
+          // A saved exam has no attempt on the server yet: it opens from when the exam was started.
+          body: JSON.stringify({ blueprint_id: blueprintId, attempt_id: attemptId, answers: formatted, ...(pack && pack.attempt_id === attemptId && pack.started_at ? { started_at: pack.started_at } : {}) }),
         });
       } catch (error) {
         // The connection dropped while submitting: a saved exam is scored here instead.
@@ -421,6 +429,13 @@ export function ExamRunner({
         throw error;
       }
 
+      if (res.status === 409) {
+        setSubmissionError(t({
+          en: 'This exam was not counted: you have no graded attempts left. Your answers are still on the page.',
+          vi: 'Bài thi chưa được tính vì bạn đã hết lượt thi chấm điểm. Câu trả lời vẫn còn trên trang.',
+        }));
+        return;
+      }
       if (!res.ok) throw new Error(`Exam scoring failed: ${res.status}`);
       const data = normalizeResult(await res.json());
       if (!data) throw new Error('Invalid exam score response');
@@ -468,7 +483,7 @@ export function ExamRunner({
     return (
       <div className="mx-auto flex w-full max-w-3xl flex-col gap-6">
         {header}
-        <ExamResultView result={result} title={title} layout={layout} provisional={provisional} />
+        <ExamResultView result={result} title={title} layout={layout} provisional={provisional} notCounted={notCounted} />
       </div>
     );
   }
@@ -742,12 +757,15 @@ export function ExamResultView({
   title,
   layout = null,
   provisional = false,
+  notCounted = false,
 }: {
   result: ExamResult;
   title: string;
   layout?: ExamSection[] | null;
   /** Scored on this device without a connection; the server's result replaces it. */
   provisional?: boolean;
+  /** The server did not count it (no graded attempt left): the score is for reference only. */
+  notCounted?: boolean;
 }) {
   const { lang, t } = useLanguage();
   const band = scoreBand(result.score, result.max_score);
@@ -758,6 +776,11 @@ export function ExamResultView({
     <section className="rounded-xl border border-line bg-surface p-8 text-center sm:p-12">
       <h2 className="text-2xl font-bold text-ink sm:text-3xl">{t({ en: 'Exam result', vi: 'Kết quả bài thi thử' })}</h2>
       <p className="mt-1 text-sm text-ink-muted">{title}</p>
+      {notCounted && (
+        <p role="status" className="mt-3 text-sm font-semibold text-ink-muted">
+          {t({ en: 'This exam was not counted: you had no graded attempts left. The score is for reference; no XP.', vi: 'Bài thi chưa được tính vì bạn đã hết lượt thi chấm điểm. Điểm chỉ để tham khảo, không có XP.' })}
+        </p>
+      )}
       {provisional && (
         <p role="status" className="mt-3 text-sm font-semibold text-ink-muted">
           {t({ en: 'Provisional · waiting to sync. XP is an estimate.', vi: 'Kết quả tạm · chờ đồng bộ. XP là tạm tính.' })}

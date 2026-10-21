@@ -1,7 +1,7 @@
 /* SciPal service worker: the app opens and lessons read without a connection.
  *
  * - Pages (navigations): network first; a page that loaded is kept, so it opens offline later. Only
- *   learning pages are kept (subjects, lessons, glossary…); personal and staff pages never are, so a
+ *   learning pages are kept (subjects, lessons, glossary, the exam list and the exams saved to take offline…); personal and staff pages never are, so a
  *   shared phone does not show someone's profile or classes offline. Offline with nothing kept: /offline.
  * - Built files, fonts and images: cache first (their names change when their content does).
  * - Everything else (API calls, other sites, POST, Next's RSC requests): straight to the network.
@@ -9,7 +9,7 @@
  * Cache names must match frontend/lib/pwa/cacheNames.ts (a test checks). Bump VERSION to drop old caches.
  */
 
-const VERSION = 'v4';
+const VERSION = 'v5';
 const PAGES = `scipal-pages-${VERSION}`;
 const STATIC = `scipal-static-${VERSION}`;
 const OFFLINE_URL = '/offline';
@@ -17,11 +17,7 @@ const PRECACHE = [OFFLINE_URL, '/icons/icon-192.png', '/logo.svg'];
 
 /** Paths whose pages hold personal or staff data, or need the server to work at all. */
 const NOT_KEPT = ['/profile', '/progress', '/teacher', '/admin', '/checkout', '/classes', '/exam/manage', '/login', '/auth', '/api', '/dev', '/tutor'];
-/** Kept only below them: one exam page (saved to take offline) but not the exam list. */
-const NOT_KEPT_EXACT = ['/exam'];
-
 function pageKept(pathname) {
-  if (NOT_KEPT_EXACT.includes(pathname)) return false;
   return !NOT_KEPT.some((prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`));
 }
 

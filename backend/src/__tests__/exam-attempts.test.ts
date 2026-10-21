@@ -180,7 +180,7 @@ describe('submitting a graded exam attempt', () => {
   });
 
   it('refuses an attempt that is not the caller’s or is for another exam, and a missing attempt id', async () => {
-    const app = await build({ exam_attempts: ok(null) });
+    const app = await build({ exam_attempts: [ok(null), ok({ ...started, user_id: 'someone' })], exam_blueprints: ok({ id: BP }) });
     expect((await submit(app)).statusCode).toBe(404);
     await app.close();
     const other = await build({ exam_attempts: ok({ ...started, blueprint_id: '33333333-3333-4333-8333-333333333333' }) });

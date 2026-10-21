@@ -57,11 +57,11 @@ describe('exam packs', () => {
 });
 
 describe('signing out', () => {
-  it('removes kept exam pages, and leaves lesson pages', async () => {
-    const urls = ['https://scipal.io.vn/exam/bp1', 'https://scipal.io.vn/informatics/vong-lap', 'https://scipal.io.vn/exam/bp2'];
+  it('removes the kept exam list and exam pages, and leaves lesson pages', async () => {
+    const urls = ['https://scipal.io.vn/exam/bp1', 'https://scipal.io.vn/informatics/vong-lap', 'https://scipal.io.vn/exam/bp2', 'https://scipal.io.vn/exam'];
     const cache = { keys: async () => urls.map((url) => ({ url })), delete: vi.fn(async () => true) };
     await clearExamPages({ open: async () => cache } as unknown as CacheStorage);
-    expect(cache.delete.mock.calls.map(([r]) => (r as { url: string }).url)).toEqual([urls[0], urls[2]]);
+    expect(cache.delete.mock.calls.map(([r]) => (r as { url: string }).url)).toEqual([urls[0], urls[2], urls[3]]);
   });
 
   it('remembers who saved for offline until then', () => {
@@ -94,6 +94,20 @@ describe('exams submitted offline', () => {
       { blueprint_id: 'bp1', attempt_id: 'gone', gone: true },
       { blueprint_id: 'bp1', attempt_id: 'a2', result: { score: 8, max_score: 10, xp_earned: 15 } },
     ]);
+    expect(res.synced).toBe(1);
+    expect(pendingExamsFor('u1', store)).toEqual([]);
+  });
+
+  it('drops an exam the plan has no attempt left for, and does not count it as synced', async () => {
+    const store = memory();
+    queueExam(exam('late'), store);
+    queueExam(exam('a2'), store);
+    const post = async (row: PendingExam) => {
+      if (row.attempt_id === 'late') throw fail(409);
+      return { score: 8, max_score: 10, xp_earned: 15 };
+    };
+    const res = await flushExams('u1', post, store);
+    expect(res.results[0]).toEqual({ blueprint_id: 'bp1', attempt_id: 'late', not_counted: true });
     expect(res.synced).toBe(1);
     expect(pendingExamsFor('u1', store)).toEqual([]);
   });

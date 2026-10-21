@@ -144,10 +144,12 @@ export type PendingExam = {
   attempt_id: string;
   blueprint_id: string;
   answers: Array<{ question_id: string; selected_option?: string; items?: Array<{ id: string; selected: boolean }>; short_answer?: string }>;
+  /** When the exam was started on the device: the server opens the attempt from it. */
+  started_at?: string;
   finished_at: string;
 };
-/** What the server said about one exam: its stored result, or that the exam was removed. */
-export type ExamSyncResult = { blueprint_id: string; attempt_id: string; result?: unknown; gone?: true };
+/** What the server said about one exam: its stored result, that the exam was removed, or that the plan had no attempt left. */
+export type ExamSyncResult = { blueprint_id: string; attempt_id: string; result?: unknown; gone?: true; not_counted?: true };
 /** Fired with `detail: ExamSyncResult[]` after exams taken offline were sent. */
 export const EXAM_SYNCED = 'scipal:exam-synced';
 
@@ -168,8 +170,8 @@ function removeExam(attemptId: string, store: Store): void {
 
 /**
  * Sends one user's queued exams in order. An exam leaves the queue once the server scored it, or
- * said the exam is gone (404) or the submission is malformed (400); a lost connection, an expired
- * session or a server error stops the run and keeps the rest.
+ * said the exam is gone (404), the submission is malformed (400) or the plan has no attempt left
+ * (409); a lost connection, an expired session or a server error stops the run and keeps the rest.
  */
 export async function flushExams(
   userId: string,
@@ -184,6 +186,11 @@ export async function flushExams(
       results.push({ blueprint_id: row.blueprint_id, attempt_id: row.attempt_id, result });
     } catch (error) {
       const status = (error as { status?: number }).status;
+      if (status === 409) {
+        removeExam(row.attempt_id, store);
+        results.push({ blueprint_id: row.blueprint_id, attempt_id: row.attempt_id, not_counted: true });
+        continue;
+      }
       if (status === 404 || status === 400) {
         removeExam(row.attempt_id, store);
         results.push({ blueprint_id: row.blueprint_id, attempt_id: row.attempt_id, gone: true });
@@ -192,5 +199,5 @@ export async function flushExams(
       break;
     }
   }
-  return { synced: results.filter((r) => !r.gone).length, results };
+  return { synced: results.filter((r) => !r.gone && !r.not_counted).length, results };
 }

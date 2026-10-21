@@ -1,3 +1,3 @@
 // The service worker's caches (public/sw.js uses the same names; a test keeps them equal).
-export const PAGES_CACHE = 'scipal-pages-v4';
-export const STATIC_CACHE = 'scipal-static-v4';
+export const PAGES_CACHE = 'scipal-pages-v5';
+export const STATIC_CACHE = 'scipal-static-v5';

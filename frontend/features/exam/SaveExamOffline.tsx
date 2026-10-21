@@ -29,7 +29,7 @@ export function SaveExamOffline({ blueprintId, saved, onSaved }: { blueprintId: 
     return (
       <p role="status" className="inline-flex items-center gap-2 text-sm font-semibold text-ink">
         <CheckCircle2 aria-hidden="true" className="h-4 w-4 shrink-0 text-action" />
-        {t({ vi: 'Đã lưu đề. Bạn có thể thi khi không có mạng. SciPal đã trừ một lượt thi.', en: 'Exam saved. You can take it without a connection. SciPal has used one graded attempt.' })}
+        {t({ vi: 'Đã lưu đề. Bạn có thể thi khi không có mạng; lượt thi tính khi bạn nộp bài.', en: 'Exam saved. You can take it without a connection; the attempt is counted when you submit.' })}
       </p>
     );
   }
@@ -48,7 +48,7 @@ export function SaveExamOffline({ blueprintId, saved, onSaved }: { blueprintId: 
         <CloudDownload aria-hidden="true" />
         {state.kind === 'saving' ? t({ vi: 'Đang lưu đề…', en: 'Saving the exam…' }) : t({ vi: 'Tải đề để thi offline', en: 'Save this exam for offline' })}
       </button>
-      <p className="text-sm text-ink-muted">{t({ vi: 'Tải đề sẽ tính một lượt thi ngay.', en: 'Saving the exam uses one graded attempt now.' })}</p>
+      <p className="text-sm text-ink-muted">{t({ vi: 'Tải đề không trừ lượt thi; lượt tính khi bạn nộp bài.', en: 'Saving the exam does not use an attempt; it is counted when you submit.' })}</p>
       {state.kind === 'error' && <p role="alert" className="text-sm text-danger">{t(state.error)}</p>}
     </div>
   );

@@ -18,62 +18,48 @@ async function build(tables: Record<string, MockBuilder | MockBuilder[]>, user: 
   await app.ready();
   return app;
 }
-const pack = (app: Awaited<ReturnType<typeof build>>) => app.inject({ method: 'GET', url: `/api/exam/attempts/${A1}/offline` });
+const pack = (app: Awaited<ReturnType<typeof build>>, id = BP) => app.inject({ method: 'GET', url: `/api/exam/${id}/offline` });
 
-describe('GET /api/exam/attempts/:id/offline', () => {
+describe('GET /api/exam/:blueprintId/offline', () => {
   it('needs a session', async () => {
     const app = await build({}, null);
     expect((await pack(app)).statusCode).toBe(401);
     await app.close();
   });
 
-  it('refuses an attempt that is not the caller’s or already submitted', async () => {
-    for (const row of [null, { ...started, user_id: 'someone' }, { ...started, status: 'submitted' }]) {
-      const app = await build({ exam_attempts: ok(row) });
-      expect((await pack(app)).statusCode).toBe(404);
-      await app.close();
-    }
-  });
-
-  it('sends the exam of a started attempt with what grades it, the questions without it, and no-store', async () => {
-    const attempts = ok(started);
-    const app = await build({ exam_attempts: attempts, exam_blueprints: ok({ id: BP }), questions: ok([question]), 'rpc:billing_settle_quota': ok(true) });
+  it('sends the exam with what grades it, the questions without it, and no-store', async () => {
+    const app = await build({ exam_blueprints: ok({ id: BP }), questions: ok([question]) });
     const res = await pack(app);
     expect(res.statusCode).toBe(200);
     expect(res.headers['cache-control']).toBe('no-store');
     const body = res.json();
-    expect(body.attempt_id).toBe(A1);
     expect(body.blueprint).toMatchObject({ id: BP });
     expect(body.questions[0].data).not.toHaveProperty('answer');
     expect(body.questions[0].data).not.toHaveProperty('explanation');
     expect(body.keys.q1).toEqual({ type: 'mc', data: question.data });
-    expect(attempts.eqCalls).toContainEqual(['user_id', 'student-1']);
+    expect(body).not.toHaveProperty('attempt_id');
     await app.close();
   });
-});
 
-describe('saving an exam spends the attempt', () => {
-  it('counts the held attempt before any key leaves the server', async () => {
+  it('starts no attempt and touches no quota: saving an exam is free', async () => {
     rpcCalls.length = 0;
-    const app = await build({ exam_attempts: ok(started), exam_blueprints: ok({ id: BP }), questions: ok([question]), 'rpc:billing_settle_quota': ok(true) });
-    expect((await pack(app)).statusCode).toBe(200);
-    expect(rpcCalls).toContainEqual(['billing_settle_quota', expect.objectContaining({ p_operation_id: A1, p_outcome: 'commit' })]);
-    await app.close();
-  });
-
-  it('sends no keys when the hold has run out, and says to start again', async () => {
-    const app = await build({ exam_attempts: ok(started), exam_blueprints: ok({ id: BP }), questions: ok([question]), 'rpc:billing_settle_quota': ok(false) });
-    const res = await pack(app);
-    expect(res.statusCode).toBe(409);
-    expect(res.body).not.toContain('"keys"');
-    await app.close();
-  });
-
-  it('counts nothing for an attempt that is not metered (teachers, admins)', async () => {
-    rpcCalls.length = 0;
-    const app = await build({ exam_attempts: ok({ ...started, metered: false }), exam_blueprints: ok({ id: BP }), questions: ok([question]) });
+    // No exam_attempts table in the mock: reading or writing one would throw.
+    const app = await build({ exam_blueprints: ok({ id: BP }), questions: ok([question]) });
     expect((await pack(app)).statusCode).toBe(200);
     expect(rpcCalls).toEqual([]);
+    await app.close();
+  });
+
+  it('answers 404 for an exam that is not there or not the caller’s to see', async () => {
+    const app = await build({ exam_blueprints: ok(null) });
+    expect((await pack(app)).statusCode).toBe(404);
+    await app.close();
+  });
+
+  it('is gone from the old per-attempt address', async () => {
+    const app = await build({}, student);
+    const res = await app.inject({ method: 'GET', url: `/api/exam/attempts/${A1}/offline` });
+    expect(res.statusCode).toBe(404);
     await app.close();
   });
 });
