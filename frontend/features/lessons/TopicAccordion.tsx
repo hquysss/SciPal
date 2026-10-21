@@ -15,30 +15,31 @@ interface Lesson {
   tags?: LessonTag[];
 }
 
-// Quiet outlined chips in the text colours; only "Hot" keeps a warm icon so it still stands out.
-const TAG_LOOK: Record<LessonTag, { label: { en: string; vi: string }; icon: LucideIcon; iconTone?: string }> = {
-  hot: { label: { en: 'Hot', vi: 'Hot' }, icon: Flame, iconTone: 'text-warning' },
-  sim: { label: { en: 'Simulation', vi: 'Mô phỏng' }, icon: FlaskConical },
-  video: { label: { en: 'Video', vi: 'Video' }, icon: PlayCircle },
-  practice: { label: { en: 'Practice', vi: 'Luyện tập' }, icon: Dumbbell },
-  code: { label: { en: 'Code', vi: 'Code' }, icon: Code2 },
+// Soft chips: a light wash of each tag's colour, the text mixed toward --ink so it reads in light and dark alike.
+// Class names are written out in full so Tailwind finds them.
+const TAG_LOOK: Record<LessonTag, { label: { en: string; vi: string }; icon: LucideIcon; tone: string }> = {
+  hot: { label: { en: 'Hot', vi: 'Hot' }, icon: Flame, tone: 'bg-[color-mix(in_srgb,var(--warning)_16%,var(--surface))] text-[color-mix(in_srgb,var(--warning)_70%,var(--ink))]' },
+  sim: { label: { en: 'Simulation', vi: 'Mô phỏng' }, icon: FlaskConical, tone: 'bg-[color-mix(in_srgb,var(--sky)_18%,var(--surface))] text-[color-mix(in_srgb,var(--sky)_65%,var(--ink))]' },
+  video: { label: { en: 'Video', vi: 'Video' }, icon: PlayCircle, tone: 'bg-surface-sunken text-ink' },
+  practice: { label: { en: 'Practice', vi: 'Luyện tập' }, icon: Dumbbell, tone: 'bg-[color-mix(in_srgb,var(--success)_14%,var(--surface))] text-[color-mix(in_srgb,var(--success)_70%,var(--ink))]' },
+  code: { label: { en: 'Code', vi: 'Code' }, icon: Code2, tone: 'bg-surface-sunken text-ink' },
 };
 
 function LessonMeta({ tags, learners, t }: { tags: LessonTag[]; learners: number; t: (text: { en: string; vi: string }) => string }) {
   return (
     <span className="mt-1.5 flex flex-wrap items-center gap-1.5">
       {tags.map((tag) => {
-        const { label, icon: Icon, iconTone = 'text-ink-muted' } = TAG_LOOK[tag];
+        const { label, icon: Icon, tone } = TAG_LOOK[tag];
         return (
-          <span key={tag} className="inline-flex items-center gap-1 rounded-full border border-line px-2 py-0.5 text-[0.6875rem] font-medium leading-4 text-ink-muted">
-            <Icon aria-hidden="true" className={`h-3 w-3 ${iconTone}`} />
+          <span key={tag} className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[0.6875rem] font-semibold leading-4 ${tone}`}>
+            <Icon aria-hidden="true" className="h-3 w-3" />
             {t(label)}
           </span>
         );
       })}
       {learners > 0 && (
         <span className="inline-flex items-center gap-1 px-1 text-[0.6875rem] font-medium leading-4 tabular-nums text-ink-muted">
-          <Users aria-hidden="true" className="h-3 w-3" />
+          <Users aria-hidden="true" className="h-3 w-3 text-action" />
           {t({ en: `${learners} ${learners === 1 ? 'learner' : 'learners'}`, vi: `${learners} người học` })}
         </span>
       )}
@@ -70,7 +71,7 @@ export function cleanLessonTitle(title: string): string {
 }
 
 /**
- * Topics are chapters: a plain header with a thin accent edge and a "Topic n" label. They start closed
+ * Topics are chapters: a plain header with an accent edge, number and label and a "Topic n" label. They start closed
  * and unfold smoothly (grid rows 0fr to 1fr), the lessons inside rising in one after another. The
  * lessons are lighter rows hanging off a guide line, so a chapter never reads as just another lesson.
  */
@@ -89,16 +90,16 @@ export function TopicAccordion({ topics, subjectSlug, learners = {} }: { topics:
             <h3>
               <button
                 type="button"
-                className={`flex min-h-11 w-full items-center gap-4 border-l-2 border-action bg-surface px-5 py-4 text-left transition-colors hover:bg-surface-sunken focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-focus ${isOpen ? 'border-b border-b-line' : ''}`}
+                className={`flex min-h-11 w-full items-center gap-4 border-l-4 border-action bg-surface px-5 py-4 text-left transition-colors hover:bg-surface-sunken focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-focus ${isOpen ? 'border-b border-b-line' : ''}`}
                 onClick={() => setOpen(isOpen ? null : topic.id)}
                 aria-expanded={isOpen}
                 aria-controls={panelId}
               >
-                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-line text-sm font-bold tabular-nums text-ink">
+                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-action text-sm font-bold tabular-nums text-action-ink">
                   {topicNumber}
                 </span>
                 <span className="flex-1">
-                  <span className="block text-xs font-semibold uppercase tracking-widest text-ink-muted">
+                  <span className="block text-xs font-semibold uppercase tracking-widest text-action">
                     {t({ en: 'Topic', vi: 'Chủ đề' })} {topicNumber}
                   </span>
                   <span className="block text-lg font-bold leading-snug text-ink">{lang === 'en' ? topic.name_en : topic.name_vi}</span>
@@ -132,7 +133,7 @@ export function TopicAccordion({ topics, subjectSlug, learners = {} }: { topics:
                         href={`/${subjectSlug}/${lesson.slug}`}
                         className="group flex min-h-12 items-center gap-3.5 rounded-xl px-3 py-2.5 transition-colors hover:bg-surface-sunken focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-focus"
                       >
-                        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-line bg-surface text-xs font-semibold tabular-nums text-ink-muted transition-colors group-hover:border-ink-muted group-hover:text-ink">
+                        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-action/30 bg-surface text-xs font-semibold tabular-nums text-ink transition-colors group-hover:border-action group-hover:text-action">
                           {lessonDisplayNumber(lesson, lessonIdx + 1)}
                         </span>
                         <span className="flex flex-1 flex-col justify-center">
@@ -149,7 +150,7 @@ export function TopicAccordion({ topics, subjectSlug, learners = {} }: { topics:
                             </span>
                           )}
                         </span>
-                        <ChevronRight aria-hidden="true" className="h-4 w-4 shrink-0 text-ink-muted transition-transform duration-200 group-hover:translate-x-0.5" />
+                        <ChevronRight aria-hidden="true" className="h-4 w-4 shrink-0 text-action transition-transform duration-200 group-hover:translate-x-0.5" />
                       </Link>
                     </li>
                   ))}
