@@ -12,6 +12,7 @@ import { ExamStart } from './ExamStart';
 import { scoreOffline } from './offlineExam';
 import { SaveExamOffline } from './SaveExamOffline';
 import { dropExam, lastOfflineUser, loadDraft, loadExamPack, saveDraft, saveExamPack, type ExamPack } from '../../lib/pwa/examPacks';
+import { addLeave, dropRun, ensureRun, MAX_LEAVES, secondsLeft } from '../../lib/pwa/examRun';
 import { EXAM_SYNCED, PENDING_CHANGED, queueExam, type ExamSyncResult } from '../../lib/pwa/pendingPractice';
 import { useShuffledOptions } from '../../lib/useShuffledOptions';
 import { createBrowserClient } from '../../lib/supabase';
@@ -278,6 +279,9 @@ export function ExamRunner({
   const [provisional, setProvisional] = useState(false);
   // The plan had no graded attempt left when the exam was sent: the score here is for reference only.
   const [notCounted, setNotCounted] = useState(false);
+  // Times the learner left the page during this attempt (kept on the device, so a reload does not reset it).
+  const [leaves, setLeaves] = useState(0);
+  const leftRef = useRef(false);
 
   const currentSession = useCallback(async () => {
     const session = (await createBrowserClient().auth.getSession().catch(() => ({ data: { session: null } }))).data.session;
@@ -317,9 +321,11 @@ export function ExamRunner({
       const saved = session.userId ? loadExamPack(session.userId, blueprintId) : null;
       if (saved) {
         // The clock runs from the first start of this attempt, so reopening the page gives no extra time.
-        const startedAt = saved.started_at ?? new Date().toISOString();
+        const run = ensureRun(saved.attempt_id, saved.started_at);
+        const startedAt = run.started_at;
         if (!saved.started_at) saveExamPack({ ...saved, started_at: startedAt });
-        setTimeLeft(Math.max(0, durationMinutes * 60 - Math.floor((Date.now() - Date.parse(startedAt)) / 1000)));
+        setTimeLeft(secondsLeft(run, durationMinutes));
+        setLeaves(run.leaves);
         setUserId(session.userId);
         setPack({ ...saved, started_at: startedAt });
         setAttempt({ id: saved.attempt_id, remaining: null, period: null });
@@ -328,9 +334,23 @@ export function ExamRunner({
         return;
       }
       if (session.token) {
-        const id = await begin(session.token);
-        const draft = id ? loadDraft(id) : null;
-        if (active && draft) setAnswers(draft);
+        let id = await begin(session.token);
+        if (!active || !id) return;
+        let run = ensureRun(id);
+        let draft = loadDraft(id);
+        // Time ran out while the page was closed. What was written is submitted below (the timer sees
+        // no time left); with nothing written there is nothing to submit, so a fresh attempt opens.
+        if (secondsLeft(run, durationMinutes) === 0 && !draft) {
+          dropRun(id);
+          forgetExamAttempt(blueprintId);
+          id = await begin(session.token);
+          if (!active || !id) return;
+          run = ensureRun(id);
+          draft = null;
+        }
+        setTimeLeft(secondsLeft(run, durationMinutes));
+        setLeaves(run.leaves);
+        if (draft) setAnswers(draft);
       }
     })();
     return () => {
@@ -442,6 +462,7 @@ export function ExamRunner({
       setResult(data);
       forgetExamAttempt(blueprintId);
       if (userId) dropExam(userId, blueprintId, attemptId);
+      dropRun(attemptId);
     } catch {
       setSubmissionError(t({
         en: 'Your exam could not be submitted. Your answers are still on the page; press Submit to try again.',
@@ -451,6 +472,40 @@ export function ExamRunner({
       setSubmitting(false);
     }
   }, [answers, attempt, begin, blueprintId, pack, pathname, questions, router, submitting, t, token, userId]);
+
+  // Closing or reloading the page while the exam is running asks first.
+  useEffect(() => {
+    if (!started || result) return;
+    const ask = (event: BeforeUnloadEvent) => {
+      event.preventDefault();
+      event.returnValue = '';
+    };
+    window.addEventListener('beforeunload', ask);
+    return () => window.removeEventListener('beforeunload', ask);
+  }, [started, result]);
+
+  // Leaving the page (another tab or window in front) counts; the third time submits the exam. The
+  // browser cannot stop it, only tell: a lost focus alone (the address bar, DevTools) is not counted.
+  useEffect(() => {
+    if (!started || result || !attempt) return;
+    const attemptId = attempt.id;
+    const onVisibility = () => {
+      if (document.hidden) {
+        leftRef.current = true;
+        return;
+      }
+      if (!leftRef.current) return;
+      leftRef.current = false;
+      const count = addLeave(attemptId);
+      setLeaves(count);
+      if (count >= MAX_LEAVES && !autoSubmitAttempted.current) {
+        autoSubmitAttempted.current = true;
+        void handleSubmit();
+      }
+    };
+    document.addEventListener('visibilitychange', onVisibility);
+    return () => document.removeEventListener('visibilitychange', onVisibility);
+  }, [started, result, attempt, handleSubmit]);
 
   // Countdown timer with auto-submit
   useEffect(() => {
@@ -483,7 +538,7 @@ export function ExamRunner({
     return (
       <div className="mx-auto flex w-full max-w-3xl flex-col gap-6">
         {header}
-        <ExamResultView result={result} title={title} layout={layout} provisional={provisional} notCounted={notCounted} />
+        <ExamResultView result={result} title={title} layout={layout} provisional={provisional} notCounted={notCounted} leaves={leaves} />
       </div>
     );
   }
@@ -518,6 +573,14 @@ export function ExamRunner({
 
   return (
     <div className="flex flex-col gap-3">
+      {leaves > 0 && (
+        <Alert tone="warning">
+          {t({
+            en: `You left the page ${leaves}/${MAX_LEAVES} times. The ${MAX_LEAVES}rd time the exam is submitted.`,
+            vi: `Bạn đã rời trang ${leaves}/${MAX_LEAVES} lần. Rời lần thứ ${MAX_LEAVES} bài sẽ tự nộp.`,
+          })}
+        </Alert>
+      )}
       {attemptProblem && (
         <Alert tone="warning">
           {t(attemptProblem.error)}{' '}
@@ -758,6 +821,7 @@ export function ExamResultView({
   layout = null,
   provisional = false,
   notCounted = false,
+  leaves = 0,
 }: {
   result: ExamResult;
   title: string;
@@ -766,6 +830,8 @@ export function ExamResultView({
   provisional?: boolean;
   /** The server did not count it (no graded attempt left): the score is for reference only. */
   notCounted?: boolean;
+  /** Times the learner left the page while taking the exam. */
+  leaves?: number;
 }) {
   const { lang, t } = useLanguage();
   const band = scoreBand(result.score, result.max_score);
@@ -776,6 +842,9 @@ export function ExamResultView({
     <section className="rounded-xl border border-line bg-surface p-8 text-center sm:p-12">
       <h2 className="text-2xl font-bold text-ink sm:text-3xl">{t({ en: 'Exam result', vi: 'Kết quả bài thi thử' })}</h2>
       <p className="mt-1 text-sm text-ink-muted">{title}</p>
+      {leaves > 0 && (
+        <p className="mt-3 text-sm text-ink-muted">{t({ en: `Times you left the page: ${leaves}`, vi: `Số lần rời trang: ${leaves}` })}</p>
+      )}
       {notCounted && (
         <p role="status" className="mt-3 text-sm font-semibold text-ink-muted">
           {t({ en: 'This exam was not counted: you had no graded attempts left. The score is for reference; no XP.', vi: 'Bài thi chưa được tính vì bạn đã hết lượt thi chấm điểm. Điểm chỉ để tham khảo, không có XP.' })}

@@ -1,5 +1,6 @@
 // A graded exam attempt (backend POST /api/exam/:id/attempts): created before the exam starts,
-// sent with the answers. Its id is kept for the tab so a reload resumes the same attempt.
+// sent with the answers. Its id is kept on this device so a reload, or closing and reopening the
+// page, resumes the same attempt (and its saved answers).
 
 import type { ExamQuestionItem } from './ExamRunner';
 import type { BlueprintSummary } from './examQueries';
@@ -8,10 +9,11 @@ type Bilingual = { vi: string; en: string };
 type Store = Pick<Storage, 'getItem' | 'setItem' | 'removeItem'>;
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL ?? 'https://sci-pal-backend.vercel.app';
-const key = (blueprintId: string) => `scipal-exam-attempt:${blueprintId}`;
+export const EXAM_ATTEMPT_PREFIX = 'scipal-exam-attempt:';
+const key = (blueprintId: string) => `${EXAM_ATTEMPT_PREFIX}${blueprintId}`;
 const session = (): Store | undefined => {
   try {
-    return globalThis.sessionStorage;
+    return globalThis.localStorage;
   } catch {
     return undefined;
   }

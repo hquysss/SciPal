@@ -3,6 +3,7 @@ import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { createServerClient } from '@scipal/supabase';
 import { getUserProgress } from '@/features/progress/progressQueries';
+import { getPracticeRemaining } from '@/features/progress/practiceRemaining';
 import { ProgressView } from '@/features/progress/ProgressView';
 import { pageTitle } from '@/lib/pageTitle';
 
@@ -15,6 +16,7 @@ export default async function ProgressPage() {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect('/login?redirect=%2Fprogress');
 
-  const progress = await getUserProgress(user.id);
-  return <ProgressView {...progress} />;
+  const token = (await supabase.auth.getSession()).data.session?.access_token;
+  const [progress, practiceLeft] = await Promise.all([getUserProgress(user.id), getPracticeRemaining(token)]);
+  return <ProgressView {...progress} practiceLeft={practiceLeft} />;
 }

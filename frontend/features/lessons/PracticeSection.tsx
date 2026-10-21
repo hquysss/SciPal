@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useId, useRef, useState } from 'react';
+import { loadPracticeDraft, savePracticeDraft, type PracticeDraft } from '../../lib/pwa/practiceDraft';
 import { CircleCheck, CircleX } from 'lucide-react';
 import { useLanguage } from '@scipal/hooks';
 import type { PracticeCheckResult, PracticeResponse, PublicPracticeQuestion } from '@scipal/types';
@@ -40,8 +41,25 @@ export function withResult(state: PracticeState, id: string, result: PracticeRes
   return { ...state, results: { ...state.results, [id]: result } };
 }
 
-export function usePracticeState() {
+/**
+ * The answers and verdicts of a visit. With a `lessonId`, answers chosen but not checked yet are kept
+ * on this device (see lib/pwa/practiceDraft.ts) and brought back on the next visit.
+ */
+export function usePracticeState(lessonId?: string) {
   const [state, setState] = useState<PracticeState>({ answers: {}, results: {} });
+  const [draftLoaded, setDraftLoaded] = useState(!lessonId);
+  useEffect(() => {
+    if (!lessonId) return;
+    const draft = loadPracticeDraft(lessonId);
+    if (draft) setState((old) => ({ ...old, answers: { ...draft, ...old.answers } }));
+    setDraftLoaded(true);
+  }, [lessonId]);
+  useEffect(() => {
+    if (!lessonId || !draftLoaded) return;
+    const unchecked: PracticeDraft = {};
+    for (const [id, answer] of Object.entries(state.answers)) if (!state.results[id] && !answer.code) unchecked[id] = answer;
+    savePracticeDraft(lessonId, unchecked);
+  }, [lessonId, draftLoaded, state.answers, state.results]);
   // A changed answer is a new attempt: its old verdict no longer applies.
   const onAnswer = useCallback((id: string, answer: PracticeResponse) => {
     setState((old) => {
@@ -198,6 +216,17 @@ function QuestionPractice({ load, lessonId, state, onAnswer, onResult, onRetry, 
   const activeIndex = Math.max(0, questions.findIndex((q) => q.id === (state.activeQuestionId ?? activeId)));
   const question = questions[activeIndex];
   const options = useShuffledOptions(question?.id ?? '', question && 'options' in question.data ? question.data.options : []);
+  // Answers chosen and not handed in: closing the page asks first.
+  const unhandedCount = load.ok ? load.questions.filter((q) => !state.results[q.id] && responseOf(q, state.answers[q.id])).length : 0;
+  useEffect(() => {
+    if (unhandedCount === 0) return;
+    const ask = (event: BeforeUnloadEvent) => {
+      event.preventDefault();
+      event.returnValue = '';
+    };
+    window.addEventListener('beforeunload', ask);
+    return () => window.removeEventListener('beforeunload', ask);
+  }, [unhandedCount]);
 
   if (!load.ok) {
     return (
@@ -245,6 +274,19 @@ function QuestionPractice({ load, lessonId, state, onAnswer, onResult, onRetry, 
   return (
     <div className="grid min-w-0 gap-6 lg:grid-cols-[minmax(0,1fr)_14rem] lg:items-start">
       <div className="flex min-w-0 flex-col gap-4">
+        {pending.length > 0 && (
+          <div role="status" className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-line bg-surface-sunken px-3 py-2 text-sm text-ink">
+            <span>
+              {t({
+                en: `${pending.length} answered ${pending.length === 1 ? 'question is' : 'questions are'} not handed in yet.`,
+                vi: `Còn ${pending.length} câu đã làm chưa nộp.`,
+              })}
+            </span>
+            <button type="button" disabled={submitting} onClick={submitAll} className={buttonVariants({ variant: 'outline' })}>
+              {t({ en: `Hand in ${pending.length} now`, vi: `Nộp ${pending.length} câu ngay` })}
+            </button>
+          </div>
+        )}
         <div className="flex flex-col gap-2">
           <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
             <p ref={positionRef} tabIndex={-1} aria-live="polite" className="rounded text-lg font-bold tabular-nums text-ink focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus">
