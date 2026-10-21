@@ -35,6 +35,7 @@ import { loadSiteSettings, siteSettingsRoutes, siteSettingsStore } from './route
 import { translateRoutes } from './routes/translate.js';
 import { adminTutorRoutes } from './routes/adminTutor.js';
 import { adminStatsRoutes } from './routes/adminStats.js';
+import { siteCountRoutes } from './routes/siteCounts.js';
 import { accountQuotaRoutes } from './routes/accountQuotas.js';
 import { adminPlanRoutes } from './routes/adminPlans.js';
 import { adminSubjectRoutes } from './routes/adminSubjects.js';
@@ -95,6 +96,7 @@ await app.register(siteSettingsRoutes);
 await app.register(translateRoutes);
 await app.register(adminTutorRoutes);
 await app.register(adminStatsRoutes);
+await app.register(siteCountRoutes);
 await app.register(accountQuotaRoutes);
 await app.register(adminPlanRoutes);
 await app.register(adminSubjectRoutes);

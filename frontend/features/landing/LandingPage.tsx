@@ -375,9 +375,13 @@ export function LandingPage({ level, catalog, onChangeLevel, pricing = null, sho
   useScrollProgress(pageRef);
 
   const publishedLessons = catalog?.kind === 'ready' ? catalog.lessons ?? 0 : 0;
+  const publishedQuestions = catalog?.kind === 'ready' ? catalog.questions ?? 0 : 0;
+  const publishedExams = catalog?.kind === 'ready' ? catalog.exams ?? 0 : 0;
   const stats: Array<{ value: number; suffix?: string; text?: string; label: Copy }> = [
     ...(liveSubjects ? [{ value: liveSubjects, label: { en: 'Subjects open now', vi: 'Môn đang mở' } }] : []),
     ...(publishedLessons > 0 ? [{ value: publishedLessons, label: { en: 'Lessons published', vi: 'Bài học đã xuất bản' } }] : []),
+    ...(publishedQuestions > 0 ? [{ value: publishedQuestions, label: { en: 'Practice and exam questions', vi: 'Câu hỏi luyện tập và thi' } }] : []),
+    ...(publishedExams > 0 ? [{ value: publishedExams, label: { en: 'Exams', vi: 'Đề thi' } }] : []),
     { value: LEVEL_GRADES[level], label: { en: 'Grades at this level', vi: 'Khối lớp trong cấp' } },
     ...(rating
       ? [{
