@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import {
-  Award, BookA, Bot, Gauge, Highlighter, ClipboardCheck, Megaphone, MessagesSquare, FlaskConical, FolderTree, Library, NotebookPen, ReceiptText, Settings2, ToggleRight, Users, type LucideIcon } from 'lucide-react';
+  Award, BarChart3, BookA, Bot, Gauge, Highlighter, ClipboardCheck, Megaphone, MessagesSquare, FlaskConical, FolderTree, Library, NotebookPen, ReceiptText, Settings2, ToggleRight, Users, type LucideIcon } from 'lucide-react';
 import { useLanguage } from '@scipal/hooks';
 import { countOpenSimulationRequests } from '@/features/authoring/simulationRequests/api';
 
@@ -19,6 +19,7 @@ export const ADMIN_GROUPS: Group[] = [
     title: { vi: 'Người dùng', en: 'People' },
     tools: [
       { href: '/admin/accounts', label: { vi: 'Tài khoản', en: 'Accounts' }, hint: { vi: 'Vai trò, hạn mức riêng, yêu cầu làm giáo viên', en: 'Roles, own limits, teacher requests' }, Icon: Users },
+      { href: '/admin/stats', label: { vi: 'Số liệu sử dụng', en: 'Usage numbers' }, hint: { vi: 'Tài khoản, người học quay lại, đơn đã thanh toán', en: 'Accounts, returning learners, paid orders' }, Icon: BarChart3 },
       { href: '/admin/badges', label: { vi: 'Danh hiệu danh dự', en: 'Honor badges' }, hint: { vi: 'Trao hoặc thu hồi danh hiệu cho học sinh', en: 'Give or take back badges' }, Icon: Award },
     ],
   },

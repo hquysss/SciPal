@@ -12,6 +12,7 @@ import { LiveToasts } from '@/features/notify/LiveToasts';
 import { NavBar } from '@/components/nav/NavBar';
 import { SkipLink } from '@/components/nav/SkipLink';
 import { renderThemeCss } from '@scipal/ui';
+import { SITE_URL } from '@/lib/siteUrl';
 import { buildBootScript, DARK_MODE_ENABLED } from '@/lib/theme/shellTheme';
 
 const jetbrainsMono = JetBrains_Mono({ subsets: ['latin'], variable: '--font-jetbrains-mono' });
@@ -23,9 +24,12 @@ const beVietnamPro = Be_Vietnam_Pro({
 });
 
 export const metadata: Metadata = {
+  metadataBase: new URL(SITE_URL),
   // A page sets its English name; the home and sign-in pages show SciPal alone.
   title: { default: 'SciPal', template: '%s | SciPal' },
   description: 'SciPal - Học song ngữ Việt–Anh, hướng đến việc tiếng Anh trở thành ngôn ngữ thứ hai của bạn.',
+  openGraph: { siteName: 'SciPal', type: 'website', locale: 'vi_VN' },
+  twitter: { card: 'summary_large_image' },
   appleWebApp: { capable: true, title: 'SciPal', statusBarStyle: 'default' },
   icons: {
     icon: '/favicon.svg',

@@ -1,4 +1,6 @@
-import { isValidElement, type ReactNode } from 'react';
+import { isValidElement, useState, type ReactNode } from 'react';
+import { useLanguage } from '@scipal/hooks';
+import { sendProblemReport } from '@/features/problemReports/problemReportsApi';
 import ReactMarkdown, { type Components } from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import remarkMath from 'remark-math';
@@ -54,6 +56,33 @@ const components: Components = {
 const REMARK = [remarkGfm, remarkMath];
 const REHYPE: NonNullable<Parameters<typeof ReactMarkdown>[0]['rehypePlugins']> = [[rehypeKatex, { throwOnError: false, strict: 'ignore' }]];
 
+/** Lets a student flag an answer that looks wrong; it goes to the admins' problem reports as "wrong content". */
+function ReportWrongAnswer({ content }: { content: string }) {
+  const { t } = useLanguage();
+  const [state, setState] = useState<'idle' | 'sending' | 'sent' | 'failed'>('idle');
+  const report = async () => {
+    setState('sending');
+    const result = await sendProblemReport({
+      category: 'content',
+      message: `[Giáo sư AI] Câu trả lời bị báo sai:
+${content.slice(0, 1500)}`,
+      page_url: window.location.href,
+    });
+    setState(result.ok ? 'sent' : 'failed');
+  };
+  if (state === 'sent') return <p role="status" className="mt-2 text-sm text-ink-muted">{t({ vi: 'Đã gửi báo cáo, cảm ơn bạn.', en: 'Report sent, thank you.' })}</p>;
+  return (
+    <button
+      type="button"
+      onClick={() => void report()}
+      disabled={state === 'sending'}
+      className="mt-2 text-sm text-ink-muted underline underline-offset-4 hover:text-ink focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus disabled:opacity-60"
+    >
+      {state === 'failed' ? t({ vi: 'Chưa gửi được, thử lại', en: 'Could not send, try again' }) : t({ vi: 'Báo câu trả lời sai', en: 'Report wrong answer' })}
+    </button>
+  );
+}
+
 export function TutorMessage({ message, streaming = false }: { message: Message; streaming?: boolean }) {
   if (message.role === 'user') {
     return (
@@ -67,6 +96,7 @@ export function TutorMessage({ message, streaming = false }: { message: Message;
       <ReactMarkdown remarkPlugins={REMARK} rehypePlugins={REHYPE} components={components}>
         {message.content}
       </ReactMarkdown>
+      {!streaming && message.content.trim().length >= 10 && <ReportWrongAnswer content={message.content} />}
       {streaming && <span aria-hidden="true" className="tutor-caret ml-0.5 inline-block h-[1.1em] w-[0.5ch] translate-y-[0.2em] bg-action motion-safe:animate-pulse" />}
     </div>
   );
