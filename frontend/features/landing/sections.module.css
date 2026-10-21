@@ -795,10 +795,9 @@
   aspect-ratio: 1;
   place-content: center;
   border-radius: 50%;
-  background: color-mix(in srgb, var(--surface) 20%, transparent);
+  /* Opaque-ish fill instead of backdrop blur: five stacked blurs per card cost a frame on every scroll. */
+  background: color-mix(in srgb, var(--surface) 35%, transparent);
   box-shadow: -10px 10px 20px 0 color-mix(in srgb, var(--ink) 14%, transparent);
-  -webkit-backdrop-filter: blur(5px);
-  backdrop-filter: blur(5px);
   transition: transform 500ms ease-in-out;
 }
 
