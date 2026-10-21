@@ -14,10 +14,10 @@ export type HsgProblemsResult =
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL ?? 'https://sci-pal-backend.vercel.app';
 
-/** The programming problems of Bồi dưỡng HSG for one subject (statements and examples only). */
-export async function getHsgProblems(subject: string): Promise<HsgProblemsResult> {
+/** The programming problems of Bồi dưỡng HSG for one subject (statements and examples only). `token`: the viewer's session. */
+export async function getHsgProblems(subject: string, token?: string): Promise<HsgProblemsResult> {
   try {
-    const res = await fetch(`${API_BASE}/api/exam/hsg/problems?subject=${encodeURIComponent(subject)}`, { cache: 'no-store' });
+    const res = await fetch(`${API_BASE}/api/exam/hsg/problems?subject=${encodeURIComponent(subject)}`, { cache: 'no-store', ...(token ? { headers: { Authorization: `Bearer ${token}` } } : {}) });
     if (res.status === 404 || res.status === 400) return { kind: 'not_found' };
     if (!res.ok) return { kind: 'error' };
     const payload = (await res.json()) as { subject?: HsgSubject; questions?: unknown };

@@ -1,6 +1,9 @@
 import type { Metadata } from 'next';
+import { cookies } from 'next/headers';
+import { createServerClient } from '@scipal/supabase';
 import { getExamBlueprints } from '@/features/exam/examQueries';
 import { getHsgProblems } from '@/features/exam/hsgQueries';
+import { SaveExamsButton } from '@/features/exam/SaveExamsButton';
 import { ExamBlueprintList, ExamListHeader, NoExamsNotice, type HsgCoding } from '@/features/exam/ExamListNotices';
 import { LoadErrorNotice } from '@/components/feedback/LoadErrorNotice';
 import { pageTitle } from '@/lib/pageTitle';
@@ -13,7 +16,9 @@ export const dynamic = 'force-dynamic';
 const HSG_CODING_SUBJECTS = ['informatics'];
 
 export default async function ExamListPage() {
-  const [result, ...coding] = await Promise.all([getExamBlueprints(), ...HSG_CODING_SUBJECTS.map(getHsgProblems)]);
+  const supabase = createServerClient(await cookies());
+  const token = (await supabase.auth.getSession()).data.session?.access_token;
+  const [result, ...coding] = await Promise.all([getExamBlueprints(token), ...HSG_CODING_SUBJECTS.map((subject) => getHsgProblems(subject, token))]);
   // A subject whose problems fail to load is left out; the exams still show.
   const hsgCoding: HsgCoding[] = coding.flatMap((c) =>
     c.kind === 'ok' ? [{ slug: c.subject.slug, name_vi: c.subject.name_vi, name_en: c.subject.name_en, count: c.questions.length }] : [],
@@ -32,7 +37,10 @@ export default async function ExamListPage() {
         ) : empty ? (
           <NoExamsNotice />
         ) : (
-          <ExamBlueprintList blueprints={result.blueprints} hsgCoding={hsgCoding} />
+          <>
+            <SaveExamsButton blueprintIds={result.blueprints.map((blueprint) => blueprint.id)} />
+            <ExamBlueprintList blueprints={result.blueprints} hsgCoding={hsgCoding} />
+          </>
         )}
       </section>
     </main>

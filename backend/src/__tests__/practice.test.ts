@@ -178,15 +178,16 @@ describe('GET /api/practice/lessons/:lessonId/questions', () => {
   });
 });
 
-describe('practice is open to visitors', () => {
-  it('lets anonymous visitors reach the practice routes', async () => {
+describe('practice is closed to visitors', () => {
+  it('refuses anonymous visitors on the practice routes', async () => {
     const app = Fastify();
     app.decorate('supabase', mockSupabase({ questions: mockQuery({ data: null, error: null }) }));
     await app.register(authPlugin);
     await app.register(practiceRoutes);
     await app.ready();
     const res = await app.inject({ method: 'POST', url: '/api/practice/check', payload: { question_id: Q_MC, response: { selected_option: 'b' } } });
-    expect(res.statusCode).toBe(404);
+    expect(res.statusCode).toBe(401);
+    expect((await app.inject({ method: 'GET', url: `/api/practice/lessons/${LESSON_ID}/questions` })).statusCode).toBe(401);
     await app.close();
   });
 });

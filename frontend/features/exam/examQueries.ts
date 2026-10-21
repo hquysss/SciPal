@@ -35,9 +35,10 @@ export type ExamDetailResult =
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL ?? 'https://sci-pal-backend.vercel.app';
 
-export async function getExamBlueprints(): Promise<BlueprintListResult> {
+/** `token`: the viewer's session; the exam API needs one. */
+export async function getExamBlueprints(token?: string): Promise<BlueprintListResult> {
   try {
-    const res = await fetch(`${API_BASE}/api/exam/blueprints`, { cache: 'no-store' });
+    const res = await fetch(`${API_BASE}/api/exam/blueprints`, { cache: 'no-store', ...(token ? { headers: { Authorization: `Bearer ${token}` } } : {}) });
     if (!res.ok) return { kind: 'error' };
     const payload = (await res.json()) as { blueprints?: unknown };
     return Array.isArray(payload.blueprints)
@@ -56,7 +57,7 @@ function withFormat(blueprint: Partial<BlueprintSummary>): BlueprintSummary {
   return { ...blueprint, format, layout } as BlueprintSummary;
 }
 
-/** `token`: the viewer's session, needed to open an exam a teacher gave only to their classes. */
+/** `token`: the viewer's session; the exam API needs one (it also opens an exam a teacher gave only to their classes). */
 export async function getExamBlueprint(blueprintId: string, token?: string): Promise<ExamDetailResult> {
   try {
     const res = await fetch(`${API_BASE}/api/exam/${encodeURIComponent(blueprintId)}/questions`, {

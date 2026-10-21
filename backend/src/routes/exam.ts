@@ -19,6 +19,7 @@ import { isCorrectAnswer, isEstimatedFormat, scoreExam, type ExamAnswer, type Sc
 
 export { isCorrectAnswer };
 import { featureAllowed, featureOff } from '../site/features.js';
+import { touchStreak } from '../streaks/touchStreak.js';
 
 export const MAX_EXAM_ANSWERS = 200;
 /** Question count for a blueprint whose sections do not give one. */
@@ -218,6 +219,19 @@ export function clampFinishedAt(finishedAt: unknown, startedAt: string | null | 
   return new Date(Number.isNaN(started) ? finished : Math.max(finished, started));
 }
 
+/** How far back an exam taken offline may say it was started. */
+const START_WINDOW_MS = 7 * 24 * 60 * 60 * 1000;
+
+/**
+ * When an exam submitted without an attempt on the server was started, as the device says: not more
+ * than a week ago and not after it was finished. Anything else is ignored (the attempt then starts now).
+ */
+export function clampStartedAt(startedAt: unknown, finished: Date, now: Date): Date | undefined {
+  const started = typeof startedAt === 'string' && startedAt.length <= 40 ? Date.parse(startedAt) : NaN;
+  if (Number.isNaN(started) || started < now.getTime() - START_WINDOW_MS || started > finished.getTime()) return undefined;
+  return new Date(started);
+}
+
 /** A question as a learner sees it: no key, no truth values, no explanation. */
 function toLearnerQuestion(q: ExamQuestionRow) {
   const d = { ...(q.data ?? {}) };
@@ -239,37 +253,40 @@ function toLearnerQuestion(q: ExamQuestionRow) {
 export const examRoutes: FastifyPluginAsync = async (app) => {
   const caller = (request: FastifyRequest) => (request as FastifyRequest & { user?: Caller }).user;
 
-  // A graded attempt is created before the exam starts (spec §5): for students it holds one
-  // graded_exam_attempts request, counted when the result is stored. The same attempt_id resumes.
-  app.post('/api/exam/:blueprintId/attempts', async (request, reply) => {
+  type Opened =
+    | { ok: true; existing: AttemptRow | null; remaining: number | null; period: QuotaPeriod | null; metered: boolean }
+    | { ok: false; status: number; body: object };
+
+  // A graded attempt: for students it holds one graded_exam_attempts request, counted when the result
+  // is stored. An attempt_id the server already has resumes; one that is another account's or
+  // another exam's is not found. `createdAt` dates an attempt opened by a submission after the fact.
+  const openAttempt = async (request: FastifyRequest, blueprintId: string, attemptId: string, createdAt?: string): Promise<Opened> => {
     const user = caller(request);
     const uid = user?.id ?? user?.sub;
-    // /api/exam/ is public for reading exams; starting a graded attempt is not.
-    if (!uid) return reply.code(401).send({ code: 'AUTH_REQUIRED', ...bi('Hãy đăng nhập để làm bài thi có chấm điểm.', 'Sign in to take a graded exam.') });
-    if (!(await featureAllowed(app, 'exam', user as never))) return reply.code(403).send(featureOff('exam'));
+    const fail = (status: number, body: object): Opened => ({ ok: false, status, body });
+    // /api/exam/ needs a session; starting a graded attempt needs one too.
+    if (!uid) return fail(401, { code: 'AUTH_REQUIRED', ...bi('Hãy đăng nhập để làm bài thi có chấm điểm.', 'Sign in to take a graded exam.') });
+    if (!(await featureAllowed(app, 'exam', user as never))) return fail(403, featureOff('exam'));
     const supabase = app.supabase;
-    if (!supabase) return reply.code(503).send(bi('Dịch vụ đề thi chưa sẵn sàng.', 'The exam service is not available.'));
-    const { blueprintId } = request.params as { blueprintId: string };
-    const asked = (request.body as { attempt_id?: unknown } | undefined)?.attempt_id;
-    const attemptId = typeof asked === 'string' && UUID_PATTERN.test(asked) ? asked.toLowerCase() : randomUUID();
+    if (!supabase) return fail(503, bi('Dịch vụ đề thi chưa sẵn sàng.', 'The exam service is not available.'));
 
     const { data: existing, error: readError } = await supabase.from('exam_attempts').select(ATTEMPT_COLUMNS).eq('id', attemptId).maybeSingle();
     if (readError) {
       request.log.error({ err: readError }, 'Failed to read an exam attempt');
-      return reply.code(500).send(bi('Chưa bắt đầu được bài thi.', 'Could not start the exam.'));
+      return fail(500, bi('Chưa bắt đầu được bài thi.', 'Could not start the exam.'));
     }
     const found = existing as AttemptRow | null;
     if (found) {
-      if (found.user_id !== uid || found.blueprint_id !== blueprintId) return reply.code(404).send(attemptNotFound);
-      return { attempt_id: found.id, status: found.status, remaining: null, period: null, ...(found.status === 'submitted' ? { result: await storedResult(supabase, app.log, found) } : {}) };
+      if (found.user_id !== uid || found.blueprint_id !== blueprintId) return fail(404, attemptNotFound);
+      return { ok: true, existing: found, remaining: null, period: null, metered: found.metered };
     }
 
     const bp = await loadBlueprint(supabase, blueprintId, { viewer: { id: uid, role: user?.app_metadata?.app_role } });
     if (bp.kind === 'error') {
       request.log.error({ err: bp.err, blueprintId }, 'Failed to load exam blueprint for an attempt');
-      return reply.code(500).send(bi('Chưa bắt đầu được bài thi.', 'Could not start the exam.'));
+      return fail(500, bi('Chưa bắt đầu được bài thi.', 'Could not start the exam.'));
     }
-    if (bp.kind === 'not_found') return reply.code(404).send(bi('Không tìm thấy đề thi.', 'Exam not found.'));
+    if (bp.kind === 'not_found') return fail(404, bi('Không tìm thấy đề thi.', 'Exam not found.'));
 
     // Teachers and admins are not metered for exams (their plans have no exam quota).
     const role = user?.app_metadata?.app_role;
@@ -289,7 +306,7 @@ export const examRoutes: FastifyPluginAsync = async (app) => {
           const limit = quota?.limit ?? 0;
           const refusedPeriod = periodOf(quota?.kind);
           const words = periodWords(refusedPeriod);
-          return reply.code(429).send({
+          return fail(429, {
             code: 'QUOTA_EXCEEDED',
             ...bi(`Bạn đã dùng hết ${limit} lượt thi chấm điểm ${words.vi}.`, `You have used your ${limit} graded exam attempts ${words.en}.`),
             remaining: 0,
@@ -299,17 +316,31 @@ export const examRoutes: FastifyPluginAsync = async (app) => {
           });
         }
         request.log.error({ err }, 'Failed to hold an exam attempt');
-        return reply.code(503).send({ code: 'BILLING_UNAVAILABLE', ...bi('Chưa kiểm tra được lượt thi. Em thử lại sau ít phút nhé.', 'Could not check your exam attempts. Try again in a few minutes.') });
+        return fail(503, { code: 'BILLING_UNAVAILABLE', ...bi('Chưa kiểm tra được lượt thi. Em thử lại sau ít phút nhé.', 'Could not check your exam attempts. Try again in a few minutes.') });
       }
     }
 
-    const { error: insertError } = await supabase.from('exam_attempts').insert({ id: attemptId, user_id: uid, blueprint_id: blueprintId, metered });
+    const { error: insertError } = await supabase.from('exam_attempts').insert({ id: attemptId, user_id: uid, blueprint_id: blueprintId, metered, ...(createdAt ? { created_at: createdAt } : {}) });
     if (insertError) {
       if (metered) await billing.settleQuota(attemptId, 'release').catch((err) => request.log.error({ err }, 'Failed to give back an exam attempt'));
       request.log.error({ err: insertError }, 'Failed to store an exam attempt');
-      return reply.code(500).send(bi('Chưa bắt đầu được bài thi.', 'Could not start the exam.'));
+      return fail(500, bi('Chưa bắt đầu được bài thi.', 'Could not start the exam.'));
     }
-    return { attempt_id: attemptId, status: 'started', remaining, period };
+    return { ok: true, existing: null, remaining, period, metered };
+  };
+
+  // A graded attempt is created before the exam starts (spec §5). The same attempt_id resumes.
+  app.post('/api/exam/:blueprintId/attempts', async (request, reply) => {
+    const { blueprintId } = request.params as { blueprintId: string };
+    const asked = (request.body as { attempt_id?: unknown } | undefined)?.attempt_id;
+    const attemptId = typeof asked === 'string' && UUID_PATTERN.test(asked) ? asked.toLowerCase() : randomUUID();
+    const opened = await openAttempt(request, blueprintId, attemptId);
+    if (!opened.ok) return reply.code(opened.status).send(opened.body);
+    const found = opened.existing;
+    if (found) {
+      return { attempt_id: found.id, status: found.status, remaining: null, period: null, ...(found.status === 'submitted' ? { result: await storedResult(app.supabase!, app.log, found) } : {}) };
+    }
+    return { attempt_id: attemptId, status: 'started', remaining: opened.remaining, period: opened.period };
   });
 
   app.get('/api/exam/blueprints', async (request, reply) => {
@@ -351,30 +382,21 @@ export const examRoutes: FastifyPluginAsync = async (app) => {
     return reply.send({ blueprint: bp.value.summary, questions: sanitized });
   });
 
-  // The exam of an attempt the caller has started, with what grades it, to take it offline. The
-  // attempt (and so one graded attempt of the plan) is held before any answer leaves the server.
-  app.get('/api/exam/attempts/:attemptId/offline', async (request, reply) => {
+  // The exam with what grades it, to keep on the device and take it without a connection. Saving it
+  // starts no attempt and uses no quota: the attempt opens when the finished exam is submitted.
+  app.get('/api/exam/:blueprintId/offline', async (request, reply) => {
     const user = caller(request);
     const uid = user?.id ?? user?.sub;
     if (!uid) return reply.code(401).send({ code: 'AUTH_REQUIRED', ...bi('Hãy đăng nhập để tải đề thi.', 'Sign in to save an exam.') });
     if (!(await featureAllowed(app, 'exam', user as never))) return reply.code(403).send(featureOff('exam'));
     const supabase = app.supabase;
     if (!supabase) return reply.code(503).send(bi('Dịch vụ đề thi chưa sẵn sàng.', 'The exam service is not available.'));
-    const { attemptId } = request.params as { attemptId: string };
-    if (!UUID_PATTERN.test(attemptId)) return reply.code(404).send(attemptNotFound);
+    const { blueprintId } = request.params as { blueprintId: string };
     const failed = bi('Chưa tải được đề để thi offline.', 'Could not save the exam for offline.');
 
-    const { data, error } = await supabase.from('exam_attempts').select(ATTEMPT_COLUMNS).eq('id', attemptId.toLowerCase()).eq('user_id', uid).maybeSingle();
-    if (error) {
-      request.log.error({ err: error }, 'Failed to read an exam attempt for offline');
-      return reply.code(500).send(failed);
-    }
-    const attempt = data as AttemptRow | null;
-    if (!attempt || attempt.user_id !== uid || attempt.status !== 'started') return reply.code(404).send(attemptNotFound);
-
-    const bp = await loadBlueprint(supabase, attempt.blueprint_id, { viewer: { id: uid, role: user?.app_metadata?.app_role } });
+    const bp = await loadBlueprint(supabase, blueprintId, { viewer: { id: uid, role: user?.app_metadata?.app_role } });
     if (bp.kind === 'error') {
-      request.log.error({ err: bp.err, blueprintId: attempt.blueprint_id }, 'Failed to load the exam of an offline package');
+      request.log.error({ err: bp.err, blueprintId }, 'Failed to load the exam of an offline package');
       return reply.code(500).send(failed);
     }
     if (bp.kind === 'not_found') return reply.code(404).send(bi('Không tìm thấy đề thi.', 'Exam not found.'));
@@ -383,23 +405,8 @@ export const examRoutes: FastifyPluginAsync = async (app) => {
       request.log.error({ err: questions.kind === 'error' ? questions.err : null }, 'Failed to load the questions of an offline package');
       return reply.code(500).send(failed);
     }
-    // The keys leave the server only once the attempt is spent: its hold is committed now (a hold
-    // lapses after 3 hours and would give the attempt back). Committing again at submit is a no-op.
-    if (attempt.metered) {
-      const billing = createBillingRepository((name, args) => supabase.rpc(name, args));
-      try {
-        await billing.settleQuota(attempt.id, 'commit');
-      } catch (err) {
-        if (err instanceof BillingRepositoryError && err.code === 'QUOTA_SETTLEMENT_REJECTED') {
-          return reply.code(409).send({ code: 'ATTEMPT_EXPIRED', ...bi('Lượt thi này đã quá giờ giữ chỗ. Bấm Bắt đầu làm bài để mở lượt mới rồi tải lại đề.', 'This attempt is no longer held. Start the exam to open a new attempt, then save it again.') });
-        }
-        request.log.error({ err }, 'Failed to count an exam attempt for an offline package');
-        return reply.code(503).send({ code: 'BILLING_UNAVAILABLE', ...bi('Chưa kiểm tra được lượt thi. Thử lại sau ít phút nhé.', 'Could not check your exam attempts. Try again in a few minutes.') });
-      }
-    }
     reply.header('Cache-Control', 'no-store');
     return reply.send({
-      attempt_id: attempt.id,
       blueprint: bp.value.summary,
       questions: questions.value.map(toLearnerQuestion),
       keys: Object.fromEntries(questions.value.map((q) => [q.id, { type: q.type, data: q.data ?? {} }])),
@@ -408,12 +415,14 @@ export const examRoutes: FastifyPluginAsync = async (app) => {
 
   // Score exam server-side
   app.post('/api/score/exam', async (request, reply) => {
-    const { blueprint_id, attempt_id, answers, finished_at } = (request.body ?? {}) as {
+    const { blueprint_id, attempt_id, answers, finished_at, started_at } = (request.body ?? {}) as {
       blueprint_id?: unknown;
       attempt_id?: unknown;
       answers?: unknown;
       /** When an exam taken offline was finished on the device. */
       finished_at?: unknown;
+      /** When it was started on the device; used only to open an attempt the server has not seen. */
+      started_at?: unknown;
     };
 
     if (typeof blueprint_id !== 'string' || !blueprint_id.trim() || blueprint_id.length > 64) {
@@ -446,8 +455,17 @@ export const examRoutes: FastifyPluginAsync = async (app) => {
       request.log.error({ err: first.error }, 'Failed to read an exam attempt');
       return reply.status(500).send({ error: 'Không chấm được bài thi.' });
     }
-    const attempt = first.attempt;
-    if (!attempt || attempt.blueprint_id !== blueprintId) return reply.status(404).send(attemptNotFound);
+    let attempt = first.attempt;
+    if (!attempt) {
+      // An exam saved to take offline has no attempt yet: it opens now, dated from when it was started.
+      const now = new Date();
+      const startedAt = clampStartedAt(started_at, clampFinishedAt(finished_at, undefined, now), now);
+      const opened = await openAttempt(request, blueprintId, attemptId, startedAt?.toISOString());
+      // No attempts left: the exam is not counted (409, so a queued submission is not retried).
+      if (!opened.ok) return reply.status(opened.status === 429 ? 409 : opened.status).send(opened.body);
+      attempt = opened.existing ?? { id: attemptId, user_id: userId ?? '', blueprint_id: blueprintId, metered: opened.metered, status: 'started', score: null, correct_count: null, total_questions: null, xp_earned: null, created_at: startedAt?.toISOString() ?? null };
+    }
+    if (attempt.blueprint_id !== blueprintId) return reply.status(404).send(attemptNotFound);
     // Submitting the same attempt again answers the stored result: no new score, XP or charge.
     if (attempt.status === 'submitted') return reply.send(await storedResult(supabase, app.log, attempt));
 
@@ -528,6 +546,16 @@ export const examRoutes: FastifyPluginAsync = async (app) => {
       await billing.settleQuota(attemptId, 'commit').catch((err) => request.log.error({ err }, 'Failed to count an exam attempt'));
     }
 
-    return reply.send({ ...result, estimated: scored.estimated, sections: scored.sections, already_awarded });
+    // A scored exam of one subject is a day of activity in it (streaks are per subject), dated like its XP.
+    let newStreak = 0;
+    if (userId && subjectIds.size === 1) {
+      try {
+        newStreak = await touchStreak(supabase, userId, [...subjectIds][0] as string, new Date(submittedAt), request.log);
+      } catch (err) {
+        request.log.warn({ err }, 'Exam streak update failed');
+      }
+    }
+
+    return reply.send({ ...result, estimated: scored.estimated, sections: scored.sections, already_awarded, ...(newStreak > 0 ? { new_streak: newStreak } : {}) });
   });
 };

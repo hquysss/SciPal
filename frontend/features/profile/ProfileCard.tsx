@@ -60,6 +60,7 @@ const TEACHING: Shortcut[] = [
 const REVIEWING: Shortcut[] = [
   { href: '/admin', label: { vi: 'Trang quản trị', en: 'Admin' }, hint: { vi: 'Mọi công cụ quản trị', en: 'Every admin tool' }, Icon: ClipboardCheck },
   { href: '/teacher/lessons', label: { vi: 'Studio bài học', en: 'Lesson studio' }, hint: { vi: 'Soạn và sửa bài', en: 'Write and edit' }, Icon: NotebookPen },
+  { href: '/teacher/classes', label: { vi: 'Lớp học', en: 'Classes' }, hint: { vi: 'Xem mọi lớp', en: 'See every class' }, Icon: School },
 ];
 
 function ShortcutGrid({ items }: { items: Shortcut[] }) {

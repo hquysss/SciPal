@@ -10,12 +10,12 @@ afterEach(() => {
 });
 
 describe('practice API', () => {
-  it('loads a lesson’s questions without signing in', async () => {
+  it('loads a lesson’s questions with the viewer’s session', async () => {
     const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response(JSON.stringify({ questions: [{ id: 'q1' }] }), { status: 200 }));
-    expect(await fetchLessonPractice('lesson-1')).toEqual({ ok: true, questions: [{ id: 'q1' }] });
+    expect(await fetchLessonPractice('lesson-1', 'tok')).toEqual({ ok: true, questions: [{ id: 'q1' }] });
     const [url, init] = fetchSpy.mock.calls[0]!;
     expect(String(url)).toMatch(/\/api\/practice\/lessons\/lesson-1\/questions$/);
-    expect((init?.headers as Record<string, string> | undefined)?.Authorization).toBeUndefined();
+    expect((init?.headers as Record<string, string> | undefined)?.Authorization).toBe('Bearer tok');
   });
 
   it('checks an answer, sending the token when there is a session', async () => {

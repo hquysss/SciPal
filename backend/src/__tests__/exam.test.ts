@@ -33,14 +33,13 @@ describe('Exam Route Sanitization & Server Scoring', () => {
     expect(sanitized).toHaveProperty('stem');
   });
 
-  it('GET /api/exam/:blueprintId/questions is publicly accessible and does not leak answer keys', async () => {
+  it('GET /api/exam/:blueprintId/questions needs a session', async () => {
     const res = await app.inject({
       method: 'GET',
       url: '/api/exam/demo-bp/questions',
     });
 
-    // Public route (not 401); without a database it reports 503 instead of serving demo questions.
-    expect(res.statusCode).toBe(503);
+    expect(res.statusCode).toBe(401);
     expect(res.body).not.toContain('q-demo');
   });
 

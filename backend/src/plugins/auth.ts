@@ -14,11 +14,10 @@ const isPublicPath = (path: string): boolean => {
   if (path === '/api/problem-reports') return true;
   // Newsletter sign-up; confirm and unsubscribe check a signed token in the body.
   if (path.startsWith('/api/newsletter/')) return true;
-  if (path.startsWith('/api/exam/')) return true;
+  // Exams and lesson practice need a session (the web asks for one too): a visitor could otherwise read
+  // the questions and probe the answers through /api/practice/check.
   // Visitors look up glossary terms and kept entries; only a signed-in learner asks the AI.
   if (path === '/api/dictionary/lookup') return true;
-  // Lesson practice works for visitors too; checking gives no XP.
-  if (path.startsWith('/api/practice/')) return true;
   // A lesson's video: the handler decides from the viewer's plan whether the address is sent.
   if (path === '/api/lessons/:id/video') return true;
   return false;

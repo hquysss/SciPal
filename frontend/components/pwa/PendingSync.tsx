@@ -15,7 +15,7 @@ export function PendingSync() {
   const { t } = useLanguage();
   const [waiting, setWaiting] = useState({ answers: 0, exams: 0 });
   const [done, setDone] = useState<{ synced: number; xp: number } | null>(null);
-  const [examsDone, setExamsDone] = useState<{ synced: number; gone: number } | null>(null);
+  const [examsDone, setExamsDone] = useState<{ synced: number; gone: number; notCounted: number } | null>(null);
 
   // One sync at a time: answers queued meanwhile go out with the next run.
   const running = useRef(false);
@@ -34,7 +34,8 @@ export function PendingSync() {
       setWaiting(waitingNow());
       if (exams.results.length > 0) {
         window.dispatchEvent(new CustomEvent<ExamSyncResult[]>(EXAM_SYNCED, { detail: exams.results }));
-        setExamsDone({ synced: exams.synced, gone: exams.results.length - exams.synced });
+        const notCounted = exams.results.filter((r) => r.not_counted).length;
+        setExamsDone({ synced: exams.synced, gone: exams.results.filter((r) => r.gone).length, notCounted });
       }
       if (result.synced > 0) {
         window.dispatchEvent(new CustomEvent<SyncResult[]>(PRACTICE_SYNCED, { detail: result.results }));
@@ -80,7 +81,9 @@ export function PendingSync() {
     return () => clearTimeout(timer);
   }, [done, examsDone]);
 
-  const text = examsDone?.gone
+  const text = examsDone?.notCounted
+    ? t({ vi: 'Một bài thi làm offline chưa được tính vì bạn đã hết lượt thi chấm điểm.', en: 'An exam taken offline was not counted because you had no graded attempts left.' })
+    : examsDone?.gone
     ? t({ vi: 'Một đề đã bị gỡ nên bài làm offline không được chấm.', en: 'An exam was removed, so the answers made offline could not be graded.' })
     : examsDone?.synced
       ? t({ vi: `Đã đồng bộ ${examsDone.synced} bài thi (điểm theo máy chủ).`, en: `Synced ${examsDone.synced} ${examsDone.synced === 1 ? 'exam' : 'exams'} (scored by the server).` })
