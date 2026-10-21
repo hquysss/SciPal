@@ -229,6 +229,15 @@ export function PricingPage({ plans, checkoutOpen, salesNote, payosCheckoutOpen 
         {momoAutoRenewOpen && <li><RefreshCcw aria-hidden="true" size={18} />{t({ en: 'Optional MoMo auto-renewal', vi: 'Có thể chọn tự động gia hạn qua MoMo' })}</li>}
       </ul>
 
+      <section className={s.support} aria-labelledby="pricing-support">
+        <h2 id="pricing-support">{t({ en: 'Learning from the highlands or facing hardship?', vi: 'Ở vùng cao hoặc hoàn cảnh khó khăn?' })}</h2>
+        <p>{t({ en: 'Students and teachers can apply for a free plan, or enter a code SciPal sent them.', vi: 'Học sinh và giáo viên có thể xin gói miễn phí, hoặc nhập mã SciPal đã gửi.' })}</p>
+        <Link href="/support">
+          {t({ en: 'Apply or enter a code', vi: 'Xin hỗ trợ hoặc nhập mã' })}
+          <ArrowRight aria-hidden="true" size={16} />
+        </Link>
+      </section>
+
       <section className={s.faq} aria-labelledby="pricing-faq">
         <h2 id="pricing-faq">{t({ en: 'Before you buy', vi: 'Trước khi mua' })}</h2>
         {FAQ.map((item) => (
