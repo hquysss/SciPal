@@ -13,6 +13,9 @@ vi.mock('../../lib/supabase', () => ({
 const attempts = vi.hoisted(() => ({ start: vi.fn() }));
 vi.mock('./examAttempt', async (load) => ({ ...(await load<typeof import('./examAttempt')>()), startExamAttempt: attempts.start }));
 
+// These tests read the questions in their written order; the shuffle has its own tests.
+vi.mock('./examOrder', async (load) => ({ ...(await load<typeof import('./examOrder')>()), arrangeQuestions: <T,>(questions: T[]) => questions }));
+
 import { ExamRunner, type ExamQuestionItem } from './ExamRunner';
 import { loadExamPack, saveDraft, saveExamPack, type ExamPack } from '../../lib/pwa/examPacks';
 import { EXAM_SYNCED, pendingExamsFor } from '../../lib/pwa/pendingPractice';
@@ -46,8 +49,14 @@ async function submitFirstRight() {
   render(<ExamRunner blueprintId="bp" questions={questions} />);
   await settle();
   fireEvent.click(screen.getByRole('radio', { name: /Lựa chọn A/ }));
+  await handIn();
+}
+
+/** Presses Submit and confirms. */
+async function handIn() {
+  fireEvent.click(screen.getByRole('button', { name: 'Nộp bài thi' }));
   await act(async () => {
-    fireEvent.click(screen.getByRole('button', { name: 'Nộp bài thi' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Nộp bài' }));
   });
   await settle();
 }
@@ -62,15 +71,19 @@ describe('an exam saved for offline', () => {
     expect(pendingExamsFor('u1')).toMatchObject([{ attempt_id: 'att-1', blueprint_id: 'bp', answers: [{ question_id: 'a', selected_option: 'A' }] }]);
   });
 
+  it('says the exam was kept and will be sent when there is a connection', async () => {
+    saveExamPack(pack);
+    await submitFirstRight();
+    const popup = screen.getByText('Đã lưu bài thi').closest('[role=status]')!;
+    expect(popup.textContent).toMatch(/khi có mạng/);
+  });
+
   it('reopened offline, brings back the answers written before', async () => {
     saveExamPack(pack);
     saveDraft('att-1', { 1: { option: 'B' } });
     render(<ExamRunner blueprintId="bp" questions={questions} />);
     await settle();
-    await act(async () => {
-      fireEvent.click(screen.getByRole('button', { name: 'Nộp bài thi' }));
-    });
-    await settle();
+    await handIn();
     expect(pendingExamsFor('u1')[0]?.answers).toEqual([{ question_id: 'b', selected_option: 'B' }]);
   });
 
@@ -147,7 +160,8 @@ describe('an exam saved for offline', () => {
     act(() => {
       window.dispatchEvent(new CustomEvent(EXAM_SYNCED, { detail: [{ blueprint_id: 'bp', attempt_id: 'att-1', not_counted: true }] }));
     });
-    expect(screen.getByText(/chưa được tính/)).toBeTruthy();
+    // Said twice: in the pop-up at the top and on the result.
+    expect(screen.getAllByText(/chưa được tính/).length).toBe(2);
     expect(screen.queryByText(/Kết quả tạm/)).toBeNull();
   });
 

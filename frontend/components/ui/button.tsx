@@ -11,6 +11,8 @@ const baseVariants = cva(
         outline: 'border-edge bg-surface text-ink hover:bg-surface-sunken',
         secondary: 'bg-surface-sunken text-ink hover:bg-[color-mix(in_srgb,var(--surface-sunken),var(--ink)_6%)]',
         ghost: 'text-ink hover:bg-surface-sunken',
+        /** Solid red, for the one action that cannot be taken back. */
+        danger: 'bg-danger text-surface hover:bg-[color-mix(in_srgb,var(--danger),var(--ink)_14%)]',
         destructive: 'bg-danger-surface text-danger hover:bg-[color-mix(in_srgb,var(--danger-surface),var(--danger)_10%)]',
         link: 'px-0 text-action underline-offset-4 hover:underline',
       },

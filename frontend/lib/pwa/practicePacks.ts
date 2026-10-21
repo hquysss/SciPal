@@ -5,6 +5,8 @@ import { PRACTICE_DRAFT_PREFIX } from './practiceDraft';
 
 /** Same as EXAM_ATTEMPT_PREFIX (features/exam/examAttempt.ts), kept here so signing out needs no feature code. */
 const EXAM_ATTEMPT_KEY_PREFIX = 'scipal-exam-attempt:';
+/** Same as EXAM_ORDER_PREFIX (features/exam/examOrder.ts). */
+const EXAM_ORDER_KEY_PREFIX = 'scipal-exam-order:';
 
 export { lastOfflineUser } from './examPacks';
 
@@ -52,7 +54,7 @@ export function clearPacks(store: Store = defaultStore()): void {
     const keys: string[] = [];
     for (let i = 0; i < store.length; i++) {
       const key = store.key(i);
-      if (key && (key === OFFLINE_USER_KEY || [PREFIX, EXAM_PACK_PREFIX, EXAM_DRAFT_PREFIX, EXAM_RUN_PREFIX, EXAM_ATTEMPT_KEY_PREFIX, PRACTICE_DRAFT_PREFIX].some((prefix) => key.startsWith(prefix)))) keys.push(key);
+      if (key && (key === OFFLINE_USER_KEY || [PREFIX, EXAM_PACK_PREFIX, EXAM_DRAFT_PREFIX, EXAM_RUN_PREFIX, EXAM_ATTEMPT_KEY_PREFIX, EXAM_ORDER_KEY_PREFIX, PRACTICE_DRAFT_PREFIX].some((prefix) => key.startsWith(prefix)))) keys.push(key);
     }
     for (const key of keys) store.removeItem(key);
   } catch {
