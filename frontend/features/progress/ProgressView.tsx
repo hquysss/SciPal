@@ -9,6 +9,8 @@ import { StreakCalendar } from './StreakCalendar';
 import { BadgeWall } from './BadgeWall';
 import { Leaderboard } from './Leaderboard';
 import { Roadmap } from './Roadmap';
+import { PracticeLeftCard } from './PracticeLeftCard';
+import type { PracticeLeftLesson } from './practiceRemaining';
 import { ProgressHero } from './ProgressHero';
 import { continueTarget, passed, recentMilestones, type ExamResult, type Milestone } from './progressModel';
 import type { ProgressSummary } from './progressQueries';
@@ -172,7 +174,7 @@ function Milestones({ items }: { items: Milestone[] }) {
   );
 }
 
-export function ProgressView(props: ProgressSummary) {
+export function ProgressView(props: ProgressSummary & { practiceLeft?: PracticeLeftLesson[] }) {
   const { completedLessons, streaks, totalXP, badges, leaderboard, continueMinutes, exams, loadFailed } = props;
   // Most recently studied subject first, so the roadmap opens where the student left off.
   const roadmaps = props.roadmaps && [...props.roadmaps].sort((a, b) => (b.lastActive ?? '').localeCompare(a.lastActive ?? ''));
@@ -216,6 +218,7 @@ export function ProgressView(props: ProgressSummary) {
 
       <div className="grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,1fr)_23rem] lg:items-start">
         <div className="flex min-w-0 flex-col gap-5">
+          <PracticeLeftCard lessons={props.practiceLeft ?? []} />
           <Roadmap roadmaps={roadmaps} />
           <BadgeWall badges={badges} />
         </div>

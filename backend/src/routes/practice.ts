@@ -12,6 +12,7 @@ import {
 import { checkPracticeAnswer, keyTermsOf, responseProblem } from '../schemas/practiceGrading.js';
 import { MAX_LESSON_QUESTIONS, quizQuestionIds } from '../authoring/quizReferences.js';
 import { clampAnsweredAt, recordPractice } from '../practice/record.js';
+import { practiceRemaining } from '../practice/remaining.js';
 import { COLUMNS, getUser, ID, isAdmin, isHsgProblem, loadPracticeRow, mayPreview, msg, servableQuestion as loadServable, type PracticeRow, type PracticeUser } from '../practice/servable.js';
 
 // Practice in a lesson's Tự luyện part. Learners (signed in or not) load the questions of a
@@ -65,6 +66,20 @@ export const countsForXp = (row: PracticeRow, user: PracticeUser & { id: string 
 export const practiceRoutes: FastifyPluginAsync = async (app) => {
   const servableQuestion = (request: FastifyRequest, reply: FastifyReply, questionId: string, failure: { error: string; error_en: string }) =>
     loadServable(app, request, reply, questionId, failure);
+
+  // The lessons the learner started in Tự luyện and has not finished, with the questions left (Tiến độ).
+  app.get('/api/practice/remaining', async (request, reply) => {
+    const userId = getUser(request)?.id;
+    if (!userId) return reply.code(401).send(signIn);
+    const supabase = app.supabase;
+    if (!supabase) return reply.code(503).send(serviceDown);
+    const found = await practiceRemaining(supabase, userId);
+    if (!found.ok) {
+      request.log.error({ err: found.err }, 'Failed to list the practice left to do');
+      return reply.code(500).send(msg('Không tải được các bài đang làm dở.', 'Could not load the lessons in progress.'));
+    }
+    return reply.send({ lessons: found.lessons });
+  });
 
   app.get('/api/practice/lessons/:lessonId/questions', async (request, reply) => {
     const { lessonId } = request.params as { lessonId: string };

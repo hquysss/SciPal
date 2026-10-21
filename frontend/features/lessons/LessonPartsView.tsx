@@ -46,7 +46,7 @@ const STEP_LABEL: Record<Step, { en: string; vi: string }> = { ...PART_LABEL, vi
 export function LessonPartsView({ blocks: written, part, sheet, lang, practice, lessonId, termIndex }: LessonPartsProps) {
   const { t, lang: readerLang } = useLanguage();
   // Owned here, above the tabs, so answers and verdicts survive switching parts during the visit.
-  const practiceState = usePracticeState();
+  const practiceState = usePracticeState(lessonId);
   const [reloaded, setReloaded] = useState<PracticeLoad | null>(null);
   const practiceLoad = reloaded ?? practice;
   // The teacher's own tags stay; the subject's other terms are tagged on top, once each.

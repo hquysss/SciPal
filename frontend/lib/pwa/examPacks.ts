@@ -1,5 +1,6 @@
 import type { BlueprintSummary } from '@/features/exam/examQueries';
 import { PAGES_CACHE } from './cacheNames';
+import { dropRun } from './examRun';
 import type { DraftAnswer, ExamQuestionItem } from '@/features/exam/ExamRunner';
 
 // "Tải đề để thi offline": one exam of a graded attempt the learner already started (the attempt is
@@ -87,6 +88,7 @@ export function dropExam(userId: string, blueprintId: string, attemptId: string,
   try {
     store.removeItem(packKey(userId, blueprintId));
     store.removeItem(draftKey(attemptId));
+    dropRun(attemptId, store);
   } catch {
     // Storage blocked: nothing was kept.
   }
