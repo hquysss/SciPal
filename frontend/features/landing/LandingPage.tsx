@@ -56,8 +56,6 @@ const LEVEL_LABEL: Record<EducationLevel, Copy> = {
   upper_secondary: { en: 'Upper secondary · Grades 10–12', vi: 'THPT · Lớp 10–12' },
 };
 
-const LEVEL_GRADES: Record<EducationLevel, number> = { primary: 5, lower_secondary: 4, upper_secondary: 3 };
-
 const HERO_TITLE: Record<EducationLevel, [Copy, Copy]> = {
   primary: [
     { vi: 'Bắt đầu từ', en: 'Start with' },
@@ -382,7 +380,6 @@ export function LandingPage({ level, catalog, onChangeLevel, pricing = null, sho
     ...(publishedLessons > 0 ? [{ value: publishedLessons, label: { en: 'Lessons published', vi: 'Bài học đã xuất bản' } }] : []),
     ...(publishedQuestions > 0 ? [{ value: publishedQuestions, label: { en: 'Practice and exam questions', vi: 'Câu hỏi luyện tập và thi' } }] : []),
     ...(publishedExams > 0 ? [{ value: publishedExams, label: { en: 'Exams', vi: 'Đề thi' } }] : []),
-    { value: LEVEL_GRADES[level], label: { en: 'Grades at this level', vi: 'Khối lớp trong cấp' } },
     ...(rating
       ? [{
           value: rating.average,
