@@ -51,3 +51,16 @@ describe('install section', () => {
     expect(html).not.toContain('màn hình chính');
   });
 });
+
+describe('install button without a browser prompt', () => {
+  it('always shows the install button, with the steps one tap away, on iPhone and in the browser menu', () => {
+    for (const mode of ['ios', 'manual'] as const) {
+      const html = renderToStaticMarkup(<InstallActionView mode={mode} onInstall={noop} />);
+      expect(html).toContain('<details');
+      expect(html).toContain('<summary');
+      expect(html).toContain('Tải SciPal về máy');
+      expect(html).toContain('màn hình chính');
+    }
+    expect(renderToStaticMarkup(<InstallActionView mode="installed" onInstall={noop} />)).not.toContain('<summary');
+  });
+});
