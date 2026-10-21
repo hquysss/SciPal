@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createServerClient } from '@scipal/supabase';
 import { SUBJECT_CONFIG } from '../../lib/subject-config';
 import {
@@ -117,6 +117,16 @@ describe('classifyInformatics', () => {
       SUBJECT_CONFIG.informatics.status = originalStatus;
     }
   });
+});
+
+// The site counts come from the backend over fetch; keep the tests offline so they do not
+// depend on whether an API happens to be reachable (it is on CI, not on a laptop).
+beforeEach(() => {
+  vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('offline')));
+});
+
+afterEach(() => {
+  vi.unstubAllGlobals();
 });
 
 describe('getLandingData', () => {
