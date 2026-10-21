@@ -990,22 +990,32 @@
 /* ---------- stats ---------- */
 
 .stats {
-  border-radius: var(--radius-card-lg);
-  padding: clamp(4rem, 8vw, 5.5rem) var(--landing-gutter);
-  background: var(--nav);
-  color: var(--nav-ink);
+  padding: clamp(2.5rem, 6vw, 4rem) var(--landing-gutter) clamp(1.5rem, 4vw, 2.5rem);
+  text-align: center;
 }
 
+.statsTitle {
+  margin: 0;
+  color: var(--ink-muted);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+/* Numbers sit on the page itself, set apart by thin vertical lines; however many there are, the row wraps evenly. */
 .statGrid {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 3rem 2rem;
-  margin: 4rem 0 0;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 2rem 0;
+  margin: 1.5rem 0 0;
 }
 
 .stat {
-  border-top: 1px solid color-mix(in srgb, var(--nav-ink) 20%, transparent);
-  padding-top: 1.25rem;
+  flex: 1 1 50%;
+  min-width: 0;
+  padding: 0 1rem;
 }
 
 .stat dd {
@@ -1014,17 +1024,29 @@
 
 .statValue {
   display: block;
-  font-size: clamp(3.5rem, 6vw, 5rem);
+  font-size: clamp(2.5rem, 5vw, 4rem);
   font-weight: 700;
   line-height: 1;
-  letter-spacing: -0.04em;
+  letter-spacing: -0.03em;
+  font-variant-numeric: tabular-nums;
 }
 
 .statLabel {
   display: block;
-  margin-top: 0.75rem;
-  color: color-mix(in srgb, var(--nav-ink) 68%, transparent);
+  margin-top: 0.5rem;
+  color: var(--ink-muted);
   font-size: 0.875rem;
+}
+
+@media (min-width: 40rem) {
+  .stat {
+    flex: 1 1 0;
+    padding: 0 1.5rem;
+  }
+
+  .stat + .stat {
+    border-left: 1px solid var(--edge);
+  }
 }
 
 /* ---------- final call to action ---------- */
@@ -1324,10 +1346,6 @@
     inset: auto;
     width: min(100%, 17rem);
     margin-inline: auto;
-  }
-
-  .statGrid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   /* No room between the words: the card sits under them. */

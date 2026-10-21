@@ -4,6 +4,7 @@ import { notFound } from 'next/navigation';
 import { LevelScope, SubjectProvider } from '@scipal/ui';
 import { TopicAccordion } from '@/features/lessons/TopicAccordion';
 import { getSubjectPage } from '@/features/lessons/subjectPageQuery';
+import { fetchLessonLearners } from '@/features/lessons/lessonLearners';
 import { GradeHeading, InDevelopmentNotice, ShowAllGrades } from '@/features/lessons/SubjectPageNotices';
 import { SubjectHeader } from '@/features/lessons/SubjectHeader';
 import { SaveOfflineButton } from '@/features/lessons/SaveOfflineButton';
@@ -31,7 +32,7 @@ export default async function SubjectPage({
 }) {
   const { subject: subjectSlug } = await params;
   const gradeParam = (await searchParams).grade;
-  const result = await loadSubject(subjectSlug);
+  const [result, learners] = await Promise.all([loadSubject(subjectSlug), fetchLessonLearners(subjectSlug)]);
   if (result.kind === 'not_found') notFound();
 
   if (result.kind === 'error') {
@@ -72,7 +73,7 @@ export default async function SubjectPage({
             {gradeGroups.map((group) => (
               <LevelScope key={group.grade} level={levelOfGrade(group.grade)} className="flex flex-col gap-3">
                 <GradeHeading grade={group.grade} />
-                <TopicAccordion topics={group.topics} subjectSlug={subject.slug} />
+                <TopicAccordion topics={group.topics} subjectSlug={subject.slug} learners={learners} />
               </LevelScope>
             ))}
           </div>

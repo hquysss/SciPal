@@ -56,8 +56,6 @@ const LEVEL_LABEL: Record<EducationLevel, Copy> = {
   upper_secondary: { en: 'Upper secondary · Grades 10–12', vi: 'THPT · Lớp 10–12' },
 };
 
-const LEVEL_GRADES: Record<EducationLevel, number> = { primary: 5, lower_secondary: 4, upper_secondary: 3 };
-
 const HERO_TITLE: Record<EducationLevel, [Copy, Copy]> = {
   primary: [
     { vi: 'Bắt đầu từ', en: 'Start with' },
@@ -375,10 +373,13 @@ export function LandingPage({ level, catalog, onChangeLevel, pricing = null, sho
   useScrollProgress(pageRef);
 
   const publishedLessons = catalog?.kind === 'ready' ? catalog.lessons ?? 0 : 0;
+  const publishedQuestions = catalog?.kind === 'ready' ? catalog.questions ?? 0 : 0;
+  const publishedExams = catalog?.kind === 'ready' ? catalog.exams ?? 0 : 0;
   const stats: Array<{ value: number; suffix?: string; text?: string; label: Copy }> = [
     ...(liveSubjects ? [{ value: liveSubjects, label: { en: 'Subjects open now', vi: 'Môn đang mở' } }] : []),
     ...(publishedLessons > 0 ? [{ value: publishedLessons, label: { en: 'Lessons published', vi: 'Bài học đã xuất bản' } }] : []),
-    { value: LEVEL_GRADES[level], label: { en: 'Grades at this level', vi: 'Khối lớp trong cấp' } },
+    ...(publishedQuestions > 0 ? [{ value: publishedQuestions, label: { en: 'Practice and exam questions', vi: 'Câu hỏi luyện tập và thi' } }] : []),
+    ...(publishedExams > 0 ? [{ value: publishedExams, label: { en: 'Exams', vi: 'Đề thi' } }] : []),
     ...(rating
       ? [{
           value: rating.average,
@@ -464,6 +465,22 @@ export function LandingPage({ level, catalog, onChangeLevel, pricing = null, sho
             </div>
           </section>
 
+          {/* ---------- stats ---------- */}
+          <section className={styles.stats} aria-labelledby="stats-title">
+            <h2 id="stats-title" className={styles.statsTitle}>{t({ en: 'SciPal today', vi: 'SciPal hiện có' })}</h2>
+            <dl className={styles.statGrid}>
+              {stats.map((stat) => (
+                <div key={stat.label.en} className={styles.stat} data-landing-reveal>
+                  <dt className={styles.srOnly}>{t(stat.label)}</dt>
+                  <dd>
+                    {stat.text ? <span className={styles.statValue}>{stat.text}</span> : <StatValue value={stat.value} suffix={stat.suffix} />}
+                    <span className={styles.statLabel} aria-hidden="true">{t(stat.label)}</span>
+                  </dd>
+                </div>
+              ))}
+            </dl>
+          </section>
+
           {/* ---------- ghost heading ---------- */}
           <section className={styles.trust} id="gioi-thieu" aria-labelledby="trust-title" data-scroll-progress>
             <div className={styles.trustTop}>
@@ -530,24 +547,6 @@ export function LandingPage({ level, catalog, onChangeLevel, pricing = null, sho
             {pricing && <PricingSection catalog={pricing} />}
             <FaqSection />
           </div>
-
-          {/* ---------- stats ---------- */}
-          <section className={styles.stats} aria-labelledby="stats-title">
-            <h2 id="stats-title" className={styles.sectionTitle} data-clip>
-              <ClipLines lines={[t({ en: 'SciPal today', vi: 'SciPal hiện có' })]} />
-            </h2>
-            <dl className={styles.statGrid}>
-              {stats.map((stat) => (
-                <div key={stat.label.en} className={styles.stat} data-landing-reveal>
-                  <dt className={styles.srOnly}>{t(stat.label)}</dt>
-                  <dd>
-                    {stat.text ? <span className={styles.statValue}>{stat.text}</span> : <StatValue value={stat.value} suffix={stat.suffix} />}
-                    <span className={styles.statLabel} aria-hidden="true">{t(stat.label)}</span>
-                  </dd>
-                </div>
-              ))}
-            </dl>
-          </section>
 
           {/* ---------- final call to action ---------- */}
           <section className={styles.finalCta} aria-labelledby="start-title" data-landing-reveal>

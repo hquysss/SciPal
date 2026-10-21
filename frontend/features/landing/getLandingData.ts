@@ -75,8 +75,25 @@ export type InformaticsAvailability =
   | { kind: 'error' };
 
 export type LandingCatalog =
-  | { kind: 'ready'; subjects: LandingSubject[]; /** Published lessons across every subject. */ lessons?: number }
+  | { kind: 'ready'; subjects: LandingSubject[]; /** Published lessons across every subject. */ lessons?: number; /** Published questions and exams, when the backend answered. */ questions?: number; exams?: number }
   | { kind: 'error' };
+
+const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL ?? 'https://sci-pal-backend.vercel.app';
+
+/** Published question and exam totals; empty when the backend is slow or down (the landing then leaves them out). */
+async function fetchContentCounts(): Promise<{ questions?: number; exams?: number }> {
+  try {
+    const res = await fetch(`${API_BASE}/api/site/counts`, { next: { revalidate: 300 }, signal: AbortSignal.timeout(3000) } as RequestInit);
+    if (!res.ok) return {};
+    const body = (await res.json()) as { questions?: unknown; exams?: unknown };
+    return {
+      ...(typeof body.questions === 'number' ? { questions: body.questions } : {}),
+      ...(typeof body.exams === 'number' ? { exams: body.exams } : {}),
+    };
+  } catch {
+    return {};
+  }
+}
 
 export interface LandingData {
   catalog: LandingCatalog;
@@ -114,14 +131,16 @@ export async function getLandingData(
 
   let catalogResult;
   let publishedResult;
+  let counts: { questions?: number; exams?: number } = {};
   try {
-    [catalogResult, publishedResult] = await Promise.all([
+    [catalogResult, publishedResult, counts] = await Promise.all([
       supabase
         .from('subjects')
         .select('id,slug,name_en,name_vi,icon,icon_url,accent_color,sort_order,subject_grade_catalog!inner(grade)')
         .eq('subject_grade_catalog.active', true)
         .order('sort_order', { ascending: true }),
       supabase.from('lessons').select('subject_id,grade').eq('status', 'published'),
+      fetchContentCounts(),
     ]);
   } catch {
     return { catalog: { kind: 'error' }, informatics: { kind: 'error' } };
@@ -138,7 +157,7 @@ export async function getLandingData(
   const subject = subjects.find((item) => item.slug === 'informatics' && item.education_level === 'upper_secondary') ?? null;
   if (!subject || subject.status !== 'active' || SUBJECT_CONFIG.informatics.status !== 'active') {
     return {
-      catalog: { kind: 'ready', subjects, lessons },
+      catalog: { kind: 'ready', subjects, lessons, ...counts },
       informatics: classifyInformatics(subject, null, false),
     };
   }
@@ -155,12 +174,12 @@ export async function getLandingData(
       .maybeSingle();
 
     return {
-      catalog: { kind: 'ready', subjects, lessons },
+      catalog: { kind: 'ready', subjects, lessons, ...counts },
       informatics: classifyInformatics(subject, lessonResult.data, lessonResult.error !== null),
     };
   } catch {
     return {
-      catalog: { kind: 'ready', subjects, lessons },
+      catalog: { kind: 'ready', subjects, lessons, ...counts },
       informatics: { kind: 'error' },
     };
   }
