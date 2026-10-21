@@ -468,6 +468,22 @@ export function LandingPage({ level, catalog, onChangeLevel, pricing = null, sho
             </div>
           </section>
 
+          {/* ---------- stats ---------- */}
+          <section className={styles.stats} aria-labelledby="stats-title">
+            <h2 id="stats-title" className={styles.statsTitle}>{t({ en: 'SciPal today', vi: 'SciPal hiện có' })}</h2>
+            <dl className={styles.statGrid}>
+              {stats.map((stat) => (
+                <div key={stat.label.en} className={styles.stat} data-landing-reveal>
+                  <dt className={styles.srOnly}>{t(stat.label)}</dt>
+                  <dd>
+                    {stat.text ? <span className={styles.statValue}>{stat.text}</span> : <StatValue value={stat.value} suffix={stat.suffix} />}
+                    <span className={styles.statLabel} aria-hidden="true">{t(stat.label)}</span>
+                  </dd>
+                </div>
+              ))}
+            </dl>
+          </section>
+
           {/* ---------- ghost heading ---------- */}
           <section className={styles.trust} id="gioi-thieu" aria-labelledby="trust-title" data-scroll-progress>
             <div className={styles.trustTop}>
@@ -534,24 +550,6 @@ export function LandingPage({ level, catalog, onChangeLevel, pricing = null, sho
             {pricing && <PricingSection catalog={pricing} />}
             <FaqSection />
           </div>
-
-          {/* ---------- stats ---------- */}
-          <section className={styles.stats} aria-labelledby="stats-title">
-            <h2 id="stats-title" className={styles.sectionTitle} data-clip>
-              <ClipLines lines={[t({ en: 'SciPal today', vi: 'SciPal hiện có' })]} />
-            </h2>
-            <dl className={styles.statGrid}>
-              {stats.map((stat) => (
-                <div key={stat.label.en} className={styles.stat} data-landing-reveal>
-                  <dt className={styles.srOnly}>{t(stat.label)}</dt>
-                  <dd>
-                    {stat.text ? <span className={styles.statValue}>{stat.text}</span> : <StatValue value={stat.value} suffix={stat.suffix} />}
-                    <span className={styles.statLabel} aria-hidden="true">{t(stat.label)}</span>
-                  </dd>
-                </div>
-              ))}
-            </dl>
-          </section>
 
           {/* ---------- final call to action ---------- */}
           <section className={styles.finalCta} aria-labelledby="start-title" data-landing-reveal>
