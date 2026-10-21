@@ -58,11 +58,11 @@ export function SiteSwitches({ initial }: { initial?: SiteSettings }) {
     return message ? <Alert tone="danger">{t(message.text)}</Alert> : <p className="text-sm text-ink-muted">{t({ vi: 'Đang tải…', en: 'Loading…' })}</p>;
   }
 
-  const dirty = form.signupEnabled !== saved.signupEnabled || form.maintenance !== saved.maintenance || form.freeAccess !== saved.freeAccess || SITE_FEATURES.some((f) => form.features[f] !== saved.features[f]);
+  const dirty = form.signupEnabled !== saved.signupEnabled || form.maintenance !== saved.maintenance || form.freeAccess !== saved.freeAccess || form.salesOpen !== saved.salesOpen || form.salesNote.vi !== saved.salesNote.vi || form.salesNote.en !== saved.salesNote.en || SITE_FEATURES.some((f) => form.features[f] !== saved.features[f]);
   const save = async () => {
     setBusy(true);
     setMessage(null);
-    const res = await saveSiteSettings({ signup_enabled: form.signupEnabled, maintenance: form.maintenance, free_access: form.freeAccess, features: form.features });
+    const res = await saveSiteSettings({ signup_enabled: form.signupEnabled, maintenance: form.maintenance, free_access: form.freeAccess, sales_open: form.salesOpen, sales_note: form.salesNote, features: form.features });
     setBusy(false);
     if (res.ok) {
       setSaved(res.data);
@@ -103,6 +103,34 @@ export function SiteSwitches({ initial }: { initial?: SiteSettings }) {
             en: 'On: every signed-in account gets unlimited exams, code judging, classes, authored exams, imports and lesson videos without a plan. The AI Professor, voice and AI drafting keep their plan limits. Visitors who are not signed in see no change.',
           })}
         />
+      </fieldset>
+
+      <fieldset className="rounded-2xl border border-line bg-surface px-4 py-1">
+        <legend className="px-1 text-sm font-semibold text-ink">{t({ vi: 'Mở bán', en: 'Sales' })}</legend>
+        <Switch
+          checked={form.salesOpen}
+          onChange={(on) => setForm({ ...form, salesOpen: on })}
+          label={t({ vi: 'Cho phép mua gói', en: 'Allow buying plans' })}
+          hint={t({
+            vi: 'Tắt thì bảng giá vẫn hiện nhưng nút mua thành “Sắp mở bán” và không tạo được đơn mới. Người đã mua vẫn dùng và tự gia hạn như cũ. Trang web cập nhật trong vòng vài phút.',
+            en: 'Off: the plans stay visible but the buy button reads “Coming soon” and no new orders can be created. People who already bought keep their plan and renewals. The pages update within a few minutes.',
+          })}
+        />
+        {(['vi', 'en'] as const).map((lang) => (
+          <label key={lang} className="flex flex-col gap-1 py-3">
+            <span className="text-sm font-semibold text-ink">
+              {lang === 'vi' ? t({ vi: 'Mô tả khi chưa mở bán (tiếng Việt)', en: 'Note while closed (Vietnamese)' }) : t({ vi: 'Mô tả khi chưa mở bán (tiếng Anh)', en: 'Note while closed (English)' })}
+            </span>
+            <textarea
+              value={form.salesNote[lang]}
+              maxLength={400}
+              rows={3}
+              onChange={(e) => setForm({ ...form, salesNote: { ...form.salesNote, [lang]: e.target.value } })}
+              placeholder={t({ vi: 'Để trống để dùng câu mặc định.', en: 'Leave empty for the default wording.' })}
+              className="rounded-xl border border-line bg-surface px-3 py-2 text-ink focus-visible:outline focus-visible:outline-2 focus-visible:outline-focus"
+            />
+          </label>
+        ))}
       </fieldset>
 
       <fieldset className="rounded-2xl border border-line bg-surface px-4 py-1">

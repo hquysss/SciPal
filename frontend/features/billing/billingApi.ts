@@ -8,7 +8,7 @@ const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL ?? 'https://sci-pal-backen
 
 type Bilingual = { vi: string; en: string };
 export type PublicPlan = BillingPlan;
-export type Catalog = { plans: PublicPlan[]; checkoutOpen: boolean; payosCheckoutOpen?: boolean; momoAutoRenewOpen?: boolean; vnpayCheckoutOpen?: boolean; vnpayAutoRenewOpen?: boolean; vnpaySandbox?: boolean };
+export type Catalog = { plans: PublicPlan[]; /** The admin's words under the "coming soon" button; a language left empty uses the default. */ salesNote?: Bilingual; checkoutOpen: boolean; payosCheckoutOpen?: boolean; momoAutoRenewOpen?: boolean; vnpayCheckoutOpen?: boolean; vnpayAutoRenewOpen?: boolean; vnpaySandbox?: boolean };
 
 /** The catalog for the pricing page, or null when it cannot be read (no made-up prices). */
 export async function fetchCatalog(): Promise<Catalog | null> {
@@ -19,6 +19,7 @@ export async function fetchCatalog(): Promise<Catalog | null> {
     const body = (await res.json()) as Partial<Catalog>;
     return Array.isArray(body.plans) && body.plans.length > 0 ? {
       plans: body.plans,
+      salesNote: { vi: typeof body.salesNote?.vi === 'string' ? body.salesNote.vi : '', en: typeof body.salesNote?.en === 'string' ? body.salesNote.en : '' },
       checkoutOpen: body.checkoutOpen === true,
       payosCheckoutOpen: body.payosCheckoutOpen === true,
       momoAutoRenewOpen: body.momoAutoRenewOpen === true,
@@ -95,3 +96,8 @@ export function limitText(limit: PlanLimit, t: (text: Bilingual) => string): str
   const grouped = String(limit.limit).replace(/\B(?=(\d{3})+(?!\d))/g, t({ vi: '.', en: ',' }));
   return `${grouped} ${unit}${period}`;
 }
+
+const SOON_DEFAULT: Bilingual = { vi: 'Hiện chưa thể thanh toán.', en: 'Checkout is not available right now.' };
+
+/** The line under a "coming soon" button: the admin's note per language, else the default. */
+export const soonNote = (note?: Bilingual): Bilingual => ({ vi: note?.vi.trim() || SOON_DEFAULT.vi, en: note?.en.trim() || SOON_DEFAULT.en });

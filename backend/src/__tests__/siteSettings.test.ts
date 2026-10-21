@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import Fastify from 'fastify';
 import { siteSettingsRoutes, siteSettingsStore } from '../routes/siteSettings.js';
-import { featureAllowed, resolveSiteSettings } from '../site/features.js';
+import { featureAllowed, resolveSiteSettings, salesAllowed } from '../site/features.js';
 import { mockQuery, mockSupabase, type MockBuilder } from './helpers/supabaseMock.js';
 
 const admin = { id: 'admin-1', app_metadata: { app_role: 'admin' } };
@@ -10,11 +10,13 @@ const ok = (data: unknown = null) => mockQuery({ data, error: null });
 
 describe('resolveSiteSettings', () => {
   it('turns on whatever is not switched off, sign-up included', () => {
-    expect(resolveSiteSettings(null)).toEqual({ signupEnabled: true, maintenance: false, freeAccess: false, features: { glossary: true, exam: true, pricing: true, classes: true, tutor: true } });
+    expect(resolveSiteSettings(null)).toEqual({ signupEnabled: true, maintenance: false, freeAccess: false, salesOpen: false, salesNote: { en: '', vi: '' }, features: { glossary: true, exam: true, pricing: true, classes: true, tutor: true } });
     expect(resolveSiteSettings({ signup_enabled: false, features: { exam: false, glossary: 'no', unknown: false, guest_trial: false } })).toEqual({
       signupEnabled: false,
       maintenance: false,
       freeAccess: false,
+      salesOpen: false,
+      salesNote: { en: '', vi: '' },
       features: { glossary: true, exam: false, pricing: true, classes: true, tutor: true },
     });
   });
@@ -83,5 +85,34 @@ describe('site settings routes', () => {
   it('keeps free access off when the switches cannot be read', async () => {
     const broken = siteSettingsStore(async () => { throw new Error('down'); });
     expect((await broken.get()).freeAccess).toBe(false);
+  });
+});
+
+describe('sales switch', () => {
+  it('is closed unless an admin opened it, and reads the note trimmed per language', () => {
+    expect(resolveSiteSettings(null).salesOpen).toBe(false);
+    expect(resolveSiteSettings({ signup_enabled: true, features: {}, sales_open: 'yes' as never }).salesOpen).toBe(false);
+    expect(resolveSiteSettings({ signup_enabled: true, features: {}, sales_open: true, sales_note: { vi: '  Sắp mở  ', en: 5 } })).toMatchObject({ salesOpen: true, salesNote: { vi: 'Sắp mở', en: '' } });
+  });
+
+  it('refuses a purchase while closed, except to admins, and stays closed when the row cannot be read', async () => {
+    const closed = { siteSettings: siteSettingsStore(async () => ({ signup_enabled: true, features: {}, sales_open: false })) };
+    expect(await salesAllowed(closed, student)).toBe(false);
+    expect(await salesAllowed(closed, admin)).toBe(true);
+    expect(await salesAllowed({ siteSettings: siteSettingsStore(async () => ({ signup_enabled: true, features: {}, sales_open: true })) }, student)).toBe(true);
+    expect(await salesAllowed({ siteSettings: siteSettingsStore(async () => { throw new Error('down'); }) }, student)).toBe(false);
+  });
+
+  it('saves the switch and the note, and refuses a bad one', async () => {
+    const upsert = ok({ signup_enabled: true, features: {}, sales_open: true, sales_note: { vi: 'Chờ giấy phép', en: 'Awaiting licence' }, updated_at: 't' });
+    const { app } = await build(admin, { site_settings: [upsert] });
+    const patch = (extra: object) => app.inject({ method: 'PATCH', url: '/api/admin/site-settings', payload: { signup_enabled: true, features: {}, ...extra } });
+    const res = await patch({ sales_open: true, sales_note: { vi: ' Chờ giấy phép ', en: 'Awaiting licence' } });
+    expect(res.json()).toMatchObject({ salesOpen: true, salesNote: { vi: 'Chờ giấy phép', en: 'Awaiting licence' } });
+    expect(upsert.inserted[0]).toMatchObject({ sales_open: true, sales_note: { vi: 'Chờ giấy phép', en: 'Awaiting licence' } });
+    for (const bad of [{ sales_open: 'yes' }, { sales_note: 'text' }, { sales_note: { vi: 'x' } }, { sales_note: { vi: 'x'.repeat(401), en: '' } }]) {
+      expect((await patch(bad)).statusCode).toBe(400);
+    }
+    await app.close();
   });
 });

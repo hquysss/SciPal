@@ -10,12 +10,13 @@ import { INTERVALS, INTERVAL_LABEL, INTERVAL_MONTHS, INTERVAL_NOUN, INTERVAL_SPA
 import { PricingLoadError } from './PricingLoadError';
 import shared from '@/features/landing/pricing.module.css';
 import { tilt, untilt } from '@/features/landing/tilt';
-import { formatVnd, limitText, type PublicPlan } from './billingApi';
+import { formatVnd, limitText, soonNote, type PublicPlan } from './billingApi';
 import s from './pricing-page.module.css';
 
 type Props = {
   plans: PublicPlan[] | null;
   checkoutOpen: boolean;
+  salesNote?: { vi: string; en: string };
   payosCheckoutOpen?: boolean;
   momoAutoRenewOpen?: boolean;
   initialAudience?: BillingAudience;
@@ -45,7 +46,7 @@ const FAQ: Array<{ q: Bilingual; a: Bilingual }> = [
   },
 ];
 
-export function PricingPage({ plans, checkoutOpen, payosCheckoutOpen = checkoutOpen, momoAutoRenewOpen = false, initialAudience = 'student', initialInterval = 'month', viewerRole: givenRole }: Props) {
+export function PricingPage({ plans, checkoutOpen, salesNote, payosCheckoutOpen = checkoutOpen, momoAutoRenewOpen = false, initialAudience = 'student', initialInterval = 'month', viewerRole: givenRole }: Props) {
   const { t } = useLanguage();
   // undefined while the session is being read: the buy button waits.
   const [viewerRole, setViewerRole] = useState<ViewerRole | null | undefined>(givenRole);
@@ -86,7 +87,7 @@ export function PricingPage({ plans, checkoutOpen, payosCheckoutOpen = checkoutO
           <button type="button" disabled className={s.buy}>
             {t({ en: 'Coming soon', vi: 'Sắp mở bán' })}
           </button>
-          <p className={s.small}>{t({ en: 'Checkout is not available right now.', vi: 'Hiện chưa thể thanh toán.' })}</p>
+          <p className={s.small}>{t(soonNote(salesNote))}</p>
         </>
       );
     }

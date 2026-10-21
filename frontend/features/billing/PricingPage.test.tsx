@@ -48,3 +48,16 @@ describe('PricingPage recovery', () => {
     expect(screen.queryByRole('checkbox')).toBeNull();
   });
 });
+
+describe('PricingPage while sales are closed', () => {
+  it('keeps the price, locks the button and shows the admin note, or the default when there is none', () => {
+    render(<PricingPage plans={plans} checkoutOpen={false} salesNote={{ vi: 'Chờ giấy phép kinh doanh.', en: 'Awaiting licence.' }} />);
+    expect(screen.getByText(/39\.000/)).toBeTruthy();
+    expect((screen.getByRole('button', { name: 'Sắp mở bán' }) as HTMLButtonElement).disabled).toBe(true);
+    expect(screen.getByText('Chờ giấy phép kinh doanh.')).toBeTruthy();
+    cleanup();
+
+    render(<PricingPage plans={plans} checkoutOpen={false} salesNote={{ vi: '  ', en: '' }} />);
+    expect(screen.getByText('Hiện chưa thể thanh toán.')).toBeTruthy();
+  });
+});

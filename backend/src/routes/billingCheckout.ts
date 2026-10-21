@@ -8,7 +8,7 @@ import { vnpayRecurringFromEnv, type VnpayRecurringClient } from '../billing/pro
 import { applyVnpayPayment } from '../billing/vnpayPayments.js';
 import { cancelVnpayForUser } from '../billing/vnpayCancellation.js';
 import { applyVerifiedMomoPayment } from '../billing/momoPayments.js';
-import { featureAllowed, featureOff } from '../site/features.js';
+import { featureAllowed, featureOff, salesAllowed, salesClosed } from '../site/features.js';
 
 // Checkout by payOS QR and the order it pays (billing plan Task 6, spec §6–7).
 // - The order and its payment reference are saved before payOS is asked for a link.
@@ -114,6 +114,7 @@ export const billingCheckoutRoutes: FastifyPluginAsync<{ payos?: PayosClient | n
     if (checkoutDisabled() || (input.provider === 'vnpay' ? (!vnpay || (input.autoRenew && !recurringAvailable)) : input.provider === 'payos' ? !payos : !momoAvailable)) return reply.code(503).send(CLOSED);
     const user = userOf(request)!;
     if (!(await featureAllowed(app, 'pricing', user as never))) return reply.code(403).send(featureOff('pricing'));
+    if (!(await salesAllowed(app, user as never))) return reply.code(403).send(salesClosed);
     const supabase = app.supabase!;
     // 3-month and 6-month plans are prepaid: MoMo is subscription-only and VNPAY auto-renew needs a monthly or yearly cycle.
     if (input.provider === 'momo' || input.autoRenew) {

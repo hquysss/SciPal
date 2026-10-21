@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import Fastify from 'fastify';
 import { billingCheckoutRoutes } from '../routes/billingCheckout.js';
+import { siteSettingsStore } from '../routes/siteSettings.js';
 import type { PayosClient, PayosPayment } from '../billing/providers/payos.js';
 import { createMomoClient, type MomoClient } from '../billing/providers/momo.js';
 import { mockQuery, mockSupabase, rpcCalls, type MockBuilder } from './helpers/supabaseMock.js';
@@ -352,5 +353,31 @@ describe('POST /api/billing/orders/:id/cancel', () => {
     expect(res.json()).toMatchObject({ status: 'cancelled', checkoutUrl: null });
     expect(orderUpdate.updated[0]).toEqual({ status: 'cancelled' });
     await app.close();
+  });
+});
+
+describe('POST /api/billing/checkout while sales are closed', () => {
+  const buildClosed = async (user: object) => {
+    const rpc = ok([orderRow()]);
+    const app = Fastify();
+    app.decorate('supabase', mockSupabase({ 'rpc:billing_begin_momo_cancellation': ok([]), 'rpc:billing_create_order': rpc, billing_payment_attempts: [ok([]), ok({ id: 'attempt-1' }), ok()] }));
+    app.decorate('siteSettings', siteSettingsStore(async () => ({ signup_enabled: true, features: {}, sales_open: false })));
+    app.addHook('onRequest', async (req) => { (req as any).user = user; });
+    await app.register(billingCheckoutRoutes, { payos: fakePayos(), momo: null, webBase: 'https://scipal.test' });
+    await app.ready();
+    return app;
+  };
+
+  it('refuses a student before any order is created, but lets an admin test it', async () => {
+    const app = await buildClosed(student);
+    const res = await checkout(app);
+    expect(res.statusCode).toBe(403);
+    expect(res.json()).toMatchObject({ code: 'SALES_CLOSED' });
+    expect(rpcCalls.some(([name]) => name === 'billing_create_order')).toBe(false);
+    await app.close();
+
+    const adminApp = await buildClosed({ id: 'a0000000-0000-4000-8000-000000000003', app_metadata: { app_role: 'admin' } });
+    expect((await checkout(adminApp)).statusCode).toBe(201);
+    await adminApp.close();
   });
 });

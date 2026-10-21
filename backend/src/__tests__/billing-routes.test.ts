@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import Fastify from 'fastify';
 import { billingRoutes } from '../routes/billingPlans.js';
+import { siteSettingsStore } from '../routes/siteSettings.js';
 import { mockQuery, mockSupabase, rpcCalls, type MockBuilder } from './helpers/supabaseMock.js';
 
 const student = { id: 'a0000000-0000-4000-8000-000000000001', app_metadata: {} };
@@ -169,6 +170,33 @@ describe('checkout switch in the catalog', () => {
         if (value === undefined) delete process.env[key];
         else process.env[key] = value;
       }
+    }
+  });
+});
+
+describe('sales switch in the catalog', () => {
+  const withSales = async (row: { sales_open: boolean; sales_note?: Record<string, unknown> }) => {
+    const app = Fastify();
+    app.decorate('supabase', mockSupabase(catalogTables()));
+    app.decorate('siteSettings', siteSettingsStore(async () => ({ signup_enabled: true, features: {}, ...row })));
+    await app.register(billingRoutes);
+    await app.ready();
+    return app;
+  };
+
+  it('keeps the prices but closes checkout, and passes on the note, while sales are off', async () => {
+    Object.assign(process.env, { PAYOS_CLIENT_ID: 'a', PAYOS_API_KEY: 'b', PAYOS_CHECKSUM_KEY: 'c' });
+    try {
+      const closed = await withSales({ sales_open: false, sales_note: { vi: 'Chờ giấy phép', en: 'Awaiting licence' } });
+      const body = (await closed.inject({ method: 'GET', url: '/api/billing/plans' })).json();
+      expect(body).toMatchObject({ checkoutOpen: false, payosCheckoutOpen: false, salesNote: { vi: 'Chờ giấy phép', en: 'Awaiting licence' } });
+      expect(body.plans).toHaveLength(4);
+      await closed.close();
+      const open = await withSales({ sales_open: true });
+      expect((await open.inject({ method: 'GET', url: '/api/billing/plans' })).json()).toMatchObject({ checkoutOpen: true, salesNote: { vi: '', en: '' } });
+      await open.close();
+    } finally {
+      for (const key of ['PAYOS_CLIENT_ID', 'PAYOS_API_KEY', 'PAYOS_CHECKSUM_KEY']) delete process.env[key];
     }
   });
 });
