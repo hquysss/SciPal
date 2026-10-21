@@ -6,6 +6,8 @@ const isPublicPath = (path: string): boolean => {
   if (path === '/health' || path === '/api/survey' || path === '/api/survey/website') return true;
   // The plan catalog only; the rest of /api/billing needs a session.
   if (path === '/api/billing/plans') return true;
+  // Totals only (published questions and exams, learners per lesson), for the landing and subject pages.
+  if (path === '/api/site/counts' || path === '/api/site/lesson-learners') return true;
   // payOS calls this; the handler checks its signature.
   if (['/api/billing/webhooks/vnpay', '/api/billing/webhooks/vnpay/recurring', '/api/internal/billing/vnpay/renewals/run', '/api/billing/vnpay/redirect/:id'].includes(path)) return true;
   if (path === '/api/billing/webhooks/payos') return true;
