@@ -134,7 +134,11 @@ export function roleLinks(role: string | null, lang: 'en' | 'vi', openRequests: 
     { href: '/teacher/classes', label: label('Classes', 'Lớp học') },
     { href: '/teacher/simulation-requests', label: label('Simulation requests', 'Đề xuất mô phỏng') },
   ] : [];
-  const adminLinks = role === 'admin' ? [{ href: '/admin', label: adminLinkLabel(lang, openRequests) }] : [];
+  // An admin sees every teacher's classes, so the classes page is in their menu too.
+  const adminLinks = role === 'admin' ? [
+    { href: '/admin', label: adminLinkLabel(lang, openRequests) },
+    { href: '/teacher/classes', label: label('Classes', 'Lớp học') },
+  ] : [];
   return { teacherLinks, adminLinks };
 }
 

@@ -76,7 +76,11 @@ describe('role menus', () => {
       expect(hrefs).not.toContain('/admin/plans');
     }
     expect(roleLinks('teacher', 'vi', 0).teacherLinks.map((l) => l.href)).toContain('/teacher/classes');
-    expect(roleLinks('admin', 'vi', 0).adminLinks).toEqual([{ href: '/admin', label: 'Quản trị' }]);
+    // An admin sees every class, so the menu needs a way in.
+    expect(roleLinks('admin', 'vi', 0).adminLinks).toEqual([
+      { href: '/admin', label: 'Quản trị' },
+      { href: '/teacher/classes', label: 'Lớp học' },
+    ]);
     expect(roleLinks('teacher', 'vi', 0).teacherLinks.map((l) => l.href)).not.toContain('/admin/topics');
     expect(roleLinks('student', 'vi', 0)).toEqual({ teacherLinks: [], adminLinks: [] });
   });
