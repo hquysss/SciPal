@@ -201,13 +201,16 @@ function useScrollProgress(pageRef: React.RefObject<HTMLDivElement | null>) {
     let frame = 0;
     const update = () => {
       frame = 0;
-      for (const section of sections) {
-        const box = section.getBoundingClientRect();
-        if (box.bottom < 0 || box.top > window.innerHeight) continue;
-        const value = Math.min(1, Math.max(0, (window.innerHeight - box.top) / (window.innerHeight + box.height))).toFixed(3);
+      // Measure every section before writing any --p, so a frame forces at most one layout.
+      const height = window.innerHeight;
+      const boxes = sections.map((section) => section.getBoundingClientRect());
+      sections.forEach((section, index) => {
+        const box = boxes[index];
+        if (box.bottom < 0 || box.top > height) return;
+        const value = Math.min(1, Math.max(0, (height - box.top) / (height + box.height))).toFixed(3);
         section.style.setProperty('--p', value);
         section.querySelectorAll<HTMLElement>('[data-par]').forEach((node) => node.style.setProperty('--p', value));
-      }
+      });
     };
     const schedule = () => {
       if (!frame) frame = requestAnimationFrame(update);

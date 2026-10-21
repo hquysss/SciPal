@@ -4,6 +4,7 @@ import React, { useLayoutEffect, useRef, useState } from 'react';
 import {
   motion,
   useAnimationFrame,
+  useInView,
   useMotionValue,
   useReducedMotion,
   useScroll,
@@ -152,6 +153,8 @@ function VelocityText({
     { clamp: false }
   );
   const reduceMotion = useReducedMotion();
+  const rowRef = useRef<HTMLDivElement>(null);
+  const onScreen = useInView(rowRef);
 
   const copyRef = useRef<HTMLSpanElement>(null);
   const copyWidth = useElementWidth(copyRef);
@@ -167,7 +170,7 @@ function VelocityText({
   const drag = useRef({ active: false, pointerId: -1, lastX: 0, lastTime: 0, velocity: 0, travel: 0 });
 
   useAnimationFrame((t, delta) => {
-    if (reduceMotion) return;
+    if (reduceMotion || !onScreen) return;
 
     const grab = drag.current;
     const seconds = Math.min(delta, 64) / 1000;
@@ -287,6 +290,7 @@ function VelocityText({
 
   return (
     <div
+      ref={rowRef}
       className={`${parallaxClassName} relative overflow-hidden`}
       style={{
         ...(draggable ? { cursor: 'grab', userSelect: 'none', WebkitUserSelect: 'none', touchAction: 'pan-y' } : {}),

@@ -1297,19 +1297,17 @@
   opacity: 0;
   translate: 0 1.75rem;
   scale: 0.97;
-  filter: blur(6px);
+  /* No blur here: blurring whole sheets on every reveal is what made phones stutter. */
   transition:
     opacity 700ms var(--landing-ease) var(--reveal-delay, 0ms),
     translate 700ms var(--expo) var(--reveal-delay, 0ms),
-    scale 700ms var(--expo) var(--reveal-delay, 0ms),
-    filter 500ms ease-out var(--reveal-delay, 0ms);
+    scale 700ms var(--expo) var(--reveal-delay, 0ms);
 }
 
 .page .revealed {
   opacity: 1;
   translate: 0 0;
   scale: 1;
-  filter: none;
 }
 
 /* ---------- responsive ---------- */
@@ -1447,4 +1445,12 @@
   padding: clamp(1.5rem, 4vw, 3rem) 0;
   pointer-events: none;
   user-select: none;
+}
+
+/* Touch screens: lighter glass over the hero photo (see hero.module.css). */
+@media (hover: none) {
+  .heroCard {
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+  }
 }
