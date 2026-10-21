@@ -1,17 +1,21 @@
 'use client';
 
-import { useState, useEffect, useCallback, useMemo, useRef, type ReactNode } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef, type CSSProperties, type ReactNode } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { Check, ChevronLeft, ChevronRight, CircleCheck, CircleX, Timer } from 'lucide-react';
+import { Award, Check, CircleHelp, Send, ChevronLeft, ChevronRight, CircleCheck, CircleX, CloudOff, LogOut, RotateCcw, ThumbsUp, Timer, Zap } from 'lucide-react';
+import resultStyles from './examResult.module.css';
 import { useLanguage } from '@scipal/hooks';
 import type { ExamSection } from '@scipal/types';
 import { AnswerPalette, type AnswerPaletteSection } from './AnswerPalette';
 import { forgetExamAttempt, startExamAttempt } from './examAttempt';
+import { arrangeQuestions, loadOrderSeed } from './examOrder';
 import { ExamStart } from './ExamStart';
 import { scoreOffline } from './offlineExam';
 import { SaveExamOffline } from './SaveExamOffline';
 import { dropExam, lastOfflineUser, loadDraft, loadExamPack, saveDraft, saveExamPack, type ExamPack } from '../../lib/pwa/examPacks';
+import { SwipeToast } from '../../components/ui/swipe-toast';
+import { useConfirmDialog } from '../../components/ui/confirm-dialog';
 import { addLeave, dropRun, ensureRun, MAX_LEAVES, secondsLeft } from '../../lib/pwa/examRun';
 import { EXAM_SYNCED, PENDING_CHANGED, queueExam, type ExamSyncResult } from '../../lib/pwa/pendingPractice';
 import { useShuffledOptions } from '../../lib/useShuffledOptions';
@@ -227,6 +231,9 @@ const DIFFICULTY_LABEL = {
   hard: { en: 'Hard', vi: 'Khó' },
 } as const;
 
+/** The pop-up at the top of the page: a warning about leaving the page, or that the exam was submitted. */
+type Notice = { id: number; tone: 'info' | 'warning' | 'success'; title: string; description?: string; pips?: { filled: number; total: number } };
+
 interface ExamRunnerProps {
   blueprintId: string;
   blueprintTitle?: { en: string; vi: string };
@@ -244,7 +251,7 @@ interface ExamRunnerProps {
 export function ExamRunner({
   blueprintId,
   blueprintTitle,
-  questions,
+  questions: served,
   durationMinutes = 45,
   token,
   layout = null,
@@ -252,6 +259,10 @@ export function ExamRunner({
   header,
 }: ExamRunnerProps) {
   const { lang, t } = useLanguage();
+  // The order of this attempt, fixed on this device: set after mount so the server's markup matches.
+  const [orderSeed, setOrderSeed] = useState<string | null>(null);
+  useEffect(() => setOrderSeed(loadOrderSeed(blueprintId)), [blueprintId]);
+  const questions = useMemo(() => (orderSeed ? arrangeQuestions(served, layout, orderSeed) : served), [served, layout, orderSeed]);
   const places = useMemo(() => questionPlaces(layout, questions), [layout, questions]);
   const paletteSections = useMemo(() => sectionsForPalette(layout, questions), [layout, questions]);
   const pathname = usePathname();
@@ -282,6 +293,17 @@ export function ExamRunner({
   // Times the learner left the page during this attempt (kept on the device, so a reload does not reset it).
   const [leaves, setLeaves] = useState(0);
   const leftRef = useRef(false);
+  const { ask, dialog } = useConfirmDialog();
+  const [notice, setNotice] = useState<Notice | null>(null);
+  const noticeId = useRef(0);
+  // Why the exam submits itself, for the pop-up that says so.
+  const autoReason = useRef<'time' | 'leaves' | null>(null);
+  // Read from effects and callbacks that must not re-run when the language or the pop-up changes.
+  const tRef = useRef(t);
+  tRef.current = t;
+  const announce = (next: Omit<Notice, 'id'>) => setNotice({ id: ++noticeId.current, ...next });
+  const announceRef = useRef(announce);
+  announceRef.current = announce;
 
   const currentSession = useCallback(async () => {
     const session = (await createBrowserClient().auth.getSession().catch(() => ({ data: { session: null } }))).data.session;
@@ -343,6 +365,7 @@ export function ExamRunner({
         if (secondsLeft(run, durationMinutes) === 0 && !draft) {
           dropRun(id);
           forgetExamAttempt(blueprintId);
+          setOrderSeed(loadOrderSeed(blueprintId));
           id = await begin(session.token);
           if (!active || !id) return;
           run = ensureRun(id);
@@ -371,12 +394,18 @@ export function ExamRunner({
       if (mine.not_counted) {
         setNotCounted(true);
         setProvisional(false);
+        announceRef.current({ tone: 'warning', title: tRef.current({ en: 'Exam not counted', vi: 'Bài thi chưa được tính' }), description: tRef.current({ en: 'You had no graded attempts left.', vi: 'Bạn đã hết lượt thi chấm điểm.' }) });
         return;
       }
       const server = mine.result ? normalizeResult(mine.result) : null;
       if (server) {
         setResult(server);
         setProvisional(false);
+        announceRef.current({
+          tone: 'success',
+          title: tRef.current({ en: 'Exam synced', vi: 'Đã đồng bộ bài thi' }),
+          description: tRef.current({ en: `Score ${formatScore(server.score)} / ${formatScore(server.max_score)} from the server.`, vi: `Điểm ${formatScore(server.score)} / ${formatScore(server.max_score)} theo máy chủ.` }),
+        });
       }
     };
     window.addEventListener(EXAM_SYNCED, onSynced);
@@ -390,6 +419,17 @@ export function ExamRunner({
 
     const formatted = toSubmission(questions, answers);
     const finishedAt = new Date().toISOString();
+    // Says the exam went in: on its own after the time or the third leave, or by the learner's hand.
+    const announceSubmitted = (line: string, kept: boolean) => {
+      const reason = autoReason.current;
+      const say = tRef.current;
+      const why = reason === 'time' ? say({ en: 'Time was up.', vi: 'Đã hết giờ làm bài.' }) : reason === 'leaves' ? say({ en: `You left the page ${MAX_LEAVES} times.`, vi: `Bạn đã rời trang ${MAX_LEAVES} lần.` }) : '';
+      announceRef.current({
+        tone: 'success',
+        title: reason ? say({ en: 'The exam was submitted for you', vi: 'Bài đã tự nộp' }) : kept ? say({ en: 'Exam saved', vi: 'Đã lưu bài thi' }) : say({ en: 'Exam submitted', vi: 'Đã nộp bài thi' }),
+        description: [why, line].filter(Boolean).join(' '),
+      });
+    };
     // Without a connection: score on this device from the saved exam and queue it for the server.
     const submitOffline = () => {
       if (!pack || !userId) {
@@ -408,6 +448,7 @@ export function ExamRunner({
       window.dispatchEvent(new Event(PENDING_CHANGED));
       setResult(scoreOffline(pack, formatted));
       setProvisional(true);
+      announceSubmitted(tRef.current({ en: 'The exam will be sent to the server when you are back online. The score is provisional.', vi: 'Bài sẽ được nộp lên máy chủ khi có mạng. Điểm hiện là tạm tính.' }), true);
       // Submitted: the attempt is not taken again from this device; the queue holds the answers.
       dropExam(userId, blueprintId, pack.attempt_id);
       forgetExamAttempt(blueprintId);
@@ -460,6 +501,7 @@ export function ExamRunner({
       const data = normalizeResult(await res.json());
       if (!data) throw new Error('Invalid exam score response');
       setResult(data);
+      announceSubmitted(tRef.current({ en: `Score ${formatScore(data.score)} / ${formatScore(data.max_score)} · +${data.xp_earned} XP`, vi: `Điểm ${formatScore(data.score)} / ${formatScore(data.max_score)} · +${data.xp_earned} XP` }), false);
       forgetExamAttempt(blueprintId);
       if (userId) dropExam(userId, blueprintId, attemptId);
       dropRun(attemptId);
@@ -472,6 +514,52 @@ export function ExamRunner({
       setSubmitting(false);
     }
   }, [answers, attempt, begin, blueprintId, pack, pathname, questions, router, submitting, t, token, userId]);
+
+  // The Submit button asks first: a submitted exam cannot be changed. (Time up and the third leave submit on their own.)
+  const confirmSubmit = async () => {
+    const left = questions.length - answeredCount;
+    const confirmed = await ask({
+      title: t({ en: 'Submit the exam?', vi: 'Nộp bài thi?' }),
+      description: left > 0
+        ? t({ en: `You still have ${left} unanswered ${left === 1 ? 'question' : 'questions'}. You cannot change your answers after submitting.`, vi: `Bạn còn ${left} câu chưa làm. Nộp rồi không sửa được.` })
+        : t({ en: 'You answered every question. You cannot change your answers after submitting.', vi: 'Bạn đã làm hết các câu. Nộp rồi không sửa được.' }),
+      confirmLabel: t({ en: 'Submit', vi: 'Nộp bài' }),
+      cancelLabel: t({ en: 'Keep going', vi: 'Làm tiếp' }),
+      danger: true,
+      icon: <Send className="h-5 w-5" />,
+      details: (
+        <div className="mt-4 rounded-lg bg-surface-sunken p-3">
+          <div className="flex items-center justify-between text-sm">
+            <span className="inline-flex items-center gap-1.5 font-semibold text-ink">
+              <CircleCheck aria-hidden="true" className="h-4 w-4 text-success" />
+              {t({ en: `Answered ${answeredCount} / ${questions.length}`, vi: `Đã làm ${answeredCount} / ${questions.length} câu` })}
+            </span>
+            {left > 0 && (
+              <span className="inline-flex items-center gap-1 rounded-full bg-danger-surface px-2 py-0.5 text-xs font-bold text-danger">
+                <CircleHelp aria-hidden="true" className="h-3.5 w-3.5" />
+                {t({ en: `${left} blank`, vi: `${left} câu trống` })}
+              </span>
+            )}
+          </div>
+          <div className="mt-2 h-2 overflow-hidden rounded-full bg-surface" aria-hidden="true">
+            <div className="h-full rounded-full bg-success" style={{ width: `${questions.length ? Math.round((answeredCount / questions.length) * 100) : 0}%` }} />
+          </div>
+        </div>
+      ),
+    });
+    if (confirmed) void handleSubmit();
+  };
+  const toast = notice ? (
+    <SwipeToast
+      key={notice.id}
+      tone={notice.tone}
+      title={notice.title}
+      description={notice.description}
+      pips={notice.pips}
+      duration={6000}
+      onClose={() => setNotice((current) => (current?.id === notice.id ? null : current))}
+    />
+  ) : null;
 
   // Closing or reloading the page while the exam is running asks first.
   useEffect(() => {
@@ -498,8 +586,17 @@ export function ExamRunner({
       leftRef.current = false;
       const count = addLeave(attemptId);
       setLeaves(count);
-      if (count >= MAX_LEAVES && !autoSubmitAttempted.current) {
+      if (count < MAX_LEAVES) {
+        const say = tRef.current;
+        announceRef.current({
+          tone: 'warning',
+          pips: { filled: count, total: MAX_LEAVES },
+          title: say({ en: `You left the page ${count}/${MAX_LEAVES} times.`, vi: `Bạn đã rời trang ${count}/${MAX_LEAVES} lần.` }),
+          description: say({ en: `The ${MAX_LEAVES}rd time the exam is submitted.`, vi: `Rời lần thứ ${MAX_LEAVES} bài sẽ tự nộp.` }),
+        });
+      } else if (!autoSubmitAttempted.current) {
         autoSubmitAttempted.current = true;
+        autoReason.current = 'leaves';
         void handleSubmit();
       }
     };
@@ -513,6 +610,7 @@ export function ExamRunner({
     if (timeLeft <= 0) {
       if (!autoSubmitAttempted.current) {
         autoSubmitAttempted.current = true;
+        autoReason.current = 'time';
         void handleSubmit();
       }
       return;
@@ -522,7 +620,7 @@ export function ExamRunner({
   }, [timeLeft, result, started, handleSubmit]);
 
   const currentQ = questions[currentIndex];
-  const shuffledOptions = useShuffledOptions(currentQ?.id ?? '', currentQ && currentQ.type !== 'truefalse' && currentQ.type !== 'short' ? (currentQ.data.options ?? []) : []);
+  const shuffledOptions = useShuffledOptions(currentQ?.id ?? '', currentQ && currentQ.type !== 'truefalse' && currentQ.type !== 'short' ? (currentQ.data.options ?? []) : [], orderSeed);
   const place = places[currentIndex] ?? null;
   const pick = (text: Bilingual) => pickText(text, lang);
   const minutes = Math.floor(Math.max(0, timeLeft) / 60);
@@ -537,6 +635,7 @@ export function ExamRunner({
       : t({ en: 'Informatics evaluation', vi: 'Khảo sát chất lượng Tin học' });
     return (
       <div className="mx-auto flex w-full max-w-3xl flex-col gap-6">
+        {toast}
         {header}
         <ExamResultView result={result} title={title} layout={layout} provisional={provisional} notCounted={notCounted} leaves={leaves} />
       </div>
@@ -573,14 +672,8 @@ export function ExamRunner({
 
   return (
     <div className="flex flex-col gap-3">
-      {leaves > 0 && (
-        <Alert tone="warning">
-          {t({
-            en: `You left the page ${leaves}/${MAX_LEAVES} times. The ${MAX_LEAVES}rd time the exam is submitted.`,
-            vi: `Bạn đã rời trang ${leaves}/${MAX_LEAVES} lần. Rời lần thứ ${MAX_LEAVES} bài sẽ tự nộp.`,
-          })}
-        </Alert>
-      )}
+      {toast}
+      {dialog}
       {attemptProblem && (
         <Alert tone="warning">
           {t(attemptProblem.error)}{' '}
@@ -621,7 +714,7 @@ export function ExamRunner({
             {answeredCount} / {questions.length}
             <span className="ml-1 hidden font-normal text-ink-muted sm:inline">{t({ en: 'answered', vi: 'đã làm' })}</span>
           </span>
-          <button type="button" onClick={handleSubmit} disabled={submitting} className={buttonVariants()}>
+          <button type="button" onClick={() => void confirmSubmit()} disabled={submitting} className={buttonVariants({ variant: 'danger' })}>
             {submitting ? t({ en: 'Submitting…', vi: 'Đang nộp bài…' }) : t({ en: 'Submit exam', vi: 'Nộp bài thi' })}
           </button>
         </div>
@@ -837,13 +930,20 @@ export function ExamResultView({
   const band = scoreBand(result.score, result.max_score);
   const wrongCount = Math.max(0, result.total_questions - result.correct_count);
   const titles = new Map((layout ?? []).map((section) => [section.key, section.title]));
+  // The ring fills to the share of the score; its length is the circle's circumference (r = 46).
+  const RING = 2 * Math.PI * 46;
+  const share = result.max_score > 0 ? Math.min(1, Math.max(0, result.score / result.max_score)) : 0;
+  const VerdictIcon = band === 'high' ? Award : band === 'medium' ? ThumbsUp : RotateCcw;
 
   return (
-    <section className="rounded-xl border border-line bg-surface p-8 text-center sm:p-12">
+    <section data-band={band} className={`${resultStyles.result} rounded-xl border border-line bg-surface p-8 text-center sm:p-12`}>
       <h2 className="text-2xl font-bold text-ink sm:text-3xl">{t({ en: 'Exam result', vi: 'Kết quả bài thi thử' })}</h2>
       <p className="mt-1 text-sm text-ink-muted">{title}</p>
       {leaves > 0 && (
-        <p className="mt-3 text-sm text-ink-muted">{t({ en: `Times you left the page: ${leaves}`, vi: `Số lần rời trang: ${leaves}` })}</p>
+        <p className="mt-3 inline-flex items-center gap-1.5 text-sm text-ink-muted">
+          <LogOut aria-hidden="true" className="h-4 w-4" />
+          {t({ en: `Times you left the page: ${leaves}`, vi: `Số lần rời trang: ${leaves}` })}
+        </p>
       )}
       {notCounted && (
         <p role="status" className="mt-3 text-sm font-semibold text-ink-muted">
@@ -851,17 +951,31 @@ export function ExamResultView({
         </p>
       )}
       {provisional && (
-        <p role="status" className="mt-3 text-sm font-semibold text-ink-muted">
+        <p role="status" className="mt-3 flex items-center justify-center gap-1.5 text-sm font-semibold text-ink-muted">
+          <CloudOff aria-hidden="true" className="h-4 w-4" />
           {t({ en: 'Provisional · waiting to sync. XP is an estimate.', vi: 'Kết quả tạm · chờ đồng bộ. XP là tạm tính.' })}
         </p>
       )}
 
       <div className="my-6 flex flex-col items-center">
-        <span data-testid="exam-score" className="text-6xl font-bold tabular-nums text-ink">
-          {formatScore(result.score)}
-          <span className="text-2xl font-semibold text-ink-muted"> / {formatScore(result.max_score)}</span>
-        </span>
-        <span className="mt-2 text-base font-semibold text-ink-muted">
+        <div className={resultStyles.gauge}>
+          <svg viewBox="0 0 108 108" aria-hidden="true">
+            <circle className={resultStyles.track} cx="54" cy="54" r="46" />
+            <circle
+              className={resultStyles.fill}
+              cx="54"
+              cy="54"
+              r="46"
+              style={{ '--len': RING, '--off': RING * (1 - share) } as CSSProperties}
+            />
+          </svg>
+          <span data-testid="exam-score" className={`${resultStyles.score} text-5xl font-bold tabular-nums`}>
+            {formatScore(result.score)}
+            <span className="block text-base font-semibold text-ink-muted"> / {formatScore(result.max_score)}</span>
+          </span>
+        </div>
+        <span className={`${resultStyles.verdict} mt-4 text-sm`}>
+          <VerdictIcon aria-hidden="true" className="h-4 w-4" />
           {band === 'high'
             ? t({ en: 'Good result.', vi: 'Đạt mức tốt.' })
             : band === 'medium'
@@ -894,7 +1008,12 @@ export function ExamResultView({
               return (
                 <tr key={section.key} className="border-b border-line last:border-b-0">
                   <th scope="row" className="py-2 pr-3 font-semibold text-ink">{sectionTitle ? pickText(sectionTitle, lang) : section.key}</th>
-                  <td className="px-3 py-2 text-right tabular-nums text-ink">{formatScore(section.score)} / {formatScore(section.max_score)}</td>
+                  <td className="px-3 py-2 text-right tabular-nums text-ink">
+                    {formatScore(section.score)} / {formatScore(section.max_score)}
+                    <span className={resultStyles.bar} aria-hidden="true">
+                      <i style={{ width: `${section.max_score > 0 ? Math.round((section.score / section.max_score) * 100) : 0}%` }} />
+                    </span>
+                  </td>
                   <td className="py-2 pl-3 text-right tabular-nums text-ink">{section.correct} / {section.total}</td>
                 </tr>
               );
@@ -903,27 +1022,22 @@ export function ExamResultView({
         </table>
       )}
 
-      <dl className="mx-auto grid max-w-md grid-cols-1 gap-3 text-left sm:grid-cols-3">
-        <div className="rounded-lg bg-surface-sunken p-3">
-          <dt className="flex items-center gap-1 text-sm font-semibold text-success">
-            <CircleCheck aria-hidden="true" className="h-4 w-4" />
-            {t({ en: 'Correct', vi: 'Câu đúng' })}
-          </dt>
-          <dd className="text-lg font-bold tabular-nums text-ink">
-            {result.correct_count} / {result.total_questions}
-          </dd>
-        </div>
-        <div className="rounded-lg bg-surface-sunken p-3">
-          <dt className="flex items-center gap-1 text-sm font-semibold text-danger">
-            <CircleX aria-hidden="true" className="h-4 w-4" />
-            {t({ en: 'Wrong or blank', vi: 'Sai hoặc bỏ trống' })}
-          </dt>
-          <dd className="text-lg font-bold tabular-nums text-ink">{wrongCount}</dd>
-        </div>
-        <div className="rounded-lg bg-surface-sunken p-3">
-          <dt className="text-sm font-semibold text-ink-muted">{t({ en: 'XP earned', vi: 'Phần thưởng XP' })}</dt>
-          <dd className="text-lg font-bold tabular-nums text-ink">+{result.xp_earned} XP</dd>
-        </div>
+      <dl className="mx-auto grid max-w-xl grid-cols-1 gap-3 text-left sm:grid-cols-3">
+        {[
+          { tone: 'success', Icon: CircleCheck, label: t({ en: 'Correct', vi: 'Câu đúng' }), value: `${result.correct_count} / ${result.total_questions}` },
+          { tone: 'danger', Icon: CircleX, label: t({ en: 'Wrong or blank', vi: 'Sai hoặc bỏ trống' }), value: String(wrongCount) },
+          { tone: 'warning', Icon: Zap, label: t({ en: 'XP earned', vi: 'Phần thưởng XP' }), value: `+${result.xp_earned} XP` },
+        ].map(({ tone, Icon, label, value }) => (
+          <div key={tone} className={resultStyles.stat}>
+            <span className={resultStyles.statIcon} data-tone={tone} aria-hidden="true">
+              <Icon className="h-5 w-5" />
+            </span>
+            <span className="min-w-0">
+              <dt className="text-xs font-semibold text-ink-muted">{label}</dt>
+              <dd className="text-lg font-bold tabular-nums text-ink">{value}</dd>
+            </span>
+          </div>
+        ))}
       </dl>
 
       <div className="mt-8 flex flex-wrap items-center justify-center gap-3">

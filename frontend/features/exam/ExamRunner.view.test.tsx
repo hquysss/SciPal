@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import type { ReactNode } from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
@@ -12,6 +12,9 @@ vi.mock('next/link', () => ({ default: ({ href, children, ...rest }: { href: str
 vi.mock('../../lib/supabase', () => ({
   createBrowserClient: () => ({ auth: { getSession: async () => ({ data: { session: null } }) } }),
 }));
+
+// These tests read the questions in their written order; the shuffle has its own tests.
+vi.mock('./examOrder', async (load) => ({ ...(await load<typeof import('./examOrder')>()), arrangeQuestions: <T,>(questions: T[]) => questions }));
 
 import { ExamResultView, ExamRunner, type ExamQuestionItem, type ExamResult } from './ExamRunner';
 
@@ -40,7 +43,7 @@ const next = () => fireEvent.click(screen.getByRole('button', { name: /Câu ti�
 const sectionHeading = () => screen.queryByRole('heading', { level: 2, name: /^Phần/ })?.textContent ?? null;
 
 describe('ExamRunner exam room', () => {
-  it('opens on the start page with the clock stopped, and runs only after Start', () => {
+  it('opens on the start page with the clock stopped, and runs only after Start is confirmed', async () => {
     vi.useFakeTimers();
     try {
       const { container } = render(<ExamRunner blueprintId="bp" blueprintTitle={{ vi: 'Đề thử', en: 'Mock' }} questions={questions} layout={layout} durationMinutes={50} showIntro />);
@@ -50,6 +53,10 @@ describe('ExamRunner exam room', () => {
       expect(screen.queryByText('Nộp bài thi')).toBeNull();
       vi.advanceTimersByTime(5000);
       fireEvent.click(screen.getByRole('button', { name: 'Bắt đầu làm bài' }));
+      expect(screen.queryByText('Nộp bài thi')).toBeNull();
+      await act(async () => {
+        fireEvent.click(screen.getByRole('button', { name: 'Vào thi' }));
+      });
       expect(screen.getByText('50:00')).toBeTruthy();
       expect(screen.getByText('Nộp bài thi')).toBeTruthy();
       expect(container.querySelector('fieldset')).toBeTruthy();

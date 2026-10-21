@@ -12,6 +12,9 @@ vi.mock('../../lib/supabase', () => ({
 const attempts = vi.hoisted(() => ({ start: vi.fn() }));
 vi.mock('./examAttempt', async (load) => ({ ...(await load<typeof import('./examAttempt')>()), startExamAttempt: attempts.start }));
 
+// These tests read the questions in their written order; the shuffle has its own tests.
+vi.mock('./examOrder', async (load) => ({ ...(await load<typeof import('./examOrder')>()), arrangeQuestions: <T,>(questions: T[]) => questions }));
+
 import { ExamRunner, type ExamQuestionItem } from './ExamRunner';
 import { loadDraft, saveDraft } from '../../lib/pwa/examPacks';
 import { ensureRun, loadRun } from '../../lib/pwa/examRun';
@@ -51,13 +54,22 @@ const leave = async () => {
   });
   await settle();
 };
+/** Presses Submit and confirms. */
+const handIn = async () => {
+  fireEvent.click(screen.getByRole('button', { name: 'Nộp bài thi' }));
+  await act(async () => {
+    fireEvent.click(screen.getByRole('button', { name: 'Nộp bài' }));
+  });
+  await settle();
+};
 const submitted = () => fetchMock.mock.calls.filter(([url]) => String(url).includes('/api/score/exam'));
 
 describe('leaving the page during an exam', () => {
   it('counts each time the page was hidden and shown again, and says how many', async () => {
     await open();
     await leave();
-    expect(screen.getByText(/rời trang 1\/3/)).toBeTruthy();
+    const popup = screen.getByText(/rời trang 1\/3/).closest('[role=status]')!;
+    expect(popup.textContent).toMatch(/Rời lần thứ 3 bài sẽ tự nộp/);
     await leave();
     expect(screen.getByText(/rời trang 2\/3/)).toBeTruthy();
     expect(submitted()).toHaveLength(0);
@@ -98,11 +110,60 @@ describe('leaving the page during an exam', () => {
   it('shows how many times the learner left, on the result', async () => {
     await open();
     await leave();
+    await handIn();
+    expect(screen.getByText(/Số lần rời trang: 1/)).toBeTruthy();
+  });
+});
+
+describe('submitting an exam', () => {
+  it('asks first, says how many questions are left, and goes on when the learner chooses to', async () => {
+    await open();
+    fireEvent.click(screen.getByRole('radio', { name: /Lựa chọn A/ }));
+    fireEvent.click(screen.getByRole('button', { name: 'Nộp bài thi' }));
+    const dialog = screen.getByRole('dialog');
+    expect(dialog.textContent).toMatch(/Nộp bài thi\?/);
+    expect(dialog.textContent).toMatch(/còn 1 câu chưa làm/);
     await act(async () => {
-      fireEvent.click(screen.getByRole('button', { name: 'Nộp bài thi' }));
+      fireEvent.click(screen.getByRole('button', { name: 'Làm tiếp' }));
     });
     await settle();
-    expect(screen.getByText(/Số lần rời trang: 1/)).toBeTruthy();
+    expect(screen.queryByRole('dialog')).toBeNull();
+    expect(submitted()).toHaveLength(0);
+  });
+
+  it('makes both submit buttons solid red', async () => {
+    await open();
+    const submit = screen.getByRole('button', { name: 'Nộp bài thi' });
+    expect(submit.className).toMatch(/bg-danger /);
+    fireEvent.click(submit);
+    expect(screen.getByRole('button', { name: 'Nộp bài' }).className).toMatch(/bg-danger /);
+  });
+
+  it('sends the exam only after the learner confirms, and says it was submitted with the score', async () => {
+    await open();
+    fireEvent.click(screen.getByRole('radio', { name: /Lựa chọn A/ }));
+    await handIn();
+    expect(submitted()).toHaveLength(1);
+    const popup = screen.getByText('Đã nộp bài thi').closest('[role=status]')!;
+    expect(popup.textContent).toMatch(/Điểm 5 \/ 10/);
+    expect(popup.textContent).toMatch(/\+15 XP/);
+  });
+
+  it('says why when the exam submitted itself: the third time the learner left the page', async () => {
+    await open();
+    await leave();
+    await leave();
+    await leave();
+    const popup = screen.getByText(/Bài đã tự nộp/).closest('[role=status]')!;
+    expect(popup.textContent).toMatch(/rời trang 3 lần/);
+  });
+
+  it('says why when the exam submitted itself: the time ran out', async () => {
+    ensureRun('att-1', minutesAgo(60));
+    saveDraft('att-1', { 0: { option: 'B' } });
+    await open();
+    const popup = screen.getByText(/Bài đã tự nộp/).closest('[role=status]')!;
+    expect(popup.textContent).toMatch(/hết giờ/);
   });
 });
 
@@ -112,10 +173,7 @@ describe('closing the page during an exam', () => {
     const working = new Event('beforeunload', { cancelable: true });
     window.dispatchEvent(working);
     expect(working.defaultPrevented).toBe(true);
-    await act(async () => {
-      fireEvent.click(screen.getByRole('button', { name: 'Nộp bài thi' }));
-    });
-    await settle();
+    await handIn();
     const done = new Event('beforeunload', { cancelable: true });
     window.dispatchEvent(done);
     expect(done.defaultPrevented).toBe(false);

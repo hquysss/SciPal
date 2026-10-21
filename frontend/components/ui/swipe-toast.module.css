@@ -1,0 +1,166 @@
+/* A pop-up that drops in from the top of the page, under the navigation bar. Theme tokens only. */
+.dock {
+  position: fixed;
+  z-index: 80;
+  top: calc(4.75rem + env(safe-area-inset-top, 0px));
+  left: 50%;
+  width: min(30rem, calc(100vw - 2rem));
+  transform: translateX(-50%);
+  pointer-events: none;
+}
+
+.toast {
+  --tone: var(--action);
+  --tone-bg: var(--surface-sunken);
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 0.875rem;
+  padding: 1rem 0.75rem 1rem 1rem;
+  overflow: hidden;
+  border-radius: 1rem;
+  background: var(--surface);
+  color: var(--ink);
+  box-shadow:
+    0 20px 48px color-mix(in srgb, var(--ink) 24%, transparent),
+    0 4px 12px color-mix(in srgb, var(--ink) 14%, transparent);
+  pointer-events: auto;
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+  outline: none;
+}
+.toast:active { cursor: grabbing; }
+.toast:focus-visible { outline: 2px solid var(--focus); outline-offset: 3px; }
+.toast[data-tone='warning'] { --tone: var(--warning); --tone-bg: var(--warning-surface); }
+.toast[data-tone='success'] { --tone: var(--success); --tone-bg: var(--success-surface); }
+
+/* One sweep of light across the card as it lands. */
+.toast::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(105deg, transparent 35%, color-mix(in srgb, var(--ink) 6%, transparent) 50%, transparent 65%);
+  transform: translateX(-120%);
+  animation: sweep 0.9s 0.35s ease-out forwards;
+  pointer-events: none;
+}
+
+.badge {
+  position: relative;
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 2.75rem;
+  height: 2.75rem;
+  border-radius: 50%;
+  background: var(--tone-bg);
+  color: var(--tone);
+}
+/* A ring of light that spreads from the badge, twice. */
+.badge::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  border: 2px solid var(--tone);
+  animation: ring 1.6s 0.3s ease-out 2;
+  opacity: 0;
+}
+
+.body {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  gap: 0.125rem;
+  min-width: 0;
+}
+.title { display: flex; align-items: center; gap: 0.375rem; font-size: 1rem; font-weight: 700; line-height: 1.35; letter-spacing: -0.005em; }
+
+/* A warning: the wavy edge on the left and the title in the warning colour. */
+.toast[data-tone='warning'] { padding-left: 0; gap: 0.75rem; }
+.toast[data-tone='warning'] .title { color: var(--warning); font-size: 1.125rem; }
+.edge {
+  align-self: stretch;
+  flex: none;
+  height: auto;
+  fill: color-mix(in srgb, var(--warning) 45%, var(--surface));
+  stroke: color-mix(in srgb, var(--warning) 45%, var(--surface));
+}
+.toast[data-tone='warning'] .body { padding-left: 0; }
+.desc { font-size: 0.875rem; line-height: 1.45; color: var(--ink-muted); }
+
+.pips { display: flex; gap: 0.375rem; margin-top: 0.5rem; }
+.pip {
+  width: 1.75rem;
+  height: 0.375rem;
+  border-radius: 999px;
+  background: var(--surface-sunken);
+}
+.pip[data-on='true'] {
+  background: var(--tone);
+}
+
+.action,
+.close {
+  flex: none;
+  border: 0;
+  font: inherit;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+.action {
+  min-height: 2.25rem;
+  padding: 0 0.875rem;
+  border-radius: 0.625rem;
+  background: var(--ink);
+  color: var(--surface);
+  font-size: 0.8125rem;
+  font-weight: 600;
+}
+.close {
+  display: grid;
+  place-items: center;
+  align-self: flex-start;
+  width: 2rem;
+  height: 2rem;
+  border-radius: 0.5rem;
+  background: transparent;
+  color: var(--ink-muted);
+}
+.close:hover { background: var(--surface-sunken); color: var(--ink); }
+.action:focus-visible,
+.close:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+
+/* The timer: a line of light along the top that fades toward its end and runs out; hovering or focus holds it. */
+.fuse {
+  position: absolute;
+  top: 0;
+  right: 0;
+  left: 0;
+  height: 3px;
+  background: linear-gradient(90deg, var(--tone), color-mix(in srgb, var(--tone) 55%, transparent) 60%, transparent);
+  box-shadow: 0 2px 10px color-mix(in srgb, var(--tone) 55%, transparent);
+  transform-origin: left center;
+  animation: burn linear forwards;
+  pointer-events: none;
+}
+.toast:hover .fuse,
+.toast:focus-within .fuse { animation-play-state: paused; }
+
+@keyframes burn {
+  from { transform: scaleX(1); }
+  to { transform: scaleX(0); }
+}
+@keyframes sweep {
+  to { transform: translateX(120%); }
+}
+@keyframes ring {
+  0% { opacity: 0.8; transform: scale(1); }
+  100% { opacity: 0; transform: scale(1.9); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .toast { cursor: default; }
+  .toast::after,
+  .badge::after { animation: none; opacity: 0; }
+}

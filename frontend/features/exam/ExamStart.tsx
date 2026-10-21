@@ -2,10 +2,11 @@
 
 import Link from 'next/link';
 import type { ReactNode } from 'react';
-import { Clock, ListChecks, Play } from 'lucide-react';
+import { Clock, ListChecks, LogOut, Play, Timer } from 'lucide-react';
 import { useLanguage } from '@scipal/hooks';
 import type { ExamSection } from '@scipal/types';
 import { buttonVariants } from '../../components/ui/button';
+import { useConfirmDialog } from '../../components/ui/confirm-dialog';
 
 type Bilingual = { en: string; vi: string };
 
@@ -13,7 +14,7 @@ const pickText = (text: Bilingual, lang: string) => (lang === 'en' ? text.en.tri
 
 /**
  * The page before the exam: what it contains and the rules, with the clock still stopped.
- * The timer and the graded attempt begin only when the learner presses the button.
+ * The timer and the graded attempt begin only when the learner presses the button and confirms.
  */
 export function ExamStart({
   title,
@@ -32,6 +33,34 @@ export function ExamStart({
   offline?: ReactNode;
 }) {
   const { lang, t } = useLanguage();
+  const { ask, dialog } = useConfirmDialog();
+  // The clock cannot be paused, so pressing Start asks first.
+  const confirmStart = async () => {
+    const confirmed = await ask({
+      title: t({ en: 'Start the exam?', vi: 'Vào thi?' }),
+      description: t({
+        en: `The ${durationMinutes}-minute clock starts now and cannot be paused. If you leave the page 3 times, the exam is submitted.`,
+        vi: `Đồng hồ ${durationMinutes} phút bắt đầu chạy ngay và không tạm dừng được. Rời trang 3 lần bài sẽ tự nộp.`,
+      }),
+      confirmLabel: t({ en: 'Start', vi: 'Vào thi' }),
+      cancelLabel: t({ en: 'Not yet', vi: 'Chưa, quay lại' }),
+      tone: 'warning',
+      icon: <Play className="h-5 w-5" />,
+      details: (
+        <ul className="mt-4 flex flex-col gap-2 text-sm">
+          <li className="flex items-center gap-2.5 rounded-lg bg-surface-sunken p-2.5">
+            <span className="grid h-8 w-8 flex-none place-items-center rounded-md bg-warning-surface text-warning" aria-hidden="true"><Timer className="h-4 w-4" /></span>
+            <span className="font-semibold text-ink">{t({ en: `${durationMinutes} minutes, no pause`, vi: `${durationMinutes} phút, không tạm dừng` })}</span>
+          </li>
+          <li className="flex items-center gap-2.5 rounded-lg bg-surface-sunken p-2.5">
+            <span className="grid h-8 w-8 flex-none place-items-center rounded-md bg-danger-surface text-danger" aria-hidden="true"><LogOut className="h-4 w-4" /></span>
+            <span className="font-semibold text-ink">{t({ en: 'Leave the page 3 times: auto-submit', vi: 'Rời trang 3 lần: tự nộp bài' })}</span>
+          </li>
+        </ul>
+      ),
+    });
+    if (confirmed) onStart();
+  };
   const sections = (layout ?? []).filter((s) => s.count > 0);
   const total = sections.reduce((sum, s) => sum + (s.max_points ?? 0), 0);
   const rules: Bilingual[] = [
@@ -102,7 +131,7 @@ export function ExamStart({
       </div>
 
       <div className="flex flex-wrap items-center gap-3 border-t border-line pt-5">
-        <button type="button" onClick={onStart} className={buttonVariants({ size: 'lg' })}>
+        <button type="button" onClick={() => void confirmStart()} className={buttonVariants({ size: 'lg' })}>
           <Play aria-hidden="true" />
           {t({ en: 'Start the exam', vi: 'Bắt đầu làm bài' })}
         </button>
@@ -111,6 +140,7 @@ export function ExamStart({
         </Link>
       </div>
       {offline}
+      {dialog}
     </section>
   );
 }

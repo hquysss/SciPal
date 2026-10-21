@@ -4,6 +4,7 @@
 
 import type { ExamQuestionItem } from './ExamRunner';
 import type { BlueprintSummary } from './examQueries';
+import { dropOrderSeed } from './examOrder';
 
 type Bilingual = { vi: string; en: string };
 type Store = Pick<Storage, 'getItem' | 'setItem' | 'removeItem'>;
@@ -71,6 +72,7 @@ export async function startExamAttempt(blueprintId: string, token: string, stora
 /** After the result is shown, the next visit starts a new attempt. */
 export function forgetExamAttempt(blueprintId: string, storage: Store | undefined = session()) {
   write(storage, key(blueprintId), null);
+  dropOrderSeed(blueprintId);
 }
 
 /** The exam with what grades it (to take it offline). Starts no attempt and uses no quota. */
