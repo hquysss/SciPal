@@ -990,43 +990,32 @@
 /* ---------- stats ---------- */
 
 .stats {
-  margin-top: 1rem;
-  border-radius: var(--radius-card-lg);
-  padding: clamp(1.75rem, 4vw, 2.5rem) var(--landing-gutter);
-  background: var(--nav);
-  color: var(--nav-ink);
+  padding: clamp(2.5rem, 6vw, 4rem) var(--landing-gutter) clamp(1.5rem, 4vw, 2.5rem);
+  text-align: center;
 }
 
 .statsTitle {
   margin: 0;
-  color: color-mix(in srgb, var(--nav-ink) 68%, transparent);
-  font-size: 0.875rem;
+  color: var(--ink-muted);
+  font-size: 0.8125rem;
   font-weight: 600;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.12em;
   text-transform: uppercase;
 }
 
-/* However many numbers there are (3 to 6), they fill the row without leaving a lone cell. */
+/* Numbers sit on the page itself, set apart by thin vertical lines; however many there are, the row wraps evenly. */
 .statGrid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(8.5rem, 1fr));
-  gap: 1.5rem 2rem;
-  margin: 1.25rem 0 0;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 2rem 0;
+  margin: 1.5rem 0 0;
 }
 
 .stat {
-  border-top: 1px solid color-mix(in srgb, var(--nav-ink) 20%, transparent);
-  padding-top: 0.875rem;
-}
-
-.stat:last-child:nth-child(odd) {
-  grid-column: 1 / -1;
-}
-
-@media (min-width: 40rem) {
-  .stat:last-child:nth-child(odd) {
-    grid-column: auto;
-  }
+  flex: 1 1 50%;
+  min-width: 0;
+  padding: 0 1rem;
 }
 
 .stat dd {
@@ -1035,17 +1024,29 @@
 
 .statValue {
   display: block;
-  font-size: clamp(2.25rem, 4.5vw, 3.5rem);
+  font-size: clamp(2.5rem, 5vw, 4rem);
   font-weight: 700;
   line-height: 1;
   letter-spacing: -0.03em;
+  font-variant-numeric: tabular-nums;
 }
 
 .statLabel {
   display: block;
   margin-top: 0.5rem;
-  color: color-mix(in srgb, var(--nav-ink) 68%, transparent);
+  color: var(--ink-muted);
   font-size: 0.875rem;
+}
+
+@media (min-width: 40rem) {
+  .stat {
+    flex: 1 1 0;
+    padding: 0 1.5rem;
+  }
+
+  .stat + .stat {
+    border-left: 1px solid var(--edge);
+  }
 }
 
 /* ---------- final call to action ---------- */
