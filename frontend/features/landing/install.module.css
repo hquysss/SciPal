@@ -98,6 +98,20 @@
   outline-offset: 3px;
 }
 
+/* The same button as a <summary>: it opens the steps under it. */
+.howTo > summary {
+  list-style: none;
+  user-select: none;
+}
+
+.howTo > summary::-webkit-details-marker {
+  display: none;
+}
+
+.howTo[open] > summary {
+  margin-bottom: 0.75rem;
+}
+
 .installed {
   display: inline-flex;
   align-items: center;

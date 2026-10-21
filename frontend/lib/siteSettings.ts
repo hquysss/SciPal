@@ -4,20 +4,27 @@
 
 export const SITE_FEATURES = ['glossary', 'exam', 'pricing', 'classes', 'tutor'] as const;
 export type SiteFeature = (typeof SITE_FEATURES)[number];
-/** freeAccess: paid features that call no AI are free for signed-in accounts; the backend decides, the web only says so. */
-export type SiteSettings = { signupEnabled: boolean; maintenance: boolean; freeAccess: boolean; features: Record<SiteFeature, boolean> };
+/**
+ * freeAccess: paid features that call no AI are free for signed-in accounts; the backend decides, the web only says so.
+ * salesOpen: plans may be bought; salesNote: the admin's words under the "coming soon" button (empty = default).
+ */
+export type SiteSettings = { signupEnabled: boolean; maintenance: boolean; freeAccess: boolean; salesOpen: boolean; salesNote: { vi: string; en: string }; features: Record<SiteFeature, boolean> };
 
 export const ALL_ON: SiteSettings = {
   signupEnabled: true,
   maintenance: false,
   freeAccess: false,
+  salesOpen: false,
+  salesNote: { vi: '', en: '' },
   features: { glossary: true, exam: true, pricing: true, classes: true, tutor: true },
 };
 
-export function resolveSiteSettings(row: { signup_enabled?: unknown; features?: unknown; maintenance?: unknown; free_access?: unknown } | null | undefined): SiteSettings {
+export function resolveSiteSettings(row: { signup_enabled?: unknown; features?: unknown; maintenance?: unknown; free_access?: unknown; sales_open?: unknown; sales_note?: unknown } | null | undefined): SiteSettings {
   const stored = row?.features && typeof row.features === 'object' ? (row.features as Record<string, unknown>) : {};
   const features = Object.fromEntries(SITE_FEATURES.map((f) => [f, stored[f] !== false])) as Record<SiteFeature, boolean>;
-  return { signupEnabled: row?.signup_enabled !== false, maintenance: row?.maintenance === true, freeAccess: row?.free_access === true, features };
+  const note = row?.sales_note && typeof row.sales_note === 'object' ? (row.sales_note as Record<string, unknown>) : {};
+  const text = (v: unknown) => (typeof v === 'string' ? v.trim() : '');
+  return { signupEnabled: row?.signup_enabled !== false, maintenance: row?.maintenance === true, freeAccess: row?.free_access === true, salesOpen: row?.sales_open === true, salesNote: { vi: text(note.vi), en: text(note.en) }, features };
 }
 
 const under = (pathname: string, prefix: string) => pathname === prefix || pathname.startsWith(`${prefix}/`);

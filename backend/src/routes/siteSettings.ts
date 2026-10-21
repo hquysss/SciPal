@@ -5,7 +5,7 @@ import { SITE_FEATURES, resolveSiteSettings, type SiteSettings, type SiteSetting
 // Admin site switches (/admin/site): sign-up open or closed and features on or off. The web reads the
 // row directly (everyone may); routes that a switch guards ask `siteSettings` here.
 
-const COLUMNS = 'signup_enabled, features, maintenance, free_access, updated_at';
+const COLUMNS = 'signup_enabled, features, maintenance, free_access, sales_open, sales_note, updated_at';
 const CACHE_MS = 30_000;
 const msg = (error: string, error_en: string) => ({ error, error_en });
 const unavailable = msg('Dịch vụ lưu trữ chưa sẵn sàng.', 'Storage is not available.');
@@ -47,7 +47,24 @@ export function siteSettingsStore(load: () => Promise<SiteSettingsRow | null>) {
   };
 }
 
-type Patch = { signup_enabled: boolean; features: Record<string, boolean>; maintenance?: boolean; free_access?: boolean };
+const NOTE_MAX = 400;
+
+type Patch = {
+  signup_enabled: boolean;
+  features: Record<string, boolean>;
+  maintenance?: boolean;
+  free_access?: boolean;
+  sales_open?: boolean;
+  sales_note?: { en: string; vi: string };
+};
+
+function parseNote(value: unknown): { en: string; vi: string } | null {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
+  const { en, vi } = value as Record<string, unknown>;
+  if (typeof en !== 'string' || typeof vi !== 'string') return null;
+  const note = { en: en.trim(), vi: vi.trim() };
+  return note.en.length > NOTE_MAX || note.vi.length > NOTE_MAX ? null : note;
+}
 
 function parsePatch(body: unknown): Patch | null {
   const b = (body ?? {}) as Record<string, unknown>;
@@ -61,11 +78,16 @@ function parsePatch(body: unknown): Patch | null {
   }
   if (b.maintenance !== undefined && typeof b.maintenance !== 'boolean') return null;
   if (b.free_access !== undefined && typeof b.free_access !== 'boolean') return null;
+  if (b.sales_open !== undefined && typeof b.sales_open !== 'boolean') return null;
+  const note = b.sales_note === undefined ? undefined : parseNote(b.sales_note);
+  if (note === null) return null;
   return {
     signup_enabled: b.signup_enabled,
     features,
     ...(b.maintenance === undefined ? {} : { maintenance: b.maintenance }),
     ...(b.free_access === undefined ? {} : { free_access: b.free_access }),
+    ...(b.sales_open === undefined ? {} : { sales_open: b.sales_open }),
+    ...(note === undefined ? {} : { sales_note: note }),
   };
 }
 

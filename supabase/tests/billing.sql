@@ -1129,3 +1129,5 @@ $$;
 \ir user_terms_cases.sql
 
 \ir free_access_cases.sql
+
+\ir support_access_cases.sql

@@ -442,6 +442,17 @@
   color: var(--action);
 }
 
+/* Particle headline (desktop): the real <h1> stays in the page, only its ink is hidden. Its lines do
+   not wrap, so it keeps exactly the height of the two particle rows laid over it. */
+.heroTitleWrap {
+  position: relative;
+}
+
+.heroTitleWrap[data-particles] .heroTitle .clipLine > span {
+  color: transparent;
+  white-space: nowrap;
+}
+
 .heroSubline {
   max-width: 46ch;
   margin: 0;

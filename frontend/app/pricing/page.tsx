@@ -20,6 +20,7 @@ export default async function PricingRoute({ searchParams }: { searchParams: Pro
         initialAudience={audience.success ? audience.data : undefined}
         initialInterval={interval.success ? interval.data : undefined}
         checkoutOpen={catalog?.checkoutOpen ?? false}
+        salesNote={catalog?.salesNote}
         payosCheckoutOpen={catalog?.payosCheckoutOpen ?? false}
         momoAutoRenewOpen={catalog?.momoAutoRenewOpen ?? false}
       />

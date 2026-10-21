@@ -8,6 +8,8 @@ describe('site switches', () => {
       signupEnabled: false,
       maintenance: false,
       freeAccess: false,
+      salesOpen: false,
+      salesNote: { vi: '', en: '' },
       features: { ...ALL_ON.features, exam: false },
     });
   });
@@ -44,5 +46,13 @@ describe('site switches', () => {
     expect(featureVisible(off, 'exam', 'admin')).toBe(true);
     expect(featureVisible(off, 'glossary', 'student')).toBe(true);
     expect(featureVisible(off, null, 'student')).toBe(true);
+  });
+});
+
+describe('sales switch and note', () => {
+  it('is closed unless true, and trims the note per language', () => {
+    expect(resolveSiteSettings(null).salesOpen).toBe(false);
+    expect(resolveSiteSettings({ sales_open: 'true' }).salesOpen).toBe(false);
+    expect(resolveSiteSettings({ sales_open: true, sales_note: { vi: ' Sắp mở ', en: 7 } })).toMatchObject({ salesOpen: true, salesNote: { vi: 'Sắp mở', en: '' } });
   });
 });

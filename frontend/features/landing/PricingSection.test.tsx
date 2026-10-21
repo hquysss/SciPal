@@ -102,3 +102,13 @@ it('sends Upgrade now to payment methods with the selected audience and period',
  const html = renderToStaticMarkup(<PricingSection catalog={catalog(true)} initialAudience="teacher" initialInterval="year" />);
  expect(html).toContain('href="/profile/payment-methods?plan=teacher_pro&amp;interval=year"');
 });
+
+describe('PricingSection sales note', () => {
+  it('shows the admin note under Sắp mở bán, or the default wording when it is empty', () => {
+    const withNote = renderToStaticMarkup(<PricingSection catalog={{ ...catalog(false), salesNote: { vi: 'Chờ giấy phép kinh doanh.', en: 'Awaiting licence.' } }} />);
+    expect(withNote).toContain('Chờ giấy phép kinh doanh.');
+    expect(withNote).not.toContain('Hiện chưa thể thanh toán.');
+    expect(renderToStaticMarkup(<PricingSection catalog={catalog(false)} />)).toContain('Hiện chưa thể thanh toán.');
+    expect(renderToStaticMarkup(<PricingSection catalog={{ ...catalog(true), salesNote: { vi: 'Không hiện', en: '' } }} />)).not.toContain('Không hiện');
+  });
+});

@@ -10,12 +10,13 @@ import { INTERVALS, INTERVAL_LABEL, INTERVAL_MONTHS, INTERVAL_NOUN, INTERVAL_SPA
 import { PricingLoadError } from './PricingLoadError';
 import shared from '@/features/landing/pricing.module.css';
 import { tilt, untilt } from '@/features/landing/tilt';
-import { formatVnd, limitText, type PublicPlan } from './billingApi';
+import { formatVnd, limitText, soonNote, type PublicPlan } from './billingApi';
 import s from './pricing-page.module.css';
 
 type Props = {
   plans: PublicPlan[] | null;
   checkoutOpen: boolean;
+  salesNote?: { vi: string; en: string };
   payosCheckoutOpen?: boolean;
   momoAutoRenewOpen?: boolean;
   initialAudience?: BillingAudience;
@@ -45,7 +46,7 @@ const FAQ: Array<{ q: Bilingual; a: Bilingual }> = [
   },
 ];
 
-export function PricingPage({ plans, checkoutOpen, payosCheckoutOpen = checkoutOpen, momoAutoRenewOpen = false, initialAudience = 'student', initialInterval = 'month', viewerRole: givenRole }: Props) {
+export function PricingPage({ plans, checkoutOpen, salesNote, payosCheckoutOpen = checkoutOpen, momoAutoRenewOpen = false, initialAudience = 'student', initialInterval = 'month', viewerRole: givenRole }: Props) {
   const { t } = useLanguage();
   // undefined while the session is being read: the buy button waits.
   const [viewerRole, setViewerRole] = useState<ViewerRole | null | undefined>(givenRole);
@@ -86,7 +87,7 @@ export function PricingPage({ plans, checkoutOpen, payosCheckoutOpen = checkoutO
           <button type="button" disabled className={s.buy}>
             {t({ en: 'Coming soon', vi: 'Sắp mở bán' })}
           </button>
-          <p className={s.small}>{t({ en: 'Checkout is not available right now.', vi: 'Hiện chưa thể thanh toán.' })}</p>
+          <p className={s.small}>{t(soonNote(salesNote))}</p>
         </>
       );
     }
@@ -227,6 +228,15 @@ export function PricingPage({ plans, checkoutOpen, payosCheckoutOpen = checkoutO
         {payosCheckoutOpen && <li><QrCode aria-hidden="true" size={18} />{t({ en: 'One-time VietQR via payOS', vi: 'Thanh toán một lần bằng VietQR qua payOS' })}</li>}
         {momoAutoRenewOpen && <li><RefreshCcw aria-hidden="true" size={18} />{t({ en: 'Optional MoMo auto-renewal', vi: 'Có thể chọn tự động gia hạn qua MoMo' })}</li>}
       </ul>
+
+      <section className={s.support} aria-labelledby="pricing-support">
+        <h2 id="pricing-support">{t({ en: 'Learning from the highlands or facing hardship?', vi: 'Ở vùng cao hoặc hoàn cảnh khó khăn?' })}</h2>
+        <p>{t({ en: 'Students and teachers can apply for a free plan, or enter a code SciPal sent them.', vi: 'Học sinh và giáo viên có thể xin gói miễn phí, hoặc nhập mã SciPal đã gửi.' })}</p>
+        <Link href="/support">
+          {t({ en: 'Apply or enter a code', vi: 'Xin hỗ trợ hoặc nhập mã' })}
+          <ArrowRight aria-hidden="true" size={16} />
+        </Link>
+      </section>
 
       <section className={s.faq} aria-labelledby="pricing-faq">
         <h2 id="pricing-faq">{t({ en: 'Before you buy', vi: 'Trước khi mua' })}</h2>

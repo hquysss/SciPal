@@ -6,7 +6,7 @@ import { ArrowRight, Check, ShieldCheck, Sparkles, type LucideIcon } from 'lucid
 import { useLanguage } from '@scipal/hooks';
 import type { BillingAudience, BillingInterval } from '@scipal/types';
 import { INTERVALS, INTERVAL_LABEL, INTERVAL_MONTHS, INTERVAL_NOUN, INTERVAL_SPAN } from '@/features/billing/intervals';
-import { formatVnd, limitText, type Catalog } from '@/features/billing/billingApi';
+import { formatVnd, limitText, soonNote, type Catalog } from '@/features/billing/billingApi';
 import { useCountUp, useInView } from './countUp';
 import { tilt, untilt } from './tilt';
 import styles from './pricing.module.css';
@@ -183,9 +183,12 @@ export function PricingSection({
                     <ArrowRight aria-hidden="true" size={18} />
                   </Link>
                 ) : (
-                  <span className={`${styles.paidAction} ${styles.soon}`} aria-disabled="true">
-                    {t({ en: 'Coming soon', vi: 'Sắp mở bán' })}
-                  </span>
+                  <>
+                    <span className={`${styles.paidAction} ${styles.soon}`} aria-disabled="true">
+                      {t({ en: 'Coming soon', vi: 'Sắp mở bán' })}
+                    </span>
+                    <p className={styles.note}>{t(soonNote(catalog.salesNote))}</p>
+                  </>
                 )}
               </div>
             </article>

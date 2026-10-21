@@ -39,6 +39,23 @@ function Steps({ steps }: { steps: Array<{ icon: typeof Share; text: Bilingual }
   );
 }
 
+/**
+ * The install button for browsers that cannot open an install prompt (iPhone, or no prompt yet): it is
+ * always there, and tapping it opens the steps. A native <details>, so the steps stay in the page.
+ */
+function HowTo({ steps }: { steps: Array<{ icon: typeof Share; text: Bilingual }> }) {
+  const { t } = useLanguage();
+  return (
+    <details className={styles.howTo}>
+      <summary className={styles.install}>
+        <Download aria-hidden="true" size={20} />
+        {t({ vi: 'Tải SciPal về máy', en: 'Install SciPal' })}
+      </summary>
+      <Steps steps={steps} />
+    </details>
+  );
+}
+
 /** The Microsoft Store listing, for Windows once SciPal is published there. */
 function StoreLink({ href }: { href: string }) {
   const { t } = useLanguage();
@@ -78,7 +95,7 @@ export function InstallActionView({ mode, onInstall, storeUrl = null, desktop = 
   }
   if (mode === 'ios') {
     return (
-      <Steps
+      <HowTo
         steps={[
           { icon: Share, text: { vi: 'Trong Safari, bấm nút Chia sẻ', en: 'In Safari, tap the Share button' } },
           { icon: SquarePlus, text: { vi: 'Chọn “Thêm vào MH chính”', en: 'Choose “Add to Home Screen”' } },
@@ -91,7 +108,7 @@ export function InstallActionView({ mode, onInstall, storeUrl = null, desktop = 
     return (
       <div className={styles.actions}>
         {store}
-        <Steps
+        <HowTo
           steps={[
             { icon: Download, text: { vi: 'Bấm biểu tượng cài đặt ở thanh địa chỉ, hoặc menu ⋯ → Ứng dụng → Cài đặt SciPal', en: 'Click the install icon in the address bar, or menu ⋯ → Apps → Install SciPal' } },
             { icon: Monitor, text: { vi: 'Mở SciPal từ menu Start hoặc thanh tác vụ', en: 'Open SciPal from the Start menu or taskbar' } },
@@ -103,7 +120,7 @@ export function InstallActionView({ mode, onInstall, storeUrl = null, desktop = 
   return (
     <div className={styles.actions}>
       {store}
-      <Steps
+      <HowTo
       steps={[
         { icon: Menu, text: { vi: 'Mở menu của trình duyệt (⋮ hoặc ⋯)', en: 'Open the browser menu (⋮ or ⋯)' } },
         { icon: Download, text: { vi: 'Chọn “Cài đặt ứng dụng” hoặc “Thêm vào màn hình chính”', en: 'Choose “Install app” or “Add to Home Screen”' } },

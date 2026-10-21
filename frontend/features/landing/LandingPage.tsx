@@ -12,6 +12,7 @@ import { WebsiteFeedbackForm } from '@/features/website-feedback/WebsiteFeedback
 import { SubjectMarquee } from '@/features/subjects/SubjectMarquee';
 import ScrollVelocity from '@/components/ScrollVelocity';
 import ShinyText from '@/components/ShinyText';
+import { ParticleLines, useParticleTitle } from './hero/HeroParticleTitle';
 import { applyShellLevel, getShell } from '@/lib/theme/shellTheme';
 import type { EducationLevel } from './educationLevel';
 import type { InformaticsAvailability, LandingCatalog } from './getLandingData';
@@ -374,6 +375,7 @@ export function LandingPage({ level, catalog, onChangeLevel, pricing = null, sho
   useRevealOnScroll(pageRef);
   useClipReveal(pageRef);
   useScrollProgress(pageRef);
+  const particleTitle = useParticleTitle();
 
   const publishedLessons = catalog?.kind === 'ready' ? catalog.lessons ?? 0 : 0;
   const publishedQuestions = catalog?.kind === 'ready' ? catalog.questions ?? 0 : 0;
@@ -442,9 +444,12 @@ export function LandingPage({ level, catalog, onChangeLevel, pricing = null, sho
               <div className={styles.heroRow}>
                 <div className={styles.heroCard}>
                   <div className={styles.heroCopy}>
-                    <h1 id="landing-title" tabIndex={-1} className={styles.heroTitle}>
-                      <ClipLines lines={[t(titleFirst), t(titleSecond)]} />
-                    </h1>
+                    <div className={styles.heroTitleWrap} data-particles={particleTitle ? '' : undefined}>
+                      <h1 id="landing-title" tabIndex={-1} className={styles.heroTitle}>
+                        <ClipLines lines={[t(titleFirst), t(titleSecond)]} />
+                      </h1>
+                      {particleTitle && <ParticleLines lines={[t(titleFirst), t(titleSecond)]} />}
+                    </div>
                     <p className={styles.heroSubline}>
                       {t({
                         en: 'Learn in Vietnamese and English, so English becomes your second language.',

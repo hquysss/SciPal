@@ -65,12 +65,15 @@ export const billingRoutes: FastifyPluginAsync = async (app) => {
         };
       });
       reply.header('Cache-Control', 'public, max-age=300');
-      const payosCheckoutOpen = payosFromEnv() !== null && !checkoutDisabled();
-      const momoAutoRenewOpen = momoRenewalsAvailable() && !checkoutDisabled();
-      const vnpayCheckoutOpen = vnpayFromEnv() !== null && !checkoutDisabled();
+      // The admin's sales switch closes every provider at once; without the store (tests) sales are open.
+      const sales = app.siteSettings ? await app.siteSettings.get() : null;
+      const closed = checkoutDisabled() || sales?.salesOpen === false;
+      const payosCheckoutOpen = payosFromEnv() !== null && !closed;
+      const momoAutoRenewOpen = momoRenewalsAvailable() && !closed;
+      const vnpayCheckoutOpen = vnpayFromEnv() !== null && !closed;
       const apiUrl = process.env.VNPAY_PUBLIC_API_URL;
       const vnpayAutoRenewOpen = vnpayCheckoutOpen && vnpayRecurringFromEnv() !== null && Boolean(apiUrl && URL.canParse(apiUrl) && new URL(apiUrl).protocol === 'https:');
-      return { plans: catalog, checkoutOpen: payosCheckoutOpen || momoAutoRenewOpen || vnpayCheckoutOpen, payosCheckoutOpen, momoAutoRenewOpen, vnpayCheckoutOpen, vnpayAutoRenewOpen, vnpaySandbox: vnpayCheckoutOpen && process.env.VNPAY_ENV === 'sandbox' };
+      return { plans: catalog, salesNote: sales?.salesNote ?? { en: '', vi: '' }, checkoutOpen: payosCheckoutOpen || momoAutoRenewOpen || vnpayCheckoutOpen, payosCheckoutOpen, momoAutoRenewOpen, vnpayCheckoutOpen, vnpayAutoRenewOpen, vnpaySandbox: vnpayCheckoutOpen && process.env.VNPAY_ENV === 'sandbox' };
     } catch (error) {
       request.log.error({ err: error }, 'Billing catalog could not be read');
       return reply.code(503).send(UNAVAILABLE);

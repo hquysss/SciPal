@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import {
-  Award, BarChart3, BookA, Bot, Gauge, Highlighter, ClipboardCheck, Megaphone, MessagesSquare, FlaskConical, FolderTree, Library, NotebookPen, ReceiptText, Settings2, ToggleRight, Users, type LucideIcon } from 'lucide-react';
+  Award, BarChart3, BookA, Bot, Gauge, HeartHandshake, Highlighter, ClipboardCheck, Megaphone, MessagesSquare, FlaskConical, FolderTree, Library, NotebookPen, ReceiptText, Settings2, ToggleRight, Users, type LucideIcon } from 'lucide-react';
 import { useLanguage } from '@scipal/hooks';
 import { countOpenSimulationRequests } from '@/features/authoring/simulationRequests/api';
 
@@ -50,6 +50,7 @@ export const ADMIN_GROUPS: Group[] = [
       { href: '/admin/announcements', label: { vi: 'Thông báo', en: 'Announcements' }, hint: { vi: 'Gửi thông báo trong app và email tới người nhận tin', en: 'Send in-app notices and e-mail to subscribers' }, Icon: Megaphone },
       { href: '/admin/chat', label: { vi: 'Kiểm duyệt chat', en: 'Chat moderation' }, hint: { vi: 'Xem báo cáo, xoá tin, cấm chat', en: 'Review reports, delete messages, ban from chat' }, Icon: MessagesSquare },
       { href: '/admin/feedback', label: { vi: 'Đánh giá website', en: 'Website reviews' }, hint: { vi: 'Sao trung bình, góp ý và tài khoản gửi', en: 'Average stars, comments and sending accounts' }, Icon: ClipboardCheck },
+      { href: '/admin/support', label: { vi: 'Hỗ trợ vùng cao', en: 'Remote learner support' }, hint: { vi: 'Duyệt đơn xin hỗ trợ và tạo mã tặng gói', en: 'Review applications and create gift codes' }, Icon: HeartHandshake },
       { href: '/admin/site', label: { vi: 'Bật/tắt tính năng', en: 'Site switches' }, hint: { vi: 'Đăng ký, từ điển, thi thử, bảng giá…', en: 'Sign-up, glossary, exams, pricing…' }, Icon: ToggleRight },
     ],
   },
