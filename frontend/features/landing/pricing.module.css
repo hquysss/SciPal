@@ -601,6 +601,14 @@
   filter: drop-shadow(0 1.1rem 1rem color-mix(in srgb, var(--ink) 16%, transparent));
 }
 
+/* The paid ticket leans with the pointer over the blurred aura. A filter on a moving, tilting layer is re-run
+   every frame and janks; a box-shadow is not, and the notches sit inside the box so it still reads as a ticket. */
+:is(.pricing, .pricingPage) .paid {
+  border-radius: 1.25rem;
+  box-shadow: 0 1.1rem 1rem color-mix(in srgb, var(--ink) 16%, transparent);
+  filter: none;
+}
+
 /* The notches would show the spotlight and sweep as rectangles, and the ring would outline a plain box. */
 :is(.pricing, .pricingPage) .paid::before,
 :is(.pricing, .pricingPage) .paid::after {
