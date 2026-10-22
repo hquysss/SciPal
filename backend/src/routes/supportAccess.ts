@@ -167,10 +167,21 @@ export const supportAccessRoutes: FastifyPluginAsync = async (app) => {
     const typed = parsed.data.code ? normalizeCode(parsed.data.code) : '';
     if (parsed.data.code && !CODE_SHAPE.test(typed)) return reply.code(400).send(BAD_SHAPE);
     const code = typed || newCode();
-    const { data, error } = await app.supabase!.from('billing_access_codes').insert({
-      code_hash: hashCode(code), code_hint: code.slice(-4), plan_code: planCode, months, max_uses: maxUses,
+    const hash = hashCode(code);
+    const insert = () => app.supabase!.from('billing_access_codes').insert({
+      code_hash: hash, code_hint: code.slice(-4), plan_code: planCode, months, max_uses: maxUses,
       expires_at: expiresAt ?? null, note: note || null, created_by: actor(request).id,
     }).select('id').single();
+    let { data, error } = await insert();
+    if (error?.code === '23505' && typed) {
+      // A revoked code frees its text: rename the old row so the same code can be made again.
+      const old = await app.supabase!.from('billing_access_codes').select('id').eq('code_hash', hash).not('revoked_at', 'is', null).maybeSingle();
+      const oldId = (old.data as Row | null)?.id;
+      if (oldId) {
+        const freed = await app.supabase!.from('billing_access_codes').update({ code_hash: hashCode(`revoked:${oldId}`) }).eq('id', oldId);
+        if (!freed.error) ({ data, error } = await insert());
+      }
+    }
     if (error?.code === '23505') return reply.code(409).send(CODE_TAKEN);
     if (error) return failed(request, reply, error, 'Code could not be created');
     // The only time the code is shown: only its hash is kept.
