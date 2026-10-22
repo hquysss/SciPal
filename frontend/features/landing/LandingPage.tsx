@@ -19,6 +19,7 @@ import type { InformaticsAvailability, LandingCatalog } from './getLandingData';
 import { HeroStage } from './hero/HeroStage';
 import { HowItWorks } from './HowItWorks';
 import { TutorSection } from './TutorSection';
+import { SelectionSection } from './SelectionSection';
 import { PricingSection } from './PricingSection';
 import { FeaturesSection } from './FeaturesSection';
 import { CommunitySection } from './CommunitySection';
@@ -553,6 +554,7 @@ export function LandingPage({ level, catalog, onChangeLevel, pricing = null, sho
           <div className={styles.sheet}>
             <HowItWorks level={level} />
             <TutorSection href="/tutor" level={level} />
+            <SelectionSection level={level} />
             <FeaturesSection />
             <CommunitySection />
             <InstallAppSection />
