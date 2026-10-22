@@ -148,7 +148,7 @@ function Codes() {
   return (
     <section className="flex flex-col gap-5">
       <form
-        className="flex flex-col gap-3 rounded-2xl border border-line bg-surface p-4"
+      className="flex flex-col gap-3 rounded-2xl border border-line bg-surface p-4"
         onSubmit={(e) => {
           e.preventDefault();
           if (!busy) void create();
@@ -177,9 +177,9 @@ function Codes() {
         <Field
           id="code-text"
           label={t({ vi: 'Mã tự đặt (tùy chọn)', en: 'Your own code (optional)' })}
-          description={t({ vi: '8–24 chữ cái hoặc số. Để trống thì hệ thống tự tạo một mã ngẫu nhiên.', en: '8–24 letters or digits. Leave empty to get a random code.' })}
+          description={t({ vi: '8–32 ký tự (chữ, số, gạch ngang). Người nhận phải nhập y hệt, kể cả hoa/thường. Để trống thì hệ thống tự tạo một mã ngẫu nhiên.', en: '8–32 characters (letters, digits, dashes). The recipient must type it exactly, case included. Leave empty to get a random code.' })}
         >
-          {(control) => <Input {...control} value={form.code} onChange={(e) => setForm({ ...form, code: e.target.value })} maxLength={40} autoComplete="off" className="font-mono uppercase" />}
+          {(control) => <Input {...control} value={form.code} onChange={(e) => setForm({ ...form, code: e.target.value })} maxLength={40} autoComplete="off"  className="font-mono" />}
         </Field>
         <Field
           id="code-note"

@@ -42,11 +42,11 @@ const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 // No 0/O, 1/I/L: a code read out or copied by hand stays unambiguous.
 const ALPHABET = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
 const CODE_LENGTH = 12;
-const newCode = () => Array.from({ length: CODE_LENGTH }, () => ALPHABET[randomInt(ALPHABET.length)]).join('');
-/** Spaces, dashes and case do not matter when a code is typed. */
-const normalizeCode = (raw: string) => raw.replace(/[\s-]/g, '').toUpperCase();
-const CODE_SHAPE = /^[A-Z0-9]{8,24}$/;
-const BAD_SHAPE = err('INVALID_ACCESS_CODE_SHAPE', 'Mã tự đặt gồm 8–24 chữ cái hoặc số (dấu cách và gạch ngang được bỏ qua).', 'A custom code is 8–24 letters or digits (spaces and dashes are ignored).');
+const newCode = () => Array.from({ length: CODE_LENGTH }, () => ALPHABET[randomInt(ALPHABET.length)]).join('').match(/.{4}/g)!.join('-');
+/** A code is matched exactly as the admin made it: same letters, same case, same dashes. Only stray outer spaces go. */
+const normalizeCode = (raw: string) => raw.trim();
+const CODE_SHAPE = /^[A-Za-z0-9-]{8,32}$/;
+const BAD_SHAPE = err('INVALID_ACCESS_CODE_SHAPE', 'Mã tự đặt gồm 8–32 ký tự: chữ cái, số hoặc gạch ngang.', 'A custom code is 8–32 characters: letters, digits or dashes.');
 const CODE_TAKEN = err('ACCESS_CODE_TAKEN', 'Mã này đã có người dùng. Chọn mã khác.', 'That code already exists. Choose another.');
 const hashCode = (normalized: string) => createHash('sha256').update(normalized).digest('hex');
 
@@ -174,7 +174,7 @@ export const supportAccessRoutes: FastifyPluginAsync = async (app) => {
     if (error?.code === '23505') return reply.code(409).send(CODE_TAKEN);
     if (error) return failed(request, reply, error, 'Code could not be created');
     // The only time the code is shown: only its hash is kept.
-    return reply.code(201).send({ id: (data as Row).id, code, display: code.match(/.{4}/g)!.join('-') });
+    return reply.code(201).send({ id: (data as Row).id, code, display: code });
   });
 
   app.get('/api/admin/billing/codes', { preHandler: [requireAdmin] }, async (request, reply) => {

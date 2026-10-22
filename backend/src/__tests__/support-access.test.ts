@@ -75,12 +75,12 @@ describe('GET /api/support/applications/mine', () => {
 });
 
 describe('POST /api/billing/codes/redeem', () => {
-  it('ignores spaces, dashes and case, and sends only the hash', async () => {
+  it('matches the code exactly as typed (only outer spaces go) and sends only the hash', async () => {
     const app = await build(student, { 'rpc:billing_redeem_code': ok([{ result_status: 'ok', result_plan: 'student_plus', result_through: '2027-01-22T01:00:00Z' }]) });
-    const res = await post(app, '/api/billing/codes/redeem', { code: ' abcd-efgh-jkmn ' });
+    const res = await post(app, '/api/billing/codes/redeem', { code: ' ABCD-EFGH-JKMN ' });
     expect(res.json()).toEqual({ planCode: 'student_plus', paidThrough: '2027-01-22T01:00:00.000Z' });
-    expect(rpcCalls[0]).toEqual(['billing_redeem_code', expect.objectContaining({ p_user_id: student.id, p_code_hash: sha('ABCDEFGHJKMN') })]);
-    expect(JSON.stringify(rpcCalls)).not.toContain('ABCDEFGHJKMN');
+    expect(rpcCalls[0]).toEqual(['billing_redeem_code', expect.objectContaining({ p_user_id: student.id, p_code_hash: sha('ABCD-EFGH-JKMN') })]);
+    expect(JSON.stringify(rpcCalls)).not.toContain('ABCD-EFGH-JKMN');
     await app.close();
   });
 
@@ -167,26 +167,26 @@ describe('admin routes', () => {
     const res = await post(app, '/api/admin/billing/codes', { planCode: 'student_plus', months: 3, maxUses: 2, note: 'ho so 12' });
     expect(res.statusCode).toBe(201);
     const { code, display } = res.json();
-    expect(code).toMatch(/^[A-HJKMNP-Z2-9]{12}$/);
-    expect(display).toBe(code.match(/.{4}/g).join('-'));
+    expect(code).toMatch(/^([A-HJKMNP-Z2-9]{4}-){2}[A-HJKMNP-Z2-9]{4}$/);
+    expect(display).toBe(code);
     expect(insert.inserted[0]).toMatchObject({ code_hash: sha(code), code_hint: code.slice(-4), plan_code: 'student_plus', months: 3, max_uses: 2, note: 'ho so 12', created_by: admin.id });
     expect(JSON.stringify(insert.inserted)).not.toContain(code);
     await app.close();
   });
 
-  it('keeps the code the admin typed, ignoring case, spaces and dashes', async () => {
+  it('keeps the code the admin typed, letter for letter', async () => {
     const insert = ok({ id: 'code-2' });
     const app = await build(admin, { billing_access_codes: insert });
-    const res = await post(app, '/api/admin/billing/codes', { planCode: 'teacher_pro', code: 'sa pa-2026' });
+    const res = await post(app, '/api/admin/billing/codes', { planCode: 'teacher_pro', code: 'Sapa-2026' });
     expect(res.statusCode).toBe(201);
-    expect(res.json().code).toBe('SAPA2026');
-    expect(insert.inserted[0]).toMatchObject({ code_hash: sha('SAPA2026'), code_hint: '2026' });
+    expect(res.json().code).toBe('Sapa-2026');
+    expect(insert.inserted[0]).toMatchObject({ code_hash: sha('Sapa-2026'), code_hint: '2026' });
     await app.close();
   });
 
   it('refuses a typed code that is too short or has odd characters', async () => {
     const app = await build(admin);
-    for (const code of ['abc', 'sapa_2026', 'x'.repeat(30)]) {
+    for (const code of ['abc', 'sapa_2026', 'sa pa 2026', 'x'.repeat(40)]) {
       expect((await post(app, '/api/admin/billing/codes', { planCode: 'student_plus', code })).statusCode).toBe(400);
     }
     await app.close();
