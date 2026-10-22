@@ -56,7 +56,7 @@ function RedeemBox({ onDone }: { onDone: () => void }) {
       <p className="text-sm text-ink-muted">{t({ vi: 'Nếu SciPal đã gửi mã cho bạn, nhập vào đây để dùng gói miễn phí.', en: 'If SciPal sent you a code, enter it here to use the plan for free.' })}</p>
       <Field id="support-code" label={t({ vi: 'Mã', en: 'Code' })}>
         {(control) => (
-          <Input {...control} value={code} onChange={(e) => setCode(e.target.value)} autoComplete="off" autoCapitalize="characters" spellCheck={false} maxLength={40} placeholder="ABCD-EFGH-JKMN" />
+          <Input {...control} value={code} onChange={(e) => setCode(e.target.value)} autoComplete="off" spellCheck={false} maxLength={40} placeholder="ABCD-EFGH-JKMN" />
         )}
       </Field>
       {message && <Alert tone={message.tone}>{t(message.text)}</Alert>}

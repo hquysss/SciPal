@@ -109,7 +109,7 @@ function Codes() {
   const [codes, setCodes] = useState<AdminCode[] | null>(null);
   const [message, setMessage] = useState<Message | null>(null);
   const [fresh, setFresh] = useState<{ display: string } | null>(null);
-  const [form, setForm] = useState({ planCode: 'student_plus' as SupportPlan, months: 3, maxUses: 1, expiresAt: '', note: '' });
+  const [form, setForm] = useState({ planCode: 'student_plus' as SupportPlan, months: 3, maxUses: 1, expiresAt: '', note: '', code: '' });
   const [busy, setBusy] = useState(false);
 
   const load = useCallback(async () => {
@@ -126,6 +126,7 @@ function Codes() {
     setMessage(null);
     const res = await createCode({
       planCode: form.planCode, months: form.months, maxUses: form.maxUses,
+      ...(form.code.trim() ? { code: form.code.trim() } : {}),
       ...(form.expiresAt ? { expiresAt: new Date(`${form.expiresAt}T23:59:59+07:00`).toISOString() } : {}),
       ...(form.note.trim() ? { note: form.note.trim() } : {}),
     });
@@ -147,7 +148,7 @@ function Codes() {
   return (
     <section className="flex flex-col gap-5">
       <form
-        className="flex flex-col gap-3 rounded-2xl border border-line bg-surface p-4"
+      className="flex flex-col gap-3 rounded-2xl border border-line bg-surface p-4"
         onSubmit={(e) => {
           e.preventDefault();
           if (!busy) void create();
@@ -173,6 +174,13 @@ function Codes() {
             {(control) => <Input {...control} type="date" value={form.expiresAt} onChange={(e) => setForm({ ...form, expiresAt: e.target.value })} />}
           </Field>
         </div>
+        <Field
+          id="code-text"
+          label={t({ vi: 'Mã tự đặt (tùy chọn)', en: 'Your own code (optional)' })}
+          description={t({ vi: '8–32 ký tự (chữ, số, gạch ngang). Người nhận phải nhập y hệt, kể cả hoa/thường. Để trống thì hệ thống tự tạo một mã ngẫu nhiên.', en: '8–32 characters (letters, digits, dashes). The recipient must type it exactly, case included. Leave empty to get a random code.' })}
+        >
+          {(control) => <Input {...control} value={form.code} onChange={(e) => setForm({ ...form, code: e.target.value })} maxLength={40} autoComplete="off"  className="font-mono" />}
+        </Field>
         <Field
           id="code-note"
           label={t({ vi: 'Ghi chú nội bộ (tùy chọn)', en: 'Internal note (optional)' })}

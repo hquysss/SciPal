@@ -29,6 +29,8 @@ const Decision = z.object({
 }).strict().refine((d) => (d.approve ? d.months !== undefined : Boolean(d.note)));
 const NewCode = z.object({
   planCode: z.enum(['student_plus', 'teacher_pro']),
+  /** The admin's own code. Left out, one is generated. Same shape the redeem route accepts. */
+  code: z.string().max(40).optional(),
   months: z.number().int().min(1).max(12).default(3),
   maxUses: z.number().int().min(1).max(1000).default(1),
   expiresAt: z.string().datetime().optional(),
@@ -40,9 +42,12 @@ const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 // No 0/O, 1/I/L: a code read out or copied by hand stays unambiguous.
 const ALPHABET = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
 const CODE_LENGTH = 12;
-const newCode = () => Array.from({ length: CODE_LENGTH }, () => ALPHABET[randomInt(ALPHABET.length)]).join('');
-/** Spaces, dashes and case do not matter when a code is typed. */
-const normalizeCode = (raw: string) => raw.replace(/[\s-]/g, '').toUpperCase();
+const newCode = () => Array.from({ length: CODE_LENGTH }, () => ALPHABET[randomInt(ALPHABET.length)]).join('').match(/.{4}/g)!.join('-');
+/** A code is matched exactly as the admin made it: same letters, same case, same dashes. Only stray outer spaces go. */
+const normalizeCode = (raw: string) => raw.trim();
+const CODE_SHAPE = /^[A-Za-z0-9-]{8,32}$/;
+const BAD_SHAPE = err('INVALID_ACCESS_CODE_SHAPE', 'Mã tự đặt gồm 8–32 ký tự: chữ cái, số hoặc gạch ngang.', 'A custom code is 8–32 characters: letters, digits or dashes.');
+const CODE_TAKEN = err('ACCESS_CODE_TAKEN', 'Mã này đã có người dùng. Chọn mã khác.', 'That code already exists. Choose another.');
 const hashCode = (normalized: string) => createHash('sha256').update(normalized).digest('hex');
 
 type Row = Record<string, unknown>;
@@ -100,7 +105,7 @@ export const supportAccessRoutes: FastifyPluginAsync = async (app) => {
     if (!parsed.success) return reply.code(400).send(INVALID);
     const code = normalizeCode(parsed.data.code);
     // Not even a shape of a code: same answer as a wrong one, without counting as a guess.
-    if (!/^[A-Z0-9]{8,24}$/.test(code)) return reply.code(400).send(BAD_CODE);
+    if (!CODE_SHAPE.test(code)) return reply.code(400).send(BAD_CODE);
     const { data, error } = await app.supabase!.rpc('billing_redeem_code', {
       p_user_id: actor(request).id, p_code_hash: hashCode(code), p_now: new Date().toISOString(),
     });
@@ -159,14 +164,17 @@ export const supportAccessRoutes: FastifyPluginAsync = async (app) => {
     const parsed = NewCode.safeParse(request.body);
     if (!parsed.success || (parsed.data.expiresAt && new Date(parsed.data.expiresAt) <= new Date())) return reply.code(400).send(INVALID);
     const { planCode, months, maxUses, expiresAt, note } = parsed.data;
-    const code = newCode();
+    const typed = parsed.data.code ? normalizeCode(parsed.data.code) : '';
+    if (parsed.data.code && !CODE_SHAPE.test(typed)) return reply.code(400).send(BAD_SHAPE);
+    const code = typed || newCode();
     const { data, error } = await app.supabase!.from('billing_access_codes').insert({
       code_hash: hashCode(code), code_hint: code.slice(-4), plan_code: planCode, months, max_uses: maxUses,
       expires_at: expiresAt ?? null, note: note || null, created_by: actor(request).id,
     }).select('id').single();
+    if (error?.code === '23505') return reply.code(409).send(CODE_TAKEN);
     if (error) return failed(request, reply, error, 'Code could not be created');
     // The only time the code is shown: only its hash is kept.
-    return reply.code(201).send({ id: (data as Row).id, code, display: code.match(/.{4}/g)!.join('-') });
+    return reply.code(201).send({ id: (data as Row).id, code, display: code });
   });
 
   app.get('/api/admin/billing/codes', { preHandler: [requireAdmin] }, async (request, reply) => {
