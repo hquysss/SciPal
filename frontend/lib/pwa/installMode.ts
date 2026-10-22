@@ -38,6 +38,8 @@ export function useInstall(): { mode: InstallMode; windows: boolean; install: ()
     setStandalone(window.matchMedia('(display-mode: standalone)').matches || nav.standalone === true);
     setIos(isIos(navigator.userAgent, navigator.maxTouchPoints ?? 0));
     setWindows(isWindows(navigator.userAgent));
+    const early = (window as Window & { __scipalInstall?: PromptEvent }).__scipalInstall;
+    if (early) setPrompt(early);
     const onPrompt = (event: Event) => {
       // Keep the browser's own mini bar away; the button on the page opens the prompt.
       event.preventDefault();
@@ -61,6 +63,7 @@ export function useInstall(): { mode: InstallMode; windows: boolean; install: ()
     const { outcome } = await prompt.userChoice;
     // A prompt opens once; after a "not now" the browser offers a new one later.
     setPrompt(null);
+    delete (window as Window & { __scipalInstall?: PromptEvent }).__scipalInstall;
     if (outcome === 'accepted') setStandalone(true);
   }, [prompt]);
 
