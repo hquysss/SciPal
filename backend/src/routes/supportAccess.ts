@@ -29,6 +29,8 @@ const Decision = z.object({
 }).strict().refine((d) => (d.approve ? d.months !== undefined : Boolean(d.note)));
 const NewCode = z.object({
   planCode: z.enum(['student_plus', 'teacher_pro']),
+  /** The admin's own code. Left out, one is generated. Same shape the redeem route accepts. */
+  code: z.string().max(40).optional(),
   months: z.number().int().min(1).max(12).default(3),
   maxUses: z.number().int().min(1).max(1000).default(1),
   expiresAt: z.string().datetime().optional(),
@@ -43,6 +45,9 @@ const CODE_LENGTH = 12;
 const newCode = () => Array.from({ length: CODE_LENGTH }, () => ALPHABET[randomInt(ALPHABET.length)]).join('');
 /** Spaces, dashes and case do not matter when a code is typed. */
 const normalizeCode = (raw: string) => raw.replace(/[\s-]/g, '').toUpperCase();
+const CODE_SHAPE = /^[A-Z0-9]{8,24}$/;
+const BAD_SHAPE = err('INVALID_ACCESS_CODE_SHAPE', 'Mã tự đặt gồm 8–24 chữ cái hoặc số (dấu cách và gạch ngang được bỏ qua).', 'A custom code is 8–24 letters or digits (spaces and dashes are ignored).');
+const CODE_TAKEN = err('ACCESS_CODE_TAKEN', 'Mã này đã có người dùng. Chọn mã khác.', 'That code already exists. Choose another.');
 const hashCode = (normalized: string) => createHash('sha256').update(normalized).digest('hex');
 
 type Row = Record<string, unknown>;
@@ -100,7 +105,7 @@ export const supportAccessRoutes: FastifyPluginAsync = async (app) => {
     if (!parsed.success) return reply.code(400).send(INVALID);
     const code = normalizeCode(parsed.data.code);
     // Not even a shape of a code: same answer as a wrong one, without counting as a guess.
-    if (!/^[A-Z0-9]{8,24}$/.test(code)) return reply.code(400).send(BAD_CODE);
+    if (!CODE_SHAPE.test(code)) return reply.code(400).send(BAD_CODE);
     const { data, error } = await app.supabase!.rpc('billing_redeem_code', {
       p_user_id: actor(request).id, p_code_hash: hashCode(code), p_now: new Date().toISOString(),
     });
@@ -159,11 +164,14 @@ export const supportAccessRoutes: FastifyPluginAsync = async (app) => {
     const parsed = NewCode.safeParse(request.body);
     if (!parsed.success || (parsed.data.expiresAt && new Date(parsed.data.expiresAt) <= new Date())) return reply.code(400).send(INVALID);
     const { planCode, months, maxUses, expiresAt, note } = parsed.data;
-    const code = newCode();
+    const typed = parsed.data.code ? normalizeCode(parsed.data.code) : '';
+    if (parsed.data.code && !CODE_SHAPE.test(typed)) return reply.code(400).send(BAD_SHAPE);
+    const code = typed || newCode();
     const { data, error } = await app.supabase!.from('billing_access_codes').insert({
       code_hash: hashCode(code), code_hint: code.slice(-4), plan_code: planCode, months, max_uses: maxUses,
       expires_at: expiresAt ?? null, note: note || null, created_by: actor(request).id,
     }).select('id').single();
+    if (error?.code === '23505') return reply.code(409).send(CODE_TAKEN);
     if (error) return failed(request, reply, error, 'Code could not be created');
     // The only time the code is shown: only its hash is kept.
     return reply.code(201).send({ id: (data as Row).id, code, display: code.match(/.{4}/g)!.join('-') });

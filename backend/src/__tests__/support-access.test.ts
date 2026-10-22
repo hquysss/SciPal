@@ -174,6 +174,32 @@ describe('admin routes', () => {
     await app.close();
   });
 
+  it('keeps the code the admin typed, ignoring case, spaces and dashes', async () => {
+    const insert = ok({ id: 'code-2' });
+    const app = await build(admin, { billing_access_codes: insert });
+    const res = await post(app, '/api/admin/billing/codes', { planCode: 'teacher_pro', code: 'sa pa-2026' });
+    expect(res.statusCode).toBe(201);
+    expect(res.json().code).toBe('SAPA2026');
+    expect(insert.inserted[0]).toMatchObject({ code_hash: sha('SAPA2026'), code_hint: '2026' });
+    await app.close();
+  });
+
+  it('refuses a typed code that is too short or has odd characters', async () => {
+    const app = await build(admin);
+    for (const code of ['abc', 'sapa_2026', 'x'.repeat(30)]) {
+      expect((await post(app, '/api/admin/billing/codes', { planCode: 'student_plus', code })).statusCode).toBe(400);
+    }
+    await app.close();
+  });
+
+  it('answers 409 when the typed code already exists', async () => {
+    const app = await build(admin, { billing_access_codes: mockQuery({ data: null, error: { code: '23505', message: 'duplicate' } }) });
+    const res = await post(app, '/api/admin/billing/codes', { planCode: 'student_plus', code: 'SAPA2026' });
+    expect(res.statusCode).toBe(409);
+    expect(res.json()).toMatchObject({ code: 'ACCESS_CODE_TAKEN' });
+    await app.close();
+  });
+
   it('refuses a code for another plan, too many months, or a date in the past', async () => {
     const app = await build(admin);
     for (const bad of [{ planCode: 'student_free' }, { planCode: 'student_plus', months: 24 }, { planCode: 'student_plus', expiresAt: '2020-01-01T00:00:00Z' }, { planCode: 'student_plus', maxUses: 0 }]) {
