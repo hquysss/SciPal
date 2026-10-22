@@ -74,3 +74,15 @@ describe('conversation routes', () => {
     await app.close();
   });
 });
+
+describe('contextSize', () => {
+  it('shows everything up to the limit, then a window that starts at a multiple of the step', async () => {
+    const { contextSize } = await import('../tutor/limits.js');
+    expect([1, 19, 20].map(contextSize)).toEqual([1, 19, 20]);
+    // From 21 on, the first message of the window (total - size) only moves every 10 messages.
+    const starts = Array.from({ length: 29 }, (_, i) => 21 + i).map((total) => total - contextSize(total));
+    expect(new Set(starts)).toEqual(new Set([10, 20, 30]));
+    expect(starts.slice(0, 9)).toEqual(Array(9).fill(10));
+    expect(Array.from({ length: 29 }, (_, i) => contextSize(21 + i)).every((size) => size >= 10 && size <= 19)).toBe(true);
+  });
+});

@@ -2,7 +2,7 @@ import { createHash, randomUUID } from 'node:crypto';
 import type { FastifyInstance, FastifyPluginAsync, FastifyRequest } from 'fastify';
 import { BillingRepositoryError, createBillingRepository } from '../billing/repository.js';
 import type { AIProvider, TokenUsage } from '../providers/ai.js';
-import { CONTEXT_MESSAGES, MESSAGE_MAX, PAGE_SIZE, TITLE_LENGTH, vietnamDayStart } from '../tutor/limits.js';
+import { CONTEXT_MESSAGES, contextSize, MESSAGE_MAX, PAGE_SIZE, TITLE_LENGTH, vietnamDayStart } from '../tutor/limits.js';
 import { resolveTutorSettings, type SettingsStore } from '../tutor/settings.js';
 import { buildSystemPrompt, lessonContext, type EducationLevel } from '../tutor/systemPrompt.js';
 import { groupDigits, sumTokens, TUTOR_HOLD_TOKENS, tokensUsed } from '../tutor/tokens.js';
@@ -351,9 +351,11 @@ export const tutorRoutes: FastifyPluginAsync = async (app) => {
       request.log.error({ err: saveError }, 'Failed to store tutor question');
       return reply.code(500).send(msg('Không lưu được câu hỏi.', 'Could not save your question.'));
     }
-    const { data: recent } = await supabase
-      .from('tutor_messages').select('role, content').eq('conversation_id', id).order('created_at', { ascending: false }).limit(CONTEXT_MESSAGES);
-    const history = ((recent ?? []) as Array<{ role: 'user' | 'assistant'; content: string }>).reverse();
+    const { data: recent, count } = await supabase
+      .from('tutor_messages').select('role, content', { count: 'exact' }).eq('conversation_id', id).order('created_at', { ascending: false }).limit(CONTEXT_MESSAGES);
+    const newest = (recent ?? []) as Array<{ role: 'user' | 'assistant'; content: string }>;
+    // A window that moves in steps keeps the start of the prompt unchanged between steps, so the provider's prompt cache can be reused.
+    const history = newest.slice(0, contextSize(count ?? newest.length)).reverse();
     // The model's conversation starts with the student: drop assistant turns cut off at the front.
     while (history.length > 1 && history[0].role === 'assistant') history.shift();
 
@@ -416,6 +418,8 @@ export const tutorRoutes: FastifyPluginAsync = async (app) => {
     // Counted only for a complete answer that was stored; a cut-off or unsaved one is given back.
     // The tokens go on the answer, so the daily cap can add up what a student has used today.
     const complete = !failed && !stopped;
+    // How much of the prompt the provider served from its cache: the number to watch when tuning cost.
+    if (usage) request.log.info({ promptTokens: usage.prompt, cachedTokens: usage.cached ?? null, completionTokens: usage.completion, history: history.length }, 'Tutor prompt cache');
     const counted = complete ? tokensUsed(usage?.total, systemPrompt + history.map((m) => m.content).join('\n'), answer) : null;
     let stored = false;
     if (answer) {
