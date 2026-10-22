@@ -109,7 +109,7 @@ function Codes() {
   const [codes, setCodes] = useState<AdminCode[] | null>(null);
   const [message, setMessage] = useState<Message | null>(null);
   const [fresh, setFresh] = useState<{ display: string } | null>(null);
-  const [form, setForm] = useState({ planCode: 'student_plus' as SupportPlan, months: 3, maxUses: 1, expiresAt: '', note: '' });
+  const [form, setForm] = useState({ planCode: 'student_plus' as SupportPlan, months: 3, maxUses: 1, expiresAt: '', note: '', code: '' });
   const [busy, setBusy] = useState(false);
 
   const load = useCallback(async () => {
@@ -126,6 +126,7 @@ function Codes() {
     setMessage(null);
     const res = await createCode({
       planCode: form.planCode, months: form.months, maxUses: form.maxUses,
+      ...(form.code.trim() ? { code: form.code.trim() } : {}),
       ...(form.expiresAt ? { expiresAt: new Date(`${form.expiresAt}T23:59:59+07:00`).toISOString() } : {}),
       ...(form.note.trim() ? { note: form.note.trim() } : {}),
     });
@@ -173,6 +174,13 @@ function Codes() {
             {(control) => <Input {...control} type="date" value={form.expiresAt} onChange={(e) => setForm({ ...form, expiresAt: e.target.value })} />}
           </Field>
         </div>
+        <Field
+          id="code-text"
+          label={t({ vi: 'Mã tự đặt (tùy chọn)', en: 'Your own code (optional)' })}
+          description={t({ vi: '8–24 chữ cái hoặc số. Để trống thì hệ thống tự tạo một mã ngẫu nhiên.', en: '8–24 letters or digits. Leave empty to get a random code.' })}
+        >
+          {(control) => <Input {...control} value={form.code} onChange={(e) => setForm({ ...form, code: e.target.value })} maxLength={40} autoComplete="off" className="font-mono uppercase" />}
+        </Field>
         <Field
           id="code-note"
           label={t({ vi: 'Ghi chú nội bộ (tùy chọn)', en: 'Internal note (optional)' })}

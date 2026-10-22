@@ -30,7 +30,7 @@ export type AdminCode = {
   expiresAt: string | null; note: string | null; revokedAt: string | null; createdAt: string;
 };
 export const listCodes = () => authoringCall<{ codes: AdminCode[] }>('/api/admin/billing/codes', 'GET');
-export const createCode = (input: { planCode: SupportPlan; months: number; maxUses: number; expiresAt?: string; note?: string }) =>
+export const createCode = (input: { planCode: SupportPlan; code?: string; months: number; maxUses: number; expiresAt?: string; note?: string }) =>
   authoringCall<{ id: string; code: string; display: string }>('/api/admin/billing/codes', 'POST', input);
 export const revokeCode = (id: string) => authoringCall<{ revoked: true }>(`/api/admin/billing/codes/${id}/revoke`, 'POST', {});
 
