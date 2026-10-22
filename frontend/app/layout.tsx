@@ -60,6 +60,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body className={`${jetbrainsMono.variable} ${beVietnamPro.variable} font-sans antialiased`}>
         <div data-app-shell="" data-level="neutral" suppressHydrationWarning className="flex min-h-screen flex-col">
           <script dangerouslySetInnerHTML={{ __html: buildBootScript({ darkMode: DARK_MODE_ENABLED }) }} />
+          {/* The browser fires beforeinstallprompt once, often before React hydrates: keep it for useInstall. */}
+          <script dangerouslySetInnerHTML={{ __html: "addEventListener('beforeinstallprompt',function(e){e.preventDefault();window.__scipalInstall=e})" }} />
           <TutorProvider>
           <SkipLink />
           <TabTitle />
