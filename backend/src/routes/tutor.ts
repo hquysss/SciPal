@@ -1,7 +1,11 @@
 import { createHash, randomUUID } from 'node:crypto';
 import type { FastifyInstance, FastifyPluginAsync, FastifyRequest } from 'fastify';
 import { BillingRepositoryError, createBillingRepository } from '../billing/repository.js';
-import type { AIProvider, TokenUsage } from '../providers/ai.js';
+import type { AIProvider, ChatMessage, TokenUsage } from '../providers/ai.js';
+import {
+  defaultImageQuestion, earlierPicture, IMAGE_TOKENS_ESTIMATE, parseTutorImage, removeAllTutorImages, removeTutorImages, signTutorImages,
+  TUTOR_CHAT_BODY_MAX, TUTOR_IMAGE_BUCKET, tutorImageKey, type TutorImage,
+} from '../tutor/images.js';
 import { CONTEXT_MESSAGES, contextSize, MESSAGE_MAX, PAGE_SIZE, TITLE_LENGTH, vietnamDayStart } from '../tutor/limits.js';
 import { resolveTutorSettings, type SettingsStore } from '../tutor/settings.js';
 import { buildSystemPrompt, lessonContext, type EducationLevel } from '../tutor/systemPrompt.js';
@@ -107,17 +111,34 @@ export const tutorRoutes: FastifyPluginAsync = async (app) => {
     }
     if (!conversation) return reply.code(404).send(notFound);
     const { data: messages, error: msgError } = await app.supabase!
-      .from('tutor_messages').select('id, role, content, created_at').eq('conversation_id', id).order('created_at', { ascending: true });
+      .from('tutor_messages').select('id, role, content, created_at, image_path').eq('conversation_id', id).order('created_at', { ascending: true });
     if (msgError) {
       request.log.error({ err: msgError }, 'Failed to read tutor messages');
       return reply.code(500).send(msg('Không tải được hội thoại.', 'Could not load the conversation.'));
     }
-    return reply.send({ conversation, messages: messages ?? [] });
+    // A picture is shown through a link that expires in an hour; the path itself never leaves the server.
+    const rows = (messages ?? []) as Array<{ image_path?: string | null }>;
+    const links = await signTutorImages(app.supabase!.storage, rows.flatMap((row) => (row.image_path ? [row.image_path] : [])));
+    return reply.send({
+      conversation,
+      messages: rows.map(({ image_path, ...row }) => (image_path ? { ...row, image_url: links.get(image_path) ?? null } : row)),
+    });
   });
 
   app.delete('/api/tutor/conversations/:id', async (request, reply) => {
     const { id } = request.params as { id: string };
     if (!UUID.test(id)) return reply.code(404).send(notFound);
+    // The pictures go first: if the store refuses, the conversation stays so the delete can be tried again,
+    // instead of leaving pictures nobody can find.
+    const { data: pictured } = await app.supabase!
+      .from('tutor_messages').select('image_path').eq('conversation_id', id).eq('user_id', userId(request)!).not('image_path', 'is', null);
+    const paths = ((pictured ?? []) as Array<{ image_path: string }>).map((row) => row.image_path);
+    try {
+      await removeTutorImages(app.supabase!.storage, paths);
+    } catch (err) {
+      request.log.error({ err }, 'Failed to delete tutor pictures');
+      return reply.code(500).send(msg('Không xóa được hội thoại.', 'Could not delete the conversation.'));
+    }
     const { data, error } = await app.supabase!
       .from('tutor_conversations').delete().eq('id', id).eq('user_id', userId(request)!).select('id');
     if (error) {
@@ -206,16 +227,25 @@ export const tutorRoutes: FastifyPluginAsync = async (app) => {
     }
   });
 
-  app.post('/api/tutor/chat', async (request, reply) => {
+  // The body may carry one picture as base64, so this route takes more than the default body limit.
+  app.post('/api/tutor/chat', { bodyLimit: TUTOR_CHAT_BODY_MAX }, async (request, reply) => {
     const supabase = app.supabase!;
     const uid = userId(request)!;
-    const body = (request.body ?? {}) as { conversation_id?: unknown; lesson_id?: unknown; message?: unknown; language?: unknown; retry?: unknown };
+    const body = (request.body ?? {}) as { conversation_id?: unknown; lesson_id?: unknown; message?: unknown; language?: unknown; retry?: unknown; image?: unknown };
     const settings = app.tutorSettings ? await app.tutorSettings.get() : resolveTutorSettings(null, process.env);
     if (!settings.enabled) {
       return reply.code(503).send(msg('Giáo sư AI đang tạm nghỉ. Em quay lại sau nhé.', 'The Professor is taking a break. Please come back later.'));
     }
-    const message = typeof body.message === 'string' ? body.message.trim() : '';
     const language = body.language === 'en' ? 'en' : 'vi';
+    let image: TutorImage | null = null;
+    if (body.image !== undefined && body.image !== null) {
+      const parsed = parseTutorImage(body.image);
+      if (!parsed.ok) return reply.code(400).send(parsed.error);
+      image = parsed.image;
+    }
+    // A picture on its own is a question: the student need not write anything beside it.
+    const written = typeof body.message === 'string' ? body.message.trim() : '';
+    const message = written || (image ? defaultImageQuestion(language) : '');
     if (!message || message.length > MESSAGE_MAX) {
       return reply.code(400).send(msg(`Câu hỏi cần từ 1 đến ${MESSAGE_MAX} ký tự.`, `A question needs 1 to ${MESSAGE_MAX} characters.`));
     }
@@ -227,6 +257,8 @@ export const tutorRoutes: FastifyPluginAsync = async (app) => {
     let lessonFromConversation = false;
     let resend = false;
     let questionId: string | null = null;
+    /** Where the question's picture is stored, once it is (or already was, on a retry). */
+    let imagePath: string | null = null;
     if (conversationId) {
       const { data: conv } = await supabase.from('tutor_conversations').select('id, lesson_id').eq('id', conversationId).eq('user_id', uid).maybeSingle();
       if (!conv) return reply.code(404).send(notFound);
@@ -235,10 +267,13 @@ export const tutorRoutes: FastifyPluginAsync = async (app) => {
       // "Thử lại" after a failed answer: the question is already stored and counted.
       if (body.retry === true) {
         const { data: last } = await supabase
-          .from('tutor_messages').select('id, role, content').eq('conversation_id', conversationId).order('created_at', { ascending: false }).limit(1).maybeSingle();
-        const row = last as { id?: string; role: string; content: string } | null;
+          .from('tutor_messages').select('id, role, content, image_path').eq('conversation_id', conversationId).order('created_at', { ascending: false }).limit(1).maybeSingle();
+        const row = last as { id?: string; role: string; content: string; image_path?: string | null } | null;
         resend = row?.role === 'user' && row.content === message;
-        if (resend) questionId = row?.id ?? null;
+        if (resend) {
+          questionId = row?.id ?? null;
+          imagePath = row?.image_path ?? null;
+        }
       }
     }
 
@@ -342,20 +377,38 @@ export const tutorRoutes: FastifyPluginAsync = async (app) => {
     }
     let saveError: unknown = null;
     if (!resend) {
-      const saved = await supabase.from('tutor_messages').insert({ conversation_id: id, user_id: uid, role: 'user', content: message }).select('id').single();
+      // The picture goes up first, so a stored question always has its picture; if the question then
+      // cannot be stored, the picture is taken back.
+      if (image) {
+        const path = tutorImageKey(uid, id, image.type);
+        const { error: uploadError } = await supabase.storage.from(TUTOR_IMAGE_BUCKET).upload(path, image.bytes, { contentType: image.mime, upsert: false });
+        if (uploadError) {
+          await settle('release');
+          request.log.error({ err: uploadError }, 'Failed to store a tutor picture');
+          return reply.code(500).send(msg('Không lưu được ảnh. Em thử lại nhé.', 'Could not save your picture. Please try again.'));
+        }
+        imagePath = path;
+      }
+      const saved = await supabase.from('tutor_messages').insert({ conversation_id: id, user_id: uid, role: 'user', content: message, ...(imagePath ? { image_path: imagePath } : {}) }).select('id').single();
       saveError = saved.error;
       questionId = (saved.data as { id?: string } | null)?.id ?? null;
     }
     if (saveError) {
       await settle('release');
+      if (imagePath && !resend) await removeTutorImages(supabase.storage, [imagePath]).catch((err) => request.log.warn({ err, imagePath }, 'Orphaned tutor picture was not removed'));
       request.log.error({ err: saveError }, 'Failed to store tutor question');
       return reply.code(500).send(msg('Không lưu được câu hỏi.', 'Could not save your question.'));
     }
     const { data: recent, count } = await supabase
-      .from('tutor_messages').select('role, content', { count: 'exact' }).eq('conversation_id', id).order('created_at', { ascending: false }).limit(CONTEXT_MESSAGES);
-    const newest = (recent ?? []) as Array<{ role: 'user' | 'assistant'; content: string }>;
+      .from('tutor_messages').select('role, content, image_path', { count: 'exact' }).eq('conversation_id', id).order('created_at', { ascending: false }).limit(CONTEXT_MESSAGES);
+    const newest = (recent ?? []) as Array<{ role: 'user' | 'assistant'; content: string; image_path?: string | null }>;
     // A window that moves in steps keeps the start of the prompt unchanged between steps, so the provider's prompt cache can be reused.
-    const history = newest.slice(0, contextSize(count ?? newest.length)).reverse();
+    // Only the question being asked carries its picture; an earlier one is said to have been sent, since resending it each turn would multiply the tokens.
+    const history: ChatMessage[] = newest.slice(0, contextSize(count ?? newest.length)).map((row, i) => ({
+      role: row.role,
+      content: row.image_path && i > 0 ? `${earlierPicture(language)} ${row.content}` : row.content,
+      ...(i === 0 && image ? { image: { mime: image.mime, data: image.bytes.toString('base64') } } : {}),
+    })).reverse();
     // The model's conversation starts with the student: drop assistant turns cut off at the front.
     while (history.length > 1 && history[0].role === 'assistant') history.shift();
 
@@ -380,7 +433,7 @@ export const tutorRoutes: FastifyPluginAsync = async (app) => {
     let failed = false;
     let stopped = false;
     let usage: TokenUsage | undefined;
-    const systemPrompt = buildSystemPrompt({ language, level, lesson: lessonText });
+    const systemPrompt = buildSystemPrompt({ language, level, lesson: lessonText, picture: !!image });
     try {
       for await (const text of app.aiProvider.chat(history, systemPrompt, { provider: settings.provider, model: settings.model, effort: settings.reasoningEffort }, (u) => { usage = u; })) {
         if (closed || raw.destroyed) {
@@ -400,6 +453,8 @@ export const tutorRoutes: FastifyPluginAsync = async (app) => {
       } else {
         // No answer at all: the question is taken back and nothing is counted.
         if (questionId) await supabase.from('tutor_messages').delete().eq('id', questionId);
+        // The question is gone, so its picture goes with it.
+        if (imagePath) await removeTutorImages(supabase.storage, [imagePath]).catch((e) => request.log.warn({ err: e, imagePath }, 'Orphaned tutor picture was not removed'));
         const conversationRemoved = !conversationId;
         if (conversationRemoved) await supabase.from('tutor_conversations').delete().eq('id', id).eq('user_id', uid);
         send('error', {
@@ -420,7 +475,7 @@ export const tutorRoutes: FastifyPluginAsync = async (app) => {
     const complete = !failed && !stopped;
     // How much of the prompt the provider served from its cache: the number to watch when tuning cost.
     if (usage) request.log.info({ promptTokens: usage.prompt, cachedTokens: usage.cached ?? null, completionTokens: usage.completion, history: history.length }, 'Tutor prompt cache');
-    const counted = complete ? tokensUsed(usage?.total, systemPrompt + history.map((m) => m.content).join('\n'), answer) : null;
+    const counted = complete ? tokensUsed(usage?.total, systemPrompt + history.map((m) => m.content).join('\n'), answer, image ? IMAGE_TOKENS_ESTIMATE : 0) : null;
     let stored = false;
     if (answer) {
       const { error: answerError } = await supabase.from('tutor_messages').insert({ conversation_id: id, user_id: uid, role: 'assistant', content: answer.slice(0, 20000), tokens: admin ? null : counted });

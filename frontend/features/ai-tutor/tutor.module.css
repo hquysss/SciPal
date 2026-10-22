@@ -543,3 +543,7 @@
   .voiceStage[data-state='connecting'] .ring,
   .voiceStatus span { animation: none; }
 }
+
+/* The picture button shares the round look of the microphone; it is a label around a hidden file input. */
+.attach:focus-within { outline: 2px solid var(--focus); outline-offset: 2px; }
+.attach[aria-disabled='true'] { cursor: not-allowed; opacity: 0.5; }

@@ -1,4 +1,5 @@
 import type { FastifyPluginAsync, FastifyRequest, FastifyReply } from 'fastify';
+import { removeAllTutorImages } from '../tutor/images.js';
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -158,6 +159,15 @@ export const accountsRoutes: FastifyPluginAsync = async (app) => {
     const callerUser = (req as any).user as { id: string };
     if (id === callerUser.id) {
       return reply.code(403).send({ error: 'You cannot delete your own account' });
+    }
+
+    // Pictures the user sent the AI Professor are files, so the database cascade does not reach them:
+    // they go first, and if that fails the account stays so the delete can be tried again.
+    try {
+      await removeAllTutorImages(app.supabase.storage, id);
+    } catch (err) {
+      req.log.error({ err }, 'Failed to delete the tutor pictures of an account');
+      return reply.code(503).send({ error: 'Could not delete the pictures this user sent to the AI Professor' });
     }
 
     const { error } = await app.supabase.auth.admin.deleteUser(id);

@@ -1,7 +1,7 @@
 'use client';
 
-import { useEffect, useId, useRef, useState, type ReactNode } from 'react';
-import { ArrowRight, ArrowUp, BookOpen, Lightbulb, Mic, Square } from 'lucide-react';
+import { useEffect, useId, useRef, useState, type ChangeEvent, type ReactNode } from 'react';
+import { ArrowRight, ArrowUp, BookOpen, ImagePlus, Lightbulb, Mic, Square, X } from 'lucide-react';
 import { useLanguage } from '@scipal/hooks';
 import { Alert } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
@@ -13,6 +13,7 @@ import { EXAMPLE_QUESTIONS } from './examples';
 import { TutorMessage } from './TutorMessage';
 import { useTutorChat } from './useTutorChat';
 import { TutorAvatar } from './TutorAvatar';
+import { prepareTutorImage, TUTOR_IMAGE_TYPES, type TutorImage } from './tutorImage';
 import { formatTokens } from './tokens';
 import styles from './tutor.module.css';
 import { VoiceChat } from './voice/VoiceChat';
@@ -36,7 +37,8 @@ export interface TutorChatViewProps {
   error: Bilingual | null;
   limitReached: boolean;
   level: EducationLevel;
-  onSend: (text: string) => void;
+  /** A picture may go with the question; with one, the text may be empty. */
+  onSend: (text: string, image?: TutorImage) => void;
   onStop: () => void;
   onRetry: () => void;
   /** Title of the lesson the conversation is about, shown as a chip above the messages. */
@@ -79,6 +81,9 @@ export function TutorChatView({
   const draft = sharedDraft ?? localDraft;
   const setDraft = onDraft ?? setLocalDraft;
   const logRef = useRef<HTMLDivElement>(null);
+  const [image, setImage] = useState<TutorImage | null>(null);
+  const [preparing, setPreparing] = useState(false);
+  const [imageError, setImageError] = useState<Bilingual | null>(null);
   const empty = messages.length === 0;
   const examples = (suggestions ?? EXAMPLE_QUESTIONS[level]).slice(0, compact ? 2 : 4);
   const lastIndex = messages.length - 1;
@@ -91,9 +96,32 @@ export function TutorChatView({
 
   const submit = () => {
     const text = draft.trim();
-    if (!text || streaming || limitReached) return;
-    onSend(text);
+    if ((!text && !image) || streaming || limitReached || preparing) return;
+    // The picture stays on screen with its message, so its preview is not released here.
+    if (image) onSend(text, image);
+    else onSend(text);
+    setImage(null);
+    setImageError(null);
     setDraft('');
+  };
+
+  const removeImage = () => {
+    if (image) URL.revokeObjectURL(image.preview);
+    setImage(null);
+  };
+
+  const choose = async (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    // The same file can then be chosen again after it was removed.
+    event.target.value = '';
+    if (!file) return;
+    setImageError(null);
+    setPreparing(true);
+    const result = await prepareTutorImage(file);
+    setPreparing(false);
+    if (!result.ok) return setImageError(result.error);
+    if (image) URL.revokeObjectURL(image.preview);
+    setImage(result.image);
   };
 
   return (
@@ -185,6 +213,25 @@ export function TutorChatView({
 
       <div className="bg-[linear-gradient(to_top,var(--surface)_70%,transparent)] px-3 pb-3 pt-2 sm:px-6">
         <div className="mx-auto flex max-w-3xl flex-col gap-2">
+          {imageError && <Alert tone="danger">{t(imageError)}</Alert>}
+          {(image || preparing) && (
+            <div className="flex items-center gap-3 rounded-xl border border-line bg-surface p-2">
+              {image ? (
+                // eslint-disable-next-line @next/next/no-img-element -- a local object URL
+                <img src={image.preview} alt={t({ en: 'Attached picture', vi: 'Ảnh đính kèm' })} className="size-14 shrink-0 rounded-lg object-cover" />
+              ) : (
+                <span aria-hidden="true" className="size-14 shrink-0 animate-pulse rounded-lg bg-surface-sunken" />
+              )}
+              <span role="status" className="min-w-0 flex-1 text-sm text-ink-muted">
+                {preparing ? t({ en: 'Preparing the picture…', vi: 'Đang chuẩn bị ảnh…' }) : t({ en: 'The Professor will read this picture', vi: 'Thầy sẽ đọc ảnh này' })}
+              </span>
+              {image && (
+                <button type="button" onClick={removeImage} aria-label={t({ en: 'Remove picture', vi: 'Bỏ ảnh' })} className="inline-flex size-9 shrink-0 items-center justify-center rounded-full text-ink-muted hover:bg-surface-sunken hover:text-ink focus-visible:outline focus-visible:outline-2 focus-visible:outline-focus">
+                  <X aria-hidden="true" className="h-4 w-4" />
+                </button>
+              )}
+            </div>
+          )}
           {error && (
             <Alert tone="danger">
               <span className="flex flex-wrap items-center gap-x-3 gap-y-1">
@@ -223,6 +270,23 @@ export function TutorChatView({
               placeholder={limitReached ? (period === 'month' ? t({ en: 'No tokens left this month', vi: 'Tháng này em đã hết token' }) : t({ en: 'No tokens left today', vi: 'Hôm nay em đã hết token' })) : t({ en: 'Ask the Professor…', vi: 'Hỏi thầy…' })}
               className="max-h-40 min-h-11 flex-1 resize-none bg-transparent px-2 py-2 text-base leading-6 text-ink caret-action outline-none placeholder:text-ink-muted disabled:cursor-not-allowed"
             />
+            {!streaming && (
+              <label
+                title={t({ en: 'Attach a picture', vi: 'Đính kèm ảnh' })}
+                className={`${styles.voiceButton} ${styles.attach}`}
+                aria-disabled={limitReached || preparing || undefined}
+              >
+                <ImagePlus aria-hidden="true" className="h-5 w-5" />
+                <input
+                  type="file"
+                  accept={TUTOR_IMAGE_TYPES.join(',')}
+                  aria-label={t({ en: 'Attach a picture', vi: 'Đính kèm ảnh' })}
+                  disabled={limitReached || preparing}
+                  onChange={(e) => void choose(e)}
+                  className="sr-only"
+                />
+              </label>
+            )}
             {onVoice && !streaming && (
               <button
                 type="button"
@@ -241,7 +305,7 @@ export function TutorChatView({
                 {t({ en: 'Stop', vi: 'Dừng' })}
               </Button>
             ) : (
-              <button type="submit" disabled={!draft.trim() || limitReached} aria-label={t({ en: 'Send', vi: 'Gửi' })} className={styles.send}>
+              <button type="submit" disabled={(!draft.trim() && !image) || limitReached || preparing} aria-label={t({ en: 'Send', vi: 'Gửi' })} className={styles.send}>
                 <ArrowUp aria-hidden="true" className="h-5 w-5" strokeWidth={2.5} />
               </button>
             )}
@@ -303,7 +367,7 @@ function ConnectedTutorChat({ chat, draft, onDraft, active = true, ...props }: T
   }, [chat.conversationId, chat.streaming, props.onConversation]);
   useEffect(() => { if (!active) setTalking(false); }, [active]);
   return <>
-    <TutorChatView {...props} {...chat} draft={draft} onDraft={onDraft} onRefreshQuota={() => void chat.refreshQuota()} onSend={(text) => void chat.send(text)} onStop={chat.stop} onRetry={() => void chat.retry()} onVoice={() => setTalking(true)} />
+    <TutorChatView {...props} {...chat} draft={draft} onDraft={onDraft} onRefreshQuota={() => void chat.refreshQuota()} onSend={(text, image) => void chat.send(text, image)} onStop={chat.stop} onRetry={() => void chat.retry()} onVoice={() => setTalking(true)} />
     {active && talking && <VoiceChat lessonId={props.lessonId} onClose={() => setTalking(false)} />}
   </>;
 }

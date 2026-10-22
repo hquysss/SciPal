@@ -58,7 +58,7 @@ const EXPIRED: Bilingual = { vi: 'Phiên đăng nhập đã hết hạn. Hãy đ
 const OFFLINE: Bilingual = { vi: 'Không kết nối được máy chủ.', en: 'Could not reach the server.' };
 
 export async function streamTutor(
-  body: { conversation_id?: string; lesson_id?: string; message: string; language: 'vi' | 'en' },
+  body: { conversation_id?: string; lesson_id?: string; message: string; language: 'vi' | 'en'; retry?: boolean; image?: { mime: string; data: string } },
   onEvent: (e: TutorEvent) => void,
   signal?: AbortSignal,
 ): Promise<{ ok: true } | { ok: false; status: number; error: Bilingual; remaining?: number; period?: 'day' | 'month' }> {

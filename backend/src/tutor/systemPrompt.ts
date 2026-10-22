@@ -41,7 +41,11 @@ export function lessonContext(
   return parts.join('\n\n').slice(0, LESSON_CONTEXT_MAX);
 }
 
-export function buildSystemPrompt(opts: { language: 'vi' | 'en'; level: EducationLevel | null; lesson?: string; spoken?: boolean }): string {
+/** What the Professor may do with a picture the student attached to this turn. */
+const PICTURE_RULES =
+  'The student attached a picture to this message. Use it only to help them learn: read the exercise, figure, graph or work in it, say briefly what you read so they can correct you, then help as usual. If the picture is not school work (a person, an ID or document, anything unsuitable), decline kindly and steer back to the lesson.';
+
+export function buildSystemPrompt(opts: { language: 'vi' | 'en'; level: EducationLevel | null; lesson?: string; spoken?: boolean; picture?: boolean }): string {
   const voice =
     opts.language === 'vi'
       ? `Always answer in Vietnamese. Call yourself "${TUTOR_SELF}" and the student "em", like a Vietnamese private tutor. You are the teacher, so never reply with "Dạ" or "Vâng" and never end a sentence with "ạ": that is how a student speaks to a teacher. Start replies plainly ("Ừ", "Được rồi", "Đúng rồi", "Thầy hiểu rồi") or go straight to the answer.`
@@ -64,7 +68,9 @@ export function buildSystemPrompt(opts: { language: 'vi' | 'en'; level: Educatio
           'This is a spoken conversation: the student talks and hears you. Keep each turn short (1–3 sentences), speak naturally, and never use markdown, lists, code blocks or symbols that sound odd aloud.',
           'Say formulas and code in words (for example "x bình phương cộng hai x"). Never ask for a photo or file; ask the student to read the exercise out.',
         ]
-      : ['The student can only type text: never ask for a photo, image or file; ask them to type the exercise or the part they are stuck on.']),
+      : opts.picture
+        ? [PICTURE_RULES]
+        : ['The student can only type text: never ask for a photo, image or file; ask them to type the exercise or the part they are stuck on.']),
     'Only help with school learning. Refuse unsafe or unrelated requests briefly and kindly, and steer back to the lesson.',
     ...(opts.spoken ? [] : ['Format with markdown. Write formulas as $...$ or $$...$$ and code in fenced blocks with a language.']),
     '',

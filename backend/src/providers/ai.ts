@@ -4,6 +4,8 @@ import { resolveTutorSettings, type ReasoningEffort, type TutorProvider } from '
 export interface ChatMessage {
   role:    'user' | 'assistant';
   content: string;
+  /** A picture the student sent with this message (base64), for the model to read; only the current turn carries one. */
+  image?:  { mime: string; data: string };
 }
 
 /** The service and model for one call (the admin settings); unset means the environment's. */
@@ -80,7 +82,17 @@ export function completionRequest(settings: ReturnType<typeof providerSettings>,
     ...(settings.baseURL || openAiReasoning ? { reasoning_effort: openAiReasoning && /^gpt-5-pro/i.test(settings.model.trim()) ? ('high' as const) : settings.effort ?? ('low' as const) } : {}),
     messages: [
       { role: 'system' as const, content: systemPrompt },
-      ...messages.map((m) => ({ role: m.role, content: m.content })),
+      ...messages.map((m) =>
+        m.image
+          ? {
+              role: 'user' as const,
+              content: [
+                { type: 'text' as const, text: m.content },
+                { type: 'image_url' as const, image_url: { url: `data:${m.image.mime};base64,${m.image.data}` } },
+              ],
+            }
+          : { role: m.role, content: m.content },
+      ),
     ],
   };
 }

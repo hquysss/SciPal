@@ -4,6 +4,7 @@ import { useCallback, useEffect, useReducer, useRef } from 'react';
 import { useLanguage } from '@scipal/hooks';
 import { streamTutor, type TutorEvent } from './streamTutor';
 import { getTutorQuota, type TutorMessage } from './api';
+import type { TutorImage } from './tutorImage';
 
 type Bilingual = { vi: string; en: string };
 export type TutorState = {
@@ -19,7 +20,7 @@ export type TutorState = {
   lastQuestion: string | null;
 };
 type Action =
-  | { type: 'send'; text: string }
+  | { type: 'send'; text: string; preview?: string }
   | { type: 'retry' }
   | { type: 'event'; event: TutorEvent }
   | { type: 'failed'; status: number; error: Bilingual; remaining?: number; period?: 'day' | 'month' }
@@ -49,7 +50,7 @@ export function tutorReducer(state: TutorState, action: Action): TutorState {
       return action.clearQuota ? fresh : { ...fresh, remaining: state.remaining, period: state.period, quotaStatus: state.quotaStatus, limitReached: state.remaining === 0 };
     }
     case 'send':
-      return { ...state, streaming: true, error: null, lastQuestion: action.text, messages: [...state.messages, { role: 'user', content: action.text }, { role: 'assistant', content: '' }] };
+      return { ...state, streaming: true, error: null, lastQuestion: action.text, messages: [...state.messages, { role: 'user', content: action.text, ...(action.preview ? { preview: action.preview } : {}) }, { role: 'assistant', content: '' }] };
     case 'retry':
       // The question is already on screen (and stored): only a new answer is awaited.
       return { ...state, streaming: true, error: null, messages: [...trimEmpty(state.messages), { role: 'assistant', content: '' }] };
@@ -95,14 +96,18 @@ export function tutorReducer(state: TutorState, action: Action): TutorState {
 }
 
 /** The chat request body; `retry` reuses the stored question, so it only applies inside a conversation. */
-export function tutorRequest(opts: { conversationId: string | null; lessonId: string | undefined; text: string; language: 'vi' | 'en'; retry: boolean }) {
+export function tutorRequest(opts: { conversationId: string | null; lessonId: string | undefined; text: string; language: 'vi' | 'en'; retry: boolean; image?: Pick<TutorImage, 'mime' | 'data'> }) {
   return {
     ...(opts.conversationId ? { conversation_id: opts.conversationId } : opts.lessonId ? { lesson_id: opts.lessonId } : {}),
     message: opts.text,
     language: opts.language,
     ...(opts.retry && opts.conversationId ? { retry: true } : {}),
+    ...(opts.image ? { image: { mime: opts.image.mime, data: opts.image.data } } : {}),
   };
 }
+
+/** The question shown (and stored) when a picture is sent with nothing written; the server uses the same words if it must. */
+export const pictureQuestion = (lang: 'vi' | 'en') => (lang === 'en' ? 'Here is my picture.' : 'Em gửi thầy ảnh này.');
 
 export function useTutorChat(opts: { conversationId?: string; lessonId?: string; initialMessages?: TutorMessage[] }) {
   const { lang } = useLanguage();
@@ -110,19 +115,22 @@ export function useTutorChat(opts: { conversationId?: string; lessonId?: string;
   const abort = useRef<AbortController | null>(null);
   const version = useRef(0);
   const quotaRequest = useRef(0);
+  /** The picture of the last question, kept so "Try again" can show it to the model once more (the server keeps its own copy). */
+  const lastImage = useRef<TutorImage | undefined>(undefined);
   const conversation = useRef(state.conversationId);
   conversation.current = state.conversationId;
 
   const ask = useCallback(
-    async (text: string, retry: boolean) => {
-      const message = text.trim();
+    async (text: string, retry: boolean, image?: TutorImage) => {
+      const message = text.trim() || (image ? pictureQuestion(lang === 'en' ? 'en' : 'vi') : '');
       if (!message || abort.current) return;
+      if (!retry) lastImage.current = image;
       const controller = new AbortController();
       abort.current = controller;
       version.current += 1;
-      dispatch(retry ? { type: 'retry' } : { type: 'send', text: message });
+      dispatch(retry ? { type: 'retry' } : { type: 'send', text: message, ...(image ? { preview: image.preview } : {}) });
       const res = await streamTutor(
-        tutorRequest({ conversationId: conversation.current, lessonId: opts.lessonId, text: message, language: lang === 'en' ? 'en' : 'vi', retry }),
+        tutorRequest({ conversationId: conversation.current, lessonId: opts.lessonId, text: message, language: lang === 'en' ? 'en' : 'vi', retry, image }),
         (event) => { if (abort.current === controller) dispatch({ type: 'event', event }); },
         controller.signal,
       );
@@ -133,7 +141,7 @@ export function useTutorChat(opts: { conversationId?: string; lessonId?: string;
     },
     [lang, opts.lessonId],
   );
-  const send = useCallback((text: string) => ask(text, false), [ask]);
+  const send = useCallback((text: string, image?: TutorImage) => ask(text, false, image), [ask]);
 
   const stop = useCallback(() => {
     if (abort.current) { abort.current.abort(); version.current += 1; }
@@ -142,7 +150,7 @@ export function useTutorChat(opts: { conversationId?: string; lessonId?: string;
   }, []);
 
   const retry = useCallback(async () => {
-    if (state.lastQuestion) await ask(state.lastQuestion, true);
+    if (state.lastQuestion) await ask(state.lastQuestion, true, lastImage.current);
   }, [ask, state.lastQuestion]);
 
   const replace = useCallback((messages: TutorMessage[] = [], conversationId: string | null = null, clearQuota = false) => {

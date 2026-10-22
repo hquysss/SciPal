@@ -2,7 +2,11 @@ import { z } from 'zod';
 import { authoringCall } from '../authoring/apiClient';
 
 export type TutorConversation = { id: string; title: string; lesson_id: string | null; updated_at: string };
-export type TutorMessage = { id?: string; role: 'user' | 'assistant'; content: string };
+/**
+ * `preview` is the picture just sent, kept on screen from the browser's own copy; `image_url` is a stored one coming
+ * back with an old conversation (a link that expires in an hour), or null when it could not be linked.
+ */
+export type TutorMessage = { id?: string; role: 'user' | 'assistant'; content: string; preview?: string; image_url?: string | null };
 
 export const listConversations = () => authoringCall<{ conversations: TutorConversation[] }>('/api/tutor/conversations', 'GET');
 export const getConversation = (id: string) =>

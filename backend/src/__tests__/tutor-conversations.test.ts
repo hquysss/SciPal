@@ -57,13 +57,13 @@ describe('conversation routes', () => {
 
   it('deletes only the caller’s conversation', async () => {
     const del = mockQuery({ data: [{ id: C1 }], error: null });
-    const app = await build(student, { tutor_conversations: del });
+    const app = await build(student, { tutor_conversations: del, tutor_messages: mockQuery({ data: [], error: null }) });
     expect((await app.inject({ method: 'DELETE', url: `/api/tutor/conversations/${C1}` })).statusCode).toBe(204);
     expect(del.deleteCalls).toBe(1);
     expect(del.eqCalls).toEqual(expect.arrayContaining([['id', C1], ['user_id', 'student-1']]));
     await app.close();
 
-    const none = await build(student, { tutor_conversations: mockQuery({ data: [], error: null }) });
+    const none = await build(student, { tutor_conversations: mockQuery({ data: [], error: null }), tutor_messages: mockQuery({ data: [], error: null }) });
     expect((await none.inject({ method: 'DELETE', url: `/api/tutor/conversations/${C1}` })).statusCode).toBe(404);
     await none.close();
   });
