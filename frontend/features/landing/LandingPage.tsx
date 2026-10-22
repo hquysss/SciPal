@@ -635,13 +635,13 @@ export function LandingPage({ level, catalog, onChangeLevel, pricing = null, sho
                 <li>
                   <a href={CONTACT_FACEBOOK_URL} target="_blank" rel="noopener noreferrer">
                     <Image src="/facebook-icon.svg" width={16} height={16} alt="" aria-hidden="true" />
-                    Facebook
+                    SciPal
                   </a>
                 </li>
                 <li>
                   <a href={'mailto:' + CONTACT_EMAIL}>
                     <Mail size={16} aria-hidden="true" />
-                    Email
+                    contact@scipal.io.vn
                   </a>
                 </li>
               </ul>
