@@ -200,6 +200,19 @@ describe('admin routes', () => {
     await app.close();
   });
 
+  it('lets an admin reuse the text of a revoked code', async () => {
+    const dup = mockQuery({ data: null, error: { code: '23505', message: 'duplicate' } });
+    const old = ok({ id: 'old-1' });
+    const freed = ok();
+    const fresh = ok({ id: 'code-3' });
+    const app = await build(admin, { billing_access_codes: [dup, old, freed, fresh] });
+    const res = await post(app, '/api/admin/billing/codes', { planCode: 'student_plus', code: 'BANTHUNGHIEM' });
+    expect(res.statusCode).toBe(201);
+    expect(freed.updated[0]).toEqual({ code_hash: sha('revoked:old-1') });
+    expect(fresh.inserted[0]).toMatchObject({ code_hash: sha('BANTHUNGHIEM') });
+    await app.close();
+  });
+
   it('refuses a code for another plan, too many months, or a date in the past', async () => {
     const app = await build(admin);
     for (const bad of [{ planCode: 'student_free' }, { planCode: 'student_plus', months: 24 }, { planCode: 'student_plus', expiresAt: '2020-01-01T00:00:00Z' }, { planCode: 'student_plus', maxUses: 0 }]) {
