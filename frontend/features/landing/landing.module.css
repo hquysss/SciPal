@@ -1191,6 +1191,17 @@
   margin-inline: auto;
 }
 
+/* Third-party logos take their own brand colour on hover. These are the brands' identities, not theme
+   colours; black and white brands (Next.js, Three.js, Fastify, Vercel) keep the ink colour. */
+.techStrip [data-brand='react']:hover { color: #61dafb; }
+.techStrip [data-brand='typescript']:hover { color: #3178c6; }
+.techStrip [data-brand='tailwind']:hover { color: #06b6d4; }
+.techStrip [data-brand='gsap']:hover { color: #88ce02; }
+.techStrip [data-brand='zod']:hover { color: #3e67b1; }
+.techStrip [data-brand='supabase']:hover { color: #3fcf8e; }
+.techStrip [data-brand='postgresql']:hover { color: #4169e1; }
+.techStrip [data-brand='cloudflare']:hover { color: #f38020; }
+
 /* ---------- footer ---------- */
 
 .footer {

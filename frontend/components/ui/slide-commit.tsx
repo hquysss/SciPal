@@ -33,7 +33,8 @@ type Grip = { id: number; grab: number | null; moved: boolean; hist: [number, nu
 
 export type SlideCommitProps = {
   readonly label: string;
-  readonly doneLabel: string;
+  /** The words beside the check once confirmed. Leave out when the page navigates away instead of finishing here. */
+  readonly doneLabel?: string;
   readonly errorLabel: string;
   /** Called when the handle reaches the end. Return a promise to show the spinner: it unfurls on resolve and springs home on reject. */
   readonly onConfirm: () => void | Promise<unknown>;
@@ -46,7 +47,7 @@ export type SlideCommitProps = {
   readonly className?: string;
 };
 
-export function SlideCommit({ label, doneLabel, errorLabel, onConfirm, onDone, onError, holdMs = 1500, disabled = false, busyLabel = '…', className = '' }: SlideCommitProps) {
+export function SlideCommit({ label, doneLabel = '', errorLabel, onConfirm, onDone, onError, holdMs = 1500, disabled = false, busyLabel = '…', className = '' }: SlideCommitProps) {
   const reduce = useReducedMotion();
   const [phase, setPhase] = useState<Phase>('idle');
   const [held, setHeld] = useState(false);

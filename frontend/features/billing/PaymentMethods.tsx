@@ -16,10 +16,8 @@ type Provider = 'payos' | 'vnpay' | 'momo';
 type Props = {
  readonly context?: { readonly audience?: string; readonly interval?: string; readonly plan?: string };
  readonly catalog: Catalog | null;
- /** Starts checkout for the plan chosen on /pricing; set only by the page wrapper. Rejects when checkout cannot open. */
+ /** Starts checkout for the plan chosen on /pricing; set only by the page wrapper. Stays pending while the page leaves for the provider and rejects when checkout cannot open. */
  readonly onBuy?: (provider: Provider, autoRenew: boolean) => void | Promise<unknown>;
- /** Called once checkout has opened and the slider shows it is done: go to the provider. */
- readonly onPaid?: () => void;
  readonly buyError?: { en: string; vi: string } | null;
  readonly account: BillingAccount | null;
  readonly accountStatus: 'loading' | 'ready' | 'error';
@@ -33,11 +31,14 @@ const providers = [
  { id: 'vnpay', name: 'VNPAY', icon: CreditCard, type: { en: 'PAYMENT GATEWAY', vi: 'CỔNG THANH TOÁN' }, description: { en: 'Choose a supported payment method on VNPAY. Auto-renewal is optional.', vi: 'Chọn phương thức được hỗ trợ trên VNPAY. Có thể chọn tự gia hạn.' } },
  { id: 'momo', name: 'MoMo', icon: Wallet, type: { en: 'E-WALLET', vi: 'VÍ ĐIỆN TỬ' }, description: { en: 'Authorize recurring payments in MoMo. You choose the amount and period.', vi: 'Ủy quyền thu định kỳ trong MoMo. Bạn đồng ý rõ số tiền và chu kỳ.' } },
 ] as const;
-export function PaymentMethodsView({ catalog, account, accountStatus, onCancel, onRetry, cancelling = false, message, context, onBuy, onPaid, buyError }: Props) {
+export function PaymentMethodsView({ catalog, account, accountStatus, onCancel, onRetry, cancelling = false, message, context, onBuy, buyError }: Props) {
  const { t, lang } = useLanguage();
  const available = { payos: catalog?.payosCheckoutOpen === true, vnpay: catalog?.vnpayCheckoutOpen === true, momo: catalog?.momoAutoRenewOpen === true };
  const [selected, setSelected] = useState<Provider | null>(available.payos ? 'payos' : available.vnpay ? 'vnpay' : available.momo ? 'momo' : null);
  const [renew, setRenew] = useState(false);
+ // Coming back from the provider with the back button restores the page frozen mid-spin: start the slider fresh.
+ const [slideEpoch, setSlideEpoch] = useState(0);
+ useEffect(() => { const reset = (event: PageTransitionEvent) => { if (event.persisted) setSlideEpoch((n) => n + 1); }; window.addEventListener('pageshow', reset); return () => window.removeEventListener('pageshow', reset); }, []);
  const chosenPlan = context?.plan ? catalog?.plans.find((plan) => plan.code === context.plan && plan.prices.length > 0) : undefined;
  const chosenPrice = chosenPlan?.prices.find((price) => price.interval === context?.interval);
  // MoMo is subscription-only and VNPAY renewal is optional; 3- and 6-month plans are paid once.
@@ -113,13 +114,11 @@ export function PaymentMethodsView({ catalog, account, accountStatus, onCancel, 
    {canPay && method && selected ? (buyNow
      ? <SlideCommit
         label={t(wantsRenew ? {vi:`Trượt để tự gia hạn với ${method.name}`,en:`Slide to auto-renew with ${method.name}`} : {vi:`Trượt để thanh toán với ${method.name}`,en:`Slide to pay with ${method.name}`})}
-        doneLabel={t({vi:'Đang chuyển tiếp…',en:'Redirecting…'})}
         errorLabel={t({vi:'Chưa mở được thanh toán',en:'Could not open payment'})}
         busyLabel={t({vi:'Đang mở thanh toán…',en:'Opening payment…'})}
         disabled={roleBlocks || (needsConsent && !renew)}
-        holdMs={0}
+        key={slideEpoch}
         onConfirm={() => onBuy!(selected, wantsRenew)}
-        onDone={onPaid}
        />
      : <Link href={`/pricing?${pricingQuery.toString()}`} className={`${buttonVariants({ size: 'lg' })} w-full`}>{t({vi:`Chọn gói để trả qua ${method.name}`,en:`Choose a plan to pay with ${method.name}`})}</Link>)
     : <button type="button" disabled className={`${buttonVariants({ size: 'lg' })} w-full`}>{t({vi:'Chưa mở thanh toán',en:'Checkout is not open yet'})}</button>}
@@ -150,7 +149,6 @@ export function PaymentMethods({ catalog, context }: { readonly catalog: Catalog
  const [buyError, setBuyError] = useState<Props['buyError']>(null);
  // One key per provider and price while the page is open: a double click or a retry resumes the same order.
  const keys = useRef(new Map<string, string>());
- const destination = useRef<string | null>(null);
  async function load() {
   setStatus('loading');
   const result = await fetchMyPlan();
@@ -175,12 +173,9 @@ export function PaymentMethods({ catalog, context }: { readonly catalog: Catalog
    result = await startCheckout(price.id, key, provider, renew);
   }
   if (!result.ok) { setBuyError(result.error); throw result.error; }
-  destination.current = result.data.checkoutUrl ?? `/checkout/${result.data.orderId}`;
- }
- // Let the slider's "done" pill land before the page leaves.
- function goToProvider() {
-  const url = destination.current;
-  if (url) window.setTimeout(() => window.location.assign(url), 600);
+  window.location.assign(result.data.checkoutUrl ?? `/checkout/${result.data.orderId}`);
+  // The slider keeps spinning until the browser leaves this page.
+  await new Promise<never>(() => {});
  }
  async function cancel() {
   setCancelling(true); setMessage(null);
@@ -189,5 +184,5 @@ export function PaymentMethods({ catalog, context }: { readonly catalog: Catalog
   setMessage(result.ok ? result.data.status === 'cancel_pending' ? {vi:'Đang chờ nhà cung cấp xác nhận hủy. Không bắt đầu kỳ thu mới.',en:'Waiting for the provider to confirm cancellation. No new charge will start.'} : {vi:'Đã hủy tự gia hạn. Gói đã trả vẫn dùng đến hết hạn.',en:'Auto-renewal is cancelled. Paid access remains until expiry.'} : result.error);
   if (result.ok) await load();
  }
- return <PaymentMethodsView catalog={catalog} account={account} accountStatus={status} onCancel={()=>void cancel()} onRetry={()=>{router.refresh();void load();}} cancelling={cancelling} message={message} context={context} onBuy={context?.plan ? buy : undefined} onPaid={goToProvider} buyError={buyError} />;
+ return <PaymentMethodsView catalog={catalog} account={account} accountStatus={status} onCancel={()=>void cancel()} onRetry={()=>{router.refresh();void load();}} cancelling={cancelling} message={message} context={context} onBuy={context?.plan ? buy : undefined} buyError={buyError} />;
 }

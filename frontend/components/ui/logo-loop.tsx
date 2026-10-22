@@ -29,6 +29,8 @@ export type LogoItem = {
   /** Read out by screen readers; the logo itself is decorative. */
   readonly name: string;
   readonly Icon: IconType;
+  /** Lets the page's stylesheet give this logo its brand colour on hover (`[data-brand]`). */
+  readonly brand?: string;
 };
 
 type Props = {
@@ -236,8 +238,8 @@ export const LogoLoop = memo(function LogoLoop({ logos, speed = 60, logoHeight =
       <div ref={trackRef} className={styles.track}>
         {Array.from({ length: copies }, (_, copy) => (
           <ul key={copy} className={styles.list} aria-hidden={copy === 0 ? undefined : true}>
-            {logos.map(({ name, Icon }) => (
-              <li key={name} className={styles.item} aria-label={name} title={name}>
+            {logos.map(({ name, Icon, brand }) => (
+              <li key={name} className={styles.item} aria-label={name} title={name} data-brand={brand}>
                 <Icon aria-hidden="true" focusable="false" />
               </li>
             ))}

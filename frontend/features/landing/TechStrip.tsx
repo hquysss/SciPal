@@ -5,19 +5,20 @@ import { useLanguage } from '@scipal/hooks';
 import { LogoLoop, type LogoItem } from '@/components/ui/logo-loop';
 import styles from './landing.module.css';
 
-/** What the web app and its server are built on. Names are read out; the logos are decoration. */
+/** What the web app and its server are built on. Names are read out; the logos are decoration.
+    `brand` picks the hover colour in landing.module.css; black and white brands take the ink colour. */
 const TECH: readonly LogoItem[] = [
   { name: 'Next.js', Icon: SiNextdotjs },
-  { name: 'React', Icon: SiReact },
-  { name: 'TypeScript', Icon: SiTypescript },
-  { name: 'Tailwind CSS', Icon: SiTailwindcss },
+  { name: 'React', Icon: SiReact, brand: 'react' },
+  { name: 'TypeScript', Icon: SiTypescript, brand: 'typescript' },
+  { name: 'Tailwind CSS', Icon: SiTailwindcss, brand: 'tailwind' },
   { name: 'Three.js', Icon: SiThreedotjs },
-  { name: 'GSAP', Icon: SiGreensock },
-  { name: 'Zod', Icon: SiZod },
+  { name: 'GSAP', Icon: SiGreensock, brand: 'gsap' },
+  { name: 'Zod', Icon: SiZod, brand: 'zod' },
   { name: 'Fastify', Icon: SiFastify },
-  { name: 'Supabase', Icon: SiSupabase },
-  { name: 'PostgreSQL', Icon: SiPostgresql },
-  { name: 'Cloudflare', Icon: SiCloudflare },
+  { name: 'Supabase', Icon: SiSupabase, brand: 'supabase' },
+  { name: 'PostgreSQL', Icon: SiPostgresql, brand: 'postgresql' },
+  { name: 'Cloudflare', Icon: SiCloudflare, brand: 'cloudflare' },
   { name: 'Vercel', Icon: SiVercel },
 ];
 
