@@ -1,0 +1,30 @@
+/* The reticle is drawn in white with a difference blend, which inverts whatever is under it: it reads on
+   light and dark pages alike. That white is blend ink, not a theme colour. */
+.root {
+  position: fixed;
+  inset: 0;
+  z-index: 2147483647;
+  opacity: 0;
+  pointer-events: none;
+  mix-blend-mode: difference;
+}
+
+.corner {
+  position: absolute;
+  top: 0;
+  left: 0;
+  box-sizing: border-box;
+  border-style: solid;
+  border-color: white;
+  transform-origin: 0 0;
+  will-change: transform;
+}
+
+.dot {
+  position: absolute;
+  top: 0;
+  left: 0;
+  border-radius: 50%;
+  background: white;
+  will-change: transform;
+}

@@ -25,11 +25,10 @@
   font-family: var(--font-be-vietnam), sans-serif;
 }
 
-/* The page inset is what frames the dark bands as rounded cards. */
+/* Every band runs edge to edge: no page inset, no rounded corners on the bands. */
 .shell {
   width: 100%;
   min-width: 0;
-  padding: 0.5rem 0.5rem 0;
 }
 
 .srOnly {
@@ -176,8 +175,8 @@
 .hero {
   position: relative;
   isolation: isolate;
-  /* Pulls the photo up past the shell padding and the (sticky) nav bar's own height, to the very top. */
-  margin-top: calc(-0.5rem - 4.125rem);
+  /* Pulls the photo up past the (sticky) nav bar's own height, to the very top. */
+  margin-top: -4.125rem;
   padding: 0 0 clamp(2rem, 4vw, 3rem);
   color: var(--ink);
 
@@ -187,12 +186,6 @@
   --glass-shadow:
     inset 0 1px 0 color-mix(in srgb, var(--surface) 90%, transparent),
     0 1.5rem 3rem -1.25rem color-mix(in srgb, black 45%, transparent);
-}
-
-@media (min-width: 640px) {
-  .hero {
-    margin-top: calc(-0.75rem - 4.125rem);
-  }
 }
 
 /* The nav toggle: while the hero folds the bar away, this brings it back. */
@@ -937,7 +930,6 @@
 .subjects {
   display: grid;
   gap: clamp(1.5rem, 3vw, 2.5rem);
-  border-radius: var(--radius-card-lg) var(--radius-card-lg) 0 0;
   padding: clamp(4rem, 8vw, 6rem) var(--landing-gutter) clamp(5rem, 9vw, 7rem);
   background: var(--surface-sunken);
   scroll-margin-top: 5rem;
@@ -988,7 +980,6 @@
 .sheet {
   position: relative;
   margin-top: -2.5rem;
-  border-radius: var(--radius-card-lg);
   padding: clamp(1rem, 3vw, 2rem) var(--landing-gutter) clamp(2rem, 5vw, 3.5rem);
   background: var(--paper);
 }
@@ -1068,8 +1059,6 @@
   overflow: hidden;
   display: grid;
   gap: 2.5rem;
-  margin-top: 0.5rem;
-  border-radius: var(--radius-card-lg);
   padding: clamp(3.5rem, 7vw, 5rem) var(--landing-gutter) clamp(1.5rem, 3vw, 2rem);
   background:
     radial-gradient(circle at 85% 20%, color-mix(in srgb, var(--sun) 22%, transparent), transparent 45%),
@@ -1145,8 +1134,6 @@
   display: grid;
   gap: clamp(1.5rem, 3vw, 2.5rem);
   min-width: 0;
-  margin-top: 0.5rem;
-  border-radius: var(--radius-card-lg);
   padding: clamp(2.5rem, 5vw, 3.5rem) var(--landing-gutter);
   background: var(--surface-sunken);
   scroll-margin-top: 5rem;
@@ -1179,12 +1166,39 @@
   }
 }
 
+/* ---------- technology strip, last thing before the footer ---------- */
+
+.techStrip {
+  min-width: 0;
+  padding: clamp(2rem, 5vw, 3.5rem) var(--landing-gutter) clamp(1.5rem, 4vw, 2.5rem);
+}
+
+.techStrip > * {
+  width: min(100%, 80rem);
+  margin-inline: auto;
+}
+
+/* Third-party logos take their own brand colour on hover. These are the brands' identities, not theme
+   colours; black and white brands (Next.js, Three.js, Fastify, Vercel) keep the ink colour. */
+.techStrip [data-brand='react']:hover { color: #61dafb; }
+.techStrip [data-brand='typescript']:hover { color: #3178c6; }
+.techStrip [data-brand='tailwind']:hover { color: #06b6d4; }
+.techStrip [data-brand='gsap']:hover { color: #88ce02; }
+.techStrip [data-brand='zod']:hover { color: #3e67b1; }
+.techStrip [data-brand='supabase']:hover { color: #3fcf8e; }
+.techStrip [data-brand='postgresql']:hover { color: #4169e1; }
+.techStrip [data-brand='cloudflare']:hover { color: #f38020; }
+
 /* ---------- footer ---------- */
 
+/* The app shell keeps room under the page for the floating chat button. On the landing page that room is
+   the footer's own, so the footer runs to the bottom edge. */
+:global(html) :global(body) :global([data-app-shell]):has(.page) {
+  padding-bottom: 0;
+}
+
 .footer {
-  margin: 0.5rem 0.5rem 0.5rem;
-  border-radius: var(--radius-card-lg);
-  padding: clamp(2.5rem, 5vw, 3.5rem) var(--landing-gutter) 2rem;
+  padding: clamp(2.5rem, 5vw, 3.5rem) var(--landing-gutter) calc(2rem + 3.5rem + env(safe-area-inset-bottom));
   background: var(--nav);
   color: var(--nav-ink);
 }
@@ -1322,16 +1336,6 @@
 }
 
 /* ---------- responsive ---------- */
-
-@media (min-width: 640px) {
-  .shell {
-    padding: 0.75rem 0.75rem 0;
-  }
-
-  .footer {
-    margin: 0.75rem;
-  }
-}
 
 @media (max-width: 900px) {
   .footerCols {

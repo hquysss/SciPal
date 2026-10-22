@@ -1,14 +1,15 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { CheckCircle2, Download, Menu, Monitor, RefreshCw, Share, Smartphone, SquarePlus, WifiOff } from 'lucide-react';
+import { CheckCircle2, Download, Monitor, RefreshCw, Share, Smartphone, SquarePlus, WifiOff } from 'lucide-react';
 import { useLanguage } from '@scipal/hooks';
 import { useInstall, type InstallMode } from '@/lib/pwa/installMode';
 import { MICROSOFT_STORE_URL } from '@/lib/pwa/stores';
 import styles from './install.module.css';
 
 // "Tải xuống" on the landing page: SciPal installs from the site itself (a PWA), no app store.
-// The action follows the device: a one-tap install, the iPhone steps, or the browser menu.
+// The action follows the device: a one-tap install on phones, the Microsoft Store on Windows, and on iPhone
+// the Share steps (Safari offers no install prompt to a page).
 
 type Bilingual = { vi: string; en: string };
 
@@ -56,6 +57,31 @@ function HowTo({ steps }: { steps: Array<{ icon: typeof Share; text: Bilingual }
   );
 }
 
+/**
+ * The install button for a phone browser that has not offered an install prompt. Tapping it installs the moment
+ * the browser allows it; until then it says so in one line instead of showing steps.
+ */
+function NoPromptInstall({ onInstall }: { onInstall: () => void }) {
+  const { t } = useLanguage();
+  const [tried, setTried] = useState(false);
+  return (
+    <div className={styles.actions}>
+      <button type="button" onClick={() => { onInstall(); setTried(true); }} className={styles.install}>
+        <Download aria-hidden="true" size={20} />
+        {t({ vi: 'Tải SciPal về máy', en: 'Install SciPal' })}
+      </button>
+      {tried && (
+        <p role="status" className={styles.note}>
+          {t({
+            vi: 'Trình duyệt này chưa cho cài trực tiếp. Nếu SciPal đã có trên máy, hãy mở từ màn hình chính; nếu chưa, mở trang này bằng Chrome rồi bấm lại.',
+            en: 'This browser does not allow installing right now. If SciPal is already on this device, open it from the home screen; if not, open this page in Chrome and tap again.',
+          })}
+        </p>
+      )}
+    </div>
+  );
+}
+
 /** The Microsoft Store listing, for Windows once SciPal is published there. */
 function StoreLink({ href }: { href: string }) {
   const { t } = useLanguage();
@@ -82,6 +108,8 @@ export function InstallActionView({ mode, onInstall, storeUrl = null, desktop = 
       </p>
     );
   }
+  // On Windows the Store is the one way to get SciPal; the browser's own install is not offered here.
+  if (desktop) return store ? <div className={styles.actions}>{store}</div> : null;
   if (mode === 'prompt') {
     return (
       <div className={styles.actions}>
@@ -104,31 +132,7 @@ export function InstallActionView({ mode, onInstall, storeUrl = null, desktop = 
       />
     );
   }
-  if (desktop) {
-    return (
-      <div className={styles.actions}>
-        {store}
-        <HowTo
-          steps={[
-            { icon: Download, text: { vi: 'Bấm biểu tượng cài đặt ở thanh địa chỉ, hoặc menu ⋯ → Ứng dụng → Cài đặt SciPal', en: 'Click the install icon in the address bar, or menu ⋯ → Apps → Install SciPal' } },
-            { icon: Monitor, text: { vi: 'Mở SciPal từ menu Start hoặc thanh tác vụ', en: 'Open SciPal from the Start menu or taskbar' } },
-          ]}
-        />
-      </div>
-    );
-  }
-  return (
-    <div className={styles.actions}>
-      {store}
-      <HowTo
-      steps={[
-        { icon: Menu, text: { vi: 'Mở menu của trình duyệt (⋮ hoặc ⋯)', en: 'Open the browser menu (⋮ or ⋯)' } },
-        { icon: Download, text: { vi: 'Chọn “Cài đặt ứng dụng” hoặc “Thêm vào màn hình chính”', en: 'Choose “Install app” or “Add to Home Screen”' } },
-        { icon: Smartphone, text: { vi: 'Mở SciPal từ màn hình chính', en: 'Open SciPal from the home screen' } },
-      ]}
-      />
-    </div>
-  );
+  return <NoPromptInstall onInstall={onInstall} />;
 }
 
 /** A phone showing SciPal on its home screen, working offline. Decorative. */
@@ -236,7 +240,7 @@ export function InstallAppSection() {
         </h2>
         <p className={styles.lead}>
           {device === 'windows'
-            ? t({ vi: 'Cài SciPal cho Windows từ Microsoft Store, hoặc cài thẳng từ trình duyệt. Miễn phí.', en: 'Get SciPal for Windows from the Microsoft Store, or install it straight from your browser. Free.' })
+            ? t({ vi: 'Cài SciPal cho Windows từ Microsoft Store. Miễn phí.', en: 'Get SciPal for Windows from the Microsoft Store. Free.' })
             : t({
                 vi: 'Cài lên điện thoại, máy tính bảng hay máy tính chỉ trong vài giây: cài thẳng từ trình duyệt, không tốn phí.',
                 en: 'Install it on a phone, tablet or computer in seconds, straight from the browser, for free.',

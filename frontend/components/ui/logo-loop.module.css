@@ -1,0 +1,80 @@
+.root {
+  --logoloop-gap: 56px;
+  --logoloop-height: 36px;
+  position: relative;
+  overflow: hidden;
+  overflow: clip;
+  cursor: grab;
+  touch-action: pan-y pinch-zoom;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.root[data-dragging],
+.root[data-dragging] * {
+  cursor: grabbing;
+}
+
+.track {
+  display: flex;
+  width: max-content;
+  will-change: transform;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.list {
+  display: flex;
+  align-items: center;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.item {
+  flex: 0 0 auto;
+  margin-right: var(--logoloop-gap);
+  font-size: var(--logoloop-height);
+  line-height: 1;
+  color: var(--ink-muted);
+  transition: color 250ms ease;
+}
+
+.item:hover {
+  color: var(--ink);
+}
+
+.item svg {
+  display: block;
+  width: auto;
+  height: 1em;
+  pointer-events: none;
+}
+
+/* Reduced motion: no looping, the first copy wraps into a still row. */
+@media (prefers-reduced-motion: reduce) {
+  .root {
+    cursor: default;
+    touch-action: auto;
+    -webkit-mask-image: none !important;
+    mask-image: none !important;
+  }
+
+  .track {
+    width: 100%;
+    transform: none !important;
+  }
+
+  .list {
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 1.25rem var(--logoloop-gap);
+  }
+
+  .list:not(:first-child) {
+    display: none;
+  }
+
+  .item {
+    margin-right: 0;
+  }
+}

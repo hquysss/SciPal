@@ -112,6 +112,14 @@
   margin-bottom: 0.75rem;
 }
 
+.note {
+  max-width: 40ch;
+  margin: 0.25rem 0 0;
+  color: var(--ink-muted);
+  font-size: 0.9375rem;
+  line-height: 1.5;
+}
+
 .installed {
   display: inline-flex;
   align-items: center;

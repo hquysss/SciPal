@@ -8,13 +8,14 @@ vi.mock('@scipal/hooks', () => ({ useLanguage: () => ({ lang: 'vi', t: (o: { vi:
 const noop = () => {};
 
 describe('install section', () => {
-  it('sells the app without a store and starts with the menu steps before the browser speaks', () => {
+  it('sells the app without a store and shows no menu steps before the browser speaks', () => {
     const html = renderToStaticMarkup(<InstallAppSection />);
     expect(html).toContain('id="tai-ung-dung"');
     expect(html).toContain('Mang SciPal theo bên mình');
     expect(html).toContain('cài thẳng từ trình duyệt');
     expect(html).toContain('vẫn đọc được khi mất mạng');
-    expect(html).toContain('Mở menu của trình duyệt');
+    expect(html).not.toContain('Mở menu của trình duyệt');
+    expect(html).toContain('Tải SciPal về máy');
     expect(countRawColors(html).total).toBe(0);
   });
 
@@ -45,22 +46,32 @@ describe('install section', () => {
     expect(html).toContain('aria-pressed="true"');
   });
 
-  it('gives Windows its own steps, not the phone ones', () => {
-    const html = renderToStaticMarkup(<InstallActionView mode="manual" onInstall={noop} desktop />);
-    expect(html).toContain('menu Start');
-    expect(html).not.toContain('màn hình chính');
+  it('gives Windows only the Store button, with no steps and no browser install', () => {
+    const store = 'https://apps.microsoft.com/detail/9ABCDEF12345';
+    for (const mode of ['manual', 'prompt'] as const) {
+      const html = renderToStaticMarkup(<InstallActionView mode={mode} onInstall={noop} storeUrl={store} desktop />);
+      expect(html).toContain(`href="${store}"`);
+      expect(html).not.toContain('<details');
+      expect(html).not.toContain('Tải SciPal về máy');
+      expect(html).not.toContain('màn hình chính');
+    }
   });
 });
 
 describe('install button without a browser prompt', () => {
-  it('always shows the install button, with the steps one tap away, on iPhone and in the browser menu', () => {
-    for (const mode of ['ios', 'manual'] as const) {
-      const html = renderToStaticMarkup(<InstallActionView mode={mode} onInstall={noop} />);
-      expect(html).toContain('<details');
-      expect(html).toContain('<summary');
-      expect(html).toContain('Tải SciPal về máy');
-      expect(html).toContain('màn hình chính');
-    }
+  it('shows the Share steps on iPhone, where a page cannot open an install prompt', () => {
+    const html = renderToStaticMarkup(<InstallActionView mode="ios" onInstall={noop} />);
+    expect(html).toContain('<details');
+    expect(html).toContain('Tải SciPal về máy');
+    expect(html).toContain('màn hình chính');
     expect(renderToStaticMarkup(<InstallActionView mode="installed" onInstall={noop} />)).not.toContain('<summary');
+  });
+
+  it('is a plain button on other phones, with no steps', () => {
+    const html = renderToStaticMarkup(<InstallActionView mode="manual" onInstall={noop} />);
+    expect(html).toContain('<button');
+    expect(html).toContain('Tải SciPal về máy');
+    expect(html).not.toContain('<details');
+    expect(html).not.toContain('Mở menu của trình duyệt');
   });
 });

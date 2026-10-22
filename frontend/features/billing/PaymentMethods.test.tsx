@@ -31,22 +31,44 @@ const plan = {
 } as const;
 const buyCatalog = { ...catalog, plans: [plan], momoAutoRenewOpen: true };
 const student = { role: 'student', plan: null, quotas: [], paidThrough: null, renewal: null } as const;
+const slide = (name: RegExp) => fireEvent.keyDown(screen.getByRole('slider', { name }), { key: 'End' });
+const buyView = (onBuy: () => Promise<unknown>) => <PaymentMethodsView catalog={buyCatalog} account={student} accountStatus="ready" context={{ plan: 'student_plus', interval: 'month' }} onBuy={onBuy} />;
 it('pays for the plan picked on pricing: provider chosen here, renewal only by explicit consent', () => {
- const onBuy = vi.fn();
- render(<PaymentMethodsView catalog={buyCatalog} account={student} accountStatus="ready" context={{ plan: 'student_plus', interval: 'month' }} onBuy={onBuy} />);
+ const onBuy = vi.fn(() => new Promise<void>(() => {}));
+ render(buyView(onBuy));
  expect(screen.getByRole('region', { name: 'Gói đã chọn' }).textContent).toMatch(/Plus.*39\.000 ₫.*cho 1 tháng/);
- fireEvent.click(screen.getByRole('button', { name: /Thanh toán với payOS/ }));
+ slide(/Trượt để thanh toán với payOS/);
  expect(onBuy).toHaveBeenLastCalledWith('payos', false);
+ cleanup();
+ render(buyView(onBuy));
  fireEvent.click(screen.getByRole('radio', { name: /VNPAY/ }));
- fireEvent.click(screen.getByRole('button', { name: /Thanh toán với VNPAY/ }));
+ slide(/Trượt để thanh toán với VNPAY/);
  expect(onBuy).toHaveBeenLastCalledWith('vnpay', false);
+ cleanup();
+ render(buyView(onBuy));
+ fireEvent.click(screen.getByRole('radio', { name: /VNPAY/ }));
  fireEvent.click(screen.getByRole('checkbox'));
- fireEvent.click(screen.getByRole('button', { name: /Tự gia hạn với VNPAY/ }));
+ slide(/Trượt để tự gia hạn với VNPAY/);
  expect(onBuy).toHaveBeenLastCalledWith('vnpay', true);
+ cleanup();
+ render(buyView(onBuy));
  fireEvent.click(screen.getByRole('radio', { name: /MoMo/ }));
- expect((screen.getByRole('button', { name: /Tự gia hạn với MoMo/ }) as HTMLButtonElement).disabled).toBe(true);
+ expect(screen.getByRole('slider', { name: /Trượt để tự gia hạn với MoMo/ }).getAttribute('aria-disabled')).toBe('true');
  fireEvent.click(screen.getByRole('checkbox'));
- expect((screen.getByRole('button', { name: /Tự gia hạn với MoMo/ }) as HTMLButtonElement).disabled).toBe(false);
+ expect(screen.getByRole('slider', { name: /Trượt để tự gia hạn với MoMo/ }).getAttribute('aria-disabled')).toBeNull();
+});
+it('does not start checkout from a disabled slider', () => {
+ const onBuy = vi.fn(() => Promise.resolve());
+ render(buyView(onBuy));
+ fireEvent.click(screen.getByRole('radio', { name: /MoMo/ }));
+ slide(/Trượt để tự gia hạn với MoMo/);
+ expect(onBuy).not.toHaveBeenCalled();
+});
+it('says so when checkout cannot open', async () => {
+ const onBuy = vi.fn(() => Promise.reject({ vi: 'Lỗi', en: 'Error' }));
+ render(buyView(onBuy));
+ slide(/Trượt để thanh toán với payOS/);
+ expect((await screen.findAllByText('Chưa mở được thanh toán', {}, { timeout: 2000 })).length).toBeGreaterThan(0);
 });
 it('sells 3- and 6-month plans as one-time payments only', () => {
  const onBuy = vi.fn();
@@ -58,5 +80,5 @@ it('sells 3- and 6-month plans as one-time payments only', () => {
 it('does not let a teacher pay for a student plan', () => {
  render(<PaymentMethodsView catalog={buyCatalog} account={{ ...student, role: 'teacher' }} accountStatus="ready" context={{ plan: 'student_plus', interval: 'month' }} onBuy={() => {}} />);
  expect(screen.getByText('Gói này dành cho học sinh.')).toBeTruthy();
- expect((screen.getByRole('button', { name: /Thanh toán với payOS/ }) as HTMLButtonElement).disabled).toBe(true);
+ expect(screen.getByRole('slider', { name: /Trượt để thanh toán với payOS/ }).getAttribute('aria-disabled')).toBe('true');
 });
