@@ -24,6 +24,7 @@ import { FeaturesSection } from './FeaturesSection';
 import { CommunitySection } from './CommunitySection';
 import { FaqSection } from './FaqSection';
 import { InstallAppSection } from './InstallAppSection';
+import { TechStrip } from './TechStrip';
 import { useCountUp, useInView } from './countUp';
 import { IntroCurtain, introPlayed } from './IntroCurtain';
 import { SubjectSpotlight } from './SubjectSpotlight';
@@ -606,6 +607,8 @@ export function LandingPage({ level, catalog, onChangeLevel, pricing = null, sho
               <WebsiteFeedbackBoard key={reviewsVersion} compact />
             </div>
           </section>
+
+          <TechStrip />
         </main>
 
         <footer className={styles.footer}>

@@ -1179,6 +1179,18 @@
   }
 }
 
+/* ---------- technology strip, last thing before the footer ---------- */
+
+.techStrip {
+  min-width: 0;
+  padding: clamp(2rem, 5vw, 3.5rem) var(--landing-gutter) clamp(1.5rem, 4vw, 2.5rem);
+}
+
+.techStrip > * {
+  width: min(100%, 80rem);
+  margin-inline: auto;
+}
+
 /* ---------- footer ---------- */
 
 .footer {
