@@ -25,6 +25,7 @@ import { CommunitySection } from './CommunitySection';
 import { FaqSection } from './FaqSection';
 import { InstallAppSection } from './InstallAppSection';
 import { TechStrip } from './TechStrip';
+import { TargetCursor } from '@/components/ui/target-cursor';
 import { useCountUp, useInView } from './countUp';
 import { IntroCurtain, introPlayed } from './IntroCurtain';
 import { SubjectSpotlight } from './SubjectSpotlight';
@@ -397,6 +398,8 @@ export function LandingPage({ level, catalog, onChangeLevel, pricing = null, sho
 
   return (
     <>
+      {/* The brackets lock onto every link and enabled button; touch screens do not get it. */}
+      <TargetCursor targetSelector='a[href], button:not(:disabled), [role="button"]' />
       {intro && <IntroCurtain level={level} onReady={() => setReady(true)} />}
       {heroNav.inHero && (
         <button
