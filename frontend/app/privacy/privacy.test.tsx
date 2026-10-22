@@ -17,6 +17,6 @@ describe('/privacy', () => {
 
   it('tells people how to have their data deleted', () => {
     expect(html).toContain('id="xoa-du-lieu"');
-    expect(html).toContain('href="mailto:tuilangus@gmail.com');
+    expect(html).toContain('href="mailto:contact@scipal.io.vn');
   });
 });
