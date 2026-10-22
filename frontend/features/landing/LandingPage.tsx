@@ -33,7 +33,7 @@ import feedbackStyles from '@/features/website-feedback/feedback.module.css';
 import styles from './landing.module.css';
 
 const CONTACT_FACEBOOK_URL = 'https://www.facebook.com/nguoivietchimtayto/';
-const CONTACT_EMAIL = 'tuilangus@gmail.com';
+const CONTACT_EMAIL = 'contact@scipal.io.vn';
 
 export interface LandingPageProps {
   level: EducationLevel;

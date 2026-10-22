@@ -6,7 +6,7 @@ import { useLanguage } from '@scipal/hooks';
 
 // The public privacy policy, with data-deletion instructions. It describes what the code actually does; update it with the code.
 
-const CONTACT_EMAIL = 'tuilangus@gmail.com';
+const CONTACT_EMAIL = 'contact@scipal.io.vn';
 const UPDATED = { vi: 'Cập nhật ngày 12/10/2026', en: 'Updated 12 October 2026' };
 
 type Copy = { vi: string; en: string };

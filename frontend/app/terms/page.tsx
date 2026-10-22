@@ -6,7 +6,7 @@ import { useLanguage } from '@scipal/hooks';
 
 // DRAFT terms of use. It describes how SciPal works today; the owner reviews and approves the wording before release.
 
-const CONTACT_EMAIL = 'tuilangus@gmail.com';
+const CONTACT_EMAIL = 'contact@scipal.io.vn';
 const UPDATED = { vi: 'Bản nháp ngày 12/10/2026', en: 'Draft of 12 October 2026' };
 
 type Copy = { vi: string; en: string };

@@ -31,8 +31,8 @@ export function AccountHelpModal({ isOpen, onClose }: AccountHelpModalProps) {
     >
       <div className="space-y-3 py-5 text-sm leading-relaxed text-ink-muted">
         <p>{t({ en: 'For help signing in or resetting your password, email SciPal support.', vi: 'Nếu cần hỗ trợ đăng nhập hoặc đặt lại mật khẩu, hãy gửi email cho SciPal.' })}</p>
-        <a href="mailto:tuilangus@gmail.com" className="inline-flex min-h-11 items-center rounded-xl border border-action px-4 font-semibold text-action hover:bg-surface-sunken focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus">
-          tuilangus@gmail.com
+        <a href="mailto:contact@scipal.io.vn" className="inline-flex min-h-11 items-center rounded-xl border border-action px-4 font-semibold text-action hover:bg-surface-sunken focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus">
+          contact@scipal.io.vn
         </a>
       </div>
       <div className="flex justify-end border-t border-line pt-4">
