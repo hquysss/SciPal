@@ -7,6 +7,7 @@ import { useLanguage } from '@scipal/hooks';
 import type { BillingAccount } from '@scipal/types';
 import { Alert } from '@/components/ui/alert';
 import { buttonVariants } from '@/components/ui/button';
+import { SlideCommit } from '@/components/ui/slide-commit';
 import { cancelRenewal, fetchMyPlan, formatVnd, startCheckout, type Catalog } from './billingApi';
 import { INTERVAL_NOUN, INTERVAL_SPAN, canAutoRenew } from './intervals';
 import ticket from '@/features/landing/pricing.module.css';
@@ -15,9 +16,10 @@ type Provider = 'payos' | 'vnpay' | 'momo';
 type Props = {
  readonly context?: { readonly audience?: string; readonly interval?: string; readonly plan?: string };
  readonly catalog: Catalog | null;
- /** Starts checkout for the plan chosen on /pricing; set only by the page wrapper. */
- readonly onBuy?: (provider: Provider, autoRenew: boolean) => void;
- readonly buying?: boolean;
+ /** Starts checkout for the plan chosen on /pricing; set only by the page wrapper. Rejects when checkout cannot open. */
+ readonly onBuy?: (provider: Provider, autoRenew: boolean) => void | Promise<unknown>;
+ /** Called once checkout has opened and the slider shows it is done: go to the provider. */
+ readonly onPaid?: () => void;
  readonly buyError?: { en: string; vi: string } | null;
  readonly account: BillingAccount | null;
  readonly accountStatus: 'loading' | 'ready' | 'error';
@@ -31,7 +33,7 @@ const providers = [
  { id: 'vnpay', name: 'VNPAY', icon: CreditCard, type: { en: 'PAYMENT GATEWAY', vi: 'CỔNG THANH TOÁN' }, description: { en: 'Choose a supported payment method on VNPAY. Auto-renewal is optional.', vi: 'Chọn phương thức được hỗ trợ trên VNPAY. Có thể chọn tự gia hạn.' } },
  { id: 'momo', name: 'MoMo', icon: Wallet, type: { en: 'E-WALLET', vi: 'VÍ ĐIỆN TỬ' }, description: { en: 'Authorize recurring payments in MoMo. You choose the amount and period.', vi: 'Ủy quyền thu định kỳ trong MoMo. Bạn đồng ý rõ số tiền và chu kỳ.' } },
 ] as const;
-export function PaymentMethodsView({ catalog, account, accountStatus, onCancel, onRetry, cancelling = false, message, context, onBuy, buying = false, buyError }: Props) {
+export function PaymentMethodsView({ catalog, account, accountStatus, onCancel, onRetry, cancelling = false, message, context, onBuy, onPaid, buyError }: Props) {
  const { t, lang } = useLanguage();
  const available = { payos: catalog?.payosCheckoutOpen === true, vnpay: catalog?.vnpayCheckoutOpen === true, momo: catalog?.momoAutoRenewOpen === true };
  const [selected, setSelected] = useState<Provider | null>(available.payos ? 'payos' : available.vnpay ? 'vnpay' : available.momo ? 'momo' : null);
@@ -109,7 +111,16 @@ export function PaymentMethodsView({ catalog, account, accountStatus, onCancel, 
   <div className="flex flex-col gap-3" aria-live="polite">
    {buyError && <Alert tone="danger"><p>{t(buyError)}</p></Alert>}
    {canPay && method && selected ? (buyNow
-     ? <button type="button" onClick={() => onBuy!(selected, wantsRenew)} disabled={buying || roleBlocks || (needsConsent && !renew)} aria-busy={buying} className={`${buttonVariants({ size: 'lg' })} w-full`}>{buying ? t({vi:'Đang mở thanh toán…',en:'Opening payment…'}) : t(wantsRenew ? {vi:`Tự gia hạn với ${method.name}`,en:`Auto-renew with ${method.name}`} : {vi:`Thanh toán với ${method.name}`,en:`Pay with ${method.name}`})}</button>
+     ? <SlideCommit
+        label={t(wantsRenew ? {vi:`Trượt để tự gia hạn với ${method.name}`,en:`Slide to auto-renew with ${method.name}`} : {vi:`Trượt để thanh toán với ${method.name}`,en:`Slide to pay with ${method.name}`})}
+        doneLabel={t({vi:'Đang chuyển tiếp…',en:'Redirecting…'})}
+        errorLabel={t({vi:'Chưa mở được thanh toán',en:'Could not open payment'})}
+        busyLabel={t({vi:'Đang mở thanh toán…',en:'Opening payment…'})}
+        disabled={roleBlocks || (needsConsent && !renew)}
+        holdMs={0}
+        onConfirm={() => onBuy!(selected, wantsRenew)}
+        onDone={onPaid}
+       />
      : <Link href={`/pricing?${pricingQuery.toString()}`} className={`${buttonVariants({ size: 'lg' })} w-full`}>{t({vi:`Chọn gói để trả qua ${method.name}`,en:`Choose a plan to pay with ${method.name}`})}</Link>)
     : <button type="button" disabled className={`${buttonVariants({ size: 'lg' })} w-full`}>{t({vi:'Chưa mở thanh toán',en:'Checkout is not open yet'})}</button>}
    {canPay && <p className="text-center text-sm text-ink-muted">{t(note)}</p>}
@@ -136,10 +147,10 @@ export function PaymentMethods({ catalog, context }: { readonly catalog: Catalog
  const [status, setStatus] = useState<Props['accountStatus']>('loading');
  const [cancelling, setCancelling] = useState(false);
  const [message, setMessage] = useState<Props['message']>(null);
- const [buying, setBuying] = useState(false);
  const [buyError, setBuyError] = useState<Props['buyError']>(null);
  // One key per provider and price while the page is open: a double click or a retry resumes the same order.
  const keys = useRef(new Map<string, string>());
+ const destination = useRef<string | null>(null);
  async function load() {
   setStatus('loading');
   const result = await fetchMyPlan();
@@ -150,8 +161,8 @@ export function PaymentMethods({ catalog, context }: { readonly catalog: Catalog
  async function buy(provider: Provider, autoRenew: boolean) {
   const plan = catalog?.plans.find((p) => p.code === context?.plan);
   const price = plan?.prices.find((p) => p.interval === context?.interval);
-  if (!price) return;
-  setBuying(true); setBuyError(null);
+  if (!price) throw new Error('No price selected');
+  setBuyError(null);
   const renew = provider === 'momo' || autoRenew;
   const checkoutKey = `${provider}:${price.id}:${renew}`;
   const newKey = () => (typeof crypto !== 'undefined' && 'randomUUID' in crypto ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(36).slice(2)}`);
@@ -163,8 +174,13 @@ export function PaymentMethods({ catalog, context }: { readonly catalog: Catalog
    key = newKey(); keys.current.set(checkoutKey, key);
    result = await startCheckout(price.id, key, provider, renew);
   }
-  if (!result.ok) { setBuyError(result.error); setBuying(false); return; }
-  window.location.assign(result.data.checkoutUrl ?? `/checkout/${result.data.orderId}`);
+  if (!result.ok) { setBuyError(result.error); throw result.error; }
+  destination.current = result.data.checkoutUrl ?? `/checkout/${result.data.orderId}`;
+ }
+ // Let the slider's "done" pill land before the page leaves.
+ function goToProvider() {
+  const url = destination.current;
+  if (url) window.setTimeout(() => window.location.assign(url), 600);
  }
  async function cancel() {
   setCancelling(true); setMessage(null);
@@ -173,5 +189,5 @@ export function PaymentMethods({ catalog, context }: { readonly catalog: Catalog
   setMessage(result.ok ? result.data.status === 'cancel_pending' ? {vi:'Đang chờ nhà cung cấp xác nhận hủy. Không bắt đầu kỳ thu mới.',en:'Waiting for the provider to confirm cancellation. No new charge will start.'} : {vi:'Đã hủy tự gia hạn. Gói đã trả vẫn dùng đến hết hạn.',en:'Auto-renewal is cancelled. Paid access remains until expiry.'} : result.error);
   if (result.ok) await load();
  }
- return <PaymentMethodsView catalog={catalog} account={account} accountStatus={status} onCancel={()=>void cancel()} onRetry={()=>{router.refresh();void load();}} cancelling={cancelling} message={message} context={context} onBuy={context?.plan ? (provider, autoRenew) => void buy(provider, autoRenew) : undefined} buying={buying} buyError={buyError} />;
+ return <PaymentMethodsView catalog={catalog} account={account} accountStatus={status} onCancel={()=>void cancel()} onRetry={()=>{router.refresh();void load();}} cancelling={cancelling} message={message} context={context} onBuy={context?.plan ? buy : undefined} onPaid={goToProvider} buyError={buyError} />;
 }
