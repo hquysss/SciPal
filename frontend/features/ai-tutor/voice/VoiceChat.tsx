@@ -58,6 +58,7 @@ export function VoiceChat({ lessonId, onClose }: { lessonId?: string; onClose: (
   // The loudness of whoever is talking, written straight to the stage (60 times a second, no render).
   const stageRef = useRef<HTMLDivElement>(null);
   const level = useRef(0);
+  const shownLevel = useRef('0.00');
   const transcriptEnd = useRef<HTMLLIElement>(null);
 
   useEffect(() => {
@@ -94,7 +95,12 @@ export function VoiceChat({ lessonId, onClose }: { lessonId?: string; onClose: (
       onLevel: (_who, next) => {
         // Rise fast, fall slowly, so the rings move with speech rather than flicker.
         level.current = next > level.current ? next : level.current * 0.85 + next * 0.15;
-        stageRef.current?.style.setProperty('--level', level.current.toFixed(3));
+        // Two decimals are enough to see; skipping unchanged values spares a restyle of the stage.
+        const shown = level.current.toFixed(2);
+        if (shown !== shownLevel.current) {
+          shownLevel.current = shown;
+          stageRef.current?.style.setProperty('--level', shown);
+        }
       },
       isMuted: () => mutedRef.current,
       onError: (reason) =>

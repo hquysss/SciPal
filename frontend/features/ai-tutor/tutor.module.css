@@ -313,8 +313,8 @@
   display: grid;
   place-items: center;
   padding: 1rem;
-  background: color-mix(in srgb, var(--ink) 55%, transparent);
-  backdrop-filter: blur(6px);
+  /* A plain scrim: a backdrop blur over the moving landing page is re-run every frame while the rings animate. */
+  background: color-mix(in srgb, var(--ink) 65%, transparent);
 }
 
 .voicePanel {

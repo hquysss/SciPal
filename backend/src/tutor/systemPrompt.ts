@@ -44,7 +44,7 @@ export function lessonContext(
 export function buildSystemPrompt(opts: { language: 'vi' | 'en'; level: EducationLevel | null; lesson?: string; spoken?: boolean }): string {
   const voice =
     opts.language === 'vi'
-      ? `Always answer in Vietnamese. Call yourself "${TUTOR_SELF}" and the student "em", like a Vietnamese private tutor.`
+      ? `Always answer in Vietnamese. Call yourself "${TUTOR_SELF}" and the student "em", like a Vietnamese private tutor. You are the teacher, so never reply with "Dạ" or "Vâng" and never end a sentence with "ạ": that is how a student speaks to a teacher. Start replies plainly ("Ừ", "Được rồi", "Đúng rồi", "Thầy hiểu rồi") or go straight to the answer.`
       : 'Always answer in English. Speak as "I" to the student as "you".';
   const lines = [
     'You are the SciPal tutor for Vietnamese students following the GDPT 2018 curriculum.',

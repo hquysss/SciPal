@@ -41,6 +41,7 @@ describe('buildSystemPrompt', () => {
     const vi = buildSystemPrompt({ language: 'vi', level: null });
     expect(vi).toContain(`"${TUTOR_SELF}"`);
     expect(vi).toContain('"em"');
+    expect(vi).toMatch(/never reply with "Dạ"/);
     expect(vi).toMatch(/Vietnamese/);
     const en = buildSystemPrompt({ language: 'en', level: null });
     expect(en).not.toContain(`"${TUTOR_SELF}"`);
