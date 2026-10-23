@@ -313,8 +313,8 @@
   display: grid;
   place-items: center;
   padding: 1rem;
-  background: color-mix(in srgb, var(--ink) 55%, transparent);
-  backdrop-filter: blur(6px);
+  /* A plain scrim: a backdrop blur over the moving landing page is re-run every frame while the rings animate. */
+  background: color-mix(in srgb, var(--ink) 65%, transparent);
 }
 
 .voicePanel {
@@ -543,3 +543,7 @@
   .voiceStage[data-state='connecting'] .ring,
   .voiceStatus span { animation: none; }
 }
+
+/* The picture button shares the round look of the microphone; it is a label around a hidden file input. */
+.attach:focus-within { outline: 2px solid var(--focus); outline-offset: 2px; }
+.attach[aria-disabled='true'] { cursor: not-allowed; opacity: 0.5; }

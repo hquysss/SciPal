@@ -71,6 +71,12 @@ describe('token usage', () => {
     expect(seen).toEqual({ prompt: 1200, completion: 300, total: 1500 });
   });
 
+  it('reports how many prompt tokens came from the provider cache', async () => {
+    let seen: TokenUsage | null = null;
+    await collect(chunks({ choices: [], usage: { prompt_tokens: 2000, completion_tokens: 100, total_tokens: 2100, prompt_tokens_details: { cached_tokens: 1536 } } }), (usage) => { seen = usage; });
+    expect(seen).toEqual({ prompt: 2000, completion: 100, total: 2100, cached: 1536 });
+  });
+
   it('adds prompt and completion when the total is missing, and ignores an answer without usage', async () => {
     let seen: TokenUsage | null = null;
     await collect(chunks({ choices: [], usage: { prompt_tokens: 10, completion_tokens: 5 } }), (usage) => { seen = usage; });

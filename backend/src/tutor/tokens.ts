@@ -10,9 +10,9 @@ const CHARS_PER_TOKEN = 3;
 
 export const estimateTokens = (text: string) => Math.ceil(text.length / CHARS_PER_TOKEN);
 
-/** The tokens to count for one answer: the provider's total, else an estimate from the text sent and received. */
-export const tokensUsed = (reported: number | undefined, sent: string, received: string) =>
-  reported !== undefined && Number.isInteger(reported) && reported > 0 ? reported : estimateTokens(sent) + estimateTokens(received);
+/** The tokens to count for one answer: the provider's total, else an estimate from the text sent and received (`extra` for what text does not show, such as a picture). */
+export const tokensUsed = (reported: number | undefined, sent: string, received: string, extra = 0) =>
+  reported !== undefined && Number.isInteger(reported) && reported > 0 ? reported : estimateTokens(sent) + estimateTokens(received) + extra;
 
 /** Sum of the `tokens` column over rows read from the database; anything that is not a whole number counts as 0. */
 export const sumTokens = (rows: unknown): number =>

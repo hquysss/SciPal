@@ -76,3 +76,18 @@ it('keeps the monthly quota period when the server refuses the first question', 
   const state = tutorReducer(initialTutorState([]), { type: 'failed', status: 429, remaining: 0, period: 'month', error: { vi: 'Hết lượt tháng này', en: 'Monthly limit' } });
   expect(state.period).toBe('month');
 });
+
+describe('a question with a picture', () => {
+  it('sends the picture as mime and data only, never the preview address', () => {
+    const image = { mime: 'image/jpeg' as const, data: 'QUJD', preview: 'blob:x' };
+    expect(tutorRequest({ conversationId: null, lessonId: undefined, text: 'Hỏi', language: 'vi', retry: false, image })).toEqual({
+      message: 'Hỏi', language: 'vi', image: { mime: 'image/jpeg', data: 'QUJD' },
+    });
+  });
+
+  it('keeps the preview on the question so the picture stays on screen', () => {
+    const state = tutorReducer(initialTutorState([]), { type: 'send', text: 'Em gửi thầy ảnh này.', preview: 'blob:x' });
+    expect(state.messages[0]).toEqual({ role: 'user', content: 'Em gửi thầy ảnh này.', preview: 'blob:x' });
+    expect(tutorReducer(initialTutorState([]), { type: 'send', text: 'Hỏi' }).messages[0]).toEqual({ role: 'user', content: 'Hỏi' });
+  });
+});

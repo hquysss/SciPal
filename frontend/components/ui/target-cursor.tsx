@@ -206,7 +206,7 @@ export function TargetCursor({
         dot.style.width = `${s.dotSize}px`;
         dot.style.height = `${s.dotSize}px`;
       }
-      root.style.opacity = Math.max(0, Math.min(1, presence.x)).toFixed(3);
+      root.style.setProperty('--presence', Math.max(0, Math.min(1, presence.x)).toFixed(3));
 
       const resting = !pointer.inside && presence.x < 0.002 && Math.abs(presence.v) < 0.002 && Math.abs(lock.x) < 0.002 && Math.abs(press.x) < 0.002;
       const spinning = pointer.inside && !locked && spinSpeed > 0.0001;

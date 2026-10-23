@@ -83,12 +83,36 @@ ${content.slice(0, 1500)}`,
   );
 }
 
+/** A picture the student sent: the browser's own copy while the chat is open, or the stored one's link after a reload. */
+function QuestionPicture({ message }: { message: Message }) {
+  const { t } = useLanguage();
+  const src = message.preview ?? message.image_url;
+  if (src === undefined) return null;
+  // Only a local copy or an https link is ever put on the page.
+  if (src === null || !(src.startsWith('blob:') || src.startsWith('https://'))) {
+    return <p className="text-sm text-ink-muted">{t({ vi: 'Ảnh không hiển thị được.', en: 'The picture cannot be shown.' })}</p>;
+  }
+  return (
+    <a href={src} target="_blank" rel="noopener noreferrer" aria-label={t({ vi: 'Mở ảnh lớn', en: 'Open the picture' })} className="block overflow-hidden rounded-xl border border-line focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus">
+      {/* eslint-disable-next-line @next/next/no-img-element -- a local copy or a signed storage link */}
+      <img src={src} alt={t({ vi: 'Ảnh em đã gửi', en: 'The picture you sent' })} className="max-h-60 max-w-full object-cover" />
+    </a>
+  );
+}
+
 export function TutorMessage({ message, streaming = false }: { message: Message; streaming?: boolean }) {
   if (message.role === 'user') {
-    return (
+    const bubble = (
       <p className={`${styles.question} whitespace-pre-wrap break-words text-base leading-relaxed`}>
         {message.content}
       </p>
+    );
+    if (message.preview === undefined && message.image_url === undefined) return bubble;
+    return (
+      <div className="ml-auto flex max-w-[85%] flex-col items-end gap-2">
+        <QuestionPicture message={message} />
+        {bubble}
+      </div>
     );
   }
   return (

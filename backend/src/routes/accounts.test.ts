@@ -73,13 +73,38 @@ describe('DELETE /api/auth/accounts/:id', () => {
     expect(mockSupabase.auth.admin.deleteUser).not.toHaveBeenCalled();
   });
 
+  /** A bucket where `other-user-id` has one conversation folder with one picture. */
+  const pictureStore = (removeError: { message: string } | null = null) => {
+    const remove = vi.fn().mockResolvedValue({ data: [], error: removeError });
+    const list = vi.fn(async (prefix: string) => ({
+      data: prefix === 'other-user-id' ? [{ name: 'conv-1', id: null }] : prefix === 'other-user-id/conv-1' ? [{ name: 'a.jpg', id: 'file-1' }] : [],
+      error: null,
+    }));
+    return { remove, storage: { from: () => ({ list, remove }) } };
+  };
+
   it('returns 204 when deleting a different user', async () => {
+    const store = pictureStore();
     const mockSupabase = {
       auth: { admin: { deleteUser: vi.fn().mockResolvedValue({ error: null }) } },
+      storage: store.storage,
     };
     const app = buildApp({ supabase: mockSupabase, requestUser: adminUser });
     const res = await app.inject({ method: 'DELETE', url: '/api/auth/accounts/other-user-id' });
     expect(res.statusCode).toBe(204);
+    // The pictures the user sent the AI Professor go with the account.
+    expect(store.remove).toHaveBeenCalledWith(['other-user-id/conv-1/a.jpg']);
+  });
+
+  it('keeps the account when its pictures cannot be deleted, so the delete can be tried again', async () => {
+    const mockSupabase = {
+      auth: { admin: { deleteUser: vi.fn().mockResolvedValue({ error: null }) } },
+      storage: pictureStore({ message: 'store down' }).storage,
+    };
+    const app = buildApp({ supabase: mockSupabase, requestUser: adminUser });
+    const res = await app.inject({ method: 'DELETE', url: '/api/auth/accounts/other-user-id' });
+    expect(res.statusCode).toBe(503);
+    expect(mockSupabase.auth.admin.deleteUser).not.toHaveBeenCalled();
   });
 });
 

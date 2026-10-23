@@ -57,13 +57,13 @@ describe('conversation routes', () => {
 
   it('deletes only the caller’s conversation', async () => {
     const del = mockQuery({ data: [{ id: C1 }], error: null });
-    const app = await build(student, { tutor_conversations: del });
+    const app = await build(student, { tutor_conversations: del, tutor_messages: mockQuery({ data: [], error: null }) });
     expect((await app.inject({ method: 'DELETE', url: `/api/tutor/conversations/${C1}` })).statusCode).toBe(204);
     expect(del.deleteCalls).toBe(1);
     expect(del.eqCalls).toEqual(expect.arrayContaining([['id', C1], ['user_id', 'student-1']]));
     await app.close();
 
-    const none = await build(student, { tutor_conversations: mockQuery({ data: [], error: null }) });
+    const none = await build(student, { tutor_conversations: mockQuery({ data: [], error: null }), tutor_messages: mockQuery({ data: [], error: null }) });
     expect((await none.inject({ method: 'DELETE', url: `/api/tutor/conversations/${C1}` })).statusCode).toBe(404);
     await none.close();
   });
@@ -72,5 +72,17 @@ describe('conversation routes', () => {
     const app = await build(null, {});
     expect((await app.inject({ method: 'GET', url: '/api/tutor/conversations' })).statusCode).toBe(401);
     await app.close();
+  });
+});
+
+describe('contextSize', () => {
+  it('shows everything up to the limit, then a window that starts at a multiple of the step', async () => {
+    const { contextSize } = await import('../tutor/limits.js');
+    expect([1, 19, 20].map(contextSize)).toEqual([1, 19, 20]);
+    // From 21 on, the first message of the window (total - size) only moves every 10 messages.
+    const starts = Array.from({ length: 29 }, (_, i) => 21 + i).map((total) => total - contextSize(total));
+    expect(new Set(starts)).toEqual(new Set([10, 20, 30]));
+    expect(starts.slice(0, 9)).toEqual(Array(9).fill(10));
+    expect(Array.from({ length: 29 }, (_, i) => contextSize(21 + i)).every((size) => size >= 10 && size <= 19)).toBe(true);
   });
 });

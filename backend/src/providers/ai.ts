@@ -4,6 +4,8 @@ import { resolveTutorSettings, type ReasoningEffort, type TutorProvider } from '
 export interface ChatMessage {
   role:    'user' | 'assistant';
   content: string;
+  /** A picture the student sent with this message (base64), for the model to read; only the current turn carries one. */
+  image?:  { mime: string; data: string };
 }
 
 /** The service and model for one call (the admin settings); unset means the environment's. */
@@ -19,6 +21,8 @@ export interface TokenUsage {
   prompt: number;
   completion: number;
   total: number;
+  /** Of `prompt`, the tokens the provider read from its prompt cache (billed at a discount); unset when it does not say. */
+  cached?: number;
 }
 
 export interface AIProvider {
@@ -78,14 +82,24 @@ export function completionRequest(settings: ReturnType<typeof providerSettings>,
     ...(settings.baseURL || openAiReasoning ? { reasoning_effort: openAiReasoning && /^gpt-5-pro/i.test(settings.model.trim()) ? ('high' as const) : settings.effort ?? ('low' as const) } : {}),
     messages: [
       { role: 'system' as const, content: systemPrompt },
-      ...messages.map((m) => ({ role: m.role, content: m.content })),
+      ...messages.map((m) =>
+        m.image
+          ? {
+              role: 'user' as const,
+              content: [
+                { type: 'text' as const, text: m.content },
+                { type: 'image_url' as const, image_url: { url: `data:${m.image.mime};base64,${m.image.data}` } },
+              ],
+            }
+          : { role: m.role, content: m.content },
+      ),
     ],
   };
 }
 
 type CompletionChunk = {
   choices: Array<{ delta?: { content?: string | null } }>;
-  usage?: { prompt_tokens?: number; completion_tokens?: number; total_tokens?: number } | null;
+  usage?: { prompt_tokens?: number; completion_tokens?: number; total_tokens?: number; prompt_tokens_details?: { cached_tokens?: number } | null } | null;
 };
 
 /** The text of a streamed answer; the usage chunk, if the provider sends one, goes to `onUsage`. */
@@ -97,7 +111,8 @@ export async function* readCompletion(stream: AsyncIterable<CompletionChunk>, on
     if (usage && onUsage) {
       const prompt = usage.prompt_tokens ?? 0;
       const completion = usage.completion_tokens ?? 0;
-      onUsage({ prompt, completion, total: usage.total_tokens ?? prompt + completion });
+      const cached = usage.prompt_tokens_details?.cached_tokens;
+      onUsage({ prompt, completion, total: usage.total_tokens ?? prompt + completion, ...(cached === undefined ? {} : { cached }) });
     }
   }
 }
