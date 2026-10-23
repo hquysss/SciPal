@@ -254,6 +254,11 @@ export function ExamRoomHeader({ blueprint, questionCount }: { blueprint: Bluepr
           </span>
         </p>
         <h1 className="mt-3 text-2xl font-bold text-ink sm:text-3xl">{blueprint.name}</h1>
+        {blueprint.source && (
+          <p className="mt-3 text-sm text-ink-muted">
+            {t({ en: 'Source', vi: 'Nguồn' })}: <cite className="not-italic font-medium text-ink">{blueprint.source}</cite>
+          </p>
+        )}
       </header>
     </>
   );
