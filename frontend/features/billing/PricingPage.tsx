@@ -9,7 +9,6 @@ import type { BillingAudience, BillingInterval } from '@scipal/types';
 import { INTERVALS, INTERVAL_LABEL, INTERVAL_MONTHS, INTERVAL_NOUN, INTERVAL_SPAN, approxDays, savePercent } from './intervals';
 import { PricingLoadError } from './PricingLoadError';
 import shared from '@/features/landing/pricing.module.css';
-import { tilt, untilt } from '@/features/landing/tilt';
 import { formatVnd, limitText, soonNote, type PublicPlan } from './billingApi';
 import s from './pricing-page.module.css';
 
@@ -213,7 +212,7 @@ export function PricingPage({ plans, checkoutOpen, salesNote, payosCheckoutOpen 
               <span className={shared.sparkles} aria-hidden="true">
                 {[0, 1, 2, 3, 4].map((n) => <Sparkles key={n} className={shared.sparkle} style={{ '--i': n } as React.CSSProperties} size={n === 2 ? 18 : 14} />)}
               </span>
-              <section aria-labelledby={`plan-${plan.code}`} className={shared.paid} onPointerMove={tilt} onPointerLeave={untilt}>
+              <section aria-labelledby={`plan-${plan.code}`} className={shared.paid}>
                 <span className={shared.badge}>{t({ en: 'Recommended', vi: 'Khuyên dùng' })}</span>
                 {body}
               </section>

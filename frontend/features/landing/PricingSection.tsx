@@ -8,7 +8,6 @@ import type { BillingAudience, BillingInterval } from '@scipal/types';
 import { INTERVALS, INTERVAL_LABEL, INTERVAL_MONTHS, INTERVAL_NOUN, INTERVAL_SPAN } from '@/features/billing/intervals';
 import { formatVnd, limitText, soonNote, type Catalog } from '@/features/billing/billingApi';
 import { useCountUp, useInView } from './countUp';
-import { tilt, untilt } from './tilt';
 import styles from './pricing.module.css';
 
 /** The price counting up from zero as the plans come into view; readers get the final amount. */
@@ -143,7 +142,7 @@ export function PricingSection({
             <span className={styles.sparkles} aria-hidden="true">
               {[0, 1, 2, 3, 4].map((n) => <Sparkles key={n} className={styles.sparkle} style={item(n)} size={n === 2 ? 18 : 14} />)}
             </span>
-            <article className={styles.paid} aria-labelledby={`landing-${paid.code}`} onPointerMove={tilt} onPointerLeave={untilt}>
+            <article className={styles.paid} aria-labelledby={`landing-${paid.code}`}>
               <span className={styles.badge}>{t({ en: 'Recommended', vi: 'Khuyên dùng' })}</span>
               <div className={styles.ticketMain}>
                 <h3 id={`landing-${paid.code}`} className={styles.planName}>
