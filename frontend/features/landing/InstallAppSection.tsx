@@ -216,6 +216,25 @@ function DeviceToggle({ value, onChange }: { value: Device; onChange: (device: D
   );
 }
 
+/** Open the page with ?debug=install to see why a browser offers no install prompt. */
+function InstallDebug({ mode }: { mode: InstallMode }) {
+  const [lines, setLines] = useState<string[] | null>(null);
+  useEffect(() => {
+    if (new URLSearchParams(location.search).get('debug') !== 'install') return;
+    const out: string[] = [];
+    const show = () => setLines([...out]);
+    const w = window as Window & { __scipalInstall?: unknown };
+    out.push(`mode: ${mode}`, `ua: ${navigator.userAgent}`, `standalone: ${matchMedia('(display-mode: standalone)').matches}`, `secure: ${isSecureContext}`, `early prompt kept: ${Boolean(w.__scipalInstall)}`);
+    window.addEventListener('beforeinstallprompt', () => { out.push('beforeinstallprompt fired late'); show(); });
+    const nav = navigator as Navigator & { getInstalledRelatedApps?: () => Promise<unknown[]> };
+    void nav.getInstalledRelatedApps?.().then((apps) => { out.push(`installed related apps: ${apps.length}`); show(); }).catch(() => {});
+    void navigator.serviceWorker?.getRegistration().then((r) => { out.push(`service worker: ${r?.active ? 'active' : r ? 'registered, not active' : 'none'}`); show(); });
+    void fetch('/manifest.webmanifest').then((r) => { out.push(`manifest: ${r.status} ${r.headers.get('content-type')}`); show(); }).catch((e) => { out.push(`manifest error: ${e}`); show(); });
+    show();
+  }, [mode]);
+  return lines && <pre className={styles.note} style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-all' }}>{lines.join('\n')}</pre>;
+}
+
 export function InstallAppSection() {
   const { t } = useLanguage();
   const { mode, windows, install } = useInstall();
@@ -255,6 +274,7 @@ export function InstallAppSection() {
           ))}
         </ul>
         <InstallActionView mode={mode} onInstall={() => void install()} storeUrl={device === 'windows' ? MICROSOFT_STORE_URL : null} desktop={device === 'windows'} />
+        <InstallDebug mode={mode} />
       </div>
     </section>
   );

@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { cleanup, render, screen, within } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { ExamBlueprintList } from './ExamListNotices';
+import { ExamBlueprintList, ExamRoomHeader } from './ExamListNotices';
 import type { BlueprintSummary } from './examQueries';
 
 vi.mock('@scipal/hooks', () => ({ useLanguage: () => ({ lang: 'vi', t: (o: { vi: string }) => o.vi }) }));
@@ -57,5 +57,32 @@ describe('ExamBlueprintList gifted-student group', () => {
   it('shows the programming card even when the subject has no hsg exam', () => {
     render(<ExamBlueprintList blueprints={[exam('a', 'Đề thường')]} hsgCoding={[{ slug: 'informatics', name_vi: 'Tin học', name_en: null, count: 3 }]} />);
     expect(screen.getByRole('link', { name: /Luyện lập trình/ }).getAttribute('href')).toBe('/exam/hsg/informatics');
+  });
+});
+
+describe('ExamRoomHeader', () => {
+  it('renders title, question count, and subject badge', () => {
+    render(<ExamRoomHeader blueprint={exam('bp-1', 'Đề thi minh họa')} questionCount={40} />);
+    expect(screen.getByRole('heading', { level: 1, name: 'Đề thi minh họa' })).toBeTruthy();
+    expect(screen.getByText('40 câu')).toBeTruthy();
+    expect(screen.getByText('Tin học')).toBeTruthy();
+  });
+
+  it('renders source attribution when blueprint has source', () => {
+    render(
+      <ExamRoomHeader
+        blueprint={exam('bp-2', 'ĐGNL 2026', {
+          source: 'Đề thi chính thức ĐGNL ĐHQG-HCM 2026 · tailieuonthi.org',
+        })}
+        questionCount={120}
+      />,
+    );
+    expect(screen.getByText(/tailieuonthi\.org/)).toBeTruthy();
+    expect(screen.getByText(/^Nguồn:/)).toBeTruthy();
+  });
+
+  it('does not render source when blueprint has no source', () => {
+    render(<ExamRoomHeader blueprint={exam('bp-3', 'Đề không nguồn')} questionCount={20} />);
+    expect(screen.queryByText(/Nguồn/)).toBeNull();
   });
 });
