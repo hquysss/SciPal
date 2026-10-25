@@ -12,7 +12,8 @@ export default defineConfig({
   reporter: [['list']],
   use: {
     baseURL,
-    trace: 'retain-on-failure',
+    // Off: traces record typed login values in plain text.
+    trace: 'off',
     navigationTimeout: 90_000,
     screenshot: 'only-on-failure',
   },
