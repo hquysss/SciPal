@@ -4,6 +4,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { Block } from '@scipal/types';
 import { LessonPartsView } from './LessonPartsView';
 
+vi.mock('../habit/habitApi', () => ({ useHabit: () => ({ habit: null, reload: async () => {} }) }));
 vi.mock('@scipal/hooks', () => ({ useLanguage: () => ({ lang: 'vi', t: (o: { vi: string }) => o.vi }) }));
 vi.mock('next/dynamic', () => ({ default: () => () => null }));
 vi.mock('@/features/glossary/savedTerms', () => ({

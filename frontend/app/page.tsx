@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import { cookies } from 'next/headers';
 import { createServerClient } from '@scipal/supabase';
 import { DeferredLandingPage } from '@/features/landing/DeferredLandingPage';
+import { HomeStreakBanner } from '@/features/habit/StreakRiskBanner';
 import { LevelGate } from '@/features/landing/LevelGate';
 import { GuestLandingFlow } from '@/features/landing/GuestLandingFlow';
 import { INTRO_COOKIE, parseEducationLevel, type EducationLevel } from '@/features/landing/educationLevel';
@@ -88,12 +89,15 @@ export default async function HomePage({ searchParams }: HomePageProps) {
   }
 
   return (
+    <>
+      <HomeStreakBanner />
       <DeferredLandingPage
-      level={accountLevel}
-      catalog={landingData.catalog}
-      informatics={landingData.informatics}
-      pricing={pricing}
-      showIntro={showIntro}
-    />
+        level={accountLevel}
+        catalog={landingData.catalog}
+        informatics={landingData.informatics}
+        pricing={pricing}
+        showIntro={showIntro}
+      />
+    </>
   );
 }

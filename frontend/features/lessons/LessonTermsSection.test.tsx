@@ -6,6 +6,7 @@ import { countRawColors } from '../../lib/theme/rawColors';
 import type { LessonTerm } from '@/components/blocks/terms/LessonTermsContext';
 import { LessonPartsView } from './LessonPartsView';
 
+vi.mock('../habit/habitApi', () => ({ useHabit: () => ({ habit: null, reload: async () => {} }) }));
 vi.mock('@scipal/hooks', () => ({ useLanguage: () => ({ lang: 'vi', t: (o: { vi: string }) => o.vi }) }));
 vi.mock('next/dynamic', () => ({ default: () => () => null }));
 

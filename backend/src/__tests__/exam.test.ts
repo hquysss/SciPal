@@ -447,7 +447,7 @@ describe('exam formats', () => {
       xp_log: mockQuery({ data: null, error: null }),
     });
     const res = await submitTo(scoringApp, [{ question_id: 'q1', selected_option: 'a' }]);
-    expect(res.json()).toEqual({ score: 3.33, max_score: 10, correct_count: 1, total_questions: 3, xp_earned: 15, estimated: false, sections: [], already_awarded: false });
+    expect(res.json()).toEqual({ score: 3.33, max_score: 10, correct_count: 1, total_questions: 3, xp_earned: 15, estimated: false, sections: [], already_awarded: false, new_badges: [] });
     expect(update.updated[0]).toMatchObject({ score: 3.33, max_score: 10 });
     await scoringApp.close();
   });

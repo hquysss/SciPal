@@ -73,8 +73,8 @@ describe('POST /api/practice/check', () => {
     });
     const first = await check(app, Q_MC, { selected_option: 'b' });
     const second = await check(app, Q_MC, { selected_option: 'b' });
-    expect(first.json()).toEqual({ correct: true, explanation, xp_earned: 10, new_streak: 1, lesson_completed: false });
-    expect(second.json()).toEqual({ correct: true, explanation, xp_earned: 0, new_streak: 0, lesson_completed: false });
+    expect(first.json()).toEqual({ correct: true, explanation, xp_earned: 10, new_streak: 1, lesson_completed: false, new_badges: [] });
+    expect(second.json()).toEqual({ correct: true, explanation, xp_earned: 0, new_streak: 0, lesson_completed: false, new_badges: [] });
     expect(xp.inserted).toHaveLength(1);
     await app.close();
   });

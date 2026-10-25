@@ -1,4 +1,5 @@
 import type { FastifyPluginAsync, FastifyReply, FastifyRequest } from 'fastify';
+import { awardBadges } from '../badges/award.js';
 
 // Friend requests and friendships. A pair is one row with user_a < user_b; browsers can only read
 // their own rows (RLS), so every write happens here with the service role.
@@ -101,6 +102,16 @@ export const friendRoutes: FastifyPluginAsync = async (app) => {
     return error ? null : ((data as unknown[] | null)?.length ?? 0) > 0;
   }
 
+  /** A new friendship: the one who said yes may see a badge unlock now, the other gets theirs quietly. */
+  async function friendBadges(request: FastifyRequest, me: string, row: Row) {
+    const other = row.user_a === me ? row.user_b : row.user_a;
+    const [mine] = await Promise.all([
+      awardBadges(app.supabase!, me, request.log, { friends: 1 }),
+      awardBadges(app.supabase!, other, request.log),
+    ]);
+    return mine.shown;
+  }
+
   app.post('/api/friends/request', { preHandler: [requireUser] }, async (request, reply) => {
     if (!app.supabase) return reply.code(503).send(unavailable);
     const me = userId(request)!;
@@ -128,7 +139,7 @@ export const friendRoutes: FastifyPluginAsync = async (app) => {
       if (row.status === 'pending' && row.requested_by === target) {
         const accepted = await markAccepted(row.id);
         if (accepted === null) return reply.code(500).send(failed);
-        if (accepted) return reply.send({ id: row.id, status: 'accepted' });
+        if (accepted) return reply.send({ id: row.id, status: 'accepted', new_badges: await friendBadges(request, me, row) });
       }
       return reply.code(409).send(duplicate);
     }
@@ -163,7 +174,7 @@ export const friendRoutes: FastifyPluginAsync = async (app) => {
     const accepted = await markAccepted(id);
     if (accepted === null) return reply.code(500).send(failed);
     if (!accepted) return reply.code(409).send(duplicate);
-    return reply.send({ id, status: 'accepted' });
+    return reply.send({ id, status: 'accepted', new_badges: await friendBadges(request, me, row) });
   });
 
   // Declines a request, cancels one you sent, or ends a friendship.

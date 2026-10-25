@@ -7,6 +7,8 @@ import { useLanguage } from '@scipal/hooks';
 import { buttonVariants } from '@/components/ui/button';
 import { authoringCall } from '@/features/authoring/apiClient';
 import { speakTerm } from '@/features/glossary/pronunciation';
+import type { NewBadge } from '@scipal/types';
+import { BadgeUnlockQueue } from '@/features/badges/BadgeUnlockQueue';
 
 /** A due card of the learner's word list, with the term it shows. */
 export type ReviewCard = {
@@ -34,7 +36,22 @@ const GRADES: Array<{ grade: Grade; key: string; label: { en: string; vi: string
  * One round of review: the English side, flip (Space) for the meaning, then Again / Hard / Good
  * (1 / 2 / 3). The server schedules each card and decides the XP; this only shows what it says.
  */
-export function ReviewSession({ cards, hasWords, nextDue }: { cards: ReviewCard[]; hasWords: boolean; nextDue: string | null }) {
+type ReviewProps = { cards: ReviewCard[]; hasWords: boolean; nextDue: string | null };
+
+/** The review, plus the unlock moments of badges its XP earned (server-awarded). */
+export function ReviewSession(props: ReviewProps) {
+  const { t } = useLanguage();
+  const [badges, setBadges] = useState<NewBadge[]>([]);
+  const onBadges = useCallback((more: NewBadge[]) => setBadges((old) => [...old, ...more]), []);
+  return (
+    <>
+      <ReviewCards {...props} onBadges={onBadges} />
+      <BadgeUnlockQueue badges={badges} t={t} />
+    </>
+  );
+}
+
+function ReviewCards({ cards, hasWords, nextDue, onBadges }: ReviewProps & { onBadges: (badges: NewBadge[]) => void }) {
   const { lang, t } = useLanguage();
   const [index, setIndex] = useState(0);
   const [flipped, setFlipped] = useState(false);
@@ -48,14 +65,15 @@ export function ReviewSession({ cards, hasWords, nextDue }: { cards: ReviewCard[
       if (!card || busy) return;
       setBusy(true);
       setFailed(false);
-      const res = await authoringCall<{ due_at: string; xp_earned: number }>(`/api/me/terms/${encodeURIComponent(card.term_id)}/review`, 'POST', { grade: value });
+      const res = await authoringCall<{ due_at: string; xp_earned: number; new_badges?: NewBadge[] }>(`/api/me/terms/${encodeURIComponent(card.term_id)}/review`, 'POST', { grade: value });
       setBusy(false);
       if (!res.ok) return setFailed(true);
       setXp((n) => n + (res.data.xp_earned ?? 0));
+      if (res.data.new_badges?.length) onBadges(res.data.new_badges);
       setFlipped(false);
       setIndex((i) => i + 1);
     },
-    [card, busy],
+    [card, busy, onBadges],
   );
 
   useEffect(() => {

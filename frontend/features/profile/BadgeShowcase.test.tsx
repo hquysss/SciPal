@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { cleanup, render, screen } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { BadgeShowcase } from './BadgeShowcase';
 import type { CommunityBadge } from './profileApi';
@@ -37,5 +37,25 @@ describe('BadgeShowcase', () => {
     const { container } = render(<BadgeShowcase userId="u" />);
     await Promise.resolve();
     expect(container.textContent).toBe('');
+  });
+});
+
+describe('BadgeShowcase collection', () => {
+  it('groups by category, filters, and shows progress to a badge not earned yet', async () => {
+    getBadges.mockResolvedValue({ ok: true, data: { badges: [
+      badge({ id: '1', name_vi: 'Bài học đầu tiên', category: 'learning', unlocked: true, earned_at: '2026-10-20T00:00:00Z' }),
+      badge({ id: '2', name_vi: 'Chăm học', category: 'learning', progress: { current: 7, target: 10 } }),
+      badge({ id: '3', name_vi: 'Kỷ luật thép', category: 'streak' }),
+    ] } });
+    render(<BadgeShowcase userId="me" />);
+    expect(await screen.findByRole('heading', { name: 'Học tập' })).toBeTruthy();
+    expect(screen.getByRole('heading', { name: 'Chuỗi ngày' })).toBeTruthy();
+    expect(screen.getByText('7/10')).toBeTruthy();
+    expect(screen.getByRole('progressbar', { name: 'Tiến độ tới Chăm học' }).getAttribute('aria-valuenow')).toBe('7');
+    fireEvent.click(screen.getByRole('radio', { name: 'Đã mở' }));
+    expect(screen.queryByText('Chăm học')).toBeNull();
+    expect(screen.getByText('Bài học đầu tiên')).toBeTruthy();
+    fireEvent.click(screen.getByRole('radio', { name: 'Chưa mở' }));
+    expect(screen.queryByText('Bài học đầu tiên')).toBeNull();
   });
 });

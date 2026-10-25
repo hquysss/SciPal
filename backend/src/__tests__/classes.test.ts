@@ -282,6 +282,19 @@ describe('rename and delete a class', () => {
     await app.close();
   });
 
+  it('turns the class leaderboard on or off for the owner, and takes only a boolean', async () => {
+    const rooms = mockQuery({ data: { id: CLASS_ID, name: '10A2', leaderboard_enabled: false }, error: null });
+    const app = await buildClassApp(teacher, { class_rooms: rooms });
+    const patch = (payload: object) => app.inject({ method: 'PATCH', url: `/api/classes/${CLASS_ID}`, payload });
+    expect((await patch({ leaderboard_enabled: 'no' })).statusCode).toBe(400);
+    expect(rooms.updated).toHaveLength(0);
+    const res = await patch({ leaderboard_enabled: false });
+    expect(res.statusCode).toBe(200);
+    expect(rooms.updated[0]).toEqual({ leaderboard_enabled: false });
+    expect(rooms.eqCalls).toContainEqual(['teacher_id', 'teacher-1']);
+    await app.close();
+  });
+
   it('answers 404 for another teacher’s class or a bad id, on rename and delete', async () => {
     const rooms = mockQuery({ data: null, error: null });
     const app = await buildClassApp(otherTeacher, { class_rooms: rooms });

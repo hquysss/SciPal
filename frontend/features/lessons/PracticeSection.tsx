@@ -4,7 +4,7 @@ import { useCallback, useEffect, useId, useRef, useState } from 'react';
 import { loadPracticeDraft, savePracticeDraft, type PracticeDraft } from '../../lib/pwa/practiceDraft';
 import { CircleCheck, CircleX } from 'lucide-react';
 import { useLanguage } from '@scipal/hooks';
-import type { PracticeCheckResult, PracticeResponse, PublicPracticeQuestion } from '@scipal/types';
+import { levelOfXp, type PracticeCheckResult, type PracticeResponse, type PublicPracticeQuestion } from '@scipal/types';
 import { buttonVariants } from '@/components/ui/button';
 import { MathText } from '@/components/math/MathText';
 import { QuestionFigure, QuestionSource } from '@/components/math/QuestionFigure';
@@ -13,6 +13,13 @@ import { checkPractice, type PracticeCheck, type PracticeLoad } from './practice
 import { PRACTICE_SYNCED, type SyncResult } from '../../lib/pwa/pendingPractice';
 import { CodePracticeBoard } from './CodePracticeBoard';
 import { WritingAnswer, type WritingFeedbackState } from './WritingAnswer';
+import { addVerdict, EMPTY_SESSION, type PracticeSession } from './practiceSession';
+import { useTotalXp } from './useTotalXp';
+import { LevelUpOverlay } from './LevelUpOverlay';
+import { BadgeUnlockQueue } from '../badges/BadgeUnlockQueue';
+import { useHabit } from '../habit/habitApi';
+import { DailyGoalRing } from '../habit/DailyGoalRing';
+import { playSfx } from '../../lib/sfx';
 import styles from './practice.module.css';
 
 type Bilingual = { en: string; vi: string };
@@ -30,6 +37,8 @@ export interface PracticeState {
   results: Record<string, PracticeResult>;
   activeQuestionId?: string;
   writingFeedback?: Record<string, WritingFeedbackState>;
+  /** XP and combo of this visit, for display only. */
+  session?: PracticeSession;
 }
 
 /**
@@ -38,7 +47,7 @@ export interface PracticeState {
  */
 export function withResult(state: PracticeState, id: string, result: PracticeResult, checked: PracticeResponse | undefined): PracticeState {
   if (state.answers[id] !== checked) return state;
-  return { ...state, results: { ...state.results, [id]: result } };
+  return { ...state, results: { ...state.results, [id]: result }, session: addVerdict(state.session ?? EMPTY_SESSION, id, result) };
 }
 
 /**
@@ -177,7 +186,8 @@ export function PracticeSection(props: PracticeSectionProps) {
   if (!props.load.ok || code.length === 0) return <QuestionPractice {...props} />;
   const quiz = props.load.questions.filter((q) => q.type !== 'code');
   const board = <CodePracticeBoard questions={code} answers={props.state.answers} results={props.state.results} onAnswer={props.onAnswer} onResult={props.onResult} t={t} />;
-  if (quiz.length === 0) return board;
+  const unlocks = <BadgeUnlockQueue badges={(props.state.session ?? EMPTY_SESSION).badges} t={t} />;
+  if (quiz.length === 0) return <>{board}{unlocks}</>;
   const tabs: Array<{ id: 'code' | 'quiz'; label: Bilingual }> = [
     { id: 'code', label: { en: `Programming (${code.length})`, vi: `Bài lập trình (${code.length})` } },
     { id: 'quiz', label: { en: `Questions (${quiz.length})`, vi: `Trắc nghiệm (${quiz.length})` } },
@@ -198,7 +208,7 @@ export function PracticeSection(props: PracticeSectionProps) {
           </button>
         ))}
       </div>
-      {view === 'code' ? board : <QuestionPractice {...props} load={{ ok: true, questions: quiz }} />}
+      {view === 'code' ? <>{board}{unlocks}</> : <QuestionPractice {...props} load={{ ok: true, questions: quiz }} />}
     </div>
   );
 }
@@ -212,6 +222,10 @@ function QuestionPractice({ load, lessonId, state, onAnswer, onResult, onRetry, 
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState(false);
   const positionRef = useRef<HTMLParagraphElement>(null);
+  const session = state.session ?? EMPTY_SESSION;
+  const levelUp = useLevelUp(session);
+  const { habit } = useHabit();
+  const habitSince = useXpSince(habit !== null, session.xp);
   const questions = load.ok ? load.questions : [];
   const activeIndex = Math.max(0, questions.findIndex((q) => q.id === (state.activeQuestionId ?? activeId)));
   const question = questions[activeIndex];
@@ -294,6 +308,12 @@ function QuestionPractice({ load, lessonId, state, onAnswer, onResult, onRetry, 
             </p>
             <span className="text-sm text-ink-muted">{t(PART_TITLE[question.type])}</span>
           </div>
+          {(session.seq > 0 || habit) && (
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              {session.seq > 0 ? <SessionBar session={session} t={t} /> : <span />}
+              {habit && <DailyGoalRing day={habit.today} xp={habit.today_xp + habitSince} goal={habit.goal_xp} />}
+            </div>
+          )}
           <div role="progressbar" aria-label={t({ en: 'Questions checked', vi: 'Câu đã kiểm tra' })} aria-valuemin={0} aria-valuemax={summary.total} aria-valuenow={summary.checked} className="h-1.5 overflow-hidden rounded-full bg-surface-sunken">
             <div className={`${styles.progress} h-full origin-left rounded-full bg-accent`} style={{ transform: `scaleX(${summary.checked / summary.total})` }} />
           </div>
@@ -305,6 +325,7 @@ function QuestionPractice({ load, lessonId, state, onAnswer, onResult, onRetry, 
             options={options}
             answer={state.answers[question.id]}
             result={state.results[question.id]}
+            freshSeq={session.lastId === question.id ? session.seq : 0}
             writingFeedback={state.writingFeedback?.[question.id]}
             onWritingFeedback={onWritingFeedback ? (feedback) => onWritingFeedback(question.id, feedback) : undefined}
             onAnswer={(answer) => onAnswer(question.id, answer)}
@@ -313,6 +334,11 @@ function QuestionPractice({ load, lessonId, state, onAnswer, onResult, onRetry, 
             lang={shownLang}
           />
         </div>
+        {Object.values(state.results).some((r) => r.lesson_completed && !r.provisional) && (
+          <LessonSummary right={summary.right} total={summary.total} session={session} t={t} />
+        )}
+        <LevelUpOverlay level={levelUp.level} onClose={levelUp.close} t={t} />
+        <BadgeUnlockQueue badges={session.badges} paused={levelUp.level !== null} t={t} />
         <nav aria-label={t({ en: 'Practice questions', vi: 'Các câu tự luyện' })} className="sticky bottom-0 z-10 flex items-center justify-between gap-3 border-t border-line bg-surface py-3">
           <button type="button" disabled={activeIndex === 0} onClick={() => goTo(activeIndex - 1)} className={buttonVariants({ variant: 'outline' })}>
             {t({ en: 'Previous question', vi: 'Câu trước' })}
@@ -373,6 +399,8 @@ interface QuestionCardProps {
   answer: PracticeResponse | undefined;
   lessonId?: string;
   result: PracticeResult | undefined;
+  /** Non-zero when this question got the latest verdict of the visit: the card reacts once per verdict. */
+  freshSeq?: number;
   writingFeedback?: WritingFeedbackState;
   onWritingFeedback?: (feedback: WritingFeedbackState) => void;
   onAnswer: (answer: PracticeResponse) => void;
@@ -381,8 +409,22 @@ interface QuestionCardProps {
   lang: 'vi' | 'en';
 }
 
-function QuestionCard({ question, lessonId, options, answer, result, writingFeedback, onWritingFeedback, onAnswer, onResult, t, lang }: QuestionCardProps) {
+const FLASH: Keyframe[] = [{ boxShadow: '0 0 0 0 transparent' }, { boxShadow: '0 0 0 4px var(--success)' }, { boxShadow: '0 0 0 0 transparent' }];
+const SHAKE: Keyframe[] = [0, -6, 6, -4, 4, 0].map((x) => ({ transform: `translateX(${x}px)`, boxShadow: '0 0 0 2px var(--danger)' }));
+
+function QuestionCard({ question, lessonId, options, answer, result, freshSeq = 0, writingFeedback, onWritingFeedback, onAnswer, onResult, t, lang }: QuestionCardProps) {
   const id = useId();
+  const cardRef = useRef<HTMLElement>(null);
+  const seenSeq = useRef(freshSeq);
+  // A verdict that just arrived (not one already on screen when the card mounted) flashes or shakes the card once.
+  useEffect(() => {
+    if (!freshSeq || freshSeq === seenSeq.current || !result) return;
+    seenSeq.current = freshSeq;
+    if (!result.code) playSfx(result.correct ? 'right' : 'wrong');
+    const card = cardRef.current;
+    if (!card?.animate || window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) return;
+    card.animate(result.correct ? FLASH : SHAKE, { duration: result.correct ? 400 : 320, easing: 'ease-out' });
+  }, [freshSeq, result]);
   const [checking, setChecking] = useState(false);
   const [error, setError] = useState<Bilingual | null>(null);
   const response = responseOf(question, answer);
@@ -432,7 +474,7 @@ function QuestionCard({ question, lessonId, options, answer, result, writingFeed
   );
 
   return (
-    <section aria-labelledby={stemId} className={CARD}>
+    <section ref={cardRef} aria-labelledby={stemId} className={CARD}>
       <h3 id={stemId} className="text-base font-semibold text-ink">
         <MathText text={t(data.stem)} />
       </h3>
@@ -568,8 +610,86 @@ function ResultNote({ result, t }: { result: PracticeResult; t: (text: Bilingual
   }
   return (
     <>
-      {(result.xp_earned ?? 0) > 0 && !result.code && <span className="mt-1 block font-semibold text-ink">{`+${result.xp_earned} XP`}</span>}
-      {result.lesson_completed && <span className="mt-1 block font-semibold text-success">{t({ en: 'You have completed this lesson.', vi: 'Bạn đã hoàn thành bài này.' })}</span>}
+      {(result.xp_earned ?? 0) > 0 && !result.code && (
+        <span className={`${styles.xpFloat} mt-1 inline-block rounded-full bg-success-surface px-2.5 py-0.5 font-bold tabular-nums text-success`}>{`+${result.xp_earned} XP`}</span>
+      )}
     </>
   );
+}
+
+/** XP of this visit and the run of first-try right answers (shown from 3). */
+function SessionBar({ session, t }: { session: PracticeSession; t: (text: Bilingual) => string }) {
+  return (
+    <div aria-live="polite" className="flex flex-wrap items-center gap-2 text-sm">
+      <span key={session.xp} className={`${styles.bump} rounded-full bg-surface-sunken px-3 py-1 font-semibold tabular-nums text-ink`}>
+        {t({ en: `This session: +${session.xp} XP`, vi: `Phiên này: +${session.xp} XP` })}
+      </span>
+      {session.combo >= 3 && (
+        <span key={session.combo} className={`${styles.bump} rounded-full border border-accent px-3 py-1 font-bold tabular-nums text-ink`}>
+          {t({ en: `Streak ×${session.combo}`, vi: `Chuỗi đúng ×${session.combo}` })}
+        </span>
+      )}
+    </div>
+  );
+}
+
+/** Replaces the plain "lesson completed" line: right answers, session XP, best run. */
+function LessonSummary({ right, total, session, t }: { right: number; total: number; session: PracticeSession; t: (text: Bilingual) => string }) {
+  const stats: Array<[Bilingual, string]> = [
+    [{ en: 'Correct', vi: 'Câu đúng' }, `${right}/${total}`],
+    [{ en: 'XP this session', vi: 'XP phiên này' }, `+${session.xp}`],
+    [{ en: 'Best streak', vi: 'Chuỗi đúng dài nhất' }, `×${session.bestCombo}`],
+  ];
+  return (
+    <section aria-live="polite" className={`${CARD} ${styles.verdict} border-success`}>
+      <p className="flex items-center gap-2 font-semibold text-success">
+        <CircleCheck aria-hidden="true" className="h-5 w-5" />
+        {t({ en: 'You have completed this lesson.', vi: 'Bạn đã hoàn thành bài này.' })}
+      </p>
+      <dl className="mt-3 grid grid-cols-3 gap-3 text-center">
+        {stats.map(([label, value]) => (
+          <div key={label.en} className="rounded-lg bg-surface-sunken px-2 py-3">
+            <dt className="text-xs text-ink-muted">{t(label)}</dt>
+            <dd className="text-lg font-bold tabular-nums text-ink">{value}</dd>
+          </div>
+        ))}
+      </dl>
+    </section>
+  );
+}
+
+/**
+ * Session XP earned after a server total was read. The total already holds what the session earned
+ * before (switching parts remounts the section and reads it again), so only the rest is added on top.
+ */
+function useXpSince(loaded: boolean, sessionXp: number): number {
+  const at = useRef<number | null>(null);
+  if (!loaded) at.current = null;
+  else if (at.current === null) at.current = sessionXp;
+  return loaded ? sessionXp - (at.current ?? sessionXp) : 0;
+}
+
+/**
+ * The level reached when this visit's server XP crosses a level line, from the total XP read at load.
+ * Verdicts already counted when the section mounted (switching parts) never trigger it.
+ */
+function useLevelUp(session: PracticeSession) {
+  const baseXp = useTotalXp();
+  const since = useXpSince(baseXp !== null, session.xp);
+  const shown = useRef<number | null>(null);
+  const [level, setLevel] = useState<number | null>(null);
+  useEffect(() => {
+    if (baseXp === null) return;
+    const total = baseXp + since;
+    const before = shown.current ?? total;
+    shown.current = total;
+    if (total <= before) return;
+    const reached = levelOfXp(total).level;
+    if (reached > levelOfXp(before).level) {
+      setLevel(reached);
+      playSfx('levelUp');
+    }
+  }, [baseXp, since]);
+  const close = useCallback(() => setLevel(null), []);
+  return { level, close };
 }

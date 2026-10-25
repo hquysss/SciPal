@@ -50,7 +50,7 @@ export default async function ClassDetailPage({
         ]}
       />
 
-      <ClassDetailActions classId={id} name={classRoom.name} />
+      <ClassDetailActions classId={id} name={classRoom.name} leaderboardEnabled={classRoom.leaderboard_enabled} />
 
       <StudentRoster
         classNameTitle={classRoom.name}

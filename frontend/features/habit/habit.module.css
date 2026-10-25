@@ -1,0 +1,18 @@
+.ring {
+  transition: stroke-dashoffset 480ms cubic-bezier(.22, 1, .36, 1);
+}
+
+.pop {
+  animation: pop 600ms cubic-bezier(.34, 1.56, .64, 1);
+}
+
+@keyframes pop {
+  0% { transform: rotate(-90deg) scale(1); }
+  50% { transform: rotate(-90deg) scale(1.25); }
+  100% { transform: rotate(-90deg) scale(1); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ring { transition: none; }
+  .pop { animation: none; }
+}

@@ -1,6 +1,7 @@
 import type { FastifyPluginAsync, FastifyReply, FastifyRequest } from 'fastify';
 import { isSubjectArchived, readSubjectArchived, SUBJECT_ARCHIVED } from '../subjects/archived.js';
 import { touchStreak } from '../streaks/touchStreak.js';
+import { awardBadges } from '../badges/award.js';
 import { nextReview, REVIEW_GRADES, type ReviewGrade, type ReviewState } from '../terms/review.js';
 
 // Glossary terms written by staff. An admin's term is published at once; a teacher's is 'pending'
@@ -270,8 +271,9 @@ export const termRoutes: FastifyPluginAsync = async (app) => {
       }
     }
     // Any graded due card, "again" included, makes today an active day in that subject.
-    const newStreak = subjectId ? await touchStreak(supabase, userId, subjectId, now, request.log) : 0;
-    return reply.send({ due_at: next.due_at, xp_earned: xpEarned, new_streak: newStreak });
+    const newStreak = subjectId ? await touchStreak(supabase, userId, subjectId, now, request.log, xpEarned) : 0;
+    const badges = xpEarned > 0 ? await awardBadges(supabase, userId, request.log, { xp: xpEarned }) : { shown: [] };
+    return reply.send({ due_at: next.due_at, xp_earned: xpEarned, new_streak: newStreak, new_badges: badges.shown });
   });
 
   app.post('/api/authoring/terms', { preHandler: [requireStaff] }, async (request, reply) => {

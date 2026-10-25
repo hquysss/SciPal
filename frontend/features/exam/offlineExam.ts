@@ -35,6 +35,7 @@ export function scoreOffline(pack: ExamPack, answers: SubmittedAnswer[]): ExamRe
     xp_earned: scored.correct_count * EXAM_XP_PER_RIGHT,
     estimated: scored.estimated,
     sections: scored.sections,
+    new_badges: [],
   };
 }
 

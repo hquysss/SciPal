@@ -1,0 +1,13 @@
+{
+  "name": "@scipal/e2e",
+  "private": true,
+  "scripts": {
+    "test:e2e": "playwright test",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.56.0",
+    "@types/node": "^20.0.0",
+    "typescript": "^5.5.0"
+  }
+}

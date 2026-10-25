@@ -178,13 +178,23 @@ export const classRoutes: FastifyPluginAsync = async (app) => {
     if (!target) return reply;
     if (!(await featureAllowed(app, 'classes', target.user as never))) return reply.code(403).send(featureOff('classes'));
 
-    const { name: raw } = (request.body ?? {}) as { name?: unknown };
-    const name = typeof raw === 'string' ? raw.trim() : '';
-    if (!name || name.length > 100) return reply.code(400).send({ error: 'Tên lớp là bắt buộc (tối đa 100 ký tự).' });
+    // A rename, or turning the class leaderboard on or off (or both).
+    const { name: raw, leaderboard_enabled: board } = (request.body ?? {}) as { name?: unknown; leaderboard_enabled?: unknown };
+    const changes: { name?: string; leaderboard_enabled?: boolean } = {};
+    if (raw !== undefined) {
+      const name = typeof raw === 'string' ? raw.trim() : '';
+      if (!name || name.length > 100) return reply.code(400).send({ error: 'Tên lớp là bắt buộc (tối đa 100 ký tự).' });
+      changes.name = name;
+    }
+    if (board !== undefined) {
+      if (typeof board !== 'boolean') return reply.code(400).send({ error: 'Bảng xếp hạng chỉ bật hoặc tắt.' });
+      changes.leaderboard_enabled = board;
+    }
+    if (Object.keys(changes).length === 0) return reply.code(400).send({ error: 'Tên lớp là bắt buộc (tối đa 100 ký tự).' });
 
-    let query = supabase.from('class_rooms').update({ name }).eq('id', target.id);
+    let query = supabase.from('class_rooms').update(changes).eq('id', target.id);
     if (!isAdmin(target.user)) query = query.eq('teacher_id', target.user.id!);
-    const { data, error } = await query.select('id, name').maybeSingle();
+    const { data, error } = await query.select('id, name, leaderboard_enabled').maybeSingle();
     if (error) {
       request.log.error({ err: error }, 'Failed to rename class');
       return reply.code(500).send({ error: 'Không đổi được tên lớp.' });
@@ -261,7 +271,7 @@ export const classRoutes: FastifyPluginAsync = async (app) => {
 
     const { data: room, error: roomError } = await supabase
       .from('class_rooms')
-      .select('id, name, subject_id, invite_code, teacher_id')
+      .select('id, name, subject_id, invite_code, teacher_id, leaderboard_enabled')
       .eq('id', id)
       .maybeSingle();
     if (roomError) {

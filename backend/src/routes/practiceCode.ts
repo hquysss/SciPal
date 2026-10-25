@@ -11,6 +11,7 @@ import { getUser, ID, msg, servableQuestion, unavailable } from '../practice/ser
 import { CODE_LANGUAGES, MAX_CODE_CHARS, MAX_CODE_TESTS, type CodeTest } from '../schemas/questions.js';
 import { explanationOf } from './practice.js';
 import { touchStreak } from '../streaks/touchStreak.js';
+import { awardBadges } from '../badges/award.js';
 
 // Programming questions in lesson practice. Signed-in learners run their code on an input they
 // type, or submit it to be judged on every test (hidden ones included). Judging is Judge0's job;
@@ -151,7 +152,7 @@ export const practiceCodeRoutes: FastifyPluginAsync = async (app) => {
       if (error.code !== '23505') request.log.warn({ err: error }, 'XP insert failed for a solved code question');
       return 0;
     }
-    await touchStreak(app.supabase!, userId, row.subject_id, new Date(), request.log);
+    await touchStreak(app.supabase!, userId, row.subject_id, new Date(), request.log, delta);
     return delta;
   }
 
@@ -251,7 +252,9 @@ export const practiceCodeRoutes: FastifyPluginAsync = async (app) => {
       if (!correct) return { correct, code };
       const explanation = explanationOf(question.row.data as Record<string, unknown>);
       const xp_earned = await grantXp(request, question.row);
-      return { correct, code, xp_earned, ...(explanation ? { explanation } : {}) };
+      const userId = getUser(request)?.id;
+      const badges = userId && xp_earned > 0 ? await awardBadges(app.supabase!, userId, request.log, { xp: xp_earned, codeAc: 1 }) : { shown: [] };
+      return { correct, code, xp_earned, new_badges: badges.shown, ...(explanation ? { explanation } : {}) };
     };
     if (!String(request.headers.accept ?? '').includes(NDJSON)) {
       try {

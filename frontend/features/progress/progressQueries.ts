@@ -26,8 +26,12 @@ export interface ProgressSummary {
     earned_at: string;
     badges: { name_vi: string; name_en?: string; icon: string } | null;
   }>;
-  /** XP leaderboards; null when they could not be loaded (the rest of the page still shows). */
-  leaderboard: { week: LeaderRow[]; all: LeaderRow[] } | null;
+  /** Global XP leaderboards; null when they could not be loaded (the rest of the page still shows). */
+  leaderboard: Board | null;
+  /** The caller and their accepted friends; null when it could not be loaded. */
+  friendsBoard?: Board | null;
+  /** Joined classes whose teacher left the class leaderboard on (its rows load when chosen). */
+  leaderboardClasses?: LeaderboardClass[];
   /** One roadmap per subject the student has started; null when the curriculum could not be loaded. */
   roadmaps: SubjectRoadmap[] | null;
   /** Estimated minutes for the lesson to continue, when there is one. */
@@ -38,12 +42,15 @@ export interface ProgressSummary {
   loadFailed: boolean;
 }
 
+/** display_name is null when the person did not choose to be named on the global board. */
 export type LeaderRow = { rank: number; display_name: string | null; xp: number; is_me: boolean };
+export type Board = { week: LeaderRow[]; all: LeaderRow[] };
+export type LeaderboardClass = { id: string; name: string };
 
 function failed(): ProgressSummary {
   return {
     completedLessons: [], streaks: [], totalXP: 0, badges: [], leaderboard: null,
-    roadmaps: null, continueMinutes: null, exams: null, loadFailed: true,
+    friendsBoard: null, leaderboardClasses: [], roadmaps: null, continueMinutes: null, exams: null, loadFailed: true,
   };
 }
 
@@ -57,6 +64,14 @@ export function visibleStreaks(rows: ProgressSummary['streaks']): ProgressSummar
 }
 
 type Client = ReturnType<typeof createServerClient>;
+
+type ClassEmbed = { id: string; name: string; leaderboard_enabled?: boolean | null };
+export function leaderboardClasses(rows: unknown): LeaderboardClass[] {
+  return ((rows ?? []) as Array<{ class_rooms: ClassEmbed | ClassEmbed[] | null }>)
+    .flatMap((r) => (Array.isArray(r.class_rooms) ? r.class_rooms : r.class_rooms ? [r.class_rooms] : []))
+    .filter((c) => c.leaderboard_enabled !== false)
+    .map((c) => ({ id: c.id, name: c.name }));
+}
 
 /** Roadmaps for the subjects in the completed lessons, plus the time estimate of the lesson to continue. */
 async function loadRoadmaps(supabase: Client, completed: ProgressSummary['completedLessons']) {
@@ -95,7 +110,7 @@ export async function getUserProgress(userId: string): Promise<ProgressSummary> 
   try {
     const supabase = createServerClient(await cookies());
 
-    const [progressRes, streaksRes, xpRes, badgesRes, weekRes, allRes, examsRes] = await Promise.all([
+    const [progressRes, streaksRes, xpRes, badgesRes, weekRes, allRes, examsRes, friendsWeekRes, friendsAllRes, classesRes] = await Promise.all([
       supabase
         .from('progress')
         .select('*, lessons(title_vi, title_en, subjects(id, slug, name_vi, name_en, accent_color))')
@@ -116,6 +131,9 @@ export async function getUserProgress(userId: string): Promise<ProgressSummary> 
       supabase.rpc('xp_leaderboard', { p_weekly: true }),
       supabase.rpc('xp_leaderboard', { p_weekly: false }),
       supabase.rpc('my_exam_results'),
+      supabase.rpc('friends_leaderboard', { p_weekly: true }),
+      supabase.rpc('friends_leaderboard', { p_weekly: false }),
+      supabase.from('class_members').select('class_rooms(id, name, leaderboard_enabled)').eq('student_id', userId),
     ]);
 
     if (progressRes.error || streaksRes.error || xpRes.error || badgesRes.error) {
@@ -134,6 +152,10 @@ export async function getUserProgress(userId: string): Promise<ProgressSummary> 
       leaderboard: weekRes.error || allRes.error
         ? null
         : { week: (weekRes.data ?? []) as LeaderRow[], all: (allRes.data ?? []) as LeaderRow[] },
+      friendsBoard: friendsWeekRes.error || friendsAllRes.error
+        ? null
+        : { week: (friendsWeekRes.data ?? []) as LeaderRow[], all: (friendsAllRes.data ?? []) as LeaderRow[] },
+      leaderboardClasses: leaderboardClasses(classesRes.error ? [] : classesRes.data),
       roadmaps,
       continueMinutes,
       exams: examsRes.error

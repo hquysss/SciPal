@@ -131,7 +131,7 @@ describe('POST /api/friends/request', () => {
     });
     const res = await post(build({ db }), { user_id: OTHER });
     expect(res.statusCode).toBe(200);
-    expect(res.json()).toEqual({ id: ROW, status: 'accepted' });
+    expect(res.json()).toEqual({ id: ROW, status: 'accepted', new_badges: [] });
     expect(db.calls.some((c) => c.op === 'insert')).toBe(false);
   });
 
@@ -190,7 +190,7 @@ describe('POST /api/friends/:id/accept and DELETE /api/friends/:id', () => {
     const db = fakeDb({ 'friendships.select': [{ data: row() }], 'friendships.update': [{ data: [{ id: ROW }] }] });
     const res = await accept(db);
     expect(res.statusCode).toBe(200);
-    expect(res.json()).toEqual({ id: ROW, status: 'accepted' });
+    expect(res.json()).toEqual({ id: ROW, status: 'accepted', new_badges: [] });
     expect(db.calls.find((c) => c.op === 'update')!.chain).toContainEqual(['eq', ['status', 'pending']]);
   });
 

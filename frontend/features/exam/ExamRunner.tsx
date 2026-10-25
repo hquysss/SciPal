@@ -6,7 +6,8 @@ import { usePathname, useRouter } from 'next/navigation';
 import { Award, Check, CircleHelp, Send, ChevronLeft, ChevronRight, CircleCheck, CircleX, CloudOff, LogOut, RotateCcw, ThumbsUp, Timer, Zap } from 'lucide-react';
 import resultStyles from './examResult.module.css';
 import { useLanguage } from '@scipal/hooks';
-import type { ExamSection } from '@scipal/types';
+import type { ExamSection, NewBadge } from '@scipal/types';
+import { BadgeUnlockQueue } from '../badges/BadgeUnlockQueue';
 import { AnswerPalette, type AnswerPaletteSection } from './AnswerPalette';
 import { forgetExamAttempt, startExamAttempt } from './examAttempt';
 import { arrangeQuestions, loadOrderSeed } from './examOrder';
@@ -179,6 +180,8 @@ export interface ExamResult {
   /** ĐGNL results are a reference conversion, not the official IRT-weighted score. */
   estimated: boolean;
   sections: SectionScore[];
+  /** Badges this exam earned (server-awarded; none for an offline result). */
+  new_badges: NewBadge[];
 }
 
 const finite = (value: unknown): value is number => typeof value === 'number' && Number.isFinite(value);
@@ -200,6 +203,7 @@ export function normalizeResult(data: unknown): ExamResult | null {
     xp_earned: d.xp_earned,
     estimated: d.estimated === true,
     sections: Array.isArray(d.sections) ? d.sections.map(toSectionScore).filter((s): s is SectionScore => s !== null) : [],
+    new_badges: Array.isArray(d.new_badges) ? (d.new_badges as NewBadge[]).filter((b) => typeof b?.name_vi === 'string' && typeof b?.icon === 'string') : [],
   };
 }
 
@@ -638,6 +642,7 @@ export function ExamRunner({
         {toast}
         {header}
         <ExamResultView result={result} title={title} layout={layout} provisional={provisional} notCounted={notCounted} leaves={leaves} />
+        <BadgeUnlockQueue badges={provisional ? [] : result.new_badges} fromStart t={t} />
       </div>
     );
   }
