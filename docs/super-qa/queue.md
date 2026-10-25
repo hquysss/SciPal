@@ -9,9 +9,9 @@ Dynamic segments: the worker picks one real id from the page that links to it (e
 ### Public
 - [x] `/` — S1/S2 home · `e2e/paths/home.spec.ts` (setup)
 - [x] `/subjects` — S2 · `e2e/paths/subjects.spec.ts`
-- [?] `/login` · `e2e/paths/login.spec.ts` · FLAKY iter 1: dev-server SyntaxError page error once, green on retry
+- [x] `/login` · `e2e/paths/login.spec.ts` · iter 2: stable on 2 full runs
 - [x] `/pricing` · `e2e/paths/pricing.spec.ts`
-- [?] `/help` · `e2e/paths/help.spec.ts` · FLAKY iter 1: vi goto ERR_ABORTED on cold compile, green on retry
+- [x] `/help` · `e2e/paths/help.spec.ts` · iter 2: stable on 2 full runs
 - [x] `/privacy` · `e2e/paths/privacy.spec.ts`
 - [ ] `/terms`
 - [ ] `/community`
@@ -19,14 +19,15 @@ Dynamic segments: the worker picks one real id from the page that links to it (e
 - [ ] `/lab`
 - [ ] `/glossary` — S6
 
+<!-- iter 2: Lesson and Student sections popped ahead of remaining Public cells (orchestrator reorder) -->
 ### Lesson (S3–S4)
-- [ ] `/informatics` — S3 subject page
-- [ ] `/informatics/[lesson]` — S4 lesson, first lesson listed
+- [!] `/informatics` — S3 subject page · `e2e/paths/informatics.spec.ts` · iter 2: login-gated (middleware), blocked by student login failure
+- [!] `/informatics/[lesson]` — S4 lesson · `e2e/paths/lesson.spec.ts` · iter 2: blocked by student login failure
 
 ### Student (needs test login)
-- [ ] `/tutor` — S5
-- [ ] `/progress` — S7
-- [ ] `/review` — S7
+- [!] `/tutor` — S5 · `e2e/paths/tutor.spec.ts` · iter 2: blocked by student login failure
+- [!] `/progress` — S7 · `e2e/paths/progress.spec.ts` · iter 2: blocked by student login failure
+- [!] `/review` — S7 · `e2e/paths/review.spec.ts` · iter 2: blocked by student login failure
 - [ ] `/profile` — S8
 - [ ] `/profile/plan` — S8
 - [ ] `/profile/orders` — S8

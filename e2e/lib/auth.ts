@@ -1,5 +1,5 @@
-import { readFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { existsSync, mkdirSync, readFileSync } from 'node:fs';
+import { dirname, join } from 'node:path';
 import type { Page } from '@playwright/test';
 
 type Creds = { user: string; pass: string };
@@ -31,3 +31,17 @@ export async function login(page: Page, creds: Creds) {
 
 /** Path for a role's Playwright storageState (gitignored `e2e/.auth/`). */
 export const storageStatePath = (role: Role) => join(__dirname, '..', '.auth', `${role}.json`);
+
+/** Logs the page in as `role`, reusing the saved session cookies when they still work. Throws if no creds. */
+export async function asRole(page: Page, role: Role = 'student') {
+  const creds = testCreds(role);
+  if (!creds) throw new Error(`no ${role} test creds`);
+  const path = storageStatePath(role);
+  if (existsSync(path)) {
+    await page.context().addCookies(JSON.parse(readFileSync(path, 'utf8')).cookies);
+    return;
+  }
+  await login(page, creds);
+  mkdirSync(dirname(path), { recursive: true });
+  await page.context().storageState({ path });
+}
