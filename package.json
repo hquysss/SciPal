@@ -12,6 +12,7 @@
     "test": "turbo run test",
     "lint": "turbo run lint",
     "typecheck": "turbo run typecheck",
+    "test:e2e": "pnpm --filter @scipal/e2e test:e2e",
     "doctor": "npx react-doctor@latest"
   },
   "devDependencies": {

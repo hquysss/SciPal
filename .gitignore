@@ -18,3 +18,9 @@ backend/PassSupabase.txt
 .claude/super-board/inflight/
 .claude/super-board/migrations/
 .claude/super-board/upgrade.json
+
+# super-qa
+e2e/test-results/
+e2e/playwright-report/
+e2e/.auth/
+docs/super-qa/report/**/*.har
