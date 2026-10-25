@@ -5,7 +5,7 @@ create table if not exists public.study_days (
   user_id uuid not null references public.profiles(id) on delete cascade,
   day     date not null,
   xp      int  not null default 0,
-  freeze  bool not null default false,
+  "freeze" bool not null default false, -- quoted: FREEZE is a reserved word
   primary key (user_id, day)
 );
 
@@ -25,9 +25,9 @@ language sql
 security definer
 set search_path = ''
 as $$
-  insert into public.study_days as s (user_id, day, xp, freeze)
+  insert into public.study_days as s (user_id, day, xp, "freeze")
   values (p_user, p_day, greatest(p_xp, 0), false)
-  on conflict (user_id, day) do update set xp = s.xp + greatest(excluded.xp, 0), freeze = false;
+  on conflict (user_id, day) do update set xp = s.xp + greatest(excluded.xp, 0), "freeze" = false;
 $$;
 
 revoke execute on function public.bump_study_day(uuid, date, int) from public, anon, authenticated;

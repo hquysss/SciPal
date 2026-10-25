@@ -17,6 +17,9 @@ insert into public.profiles (id, display_name) values
 on conflict (id) do update set display_name = excluded.display_name;
 
 \ir ../migrations/20261012150000_friendships.sql
+-- The three gamification migrations in the order they are applied.
+\ir ../migrations/20261025090000_study_days.sql
+\ir ../migrations/20261025100000_learning_badges.sql
 \ir ../migrations/20261025110000_social.sql
 
 grant select, insert, update, delete on public.challenges, public.friendships to service_role;
