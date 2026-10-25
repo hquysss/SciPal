@@ -227,7 +227,7 @@ export function ProgressView(props: ProgressSummary & { practiceLeft?: PracticeL
         <div className="flex min-w-0 flex-col gap-5">
           <PracticeLeftCard lessons={props.practiceLeft ?? []} />
           <Roadmap roadmaps={roadmaps} />
-          <BadgeWall badges={badges} />
+          <BadgeWall />
         </div>
         <aside className="flex min-w-0 flex-col gap-5">
           <ReviewCard exams={exams} />

@@ -120,12 +120,14 @@ export type CommunityBadge = {
   description_vi: string;
   description_en: string;
   icon: string;
-  category: 'streak' | 'exam' | 'excellence' | 'community' | 'honor';
+  category: 'streak' | 'exam' | 'excellence' | 'community' | 'honor' | 'learning';
   tier: 'bronze' | 'silver' | 'gold' | 'platinum' | 'special';
   is_system: boolean;
   unlocked: boolean;
   earned_at: string | null;
   reason: string | null;
+  /** Your own list only, for a badge with a count not earned yet. */
+  progress?: { current: number; target: number } | null;
 };
 
 /** A student's badges, earned first. Opening your own list also awards the ones you have just earned. */

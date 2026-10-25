@@ -363,6 +363,17 @@ export interface PracticeCheckResult {
   new_streak?: number;
   /** This answer completed a lesson (80% of its practice right the first time). */
   lesson_completed?: boolean;
+  /** Badges this answer itself earned, to show as an unlock moment (server-awarded). */
+  new_badges?: NewBadge[];
+}
+
+/** A badge just earned, as an unlock moment shows it. */
+export interface NewBadge {
+  slug: string | null;
+  name_vi: string;
+  name_en: string;
+  icon: string;
+  tier: 'bronze' | 'silver' | 'gold' | 'platinum' | 'special';
 }
 
 /** `stdout` and `expected` come only with tests a learner may see (the examples). */

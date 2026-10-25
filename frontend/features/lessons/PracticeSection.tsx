@@ -16,6 +16,7 @@ import { WritingAnswer, type WritingFeedbackState } from './WritingAnswer';
 import { addVerdict, EMPTY_SESSION, type PracticeSession } from './practiceSession';
 import { useTotalXp } from './useTotalXp';
 import { LevelUpOverlay } from './LevelUpOverlay';
+import { BadgeUnlockQueue } from '../badges/BadgeUnlockQueue';
 import { useHabit } from '../habit/habitApi';
 import { DailyGoalRing } from '../habit/DailyGoalRing';
 import { playSfx } from '../../lib/sfx';
@@ -185,7 +186,8 @@ export function PracticeSection(props: PracticeSectionProps) {
   if (!props.load.ok || code.length === 0) return <QuestionPractice {...props} />;
   const quiz = props.load.questions.filter((q) => q.type !== 'code');
   const board = <CodePracticeBoard questions={code} answers={props.state.answers} results={props.state.results} onAnswer={props.onAnswer} onResult={props.onResult} t={t} />;
-  if (quiz.length === 0) return board;
+  const unlocks = <BadgeUnlockQueue badges={(props.state.session ?? EMPTY_SESSION).badges} t={t} />;
+  if (quiz.length === 0) return <>{board}{unlocks}</>;
   const tabs: Array<{ id: 'code' | 'quiz'; label: Bilingual }> = [
     { id: 'code', label: { en: `Programming (${code.length})`, vi: `Bài lập trình (${code.length})` } },
     { id: 'quiz', label: { en: `Questions (${quiz.length})`, vi: `Trắc nghiệm (${quiz.length})` } },
@@ -206,7 +208,7 @@ export function PracticeSection(props: PracticeSectionProps) {
           </button>
         ))}
       </div>
-      {view === 'code' ? board : <QuestionPractice {...props} load={{ ok: true, questions: quiz }} />}
+      {view === 'code' ? <>{board}{unlocks}</> : <QuestionPractice {...props} load={{ ok: true, questions: quiz }} />}
     </div>
   );
 }
@@ -336,6 +338,7 @@ function QuestionPractice({ load, lessonId, state, onAnswer, onResult, onRetry, 
           <LessonSummary right={summary.right} total={summary.total} session={session} t={t} />
         )}
         <LevelUpOverlay level={levelUp.level} onClose={levelUp.close} t={t} />
+        <BadgeUnlockQueue badges={session.badges} paused={levelUp.level !== null} t={t} />
         <nav aria-label={t({ en: 'Practice questions', vi: 'Các câu tự luyện' })} className="sticky bottom-0 z-10 flex items-center justify-between gap-3 border-t border-line bg-surface py-3">
           <button type="button" disabled={activeIndex === 0} onClick={() => goTo(activeIndex - 1)} className={buttonVariants({ variant: 'outline' })}>
             {t({ en: 'Previous question', vi: 'Câu trước' })}

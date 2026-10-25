@@ -23,7 +23,7 @@ describe('scoring an exam taken offline', () => {
       { question_id: 'q1', selected_option: 'A' },
       { question_id: 'q2', short_answer: '0,5' },
     ]);
-    expect(result).toEqual({ score: 10, max_score: 10, correct_count: 2, total_questions: 2, xp_earned: 30, estimated: false, sections: [] });
+    expect(result).toEqual({ score: 10, max_score: 10, correct_count: 2, total_questions: 2, xp_earned: 30, estimated: false, sections: [], new_badges: [] });
   });
 });
 

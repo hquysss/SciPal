@@ -139,13 +139,13 @@ describe('normalizeResult', () => {
   const base = { score: 7.5, correct_count: 3, total_questions: 4, xp_earned: 45 };
 
   it('reads a result from an older server as out of 10 with no sections', () => {
-    expect(normalizeResult(base)).toEqual({ ...base, max_score: 10, estimated: false, sections: [] });
+    expect(normalizeResult(base)).toEqual({ ...base, max_score: 10, estimated: false, sections: [], new_badges: [] });
   });
 
   it('keeps the maximum, the estimate flag and well-formed section scores', () => {
     const section = { key: 'vi', score: 250, max_score: 300, correct: 25, total: 30 };
     expect(normalizeResult({ ...base, score: 1000, max_score: 1200, estimated: true, sections: [section, { key: 'x' }] }))
-      .toEqual({ ...base, score: 1000, max_score: 1200, estimated: true, sections: [section] });
+      .toEqual({ ...base, score: 1000, max_score: 1200, estimated: true, sections: [section], new_badges: [] });
   });
 
   it('rejects a response without a numeric score or XP', () => {
@@ -163,5 +163,13 @@ describe('scoreBand', () => {
     expect(scoreBand(1000, 1200)).toBe('high');
     expect(scoreBand(9, 1200)).toBe('low');
     expect(scoreBand(0, 0)).toBe('low');
+  });
+});
+
+describe('normalizeResult badges', () => {
+  it('keeps well-formed new badges and drops the rest', () => {
+    const badge = { slug: 'exam_5', name_vi: 'Tập sự thi thử', name_en: 'Mock exam rookie', icon: '📖', tier: 'bronze' };
+    const result = normalizeResult({ score: 8, xp_earned: 30, new_badges: [badge, { slug: 'x' }, null] });
+    expect(result?.new_badges).toEqual([badge]);
   });
 });

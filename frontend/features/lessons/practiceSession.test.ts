@@ -32,3 +32,17 @@ describe('addVerdict', () => {
     expect(s).toBe(EMPTY_SESSION);
   });
 });
+
+describe('badges in the session', () => {
+  const b = { slug: 'practice_right_50', name_vi: 'Tay thiện xạ', name_en: 'Sharpshooter', icon: '🎯', tier: 'bronze' as const };
+
+  it('collects server badges, code answers included', () => {
+    let s = addVerdict(EMPTY_SESSION, 'a', { correct: true, new_badges: [b] });
+    s = addVerdict(s, 'c', { correct: true, code: { status: 'AC' } as never, new_badges: [{ ...b, slug: 'code_ac_10' }] });
+    expect(s.badges.map((x) => x.slug)).toEqual(['practice_right_50', 'code_ac_10']);
+  });
+
+  it('never collects badges from a provisional result', () => {
+    expect(addVerdict(EMPTY_SESSION, 'a', { correct: true, new_badges: [b], provisional: { xp: 10, streak: null } }).badges).toEqual([]);
+  });
+});

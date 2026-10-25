@@ -20,6 +20,7 @@ import { isCorrectAnswer, isEstimatedFormat, scoreExam, type ExamAnswer, type Sc
 export { isCorrectAnswer };
 import { featureAllowed, featureOff } from '../site/features.js';
 import { touchStreak } from '../streaks/touchStreak.js';
+import { awardBadges } from '../badges/award.js';
 
 export const MAX_EXAM_ANSWERS = 200;
 /** Question count for a blueprint whose sections do not give one. */
@@ -556,6 +557,13 @@ export const examRoutes: FastifyPluginAsync = async (app) => {
       }
     }
 
-    return reply.send({ ...result, estimated: scored.estimated, sections: scored.sections, already_awarded, ...(newStreak > 0 ? { new_streak: newStreak } : {}) });
+    // This exam counts once more, and its score is the one that could make it a perfect 10.
+    const badges = userId
+      ? await awardBadges(supabase, userId, request.log, { xp: xp_earned, examCount: 1, bestExamScore: Number(scored.score) || 0 })
+      : { shown: [] };
+    return reply.send({
+      ...result, estimated: scored.estimated, sections: scored.sections, already_awarded, new_badges: badges.shown,
+      ...(newStreak > 0 ? { new_streak: newStreak } : {}),
+    });
   });
 };

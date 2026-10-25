@@ -12,6 +12,7 @@ import {
 import { checkPracticeAnswer, keyTermsOf, responseProblem } from '../schemas/practiceGrading.js';
 import { MAX_LESSON_QUESTIONS, quizQuestionIds } from '../authoring/quizReferences.js';
 import { clampAnsweredAt, recordPractice } from '../practice/record.js';
+import { awardBadges } from '../badges/award.js';
 import { practiceRemaining } from '../practice/remaining.js';
 import { COLUMNS, getUser, ID, isAdmin, isHsgProblem, loadPracticeRow, mayPreview, msg, servableQuestion as loadServable, type PracticeRow, type PracticeUser } from '../practice/servable.js';
 
@@ -236,6 +237,8 @@ export const practiceRoutes: FastifyPluginAsync = async (app) => {
         : { counted: false, xp_earned: 0, new_streak: 0, lesson_completed: false };
       results.push({ question_id, status: 'ok', ...result, ...record });
     }
+    // Synced offline answers: the badges they earned are awarded quietly and show on the next visit.
+    if (results.some((r) => typeof r.xp_earned === 'number' && r.xp_earned > 0)) await awardBadges(supabase, userId, request.log);
     return reply.send({ results });
   });
 
@@ -256,7 +259,10 @@ export const practiceRoutes: FastifyPluginAsync = async (app) => {
     const userId = getUser(request)?.id;
     if (!userId || !countsForXp(row, { ...getUser(request), id: userId })) return reply.send(result);
     const record = await recordPractice(app.supabase, { userId, row, correct: result.correct, at: new Date() }, request.log);
-    return reply.send({ ...result, xp_earned: record.xp_earned, new_streak: record.new_streak, lesson_completed: record.lesson_completed });
+    const badges = record.xp_earned > 0
+      ? await awardBadges(app.supabase, userId, request.log, { xp: record.xp_earned, practiceRight: 1, lessonsDone: record.lesson_completed ? 1 : 0 })
+      : { shown: [] };
+    return reply.send({ ...result, xp_earned: record.xp_earned, new_streak: record.new_streak, lesson_completed: record.lesson_completed, new_badges: badges.shown });
   });
 
   // The AI Professor's comment on a writing answer. Tokens are held before asking, counted for
