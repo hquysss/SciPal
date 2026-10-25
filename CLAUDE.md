@@ -19,6 +19,8 @@ pnpm --filter @scipal/web test -- path/to/file.test.ts   # run a single test fil
 pnpm --filter @scipal/web test -- -t "test name"         # run a single test by name
 ```
 
+Playwright e2e lives in `e2e/` (`flows/`, `paths/`): `pnpm --filter ./e2e test:e2e`. CI is `.github/workflows/ci.yml`. `pnpm lint` exists at the root but backend/frontend define no `lint` script; typecheck is the static gate.
+
 Workspace names: `@scipal/api` (backend), `@scipal/web` (frontend), `@scipal/mobile`, `@scipal/types`, `@scipal/ui`, `@scipal/hooks`, `@scipal/supabase`. Mobile has no test script.
 
 ## Architecture in brief
