@@ -8,13 +8,16 @@ import { Alert } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import type { NewBadge } from '@scipal/types';
+import { BadgeUnlockQueue } from '../badges/BadgeUnlockQueue';
+import { CrosswordPlay } from './CrosswordPlay';
 import {
   getGame, getLeaderboard, KIND_LABEL, startGame, submitGame,
   type Bilingual, type GameCard, type LeaderEntry, type PlayResult, type PlayStart, type QuizQuestion, type QuizResponse,
 } from './gamesApi';
 
 type Game = GameCard & { wordwallUrl: string | null };
-type Body = { answers?: Array<{ question_id: string; response: QuizResponse }>; pairs?: Array<{ termId: string; right: number }> };
+type Body = { answers?: Array<{ question_id: string; response: QuizResponse }> | Record<string, string>; pairs?: Array<{ termId: string; right: number }> };
 type Submit = (body: Body) => void;
 /** What the player has so far, sent as is when the time runs out. */
 type Draft = { current: Body };
@@ -186,6 +189,10 @@ export function GamePlayer({ id }: { id: string }) {
   const [busy, setBusy] = useState(false);
   const submitted = useRef(false);
   const draft = useRef<Body>({});
+  const [badges, setBadges] = useState<NewBadge[]>([]);
+  // A crossword stays open after a submit (fix the wrong words) until it is solved or the time is up.
+  const crossword = play?.kind === 'crossword';
+  const crosswordDone = crossword && result !== null && (result.late || (result.maxScore !== null && result.score === result.maxScore));
 
   const loadBoard = useCallback(async () => {
     const r = await getLeaderboard(id);
@@ -215,9 +222,12 @@ export function GamePlayer({ id }: { id: string }) {
     setBusy(true);
     const r = await submitGame(id, { playId: play.playId, ...body });
     setBusy(false);
+    if (play.kind === 'crossword') submitted.current = false;
     if (!r.ok) { setError(r.error); return; }
+    setError(null);
     setResult(r.data);
-    setPlay(null);
+    if (r.data.new_badges?.length) setBadges((b) => [...b, ...r.data.new_badges!]);
+    if (play.kind !== 'crossword') setPlay(null);
     void loadBoard();
   };
 
@@ -231,7 +241,7 @@ export function GamePlayer({ id }: { id: string }) {
           <h1 className="text-2xl font-extrabold tracking-tight text-ink sm:text-3xl">{t(game.title)}</h1>
           <span><Badge>{t(KIND_LABEL[game.kind])}</Badge></span>
         </div>
-        {play && play.timeLimitS && <Countdown seconds={play.timeLimitS} onEnd={() => submit(draft.current)} />}
+        {play && play.timeLimitS && !crosswordDone && <Countdown seconds={play.timeLimitS} onEnd={() => submit(draft.current)} />}
       </header>
 
       {error && <Alert tone="danger">{t(error)}</Alert>}
@@ -242,11 +252,17 @@ export function GamePlayer({ id }: { id: string }) {
             ? t({ en: 'Recorded. Thanks for playing!', vi: 'Đã ghi nhận. Cảm ơn em đã chơi!' })
             : result.late
               ? t({ en: 'Time ran out before the answers arrived, so this play scores 0.', vi: 'Hết giờ trước khi bài được nộp nên lượt này được 0 điểm.' })
-              : t({ en: `You scored ${result.score}/${result.maxScore}.`, vi: `Em được ${result.score}/${result.maxScore} điểm.` })}
+              : crossword && !crosswordDone
+                ? t({ en: `${result.score}/${result.maxScore} words right. Fix the others and check again.`, vi: `Đúng ${result.score}/${result.maxScore} từ. Sửa các từ còn lại rồi nộp lại nhé.` })
+                : t({ en: `You scored ${result.score}/${result.maxScore}.`, vi: `Em được ${result.score}/${result.maxScore} điểm.` })}
+          {(result.xp_earned ?? 0) > 0 && (
+            <span className="ml-2 inline-block rounded-full bg-success-surface px-2.5 py-0.5 font-bold tabular-nums text-success">{`+${result.xp_earned} XP`}</span>
+          )}
         </Alert>
       )}
+      <BadgeUnlockQueue badges={badges} fromStart t={t} />
 
-      {!play && (
+      {(!play || crosswordDone) && (
         <div>
           <Button type="button" disabled={busy} onClick={() => void start()}>
             {result ? t({ en: 'Play again', vi: 'Chơi lại' }) : t({ en: 'Play', vi: 'Bắt đầu' })}
@@ -256,6 +272,19 @@ export function GamePlayer({ id }: { id: string }) {
 
       {play?.kind === 'quiz' && <QuizPlay questions={play.questions} onSubmit={submit} busy={busy} draft={draft} />}
       {play?.kind === 'match' && <MatchPlay left={play.left} right={play.right} onSubmit={submit} busy={busy} draft={draft} />}
+      {play?.kind === 'crossword' && (
+        <CrosswordPlay
+          key={play.playId}
+          rows={play.rows}
+          cols={play.cols}
+          words={play.words}
+          correct={result?.correct ?? []}
+          busy={busy}
+          done={crosswordDone}
+          onSubmit={(answers) => submit({ answers })}
+          onChange={(answers) => { draft.current = { answers }; }}
+        />
+      )}
       {play?.kind === 'wordwall' && game.wordwallUrl && (
         <div className="flex flex-col gap-3">
           <div className="relative w-full overflow-hidden rounded-xl border border-line" style={{ aspectRatio: '4 / 3' }}>

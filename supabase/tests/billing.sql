@@ -1133,3 +1133,5 @@ $$;
 \ir support_access_cases.sql
 
 \ir social_cases.sql
+
+\ir crossword_cases.sql

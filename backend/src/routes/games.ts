@@ -5,21 +5,25 @@ import { MAX_LESSON_QUESTIONS, quizQuestionIds } from '../authoring/quizReferenc
 import { PracticeResponseSchema, toPublicPracticeQuestion } from '../schemas/questions.js';
 import { checkPracticeAnswer } from './practice.js';
 import { notifyUsers } from '../notify.js';
+import { awardBadges } from '../badges/award.js';
+import { touchStreak } from '../streaks/touchStreak.js';
+import { buildCrossword, gradeCrossword, MODES, publicGrid, type Crossword, type Mode, type Term } from '../games/crossword.js';
 
 // Games (supabase/migrations/20261007200000_games.sql). A teacher makes a game for one of their
 // classes and its members are notified; an admin makes public games anyone signed in can play solo.
 // 'quiz' plays a published lesson's practice questions, 'match' pairs glossary terms of the lesson's
-// subject (EN↔VI), 'wordwall' embeds a Wordwall activity. The server keeps every answer and scores
+// subject (EN↔VI), 'wordwall' embeds a Wordwall activity, 'crossword' crosses the subject's terms (grid
+// and answers in game_crosswords, which only this backend reads). The server keeps every answer and scores
 // each play; a Wordwall play only records that the student took part (Wordwall shares no score).
 
 type User = { id?: string; app_metadata?: { app_role?: string } };
 type Bilingual = { vi: string; en: string };
 type GameRow = {
-  id: string; owner_id: string; class_id: string | null; kind: 'quiz' | 'match' | 'wordwall';
+  id: string; owner_id: string; class_id: string | null; kind: 'quiz' | 'match' | 'wordwall' | 'crossword';
   title_en: string; title_vi: string; lesson_id: string | null; term_ids: string[]; wordwall_url: string | null;
   time_limit_s: number | null; created_at: string;
 };
-type PlayRow = { id: string; game_id: string; user_id: string; right_order: string[]; started_at: string; finished_at: string | null };
+type PlayRow = { id: string; game_id: string; user_id: string; right_order: string[]; started_at: string; finished_at: string | null; score?: number | null };
 
 const err = (code: string, error: string, error_en: string) => ({ code, error, error_en });
 const UNAUTHORIZED = err('UNAUTHORIZED', 'Hãy đăng nhập để chơi và lưu điểm.', 'Sign in to play and keep your score.');
@@ -29,28 +33,38 @@ const INVALID = err('INVALID_GAME', 'Thông tin game chưa hợp lệ.', 'The ga
 const NO_CONTENT = err('NO_CONTENT', 'Bài học chưa có đủ câu hỏi hoặc thuật ngữ cho game này.', 'The lesson does not have enough questions or terms for this game.');
 const BAD_WORDWALL = err('BAD_WORDWALL', 'Dán mã nhúng (Chia sẻ → Nhúng) hoặc link wordwall.net/embed/… của hoạt động Wordwall.', 'Paste the embed code (Share → Embed) or a wordwall.net/embed/… link of the Wordwall activity.');
 const BAD_PLAY = err('BAD_PLAY', 'Lượt chơi không hợp lệ hoặc đã nộp.', 'This play is not valid or was already submitted.');
+const NO_CROSSWORD = err('NO_CROSSWORD', 'Thuật ngữ của bài này chưa xếp được thành ô chữ (cần ít nhất 4 từ đan nhau). Chọn bài khác hoặc tăng số từ.', 'The terms of this lesson do not make a crossword (it needs at least 4 crossing words). Pick another lesson or ask for more words.');
 const UNAVAILABLE = err('GAMES_UNAVAILABLE', 'Chưa tải được game. Thử lại sau.', 'Games are not available. Try again later.');
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const uuid = z.string().regex(UUID);
 const MATCH_MIN = 3;
 const MATCH_MAX = 20;
+const CROSSWORD_WORDS = { min: 5, max: 15, default: 10 };
+export const CROSSWORD_XP = 20;
+const MAX_CROSSWORD_KEYS = 30;
 /** Seconds allowed past the time limit for the network. */
 const GRACE_S = 15;
 
 const NewGame = z.object({
   classId: uuid.nullable().optional(),
-  kind: z.enum(['quiz', 'match', 'wordwall']),
+  kind: z.enum(['quiz', 'match', 'wordwall', 'crossword']),
   titleVi: z.string().trim().min(1).max(200),
   titleEn: z.string().trim().max(200).optional(),
   lessonId: uuid.optional(),
   pairs: z.number().int().min(MATCH_MIN).max(MATCH_MAX).optional(),
+  words: z.number().int().min(CROSSWORD_WORDS.min).max(CROSSWORD_WORDS.max).optional(),
+  mode: z.enum(MODES as [Mode, ...Mode[]]).optional(),
   wordwall: z.string().max(2000).optional(),
   timeLimitS: z.number().int().min(10).max(3600).nullable().optional(),
 }).strict();
 
 const QuizSubmit = z.object({ playId: uuid, answers: z.array(z.object({ question_id: uuid, response: PracticeResponseSchema })).max(MAX_LESSON_QUESTIONS).default([]) }).strict();
 const MatchSubmit = z.object({ playId: uuid, pairs: z.array(z.object({ termId: uuid, right: z.number().int().min(0) })).max(MATCH_MAX).default([]) }).strict();
+const CrosswordSubmit = z.object({
+  playId: uuid,
+  answers: z.record(z.string().max(32)).refine((a) => Object.keys(a).length <= MAX_CROSSWORD_KEYS).default({}),
+}).strict();
 const PlaySubmit = z.object({ playId: uuid }).passthrough();
 
 /** The https://wordwall.net/embed/… address from an embed code or link; null when there is none. */
@@ -132,6 +146,52 @@ export const gameRoutes: FastifyPluginAsync = async (app) => {
     const rows = ((data ?? []) as Array<{ id: string; type: string; difficulty: number; data: unknown }>).filter((q) => q.type !== 'writing' && q.type !== 'code');
     const byId = new Map(rows.map((q) => [q.id, q]));
     return { subjectId: row.subject_id, questions: ids.flatMap((id) => (byId.has(id) ? [byId.get(id)!] : [])) };
+  };
+
+  /** A crossword's grid with its answers; null when it is missing. */
+  const crosswordOf = async (gameId: string): Promise<{ mode: Mode; grid: Crossword } | null> => {
+    const { data, error } = await db().from('game_crosswords').select('mode, grid_rows, grid_cols, words').eq('game_id', gameId).maybeSingle();
+    if (error) throw error;
+    const r = data as { mode: Mode; grid_rows: number; grid_cols: number; words: Crossword['words'] } | null;
+    return r ? { mode: r.mode, grid: { rows: r.grid_rows, cols: r.grid_cols, words: r.words } } : null;
+  };
+
+  /**
+   * The first full solve of a crossword earns XP once (xp_log_crossword_once_idx), then the streak and badges.
+   * Returns the XP actually granted and the badges this solve earned.
+   */
+  const crosswordReward = async (request: FastifyRequest, game: GameRow, userId: string) => {
+    const lesson = await db().from('lessons').select('subject_id').eq('id', game.lesson_id!).maybeSingle();
+    const subjectId = (lesson.data as { subject_id?: string } | null)?.subject_id ?? null;
+    const { error } = await db().from('xp_log').insert({ user_id: userId, subject_id: subjectId, delta: CROSSWORD_XP, reason: 'crossword:' + game.id });
+    if (error) {
+      if (error.code !== '23505') request.log.warn({ err: error }, 'Crossword XP was not saved');
+      return { xp_earned: 0, new_badges: [] };
+    }
+    if (subjectId) await touchStreak(db(), userId, subjectId, new Date(), request.log, CROSSWORD_XP);
+    const { shown } = await awardBadges(db(), userId, request.log, { xp: CROSSWORD_XP });
+    return { xp_earned: CROSSWORD_XP, new_badges: shown };
+  };
+
+  /**
+   * A crossword play can be submitted again and again (fix the wrong words); the play keeps its best
+   * score. Only the words' rightness goes back, never the letters.
+   */
+  const submitCrossword = async (request: FastifyRequest, reply: FastifyReply, game: GameRow, play: PlayRow, userId: string) => {
+    const parsed = CrosswordSubmit.safeParse(request.body);
+    if (!parsed.success) return reply.code(400).send(INVALID);
+    const saved = await crosswordOf(game.id);
+    if (!saved) return reply.code(400).send(NO_CONTENT);
+    const elapsedS = (Date.now() - new Date(play.started_at).getTime()) / 1000;
+    const late = game.time_limit_s !== null && elapsedS > game.time_limit_s + GRACE_S;
+    const graded = gradeCrossword(saved.grid, parsed.data.answers);
+    const score = late ? 0 : graded.score;
+    if (!play.finished_at || score > (play.score ?? -1)) {
+      const { error } = await db().from('game_plays').update({ score, max_score: graded.max, finished_at: new Date().toISOString() }).eq('id', play.id);
+      if (error) throw error;
+    }
+    const reward = !late && graded.score === graded.max ? await crosswordReward(request, game, userId) : { xp_earned: 0, new_badges: [] };
+    return { score, maxScore: graded.max, late, correct: late ? [] : graded.correct, ...reward };
   };
 
   // Public games and, for a signed-in student, the games of their classes.
@@ -224,6 +284,7 @@ export const gameRoutes: FastifyPluginAsync = async (app) => {
         return reply.code(403).send(FORBIDDEN);
       }
 
+      let crossword: { mode: Mode; grid: Crossword } | null = null;
       const row: Record<string, unknown> = {
         owner_id: user.id, class_id: room?.id ?? null, kind: body.kind, title_vi: body.titleVi, title_en: body.titleEn ?? '',
         time_limit_s: body.timeLimitS ?? null,
@@ -239,6 +300,16 @@ export const gameRoutes: FastifyPluginAsync = async (app) => {
         if (body.kind === 'quiz') {
           if (questions.length === 0) return reply.code(400).send(NO_CONTENT);
           row.lesson_id = body.lessonId;
+        } else if (body.kind === 'crossword') {
+          const { data, error } = await db().from('terms').select('id, term_en, term_vi, definition_en, definition_vi')
+            .eq('subject_id', subjectId).eq('status', 'published').limit(500);
+          if (error) throw error;
+          const mode = body.mode ?? 'en_from_vi';
+          const built = buildCrossword(shuffle((data ?? []) as Term[]), mode, body.words ?? CROSSWORD_WORDS.default);
+          if (!built) return reply.code(400).send(NO_CROSSWORD);
+          row.lesson_id = body.lessonId;
+          row.term_ids = built.words.map((w) => w.term_id);
+          crossword = { mode, grid: built };
         } else {
           const { data, error } = await db().from('terms').select('id').eq('subject_id', subjectId).eq('status', 'published').limit(500);
           if (error) throw error;
@@ -251,6 +322,16 @@ export const gameRoutes: FastifyPluginAsync = async (app) => {
       const { data, error } = await db().from('games').insert(row).select('id').single();
       if (error || !data) throw error;
       const gameId = (data as { id: string }).id;
+      if (crossword) {
+        const saved = await db().from('game_crosswords').insert({
+          game_id: gameId, mode: crossword.mode, grid_rows: crossword.grid.rows, grid_cols: crossword.grid.cols, words: crossword.grid.words,
+        });
+        if (saved.error) {
+          // A crossword game without its grid cannot be played.
+          await db().from('games').delete().eq('id', gameId);
+          throw saved.error;
+        }
+      }
 
       if (room) {
         const members = await db().from('class_members').select('student_id').eq('class_id', room.id);
@@ -306,6 +387,10 @@ export const gameRoutes: FastifyPluginAsync = async (app) => {
         const { questions } = await lessonQuestions(game.lesson_id!);
         if (questions.length === 0) return reply.code(400).send(NO_CONTENT);
         content = { questions: questions.map(toPublicPracticeQuestion) };
+      } else if (game.kind === 'crossword') {
+        const saved = await crosswordOf(game.id);
+        if (!saved) return reply.code(400).send(NO_CONTENT);
+        content = { mode: saved.mode, ...publicGrid(saved.grid) };
       } else if (game.kind === 'match') {
         const { data, error } = await db().from('terms').select('id, term_en, term_vi').in('id', game.term_ids).eq('status', 'published');
         if (error) throw error;
@@ -334,10 +419,12 @@ export const gameRoutes: FastifyPluginAsync = async (app) => {
       if (!game) return reply.code(404).send(NOT_FOUND);
       const base = PlaySubmit.safeParse(request.body);
       if (!base.success) return reply.code(400).send(BAD_PLAY);
-      const { data: playData, error: playError } = await db().from('game_plays').select('id, game_id, user_id, right_order, started_at, finished_at').eq('id', base.data.playId).maybeSingle();
+      const { data: playData, error: playError } = await db().from('game_plays').select('id, game_id, user_id, right_order, started_at, finished_at, score').eq('id', base.data.playId).maybeSingle();
       if (playError) throw playError;
       const play = playData as PlayRow | null;
-      if (!play || play.game_id !== game.id || play.user_id !== user.id || play.finished_at) return reply.code(400).send(BAD_PLAY);
+      if (!play || play.game_id !== game.id || play.user_id !== user.id) return reply.code(400).send(BAD_PLAY);
+      if (game.kind === 'crossword') return await submitCrossword(request, reply, game, play, user.id!);
+      if (play.finished_at) return reply.code(400).send(BAD_PLAY);
 
       const elapsedS = (Date.now() - new Date(play.started_at).getTime()) / 1000;
       const late = game.time_limit_s !== null && elapsedS > game.time_limit_s + GRACE_S;
