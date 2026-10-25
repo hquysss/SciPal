@@ -8,11 +8,11 @@ Dynamic segments: the worker picks one real id from the page that links to it (e
 
 ### Public
 - [x] `/` — S1/S2 home · `e2e/paths/home.spec.ts` (setup)
-- [ ] `/subjects` — S2
-- [ ] `/login`
-- [ ] `/pricing`
-- [ ] `/help`
-- [ ] `/privacy`
+- [x] `/subjects` — S2 · `e2e/paths/subjects.spec.ts`
+- [?] `/login` · `e2e/paths/login.spec.ts` · FLAKY iter 1: dev-server SyntaxError page error once, green on retry
+- [x] `/pricing` · `e2e/paths/pricing.spec.ts`
+- [?] `/help` · `e2e/paths/help.spec.ts` · FLAKY iter 1: vi goto ERR_ABORTED on cold compile, green on retry
+- [x] `/privacy` · `e2e/paths/privacy.spec.ts`
 - [ ] `/terms`
 - [ ] `/community`
 - [ ] `/games`
