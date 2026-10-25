@@ -42,7 +42,7 @@ describe('class queries', () => {
     })));
     await expect(getClassRoster('c1', 'tok-1')).resolves.toEqual({
       kind: 'ready',
-      classRoom: { name: '10A1', invite_code: 'ABC123' },
+      classRoom: { name: '10A1', invite_code: 'ABC123', leaderboard_enabled: true },
       members,
     });
   });

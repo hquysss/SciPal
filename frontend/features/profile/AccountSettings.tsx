@@ -11,6 +11,7 @@ import { buttonVariants } from '@/components/ui/button';
 import { createBrowserClient } from '@/lib/supabase';
 import { AccountHelpModal } from '@/features/auth/AccountHelpModal';
 import { EducationLevelSetting } from './EducationLevelSetting';
+import { LeaderboardNameSwitch } from './LeaderboardNameSwitch';
 import { tint } from './ProfileHero';
 import { GradeSetting } from './GradeSetting';
 import type { resolveEducationLevel } from '@/features/landing/educationLevel';
@@ -186,6 +187,7 @@ export function AccountSettings({ currentRole = 'student', educationPreference, 
               </div>
             </div>
           )}
+          {isAuthenticated && <LeaderboardNameSwitch rowLabel={rowLabel} rowHint={rowHint} />}
           <div className="flex items-center justify-between gap-3 border-t border-line pt-4">
             <div>
               <div className={rowLabel}>

@@ -21,6 +21,16 @@ describe('FriendsTabView', () => {
     expect(screen.getByText('Chưa có bạn bè')).toBeTruthy();
   });
 
+  it('challenges a friend by their user id, and shows when one was sent', () => {
+    const onChallenge = vi.fn();
+    const { rerender } = render(<FriendsTabView state={ready({ friends: [person('f1', 'An')] })} {...handlers()} onChallenge={onChallenge} />);
+    fireEvent.click(screen.getByRole('button', { name: 'Thách đấu' }));
+    expect(onChallenge).toHaveBeenCalledWith('u-f1');
+    rerender(<FriendsTabView state={ready({ friends: [person('f1', 'An')] })} {...handlers()} onChallenge={onChallenge} challenged={new Set(['u-f1'])} />);
+    expect(screen.queryByRole('button', { name: 'Thách đấu' })).toBeNull();
+    expect(screen.getByText('Đã gửi thách đấu')).toBeTruthy();
+  });
+
   it('accepts or declines an incoming request by the row id', () => {
     const h = handlers();
     render(<FriendsTabView state={ready({ incoming: [person('r1', 'An')] })} {...h} />);

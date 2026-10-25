@@ -40,6 +40,22 @@ describe('awardBadges', () => {
   });
 });
 
+describe('awardBadges for challenge wins', () => {
+  it('counts the challenges the learner won', async () => {
+    const d = fakeDb({
+      'profiles.select': [{ data: { daily_goal_xp: 20 } }],
+      'challenges.select': [{ count: 1 }],
+      'badges.select': [{ data: [badge('w1', 'challenge_win_1', { type: 'challenge_wins', min: 1 })] }],
+      'user_badges.select': [{ data: [] }],
+      'user_badges.upsert': [{}],
+    });
+    const { stats } = await awardBadges(d as never, 'u1', log);
+    expect(stats?.challengeWins).toBe(1);
+    expect(d.calls.find((c) => c.table === 'challenges')!.chain).toContainEqual(['eq', ['winner', 'u1']]);
+    expect(d.calls.some((c) => c.op === 'upsert')).toBe(true);
+  });
+});
+
 describe('awardBadges from XP', () => {
   it('shows a level badge only when this XP crossed the level', async () => {
     const levels = (xpRows: number[]) => fakeDb({

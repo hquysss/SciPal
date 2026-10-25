@@ -11,6 +11,7 @@ import { Input } from '@/components/ui/input';
 import type { ApiResult } from '../authoring/apiClient';
 import { blockUser } from '../community/chatApi';
 import { BlockedList } from './BlockedList';
+import { sendChallenge } from '../challenges/challengesApi';
 import { PresenceAvatar } from '../community/presence';
 import {
   acceptRequest, listFriends, removeFriendship, searchUsers, sendRequest,
@@ -54,7 +55,7 @@ function Section({ title, children }: { title: string; children: ReactNode }) {
   );
 }
 
-export function FriendsTabView({ state, onSearch, onSend, onAccept, onRemove, onMessage, onBlock }: {
+export function FriendsTabView({ state, onSearch, onSend, onAccept, onRemove, onMessage, onBlock, onChallenge, challenged }: {
   state: FriendsState;
   onSearch: (q: string) => void;
   onSend: (userId: string) => void;
@@ -62,6 +63,9 @@ export function FriendsTabView({ state, onSearch, onSend, onAccept, onRemove, on
   onRemove: (id: string) => void;
   onMessage: (friendshipId: string) => void;
   onBlock: (userId: string) => void;
+  /** A weekly XP challenge to a friend; `challenged` holds the user ids sent one in this visit. */
+  onChallenge?: (userId: string) => void;
+  challenged?: ReadonlySet<string>;
 }) {
   const { t } = useLanguage();
   const [query, setQuery] = useState('');
@@ -150,6 +154,9 @@ export function FriendsTabView({ state, onSearch, onSend, onAccept, onRemove, on
               {state.friends.map((p) => (
                 <Person key={p.id} name={nameOf(p)} url={p.avatar_url} userId={p.user_id}>
                   <Button type="button" onClick={() => onMessage(p.id)}>{t({ en: 'Message', vi: 'Nhắn tin' })}</Button>
+                  {onChallenge && (challenged?.has(p.user_id)
+                    ? <Badge variant="secondary">{t({ en: 'Challenge sent', vi: 'Đã gửi thách đấu' })}</Badge>
+                    : <Button type="button" variant="outline" onClick={() => onChallenge(p.user_id)}>{t({ en: 'Challenge', vi: 'Thách đấu' })}</Button>)}
                   <Button type="button" variant="outline" onClick={() => onRemove(p.id)}>{t({ en: 'Unfriend', vi: 'Huỷ kết bạn' })}</Button>
                 </Person>
               ))}
@@ -166,6 +173,7 @@ export function FriendsTab({ onDm }: { onDm?: (friendshipId: string | null) => v
   const [state, setState] = useState<FriendsState>({ status: 'loading' });
   const [notice, setNotice] = useState<Bilingual | null>(null);
   const [blockVersion, setBlockVersion] = useState(0);
+  const [challenged, setChallenged] = useState<ReadonlySet<string>>(new Set());
   const { t } = useLanguage();
 
   const load = useCallback(async () => {
@@ -207,6 +215,13 @@ export function FriendsTab({ onDm }: { onDm?: (friendshipId: string | null) => v
     setState((prev) => (prev.status === 'ready' && prev.results ? { ...prev, results: prev.results.filter((u) => u.user_id !== userId) } : prev));
   };
 
+  const challenge = async (userId: string) => {
+    const result = await sendChallenge(userId);
+    if (!result.ok) return setNotice({ vi: result.error.error ?? 'Chưa gửi được lời thách đấu.', en: result.error.error_en ?? 'The challenge was not sent.' });
+    setNotice(null);
+    setChallenged((prev) => new Set(prev).add(userId));
+  };
+
   return (
     <div className="flex flex-col gap-4">
       {notice && <Alert tone="danger">{t(notice)}</Alert>}
@@ -218,6 +233,8 @@ export function FriendsTab({ onDm }: { onDm?: (friendshipId: string | null) => v
         onRemove={(id) => void act(removeFriendship(id))}
         onMessage={(id) => onDm?.(id)}
         onBlock={(id) => void block(id)}
+        onChallenge={(id) => void challenge(id)}
+        challenged={challenged}
       />
       <BlockedList version={blockVersion} />
     </div>

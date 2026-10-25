@@ -8,7 +8,7 @@ export type TeacherClassesResult =
   | { kind: 'error' };
 
 export type ClassRosterResult =
-  | { kind: 'ready'; classRoom: { name: string; invite_code: string }; members: StudentMember[] }
+  | { kind: 'ready'; classRoom: { name: string; invite_code: string; leaderboard_enabled: boolean }; members: StudentMember[] }
   | { kind: 'not_found' }
   | { kind: 'error' };
 
@@ -40,7 +40,7 @@ export async function getClassRoster(classId: string, token: string): Promise<Cl
     if (!data.class_room || !Array.isArray(data.members)) return { kind: 'error' };
     return {
       kind: 'ready',
-      classRoom: { name: data.class_room.name, invite_code: data.class_room.invite_code },
+      classRoom: { name: data.class_room.name, invite_code: data.class_room.invite_code, leaderboard_enabled: data.class_room.leaderboard_enabled !== false },
       members: data.members as StudentMember[],
     };
   } catch (err) {

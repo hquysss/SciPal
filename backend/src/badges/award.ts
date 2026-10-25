@@ -22,7 +22,7 @@ type Measured = { stats: BadgeStats; totalXp: number; todayXp: number; goal: num
 
 async function measure(supabase: SupabaseClient, id: string): Promise<Measured | null> {
   // ponytail: reads every xp_log row of the learner per call; a running total if this gets slow.
-  const [studyDays, profile, exams, friends, lessons, practice, xp] = await Promise.all([
+  const [studyDays, profile, exams, friends, lessons, practice, xp, wins] = await Promise.all([
     supabase.from('study_days').select('day, xp, freeze').eq('user_id', id),
     supabase.from('profiles').select('daily_goal_xp').eq('id', id).maybeSingle(),
     supabase.from('exam_attempts').select('score').eq('user_id', id).eq('status', 'submitted'),
@@ -30,8 +30,9 @@ async function measure(supabase: SupabaseClient, id: string): Promise<Measured |
     supabase.from('progress').select('id', { count: 'exact', head: true }).eq('user_id', id).not('completed_at', 'is', null),
     supabase.from('practice_attempts').select('question_id', { count: 'exact', head: true }).eq('user_id', id).eq('correct', true),
     supabase.from('xp_log').select('delta, reason').eq('user_id', id),
+    supabase.from('challenges').select('id', { count: 'exact', head: true }).eq('winner', id),
   ]);
-  if ([studyDays, profile, exams, friends, lessons, practice, xp].some((r) => r.error)) return null;
+  if ([studyDays, profile, exams, friends, lessons, practice, xp, wins].some((r) => r.error)) return null;
   const days = (studyDays.data ?? []) as Array<{ day: string; xp: number; freeze: boolean }>;
   const goal = (profile.data as { daily_goal_xp?: number } | null)?.daily_goal_xp ?? 20;
   const scores = ((exams.data ?? []) as Array<{ score: number | string | null }>).map((e) => Number(e.score ?? 0));
@@ -49,6 +50,7 @@ async function measure(supabase: SupabaseClient, id: string): Promise<Measured |
       level: levelOfXp(totalXp).level,
       goalDays: days.filter((d) => !d.freeze && d.xp >= goal).length,
       codeAc: log.filter((r) => r.reason?.startsWith('code_ac:')).length,
+      challengeWins: wins.count ?? 0,
     },
     totalXp,
     todayXp: days.find((d) => d.day === today && !d.freeze)?.xp ?? 0,

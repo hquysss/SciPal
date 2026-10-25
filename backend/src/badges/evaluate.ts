@@ -11,10 +11,11 @@ export type BadgeCondition =
   | { type: 'level'; min: number }
   | { type: 'goal_days'; min: number }
   | { type: 'code_ac'; min: number }
+  | { type: 'challenge_wins'; min: number }
   | { type: 'manual' };
 
 export const CONDITION_TYPES: Array<BadgeCondition['type']> = [
-  'streak', 'exam_count', 'perfect_score', 'friends', 'lessons_done', 'practice_right', 'level', 'goal_days', 'code_ac', 'manual',
+  'streak', 'exam_count', 'perfect_score', 'friends', 'lessons_done', 'practice_right', 'level', 'goal_days', 'code_ac', 'challenge_wins', 'manual',
 ];
 
 export type BadgeStats = {
@@ -27,6 +28,7 @@ export type BadgeStats = {
   level: number;
   goalDays: number;
   codeAc: number;
+  challengeWins: number;
 };
 
 const PERFECT = 10;
@@ -41,6 +43,7 @@ const COUNTED: Partial<Record<BadgeCondition['type'], keyof BadgeStats>> = {
   level: 'level',
   goal_days: 'goalDays',
   code_ac: 'codeAc',
+  challenge_wins: 'challengeWins',
 };
 
 function parse(condition: unknown): { type?: BadgeCondition['type']; min: number } | null {

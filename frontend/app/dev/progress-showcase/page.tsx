@@ -2,22 +2,31 @@ import { notFound } from 'next/navigation';
 import { ProgressView } from '@/features/progress/ProgressView';
 import { buildRoadmap } from '@/features/progress/progressModel';
 import type { LeaderRow, ProgressSummary } from '@/features/progress/progressQueries';
+import { ChallengeSample } from './ChallengeSample';
 
 // Dev only: the progress page for a sample student, no account needed.
-// ?state=new (nothing started) · ?board=empty|failed|below
-export default async function ProgressShowcasePage({ searchParams }: { searchParams: Promise<{ board?: string; state?: string }> }) {
+// ?state=new (nothing started) · ?board=empty|failed|below · ?social=none (no friends, no classes)
+export default async function ProgressShowcasePage({ searchParams }: { searchParams: Promise<{ board?: string; state?: string; social?: string }> }) {
   if (process.env.NODE_ENV !== 'development') notFound();
-  const { board, state } = await searchParams;
+  const { board, state, social } = await searchParams;
 
   const names = ['Minh Anh', 'Gia Bảo', 'Thu Hà', 'Quốc Huy', 'Khánh Linh', 'Đức Nam', 'Phương Vy', 'Hoàng Long', 'Bảo Ngọc', 'Tuấn Kiệt'];
-  const top: LeaderRow[] = names.map((n, i) => ({ rank: i + 1, display_name: n, xp: 2400 - i * 180, is_me: !board && i === 3 }));
+  // Every other place did not choose to be named on the global board.
+  const top: LeaderRow[] = names.map((n, i) => ({ rank: i + 1, display_name: i % 2 && !(!board && i === 3) ? null : n, xp: 2400 - i * 180, is_me: !board && i === 3 }));
+  const friendsRows: LeaderRow[] = [
+    { rank: 1, display_name: 'Gia Bảo', xp: 420, is_me: false },
+    { rank: 2, display_name: 'Lê An', xp: 340, is_me: true },
+    { rank: 3, display_name: 'Thu Hà', xp: 120, is_me: false },
+  ];
+  const friendsBoard = social === 'none' ? { week: [friendsRows[1]!], all: [friendsRows[1]!] } : { week: friendsRows, all: friendsRows.map((r) => ({ ...r, xp: r.xp * 5 })) };
+  const leaderboardClasses = social === 'none' ? [] : [{ id: 'sample-class', name: '10A1 · Tin học' }];
   const leaderboard: ProgressSummary['leaderboard'] =
     board === 'failed' ? null
       : board === 'empty' ? { week: [], all: [] }
         : { week: board === 'below' ? [...top, { rank: 27, display_name: 'Lê An', xp: 340, is_me: true }] : top, all: top.map((r) => ({ ...r, xp: r.xp * 6 })) };
 
   const empty: ProgressSummary = {
-    completedLessons: [], streaks: [], totalXP: 0, badges: [], leaderboard, roadmaps: [], continueMinutes: null, exams: [], loadFailed: false,
+    completedLessons: [], streaks: [], totalXP: 0, badges: [], leaderboard, friendsBoard, leaderboardClasses, roadmaps: [], continueMinutes: null, exams: [], loadFailed: false,
   };
   if (state === 'new') return <ProgressView {...empty} />;
 
@@ -50,6 +59,7 @@ export default async function ProgressShowcasePage({ searchParams }: { searchPar
   }));
 
   return (
+    <>
     <ProgressView
       {...empty}
       totalXP={1340}
@@ -63,5 +73,7 @@ export default async function ProgressShowcasePage({ searchParams }: { searchPar
         { blueprintId: 'e1', name: 'Đề luyện THPTQG Tin học số 1', score: 8.5, maxScore: 10, submittedAt: '2026-10-03T08:00:00Z' },
       ]}
     />
+    <ChallengeSample />
+    </>
   );
 }

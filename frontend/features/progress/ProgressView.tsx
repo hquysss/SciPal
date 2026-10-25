@@ -16,6 +16,7 @@ import { Roadmap } from './Roadmap';
 import { PracticeLeftCard } from './PracticeLeftCard';
 import type { PracticeLeftLesson } from './practiceRemaining';
 import { ProgressHero } from './ProgressHero';
+import { ChallengeCard } from '../challenges/ChallengeCard';
 import { continueTarget, passed, recentMilestones, type ExamResult, type Milestone } from './progressModel';
 import type { ProgressSummary } from './progressQueries';
 
@@ -231,7 +232,8 @@ export function ProgressView(props: ProgressSummary & { practiceLeft?: PracticeL
         </div>
         <aside className="flex min-w-0 flex-col gap-5">
           <ReviewCard exams={exams} />
-          <Leaderboard board={leaderboard} />
+          <Leaderboard board={leaderboard} friends={props.friendsBoard} classes={props.leaderboardClasses} />
+          <ChallengeCard />
           <Milestones items={milestones} />
           <StreakCalendar streaks={streaks} habit={habit} />
         </aside>

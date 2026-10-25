@@ -46,6 +46,29 @@ describe('getUserProgress', () => {
     expect(result.loadFailed).toBe(false);
   });
 
+  it('loads the friends board and the joined classes whose board is on', async () => {
+    const me = { rank: 1, display_name: 'An', xp: 40, is_me: true };
+    tableResults.set('rpc:friends_leaderboard', { data: [me], error: null });
+    tableResults.set('class_members', {
+      data: [
+        { class_rooms: { id: 'c1', name: '10A1', leaderboard_enabled: true } },
+        { class_rooms: { id: 'c2', name: '10A2', leaderboard_enabled: false } },
+        { class_rooms: null },
+      ],
+      error: null,
+    });
+    const result = await getUserProgress('u1');
+    expect(result.friendsBoard).toEqual({ week: [me], all: [me] });
+    expect(result.leaderboardClasses).toEqual([{ id: 'c1', name: '10A1' }]);
+
+    tableResults.set('rpc:friends_leaderboard', { data: null, error: { message: 'missing function' } });
+    tableResults.set('class_members', { data: null, error: { message: 'down' } });
+    const failed = await getUserProgress('u1');
+    expect(failed.friendsBoard).toBeNull();
+    expect(failed.leaderboardClasses).toEqual([]);
+    expect(failed.loadFailed).toBe(false);
+  });
+
   it('leaves out rows whose subject is archived (hidden, so embedded as null)', async () => {
     tableResults.set('progress', {
       data: [
@@ -73,7 +96,10 @@ describe('getUserProgress', () => {
 
     const result = await getUserProgress('u1');
 
-    expect(result).toEqual({ completedLessons: [], streaks: [], totalXP: 0, badges: [], leaderboard: null, roadmaps: null, continueMinutes: null, exams: null, loadFailed: true });
+    expect(result).toEqual({
+      completedLessons: [], streaks: [], totalXP: 0, badges: [], leaderboard: null, friendsBoard: null, leaderboardClasses: [],
+      roadmaps: null, continueMinutes: null, exams: null, loadFailed: true,
+    });
   });
 
   it('builds the roadmap of each started subject and maps exam results', async () => {

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { earnedBadgeIds, isEarned, progressOf, type BadgeStats } from './evaluate.js';
 
-const stats = (over: Partial<BadgeStats> = {}): BadgeStats => ({ bestStreak: 0, examCount: 0, bestExamScore: 0, friends: 0, lessonsDone: 0, practiceRight: 0, level: 1, goalDays: 0, codeAc: 0, ...over });
+const stats = (over: Partial<BadgeStats> = {}): BadgeStats => ({ bestStreak: 0, examCount: 0, bestExamScore: 0, friends: 0, lessonsDone: 0, practiceRight: 0, level: 1, goalDays: 0, codeAc: 0, challengeWins: 0, ...over });
 
 describe('isEarned', () => {
   it('meets a minimum at the boundary and not below it', () => {
@@ -37,6 +37,7 @@ describe('learning rules', () => {
   it('compares each new count with its minimum', () => {
     const cases: Array<[string, keyof BadgeStats]> = [
       ['lessons_done', 'lessonsDone'], ['practice_right', 'practiceRight'], ['level', 'level'], ['goal_days', 'goalDays'], ['code_ac', 'codeAc'],
+      ['challenge_wins', 'challengeWins'],
     ];
     for (const [type, key] of cases) {
       expect(isEarned({ type, min: 10 }, stats({ [key]: 10 }))).toBe(true);

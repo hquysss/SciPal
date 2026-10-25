@@ -1440,6 +1440,14 @@ export interface Database {
         Args: { p_weekly?: boolean };
         Returns: Array<{ rank: number; display_name: string | null; xp: number; is_me: boolean }>;
       };
+      friends_leaderboard: {
+        Args: { p_weekly?: boolean };
+        Returns: Array<{ rank: number; display_name: string | null; xp: number; is_me: boolean }>;
+      };
+      class_leaderboard: {
+        Args: { p_class: string; p_weekly?: boolean };
+        Returns: Array<{ rank: number; display_name: string | null; xp: number; is_me: boolean }>;
+      };
     };
     Enums: {
       [_ in never]: never;
