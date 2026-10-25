@@ -1,9 +1,11 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 
-const DAY_MS = 24 * 60 * 60 * 1000;
+import { touchStudyDay } from './studyDay.js';
+import { addDays, vnDay } from './vnDay.js';
 
 /**
- * Marks today (UTC) as an active day in a subject: +1 after yesterday, unchanged on the same day,
+ * Marks today (Vietnam time) as an active day in a subject, and as a study day with `xp` for the
+ * streak across subjects and the daily goal (see studyDay.ts): +1 after yesterday, unchanged on the same day,
  * back to 1 after a gap; a day before the last active one leaves it as it is. Returns the current
  * streak, or 0 when it could not be read or saved (the activity
  * itself is already saved by then, so a streak failure is logged, not raised).
@@ -14,9 +16,15 @@ export async function touchStreak(
   subjectId: string,
   now: Date,
   log: { warn: (obj: object, msg: string) => void },
+  xp = 0,
 ): Promise<number> {
-  const today = now.toISOString().slice(0, 10);
-  const yesterday = new Date(now.getTime() - DAY_MS).toISOString().slice(0, 10);
+  const today = vnDay(now);
+  const yesterday = addDays(today, -1);
+  try {
+    await touchStudyDay(supabase, userId, today, xp, log);
+  } catch (err) {
+    log.warn({ err }, 'Study day update failed');
+  }
   const { data: streak, error } = await supabase
     .from('streaks')
     .select('current_streak, longest_streak, last_active')

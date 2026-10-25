@@ -1,4 +1,5 @@
 import type { FastifyPluginAsync, FastifyReply, FastifyRequest } from 'fastify';
+import { longestStreak } from '../streaks/habit.js';
 import { earnedBadgeIds, type BadgeStats } from '../badges/evaluate.js';
 
 // Community badges. Rules live in badges.condition; a student's own list is re-evaluated whenever they
@@ -33,15 +34,15 @@ export const badgeRoutes: FastifyPluginAsync = async (app) => {
   /** The numbers the rules are checked against; null when any lookup fails, so nothing is awarded on a guess. */
   async function statsFor(id: string): Promise<BadgeStats | null> {
     const supabase = app.supabase!;
-    const [streaks, exams, friends] = await Promise.all([
-      supabase.from('streaks').select('longest_streak').eq('user_id', id),
+    const [studyDays, exams, friends] = await Promise.all([
+      supabase.from('study_days').select('day').eq('user_id', id),
       supabase.from('exam_attempts').select('score').eq('user_id', id).eq('status', 'submitted'),
       supabase.from('friendships').select('id', { count: 'exact', head: true }).or(`user_a.eq.${id},user_b.eq.${id}`).eq('status', 'accepted'),
     ]);
-    if (streaks.error || exams.error || friends.error) return null;
+    if (studyDays.error || exams.error || friends.error) return null;
     const scores = ((exams.data ?? []) as Array<{ score: number | string | null }>).map((e) => Number(e.score ?? 0));
     return {
-      bestStreak: Math.max(0, ...((streaks.data ?? []) as Array<{ longest_streak: number }>).map((s) => s.longest_streak)),
+      bestStreak: longestStreak((studyDays.data ?? []) as Array<{ day: string }>),
       examCount: scores.length,
       bestExamScore: Math.max(0, ...scores),
       friends: friends.count ?? 0,

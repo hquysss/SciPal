@@ -4,6 +4,7 @@ import type { PracticeCheckResult, PublicPracticeQuestion } from '@scipal/types'
 import { countRawColors } from '../../lib/theme/rawColors';
 import { PracticeSection, practiceSummary, responseOf, withResult, type PracticeState } from './PracticeSection';
 
+vi.mock('../habit/habitApi', () => ({ useHabit: () => ({ habit: null, reload: async () => {} }) }));
 vi.mock('@scipal/hooks', () => ({ useLanguage: () => ({ lang: 'vi', t: (o: { vi: string }) => o.vi }) }));
 vi.mock('../../lib/supabase', () => ({ createBrowserClient: () => ({}) }));
 vi.mock('../../lib/session', () => ({ getAccessToken: async () => undefined }));

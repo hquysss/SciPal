@@ -4,8 +4,12 @@ import Link from 'next/link';
 import type { CSSProperties } from 'react';
 import { ArrowRight, Award, BookOpenCheck, CircleCheck, Clock, GraduationCap, PartyPopper, RotateCcw, Sparkles, TriangleAlert } from 'lucide-react';
 import { useLanguage } from '@scipal/hooks';
+import { levelOfXp } from '@scipal/types';
 import { LoadErrorNotice } from '../../components/feedback/LoadErrorNotice';
 import { StreakCalendar } from './StreakCalendar';
+import { useHabit } from '../habit/habitApi';
+import { StreakRiskBanner } from '../habit/StreakRiskBanner';
+import { DailyGoalRing } from '../habit/DailyGoalRing';
 import { BadgeWall } from './BadgeWall';
 import { Leaderboard } from './Leaderboard';
 import { Roadmap } from './Roadmap';
@@ -15,7 +19,6 @@ import { ProgressHero } from './ProgressHero';
 import { continueTarget, passed, recentMilestones, type ExamResult, type Milestone } from './progressModel';
 import type { ProgressSummary } from './progressQueries';
 
-const LEVEL_XP = 500;
 
 const CARD = 'rounded-3xl border border-line bg-surface p-5 sm:p-6';
 const FOCUS = 'focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus';
@@ -179,11 +182,12 @@ export function ProgressView(props: ProgressSummary & { practiceLeft?: PracticeL
   // Most recently studied subject first, so the roadmap opens where the student left off.
   const roadmaps = props.roadmaps && [...props.roadmaps].sort((a, b) => (b.lastActive ?? '').localeCompare(a.lastActive ?? ''));
   const { t } = useLanguage();
-  const level = Math.floor(totalXP / LEVEL_XP) + 1;
+  const level = levelOfXp(totalXP).level;
   const done = roadmaps?.reduce((n, r) => n + r.done, 0) ?? 0;
   const total = roadmaps?.reduce((n, r) => n + r.total, 0) ?? 0;
   const percent = total ? Math.round((done / total) * 100) : 0;
-  const bestStreak = streaks.reduce((max, s) => Math.max(max, s.current_streak), 0);
+  const { habit } = useHabit();
+  const bestStreak = habit ? habit.streak : streaks.reduce((max, s) => Math.max(max, s.current_streak), 0);
   const passedCount = exams?.filter(passed).length;
 
   const milestones = recentMilestones([
@@ -210,6 +214,9 @@ export function ProgressView(props: ProgressSummary & { practiceLeft?: PracticeL
         <LoadErrorNotice message={{ en: 'We could not load your progress. Please reload the page.', vi: 'Chưa tải được tiến trình học tập. Tải lại trang nhé.' }} />
       )}
 
+      <StreakRiskBanner habit={habit} />
+      {habit && <DailyGoalRing day={habit.today} xp={habit.today_xp} goal={habit.goal_xp} />}
+
       <ProgressHero
         stats={{ percent, done, total, streak: bestStreak, lessons: completedLessons.length, examsPassed: passedCount ?? null, examsTaken: exams?.length ?? 0, xp: totalXP, level }}
       />
@@ -226,7 +233,7 @@ export function ProgressView(props: ProgressSummary & { practiceLeft?: PracticeL
           <ReviewCard exams={exams} />
           <Leaderboard board={leaderboard} />
           <Milestones items={milestones} />
-          <StreakCalendar streaks={streaks} />
+          <StreakCalendar streaks={streaks} habit={habit} />
         </aside>
       </div>
     </main>

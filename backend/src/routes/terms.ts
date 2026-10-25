@@ -270,7 +270,7 @@ export const termRoutes: FastifyPluginAsync = async (app) => {
       }
     }
     // Any graded due card, "again" included, makes today an active day in that subject.
-    const newStreak = subjectId ? await touchStreak(supabase, userId, subjectId, now, request.log) : 0;
+    const newStreak = subjectId ? await touchStreak(supabase, userId, subjectId, now, request.log, xpEarned) : 0;
     return reply.send({ due_at: next.due_at, xp_earned: xpEarned, new_streak: newStreak });
   });
 

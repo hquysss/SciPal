@@ -6,6 +6,7 @@ import { PracticeSection, usePracticeState } from './PracticeSection';
 import { clearPacks } from '../../lib/pwa/practicePacks';
 import { loadPracticeDraft } from '../../lib/pwa/practiceDraft';
 
+vi.mock('../habit/habitApi', () => ({ useHabit: () => ({ habit: null, reload: async () => {} }) }));
 vi.mock('@scipal/hooks', () => ({ useLanguage: () => ({ lang: 'vi', t: (text: { vi: string }) => text.vi }) }));
 const api = vi.hoisted(() => ({ check: vi.fn(), feedback: vi.fn() }));
 vi.mock('./practiceApi', () => ({ checkPractice: api.check, writingFeedback: api.feedback }));

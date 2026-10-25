@@ -4,6 +4,7 @@ import type { CSSProperties } from 'react';
 import { Flame } from 'lucide-react';
 import { useLanguage } from '@scipal/hooks';
 import type { ProgressSummary } from './progressQueries';
+import type { Habit } from '../habit/habitApi';
 
 type StreakRow = ProgressSummary['streaks'][number];
 
@@ -38,22 +39,43 @@ export function activeSubjectsOn(streaks: StreakRow[], dateStr: string): number 
   }).length;
 }
 
-export function StreakCalendar({ streaks }: { streaks: StreakRow[] }) {
+/** Heat step of a study day's XP, on the same four colours as the subject count. */
+export function xpStep(xp: number): number {
+  if (!Number.isFinite(xp) || xp <= 0) return 0;
+  return xp < 20 ? 1 : xp < 50 ? 2 : 4;
+}
+
+type Cell = { dateStr: string; dayLabel: string; isToday: boolean; step: number; label: string; text: string; freeze: boolean };
+
+/**
+ * The last 7 days. With the habit (server study days, Vietnam dates) a cell shows that day's XP and a
+ * freeze; without it (the habit API is not there) it falls back to the subjects whose streak covers the day.
+ */
+export function StreakCalendar({ streaks, habit }: { streaks: StreakRow[]; habit?: Habit | null }) {
   const { lang, t } = useLanguage();
-  const today = new Date();
-  const days = Array.from({ length: 7 }, (_, i) => {
-    const d = new Date(today);
-    d.setDate(today.getDate() - (6 - i));
+  const end = habit ? new Date(`${habit.today}T00:00:00Z`) : new Date();
+  const days: Cell[] = Array.from({ length: 7 }, (_, i) => {
+    const d = new Date(end);
+    d.setUTCDate(end.getUTCDate() - (6 - i));
     const dateStr = d.toISOString().slice(0, 10);
+    const base = { dateStr, dayLabel: t(DAY_LABELS[d.getUTCDay()]), isToday: i === 6 };
+    if (habit) {
+      const day = habit.days.find((x) => x.day === dateStr);
+      const xp = day?.xp ?? 0;
+      if (day?.freeze) return { ...base, step: 0, freeze: true, text: '❄', label: t({ en: `${dateStr}: streak freeze used`, vi: `${dateStr}: đã dùng đóng băng chuỗi` }) };
+      return { ...base, step: xpStep(xp), freeze: false, text: xp > 0 ? String(xp) : '', label: t({ en: `${dateStr}: ${xp} XP`, vi: `${dateStr}: ${xp} XP` }) };
+    }
+    const count = activeSubjectsOn(streaks, dateStr);
     return {
-      dateStr,
-      dayLabel: t(DAY_LABELS[d.getDay()]),
-      isToday: i === 6,
-      count: activeSubjectsOn(streaks, dateStr),
+      ...base,
+      step: count,
+      freeze: false,
+      text: count > 0 ? String(count) : '',
+      label: t({ en: `${dateStr}: ${count} ${count === 1 ? 'subject' : 'subjects'} active`, vi: `${dateStr}: ${count} môn có hoạt động` }),
     };
   });
 
-  const best = streaks.reduce((max, s) => Math.max(max, s.current_streak), 0);
+  const best = habit ? habit.streak : streaks.reduce((max, s) => Math.max(max, s.current_streak), 0);
 
   return (
     <section className="rounded-3xl border border-line bg-surface p-5 sm:p-6">
@@ -73,26 +95,28 @@ export function StreakCalendar({ streaks }: { streaks: StreakRow[] }) {
 
       {/* 7-day heat track */}
       <ol className="grid grid-cols-7 gap-2 sm:gap-3">
-        {days.map((d) => {
-          const label = t({
-            en: `${d.dateStr}: ${d.count} ${d.count === 1 ? 'subject' : 'subjects'} active`,
-            vi: `${d.dateStr}: ${d.count} môn có hoạt động`,
-          });
-          return (
-            <li key={d.dateStr} className="flex flex-col items-center gap-1.5">
-              <span className="text-sm text-ink-muted">{d.dayLabel}</span>
-              <div
-                role="img"
-                title={label}
-                aria-label={label}
-                className={`flex h-14 w-full items-center justify-center rounded-xl text-sm font-bold text-ink transition-transform duration-300 ease-out hover:-translate-y-0.5 motion-reduce:transition-none ${streakCellClass(d.count)} ${d.isToday ? 'outline outline-2 outline-offset-2 outline-focus' : ''}`}
-              >
-                {d.count > 0 ? d.count : ''}
-              </div>
-            </li>
-          );
-        })}
+        {days.map((d) => (
+          <li key={d.dateStr} className="flex flex-col items-center gap-1.5">
+            <span className="text-sm text-ink-muted">{d.dayLabel}</span>
+            <div
+              role="img"
+              title={d.label}
+              aria-label={d.label}
+              className={`flex h-14 w-full items-center justify-center rounded-xl text-sm font-bold tabular-nums text-ink transition-transform duration-300 ease-out hover:-translate-y-0.5 motion-reduce:transition-none ${d.freeze ? 'border-2 border-dashed border-sky bg-surface-sunken' : streakCellClass(d.step)} ${d.isToday ? 'outline outline-2 outline-offset-2 outline-focus' : ''}`}
+            >
+              {d.text}
+            </div>
+          </li>
+        ))}
       </ol>
+      {habit && (
+        <p className="mt-3 text-sm text-ink-muted">
+          {t({
+            en: `Best ${habit.longest} days · ${habit.freezes} streak ${habit.freezes === 1 ? 'freeze' : 'freezes'} (❄ keeps a missed day)`,
+            vi: `Kỷ lục ${habit.longest} ngày · ${habit.freezes} lần đóng băng (❄ giữ chuỗi khi lỡ một ngày)`,
+          })}
+        </p>
+      )}
       <div className="mt-3 flex items-center justify-end gap-1.5 text-sm text-ink-muted" aria-hidden="true">
         <span>{t({ en: 'Less', vi: 'Ít' })}</span>
         {[0, 1, 2, 4].map((n) => (

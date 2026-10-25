@@ -5,6 +5,7 @@ import type { PublicPracticeQuestion } from '@scipal/types';
 import { useState } from 'react';
 import { PracticeSection, usePracticeState } from './PracticeSection';
 
+vi.mock('../habit/habitApi', () => ({ useHabit: () => ({ habit: null, reload: async () => {} }) }));
 vi.mock('@scipal/hooks', () => ({ useLanguage: () => ({ lang: 'vi', t: (text: { vi: string }) => text.vi }) }));
 const api = vi.hoisted(() => ({ check: vi.fn(), feedback: vi.fn() }));
 vi.mock('./practiceApi', () => ({ checkPractice: api.check, writingFeedback: api.feedback }));

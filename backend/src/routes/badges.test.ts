@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import Fastify from 'fastify';
 import { badgeRoutes } from './badges.js';
 import { fakeDb } from '../__tests__/fakeDb.js';
+import { addDays } from '../streaks/vnDay.js';
 
 const ME = '11111111-1111-4111-8111-111111111111';
 const OTHER = '22222222-2222-4222-8222-222222222222';
@@ -24,7 +25,7 @@ const badge = (id: string, slug: string, condition: object, over: object = {}) =
 
 describe('GET /api/badges/:user_id', () => {
   const stats = (streak: number) => ({
-    'streaks.select': [{ data: [{ longest_streak: streak }] }],
+    'study_days.select': [{ data: Array.from({ length: streak }, (_, i) => ({ day: addDays('2026-01-01', i) })) }],
     'exam_attempts.select': [{ data: [] }],
     'friendships.select': [{ count: 0 }],
   });
@@ -68,7 +69,7 @@ describe('GET /api/badges/:user_id', () => {
       'profiles.select': [{ data: { id: ME } }],
       'badges.select': [{ data: [badge(B1, 'streak_3', { type: 'streak', min: 3 })] }],
       'user_badges.select': [{ data: [] }],
-      'streaks.select': [{ error: { message: 'down' } }],
+      'study_days.select': [{ error: { message: 'down' } }],
       'exam_attempts.select': [{ data: [] }],
       'friendships.select': [{ count: 0 }],
     });

@@ -46,7 +46,7 @@ export async function recordPractice(
   if (xpError && xpError.code !== '23505') ({ error: xpError } = await grant());
   if (!xpError) {
     xpEarned = delta;
-    newStreak = await touchStreak(supabase, userId, row.subject_id, at, log);
+    newStreak = await touchStreak(supabase, userId, row.subject_id, at, log, delta);
   } else if (xpError.code !== '23505') {
     (log.error ?? log.warn)({ err: xpError, questionId: row.id }, 'Practice XP insert failed twice; the XP is lost');
   }

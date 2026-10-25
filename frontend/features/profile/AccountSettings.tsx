@@ -2,9 +2,10 @@
 
 import { useEffect, useState } from 'react';
 import { setSfxEnabled, sfxEnabled } from '@/lib/sfx';
+import { DAILY_GOALS, saveDailyGoal, useHabit } from '@/features/habit/habitApi';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { BookOpen, CreditCard, Gauge, GraduationCap, Languages, LifeBuoy, LogOut, Palette, UserRound, Volume2 } from 'lucide-react';
+import { BookOpen, CreditCard, Gauge, GraduationCap, Languages, LifeBuoy, LogOut, Palette, Target, UserRound, Volume2 } from 'lucide-react';
 import { useLanguage } from '@scipal/hooks';
 import { buttonVariants } from '@/components/ui/button';
 import { createBrowserClient } from '@/lib/supabase';
@@ -34,6 +35,17 @@ export function AccountSettings({ currentRole = 'student', educationPreference, 
   const toggleSounds = () => {
     setSfxEnabled(!sounds);
     setSounds(!sounds);
+  };
+  const { habit, reload: reloadHabit } = useHabit();
+  const [goalSaving, setGoalSaving] = useState(false);
+  const [goalError, setGoalError] = useState(false);
+  const chooseGoal = async (goal: (typeof DAILY_GOALS)[number]) => {
+    setGoalSaving(true);
+    setGoalError(false);
+    const saved = await saveDailyGoal(goal);
+    setGoalSaving(false);
+    if (saved) await reloadHabit();
+    else setGoalError(true);
   };
 
   const handleSignOut = async () => {
@@ -152,6 +164,28 @@ export function AccountSettings({ currentRole = 'student', educationPreference, 
               </span>
             </button>
           </div>
+          {isAuthenticated && habit && (
+            <div className={`${row} border-t border-line pt-4`}>
+              <div>
+                <div className={rowLabel}>
+                  <Target aria-hidden="true" className="h-4 w-4" />
+                  <span id="daily-goal-label">{t({ en: 'Daily goal', vi: 'Mục tiêu mỗi ngày' })}</span>
+                </div>
+                <div className={rowHint}>
+                  {goalError
+                    ? <span className="text-danger">{t({ en: 'Could not save the goal. Try again.', vi: 'Chưa lưu được mục tiêu. Thử lại nhé.' })}</span>
+                    : t({ en: 'XP to earn each day', vi: 'Số XP cần đạt mỗi ngày' })}
+                </div>
+              </div>
+              <div role="group" aria-labelledby="daily-goal-label" className="flex items-center gap-1 self-start rounded-lg border border-edge bg-surface p-1 sm:self-auto">
+                {DAILY_GOALS.map((goal) => (
+                  <button key={goal} type="button" disabled={goalSaving} aria-pressed={habit.goal_xp === goal} onClick={() => chooseGoal(goal)} className={langButton(habit.goal_xp === goal)}>
+                    {`${goal} XP`}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
           <div className="flex items-center justify-between gap-3 border-t border-line pt-4">
             <div>
               <div className={rowLabel}>

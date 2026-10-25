@@ -16,6 +16,8 @@ import { WritingAnswer, type WritingFeedbackState } from './WritingAnswer';
 import { addVerdict, EMPTY_SESSION, type PracticeSession } from './practiceSession';
 import { useTotalXp } from './useTotalXp';
 import { LevelUpOverlay } from './LevelUpOverlay';
+import { useHabit } from '../habit/habitApi';
+import { DailyGoalRing } from '../habit/DailyGoalRing';
 import { playSfx } from '../../lib/sfx';
 import styles from './practice.module.css';
 
@@ -220,6 +222,8 @@ function QuestionPractice({ load, lessonId, state, onAnswer, onResult, onRetry, 
   const positionRef = useRef<HTMLParagraphElement>(null);
   const session = state.session ?? EMPTY_SESSION;
   const levelUp = useLevelUp(session);
+  const { habit } = useHabit();
+  const habitSince = useXpSince(habit !== null, session.xp);
   const questions = load.ok ? load.questions : [];
   const activeIndex = Math.max(0, questions.findIndex((q) => q.id === (state.activeQuestionId ?? activeId)));
   const question = questions[activeIndex];
@@ -302,7 +306,12 @@ function QuestionPractice({ load, lessonId, state, onAnswer, onResult, onRetry, 
             </p>
             <span className="text-sm text-ink-muted">{t(PART_TITLE[question.type])}</span>
           </div>
-          {session.seq > 0 && <SessionBar session={session} t={t} />}
+          {(session.seq > 0 || habit) && (
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              {session.seq > 0 ? <SessionBar session={session} t={t} /> : <span />}
+              {habit && <DailyGoalRing day={habit.today} xp={habit.today_xp + habitSince} goal={habit.goal_xp} />}
+            </div>
+          )}
           <div role="progressbar" aria-label={t({ en: 'Questions checked', vi: 'Câu đã kiểm tra' })} aria-valuemin={0} aria-valuemax={summary.total} aria-valuenow={summary.checked} className="h-1.5 overflow-hidden rounded-full bg-surface-sunken">
             <div className={`${styles.progress} h-full origin-left rounded-full bg-accent`} style={{ transform: `scaleX(${summary.checked / summary.total})` }} />
           </div>
@@ -647,23 +656,37 @@ function LessonSummary({ right, total, session, t }: { right: number; total: num
 }
 
 /**
+ * Session XP earned after a server total was read. The total already holds what the session earned
+ * before (switching parts remounts the section and reads it again), so only the rest is added on top.
+ */
+function useXpSince(loaded: boolean, sessionXp: number): number {
+  const at = useRef<number | null>(null);
+  if (!loaded) at.current = null;
+  else if (at.current === null) at.current = sessionXp;
+  return loaded ? sessionXp - (at.current ?? sessionXp) : 0;
+}
+
+/**
  * The level reached when this visit's server XP crosses a level line, from the total XP read at load.
  * Verdicts already counted when the section mounted (switching parts) never trigger it.
  */
 function useLevelUp(session: PracticeSession) {
   const baseXp = useTotalXp();
-  const shownXp = useRef(session.xp);
+  const since = useXpSince(baseXp !== null, session.xp);
+  const shown = useRef<number | null>(null);
   const [level, setLevel] = useState<number | null>(null);
   useEffect(() => {
-    const before = shownXp.current;
-    shownXp.current = session.xp;
-    if (baseXp === null || session.xp <= before) return;
-    const reached = levelOfXp(baseXp + session.xp).level;
-    if (reached > levelOfXp(baseXp + before).level) {
+    if (baseXp === null) return;
+    const total = baseXp + since;
+    const before = shown.current ?? total;
+    shown.current = total;
+    if (total <= before) return;
+    const reached = levelOfXp(total).level;
+    if (reached > levelOfXp(before).level) {
       setLevel(reached);
       playSfx('levelUp');
     }
-  }, [baseXp, session.xp]);
+  }, [baseXp, since]);
   const close = useCallback(() => setLevel(null), []);
   return { level, close };
 }

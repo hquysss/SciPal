@@ -550,7 +550,7 @@ export const examRoutes: FastifyPluginAsync = async (app) => {
     let newStreak = 0;
     if (userId && subjectIds.size === 1) {
       try {
-        newStreak = await touchStreak(supabase, userId, [...subjectIds][0] as string, new Date(submittedAt), request.log);
+        newStreak = await touchStreak(supabase, userId, [...subjectIds][0] as string, new Date(submittedAt), request.log, xp_earned);
       } catch (err) {
         request.log.warn({ err }, 'Exam streak update failed');
       }

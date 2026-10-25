@@ -151,7 +151,7 @@ export const practiceCodeRoutes: FastifyPluginAsync = async (app) => {
       if (error.code !== '23505') request.log.warn({ err: error }, 'XP insert failed for a solved code question');
       return 0;
     }
-    await touchStreak(app.supabase!, userId, row.subject_id, new Date(), request.log);
+    await touchStreak(app.supabase!, userId, row.subject_id, new Date(), request.log, delta);
     return delta;
   }
 
