@@ -9,6 +9,8 @@ vi.mock('@scipal/hooks', () => ({ useLanguage: () => ({ lang: 'vi', t: (text: { 
 const api = vi.hoisted(() => ({ check: vi.fn(), feedback: vi.fn() }));
 vi.mock('./practiceApi', () => ({ checkPractice: api.check, writingFeedback: api.feedback }));
 vi.mock('../../lib/session', () => ({ getAccessToken: async () => 'test-session' }));
+const xp = vi.hoisted(() => ({ total: null as number | null }));
+vi.mock('./useTotalXp', () => ({ useTotalXp: () => xp.total }));
 
 const questions: PublicPracticeQuestion[] = [
   { id: 'q1', type: 'mc', difficulty: 1, data: { stem: { vi: 'Chọn số chẵn.', en: 'Choose the even number.' }, options: [{ id: 'a', text: { vi: 'Hai', en: 'Two' } }, { id: 'b', text: { vi: 'Ba', en: 'Three' } }] } },
@@ -184,5 +186,61 @@ describe('results that count', () => {
     await answerFirst({ ok: true, result: { correct: true, xp_earned: 10, new_streak: 2, lesson_completed: true } });
     expect(screen.getByText('+10 XP')).toBeTruthy();
     expect(screen.getByText('Bạn đã hoàn thành bài này.')).toBeTruthy();
+    expect(screen.getByText('Phiên này: +10 XP')).toBeTruthy();
+  });
+
+  it('never counts provisional XP in the session', async () => {
+    await answerFirst({ ok: true, result: { correct: true, xp_earned: 10 }, provisional: { xp: 10, streak: null } });
+    expect(screen.getByText('Phiên này: +0 XP')).toBeTruthy();
+  });
+});
+
+describe('session feedback', () => {
+  afterEach(() => {
+    xp.total = null;
+  });
+  const three: PublicPracticeQuestion[] = ['q1', 'q2', 'q3'].map((id) => ({ id, type: 'short', difficulty: 1, data: { stem: { vi: `Câu ${id}`, en: id } } }));
+  async function answer() {
+    fireEvent.change(screen.getByPlaceholderText('Câu trả lời của bạn'), { target: { value: '4' } });
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'Kiểm tra', exact: true }));
+    });
+  }
+
+  it('shows the streak from three first-try right answers and drops it on a wrong one', async () => {
+    api.check.mockResolvedValue({ ok: true, result: { correct: true, xp_earned: 10 } });
+    render(<Practice list={three} />);
+    for (let i = 0; i < 3; i++) {
+      await answer();
+      if (i < 2) fireEvent.click(screen.getByRole('button', { name: 'Câu tiếp' }));
+    }
+    expect(screen.getByText('Chuỗi đúng ×3')).toBeTruthy();
+    api.check.mockResolvedValue({ ok: true, result: { correct: false } });
+    fireEvent.change(screen.getByPlaceholderText('Câu trả lời của bạn'), { target: { value: '5' } });
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'Kiểm tra', exact: true }));
+    });
+    expect(screen.queryByText(/Chuỗi đúng ×/)).toBeNull();
+  });
+
+  it('opens the level-up dialog once when server XP crosses a level, Escape closes it', async () => {
+    xp.total = 95;
+    api.check.mockResolvedValue({ ok: true, result: { correct: true, xp_earned: 10 } });
+    render(<Practice list={three} />);
+    await answer();
+    expect(screen.getByRole('dialog', { name: 'Lên cấp!' })).toBeTruthy();
+    fireEvent.keyDown(document, { key: 'Escape' });
+    expect(screen.queryByRole('dialog')).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: 'Câu tiếp' }));
+    await answer();
+    expect(screen.queryByRole('dialog')).toBeNull();
+  });
+
+  it('does not open the level-up dialog for a provisional result', async () => {
+    xp.total = 95;
+    api.check.mockResolvedValue({ ok: true, result: { correct: true, xp_earned: 10 }, provisional: { xp: 10, streak: null } });
+    render(<Practice list={three} />);
+    await answer();
+    expect(screen.queryByRole('dialog')).toBeNull();
   });
 });

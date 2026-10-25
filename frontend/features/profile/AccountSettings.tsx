@@ -1,9 +1,10 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { setSfxEnabled, sfxEnabled } from '@/lib/sfx';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { BookOpen, CreditCard, Gauge, GraduationCap, Languages, LifeBuoy, LogOut, Palette, UserRound } from 'lucide-react';
+import { BookOpen, CreditCard, Gauge, GraduationCap, Languages, LifeBuoy, LogOut, Palette, UserRound, Volume2 } from 'lucide-react';
 import { useLanguage } from '@scipal/hooks';
 import { buttonVariants } from '@/components/ui/button';
 import { createBrowserClient } from '@/lib/supabase';
@@ -28,6 +29,12 @@ export function AccountSettings({ currentRole = 'student', educationPreference, 
   const [signingOut, setSigningOut] = useState(false);
   const [showHelpModal, setShowHelpModal] = useState(false);
   const [bilingualTooltips, setBilingualTooltips] = useState(true);
+  const [sounds, setSounds] = useState(false);
+  useEffect(() => setSounds(sfxEnabled()), []);
+  const toggleSounds = () => {
+    setSfxEnabled(!sounds);
+    setSounds(!sounds);
+  };
 
   const handleSignOut = async () => {
     setSigningOut(true);
@@ -142,6 +149,29 @@ export function AccountSettings({ currentRole = 'student', educationPreference, 
                     bilingualTooltips ? 'translate-x-5' : 'translate-x-0'
                   }`}
                 />
+              </span>
+            </button>
+          </div>
+          <div className="flex items-center justify-between gap-3 border-t border-line pt-4">
+            <div>
+              <div className={rowLabel}>
+                <Volume2 aria-hidden="true" className="h-4 w-4" />
+                <span id="practice-sounds-label">{t({ en: 'Practice sounds', vi: 'Âm thanh khi luyện tập' })}</span>
+              </div>
+              <div className={rowHint}>
+                {t({ en: 'Short sounds for right, wrong and level up', vi: 'Tiếng ngắn khi đúng, sai và lên cấp' })}
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={toggleSounds}
+              role="switch"
+              aria-checked={sounds}
+              aria-labelledby="practice-sounds-label"
+              className="inline-flex h-11 w-14 shrink-0 items-center justify-center rounded-full focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
+            >
+              <span className={`relative inline-flex h-6 w-11 rounded-full border-2 border-transparent transition-colors motion-reduce:transition-none ${sounds ? 'bg-action' : 'bg-edge'}`}>
+                <span className={`inline-block h-5 w-5 rounded-full bg-surface transition-transform motion-reduce:transition-none ${sounds ? 'translate-x-5' : 'translate-x-0'}`} />
               </span>
             </button>
           </div>

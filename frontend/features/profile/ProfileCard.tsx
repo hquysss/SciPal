@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { useEffect, useState, type ComponentType } from 'react';
+import { levelOfXp } from '@scipal/types';
 import {
   BookOpenCheck,
   BookmarkCheck,
@@ -88,6 +89,24 @@ function ShortcutGrid({ items }: { items: Shortcut[] }) {
   );
 }
 
+/** Level from the server's XP total and how far it is to the next one. */
+export function LevelProgress({ totalXP }: { totalXP: number }) {
+  const { t } = useLanguage();
+  const { level, intoLevel, toNext } = levelOfXp(totalXP);
+  const span = intoLevel + toNext;
+  return (
+    <div className="flex flex-col gap-1.5 border-t border-line px-5 py-4 sm:px-7">
+      <div className="flex items-baseline justify-between gap-3 text-sm">
+        <span id="profile-level" className="font-bold text-ink">{t({ en: `Level ${level}`, vi: `Cấp ${level}` })}</span>
+        <span className="tabular-nums text-ink-muted">{t({ en: `${toNext} XP to level ${level + 1}`, vi: `Còn ${toNext} XP lên cấp ${level + 1}` })}</span>
+      </div>
+      <div role="progressbar" aria-labelledby="profile-level" aria-valuemin={0} aria-valuemax={span} aria-valuenow={intoLevel} className="h-2 overflow-hidden rounded-full bg-surface-sunken">
+        <div className="h-full rounded-full bg-action" style={{ width: `${(intoLevel / span) * 100}%` }} />
+      </div>
+    </div>
+  );
+}
+
 /** The profile's summary: who, since when, the learning numbers and where to go next. */
 export function ProfileCard({ displayName, role, email, joinedAt, avatarUrl, coverUrl, stats }: ProfileCardProps) {
   const { t, lang } = useLanguage();
@@ -156,6 +175,7 @@ export function ProfileCard({ displayName, role, email, joinedAt, avatarUrl, cov
           </>
         )}
       />
+      <LevelProgress totalXP={stats.totalXP} />
 
       {editing && <div className="px-4 pb-6 sm:px-6"><ProfileEditor displayName={displayName} avatarUrl={avatarUrl ?? null} coverUrl={coverUrl ?? null} onClose={() => setEditing(false)} /></div>}
 
