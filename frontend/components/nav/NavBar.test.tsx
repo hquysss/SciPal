@@ -105,6 +105,12 @@ describe('learnLinks', () => {
     expect(learnLinks('en').every((l) => l.hint.length > 0)).toBe(true);
     expect(communityLink('vi')).toEqual({ href: '/community', label: 'Cộng đồng' });
   });
+
+  it('adds word review for a signed-in learner, saying how many cards are due', () => {
+    expect(learnLinks('vi', { due: 0 }).map((l) => l.href)).toEqual(['/subjects', '/lab', '/exam', '/games', '/review', '/tutor']);
+    expect(learnLinks('vi', { due: 3 }).find((l) => l.href === '/review')?.hint).toBe('3 từ đến hạn hôm nay');
+    expect(learnLinks('en', { due: 1 }).find((l) => l.href === '/review')?.hint).toBe('1 word due today');
+  });
 });
 
 describe('moreLinks', () => {

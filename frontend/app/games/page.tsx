@@ -3,6 +3,7 @@ import { Bi } from '@/components/ui/bilingual';
 import { GamesList } from '@/features/games/GamesList';
 import { HubShortcuts } from '@/features/games/HubShortcuts';
 import { PlayerHero } from '@/features/games/PlayerHero';
+import { ReviewSpotlight } from '@/features/games/ReviewSpotlight';
 import { pageTitle } from '@/lib/pageTitle';
 
 export const metadata: Metadata = { ...pageTitle('Gamification', 'Gamification') };
@@ -22,6 +23,7 @@ export default function GamesRoute() {
         </p>
       </header>
       <PlayerHero />
+      <ReviewSpotlight />
       <HubShortcuts />
       <GamesList />
     </main>
