@@ -1,5 +1,6 @@
 import { isValidElement, useState, type ReactNode } from 'react';
 import { useLanguage } from '@scipal/hooks';
+import ThoughtLine from '@/components/ThoughtLine';
 import { sendProblemReport } from '@/features/problemReports/problemReportsApi';
 import ReactMarkdown, { type Components } from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -100,6 +101,19 @@ function QuestionPicture({ message }: { message: Message }) {
   );
 }
 
+function Thinking() {
+  const { t } = useLanguage();
+  return (
+    <ThoughtLine
+      label={t({ en: 'Thinking…', vi: 'Đang suy nghĩ…' })}
+      collapsible={false}
+      fontSize={15}
+      color="var(--ink-muted)"
+      glyphColor="var(--action)"
+    />
+  );
+}
+
 export function TutorMessage({ message, streaming = false }: { message: Message; streaming?: boolean }) {
   if (message.role === 'user') {
     const bubble = (
@@ -115,6 +129,7 @@ export function TutorMessage({ message, streaming = false }: { message: Message;
       </div>
     );
   }
+  if (streaming && !message.content.trim()) return <Thinking />;
   return (
     <div className="min-w-0 max-w-[70ch] break-words text-base leading-relaxed text-ink [&_.katex-display]:overflow-x-auto [&_.katex-display]:py-1">
       <ReactMarkdown remarkPlugins={REMARK} rehypePlugins={REHYPE} components={components}>

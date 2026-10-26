@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useId, useRef, useState, type ChangeEvent, type ReactNode } from 'react';
-import { ArrowRight, ArrowUp, BookOpen, ImagePlus, Lightbulb, Mic, Square, X } from 'lucide-react';
+import { ArrowRight, ArrowUp, BookOpen, ImagePlus, Lightbulb, Phone, Square, X } from 'lucide-react';
 import { useLanguage } from '@scipal/hooks';
 import { Alert } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
@@ -296,7 +296,7 @@ export function TutorChatView({
                 title={t({ en: 'Talk with the Professor', vi: 'Nói chuyện với thầy' })}
                 className={styles.voiceButton}
               >
-                <Mic aria-hidden="true" className="h-5 w-5" />
+                <Phone aria-hidden="true" className="h-5 w-5" />
               </button>
             )}
             {streaming ? (
