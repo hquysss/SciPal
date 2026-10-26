@@ -1,6 +1,7 @@
 'use client';
 
-import { useEffect, useId, useRef, useState, type ChangeEvent, type ReactNode } from 'react';
+import { createContext, useContext, useEffect, useId, useRef, useState, type ChangeEvent, type ReactNode } from 'react';
+import { createPortal } from 'react-dom';
 import { ArrowRight, ArrowUp, BookOpen, ImagePlus, Lightbulb, Phone, Square, X } from 'lucide-react';
 import { useLanguage } from '@scipal/hooks';
 import { Alert } from '@/components/ui/alert';
@@ -17,6 +18,9 @@ import { prepareTutorImage, TUTOR_IMAGE_TYPES, type TutorImage } from './tutorIm
 import { formatTokens } from './tokens';
 import styles from './tutor.module.css';
 import { VoiceChat } from './voice/VoiceChat';
+
+/** The chat frame's header corner, where the call button goes. undefined: no frame (the widget), so it stays beside the box; null: the corner is not mounted yet. */
+export const TutorBarSlot = createContext<HTMLElement | null | undefined>(undefined);
 
 type Bilingual = { vi: string; en: string };
 
@@ -77,6 +81,19 @@ export function TutorChatView({
 }: TutorChatViewProps) {
   const { t, lang } = useLanguage();
   const ids = useId();
+  const barSlot = useContext(TutorBarSlot);
+  const callButton = (
+    <button
+      type="button"
+      onClick={onVoice}
+      disabled={limitReached}
+      aria-label={t({ en: 'Talk with the Professor', vi: 'Nói chuyện với thầy' })}
+      title={t({ en: 'Talk with the Professor', vi: 'Nói chuyện với thầy' })}
+      className={styles.voiceButton}
+    >
+      <Phone aria-hidden="true" className="h-5 w-5" />
+    </button>
+  );
   const [localDraft, setLocalDraft] = useState('');
   const draft = sharedDraft ?? localDraft;
   const setDraft = onDraft ?? setLocalDraft;
@@ -287,18 +304,7 @@ export function TutorChatView({
                 />
               </label>
             )}
-            {onVoice && !streaming && (
-              <button
-                type="button"
-                onClick={onVoice}
-                disabled={limitReached}
-                aria-label={t({ en: 'Talk with the Professor', vi: 'Nói chuyện với thầy' })}
-                title={t({ en: 'Talk with the Professor', vi: 'Nói chuyện với thầy' })}
-                className={styles.voiceButton}
-              >
-                <Phone aria-hidden="true" className="h-5 w-5" />
-              </button>
-            )}
+            {onVoice && !streaming && (barSlot === undefined ? callButton : barSlot && createPortal(callButton, barSlot))}
             {streaming ? (
               <Button type="button" variant="outline" onClick={onStop} className="shrink-0 rounded-full">
                 <Square aria-hidden="true" className="h-4 w-4 fill-current" />

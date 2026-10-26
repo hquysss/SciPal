@@ -4,7 +4,7 @@ import { guestSecret, sameSecret } from '../guest/visitor.js';
 // Links in newsletter e-mails carry `<subscriber id>.<HMAC of purpose and id>`, so nothing is stored.
 // The key is the guest-trial secret (backend only); rotating it retires every link.
 
-export type Purpose = 'confirm' | 'unsubscribe';
+export type Purpose = 'confirm' | 'unsubscribe' | 'reminder-off';
 
 const ID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const mac = (purpose: Purpose, id: string, secret: string) => createHmac('sha256', secret).update(`${purpose}:${id}`).digest('hex');

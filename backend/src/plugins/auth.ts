@@ -16,6 +16,8 @@ const isPublicPath = (path: string): boolean => {
   if (path === '/api/problem-reports') return true;
   // Newsletter sign-up; confirm and unsubscribe check a signed token in the body.
   if (path.startsWith('/api/newsletter/')) return true;
+  // Study reminders: the cron (checks CRON_SECRET) and the e-mail unsubscribe link (checks a signed token).
+  if (path === '/api/internal/reminders/run' || path === '/api/reminders/unsubscribe') return true;
   // Exams and lesson practice need a session (the web asks for one too): a visitor could otherwise read
   // the questions and probe the answers through /api/practice/check.
   // Visitors look up glossary terms and kept entries; only a signed-in learner asks the AI.

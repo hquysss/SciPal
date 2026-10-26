@@ -3,7 +3,7 @@ import { routeAccess } from './routeAccess';
 
 afterEach(() => vi.unstubAllEnvs());
 
-const PUBLIC = ['/', '/login', '/login/x', '/reset-password', '/auth/callback', '/pricing', '/pricing/checkout', '/help', '/privacy', '/terms', '/newsletter/confirm', '/offline', '/feature-off'];
+const PUBLIC = ['/', '/login', '/login/x', '/reset-password', '/auth/callback', '/pricing', '/pricing/checkout', '/help', '/privacy', '/terms', '/newsletter/confirm', '/reminders/unsubscribe', '/offline', '/feature-off'];
 const ACCOUNT = ['/subjects', '/informatics', '/informatics/vong-lap', '/glossary', '/exam', '/exam/abc', '/lab', '/lab/wave-3d', '/feedback', '/tutor', '/review', '/profile', '/helpful', '/feedback-extra', '/pricing-x'];
 
 describe('routeAccess', () => {

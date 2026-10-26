@@ -3,7 +3,7 @@
 
 export type RouteAccess = { kind: 'public' } | { kind: 'account' };
 
-const PUBLIC_PREFIXES = ['/login', '/reset-password', '/auth', '/pricing', '/help', '/privacy', '/terms', '/newsletter', '/offline', '/feature-off'];
+const PUBLIC_PREFIXES = ['/login', '/reset-password', '/auth', '/pricing', '/help', '/privacy', '/terms', '/newsletter', '/reminders/unsubscribe', '/offline', '/feature-off'];
 const under = (pathname: string, prefix: string) => pathname === prefix || pathname.startsWith(`${prefix}/`);
 
 export function routeAccess(pathname: string): RouteAccess {
