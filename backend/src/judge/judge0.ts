@@ -3,7 +3,12 @@ import type { CodeLanguage, CodeVerdict } from '../schemas/questions.js';
 // Client for a self-hosted Judge0 CE (https://github.com/judge0/judge0): jobs go out as one batch
 // and are polled until every one has left the queue.
 
-export class Judge0Unavailable extends Error {}
+export class Judge0Unavailable extends Error {
+  /** The HTTP status Judge0 answered with, when it answered at all. */
+  constructor(message: string, readonly status?: number) {
+    super(message);
+  }
+}
 
 export interface RunJob { language: CodeLanguage; source: string; stdin: string; time_limit_ms: number; memory_limit_mb: number }
 export interface RunOutcome { status_id: number; stdout: string; stderr: string; compile_output: string; time_ms: number; memory_kb: number }
@@ -26,7 +31,8 @@ export function createJudge0Client(opts: { url: string; token?: string; /** Extr
   const waitMs = opts.waitMs ?? 20_000;
   // Every poll is one request on a hosted judge's quota, so ask once a second, not faster.
   const pollMs = opts.pollMs ?? 1000;
-  const headers: Record<string, string> = { 'Content-Type': 'application/json', ...(opts.token ? { 'X-Auth-Token': opts.token } : {}), ...opts.headers };
+  // A hosted judge asks scripts to name themselves in User-Agent.
+  const headers: Record<string, string> = { 'Content-Type': 'application/json', 'User-Agent': 'SciPal-Judge0Client/1.0', ...(opts.token ? { 'X-Auth-Token': opts.token } : {}), ...opts.headers };
 
   async function call(path: string, init?: RequestInit): Promise<unknown> {
     let res: Response;
@@ -35,7 +41,11 @@ export function createJudge0Client(opts: { url: string; token?: string; /** Extr
     } catch (err) {
       throw new Judge0Unavailable(`Judge0 unreachable: ${(err as Error).message}`);
     }
-    if (!res.ok) throw new Judge0Unavailable(`Judge0 answered ${res.status}`);
+    if (!res.ok) {
+      // Judge0 says why in the body (e.g. batched submissions switched off); keep a little of it for the log.
+      const why = (await res.text().catch(() => '')).replace(/\s+/g, ' ').slice(0, 200);
+      throw new Judge0Unavailable(`Judge0 answered ${res.status}${why ? `: ${why}` : ''}`, res.status);
+    }
     return res.json().catch(() => {
       throw new Judge0Unavailable('Judge0 sent an unreadable reply');
     });
@@ -52,6 +62,41 @@ export function createJudge0Client(opts: { url: string; token?: string; /** Extr
   });
   const finished = (row: Record<string, unknown> | undefined) => typeof row?.status_id === 'number' && row.status_id > 2;
 
+  // Some hosted judges switch batched submissions off; once one says no, send each job on its own.
+  let batchOff = false;
+  const BATCH_REFUSED = new Set([400, 403, 404, 405, 422]);
+
+  /** Sends the jobs and returns their tokens, in order: one batch request, or one request per job. */
+  async function create(submissions: Array<Record<string, unknown>>): Promise<string[]> {
+    if (!batchOff) {
+      try {
+        const created = (await call('/submissions/batch?base64_encoded=true', { method: 'POST', body: JSON.stringify({ submissions }) })) as Array<{ token?: string }>;
+        const tokens = Array.isArray(created) ? created.map((row) => row?.token) : [];
+        if (tokens.length !== submissions.length || tokens.some((token) => !token)) throw new Judge0Unavailable('Judge0 did not accept the jobs');
+        return tokens as string[];
+      } catch (err) {
+        if (!(err instanceof Judge0Unavailable) || !BATCH_REFUSED.has(err.status ?? 0)) throw err;
+        batchOff = true;
+      }
+    }
+    return Promise.all(
+      submissions.map(async (submission) => {
+        const created = (await call('/submissions?base64_encoded=true&wait=false', { method: 'POST', body: JSON.stringify(submission) })) as { token?: string };
+        if (!created?.token) throw new Judge0Unavailable('Judge0 did not accept the job');
+        return created.token;
+      }),
+    );
+  }
+
+  /** The current state of every token: one batch read, or one read per token when batches are off. */
+  async function read(tokens: string[]): Promise<Array<Record<string, unknown>>> {
+    if (!batchOff) {
+      const polled = (await call(`/submissions/batch?tokens=${tokens.join(',')}&base64_encoded=true&fields=${FIELDS}`)) as { submissions?: Array<Record<string, unknown>> };
+      return polled.submissions ?? [];
+    }
+    return Promise.all(tokens.map(async (token) => ({ token, ...((await call(`/submissions/${token}?base64_encoded=true&fields=${FIELDS}`)) as Record<string, unknown>) })));
+  }
+
   async function runChunk(jobs: RunJob[], offset: number, onDone?: (index: number, outcome: RunOutcome) => void): Promise<RunOutcome[]> {
     {
       const submissions = jobs.map((job) => ({
@@ -62,15 +107,12 @@ export function createJudge0Client(opts: { url: string; token?: string; /** Extr
         wall_time_limit: Math.min(20, (job.time_limit_ms / 1000) * 3),
         memory_limit: job.memory_limit_mb * 1024,
       }));
-      const created = (await call('/submissions/batch?base64_encoded=true', { method: 'POST', body: JSON.stringify({ submissions }) })) as Array<{ token?: string }>;
-      const tokens = Array.isArray(created) ? created.map((row) => row?.token) : [];
-      if (tokens.length !== jobs.length || tokens.some((token) => !token)) throw new Judge0Unavailable('Judge0 did not accept the jobs');
+      const tokens = await create(submissions);
 
       const deadline = Date.now() + waitMs;
       const told = new Set<number>();
       for (;;) {
-        const polled = (await call(`/submissions/batch?tokens=${tokens.join(',')}&base64_encoded=true&fields=${FIELDS}`)) as { submissions?: Array<Record<string, unknown>> };
-        const rows = polled.submissions ?? [];
+        const rows = await read(tokens);
         const byToken = new Map(rows.map((row) => [row.token, row]));
         tokens.forEach((token, i) => {
           const row = byToken.get(token);
