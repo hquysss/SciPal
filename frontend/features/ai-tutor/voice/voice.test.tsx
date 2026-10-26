@@ -5,7 +5,7 @@ vi.mock('@scipal/hooks', () => ({ useLanguage: () => ({ lang: 'vi', t: (c: { vi:
 
 import { historyTurns, pcmToFloats, toBase64, micLevel } from './liveSession';
 import { addWords, VoiceChat } from './VoiceChat';
-import { TutorChatView } from '../TutorChat';
+import { TutorBarSlot, TutorChatView } from '../TutorChat';
 
 describe('voice audio', () => {
   it('reads 16-bit little-endian PCM back as samples', () => {
@@ -72,5 +72,13 @@ describe('micLevel', () => {
     expect(quiet).toBeGreaterThan(0);
     expect(loud).toBeGreaterThan(quiet);
     expect(loud).toBeLessThanOrEqual(1);
+  });
+});
+
+describe('TutorChatView call button placement', () => {
+  const base = { messages: [], streaming: false, remaining: 3, error: null, limitReached: false, level: 'upper_secondary' as const, onSend: () => {}, onStop: () => {}, onRetry: () => {}, onVoice: () => {} };
+  it('leaves the call button out of the box while a chat frame is about to host it in the header', () => {
+    const html = renderToStaticMarkup(<TutorBarSlot.Provider value={null}><TutorChatView {...base} /></TutorBarSlot.Provider>);
+    expect(html).not.toContain('Nói chuyện với thầy');
   });
 });

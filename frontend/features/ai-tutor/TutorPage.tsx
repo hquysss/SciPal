@@ -10,7 +10,7 @@ import type { EducationLevel } from '@/features/landing/educationLevel';
 import { deleteConversation, getConversation, listConversations, type TutorConversation, type TutorMessage } from './api';
 import { ConversationList } from './ConversationList';
 import { LessonPicker } from './LessonPicker';
-import { TutorChat } from './TutorChat';
+import { TutorBarSlot, TutorChat } from './TutorChat';
 import { TutorAvatar } from './TutorAvatar';
 import styles from './tutor.module.css';
 import { useTutorSession } from './TutorSession';
@@ -143,6 +143,7 @@ export function TutorListFrame({ children }: { children: ReactNode }) {
 /** The chat card: the tutor's name bar on top, the chat below. */
 export function TutorChatFrame({ children }: { children: ReactNode }) {
   const { t } = useLanguage();
+  const [callSlot, setCallSlot] = useState<HTMLDivElement | null>(null);
   return (
     <section
       aria-label={t({ en: 'Chat with the AI Professor', vi: 'Trò chuyện với Giáo sư AI' })}
@@ -154,8 +155,9 @@ export function TutorChatFrame({ children }: { children: ReactNode }) {
           <p className="font-bold leading-tight text-ink">{t({ en: 'AI Professor', vi: 'Giáo sư AI' })}</p>
           <span className={styles.online}>{t({ en: 'Hints step by step, never the whole answer', vi: 'Gợi ý từng bước, không giải hộ' })}</span>
         </div>
+        <div ref={setCallSlot} className="ml-auto flex shrink-0 items-center" />
       </div>
-      <div className="min-h-0 flex-1">{children}</div>
+      <TutorBarSlot.Provider value={callSlot}><div className="min-h-0 flex-1">{children}</div></TutorBarSlot.Provider>
     </section>
   );
 }
