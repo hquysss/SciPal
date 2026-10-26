@@ -18,6 +18,7 @@ create table if not exists public.games (
 grant select on public.games to anon, authenticated;
 
 \ir ../migrations/20261026090000_crossword_games.sql
+\ir ../migrations/20261026100000_crossword_no_term_ids.sql
 
 grant select, insert, update, delete on public.games, public.game_crosswords, public.xp_log to service_role;
 
@@ -27,16 +28,17 @@ declare
   v_game uuid;
   v_terms uuid[] := array[gen_random_uuid(), gen_random_uuid(), gen_random_uuid(), gen_random_uuid()];
 begin
-  insert into public.games (kind, lesson_id, term_ids) values ('crossword', gen_random_uuid(), v_terms) returning id into v_game;
+  insert into public.games (kind, lesson_id) values ('crossword', gen_random_uuid()) returning id into v_game;
   insert into public.game_crosswords (game_id, mode, grid_rows, grid_cols, words) values (v_game, 'en_from_vi', 5, 7, '[]');
 
+  -- The answer terms must not be listed in games, which browsers can read.
   begin
-    insert into public.games (kind, lesson_id, term_ids) values ('crossword', gen_random_uuid(), v_terms[1:3]);
-    raise exception 'A crossword with 3 terms was allowed';
+    insert into public.games (kind, lesson_id, term_ids) values ('crossword', gen_random_uuid(), v_terms);
+    raise exception 'A crossword listing its answer terms in games.term_ids was allowed';
   exception when check_violation then null;
   end;
   begin
-    insert into public.games (kind, term_ids) values ('crossword', v_terms);
+    insert into public.games (kind) values ('crossword');
     raise exception 'A crossword without a lesson was allowed';
   exception when check_violation then null;
   end;

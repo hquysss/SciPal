@@ -308,7 +308,8 @@ export const gameRoutes: FastifyPluginAsync = async (app) => {
           const built = buildCrossword(shuffle((data ?? []) as Term[]), mode, body.words ?? CROSSWORD_WORDS.default);
           if (!built) return reply.code(400).send(NO_CROSSWORD);
           row.lesson_id = body.lessonId;
-          row.term_ids = built.words.map((w) => w.term_id);
+          // The answer terms stay in game_crosswords: games is readable by browsers, so term_ids here would give them away.
+          row.term_ids = [];
           crossword = { mode, grid: built };
         } else {
           const { data, error } = await db().from('terms').select('id').eq('subject_id', subjectId).eq('status', 'published').limit(500);

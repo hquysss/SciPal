@@ -21,3 +21,18 @@ describe('crossword games migration contract', () => {
     expect(sql).toMatch(/create unique index[^;]*xp_log_crossword_once_idx[^;]*\(user_id, reason\)[^;]*where reason like 'crossword:%'/);
   });
 });
+
+const followUp = readFileSync(new URL('../../../supabase/migrations/20261026100000_crossword_no_term_ids.sql', import.meta.url), 'utf8').toLowerCase();
+
+// games is readable by anon and authenticated and terms is public: term_ids would list the answers.
+describe('crossword answers stay out of games', () => {
+  it('requires an empty term_ids for a crossword, and keeps the other kinds', () => {
+    expect(followUp).toContain("(kind = 'crossword' and lesson_id is not null and cardinality(term_ids) = 0)");
+    expect(followUp).toContain("(kind = 'match' and cardinality(term_ids) between 3 and 20)");
+    expect(followUp).toContain("(kind = 'quiz' and lesson_id is not null)");
+  });
+
+  it('does not open game_crosswords to browsers', () => {
+    expect(followUp).not.toMatch(/grant|create policy/);
+  });
+});

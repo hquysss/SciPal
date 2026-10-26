@@ -37,7 +37,7 @@ Học sinh ôn thuật ngữ của bài bằng ô chữ đan chéo, với XP cho
    - Kết quả: kích thước lưới, và mỗi từ có `term_id`, `number`, `row`, `col`, `dir` (`across` hoặc `down`), `answer`.
    - Gợi ý không lưu: server đọc từ `terms` theo `term_id` mỗi lần mở lượt chơi.
 4. **Lưu riêng, chỉ backend đọc.**
-   - `games.kind` nhận thêm `crossword`; điều kiện kiểm tra: `crossword` cần `lesson_id` và `cardinality(term_ids) between 4 and 15`.
+   - `games.kind` nhận thêm `crossword`; điều kiện kiểm tra: `crossword` cần `lesson_id` và `term_ids` phải rỗng (`cardinality(term_ids) = 0`). `games` ai cũng đọc được và `terms` công khai, nên `term_ids` mà liệt kê các thuật ngữ đáp án sẽ để lộ tập đáp án. Id các thuật ngữ chỉ nằm trong `game_crosswords.words`. (Bản đầu của migration yêu cầu 4–15 `term_ids`; review PR #251 phát hiện lỗi này, sửa bằng migration `20261026100000_crossword_no_term_ids.sql`.)
    - Bảng mới `game_crosswords`: `game_id` (khoá chính, tham chiếu `games`, `on delete cascade`), `mode` (check 3 giá trị), `rows`, `cols`, `words jsonb`.
    - Bật RLS, không có policy, `revoke all` khỏi anon và authenticated.
 5. **Chơi.**

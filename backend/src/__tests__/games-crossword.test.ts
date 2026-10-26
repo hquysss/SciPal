@@ -17,7 +17,7 @@ const grid = buildCrossword(terms, 'en_from_vi', 6)!;
 const saved = { mode: 'en_from_vi', grid_rows: grid.rows, grid_cols: grid.cols, words: grid.words };
 const game = (patch: Record<string, unknown> = {}) => ({
   id: GAME, owner_id: 'teacher-1', class_id: null, kind: 'crossword', title_en: '', title_vi: 'Ô chữ', lesson_id: LESSON,
-  term_ids: grid.words.map((w) => w.term_id), wordwall_url: null, time_limit_s: null, created_at: '2026-10-26T00:00:00Z', ...patch,
+  term_ids: [], wordwall_url: null, time_limit_s: null, created_at: '2026-10-26T00:00:00Z', ...patch,
 });
 const allRight = Object.fromEntries(grid.words.map((w) => [`${w.number}-${w.dir}`, w.answer.toLowerCase()]));
 
@@ -50,7 +50,17 @@ describe('creating a crossword', () => {
     expect(JSON.stringify(gameRow)).not.toMatch(/ALGORITHM|answer/);
     const saved = calls.find((c) => c.table === 'game_crosswords')!.chain[0]![1][0] as { words: Array<{ answer: string }> };
     expect(saved.words.length).toBeGreaterThanOrEqual(4);
-    expect((gameRow.term_ids as string[]).length).toBe(saved.words.length);
+  });
+
+  // games is readable by browsers and terms is public, so a crossword's answer terms must not be in games.
+  it('keeps the answer terms out of the games row, only in game_crosswords', async () => {
+    const { res, calls } = await create({ 'terms.select': [{ data: terms }], 'games.insert': [{ data: { id: GAME } }], 'game_crosswords.insert': [{}], 'class_members.select': [{ data: [] }] });
+    expect(res.statusCode).toBe(201);
+    const gameRow = calls.find((c) => c.table === 'games' && c.op === 'insert')!.chain[0]![1][0] as Record<string, unknown>;
+    const stored = calls.find((c) => c.table === 'game_crosswords')!.chain[0]![1][0] as { words: Array<{ term_id: string }> };
+    expect(gameRow.term_ids).toEqual([]);
+    for (const w of stored.words) expect(JSON.stringify(gameRow)).not.toContain(`"${w.term_id}"`);
+    expect(stored.words.length).toBeGreaterThanOrEqual(4);
   });
 
   it('refuses a lesson whose terms do not cross', async () => {
