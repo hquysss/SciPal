@@ -74,6 +74,7 @@ describe('createJudge0Client', () => {
     const [result] = await judge.runBatch([{ language: 'python', source: 'print(4)', stdin: '2\n', time_limit_ms: 2000, memory_limit_mb: 128 }]);
     expect(result).toMatchObject({ status_id: 3, stdout: '4\n', time_ms: 12, memory_kb: 3100 });
     expect((calls[0]!.init!.headers as Record<string, string>)['X-Auth-Token']).toBe('secret');
+    expect((calls[0]!.init!.headers as Record<string, string>)['User-Agent']).toBe('SciPal-Judge0Client/1.0');
     const sent = JSON.parse(calls[0]!.init!.body as string).submissions[0];
     expect(sent).toMatchObject({ language_id: 71, source_code: b64('print(4)'), stdin: b64('2\n'), cpu_time_limit: 2, memory_limit: 131072 });
     expect(polls).toBe(2);
