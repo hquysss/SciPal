@@ -8,6 +8,7 @@ import { Alert } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { MathText } from '@/components/math/MathText';
 import type { NewBadge } from '@scipal/types';
 import { BadgeUnlockQueue } from '../badges/BadgeUnlockQueue';
 import { CrosswordPlay } from './CrosswordPlay';
@@ -61,11 +62,11 @@ function QuizPlay({ questions, onSubmit, busy, draft }: { questions: QuizQuestio
   return (
     <div className="flex flex-col gap-4">
       <p className="text-sm text-ink-muted">{t({ en: `Question ${i + 1} of ${questions.length}`, vi: `Câu ${i + 1}/${questions.length}` })}</p>
-      <p className="whitespace-pre-wrap text-lg font-semibold text-ink">{t(q.data.stem)}</p>
+      <p className="text-lg font-semibold text-ink"><MathText text={t(q.data.stem)} /></p>
       {q.type === 'mc' && (
         <div className="flex flex-col gap-2">
           {options.map((o) => (
-            <button key={o.id} type="button" aria-pressed={a.selected_option === o.id} onClick={() => set({ selected_option: o.id })} className={choice(a.selected_option === o.id)}>{t(o.text)}</button>
+            <button key={o.id} type="button" aria-pressed={a.selected_option === o.id} onClick={() => set({ selected_option: o.id })} className={choice(a.selected_option === o.id)}><MathText text={t(o.text)} /></button>
           ))}
         </div>
       )}
@@ -76,7 +77,7 @@ function QuizPlay({ questions, onSubmit, busy, draft }: { questions: QuizQuestio
             const pick = (selected: boolean) => set({ items: [...(a.items ?? []).filter((x) => x.id !== item.id), { id: item.id, selected }] });
             return (
               <li key={item.id} className="flex flex-col gap-2 rounded-lg border border-line p-3 sm:flex-row sm:items-center sm:justify-between">
-                <span className="text-sm text-ink">{t(item.text)}</span>
+                <MathText text={t(item.text)} className="text-sm text-ink" />
                 <span className="flex gap-2">
                   <Button type="button" variant={picked === true ? 'default' : 'outline'} aria-pressed={picked === true} onClick={() => pick(true)}>{t({ en: 'True', vi: 'Đúng' })}</Button>
                   <Button type="button" variant={picked === false ? 'default' : 'outline'} aria-pressed={picked === false} onClick={() => pick(false)}>{t({ en: 'False', vi: 'Sai' })}</Button>
@@ -132,7 +133,7 @@ function MatchPlay({ left, right, onSubmit, busy, draft }: { left: Array<{ id: s
           {left.map((l) => (
             <li key={l.id}>
               <button type="button" aria-pressed={picked === l.id} onClick={() => setPicked(picked === l.id ? null : l.id)} className={cell(picked === l.id, l.id in pairs)} lang="en">
-                {tag(pairNo(l.id))}<span className="break-words">{l.text}</span>
+                {tag(pairNo(l.id))}<MathText text={l.text} className="break-words" />
               </button>
             </li>
           ))}
@@ -143,7 +144,7 @@ function MatchPlay({ left, right, onSubmit, busy, draft }: { left: Array<{ id: s
             return (
               <li key={r.index}>
                 <button type="button" onClick={() => chooseRight(r.index)} className={cell(false, Boolean(owner))} lang="vi">
-                  {tag(owner ? pairNo(owner) : 0)}<span className="break-words">{r.text}</span>
+                  {tag(owner ? pairNo(owner) : 0)}<MathText text={r.text} className="break-words" />
                 </button>
               </li>
             );
