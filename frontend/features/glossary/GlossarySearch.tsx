@@ -12,6 +12,8 @@ import type { TermItem } from './termQueries';
 
 const TERM_TONES = ['var(--sun)', 'var(--sky)', 'var(--coral)'];
 const SAVED = 'saved';
+/** Counts past three digits read as "999+", so chips keep their size. */
+export const countLabel = (n: number) => (n > 999 ? '999+' : String(n));
 
 // Subjects shown before "+n more": the ones with the most terms.
 const FIRST_SUBJECTS = 5;
@@ -155,12 +157,12 @@ export function GlossarySearch({ terms }: { terms: TermItem[] }) {
       <div className="flex flex-wrap items-center gap-2">
         <button type="button" aria-pressed={activeFilter === 'all'} onClick={() => setActiveFilter('all')} className={chipClass(activeFilter === 'all')}>
           {t({ en: 'All', vi: 'Tất cả' })}
-          <span className="text-xs opacity-80">{terms.length}</span>
+          <span className="text-xs opacity-80">{countLabel(terms.length)}</span>
         </button>
         <button type="button" aria-pressed={showSaved} onClick={() => setActiveFilter(SAVED)} className={chipClass(showSaved)}>
           <BookmarkCheck aria-hidden="true" className="h-4 w-4" />
           {t({ en: 'My words', vi: 'Sổ từ của tôi' })}
-          <span className="text-xs opacity-80">{savedCount}</span>
+          <span className="text-xs opacity-80">{countLabel(savedCount)}</span>
         </button>
         {signedIn && (
           <Link href="/review" className={chipClass(false)}>
@@ -173,7 +175,7 @@ export function GlossarySearch({ terms }: { terms: TermItem[] }) {
           {shownSubjects.map((sub) => (
             <button key={sub.slug} type="button" aria-pressed={activeFilter === sub.slug} onClick={() => setActiveFilter(sub.slug)} className={chipClass(activeFilter === sub.slug)}>
               {t(sub.name)}
-              <span className="text-xs opacity-80">{sub.count}</span>
+              <span className="text-xs opacity-80">{countLabel(sub.count)}</span>
             </button>
           ))}
         </div>
@@ -233,7 +235,7 @@ export function GlossarySearch({ terms }: { terms: TermItem[] }) {
 
       {/* Results stats */}
       <div className="flex flex-wrap items-center justify-between gap-2 text-sm text-ink-muted">
-        <span>{t({ en: `${filtered.length} ${filtered.length === 1 ? 'term' : 'terms'} found`, vi: `Tìm thấy ${filtered.length} thuật ngữ` })}</span>
+        <span>{t({ en: `${countLabel(filtered.length)} ${filtered.length === 1 ? 'term' : 'terms'} found`, vi: `Tìm thấy ${countLabel(filtered.length)} thuật ngữ` })}</span>
         <span>{t({ en: 'Bilingual glossary for the national curriculum', vi: 'Từ điển song ngữ chuẩn GDPT' })}</span>
       </div>
 
