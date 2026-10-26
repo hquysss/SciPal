@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useEffect, useState, type ComponentType, type CSSProperties } from 'react';
+import { useEffect, useRef, useState, type ComponentType, type CSSProperties } from 'react';
 import { ArrowRight, BookOpen, BookOpenCheck, Flame, GraduationCap, Library, Sparkles } from 'lucide-react';
 import { useLanguage } from '@scipal/hooks';
 import LetterGlitch from '@/components/LetterGlitch';
@@ -78,26 +78,39 @@ const STEPS = [
   { icon: Flame, color: 'var(--coral)', title: { en: 'Come back tomorrow', vi: 'Quay lại ngày mai' }, body: { en: 'Two days make a streak.', vi: 'Hai ngày là có chuỗi.' } },
 ];
 
-/** Canvas cannot read CSS variables, so resolve the theme tokens to real colours (and again when the theme flips). */
-function useTokenColors(names: string[]) {
+/**
+ * Canvas cannot read CSS variables, so resolve the theme tokens to real colours. The tokens live on
+ * the app shell (`[data-app-shell]`), not on :root, so read them from inside it and re-read when the
+ * level, the light/dark toggle or the system scheme changes.
+ */
+function useTokenColors(host: React.RefObject<HTMLElement | null>, names: string[]) {
   const [colors, setColors] = useState<string[] | undefined>();
   const key = names.join(',');
   useEffect(() => {
+    const el = host.current;
+    if (!el) return;
     const read = () => {
-      const cs = getComputedStyle(document.documentElement);
+      const cs = getComputedStyle(el);
       setColors(key.split(',').map((n) => cs.getPropertyValue(n).trim()));
     };
     read();
+    const shell = el.closest('[data-app-shell]');
     const mo = new MutationObserver(read);
-    mo.observe(document.documentElement, { attributes: true, attributeFilter: ['class', 'data-theme'] });
-    return () => mo.disconnect();
-  }, [key]);
+    if (shell) mo.observe(shell, { attributes: true, attributeFilter: ['data-theme', 'data-level'] });
+    const media = window.matchMedia?.('(prefers-color-scheme: dark)');
+    media?.addEventListener?.('change', read);
+    return () => {
+      mo.disconnect();
+      media?.removeEventListener?.('change', read);
+    };
+  }, [host, key]);
   return colors;
 }
 
 export function ProgressHero({ stats }: { stats: HeroStats }) {
   const { t } = useLanguage();
-  const ink = useTokenColors(['--ink', '--sun', '--coral', '--sky']);
+  const glitchHost = useRef<HTMLDivElement>(null);
+  const ink = useTokenColors(glitchHost, ['--ink', '--sun', '--coral', '--sky']);
   const fresh = stats.total === 0 && stats.lessons === 0 && stats.xp === 0;
 
   return (
@@ -106,11 +119,9 @@ export function ProgressHero({ stats }: { stats: HeroStats }) {
       <div aria-hidden="true" className="absolute inset-0 -z-10 bg-[radial-gradient(55%_85%_at_100%_0%,color-mix(in_srgb,var(--sun)_26%,transparent),transparent),radial-gradient(50%_80%_at_0%_100%,color-mix(in_srgb,var(--sky)_20%,transparent),transparent)]" />
       <div aria-hidden="true" className="absolute inset-0 -z-10 opacity-60 [background-image:radial-gradient(color-mix(in_srgb,var(--ink)_14%,transparent)_1px,transparent_1px)] [background-size:18px_18px] [mask-image:linear-gradient(to_bottom,black,transparent_75%)]" />
 
-      {ink && (
-        <div aria-hidden="true" className="absolute inset-0 -z-10 [mask-image:linear-gradient(to_bottom,black,transparent_85%)]">
-          <LetterGlitch baseColor={ink[0]} glitchColors={ink.slice(1)} baseOpacity={0.1} glitchAmount={0.35} fontSize={13} clickEffect="none" />
-        </div>
-      )}
+      <div ref={glitchHost} aria-hidden="true" className="absolute inset-0 -z-10 [mask-image:linear-gradient(to_bottom,black,transparent_85%)]">
+        {ink && <LetterGlitch baseColor={ink[0]} glitchColors={ink.slice(1)} baseOpacity={0.1} glitchAmount={0.35} fontSize={13} clickEffect="none" />}
+      </div>
 
       <div className="flex flex-col-reverse items-center gap-6 p-6 sm:p-8 md:flex-row md:items-center md:gap-10">
         <div className="w-full min-w-0 flex-1">
