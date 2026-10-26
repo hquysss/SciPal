@@ -134,6 +134,28 @@ describe('createJudge0Client', () => {
     expect(seen[0]).toBe(21);
     expect([...seen].sort((a, b) => a - b)).toEqual(Array.from({ length: 22 }, (_, i) => i));
   });
+  it('sends each job on its own when the judge refuses batches, and stops trying batches', async () => {
+    const calls: string[] = [];
+    let next = 0;
+    const fakeFetch = (async (url: string, init?: RequestInit) => {
+      const path = new URL(url).pathname;
+      calls.push(`${init?.method ?? 'GET'} ${path}`);
+      if (path.startsWith('/submissions/batch')) return new Response('{"error":"batched submissions are not allowed"}', { status: 400 });
+      if (init?.method === 'POST') return reply({ token: `s${next++}` });
+      return reply({ status_id: 3, stdout: b64(path.split('/').pop()!), time: '0.001', memory: 1 });
+    }) as unknown as typeof fetch;
+    const judge = createJudge0Client({ url: 'https://j.test', fetch: fakeFetch, pollMs: 1 });
+    const job = { language: 'python' as const, source: 'x', stdin: '', time_limit_ms: 1000, memory_limit_mb: 64 };
+    expect((await judge.runBatch([job, job])).map((o) => o.stdout)).toEqual(['s0', 's1']);
+    await judge.runBatch([job]);
+    expect(calls.filter((c) => c.includes('/batch'))).toEqual(['POST /submissions/batch']);
+    expect(calls).toContain('GET /submissions/s2');
+  });
+  it('keeps what the judge said when it refuses a job', async () => {
+    const fakeFetch = (async () => new Response('{"wall_time_limit":["must be less than or equal to 10"]}', { status: 422 })) as unknown as typeof fetch;
+    const judge = createJudge0Client({ url: 'https://j.test', fetch: fakeFetch });
+    await expect(judge.runBatch([{ language: 'cpp', source: 'x', stdin: '', time_limit_ms: 1000, memory_limit_mb: 64 }])).rejects.toThrow(/422: .*wall_time_limit/);
+  });
   it('treats a 5xx as unavailable', async () => {
     const judge = createJudge0Client({ url: 'https://j.test', fetch: (async () => reply({}, 502)) as unknown as typeof fetch });
     await expect(judge.runBatch([{ language: 'cpp', source: 'x', stdin: '', time_limit_ms: 1000, memory_limit_mb: 64 }])).rejects.toThrow(Judge0Unavailable);
