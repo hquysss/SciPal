@@ -228,12 +228,12 @@ export function ProgressView(props: ProgressSummary & { practiceLeft?: PracticeL
         <div className="flex min-w-0 flex-col gap-5">
           <PracticeLeftCard lessons={props.practiceLeft ?? []} />
           <Roadmap roadmaps={roadmaps} />
-          <BadgeWall />
+          <div id="badges" className="scroll-mt-24"><BadgeWall /></div>
         </div>
         <aside className="flex min-w-0 flex-col gap-5">
           <ReviewCard exams={exams} />
-          <Leaderboard board={leaderboard} friends={props.friendsBoard} classes={props.leaderboardClasses} />
-          <ChallengeCard />
+          <div id="leaderboard" className="scroll-mt-24"><Leaderboard board={leaderboard} friends={props.friendsBoard} classes={props.leaderboardClasses} /></div>
+          <div id="challenges" className="scroll-mt-24"><ChallengeCard /></div>
           <Milestones items={milestones} />
           <StreakCalendar streaks={streaks} habit={habit} />
         </aside>
