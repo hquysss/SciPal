@@ -90,6 +90,7 @@ export function learnLinks(lang: 'en' | 'vi') {
     { href: '/subjects', label: label('Subjects', 'Môn học'), hint: label('Lessons by subject', 'Bài học theo môn') },
     { href: '/lab', label: label('Simulations', 'Mô phỏng'), hint: label('Try it, see it move', 'Thử nghiệm trực quan') },
     { href: '/exam', label: label('Exams', 'Thi thử'), hint: label('Practise with graded tests', 'Luyện đề có chấm điểm') },
+    { href: '/games', label: label('Gamification', 'Gamification'), hint: label('Learn through games', 'Học qua trò chơi') },
     { ...tutorLink(lang), hint: label('Ask when you are stuck', 'Hỏi khi bí bài') },
   ];
 }
@@ -116,7 +117,6 @@ export function accountLinks(lang: 'en' | 'vi', role: string | null) {
   const isStudent = role !== null && role !== 'teacher' && role !== 'admin';
   return [
     { href: '/progress', label: label('Progress', 'Tiến trình'), group: 'study' as const },
-    { href: '/games', label: label('Gamification', 'Gamification'), group: 'study' as const },
     ...(isStudent ? [{ href: '/classes', label: label('My classes', 'Lớp của em'), group: 'study' as const }] : []),
     { href: '/profile', label: label('Profile', 'Hồ sơ'), group: 'account' as const },
     ...(isStudent ? [{ href: '/profile/plan', label: label('My plan', 'Gói của tôi'), group: 'account' as const }] : []),

@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Dialog } from '@/components/ui/dialog';
 import { Field } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
-import { createGame, KIND_LABEL, searchGameLessons, type Bilingual, type GameKind } from './gamesApi';
+import { createGame, CROSSWORD_MODE_LABEL, KIND_LABEL, searchGameLessons, type Bilingual, type CrosswordMode, type GameKind } from './gamesApi';
 
 const tab = (active: boolean) =>
   `min-h-11 flex-1 rounded-md px-3 text-sm font-semibold transition-colors motion-reduce:transition-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus ${
@@ -24,6 +24,8 @@ export function CreateGameDialog({ classId, open, onClose, onCreated }: { classI
   const [lessons, setLessons] = useState<Array<{ id: string; title: Bilingual }> | null>(null);
   const [lessonId, setLessonId] = useState<string | null>(null);
   const [pairs, setPairs] = useState('8');
+  const [words, setWords] = useState('10');
+  const [mode, setMode] = useState<CrosswordMode>('en_from_vi');
   const [wordwall, setWordwall] = useState('');
   const [minutes, setMinutes] = useState('');
   const [error, setError] = useState<Bilingual | null>(null);
@@ -59,6 +61,7 @@ export function CreateGameDialog({ classId, open, onClose, onCreated }: { classI
       titleEn: titleEn.trim() || undefined,
       ...(kind === 'wordwall' ? { wordwall } : { lessonId: lessonId ?? undefined }),
       ...(kind === 'match' ? { pairs: Number(pairs) } : {}),
+      ...(kind === 'crossword' ? { words: Number(words), mode } : {}),
       timeLimitS: kind !== 'wordwall' && limit > 0 ? Math.round(limit * 60) : null,
     });
     setSaving(false);
@@ -80,8 +83,8 @@ export function CreateGameDialog({ classId, open, onClose, onCreated }: { classI
       <form onSubmit={submit} className="flex flex-col gap-4">
         {error && <Alert tone="danger">{t(error)}</Alert>}
 
-        <div role="group" aria-label={t({ en: 'Kind of game', vi: 'Loại game' })} className="flex gap-1 rounded-lg border border-edge bg-surface-sunken p-1">
-          {(['quiz', 'match', 'wordwall'] as const).map((k) => (
+        <div role="group" aria-label={t({ en: 'Kind of game', vi: 'Loại game' })} className="grid grid-cols-2 gap-1 rounded-lg border border-edge bg-surface-sunken p-1 sm:grid-cols-4">
+          {(['quiz', 'match', 'crossword', 'wordwall'] as const).map((k) => (
             <button key={k} type="button" aria-pressed={kind === k} onClick={() => setKind(k)} className={tab(kind === k)}>
               {t(KIND_LABEL[k])}
             </button>
@@ -112,7 +115,9 @@ export function CreateGameDialog({ classId, open, onClose, onCreated }: { classI
               label={t({ en: 'From lesson', vi: 'Lấy từ bài học' })}
               description={kind === 'quiz'
                 ? t({ en: 'Uses the lesson’s practice questions.', vi: 'Dùng các câu tự luyện của bài.' })
-                : t({ en: 'Picks glossary terms of the lesson’s subject.', vi: 'Chọn ngẫu nhiên thuật ngữ trong từ điển của môn.' })}
+                : kind === 'crossword'
+                  ? t({ en: 'Crosses glossary terms of the lesson’s subject into a grid.', vi: 'Xếp thuật ngữ trong từ điển của môn thành ô chữ đan nhau.' })
+                  : t({ en: 'Picks glossary terms of the lesson’s subject.', vi: 'Chọn ngẫu nhiên thuật ngữ trong từ điển của môn.' })}
             >
               {(control) => <Input {...control} type="search" value={query} onChange={(e) => setQuery(e.target.value)} autoComplete="off" />}
             </Field>
@@ -127,10 +132,27 @@ export function CreateGameDialog({ classId, open, onClose, onCreated }: { classI
                 </label>
               ))}
             </fieldset>
+            {kind === 'crossword' && (
+              <div className="flex flex-col gap-2">
+                <span id="crossword-mode-label" className="text-sm font-semibold text-ink">{t({ en: 'Clues', vi: 'Kiểu gợi ý' })}</span>
+                <div role="group" aria-labelledby="crossword-mode-label" className="grid gap-1 rounded-lg border border-edge bg-surface-sunken p-1 sm:grid-cols-3">
+                  {(Object.keys(CROSSWORD_MODE_LABEL) as CrosswordMode[]).map((m) => (
+                    <button key={m} type="button" aria-pressed={mode === m} onClick={() => setMode(m)} className={tab(mode === m)}>
+                      {t(CROSSWORD_MODE_LABEL[m])}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
             <div className="grid gap-4 sm:grid-cols-2">
               {kind === 'match' && (
                 <Field id="game-pairs" label={t({ en: 'Pairs', vi: 'Số cặp' })}>
                   {(control) => <Input {...control} type="number" min={3} max={20} value={pairs} onChange={(e) => setPairs(e.target.value)} />}
+                </Field>
+              )}
+              {kind === 'crossword' && (
+                <Field id="game-words" label={t({ en: 'Words', vi: 'Số từ' })} description={t({ en: 'Words that do not cross are left out.', vi: 'Từ không đan được vào lưới sẽ bị bỏ.' })}>
+                  {(control) => <Input {...control} type="number" min={5} max={15} value={words} onChange={(e) => setWords(e.target.value)} />}
                 </Field>
               )}
               <Field id="game-minutes" label={t({ en: 'Time limit, minutes (optional)', vi: 'Giới hạn phút (không bắt buộc)' })}>

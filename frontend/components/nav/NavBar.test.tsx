@@ -101,7 +101,7 @@ describe('tutorLink', () => {
 
 describe('learnLinks', () => {
   it('holds what a student opens to study, each with a hint', () => {
-    expect(learnLinks('vi').map((l) => l.href)).toEqual(['/subjects', '/lab', '/exam', '/tutor']);
+    expect(learnLinks('vi').map((l) => l.href)).toEqual(['/subjects', '/lab', '/exam', '/games', '/tutor']);
     expect(learnLinks('en').every((l) => l.hint.length > 0)).toBe(true);
     expect(communityLink('vi')).toEqual({ href: '/community', label: 'Cộng đồng' });
   });
@@ -117,14 +117,14 @@ describe('moreLinks', () => {
 describe('accountLinks', () => {
   it('splits what is personal into learning and account sections', () => {
     const by = (group: string) => accountLinks('vi', 'student').filter((l) => l.group === group).map((l) => l.href);
-    expect(by('study')).toEqual(['/progress', '/games', '/classes']);
+    expect(by('study')).toEqual(['/progress', '/classes']);
     expect(by('account')).toEqual(['/profile', '/profile/plan', '/profile/orders']);
   });
 
   it('gives students their classes and plan; teachers keep theirs in the teacher menu', () => {
     expect(accountLinks('en', 'student').map((l) => l.label)).toEqual(expect.arrayContaining(['My classes', 'My plan']));
-    expect(accountLinks('vi', 'teacher').map((l) => l.href)).toEqual(['/progress', '/games', '/profile', '/profile/orders']);
-    expect(accountLinks('vi', 'admin').map((l) => l.href)).toEqual(['/progress', '/games', '/profile']);
+    expect(accountLinks('vi', 'teacher').map((l) => l.href)).toEqual(['/progress', '/profile', '/profile/orders']);
+    expect(accountLinks('vi', 'admin').map((l) => l.href)).toEqual(['/progress', '/profile']);
   });
 });
 
