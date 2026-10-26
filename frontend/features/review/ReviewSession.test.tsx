@@ -33,6 +33,15 @@ describe('ReviewSession', () => {
     expect(countRawColors(document.body.innerHTML).total).toBe(0);
   });
 
+  it('shows both languages on the back, whatever the interface language', () => {
+    render(<ReviewSession cards={[A]} hasWords nextDue={null} />);
+    fireEvent.click(screen.getByRole('button', { name: 'Lật thẻ' }));
+    expect(screen.getByText('algorithm def').closest('section')?.getAttribute('lang')).toBe('en');
+    expect(screen.getByText('thuật toán nghĩa').closest('section')?.getAttribute('lang')).toBe('vi');
+    expect(screen.getByText('Ví dụ thuật toán')).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Nghe: thuật toán' })).toBeTruthy();
+  });
+
   it('grades on the server and moves to the next card', async () => {
     call.mockResolvedValue({ ok: true, data: { due_at: '2026-10-14T00:00:00Z', xp_earned: 2 } });
     render(<ReviewSession cards={[A, B]} hasWords nextDue={null} />);

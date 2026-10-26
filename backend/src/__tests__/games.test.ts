@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import Fastify from 'fastify';
-import { gameRoutes, scoreMatch, wordwallEmbedUrl } from '../routes/games.js';
+import { gameRoutes, givesAway, scoreMatch, wordwallEmbedUrl } from '../routes/games.js';
 import { mockQuery, mockSupabase, type MockBuilder } from './helpers/supabaseMock.js';
 
 const CLASS_ID = '11111111-1111-4111-8111-111111111111';
@@ -42,6 +42,16 @@ describe('helpers', () => {
 
   it('scores a match once per right position', () => {
     expect(scoreMatch(T, [{ termId: T[0]!, right: 0 }, { termId: T[1]!, right: 1 }, { termId: T[2]!, right: 0 }])).toBe(2);
+  });
+
+  it('spots a pair whose English already spells the Vietnamese', () => {
+    expect(givesAway('renovation (Doi Moi)', 'Đổi mới')).toBe(true);
+    expect(givesAway('ion', 'ion')).toBe(true);
+    expect(givesAway('vector', 'vectơ')).toBe(true);
+    expect(givesAway('logarithm', 'lôgarit')).toBe(true);
+    expect(givesAway('gene', 'gen')).toBe(true);
+    expect(givesAway('metaphor', 'ẩn dụ')).toBe(false);
+    expect(givesAway('Cold War', 'Chiến tranh lạnh')).toBe(false);
   });
 });
 

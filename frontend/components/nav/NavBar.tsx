@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { ArrowRight, BookOpen, House, Users, ReceiptText, ChevronDown, ChevronUp, CircleHelp, ClipboardCheck, FlaskConical, Gauge, Library, LineChart, Menu, MessageCircle, MessageCircleQuestion, School, Tag, Trophy, UserRound, X } from 'lucide-react';
+import { ArrowRight, BookOpen, House, Users, ReceiptText, ChevronDown, ChevronUp, CircleHelp, ClipboardCheck, FlaskConical, Gauge, Library, LineChart, Menu, MessageCircle, MessageCircleQuestion, Repeat, School, Tag, Trophy, UserRound, X } from 'lucide-react';
 import { useParams, usePathname, useRouter } from 'next/navigation';
 import { useLanguage } from '@scipal/hooks';
 import { LanguageToggle } from './LanguageToggle';
@@ -17,6 +17,7 @@ import type { SubjectSlug } from '@/lib/subject-config';
 import { createBrowserClient } from '@/lib/supabase';
 import { adoptAccountLevel, forgetAccountLevel, getShell, safeSessionStorage } from '@/lib/theme/shellTheme';
 import { countOpenSimulationRequests } from '@/features/authoring/simulationRequests/api';
+import { countDueWords } from '@/features/review/reviewApi';
 import { FRIENDS_CHANGED_EVENT, listFriends } from '@/features/friends/friendsApi';
 import { badgeText, UNREAD_BADGE, useChatUnread } from '@/features/community/unread';
 import { fetchMyPlan, PLAN_NAME } from '@/features/billing/billingApi';
@@ -83,14 +84,21 @@ export function communityLabel(lang: 'en' | 'vi', pending: number, unread = 0) {
   return `${withPending}, ${badgeText(unread)} ${lang === 'en' ? 'new messages' : 'tin nhắn mới'}`;
 }
 
-/** Learn: what a student opens to study, as a category with a line saying what each page is for. */
-export function learnLinks(lang: 'en' | 'vi') {
+/**
+ * Learn: what a student opens to study, as a category with a line saying what each page is for.
+ * `review` (signed in only) adds the word review, its line saying how many cards are due.
+ */
+export function learnLinks(lang: 'en' | 'vi', review: { due: number } | null = null) {
   const label = (en: string, vi: string) => (lang === 'en' ? en : vi);
+  const reviewHint = review?.due
+    ? label(`${review.due} ${review.due === 1 ? 'word' : 'words'} due today`, `${review.due} từ đến hạn hôm nay`)
+    : label('Your words, English ↔ Vietnamese', 'Sổ từ Anh ↔ Việt, ôn mỗi ngày');
   return [
     { href: '/subjects', label: label('Subjects', 'Môn học'), hint: label('Lessons by subject', 'Bài học theo môn') },
     { href: '/lab', label: label('Simulations', 'Mô phỏng'), hint: label('Try it, see it move', 'Thử nghiệm trực quan') },
     { href: '/exam', label: label('Exams', 'Thi thử'), hint: label('Practise with graded tests', 'Luyện đề có chấm điểm') },
     { href: '/games', label: label('Gamification', 'Gamification'), hint: label('Learn through games', 'Học qua trò chơi') },
+    ...(review ? [{ href: '/review', label: label('Review words', 'Ôn từ'), hint: reviewHint }] : []),
     { ...tutorLink(lang), hint: label('Ask when you are stuck', 'Hỏi khi bí bài') },
   ];
 }
@@ -163,6 +171,7 @@ export function NavBar({ currentSubject }: NavBarProps) {
   const [confirmSignOut, setConfirmSignOut] = useState(false);
   const [openRequests, setOpenRequests] = useState(0);
   const [pendingFriends, setPendingFriends] = useState(0);
+  const [dueWords, setDueWords] = useState(0);
   const { total: unreadMessages } = useChatUnread(Boolean(appRole));
   const mobileMenuButtonRef = useRef<HTMLButtonElement>(null);
   const openNavTriggerRef = useRef<HTMLButtonElement>(null);
@@ -211,6 +220,21 @@ export function NavBar({ currentSubject }: NavBarProps) {
     return () => {
       live = false;
       window.removeEventListener('scipal:simulation-requests-changed', refresh);
+    };
+  }, [appRole, pathname]);
+
+  // Word cards due for review; recounted on navigation so a finished review clears the dot.
+  useEffect(() => {
+    if (!appRole) {
+      setDueWords(0);
+      return;
+    }
+    let live = true;
+    void countDueWords().then((n) => {
+      if (live) setDueWords(n);
+    });
+    return () => {
+      live = false;
     };
   }, [appRole, pathname]);
 
@@ -361,7 +385,7 @@ export function NavBar({ currentSubject }: NavBarProps) {
   const accountName = displayName ?? t('Account', 'Tài khoản');
   const signedIn = Boolean(appRole);
   // Categories, each with one place: Learn and Resources are menus, Community a link, My stuff is the avatar menu, staff after a divider.
-  const learn = learnLinks(navLang);
+  const learn = learnLinks(navLang, signedIn ? { due: dueWords } : null);
   // The Subjects entry stays marked inside any subject or lesson, not only on /subjects.
   const subjectsActive = pathname === '/subjects' || Boolean(currentSubject ?? params?.subject);
   const inSection = (href: string) => (href === '/subjects' ? subjectsActive : pathname === href || pathname.startsWith(`${href}/`));
@@ -418,6 +442,7 @@ export function NavBar({ currentSubject }: NavBarProps) {
     '/profile': <UserRound aria-hidden="true" size={16} />,
     '/progress': <LineChart aria-hidden="true" size={16} />,
     '/games': <Trophy aria-hidden="true" size={16} />,
+    '/review': <Repeat aria-hidden="true" size={16} />,
     '/classes': <School aria-hidden="true" size={16} />,
     '/profile/plan': <Gauge aria-hidden="true" size={16} />,
     '/': <House aria-hidden="true" size={16} />,
@@ -467,7 +492,7 @@ export function NavBar({ currentSubject }: NavBarProps) {
     </Link>
   );
   /** A bar category that opens a short list; the active one stays marked while you are inside it. */
-  const barMenu = (id: 'learn' | 'more' | 'teacher', label: string, active: boolean, children: ReactNode) => {
+  const barMenu = (id: 'learn' | 'more' | 'teacher', label: ReactNode, active: boolean, children: ReactNode) => {
     const open = openNavGroup === id;
     return (
       <div className="relative" data-nav-group={id}>
@@ -526,7 +551,17 @@ export function NavBar({ currentSubject }: NavBarProps) {
           <Link href="/" prefetch={pathname !== '/'} aria-current={pathname === '/' ? 'page' : undefined} className={navStyles.navLink}>
             {t('Home', 'Trang chủ')}
           </Link>
-          {barMenu('learn', t('Learn', 'Học tập'), learnActive, (
+          {barMenu('learn', (
+            <>
+              {t('Learn', 'Học tập')}
+              {dueWords > 0 && (
+                <>
+                  <span aria-hidden="true" className="ml-1 inline-block h-2 w-2 rounded-full bg-coral" />
+                  <span className="sr-only">{t(`, ${dueWords} words to review`, `, ${dueWords} từ cần ôn`)}</span>
+                </>
+              )}
+            </>
+          ), learnActive, (
             <>
               {heading(t('Learn', 'Học tập'))}
               {learn.map((link) => menuLink(link))}

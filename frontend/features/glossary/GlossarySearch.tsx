@@ -7,6 +7,7 @@ import { EmptyState } from '../../components/ui/empty-state';
 import { PAGE_SIZE, filterTerms, shownToReach, termSubjects } from './termFilter';
 import { speakTerm, warmSpeech } from './pronunciation';
 import { useSavedTerms } from './savedTerms';
+import { countDueWords } from '../review/reviewApi';
 import type { TermItem } from './termQueries';
 
 const TERM_TONES = ['var(--sun)', 'var(--sky)', 'var(--coral)'];
@@ -46,6 +47,7 @@ export function GlossarySearch({ terms }: { terms: TermItem[] }) {
 
   const [loadingVoice, setLoadingVoice] = useState(false);
   const [shown, setShown] = useState(PAGE_SIZE);
+  const [dueWords, setDueWords] = useState<number | null>(null);
 
   const listen = async (text: string, language: 'en' | 'vi') => {
     setSpeechError(null);
@@ -90,6 +92,18 @@ export function GlossarySearch({ terms }: { terms: TermItem[] }) {
   const filtered = filterTerms(terms, { query, subject: showSaved ? 'all' : activeFilter, saved: showSaved ? saved : null });
 
   const savedCount = terms.filter((term) => saved.has(term.id)).length;
+
+  // The word list's header says how many cards wait; read once the list is open and the learner is signed in.
+  useEffect(() => {
+    if (!showSaved || !signedIn) return;
+    let alive = true;
+    void countDueWords().then((n) => {
+      if (alive) setDueWords(n);
+    });
+    return () => {
+      alive = false;
+    };
+  }, [showSaved, signedIn]);
 
   const toggleSaved = (id: string) => (saved.has(id) ? unsave(id) : save(id));
 
@@ -179,6 +193,28 @@ export function GlossarySearch({ terms }: { terms: TermItem[] }) {
         )}
       </div>
 
+      {showSaved && (
+        <section aria-labelledby="my-words-title" className="flex flex-col gap-4 rounded-2xl border border-line bg-[linear-gradient(120deg,color-mix(in_srgb,var(--sky)_20%,var(--surface)),var(--surface)_65%)] p-5 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex min-w-0 flex-col gap-1">
+            <h2 id="my-words-title" className="text-2xl font-extrabold tracking-tight text-ink">
+              {t({ en: 'My words', vi: 'Sổ từ của tôi' })}{' '}
+              <span className="text-base font-semibold text-ink-muted">{t({ en: '· Sổ từ', vi: '· My words' })}</span>
+            </h2>
+            <p className="text-sm text-ink-muted">
+              {t({ en: `${savedCount} ${savedCount === 1 ? 'word' : 'words'}, each kept as an English ↔ Vietnamese pair.`, vi: `${savedCount} từ, mỗi từ là một cặp Anh ↔ Việt.` })}
+            </p>
+          </div>
+          {signedIn && savedCount > 0 && (
+            <Link href="/review" className="inline-flex min-h-11 shrink-0 items-center justify-center gap-2 rounded-xl bg-action px-5 text-sm font-semibold text-action-ink hover:bg-action-hover focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus">
+              <Repeat aria-hidden="true" className="h-4 w-4" />
+              {dueWords
+                ? t({ en: `Review ${dueWords} due ${dueWords === 1 ? 'word' : 'words'}`, vi: `Ôn ${dueWords} từ đến hạn` })
+                : t({ en: 'Open review', vi: 'Mở trang ôn' })}
+            </Link>
+          )}
+        </section>
+      )}
+
       {loadingVoice && (
         <p role="status" className="text-sm text-ink-muted">
           {t({ en: 'Loading the voice (first time only)…', vi: 'Đang tải giọng đọc (chỉ lần đầu)…' })}
@@ -221,6 +257,17 @@ export function GlossarySearch({ terms }: { terms: TermItem[] }) {
               className="scroll-mt-24 rounded-xl border border-line border-t-4 border-t-[var(--tone)] bg-surface p-6 shadow-[0_1px_0_var(--line)] transition duration-300 ease-out target:ring-2 target:ring-focus hover:-translate-y-1 hover:shadow-[0_18px_32px_-22px_color-mix(in_srgb,var(--tone)_90%,transparent)] motion-reduce:transition-none motion-reduce:hover:translate-y-0"
             >
               <div className="mb-3 flex items-start justify-between gap-4">
+                {showSaved ? (
+                  // The word list shows each word as a pair: English and Vietnamese with equal weight.
+                  <div className="flex flex-wrap items-center gap-x-1 gap-y-1">
+                    <h2 lang="en" className="text-xl font-bold text-ink">{term.term_en}</h2>
+                    {ipa}
+                    <ListenButton text={term.term_en} lang="en" onListen={(text, language) => void listen(text, language)} />
+                    <span aria-hidden="true" className="px-1 text-ink-muted">↔</span>
+                    <span lang="vi" className="text-xl font-bold text-accent-ink">{term.term_vi}</span>
+                    <ListenButton text={term.term_vi} lang="vi" onListen={(text, language) => void listen(text, language)} />
+                  </div>
+                ) : (
                 <div className="flex flex-wrap items-center gap-x-1 gap-y-1">
                   <h2 className="text-xl font-bold text-ink">{main}</h2>
                   {lang === 'en' && ipa}
@@ -229,6 +276,7 @@ export function GlossarySearch({ terms }: { terms: TermItem[] }) {
                   {lang === 'vi' && ipa}
                   <ListenButton text={other} lang={lang === 'en' ? 'vi' : 'en'} onListen={(text, language) => void listen(text, language)} />
                 </div>
+                )}
 
                 <div className="flex shrink-0 items-center gap-1">
                   {term.part_of_speech && (
@@ -275,6 +323,9 @@ export function GlossarySearch({ terms }: { terms: TermItem[] }) {
                 <div className="mt-4 rounded-lg bg-[color-mix(in_srgb,var(--tone)_18%,var(--surface))] p-3 text-sm text-ink-muted">
                   <span className="font-semibold text-ink">{t({ en: 'Example: ', vi: 'Ví dụ: ' })}</span>
                   <span>{lang === 'en' ? term.example_en : term.example_vi}</span>
+                  {showSaved && (lang === 'en' ? term.example_vi : term.example_en) && (
+                    <span className="mt-1 block">{lang === 'en' ? term.example_vi : term.example_en}</span>
+                  )}
                 </div>
               )}
             </article>

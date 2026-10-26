@@ -92,6 +92,18 @@ export function scoreMatch(rightOrder: string[], pairs: Array<{ termId: string; 
   return score;
 }
 
+const plain = (s: string) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[đĐ]/g, 'd').toLowerCase().replace(/[^a-z0-9]/g, '');
+
+/**
+ * True when a term's English already spells its Vietnamese once accents are dropped ("renovation
+ * (Doi Moi)" / "Đổi mới", "ion" / "ion", "gene" / "gen"): a match game would show the answer.
+ */
+export function givesAway(en: string, vi: string): boolean {
+  const e = plain(en);
+  const v = plain(vi);
+  return v.length >= 3 && e.length >= 3 && (e.includes(v) || v.includes(e));
+}
+
 export function shuffle<T>(items: T[]): T[] {
   const out = [...items];
   for (let i = out.length - 1; i > 0; i -= 1) {
@@ -312,9 +324,9 @@ export const gameRoutes: FastifyPluginAsync = async (app) => {
           row.term_ids = [];
           crossword = { mode, grid: built };
         } else {
-          const { data, error } = await db().from('terms').select('id').eq('subject_id', subjectId).eq('status', 'published').limit(500);
+          const { data, error } = await db().from('terms').select('id, term_en, term_vi').eq('subject_id', subjectId).eq('status', 'published').limit(500);
           if (error) throw error;
-          const ids = ((data ?? []) as Array<{ id: string }>).map((t) => t.id);
+          const ids = ((data ?? []) as Array<{ id: string; term_en: string; term_vi: string }>).filter((t) => !givesAway(t.term_en, t.term_vi)).map((t) => t.id);
           if (ids.length < MATCH_MIN) return reply.code(400).send(NO_CONTENT);
           row.term_ids = shuffle(ids).slice(0, body.pairs ?? 8);
         }
@@ -395,7 +407,8 @@ export const gameRoutes: FastifyPluginAsync = async (app) => {
       } else if (game.kind === 'match') {
         const { data, error } = await db().from('terms').select('id, term_en, term_vi').in('id', game.term_ids).eq('status', 'published');
         if (error) throw error;
-        const terms = (data ?? []) as Array<{ id: string; term_en: string; term_vi: string }>;
+        // Games made before the give-away filter may still hold such terms.
+        const terms = ((data ?? []) as Array<{ id: string; term_en: string; term_vi: string }>).filter((t) => !givesAway(t.term_en, t.term_vi));
         if (terms.length < MATCH_MIN) return reply.code(400).send(NO_CONTENT);
         rightOrder = shuffle(terms.map((t) => t.id));
         const byId = new Map(terms.map((t) => [t.id, t]));

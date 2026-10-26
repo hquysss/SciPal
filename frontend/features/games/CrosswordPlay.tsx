@@ -4,6 +4,7 @@ import { useMemo, useRef, useState, type KeyboardEvent } from 'react';
 import { Check } from 'lucide-react';
 import { useLanguage } from '@scipal/hooks';
 import { Button } from '@/components/ui/button';
+import { MathText } from '@/components/math/MathText';
 import type { CrosswordWord } from './gamesApi';
 
 type Dir = CrosswordWord['dir'];
@@ -173,7 +174,7 @@ export function CrosswordPlay({ rows, cols, words, correct, busy, done, onSubmit
                 }`}
               >
                 <span className="w-6 shrink-0 font-bold tabular-nums">{w.number}</span>
-                <span className="min-w-0 flex-1 break-words">{t(w.clue)} <span className="text-ink-muted">({w.length})</span></span>
+                <span className="min-w-0 flex-1 break-words"><MathText text={t(w.clue)} /> <span className="text-ink-muted">({w.length})</span></span>
                 {isRight && <Check aria-label={t({ en: 'Right', vi: 'Đúng' })} className="h-4 w-4 shrink-0 text-success" />}
               </button>
             </li>
@@ -186,9 +187,9 @@ export function CrosswordPlay({ rows, cols, words, correct, busy, done, onSubmit
   return (
     <div className="flex flex-col gap-4">
       <p aria-live="polite" className="rounded-lg bg-surface-sunken px-3 py-2 text-sm text-ink">
-        <span className="font-bold">{activeWord.number} {dirLabel(activeWord.dir)}:</span> {t(activeWord.clue)} <span className="text-ink-muted">({activeWord.length})</span>
+        <span className="font-bold">{activeWord.number} {dirLabel(activeWord.dir)}:</span> <MathText text={t(activeWord.clue)} /> <span className="text-ink-muted">({activeWord.length})</span>
       </p>
-      <div className="grid gap-5 lg:grid-cols-[auto_minmax(0,1fr)] lg:items-start">
+      <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(15rem,20rem)] lg:items-start">
         <div className="max-w-full overflow-x-auto pb-1">
           <div role="group" aria-label={t({ en: 'Crossword grid', vi: 'Lưới ô chữ' })} className="grid w-max gap-0.5" style={{ gridTemplateColumns: `repeat(${cols}, 2.75rem)` }}>
             {Array.from({ length: rows * cols }, (_, i) => {

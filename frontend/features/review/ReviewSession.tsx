@@ -32,6 +32,30 @@ const GRADES: Array<{ grade: Grade; key: string; label: { en: string; vi: string
   { grade: 'good', key: '3', label: { en: 'Good', vi: 'Nhớ' } },
 ];
 
+function ListenButton({ text, lang, label }: { text: string; lang: 'en' | 'vi'; label: string }) {
+  return (
+    <button
+      type="button"
+      onClick={() => void speakTerm(text, lang)}
+      aria-label={label}
+      className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-full text-ink-muted hover:bg-surface-sunken hover:text-ink focus-visible:outline focus-visible:outline-2 focus-visible:outline-focus"
+    >
+      <Volume2 aria-hidden="true" className="h-5 w-5" />
+    </button>
+  );
+}
+
+/** One language of the card's back: its definition and example, marked with `lang` for screen readers. */
+function Side({ lang, title, definition, example }: { lang: 'en' | 'vi'; title: string; definition: string; example: string | null }) {
+  return (
+    <section lang={lang} className="flex flex-col gap-1 rounded-lg bg-surface-sunken p-3">
+      <h3 className="text-xs font-bold uppercase tracking-wider text-ink-muted">{title}</h3>
+      <p className="text-ink">{definition}</p>
+      {example && <p className="text-sm italic text-ink-muted">{example}</p>}
+    </section>
+  );
+}
+
 /**
  * One round of review: the English side, flip (Space) for the meaning, then Again / Hard / Good
  * (1 / 2 / 3). The server schedules each card and decides the XP; this only shows what it says.
@@ -123,7 +147,6 @@ function ReviewCards({ cards, hasWords, nextDue, onBadges }: ReviewProps & { onB
     );
   }
 
-  const example = lang === 'en' ? card.example_en : card.example_vi;
   return (
     <section className="flex flex-col gap-4">
       <p className="text-sm text-ink-muted">
@@ -134,14 +157,7 @@ function ReviewCards({ cards, hasWords, nextDue, onBadges }: ReviewProps & { onB
           <h2 lang="en" className="text-3xl font-bold text-ink">
             {card.term_en}
           </h2>
-          <button
-            type="button"
-            onClick={() => void speakTerm(card.term_en, 'en')}
-            aria-label={t({ en: `Listen: ${card.term_en}`, vi: `Nghe: ${card.term_en}` })}
-            className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-full text-ink-muted hover:bg-surface-sunken hover:text-ink focus-visible:outline focus-visible:outline-2 focus-visible:outline-focus"
-          >
-            <Volume2 aria-hidden="true" className="h-5 w-5" />
-          </button>
+          <ListenButton text={card.term_en} lang="en" label={t({ en: `Listen: ${card.term_en}`, vi: `Nghe: ${card.term_en}` })} />
         </div>
         {card.ipa && (
           <span lang="en" className="text-ink-muted">
@@ -149,11 +165,17 @@ function ReviewCards({ cards, hasWords, nextDue, onBadges }: ReviewProps & { onB
           </span>
         )}
         {flipped && (
-          <div className="flex flex-col items-center gap-2 border-t border-line pt-3">
-            <p className="text-xl font-semibold text-accent-ink">{card.term_vi}</p>
+          <div className="flex w-full flex-col items-center gap-3 border-t border-line pt-3">
+            <div className="flex flex-wrap items-center justify-center gap-2">
+              <p lang="vi" className="text-2xl font-bold text-accent-ink">{card.term_vi}</p>
+              <ListenButton text={card.term_vi} lang="vi" label={t({ en: `Listen: ${card.term_vi}`, vi: `Nghe: ${card.term_vi}` })} />
+            </div>
             {card.part_of_speech && <p className="text-sm text-ink-muted">{card.part_of_speech}</p>}
-            <p className="text-ink">{lang === 'en' ? card.definition_en : card.definition_vi}</p>
-            {example && <p className="text-sm italic text-ink-muted">{example}</p>}
+            {/* Both languages side by side: the meaning is learnt as a pair, whatever the interface language. */}
+            <div className="grid w-full gap-3 text-left sm:grid-cols-2">
+              <Side lang="en" title="English" definition={card.definition_en} example={card.example_en} />
+              <Side lang="vi" title="Tiếng Việt" definition={card.definition_vi} example={card.example_vi} />
+            </div>
           </div>
         )}
       </article>
