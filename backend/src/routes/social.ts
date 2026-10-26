@@ -11,6 +11,9 @@ import { orderPair } from './friends.js';
 
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 export const MAX_ACTIVE_CHALLENGES = 3;
+/** An invitation nobody answered lapses after this many days, so it never blocks the pair for good. */
+export const PENDING_DAYS = 7;
+const DAY_MS = 86_400_000;
 const LIST_LIMIT = 20;
 const COLUMNS = 'id, challenger, opponent, status, starts_on, ends_on, winner, created_at';
 
@@ -26,6 +29,10 @@ type Row = { id: string; challenger: string; opponent: string; status: Status; s
 
 const userId = (request: FastifyRequest) => (request as FastifyRequest & { user?: { id?: string } }).user?.id ?? null;
 const other = (row: Row, me: string) => (row.challenger === me ? row.opponent : row.challenger);
+const pendingCutoff = (now: Date) => new Date(now.getTime() - PENDING_DAYS * DAY_MS).toISOString();
+/** A pending invitation older than PENDING_DAYS: treated as declined. */
+export const lapsed = (row: Pick<Row, 'status' | 'created_at'>, now: Date) => row.status === 'pending' && row.created_at < pendingCutoff(now);
+const expired = { error: 'Lời thách đấu này đã hết hạn.', error_en: 'This challenge has expired.' };
 const LINK = '/progress';
 
 export const socialRoutes: FastifyPluginAsync = async (app) => {
@@ -81,8 +88,18 @@ export const socialRoutes: FastifyPluginAsync = async (app) => {
     if (running === null) return reply.code(500).send(failed);
     if (running >= MAX_ACTIVE_CHALLENGES) return reply.code(409).send(tooMany);
 
-    const inserted = await app.supabase.from('challenges').insert({ challenger: me, opponent }).select('id').single();
-    if (inserted.error?.code === '23505') return reply.code(409).send(open);
+    const insert = () => app.supabase!.from('challenges').insert({ challenger: me, opponent }).select('id').single();
+    let inserted = await insert();
+    if (inserted.error?.code === '23505') {
+      // The open one may be an invitation that lapsed: retire it (either way round) and try once more.
+      const { data: retired } = await app.supabase.from('challenges').update({ status: 'declined' })
+        .eq('status', 'pending').lt('created_at', pendingCutoff(new Date()))
+        .or(`and(challenger.eq.${me},opponent.eq.${opponent}),and(challenger.eq.${opponent},opponent.eq.${me})`)
+        .select('id');
+      if (((retired as unknown[] | null) ?? []).length === 0) return reply.code(409).send(open);
+      inserted = await insert();
+      if (inserted.error?.code === '23505') return reply.code(409).send(open);
+    }
     if (inserted.error || !inserted.data) return reply.code(500).send(failed);
 
     const name = await nameOf(me);
@@ -94,8 +111,13 @@ export const socialRoutes: FastifyPluginAsync = async (app) => {
     return reply.code(201).send({ id: (inserted.data as { id: string }).id, status: 'pending' });
   });
 
-  /** The challenge, when the caller is the one who was challenged; replies and returns null otherwise. */
-  async function forOpponent(request: FastifyRequest, reply: FastifyReply): Promise<Row | null> {
+  const notYours = {
+    opponent: { error: 'Chỉ người được thách đấu mới trả lời được.', error_en: 'Only the person challenged can answer.' },
+    challenger: { error: 'Chỉ người gửi mới huỷ được lời thách đấu.', error_en: 'Only the sender can cancel a challenge.' },
+  };
+
+  /** A pending challenge on the caller's `side` (who was challenged, or who sent it); replies and returns null otherwise. */
+  async function pendingFor(request: FastifyRequest, reply: FastifyReply, side: 'opponent' | 'challenger'): Promise<Row | null> {
     const id = (request.params as { id: string }).id;
     if (!UUID_PATTERN.test(id)) {
       void reply.code(404).send(notFound);
@@ -105,7 +127,7 @@ export const socialRoutes: FastifyPluginAsync = async (app) => {
     const row = data as Row | null;
     if (error) void reply.code(500).send(failed);
     else if (!row || (row.challenger !== userId(request) && row.opponent !== userId(request))) void reply.code(404).send(notFound);
-    else if (row.opponent !== userId(request)) void reply.code(403).send({ error: 'Chỉ người được thách đấu mới trả lời được.', error_en: 'Only the person challenged can answer.' });
+    else if (row[side] !== userId(request)) void reply.code(403).send(notYours[side]);
     else if (row.status !== 'pending') void reply.code(409).send({ error: 'Thử thách này đã được trả lời.', error_en: 'This challenge was already answered.' });
     else return row;
     return null;
@@ -113,8 +135,9 @@ export const socialRoutes: FastifyPluginAsync = async (app) => {
 
   app.post('/api/challenges/:id/accept', { preHandler: [requireUser] }, async (request, reply) => {
     if (!app.supabase) return reply.code(503).send(unavailable);
-    const row = await forOpponent(request, reply);
+    const row = await pendingFor(request, reply, 'opponent');
     if (!row) return reply;
+    if (lapsed(row, new Date())) return reply.code(409).send(expired);
     const counts = await Promise.all([activeCount(row.challenger), activeCount(row.opponent)]);
     if (counts.includes(null)) return reply.code(500).send(failed);
     if (counts.some((n) => n! >= MAX_ACTIVE_CHALLENGES)) return reply.code(409).send(tooMany);
@@ -136,7 +159,17 @@ export const socialRoutes: FastifyPluginAsync = async (app) => {
 
   app.post('/api/challenges/:id/decline', { preHandler: [requireUser] }, async (request, reply) => {
     if (!app.supabase) return reply.code(503).send(unavailable);
-    const row = await forOpponent(request, reply);
+    const row = await pendingFor(request, reply, 'opponent');
+    if (!row) return reply;
+    const { error } = await app.supabase.from('challenges').update({ status: 'declined' }).eq('id', row.id).eq('status', 'pending');
+    if (error) return reply.code(500).send(failed);
+    return reply.send({ id: row.id, status: 'declined' });
+  });
+
+  // The sender takes back an invitation not answered yet; it frees the pair for a new one.
+  app.post('/api/challenges/:id/cancel', { preHandler: [requireUser] }, async (request, reply) => {
+    if (!app.supabase) return reply.code(503).send(unavailable);
+    const row = await pendingFor(request, reply, 'challenger');
     if (!row) return reply;
     const { error } = await app.supabase.from('challenges').update({ status: 'declined' }).eq('id', row.id).eq('status', 'pending');
     if (error) return reply.code(500).send(failed);
@@ -174,6 +207,15 @@ export const socialRoutes: FastifyPluginAsync = async (app) => {
       .order('created_at', { ascending: false }).limit(LIST_LIMIT);
     if (error) return reply.code(500).send(failed);
     let rows = (data ?? []) as Row[];
+
+    // Lapsed invitations are retired here (no cron), so they drop off the list and free the pair.
+    const now = new Date();
+    const stale = rows.filter((r) => lapsed(r, now)).map((r) => r.id);
+    if (stale.length > 0) {
+      const { error: retireError } = await app.supabase.from('challenges').update({ status: 'declined' }).in('id', stale).eq('status', 'pending');
+      if (retireError) request.log.warn({ err: retireError }, 'Lapsed challenges were not retired');
+      rows = rows.filter((r) => !stale.includes(r.id));
+    }
 
     const people = [...new Set(rows.flatMap((r) => [r.challenger, r.opponent]))];
     const started = rows.filter((r) => r.starts_on && r.ends_on);

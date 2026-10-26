@@ -19,7 +19,7 @@ function build(db?: ReturnType<typeof fakeDb>, user: { id: string } | null = { i
 }
 
 const row = (over: object = {}) => ({
-  id: CH, challenger: OTHER, opponent: ME, status: 'pending', starts_on: null, ends_on: null, winner: null, created_at: '2026-10-20T00:00:00Z', ...over,
+  id: CH, challenger: OTHER, opponent: ME, status: 'pending', starts_on: null, ends_on: null, winner: null, created_at: new Date().toISOString(), ...over,
 });
 
 describe('/api/me/privacy', () => {
@@ -169,5 +169,53 @@ describe('GET /api/challenges', () => {
     const res = await build(tie).inject({ method: 'GET', url: '/api/challenges' });
     expect(res.json().challenges[0]).toMatchObject({ status: 'done', winner: null, my_xp: 0, their_xp: 0 });
     expect(tie.calls.find((x) => x.op === 'update')!.chain[0]).toEqual(['update', [{ status: 'done', winner: null }]]);
+  });
+});
+
+describe('cancelled and lapsed invitations', () => {
+  const old = new Date(Date.now() - 8 * 86_400_000).toISOString();
+
+  it('only the sender cancels, and only while pending', async () => {
+    const cancel = (r: object, db?: object) => build(fakeDb({ 'challenges.select': [{ data: r }], 'challenges.update': [{}], ...db })).inject({ method: 'POST', url: `/api/challenges/${CH}/cancel` });
+    expect((await cancel(row())).statusCode).toBe(403);
+    expect((await cancel(row({ challenger: ME, opponent: OTHER, status: 'active' }))).statusCode).toBe(409);
+    const res = await cancel(row({ challenger: ME, opponent: OTHER }));
+    expect(res.json()).toEqual({ id: CH, status: 'declined' });
+  });
+
+  it('refuses to accept an invitation older than 7 days', async () => {
+    const db = fakeDb({ 'challenges.select': [{ data: row({ created_at: old }) }] });
+    expect((await build(db).inject({ method: 'POST', url: `/api/challenges/${CH}/accept` })).statusCode).toBe(409);
+    expect(db.calls.some((c) => c.op === 'update')).toBe(false);
+  });
+
+  it('retires lapsed invitations from the list', async () => {
+    const db = fakeDb({
+      'challenges.select': [{ data: [row({ created_at: old }), row({ id: 'fresh' })] }],
+      'challenges.update': [{}],
+      'profiles.select': [{ data: [] }],
+    });
+    const res = await build(db).inject({ method: 'GET', url: '/api/challenges' });
+    expect(res.json().challenges.map((c: { id: string }) => c.id)).toEqual(['fresh']);
+    const update = db.calls.find((c) => c.op === 'update')!.chain;
+    expect(update).toContainEqual(['update', [{ status: 'declined' }]]);
+    expect(update).toContainEqual(['in', ['id', [CH]]]);
+    expect(update).toContainEqual(['eq', ['status', 'pending']]);
+  });
+
+  it('a new challenge replaces a lapsed one for the same pair', async () => {
+    const db = fakeDb({
+      'friendships.select': [{ data: { id: 'f' } }],
+      'challenges.select': [{ count: 0 }],
+      'challenges.insert': [{ error: { code: '23505' } }, { data: { id: CH } }],
+      'challenges.update': [{ data: [{ id: 'old' }] }],
+      'profiles.select': [{ data: { display_name: 'An' } }],
+      'notifications.insert': [{}],
+    });
+    const res = await build(db).inject({ method: 'POST', url: '/api/challenges', payload: { opponent: OTHER } });
+    expect(res.statusCode).toBe(201);
+    const update = db.calls.find((c) => c.op === 'update')!.chain;
+    expect(update).toContainEqual(['eq', ['status', 'pending']]);
+    expect(update.some(([name]) => name === 'lt')).toBe(true);
   });
 });

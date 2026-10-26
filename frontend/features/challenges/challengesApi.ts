@@ -44,7 +44,8 @@ export async function getChallenges(): Promise<ChallengeList | null> {
 }
 
 export const sendChallenge = (opponent: string) => call<{ id: string }>('/api/challenges', { method: 'POST', body: JSON.stringify({ opponent }) });
-export const answerChallenge = (id: string, answer: 'accept' | 'decline') => call<{ id: string }>(`/api/challenges/${id}/${answer}`, { method: 'POST' });
+export type ChallengeAnswer = 'accept' | 'decline' | 'cancel';
+export const answerChallenge = (id: string, answer: ChallengeAnswer) => call<{ id: string }>(`/api/challenges/${id}/${answer}`, { method: 'POST' });
 
 export async function getLeaderboardPublic(): Promise<boolean | null> {
   const res = await call<{ leaderboard_public: boolean }>('/api/me/privacy');
