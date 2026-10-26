@@ -1135,3 +1135,5 @@ $$;
 \ir social_cases.sql
 
 \ir crossword_cases.sql
+
+\ir reminder_cases.sql

@@ -45,6 +45,7 @@ export async function notifyUsers(
   userIds: string[],
   notice: Notice,
   log: Log,
+  opts: { email?: boolean } = {},
 ): Promise<void> {
   if (userIds.length === 0) return;
   const { error } = await supabase.from('notifications').insert(
@@ -52,7 +53,7 @@ export async function notifyUsers(
   );
   if (error) log.error({ err: error }, 'Could not store notifications');
 
-  if (!emailConfigured()) return;
+  if (opts.email === false || !emailConfigured()) return;
   try {
     const users = await Promise.all(userIds.map((id) => supabase.auth.admin.getUserById(id)));
     const emails = users.map((u) => u.data.user?.email).filter((e): e is string => Boolean(e));

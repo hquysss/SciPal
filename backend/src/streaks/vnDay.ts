@@ -11,3 +11,10 @@ export function addDays(day: string, n: number): string {
   d.setUTCDate(d.getUTCDate() + n);
   return d.toISOString().slice(0, 10);
 }
+
+const VN_HOUR = new Intl.DateTimeFormat('en-GB', { timeZone: 'Asia/Ho_Chi_Minh', hour: '2-digit', hour12: false });
+
+/** The Vietnam hour (0-23) of an instant: the hour a learner picked for a study reminder. */
+export function vnHour(at: Date): number {
+  return Number(VN_HOUR.format(at)) % 24;
+}
