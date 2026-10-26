@@ -188,7 +188,7 @@ export function CrosswordPlay({ rows, cols, words, correct, busy, done, onSubmit
       <p aria-live="polite" className="rounded-lg bg-surface-sunken px-3 py-2 text-sm text-ink">
         <span className="font-bold">{activeWord.number} {dirLabel(activeWord.dir)}:</span> {t(activeWord.clue)} <span className="text-ink-muted">({activeWord.length})</span>
       </p>
-      <div className="grid gap-5 lg:grid-cols-[auto_minmax(0,1fr)] lg:items-start">
+      <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(15rem,20rem)] lg:items-start">
         <div className="max-w-full overflow-x-auto pb-1">
           <div role="group" aria-label={t({ en: 'Crossword grid', vi: 'Lưới ô chữ' })} className="grid w-max gap-0.5" style={{ gridTemplateColumns: `repeat(${cols}, 2.75rem)` }}>
             {Array.from({ length: rows * cols }, (_, i) => {
