@@ -26,7 +26,8 @@ export function createJudge0Client(opts: { url: string; token?: string; /** Extr
   const waitMs = opts.waitMs ?? 20_000;
   // Every poll is one request on a hosted judge's quota, so ask once a second, not faster.
   const pollMs = opts.pollMs ?? 1000;
-  const headers: Record<string, string> = { 'Content-Type': 'application/json', ...(opts.token ? { 'X-Auth-Token': opts.token } : {}), ...opts.headers };
+  // A hosted judge asks scripts to name themselves in User-Agent.
+  const headers: Record<string, string> = { 'Content-Type': 'application/json', 'User-Agent': 'SciPal-Judge0Client/1.0', ...(opts.token ? { 'X-Auth-Token': opts.token } : {}), ...opts.headers };
 
   async function call(path: string, init?: RequestInit): Promise<unknown> {
     let res: Response;
