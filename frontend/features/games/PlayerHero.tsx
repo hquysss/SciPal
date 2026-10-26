@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { Flame, Snowflake } from 'lucide-react';
 import { useLanguage } from '@scipal/hooks';
 import { levelOfXp } from '@scipal/types';
+import { GlitchBackdrop } from '@/components/GlitchBackdrop';
 import { DailyGoalRing } from '@/features/habit/DailyGoalRing';
 import { useHabit, type Habit } from '@/features/habit/habitApi';
 import { useTotalXp } from '@/features/lessons/useTotalXp';
@@ -51,6 +52,7 @@ export function PlayerHeroView({ xp, habit }: { xp: number | null; habit: Habit 
 
   return (
     <section aria-label={t({ en: 'Your player card', vi: 'Thẻ người chơi của em' })} className={`${styles.hero} flex flex-col gap-6 p-5 sm:p-7 md:flex-row md:items-center md:justify-between`}>
+      <GlitchBackdrop />
       {info && (
         <div className="flex min-w-0 flex-1 items-center gap-4">
           <div className={styles.levelBadge}>
