@@ -1,6 +1,7 @@
 'use client';
 
 import { createBrowserClient } from '@/lib/supabase';
+import type { ReviewCard } from './ReviewSession';
 
 /** What waits in the learner's word list: due cards, the whole list, the next few English sides, the next due time. */
 export type ReviewSummary = { due: number; total: number; preview: string[]; nextDue: string | null };
@@ -49,5 +50,34 @@ export async function countDueWords(now = new Date()): Promise<number> {
     return error ? 0 : count ?? 0;
   } catch {
     return 0;
+  }
+}
+
+const CARD = 'term_en, term_vi, ipa, part_of_speech, definition_en, definition_vi, example_en, example_vi';
+/** Cards in one practice round. */
+const PRACTICE_ROUND = 20;
+
+/**
+ * A practice round from the whole word list, due or not, in a random order. Practice is not graded:
+ * nothing goes to the server, so it earns no XP and leaves the schedule alone. Null when unreadable.
+ */
+export async function getPracticeDeck(): Promise<ReviewCard[] | null> {
+  try {
+    const { data, error } = await createBrowserClient().from('user_terms').select(`term_id, entry_id, terms(${CARD}), dictionary_entries(${CARD})`).limit(500);
+    if (error) return null;
+    const one = (value: unknown) => ((Array.isArray(value) ? value[0] : value) ?? null) as Omit<ReviewCard, 'term_id'> | null;
+    type Row = { term_id: string | null; entry_id: string | null; terms: unknown; dictionary_entries: unknown };
+    const cards = ((data ?? []) as Row[]).flatMap((row) => {
+      const word = one(row.terms) ?? one(row.dictionary_entries);
+      const id = row.term_id ?? row.entry_id;
+      return word && id ? [{ term_id: id, ...word }] : [];
+    });
+    for (let i = cards.length - 1; i > 0; i -= 1) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [cards[i], cards[j]] = [cards[j]!, cards[i]!];
+    }
+    return cards.slice(0, PRACTICE_ROUND);
+  } catch {
+    return null;
   }
 }
