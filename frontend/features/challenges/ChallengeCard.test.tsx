@@ -32,10 +32,13 @@ describe('ChallengeCardView', () => {
     expect(onAnswer.mock.calls).toEqual([['c1', 'accept'], ['c1', 'decline']]);
   });
 
-  it('shows the challenger it is waiting, with no buttons', () => {
-    render(<ChallengeCardView list={{ today: '2026-11-01', challenges: [c({ status: 'pending', starts_on: null, ends_on: null })] }} onAnswer={vi.fn()} />);
+  it('shows the challenger it is waiting, with only a cancel button', () => {
+    const onAnswer = vi.fn();
+    render(<ChallengeCardView list={{ today: '2026-11-01', challenges: [c({ status: 'pending', starts_on: null, ends_on: null })] }} onAnswer={onAnswer} />);
     expect(screen.getByText('Đang chờ Bình trả lời.')).toBeTruthy();
-    expect(screen.queryByRole('button')).toBeNull();
+    expect(screen.getAllByRole('button').map((b) => b.textContent)).toEqual(['Huỷ lời thách đấu']);
+    fireEvent.click(screen.getByRole('button', { name: 'Huỷ lời thách đấu' }));
+    expect(onAnswer.mock.calls).toEqual([['c1', 'cancel']]);
   });
 
   it('shows both XP totals and the days left while running', () => {

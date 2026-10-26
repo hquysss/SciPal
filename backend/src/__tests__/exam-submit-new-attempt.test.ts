@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import Fastify from 'fastify';
 import { clampStartedAt, examRoutes } from '../routes/exam.js';
 import { mockQuery, mockSupabase, rpcCalls, type MockBuilder } from './helpers/supabaseMock.js';
@@ -27,7 +27,15 @@ async function build(tables: Record<string, MockBuilder | MockBuilder[]>, user: 
 const submit = (app: Awaited<ReturnType<typeof build>>, extra: Record<string, unknown> = {}) =>
   app.inject({ method: 'POST', url: '/api/score/exam', payload: { blueprint_id: BP, attempt_id: A1, answers, ...extra } });
 
-beforeEach(() => { rpcCalls.length = 0; });
+// The fixed exam dates must stay inside the 7-day window that clamps started_at, whatever today is.
+beforeEach(() => {
+  rpcCalls.length = 0;
+  vi.useFakeTimers({ toFake: ['Date'] });
+  vi.setSystemTime(new Date('2026-10-20T10:00:00Z'));
+});
+afterEach(() => {
+  vi.useRealTimers();
+});
 
 describe('submitting an attempt the server has not seen', () => {
   it('opens the attempt, scores it, counts it once, and gives XP and a streak for the day it was finished', async () => {

@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { Swords } from 'lucide-react';
 import { useLanguage } from '@scipal/hooks';
 import { Button } from '@/components/ui/button';
-import { answerChallenge, daysLeft, getChallenges, type Challenge, type ChallengeList } from './challengesApi';
+import { answerChallenge, daysLeft, getChallenges, type Challenge, type ChallengeAnswer, type ChallengeList } from './challengesApi';
 
 type Bilingual = { en: string; vi: string };
 
@@ -27,7 +27,7 @@ function Bar({ label, xp, max, mine }: { label: string; xp: number; max: number;
   );
 }
 
-function Item({ c, today, onAnswer, busy }: { c: Challenge; today: string; onAnswer: (id: string, a: 'accept' | 'decline') => void; busy: boolean }) {
+function Item({ c, today, onAnswer, busy }: { c: Challenge; today: string; onAnswer: (id: string, a: ChallengeAnswer) => void; busy: boolean }) {
   const { t } = useLanguage();
   const them = c.other.display_name?.trim() || t({ en: 'Your friend', vi: 'Bạn của bạn' });
   const left = daysLeft(c, today);
@@ -66,6 +66,12 @@ function Item({ c, today, onAnswer, busy }: { c: Challenge; today: string; onAns
           <Button type="button" variant="outline" disabled={busy} onClick={() => onAnswer(c.id, 'decline')}>{t({ en: 'Decline', vi: 'Từ chối' })}</Button>
         </div>
       )}
+      {c.status === 'pending' && !c.incoming && (
+        <div className="flex flex-wrap items-center gap-2">
+          <Button type="button" variant="outline" disabled={busy} onClick={() => onAnswer(c.id, 'cancel')}>{t({ en: 'Cancel challenge', vi: 'Huỷ lời thách đấu' })}</Button>
+          <span className="text-xs text-ink-muted">{t({ en: 'Expires after 7 days without an answer.', vi: 'Tự hết hạn sau 7 ngày nếu chưa được trả lời.' })}</span>
+        </div>
+      )}
     </li>
   );
 }
@@ -74,7 +80,7 @@ export function ChallengeCardView({ list, error, busy = false, onAnswer }: {
   list: ChallengeList;
   error?: Bilingual | null;
   busy?: boolean;
-  onAnswer: (id: string, answer: 'accept' | 'decline') => void;
+  onAnswer: (id: string, answer: ChallengeAnswer) => void;
 }) {
   const { t } = useLanguage();
   return (
@@ -116,7 +122,7 @@ export function ChallengeCard() {
   }, [load]);
   if (!list) return null;
 
-  const answer = async (id: string, a: 'accept' | 'decline') => {
+  const answer = async (id: string, a: ChallengeAnswer) => {
     setBusy(true);
     const result = await answerChallenge(id, a);
     setError(result.ok ? null : { vi: result.error.error ?? 'Chưa xử lý được.', en: result.error.error_en ?? 'That did not work.' });
