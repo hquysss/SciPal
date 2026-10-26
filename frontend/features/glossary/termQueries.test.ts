@@ -4,7 +4,13 @@ import { getAllTerms } from './termQueries';
 const { read, columns } = vi.hoisted(() => ({ read: vi.fn(), columns: [] as string[] }));
 vi.mock('@scipal/supabase', () => ({
   createBrowserClient: () => ({
-    from: () => ({ select: (c: string) => { columns.push(c); return { order: () => read() }; } }),
+    from: () => ({
+      select: (c: string) => {
+        columns.push(c);
+        const chain = { order: () => chain, range: (from: number, to: number) => read(from, to) };
+        return chain;
+      },
+    }),
   }),
 }));
 
@@ -43,6 +49,14 @@ describe('glossary database reads', () => {
     read.mockResolvedValue({ data: [], error: null });
     await getAllTerms();
     expect(columns.at(-1)).toContain('ipa');
+  });
+
+  it('reads past the 1000-row page limit, page by page', async () => {
+    const page = (n: number, from: number) => Array.from({ length: n }, (_, i) => ({ ...allele, id: `t${from + i}` }));
+    read.mockImplementation(async (from: number) => ({ data: from === 0 ? page(1000, 0) : page(904, 1000), error: null }));
+    const terms = await getAllTerms();
+    expect(terms).toHaveLength(1904);
+    expect(read.mock.calls).toEqual([[0, 999], [1000, 1999]]);
   });
 
   it('reads newly added terms on the next request', async () => {

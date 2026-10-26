@@ -2,7 +2,7 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it, vi } from 'vitest';
 import { countRawColors } from '../../lib/theme/rawColors';
 import { GlossaryHeader } from './GlossaryHeader';
-import { GlossarySearch } from './GlossarySearch';
+import { countLabel, GlossarySearch } from './GlossarySearch';
 
 vi.mock('@scipal/hooks', () => ({
   useLanguage: () => ({ lang: 'en', t: (o: { en: string; vi: string }) => o.en }),
@@ -91,5 +91,14 @@ describe('Glossary', () => {
     const html = renderToStaticMarkup(<GlossarySearch terms={[TERM]} />);
     expect(html).not.toContain('Show 20 more');
     expect(html).not.toContain('Showing');
+  });
+});
+
+describe('countLabel', () => {
+  it('shows up to three digits, then 999+', () => {
+    expect(countLabel(0)).toBe('0');
+    expect(countLabel(999)).toBe('999');
+    expect(countLabel(1000)).toBe('999+');
+    expect(countLabel(1904)).toBe('999+');
   });
 });

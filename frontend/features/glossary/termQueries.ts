@@ -18,23 +18,34 @@ export interface TermItem {
   subject_order: number | null;
 }
 
+/** PostgREST hands back at most this many rows per request (Supabase's max-rows), so the list is read in pages. */
+const PAGE = 1000;
+
 export async function getAllTerms(subjectSlug?: string): Promise<TermItem[]> {
   const supabase = createBrowserClient();
-  let query = supabase
-    .from('terms')
-    .select('id, term_en, term_vi, part_of_speech, definition_en, definition_vi, example_en, example_vi, ipa, subjects!inner(slug, name_en, name_vi, sort_order)')
-    .order('term_en');
+  const page = (from: number) => {
+    let query = supabase
+      .from('terms')
+      .select('id, term_en, term_vi, part_of_speech, definition_en, definition_vi, example_en, example_vi, ipa, subjects!inner(slug, name_en, name_vi, sort_order)')
+      // id breaks ties, so a page boundary never repeats or skips a term with the same English name.
+      .order('term_en')
+      .order('id')
+      .range(from, from + PAGE - 1);
+    if (subjectSlug) query = query.eq('subjects.slug', subjectSlug);
+    return query;
+  };
 
-  if (subjectSlug) {
-    query = query.eq('subjects.slug', subjectSlug);
+  const data = [];
+  for (let from = 0; ; from += PAGE) {
+    const { data: rows, error } = await page(from);
+    if (error) {
+      throw new Error('Unable to load glossary terms', { cause: error });
+    }
+    data.push(...(rows ?? []));
+    if (!rows || rows.length < PAGE) break;
   }
 
-  const { data, error } = await query;
-  if (error) {
-    throw new Error('Unable to load glossary terms', { cause: error });
-  }
-
-  return (data ?? []).map(({ subjects, ...term }) => {
+  return data.map(({ subjects, ...term }) => {
     const subject = Array.isArray(subjects) ? subjects[0] : subjects;
     return {
       ...term,
