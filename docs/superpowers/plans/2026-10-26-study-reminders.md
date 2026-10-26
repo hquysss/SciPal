@@ -16,7 +16,7 @@ Spec: `docs/superpowers/specs/2026-10-26-study-reminders-design.md`. Đã chốt
   - `GET /api/internal/reminders/run` (cron, `cronAuthorized`, thêm vào `isPublicPath`).
   - `GET/PATCH /api/me/reminders` (`{hour|null, in_app, email}`, kiểm tra 0..23).
   - `POST /api/reminders/unsubscribe` (token, công khai như newsletter, chỉ tắt `reminder_email`).
-- `vercel.json`: cron `0 * * * *` cho reminders.
+- Không sửa `vercel.json`: cron-job.org gọi `GET <API>/api/internal/reminders/run` mỗi giờ (phút 0, múi giờ bất kỳ vì server tự tính giờ VN) kèm header `Authorization: Bearer <CRON_SECRET>`.
 - Test: chọn đúng người, hai nội dung, chạy lặp không trùng, email lỗi không chặn trong app, token sai bị từ chối, PATCH sai giờ bị 400.
 
 ## Task 3: Web
@@ -29,5 +29,5 @@ Spec: `docs/superpowers/specs/2026-10-26-study-reminders-design.md`. Đã chốt
 `pnpm turbo typecheck`, test backend + frontend liên quan, `next build` nếu động tới route.
 
 ## Rủi ro
-- Cron theo giờ cần gói Vercel Pro (Hobby chỉ cho cron mỗi ngày, deploy sẽ lỗi). Nếu gói là Hobby: đổi thành một giờ chung, bỏ `reminder_hour`.
+- Cron nằm ngoài repo: bạn tạo job trên cron-job.org sau khi deploy (URL, header Bearer, chu kỳ mỗi giờ). Job bị tắt thì không ai được nhắc.
 - Migration chỉ thêm cột/hàm, chưa áp lên DB thật cho tới khi bạn nói.
