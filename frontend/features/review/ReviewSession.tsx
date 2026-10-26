@@ -2,13 +2,14 @@
 
 import Link from 'next/link';
 import { useCallback, useEffect, useState } from 'react';
-import { Volume2 } from 'lucide-react';
+import { RotateCcw, Volume2 } from 'lucide-react';
 import { useLanguage } from '@scipal/hooks';
 import { buttonVariants } from '@/components/ui/button';
 import { authoringCall } from '@/features/authoring/apiClient';
 import { speakTerm } from '@/features/glossary/pronunciation';
 import type { NewBadge } from '@scipal/types';
 import { BadgeUnlockQueue } from '@/features/badges/BadgeUnlockQueue';
+import { getPracticeDeck } from './reviewApi';
 
 /** A due card of the learner's word list, with the term it shows. */
 export type ReviewCard = {
@@ -82,11 +83,32 @@ function ReviewCards({ cards, hasWords, nextDue, onBadges }: ReviewProps & { onB
   const [busy, setBusy] = useState(false);
   const [failed, setFailed] = useState(false);
   const [xp, setXp] = useState(0);
-  const card = cards[index];
+  // Practice: another round over the whole list once today's cards are done. Not graded, no XP.
+  const [practice, setPractice] = useState<ReviewCard[] | null>(null);
+  const [loadingPractice, setLoadingPractice] = useState(false);
+  const [practiceFailed, setPracticeFailed] = useState(false);
+  const deck = practice ?? cards;
+  const card = deck[index];
+
+  const startPractice = useCallback(async () => {
+    setLoadingPractice(true);
+    setPracticeFailed(false);
+    const round = await getPracticeDeck();
+    setLoadingPractice(false);
+    if (!round?.length) return setPracticeFailed(true);
+    setPractice(round);
+    setFlipped(false);
+    setIndex(0);
+  }, []);
 
   const grade = useCallback(
     async (value: Grade) => {
       if (!card || busy) return;
+      if (practice) {
+        setFlipped(false);
+        setIndex((i) => i + 1);
+        return;
+      }
       setBusy(true);
       setFailed(false);
       const res = await authoringCall<{ due_at: string; xp_earned: number; new_badges?: NewBadge[] }>(`/api/me/terms/${encodeURIComponent(card.term_id)}/review`, 'POST', { grade: value });
@@ -97,7 +119,7 @@ function ReviewCards({ cards, hasWords, nextDue, onBadges }: ReviewProps & { onB
       setFlipped(false);
       setIndex((i) => i + 1);
     },
-    [card, busy, onBadges],
+    [card, busy, onBadges, practice],
   );
 
   useEffect(() => {
@@ -132,17 +154,33 @@ function ReviewCards({ cards, hasWords, nextDue, onBadges }: ReviewProps & { onB
     }
     return (
       <section className="flex flex-col items-start gap-3 rounded-xl border border-line bg-surface p-6">
-        <h2 className="text-xl font-bold text-ink">{t({ en: 'Done for today', vi: 'Xong phần ôn hôm nay' })}</h2>
+        <h2 className="text-xl font-bold text-ink">
+          {practice ? t({ en: 'Practice round done', vi: 'Xong lượt ôn thêm' }) : t({ en: 'Done for today', vi: 'Xong phần ôn hôm nay' })}
+        </h2>
         {xp > 0 && <p className="font-semibold text-action">+{xp} XP</p>}
-        {nextDue && (
+        {nextDue && !practice && (
           <p className="text-ink-muted">
             {t({ en: 'Next review', vi: 'Lần ôn tiếp theo' })}:{' '}
             {new Date(nextDue).toLocaleString(lang === 'en' ? 'en-GB' : 'vi-VN', { dateStyle: 'medium', timeStyle: 'short' })}
           </p>
         )}
-        <Link href="/glossary?filter=saved" className={buttonVariants({ variant: 'outline' })}>
-          {t({ en: 'My words', vi: 'Sổ từ của tôi' })}
-        </Link>
+        <p className="text-sm text-ink-muted">
+          {t({ en: 'Want more? Go over your saved words again. Practice does not change your schedule or earn XP.', vi: 'Muốn ôn tiếp? Lật lại các từ đã lưu. Ôn thêm không đổi lịch ôn và không cộng XP.' })}
+        </p>
+        <div className="flex flex-wrap gap-2">
+          <button type="button" disabled={loadingPractice} onClick={() => void startPractice()} className={buttonVariants({ size: 'lg' })}>
+            <RotateCcw aria-hidden="true" className="h-4 w-4" />
+            {loadingPractice ? t({ en: 'Loading…', vi: 'Đang tải…' }) : t({ en: 'Practise my words again', vi: 'Ôn lại các từ đã lưu' })}
+          </button>
+          <Link href="/glossary?filter=saved" className={buttonVariants({ variant: 'outline', size: 'lg' })}>
+            {t({ en: 'My words', vi: 'Sổ từ của tôi' })}
+          </Link>
+        </div>
+        {practiceFailed && (
+          <p role="status" className="text-sm font-semibold text-ink">
+            {t({ en: 'Could not load your words. Try again.', vi: 'Chưa tải được sổ từ. Thử lại nhé.' })}
+          </p>
+        )}
       </section>
     );
   }
@@ -150,35 +188,61 @@ function ReviewCards({ cards, hasWords, nextDue, onBadges }: ReviewProps & { onB
   return (
     <section className="flex flex-col gap-4">
       <p className="text-sm text-ink-muted">
-        {t({ en: `Card ${index + 1} of ${cards.length}`, vi: `Thẻ ${index + 1} / ${cards.length}` })}
+        {practice
+          ? t({ en: `Practice · card ${index + 1} of ${deck.length} · no XP`, vi: `Ôn thêm · thẻ ${index + 1} / ${deck.length} · không tính XP` })
+          : t({ en: `Card ${index + 1} of ${cards.length}`, vi: `Thẻ ${index + 1} / ${cards.length}` })}
       </p>
-      <article className="flex min-h-64 flex-col items-center justify-center gap-3 rounded-xl border border-line bg-surface p-6 text-center shadow-[0_1px_0_var(--line)]">
-        <div className="flex flex-wrap items-center justify-center gap-2">
-          <h2 lang="en" className="text-3xl font-bold text-ink">
-            {card.term_en}
-          </h2>
-          <ListenButton text={card.term_en} lang="en" label={t({ en: `Listen: ${card.term_en}`, vi: `Nghe: ${card.term_en}` })} />
-        </div>
-        {card.ipa && (
-          <span lang="en" className="text-ink-muted">
-            /{card.ipa}/
-          </span>
-        )}
-        {flipped && (
-          <div className="flex w-full flex-col items-center gap-3 border-t border-line pt-3">
+      {/* A real card turning over: both faces share one grid cell and the inner layer rotates on Y.
+          Keyed by card, so the next card arrives face up instead of spinning back. */}
+      <div key={`${practice ? 'p' : 'r'}-${index}`} className="[perspective:1400px]">
+        <div
+          className={`grid transition-transform duration-500 ease-[cubic-bezier(0.2,0.7,0.2,1)] [transform-style:preserve-3d] motion-reduce:transition-none ${flipped ? '[transform:rotateY(180deg)]' : ''}`}
+        >
+          <article
+            aria-hidden={flipped || undefined}
+            inert={flipped || undefined}
+            onClick={() => setFlipped(true)}
+            className="flex min-h-72 cursor-pointer flex-col items-center justify-center gap-3 rounded-2xl border border-line bg-surface p-6 text-center shadow-[0_18px_40px_-28px_color-mix(in_srgb,var(--ink)_45%,transparent)] [backface-visibility:hidden] [grid-area:1/1]"
+          >
+            <span className="text-xs font-bold uppercase tracking-wider text-ink-muted">English</span>
             <div className="flex flex-wrap items-center justify-center gap-2">
-              <p lang="vi" className="text-2xl font-bold text-accent-ink">{card.term_vi}</p>
-              <ListenButton text={card.term_vi} lang="vi" label={t({ en: `Listen: ${card.term_vi}`, vi: `Nghe: ${card.term_vi}` })} />
+              <h2 lang="en" className="text-3xl font-bold text-ink">
+                {card.term_en}
+              </h2>
+              <ListenButton text={card.term_en} lang="en" label={t({ en: `Listen: ${card.term_en}`, vi: `Nghe: ${card.term_en}` })} />
             </div>
-            {card.part_of_speech && <p className="text-sm text-ink-muted">{card.part_of_speech}</p>}
-            {/* Both languages side by side: the meaning is learnt as a pair, whatever the interface language. */}
-            <div className="grid w-full gap-3 text-left sm:grid-cols-2">
-              <Side lang="en" title="English" definition={card.definition_en} example={card.example_en} />
-              <Side lang="vi" title="Tiếng Việt" definition={card.definition_vi} example={card.example_vi} />
-            </div>
-          </div>
-        )}
-      </article>
+            {card.ipa && (
+              <span lang="en" className="text-ink-muted">
+                /{card.ipa}/
+              </span>
+            )}
+            <span aria-hidden="true" className="mt-2 text-sm text-ink-muted">
+              {t({ en: 'Tap the card or press Space to flip', vi: 'Chạm vào thẻ hoặc bấm Space để lật' })}
+            </span>
+          </article>
+          <article
+            aria-hidden={!flipped || undefined}
+            inert={!flipped || undefined}
+            className="flex min-h-72 flex-col items-center justify-center gap-3 rounded-2xl border border-line border-t-4 border-t-[var(--sky)] bg-surface p-6 text-center shadow-[0_18px_40px_-28px_color-mix(in_srgb,var(--ink)_45%,transparent)] [backface-visibility:hidden] [grid-area:1/1] [transform:rotateY(180deg)]"
+          >
+            {flipped && (
+              <>
+                <p lang="en" className="text-sm font-semibold text-ink-muted">{card.term_en}</p>
+                <div className="flex flex-wrap items-center justify-center gap-2">
+                  <p lang="vi" className="text-3xl font-bold text-accent-ink">{card.term_vi}</p>
+                  <ListenButton text={card.term_vi} lang="vi" label={t({ en: `Listen: ${card.term_vi}`, vi: `Nghe: ${card.term_vi}` })} />
+                </div>
+                {card.part_of_speech && <p className="text-sm text-ink-muted">{card.part_of_speech}</p>}
+                {/* Both languages side by side: the meaning is learnt as a pair, whatever the interface language. */}
+                <div className="grid w-full gap-3 text-left sm:grid-cols-2">
+                  <Side lang="en" title="English" definition={card.definition_en} example={card.example_en} />
+                  <Side lang="vi" title="Tiếng Việt" definition={card.definition_vi} example={card.example_vi} />
+                </div>
+              </>
+            )}
+          </article>
+        </div>
+      </div>
 
       {failed && (
         <p role="status" className="text-sm font-semibold text-ink">

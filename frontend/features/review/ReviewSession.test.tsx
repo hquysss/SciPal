@@ -7,6 +7,8 @@ import { ReviewSession, type ReviewCard } from './ReviewSession';
 vi.mock('@scipal/hooks', () => ({ useLanguage: () => ({ lang: 'vi', t: (o: { vi: string }) => o.vi }) }));
 const call = vi.hoisted(() => vi.fn());
 vi.mock('@/features/authoring/apiClient', () => ({ authoringCall: call }));
+const practice = vi.hoisted(() => vi.fn());
+vi.mock('./reviewApi', () => ({ getPracticeDeck: practice }));
 vi.mock('@/features/glossary/pronunciation', () => ({ speakTerm: vi.fn(async () => 'spoken'), warmSpeech: vi.fn() }));
 
 const card = (id: string, en: string, vi: string): ReviewCard => ({
@@ -68,7 +70,29 @@ describe('ReviewSession', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Lật thẻ' }));
     fireEvent.click(screen.getByRole('button', { name: /Khó/ }));
     expect((await screen.findByRole('status')).textContent).toBe('Chưa lưu được. Thử lại nhé.');
-    expect(screen.getByText('algorithm')).toBeTruthy();
+    expect(screen.getByText('Thẻ 1 / 2')).toBeTruthy();
+  });
+
+  it('practises the saved words again after today, without grading on the server', async () => {
+    practice.mockResolvedValue([B]);
+    render(<ReviewSession cards={[]} hasWords nextDue={null} />);
+    fireEvent.click(screen.getByRole('button', { name: /Ôn lại các từ đã lưu/ }));
+    expect(await screen.findByText('Ôn thêm · thẻ 1 / 1 · không tính XP')).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'Lật thẻ' }));
+    fireEvent.click(screen.getByRole('button', { name: /Nhớ/ }));
+    expect(call).not.toHaveBeenCalled();
+    expect(screen.getByRole('heading', { name: 'Xong lượt ôn thêm' })).toBeTruthy();
+  });
+
+  it('turns the card over: the back stays hidden from screen readers until flipped', () => {
+    render(<ReviewSession cards={[A]} hasWords nextDue={null} />);
+    const [front, back] = Array.from(document.querySelectorAll('article'));
+    expect(front!.getAttribute('aria-hidden')).toBeNull();
+    expect(back!.getAttribute('aria-hidden')).toBe('true');
+    fireEvent.click(front!);
+    expect(front!.getAttribute('aria-hidden')).toBe('true');
+    expect(back!.getAttribute('aria-hidden')).toBeNull();
+    expect(back!.parentElement!.className).toContain('rotateY(180deg)');
   });
 
   it('finishes with the XP earned in this round', async () => {
