@@ -6,7 +6,21 @@ import { useCallback, useEffect, useId, useLayoutEffect, useRef, useState } from
 import { Bell, X } from 'lucide-react';
 import { useLanguage } from '@scipal/hooks';
 import { createBrowserClient } from '@scipal/supabase';
+import { TONES, toneOfKind } from '@/features/newsletter/announcementTone';
 import { clearNotifications, deleteNotification, listNotifications, markNotificationsRead, type Notification } from './gamesApi';
+
+/** The label and icon of a coloured announcement, so the colour is never the only cue. */
+function ToneTag({ kind, t }: { kind: string; t: (text: { vi: string; en: string }) => string }) {
+  const tone = toneOfKind(kind);
+  if (!tone) return null;
+  const { icon: Icon, label } = TONES[tone];
+  return (
+    <span className="mb-0.5 flex items-center gap-1 text-xs font-bold uppercase tracking-wide text-ink">
+      <Icon aria-hidden="true" className="size-3.5" />
+      {t(label)}
+    </span>
+  );
+}
 
 // The nav mounts two bells (desktop and phone, one hidden by CSS); both load on the same events,
 // so they share one request while it is in flight instead of fetching twice.
@@ -143,8 +157,9 @@ export function NotificationBell({ className = '' }: { className?: string }) {
             </div>
             <ul className="flex max-h-96 flex-col overflow-y-auto">
               {items.map((n) => (
-                <li key={n.id} className="flex items-start gap-1 rounded-lg hover:bg-surface-sunken">
+                <li key={n.id} className={`flex items-start gap-1 rounded-lg hover:bg-surface-sunken ${toneOfKind(n.kind) ? `border-l-4 ${TONES[toneOfKind(n.kind)!].bar}` : ''}`}>
                   <Link prefetch={false} href={n.link ?? '#'} onClick={() => setOpen(false)} className={`block min-w-0 flex-1 break-words rounded-lg px-3 py-2.5 text-sm ${n.read ? 'text-ink-muted' : 'font-semibold text-ink'}`}>
+                    <ToneTag kind={n.kind} t={t} />
                     {t(n.title)}
                     <span className="block text-xs font-normal text-ink-muted">{new Date(n.createdAt).toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh', dateStyle: 'short', timeStyle: 'short' })}</span>
                   </Link>

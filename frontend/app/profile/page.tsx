@@ -8,6 +8,7 @@ import { parseEducationLevel, resolveEducationLevel, type EducationLevel } from 
 import { ProfileCard } from '@/features/profile/ProfileCard';
 import { ProfileBreadcrumb } from '@/features/profile/ProfileBreadcrumb';
 import { AccountSettings } from '@/features/profile/AccountSettings';
+import { NewsletterCard } from '@/features/newsletter/NewsletterCard';
 import { TeacherRequestCard } from '@/features/teacherRequests/TeacherRequestCard';
 import { ReportProblemCard } from '@/features/problemReports/ReportProblem';
 import { pageTitle } from '@/lib/pageTitle';
@@ -84,6 +85,7 @@ export default async function ProfilePage() {
         <div className="flex flex-col gap-6">
           {role === 'student' && <TeacherRequestCard />}
           <AccountSettings currentRole={role} educationPreference={educationPreference} isAuthenticated />
+          <NewsletterCard email={user.email ?? null} />
         </div>
       </div>
 
