@@ -54,7 +54,7 @@ describe('admin announcements', () => {
     const notifications = ok();
     const app = await build(admin, { announcements: [ok({ ...stored, id: ID }), ok(null)], notifications });
     expect((await app.inject({ method: 'DELETE', url: `/api/admin/announcements/${ID}` })).statusCode).toBe(204);
-    expect(notifications.eqCalls).toContainEqual(['kind', 'announcement']);
+    expect(notifications.inCalls).toContainEqual(['kind', ['announcement', 'announcement:good', 'announcement:warn', 'announcement:urgent']]);
     expect(notifications.eqCalls).toContainEqual(['title_en', 'New lessons']);
     expect((await app.inject({ method: 'DELETE', url: '/api/admin/announcements/not-an-id' })).statusCode).toBe(400);
     await app.close();
@@ -80,6 +80,24 @@ describe('admin announcements', () => {
     expect(sent[1].subject).toBe('New lessons');
     expect(sent[0].headers['List-Unsubscribe']).toContain('/newsletter/unsubscribe?token=');
     expect(subscribers.eqCalls).toContainEqual(['status', 'confirmed']);
+    await app.close();
+  });
+
+  it('stores the tone, writes it into the bell notice kind and names it in the e-mail', async () => {
+    const notifications = ok();
+    const subscribers = ok([{ id: SUB_A, email: 'a@gmail.com', locale: 'vi', levels: [] }]);
+    const app = await build(admin, { announcements: [ok(null), ok({ ...stored, tone: 'warn' }), ok(null)], profiles: ok([{ id: 'u1' }]), notifications, newsletter_subscribers: subscribers });
+    const res = await app.inject({ method: 'POST', url: '/api/admin/announcements', payload: { ...payload, tone: 'warn' } });
+    expect(res.statusCode).toBe(201);
+    expect((notifications.inserted[0] as Array<{ kind: string }>)[0]!.kind).toBe('announcement:warn');
+    expect(JSON.parse(fetchMock.mock.calls[0]![1].body)[0].html).toContain('Lưu ý');
+    await app.close();
+  });
+
+  it('defaults the tone to info and rejects an unknown one', async () => {
+    const app = await build(admin, { announcements: [ok(null), ok(stored), ok(null)], profiles: ok([{ id: 'u1' }]), notifications: ok(), newsletter_subscribers: ok([]) });
+    expect((await app.inject({ method: 'POST', url: '/api/admin/announcements', payload })).statusCode).toBe(201);
+    expect((await app.inject({ method: 'POST', url: '/api/admin/announcements', payload: { ...payload, tone: 'purple' } })).statusCode).toBe(400);
     await app.close();
   });
 
