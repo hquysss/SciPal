@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it } from 'vitest';
 import Fastify from 'fastify';
 import { adminScheduledRoutes } from '../routes/adminScheduled.js';
+import { authPlugin } from '../plugins/auth.js';
 import { mockQuery, mockSupabase, type MockBuilder } from './helpers/supabaseMock.js';
 
 const admin = { id: 'a0000000-0000-4000-8000-000000000001', app_metadata: { app_role: 'admin' } };
@@ -66,6 +67,19 @@ describe('scheduled actions', () => {
     expect(res.json()).toEqual({ done: 1, failed: 0 });
     expect(site.updated[0]).toMatchObject({ maintenance: true });
     expect(finish.updated[0]).toMatchObject({ status: 'done' });
+    await app.close();
+  });
+
+  it('lets the cron secret past the real auth hook', async () => {
+    process.env.CRON_SECRET = 'c'.repeat(40);
+    const app = Fastify();
+    app.decorate('supabase', mockSupabase({ scheduled_actions: ok([]) }) as never);
+    await app.register(authPlugin);
+    await app.register(adminScheduledRoutes);
+    await app.ready();
+    const res = await app.inject({ method: 'GET', url: '/api/internal/scheduled/run', headers: { authorization: `Bearer ${process.env.CRON_SECRET}` } });
+    expect(res.statusCode).toBe(200);
+    expect(res.json()).toEqual({ done: 0, failed: 0 });
     await app.close();
   });
 

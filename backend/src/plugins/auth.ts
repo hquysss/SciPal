@@ -18,6 +18,8 @@ const isPublicPath = (path: string): boolean => {
   if (path.startsWith('/api/newsletter/')) return true;
   // Study reminders: the cron (checks CRON_SECRET) and the e-mail unsubscribe link (checks a signed token).
   if (path === '/api/internal/reminders/run' || path === '/api/reminders/unsubscribe') return true;
+  // Scheduled admin actions: the cron runner checks CRON_SECRET.
+  if (path === '/api/internal/scheduled/run') return true;
   // Exams and lesson practice need a session (the web asks for one too): a visitor could otherwise read
   // the questions and probe the answers through /api/practice/check.
   // Visitors look up glossary terms and kept entries; only a signed-in learner asks the AI.
