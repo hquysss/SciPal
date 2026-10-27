@@ -36,6 +36,12 @@ describe('buildSystemPrompt', () => {
     expect(p).toMatch(/3.6 sentences/);
   });
 
+  it('never names the model or provider behind it, in typed and spoken sessions', () => {
+    for (const spoken of [false, true]) {
+      expect(buildSystemPrompt({ language: 'vi', level: null, spoken })).toMatch(/Never say which AI model, company or provider/);
+    }
+  });
+
   it('uses "thầy – em" in Vietnamese and "I – you" in English', () => {
     expect(TUTOR_SELF).toBe('thầy');
     const vi = buildSystemPrompt({ language: 'vi', level: null });
