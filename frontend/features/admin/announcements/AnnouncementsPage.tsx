@@ -22,12 +22,13 @@ import {
   type AnnouncementAudience,
   type NewsletterLevel,
 } from '@/features/newsletter/newsletterApi';
+import { TONES, TONE_ORDER, type AnnouncementTone } from '@/features/newsletter/announcementTone';
 
 type Bilingual = { vi: string; en: string };
 type Loaded = { announcements: Announcement[]; audience: AnnouncementAudience; emailReady: boolean };
 
 const SCHEDULE_KINDS = ['announcement'] as const;
-const EMPTY = { title_vi: '', title_en: '', body_vi: '', body_en: '', link: '', level: '' as NewsletterLevel | '', send_app: true, send_email: false };
+const EMPTY = { title_vi: '', title_en: '', body_vi: '', body_en: '', link: '', level: '' as NewsletterLevel | '', tone: 'info' as AnnouncementTone, send_app: true, send_email: false };
 const dateOf = (iso: string) => new Intl.DateTimeFormat('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh', dateStyle: 'short', timeStyle: 'short' }).format(new Date(iso));
 
 /** Admin: write an announcement for every account's bell and/or the confirmed newsletter subscribers' inbox. */
@@ -215,6 +216,26 @@ export function AnnouncementsPage() {
           </Field>
         </div>
         <fieldset className="flex flex-col gap-2">
+          <legend className="mb-1 text-sm font-semibold text-ink">{t({ vi: 'Mức độ (màu thông báo)', en: 'Tone (notice colour)' })}</legend>
+          <div className="flex flex-wrap gap-2">
+            {TONE_ORDER.map((tone) => {
+              const { icon: Icon, label, chip } = TONES[tone];
+              return (
+                <label key={tone} className="inline-flex min-h-11 cursor-pointer items-center gap-2 rounded-lg border border-edge bg-surface px-3 text-sm font-medium text-ink has-[:checked]:border-ink has-[:checked]:bg-surface-sunken has-[:focus-visible]:outline has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-focus">
+                  <input type="radio" name="ann-tone" className="sr-only" checked={form.tone === tone} onChange={() => set('tone', tone)} />
+                  <span aria-hidden="true" className={`size-3 rounded-full ${chip}`} />
+                  <Icon aria-hidden="true" className="size-4" />
+                  {t(label)}
+                </label>
+              );
+            })}
+          </div>
+          <p className={`rounded-lg border-l-4 bg-surface-sunken px-3 py-2 text-sm text-ink ${TONES[form.tone].bar}`}>
+            <span className="font-semibold">{form.tone === 'info' ? '' : `${t(TONES[form.tone].label)} · `}</span>
+            {form.title_vi.trim() || t({ vi: 'Tiêu đề thông báo sẽ hiện ở đây', en: 'The announcement title shows here' })}
+          </p>
+        </fieldset>
+        <fieldset className="flex flex-col gap-2">
           <legend className="mb-1 text-sm font-semibold text-ink">{t({ vi: 'Gửi qua', en: 'Send through' })}</legend>
           <label className="flex min-h-11 items-center gap-3 text-sm text-ink">
             <input type="checkbox" className="h-5 w-5" checked={form.send_app} onChange={(e) => set('send_app', e.target.checked)} />
@@ -248,7 +269,7 @@ export function AnnouncementsPage() {
                 <Button type="button" variant="outline" onClick={() => void remove(a)}>{t({ vi: 'Xóa', en: 'Delete' })}</Button>
               </div>
               <p className="mt-1 text-sm text-ink-muted">
-                {dateOf(a.created_at)} · {t({ vi: `${a.app_count} trong app`, en: `${a.app_count} in-app` })} · {t({ vi: `${a.email_count} email`, en: `${a.email_count} e-mails` })}
+                {a.tone && a.tone !== 'info' ? `${t(TONES[a.tone].label)} · ` : ''}{dateOf(a.created_at)} · {t({ vi: `${a.app_count} trong app`, en: `${a.app_count} in-app` })} · {t({ vi: `${a.email_count} email`, en: `${a.email_count} e-mails` })}
                 {a.level ? ` · ${t(NEWSLETTER_LEVELS.find((l) => l.value === a.level)!.label)}` : ''}
               </p>
             </li>

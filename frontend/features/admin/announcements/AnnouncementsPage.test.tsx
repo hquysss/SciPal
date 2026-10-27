@@ -38,8 +38,24 @@ it('confirms the recipient counts, then sends once with one request id', async (
   fireEvent.click(screen.getByRole('button', { name: 'Gửi' }));
   await screen.findByText('Đã gửi: 42 thông báo trong app, 3 email.');
   expect(api.sendAnnouncement).toHaveBeenCalledTimes(1);
-  expect(api.sendAnnouncement.mock.calls[0]?.[0]).toMatchObject({ title_vi: 'Có bài mới', send_app: true, send_email: true, level: '', audience: { mode: 'all' } });
+  expect(api.sendAnnouncement.mock.calls[0]?.[0]).toMatchObject({ title_vi: 'Có bài mới', send_app: true, send_email: true, level: '', tone: 'info', audience: { mode: 'all' } });
   expect(api.sendAnnouncement.mock.calls[0]?.[0].client_request_id).toMatch(/^[0-9a-f-]{36}$/);
+});
+
+it('sends the tone the admin picks', async () => {
+  api.fetchAnnouncements.mockResolvedValue(loaded());
+  api.sendAnnouncement.mockResolvedValue({ ok: true, data: { announcement: { id: 'a', app_count: 42, email_count: 0 } } });
+  render(<AnnouncementsPage />);
+  await screen.findByText(/42 tài khoản · 3 đã xác nhận/);
+  fireEvent.change(screen.getByLabelText('Tiêu đề (tiếng Việt)'), { target: { value: 'Bảo trì' } });
+  fireEvent.change(screen.getByLabelText('Tiêu đề (tiếng Anh)'), { target: { value: 'Maintenance' } });
+  fireEvent.click(screen.getByRole('radio', { name: 'Lưu ý' }));
+  expect(screen.getByText('Bảo trì', { selector: 'p' })).toBeTruthy();
+  fireEvent.click(screen.getByRole('button', { name: 'Gửi thông báo' }));
+  await screen.findByText(/Sẽ gửi tới 42 tài khoản/);
+  fireEvent.click(screen.getByRole('button', { name: 'Gửi' }));
+  await screen.findByText(/Đã gửi: 42 thông báo/);
+  expect(api.sendAnnouncement.mock.calls[0]?.[0]).toMatchObject({ tone: 'warn' });
 });
 
 it('warns and blocks e-mail while the service is not configured', async () => {

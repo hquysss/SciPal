@@ -9,7 +9,7 @@ import { newsletterLink, NEWSLETTER_LEVELS } from './newsletter.js';
 
 const ID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const PAGE = 1000;
-const COLUMNS = 'id, title_vi, title_en, body_vi, body_en, link, level, send_app, send_email, app_count, email_count, created_at';
+const COLUMNS = 'id, title_vi, title_en, body_vi, body_en, link, level, tone, send_app, send_email, app_count, email_count, created_at';
 const LIST_LIMIT = 50;
 
 const msg = (error: string, error_en: string) => ({ error, error_en });
@@ -19,6 +19,18 @@ const INVALID = msg(
   'Tiêu đề tiếng Việt và tiếng Anh 1–120 ký tự, nội dung tối đa 1000 ký tự, chọn ít nhất một kênh gửi, người nhận là mọi tài khoản, ít nhất một vai trò hoặc 1–200 tài khoản, liên kết là đường dẫn trong SciPal (bắt đầu bằng /) hoặc https.',
   'Titles in Vietnamese and English are 1–120 characters, the text up to 1000, pick at least one channel, send to all accounts, at least one role or 1–200 accounts, and the link is a SciPal path (starting with /) or https.',
 );
+
+export const TONES = ['info', 'good', 'warn', 'urgent'] as const;
+export type Tone = (typeof TONES)[number];
+/** The e-mail band: a dark enough fill for white text, and the label said in words so colour is never the only cue. */
+const TONE_BAND: Record<Tone, { color: string; vi: string; en: string }> = {
+  info: { color: '#1d4ed8', vi: 'Thông tin', en: 'Info' },
+  good: { color: '#15803d', vi: 'Tin vui', en: 'Good news' },
+  warn: { color: '#a16207', vi: 'Lưu ý', en: 'Heads up' },
+  urgent: { color: '#b91c1c', vi: 'Khẩn', en: 'Urgent' },
+};
+/** What a bell notice's `kind` is for a tone: the plain `announcement` stays the info look. */
+export const noticeKind = (tone: Tone) => (tone === 'info' ? 'announcement' : `announcement:${tone}`);
 
 const ROLES = ['student', 'teacher', 'admin'] as const;
 const MAX_PICKED = 200;
@@ -41,7 +53,7 @@ function readAudience(value: unknown): Audience | null {
 }
 
 type Row = {
-  id: string; title_vi: string; title_en: string; body_vi: string; body_en: string; link: string | null; level: string | null;
+  id: string; title_vi: string; title_en: string; body_vi: string; body_en: string; link: string | null; level: string | null; tone: Tone;
   send_app: boolean; send_email: boolean; app_count: number; email_count: number; created_at: string;
 };
 type Subscriber = { id: string; email: string; locale: 'vi' | 'en'; levels: string[] };
@@ -73,10 +85,12 @@ function announcementEmail(row: Row, subscriber: Subscriber, unsubscribe: string
   const foot = unsubscribe
     ? `<hr><p><small>${subscriber.locale === 'en' ? 'Stop receiving these e-mails' : 'Ngừng nhận email này'}: <a href="${escapeHtml(unsubscribe)}">${escapeHtml(unsubscribe)}</a></small></p>`
     : '';
+  const band = TONE_BAND[row.tone] ?? TONE_BAND.info;
+  const tag = `<p style="margin:0 0 12px;padding:6px 12px;background:${band.color};color:#ffffff;font-weight:700;border-radius:6px">${subscriber.locale === 'en' ? band.en : band.vi}</p>`;
   return {
     to: subscriber.email,
     subject: subscriber.locale === 'en' ? row.title_en : row.title_vi,
-    html: `${first}<p><a href="${escapeHtml(href)}">${escapeHtml(href)}</a></p>${foot}`,
+    html: `${tag}${first}<p><a href="${escapeHtml(href)}">${escapeHtml(href)}</a></p>${foot}`,
     ...(unsubscribe ? { headers: { 'List-Unsubscribe': `<${unsubscribe}>` } } : {}),
   };
 }
@@ -126,7 +140,7 @@ async function recipientIds(supabase: NonNullable<FastifyInstance['supabase']>, 
 
 export type AnnouncementInput = {
   requestId: string; titleVi: string; titleEn: string; bodyVi: string; bodyEn: string; link: string | null;
-  level: (typeof NEWSLETTER_LEVELS)[number] | null; audience: Audience; sendApp: boolean; sendEmail: boolean;
+  level: (typeof NEWSLETTER_LEVELS)[number] | null; tone: Tone; audience: Audience; sendApp: boolean; sendEmail: boolean;
 };
 
 /** An announcement from a request body (or a scheduled payload); null when any field is invalid. A scheduled one passes its own request id. */
@@ -140,10 +154,11 @@ export function parseAnnouncement(raw: unknown, fallbackRequestId?: string): Ann
   const link = safeLink(body.link);
   const level = body.level === undefined || body.level === null || body.level === '' ? null : NEWSLETTER_LEVELS.find((l) => l === body.level);
   const audience = readAudience(body.audience);
+  const tone = body.tone === undefined || body.tone === null || body.tone === '' ? 'info' : TONES.find((x) => x === body.tone);
   const sendApp = body.send_app === true;
   const sendEmail = body.send_email === true;
-  if (!requestId || !titleVi || !titleEn || bodyVi === null || bodyEn === null || link === undefined || level === undefined || audience === null || (!sendApp && !sendEmail)) return null;
-  return { requestId, titleVi, titleEn, bodyVi, bodyEn, link, level, audience, sendApp, sendEmail };
+  if (!requestId || !titleVi || !titleEn || bodyVi === null || bodyEn === null || link === undefined || level === undefined || tone === undefined || audience === null || (!sendApp && !sendEmail)) return null;
+  return { requestId, titleVi, titleEn, bodyVi, bodyEn, link, level, tone, audience, sendApp, sendEmail };
 }
 
 /** Stores the announcement, writes its bell notices and sends its e-mail. Null when it could not even be stored. */
@@ -153,12 +168,12 @@ export async function deliverAnnouncement(
   createdBy: string | null,
   input: AnnouncementInput,
 ): Promise<{ announcement: Row; warning?: 'email_not_configured' | 'email_failed' } | null> {
-  const { titleVi, titleEn, link, level, audience, sendApp, sendEmail } = input;
+  const { titleVi, titleEn, link, level, tone, audience, sendApp, sendEmail } = input;
   const created = await supabase
     .from('announcements')
     .insert({
       client_request_id: input.requestId, created_by: createdBy,
-      title_vi: titleVi, title_en: titleEn, body_vi: input.bodyVi, body_en: input.bodyEn, link, level,
+      title_vi: titleVi, title_en: titleEn, body_vi: input.bodyVi, body_en: input.bodyEn, link, level, tone,
       send_app: sendApp, send_email: sendEmail,
     })
     .select(COLUMNS)
@@ -175,7 +190,7 @@ export async function deliverAnnouncement(
     for (let from = 0; from < ids.length; from += PAGE) {
       const chunk = ids.slice(from, from + PAGE);
       const { error: insertError } = await supabase.from('notifications').insert(
-        chunk.map((id) => ({ user_id: id, kind: 'announcement', title_en: titleEn, title_vi: titleVi, link: link ?? '/' })),
+        chunk.map((id) => ({ user_id: id, kind: noticeKind(tone), title_en: titleEn, title_vi: titleVi, link: link ?? '/' })),
       );
       if (insertError) log.error({ err: insertError }, 'Failed to store announcement notifications');
       else appCount += chunk.length;
@@ -276,7 +291,7 @@ export const adminAnnouncementRoutes: FastifyPluginAsync = async (app) => {
       const from = new Date(row.created_at);
       const until = new Date(from.getTime() + 10 * 60 * 1000);
       const removed = await supabase.from('notifications').delete()
-        .eq('kind', 'announcement').eq('title_en', row.title_en).eq('title_vi', row.title_vi)
+        .in('kind', TONES.map(noticeKind)).eq('title_en', row.title_en).eq('title_vi', row.title_vi)
         .gte('created_at', from.toISOString()).lte('created_at', until.toISOString());
       if (removed.error) {
         request.log.error({ err: removed.error }, 'Failed to remove announcement notifications');

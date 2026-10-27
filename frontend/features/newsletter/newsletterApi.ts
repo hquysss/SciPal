@@ -1,5 +1,6 @@
 import { createBrowserClient } from '@/lib/supabase';
 import { authoringCall, type ApiResult } from '../authoring/apiClient';
+import type { AnnouncementTone } from './announcementTone';
 
 // Newsletter sign-up (anyone), its e-mail links (confirm, unsubscribe) and the admin's announcements.
 
@@ -53,6 +54,7 @@ export type Announcement = {
   body_en: string;
   link: string | null;
   level: NewsletterLevel | null;
+  tone: AnnouncementTone;
   send_app: boolean;
   send_email: boolean;
   app_count: number;
@@ -74,6 +76,7 @@ export type AnnouncementInput = {
   body_en: string;
   link: string;
   level: NewsletterLevel | '';
+  tone: AnnouncementTone;
   send_app: boolean;
   send_email: boolean;
   audience?: { mode: 'all' } | { mode: 'role'; roles: string[] } | { mode: 'users'; user_ids: string[] };
