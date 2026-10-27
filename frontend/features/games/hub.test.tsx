@@ -78,6 +78,16 @@ describe('GamesListView', () => {
     expect(screen.getByText('10A1')).toBeTruthy();
   });
 
+  it('lets an admin delete a public game, and nobody else', () => {
+    const onDelete = vi.fn();
+    const { rerender } = render(<GamesListView lists={lists} isAdmin={false} onCreate={() => {}} onDelete={onDelete} />);
+    expect(screen.queryByRole('button', { name: /^Xóa/ })).toBeNull();
+    rerender(<GamesListView lists={lists} isAdmin onCreate={() => {}} onDelete={onDelete} />);
+    expect(screen.getAllByRole('button', { name: /^Xóa/ })).toHaveLength(2);
+    fireEvent.click(screen.getByRole('button', { name: 'Xóa Đố vui A' }));
+    expect(onDelete).toHaveBeenCalledWith(lists.publicGames[0]);
+  });
+
   it('has no filter for one kind, and an empty state that lets an admin create', () => {
     const onCreate = vi.fn();
     const { rerender } = render(<GamesListView lists={{ classGames: [], publicGames: [game('p1', 'quiz')] }} isAdmin={false} onCreate={onCreate} />);

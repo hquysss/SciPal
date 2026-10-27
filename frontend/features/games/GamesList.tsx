@@ -3,13 +3,13 @@
 import Link from 'next/link';
 
 import { useCallback, useEffect, useState, type ComponentType, type CSSProperties } from 'react';
-import { ArrowRight, Clock, Gamepad2, Grid3x3, Lightbulb, Shuffle, Sparkles, Users } from 'lucide-react';
+import { ArrowRight, Clock, Gamepad2, Grid3x3, Lightbulb, Shuffle, Sparkles, Trash2, Users } from 'lucide-react';
 import { useLanguage } from '@scipal/hooks';
 import { createBrowserClient } from '@scipal/supabase';
 import { Alert } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { CreateGameDialog } from './CreateGameDialog';
-import { KIND_LABEL, listGames, type Bilingual, type GameCard, type GameKind } from './gamesApi';
+import { deleteGame, KIND_LABEL, listGames,type Bilingual, type GameCard, type GameKind } from './gamesApi';
 import styles from './games.module.css';
 
 type Lists = { publicGames: GameCard[]; classGames: Array<GameCard & { className: string }> };
@@ -24,11 +24,11 @@ export const KIND_STYLE: Record<GameKind, { tone: string; icon: ComponentType<{ 
 };
 const KIND_ORDER: GameKind[] = ['quiz', 'match', 'crossword', 'wordwall'];
 
-function GameTile({ game }: { game: GameCard & { className?: string } }) {
+function GameTile({ game, onDelete }: { game: GameCard & { className?: string }; onDelete?: (game: GameCard) => void }) {
   const { t } = useLanguage();
   const { tone, icon: Icon } = KIND_STYLE[game.kind];
   return (
-    <li>
+    <li className="relative">
       <Link
         prefetch={false}
         href={`/games/${game.id}`}
@@ -58,14 +58,24 @@ function GameTile({ game }: { game: GameCard & { className?: string } }) {
           </span>
         </div>
       </Link>
+      {onDelete && (
+        <button
+          type="button"
+          onClick={() => onDelete(game)}
+          aria-label={t({ en: `Delete ${game.title.en}`, vi: `Xóa ${game.title.vi}` })}
+          className="absolute right-2 top-2 grid h-11 w-11 place-items-center rounded-full bg-surface text-danger shadow-sm hover:bg-surface-sunken focus-visible:outline focus-visible:outline-2 focus-visible:outline-focus"
+        >
+          <Trash2 aria-hidden="true" className="h-4 w-4" />
+        </button>
+      )}
     </li>
   );
 }
 
-function GameGrid({ games }: { games: Array<GameCard & { className?: string }> }) {
+function GameGrid({ games, onDelete }: { games: Array<GameCard & { className?: string }>; onDelete?: (game: GameCard) => void }) {
   return (
     <ul className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-      {games.map((g) => <GameTile key={g.id} game={g} />)}
+      {games.map((g) => <GameTile key={g.id} game={g} onDelete={onDelete} />)}
     </ul>
   );
 }
@@ -124,7 +134,7 @@ function KindFilter({ kinds, value, onChange }: { kinds: GameKind[]; value: Filt
   );
 }
 
-export function GamesListView({ lists, isAdmin, onCreate }: { lists: Lists; isAdmin: boolean; onCreate: () => void }) {
+export function GamesListView({ lists, isAdmin, onCreate, onDelete }: { lists: Lists; isAdmin: boolean; onCreate: () => void; onDelete?: (game: GameCard) => void }) {
   const { t } = useLanguage();
   const [filter, setFilter] = useState<Filter>('all');
   const present = new Set([...lists.classGames, ...lists.publicGames].map((g) => g.kind));
@@ -147,7 +157,7 @@ export function GamesListView({ lists, isAdmin, onCreate }: { lists: Lists; isAd
           <h2 id="public-games" className="text-xl font-extrabold tracking-tight text-ink">{t({ en: 'Play solo', vi: 'Chơi một mình' })}</h2>
           {isAdmin && publicGames.length > 0 && <Button type="button" variant="outline" onClick={onCreate}>{t({ en: 'New public game', vi: 'Tạo game công khai' })}</Button>}
         </div>
-        {publicGames.length === 0 ? <NoGames canCreate={isAdmin} onCreate={onCreate} /> : <GameGrid games={publicGames} />}
+        {publicGames.length === 0 ? <NoGames canCreate={isAdmin} onCreate={onCreate} /> : <GameGrid games={publicGames} onDelete={isAdmin ? onDelete : undefined} />}
       </section>
     </div>
   );
@@ -171,6 +181,13 @@ export function GamesList() {
     void createBrowserClient().auth.getSession().then(({ data }) => setIsAdmin(data.session?.user.app_metadata?.app_role === 'admin'));
   }, [load]);
 
+  const remove = async (item: GameCard) => {
+    if (!window.confirm(t({ en: `Delete “${item.title.en}” and its scores?`, vi: `Xóa “${item.title.vi}” và điểm của game?` }))) return;
+    const result = await deleteGame(item.id);
+    if (result.ok) void load();
+    else setError(result.error);
+  };
+
   if (error) return <Alert tone="danger">{t(error)}</Alert>;
   if (!lists) {
     return (
@@ -182,7 +199,7 @@ export function GamesList() {
 
   return (
     <>
-      <GamesListView lists={lists} isAdmin={isAdmin} onCreate={() => setOpen(true)} />
+      <GamesListView lists={lists} isAdmin={isAdmin} onCreate={() => setOpen(true)} onDelete={(g) => void remove(g)} />
       {isAdmin && <CreateGameDialog classId={null} open={open} onClose={() => setOpen(false)} onCreated={() => { setOpen(false); void load(); }} />}
     </>
   );
