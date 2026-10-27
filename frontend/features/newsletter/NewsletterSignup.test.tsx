@@ -28,11 +28,11 @@ describe('NewsletterSignup', () => {
     expect(api.subscribe).not.toHaveBeenCalled();
   });
 
-  it('sends the e-mail, levels and language, then tells the visitor to check their e-mail', async () => {
+  it('sends the e-mail, levels and language, then says a confirmation e-mail follows if needed', async () => {
     api.subscribe.mockResolvedValue({ ok: true, confirmed: false });
     render(<NewsletterSignup />);
     fill(' A@B.vn ', 'THPT');
-    await waitFor(() => expect(screen.getByText('Kiểm tra email để xác nhận đăng ký nhé.')).toBeTruthy());
+    await waitFor(() => expect(screen.getByText('Xong. Nếu email này chưa đăng ký, bạn sẽ nhận email xác nhận.')).toBeTruthy());
     expect(api.subscribe).toHaveBeenCalledWith({ email: 'a@b.vn', levels: ['upper_secondary'], locale: 'vi' });
   });
 

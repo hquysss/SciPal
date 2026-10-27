@@ -38,7 +38,7 @@ export function NewsletterSignup({ email: initialEmail = '' }: { email?: string 
       tone: 'success',
       text: result.confirmed
         ? t({ vi: 'Đã đăng ký nhận tin.', en: 'You are signed up.' })
-        : t({ vi: 'Kiểm tra email để xác nhận đăng ký nhé.', en: 'Check your e-mail to confirm.' }),
+        : t({ vi: 'Xong. Nếu email này chưa đăng ký, bạn sẽ nhận email xác nhận.', en: 'Done. If this e-mail is not signed up yet, you will get a confirmation e-mail.' }),
     });
   }
 
