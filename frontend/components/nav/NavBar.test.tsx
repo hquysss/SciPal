@@ -118,6 +118,10 @@ describe('moreLinks', () => {
     expect(moreLinks('vi').map((l) => l.href)).toEqual(['/glossary', '/pricing', '/help']);
     expect(moreLinks('en').map((l) => l.label)).toEqual(['Glossary', 'Pricing', 'Help']);
   });
+
+  it('leaves Pricing out when the admin switched it off', () => {
+    expect(moreLinks('vi', false).map((l) => l.href)).toEqual(['/glossary', '/help']);
+  });
 });
 
 describe('accountLinks', () => {
