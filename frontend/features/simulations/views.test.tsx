@@ -119,6 +119,34 @@ describe('physics views', () => {
   });
 });
 
+describe('chemistry views', () => {
+  const { Renderer } = simulationModules['chemical-equilibrium']!;
+  const config = defaultSimulationConfig('chemical-equilibrium');
+
+  it('equilibrium shows the reaction, Kc and every control the reaction allows, in Vietnamese', () => {
+    const html = renderToStaticMarkup(<Renderer config={config} lang="vi" />);
+    expect(html).toContain('2NO₂ (g) ⇌ N₂O₄ (g)');
+    expect(html).toContain('Thêm NO₂');
+    expect(html).toContain('Nén (giảm thể tích)');
+    expect(html).toContain('Đun nóng (+25 °C)');
+    expect(html).toContain('L/mol');
+    // NO₂ ⇌ N₂O₄ needs no catalyst control.
+    expect(html).not.toContain('Thêm chất xúc tác');
+  });
+
+  it('equilibrium hides what the reaction or the teacher turned off', () => {
+    const solution = renderToStaticMarkup(<Renderer config={{ ...config, reaction: 'fescn' }} lang="vi" />);
+    expect(solution).toContain('Thêm SCN⁻');
+    expect(solution).not.toContain('Nén (giảm thể tích)');
+    expect(solution).not.toContain('Đun nóng');
+    const locked = renderToStaticMarkup(<Renderer config={{ ...config, reaction: 'haber', adjustable: false, controls: { concentration: false, pressure: true, temperature: false, catalyst: true } }} lang="vi" />);
+    expect(locked).toContain('Thêm chất xúc tác');
+    expect(locked).not.toContain('Thêm NH₃');
+    expect(locked).not.toContain('Đun nóng');
+    expect(locked).not.toContain('Phản ứng</label>');
+  });
+});
+
 describe('biology views', () => {
   const image = 'https://proj.supabase.co/storage/v1/object/public/lesson-media/t/cell.png';
   const labels = [

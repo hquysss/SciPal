@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useState } from 'react';
-import { Activity, ArrowDownUp, ArrowRight, Axis3d, Box, ChartSpline, CircleDot, Gauge, Globe2, Map as MapIcon, Dices, FlaskConical, Hand, HeartPulse, Orbit, Rocket, Waves, Zap, type LucideIcon } from 'lucide-react';
+import { Activity, ArrowDownUp, ArrowRight, Axis3d, Box, ChartSpline, CircleDot, Gauge, Globe2, Map as MapIcon, Dices, FlaskConical, Hand, HeartPulse, Orbit, Rocket, Scale, Waves, Zap, type LucideIcon } from 'lucide-react';
 import { useLanguage } from '@scipal/hooks';
 import { SubjectProvider } from '@scipal/ui';
 import type { BuiltInSimulationKind } from '@scipal/types';
@@ -22,6 +22,7 @@ export const LAB_ICONS: Partial<Record<BuiltInSimulationKind, LucideIcon>> = {
   'wave-3d': Waves,
   'ohm-circuit': Zap,
   titration: FlaskConical,
+  'chemical-equilibrium': Scale,
   'knee-reflex': Activity,
   'circulation-3d': HeartPulse,
   'skin-senses': Hand,
