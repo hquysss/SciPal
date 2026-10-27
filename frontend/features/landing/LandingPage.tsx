@@ -24,6 +24,7 @@ import { PricingSection } from './PricingSection';
 import { FeaturesSection } from './FeaturesSection';
 import { CommunitySection } from './CommunitySection';
 import { FaqSection } from './FaqSection';
+import { NewsletterSection } from './NewsletterSection';
 import { InstallAppSection } from './InstallAppSection';
 import { TechStrip } from './TechStrip';
 import { TargetCursor } from '@/components/ui/target-cursor';
@@ -560,6 +561,7 @@ export function LandingPage({ level, catalog, onChangeLevel, pricing = null, sho
             <InstallAppSection />
             {pricing && <PricingSection catalog={pricing} />}
             <FaqSection />
+            <NewsletterSection />
           </div>
 
           {/* ---------- final call to action ---------- */}
