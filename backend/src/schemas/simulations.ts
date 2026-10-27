@@ -308,6 +308,28 @@ const TitrationConfig = z.object({
   answer: Bilingual.default({ vi: '', en: '' }),
 });
 
+export const EQUILIBRIUM_REACTIONS = ['no2', 'haber', 'hi', 'fescn'] as const;
+
+/** A reversible reaction in a 3D vessel: change concentration, pressure or temperature and watch it shift (Le Chatelier). */
+const ChemicalEquilibriumConfig = z.object({
+  reaction: z.enum(EQUILIBRIUM_REACTIONS).default('no2'),
+  /** Which changes the learner may make; a change the reaction does not allow stays hidden anyway. */
+  controls: z
+    .object({
+      concentration: z.boolean().default(true),
+      pressure: z.boolean().default(true),
+      temperature: z.boolean().default(true),
+      catalyst: z.boolean().default(true),
+    })
+    .default({ concentration: true, pressure: true, temperature: true, catalyst: true }),
+  /** Ask which way it shifts before showing it. */
+  predict: z.boolean().default(true),
+  /** Learners may switch the reaction. */
+  adjustable: z.boolean().default(true),
+  question: Bilingual.default({ vi: '', en: '' }),
+  answer: Bilingual.default({ vi: '', en: '' }),
+});
+
 export const SOLIDS = ['cube', 'cuboid', 'tetrahedron', 'pyramid', 'prism', 'cylinder', 'cone', 'sphere'] as const;
 const Length = finite(0.5, 10);
 /** A point of the solid as the textbook writes it: A, S, O or a primed copy such as C'. */
@@ -554,6 +576,7 @@ export const SIMULATION_CONFIGS = {
   'solid-3d': Solid3dConfig,
   'graph-3d': Graph3dConfig,
   titration: TitrationConfig,
+  'chemical-equilibrium': ChemicalEquilibriumConfig,
   punnett: PunnettConfig,
   'labeled-diagram': LabeledDiagramConfig,
   'history-map': HistoryMapConfig,
@@ -588,6 +611,7 @@ export const SIMULATION_KINDS = [
   'solid-3d',
   'graph-3d',
   'titration',
+  'chemical-equilibrium',
   'punnett',
   'labeled-diagram',
   'history-map',
@@ -701,6 +725,7 @@ const MESSAGES: Record<string, Message> = {
   'solid-3d': { en: 'Lengths 0.5–10; up to 12 highlighted segments between two different points (AC′, SO…).', vi: 'Độ dài 0,5–10; tối đa 12 đoạn tô nổi giữa hai điểm khác nhau (AC′, SO…).' },
   'graph-3d': { en: 'Check every expression, the parameters and the x, y, z window; 1–8 objects.', vi: 'Kiểm tra từng biểu thức, tham số và khoảng x, y, z; 1–8 đối tượng.' },
   titration: { en: 'Concentrations 0.01–2 mol/L, acid 5–50 mL, burette 10–100 mL.', vi: 'Nồng độ 0,01–2 mol/L, axit 5–50 mL, buret 10–100 mL.' },
+  'chemical-equilibrium': { en: 'Choose one of the reactions: no2, haber, hi or fescn.', vi: 'Chọn một trong các phản ứng: no2, haber, hi hoặc fescn.' },
   punnett: { en: 'One or two genes; each parent needs two letters of the gene (for example Aa).', vi: 'Một hoặc hai gen; kiểu gen bố mẹ gồm hai chữ của gen đó (ví dụ Aa).' },
   'labeled-diagram': { en: 'Upload the image to SciPal; up to 24 labels placed on the image.', vi: 'Ảnh phải tải lên SciPal; tối đa 24 nhãn nằm trên ảnh.' },
   'history-map': { en: 'Check the map: 1–12 steps, up to 32 places, every point [longitude, latitude] inside the region.', vi: 'Kiểm tra bản đồ: 1–12 bước, tối đa 32 địa danh, mọi điểm [kinh độ, vĩ độ] nằm trong vùng bản đồ.' },

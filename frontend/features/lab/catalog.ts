@@ -114,6 +114,13 @@ export const LAB_ITEMS: readonly LabItem[] = [
     grades: { en: 'Grade 11', vi: 'Lớp 11' },
   },
   {
+    kind: 'chemical-equilibrium',
+    name: { en: 'Chemical equilibrium 3D', vi: 'Cân bằng hoá học 3D' },
+    subject: 'chemistry',
+    blurb: { en: 'Change concentration, pressure or temperature in a 3D vessel, predict the shift, then watch the molecules follow Le Chatelier.', vi: 'Đổi nồng độ, áp suất, nhiệt độ trong bình 3D, dự đoán chiều chuyển dịch rồi xem các phân tử tuân theo nguyên lí Le Chatelier.' },
+    grades: { en: 'Grade 11', vi: 'Lớp 11' },
+  },
+  {
     kind: 'knee-reflex',
     name: { en: 'Knee-jerk reflex', vi: 'Phản xạ đầu gối' },
     subject: 'biology',
