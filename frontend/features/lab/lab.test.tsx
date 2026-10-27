@@ -29,6 +29,7 @@ describe('the Lab catalogue', () => {
   it('has a chemistry experiment and the knee reflex in biology, and leaves the other biology templates out', () => {
     expect(labItem('titration')?.subject).toBe('chemistry');
     expect(labItem('chemical-equilibrium')?.subject).toBe('chemistry');
+    expect(labItem('logic-gates')?.subject).toBe('informatics');
     expect(labItem('knee-reflex')?.subject).toBe('biology');
     expect(labItem('circulation-3d')?.subject).toBe('biology');
     expect(labItem('skin-senses')?.subject).toBe('biology');

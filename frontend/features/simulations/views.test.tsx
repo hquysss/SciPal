@@ -119,6 +119,33 @@ describe('physics views', () => {
   });
 });
 
+describe('informatics views', () => {
+  const { Renderer } = simulationModules['logic-gates']!;
+  const config = defaultSimulationConfig('logic-gates');
+
+  it('logic gates show the switches, the expression and a 4-row truth table', () => {
+    const html = renderToStaticMarkup(<Renderer config={config} lang="vi" />);
+    expect(html).toContain('Bảng chân lí của AND');
+    expect(html).toContain('Q = A AND B = 0');
+    expect(html.match(/<tr/g)).toHaveLength(5); // header + 4 rows
+    expect(html).toContain('aria-pressed="false"');
+    const not = renderToStaticMarkup(<Renderer config={{ ...config, gate: 'not' }} lang="vi" />);
+    expect(not).toContain('Q = NOT A = 1');
+    expect(not.match(/<tr/g)).toHaveLength(3);
+  });
+
+  it('logic gates add two bits and write a binary number out', () => {
+    expect(renderToStaticMarkup(<Renderer config={{ ...config, mode: 'half-adder' }} lang="vi" />)).toContain('S = A XOR B = 0 · C = A AND B = 0');
+    const binary = renderToStaticMarkup(<Renderer config={{ ...config, mode: 'binary' }} lang="vi" />);
+    expect(binary).toContain('00001101₂ = 13₁₀');
+    expect(binary).toContain('8 + 4 + 1 = 13');
+    expect(binary).toContain('13 : 2 = 6 dư');
+    const fixed = renderToStaticMarkup(<Renderer config={{ ...config, mode: 'binary', bits: 4, value: 20, adjustable: false }} lang="vi" />);
+    expect(fixed).toContain('0100₂ = 4₁₀');
+    expect(fixed).not.toContain('Chế độ');
+  });
+});
+
 describe('chemistry views', () => {
   const { Renderer } = simulationModules['chemical-equilibrium']!;
   const config = defaultSimulationConfig('chemical-equilibrium');
