@@ -2,22 +2,31 @@
 
 import Link from 'next/link';
 
-import { useCallback, useEffect, useId, useLayoutEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useId, useLayoutEffect, useRef, useState, type CSSProperties } from 'react';
 import { Bell, X } from 'lucide-react';
 import { useLanguage } from '@scipal/hooks';
 import { createBrowserClient } from '@scipal/supabase';
-import { TONES, toneOfKind } from '@/features/newsletter/announcementTone';
+import { TONES, toneOfKind, type AnnouncementTone } from '@/features/newsletter/announcementTone';
 import { clearNotifications, deleteNotification, listNotifications, markNotificationsRead, type Notification } from './gamesApi';
+import styles from './games.module.css';
 
-/** The label and icon of a coloured announcement, so the colour is never the only cue. */
+/** The icon of a coloured announcement in a tinted disc; it pulses while the notice is unread. */
+function ToneIcon({ tone, unread }: { tone: AnnouncementTone; unread: boolean }) {
+  const { icon: Icon } = TONES[tone];
+  return (
+    <span aria-hidden="true" className={`mt-0.5 grid size-9 shrink-0 place-items-center rounded-full bg-[color-mix(in_srgb,var(--tone)_32%,var(--surface))] text-ink ring-2 ring-[color-mix(in_srgb,var(--tone)_55%,transparent)] ${unread ? styles.iconPulse : ''}`}>
+      <Icon className="size-5" />
+    </span>
+  );
+}
+
+/** The label of a coloured announcement, so the colour is never the only cue. */
 function ToneTag({ kind, t }: { kind: string; t: (text: { vi: string; en: string }) => string }) {
   const tone = toneOfKind(kind);
   if (!tone) return null;
-  const { icon: Icon, label } = TONES[tone];
   return (
-    <span className="mb-0.5 flex items-center gap-1 text-xs font-bold uppercase tracking-wide text-ink">
-      <Icon aria-hidden="true" className="size-3.5" />
-      {t(label)}
+    <span className="mb-1 inline-flex rounded-full bg-[color-mix(in_srgb,var(--tone)_26%,var(--surface))] px-2 py-0.5 text-xs font-bold uppercase tracking-wide text-ink">
+      {t(TONES[tone].label)}
     </span>
   );
 }
@@ -137,7 +146,7 @@ export function NotificationBell({ className = '' }: { className?: string }) {
   return (
     <div ref={box} className="relative">
       <button type="button" aria-label={unread ? `${label} (${unread})` : label} title={label} aria-expanded={open} aria-controls={listId} onClick={toggle} className={`relative inline-flex min-h-11 min-w-11 items-center justify-center rounded-lg ${className}`}>
-        <Bell aria-hidden="true" className="h-5 w-5" />
+        <Bell key={unread} aria-hidden="true" className={`h-5 w-5 ${unread > 0 ? styles.bellRing : ''}`} />
         {unread > 0 && (
           <span aria-hidden="true" className="absolute right-1 top-1 inline-flex min-w-5 items-center justify-center rounded-full bg-action px-1 text-[11px] font-bold leading-5 text-action-ink">
             {unread > 9 ? '9+' : unread}
@@ -145,7 +154,7 @@ export function NotificationBell({ className = '' }: { className?: string }) {
         )}
       </button>
       {open && (
-        <div id={listId} style={{ left: shift, width: 'min(20rem, calc(100vw - 2rem))' }} className="absolute z-50 mt-2 rounded-xl border border-line bg-surface p-2 shadow-lg">
+        <div id={listId} style={{ left: shift, width: 'min(20rem, calc(100vw - 2rem))' }} className={`${styles.bellPop} absolute z-50 mt-2 rounded-xl border border-line bg-surface p-2 shadow-lg`}>
           {items.length === 0 ? (
             <p className="p-3 text-sm text-ink-muted">{t({ en: 'No notifications yet.', vi: 'Chưa có thông báo nào.' })}</p>
           ) : (
@@ -156,18 +165,28 @@ export function NotificationBell({ className = '' }: { className?: string }) {
               </button>
             </div>
             <ul className="flex max-h-96 flex-col overflow-y-auto">
-              {items.map((n) => (
-                <li key={n.id} className={`flex items-start gap-1 rounded-lg hover:bg-surface-sunken ${toneOfKind(n.kind) ? `border-l-4 ${TONES[toneOfKind(n.kind)!].bar}` : ''}`}>
-                  <Link prefetch={false} href={n.link ?? '#'} onClick={() => setOpen(false)} className={`block min-w-0 flex-1 break-words rounded-lg px-3 py-2.5 text-sm ${n.read ? 'text-ink-muted' : 'font-semibold text-ink'}`}>
-                    <ToneTag kind={n.kind} t={t} />
-                    {t(n.title)}
-                    <span className="block text-xs font-normal text-ink-muted">{new Date(n.createdAt).toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh', dateStyle: 'short', timeStyle: 'short' })}</span>
+              {items.map((n, i) => {
+                const tone = toneOfKind(n.kind);
+                return (
+                <li
+                  key={n.id}
+                  style={{ '--i': i, ...(tone ? { '--tone': TONES[tone].color } : {}) } as CSSProperties}
+                  className={`${styles.noticeIn} mb-1 flex items-start gap-1 rounded-lg last:mb-0 ${tone ? `border-l-4 ${TONES[tone].bar} ${n.read ? 'bg-[color-mix(in_srgb,var(--tone)_6%,var(--surface))]' : 'bg-[color-mix(in_srgb,var(--tone)_14%,var(--surface))]'} hover:bg-[color-mix(in_srgb,var(--tone)_22%,var(--surface))]` : 'hover:bg-surface-sunken'}`}
+                >
+                  <Link prefetch={false} href={n.link ?? '#'} onClick={() => setOpen(false)} className={`flex min-w-0 flex-1 items-start gap-3 break-words rounded-lg px-3 py-2.5 text-sm ${n.read ? 'text-ink-muted' : 'font-semibold text-ink'}`}>
+                    {tone && <ToneIcon tone={tone} unread={!n.read} />}
+                    <span className="block min-w-0 flex-1">
+                      <ToneTag kind={n.kind} t={t} />
+                      <span className={`block ${tone && !n.read ? 'font-bold' : ''}`}>{t(n.title)}</span>
+                      <span className="block text-xs font-normal text-ink-muted">{new Date(n.createdAt).toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh', dateStyle: 'short', timeStyle: 'short' })}</span>
+                    </span>
                   </Link>
                   <button type="button" onClick={() => remove(n.id)} aria-label={t({ en: 'Delete notification', vi: 'Xóa thông báo' })} className="mt-1.5 grid size-8 shrink-0 place-items-center rounded-full text-ink-muted hover:bg-surface hover:text-ink focus-visible:outline focus-visible:outline-2 focus-visible:outline-focus">
                     <X aria-hidden="true" className="size-4" />
                   </button>
                 </li>
-              ))}
+                );
+              })}
             </ul>
             </>
           )}
