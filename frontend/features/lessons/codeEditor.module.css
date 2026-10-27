@@ -52,12 +52,14 @@
 }
 .tools { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-left: auto; }
 
-.scroll { display: flex; max-height: 26rem; min-height: 12rem; overflow: auto; padding: 12px 0; }
+/* Items keep their full content height (not the clamped box), or the textarea stops short of long code and typing below it fails. */
+.scroll { display: flex; align-items: flex-start; max-height: 26rem; min-height: 12rem; overflow: auto; padding: 12px 0; }
 .gutter {
   position: sticky;
   left: 0;
   z-index: 1;
   flex: none;
+  min-height: calc(12rem - 24px);
   width: 48px;
   padding-right: 12px;
   background: var(--base);
@@ -66,7 +68,7 @@
   user-select: none;
   color: color-mix(in srgb, var(--fg) 62%, var(--base));
 }
-.code { position: relative; flex: 1 0 auto; min-width: 0; }
+.code { position: relative; flex: 1 0 auto; min-width: 0; min-height: calc(12rem - 24px); }
 .shown, .input {
   margin: 0;
   padding: 0 12px 0 6px;
