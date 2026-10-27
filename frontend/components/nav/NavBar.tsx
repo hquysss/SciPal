@@ -31,6 +31,8 @@ export function adminLinkLabel(lang: 'en' | 'vi', open: number): string {
 
 interface NavBarProps {
   currentSubject?: SubjectSlug;
+  /** The admin's pricing switch: off hides the Pricing link, except from admins (who keep it to check the page). */
+  pricingOn?: boolean;
 }
 
 type AppRole = 'student' | 'teacher' | 'admin';
@@ -109,11 +111,11 @@ export function communityLink(lang: 'en' | 'vi') {
 }
 
 /** The reference menu: pages to look things up in, the same for everyone. Personal pages live in the account menu. */
-export function moreLinks(lang: 'en' | 'vi') {
+export function moreLinks(lang: 'en' | 'vi', showPricing = true) {
   const label = (en: string, vi: string) => (lang === 'en' ? en : vi);
   return [
     { href: '/glossary', label: label('Glossary', 'Từ điển'), hint: label('Scientific terms, EN and VI', 'Thuật ngữ khoa học song ngữ') },
-    { ...pricingLink(lang), hint: label('Plans and what they include', 'Các gói và quyền lợi') },
+    ...(showPricing ? [{ ...pricingLink(lang), hint: label('Plans and what they include', 'Các gói và quyền lợi') }] : []),
     { href: '/help', label: label('Help', 'Hướng dẫn'), hint: label('How to use SciPal', 'Cách dùng SciPal') },
   ];
 }
@@ -153,7 +155,7 @@ export function roleLinks(role: string | null, lang: 'en' | 'vi', openRequests: 
 /** Remembers that the reader folded the bar away, for a full-bleed page like the landing hero. */
 const NAV_HIDDEN_KEY = 'scipal_nav_hidden';
 
-export function NavBar({ currentSubject }: NavBarProps) {
+export function NavBar({ currentSubject, pricingOn = true }: NavBarProps) {
   const { lang } = useLanguage();
   const pathname = usePathname();
   const params = useParams();
@@ -393,7 +395,7 @@ export function NavBar({ currentSubject }: NavBarProps) {
   const community = communityLink(navLang);
   const communityActive = pathname === community.href;
   const communityText = communityLabel(navLang, pendingFriends, unreadMessages);
-  const more = moreLinks(navLang);
+  const more = moreLinks(navLang, pricingOn || appRole === 'admin');
   const moreActive = more.some((link) => pathname === link.href);
   const mine = accountLinks(navLang, appRole);
   const study = mine.filter((link) => link.group === 'study');

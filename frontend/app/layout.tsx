@@ -13,6 +13,7 @@ import { NavBar } from '@/components/nav/NavBar';
 import { SkipLink } from '@/components/nav/SkipLink';
 import { renderThemeCss } from '@scipal/ui';
 import { SITE_URL } from '@/lib/siteUrl';
+import { fetchSiteSettings } from '@/lib/siteSettings';
 import { buildBootScript, DARK_MODE_ENABLED } from '@/lib/theme/shellTheme';
 
 const jetbrainsMono = JetBrains_Mono({ subsets: ['latin'], variable: '--font-jetbrains-mono' });
@@ -40,7 +41,8 @@ export const metadata: Metadata = {
 // Installed on a phone: opens full screen, the status bar in the brand green.
 export const viewport: Viewport = { themeColor: APP_THEME_COLOR };
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default async function RootLayout({ children }: { children: React.ReactNode }) {
+  const site = await fetchSiteSettings();
   return (
     <html lang="vi">
       <head>
@@ -66,7 +68,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <SkipLink />
           <TabTitle />
           <PwaRegister />
-          <NavBar />
+          <NavBar pricingOn={site.features.pricing} />
           <OfflineBanner />
           <PendingSync />
           <div className="flex flex-1 flex-col">{children}</div>

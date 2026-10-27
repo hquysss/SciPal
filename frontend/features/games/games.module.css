@@ -193,3 +193,56 @@
     transform: none;
   }
 }
+
+/* The bell: the list pops open, each notice slides in one after another, a coloured notice's
+   icon pulses while it is unread, and the bell rings when something new is waiting. */
+@keyframes bellPop {
+  from { opacity: 0; transform: translateY(-6px) scale(0.96); }
+  to { opacity: 1; transform: none; }
+}
+
+@keyframes noticeIn {
+  from { opacity: 0; transform: translateX(-10px); }
+  to { opacity: 1; transform: none; }
+}
+
+@keyframes iconPulse {
+  0%, 100% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--tone) 45%, transparent); }
+  50% { box-shadow: 0 0 0 7px color-mix(in srgb, var(--tone) 0%, transparent); }
+}
+
+@keyframes iconWiggle {
+  0%, 100% { transform: rotate(0); }
+  20% { transform: rotate(-14deg); }
+  40% { transform: rotate(12deg); }
+  60% { transform: rotate(-8deg); }
+  80% { transform: rotate(5deg); }
+}
+
+.bellPop {
+  transform-origin: top right;
+  animation: bellPop 180ms ease-out both;
+}
+
+.noticeIn {
+  animation: noticeIn 260ms ease-out both;
+  animation-delay: calc(var(--i, 0) * 55ms);
+}
+
+.iconPulse {
+  animation: iconPulse 2s ease-out infinite;
+}
+
+.bellRing {
+  transform-origin: 50% 0;
+  animation: iconWiggle 900ms ease-in-out 1;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .bellPop,
+  .noticeIn,
+  .iconPulse,
+  .bellRing {
+    animation: none;
+  }
+}
