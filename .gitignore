@@ -24,3 +24,20 @@ e2e/test-results/
 e2e/playwright-report/
 e2e/.auth/
 docs/super-qa/report/**/*.har
+
+# local tooling and scratch (not project source)
+.agents/skills/
+.claude/skills/
+.claude/bin/
+.claude/hooks/
+.claude/settings.json
+.claude/workflows/
+.codex/
+.mcp.json
+.tmp/
+__pycache__/
+skills-lock.json
+agent/
+showreel/
+/b18_b19_raw.txt
+/chuong_6_full_review.txt
