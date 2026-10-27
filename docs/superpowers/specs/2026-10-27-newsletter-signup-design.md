@@ -12,8 +12,8 @@ One component, `NewsletterSignup`, in `frontend/features/newsletter/`, shown in 
 - Fields: email, school levels (checkboxes: Tiểu học, THCS, THPT; at least one), submit button. Locale comes from the current language.
 - Calls `POST /api/newsletter/subscribe` with `{ email, levels, locale }` through a new `subscribeNewsletter` in `newsletterApi.ts` (same `post` helper, same error shape).
 - Result messages (bilingual):
-  - `confirmed: true` (account email matches): "Đã đăng ký nhận tin."
-  - `confirmed: false`: "Xong. Nếu email này chưa đăng ký, bạn sẽ nhận email xác nhận." (the server answers the same for already-subscribed, so the wording must be true for both).
+  - `confirmed: true` (account email matches): "Đã đăng ký!" + "Bạn sẽ nhận tin khi SciPal có bài và cấp học mới."
+  - `confirmed: false`: "Xong rồi!" + "Nếu email này chưa đăng ký, bạn sẽ nhận email xác nhận." (the server answers the same for already-subscribed, so the wording must be true for both).
   - 400/429/503: show the server's `error` / `error_en`.
 - Invalid email or no level: inline error before any request.
 - Accessibility: labels on every field, result in an `aria-live="polite"` region, 44px targets, focus ring from existing tokens.

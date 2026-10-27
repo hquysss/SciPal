@@ -32,7 +32,7 @@ describe('NewsletterSignup', () => {
     api.subscribe.mockResolvedValue({ ok: true, confirmed: false });
     render(<NewsletterSignup />);
     fill(' A@B.vn ', 'THPT');
-    await waitFor(() => expect(screen.getByText('Xong. Nếu email này chưa đăng ký, bạn sẽ nhận email xác nhận.')).toBeTruthy());
+    await waitFor(() => expect(screen.getByText('Nếu email này chưa đăng ký, bạn sẽ nhận email xác nhận.')).toBeTruthy());
     expect(api.subscribe).toHaveBeenCalledWith({ email: 'a@b.vn', levels: ['upper_secondary'], locale: 'vi' });
   });
 
@@ -42,7 +42,7 @@ describe('NewsletterSignup', () => {
     expect((screen.getByLabelText('Email của bạn') as HTMLInputElement).value).toBe('me@scipal.vn');
     fireEvent.click(screen.getByLabelText('THCS'));
     fireEvent.click(screen.getByRole('button', { name: 'Đăng ký nhận tin' }));
-    await waitFor(() => expect(screen.getByText('Đã đăng ký nhận tin.')).toBeTruthy());
+    await waitFor(() => expect(screen.getByText('Đã đăng ký!')).toBeTruthy());
   });
 
   it('shows the server error text', async () => {
