@@ -1,0 +1,39 @@
+/* Physical illustration materials for the circuit board, not subject accents: a green circuit
+   board, copper traces, a lit signal in amber and blue gate bodies. */
+.palette {
+  --logic-background: #18222b;
+  --logic-floor: #24313c;
+  --logic-board: #1f6b47;
+  --logic-board-edge: #154d33;
+  --logic-off: #59646d;
+  --logic-on: #ffc933;
+  --logic-gate: #2f63b5;
+  --logic-gate-top: #4f85d9;
+  --logic-metal: #b9c2c8;
+  --logic-base: #262c31;
+  --logic-lamp-off: #6b5d52;
+  --logic-lamp-on: #ffd24a;
+}
+
+.stage {
+  background: radial-gradient(ellipse at 50% 35%, var(--logic-floor), var(--logic-background));
+  aspect-ratio: 16 / 10;
+  min-height: 320px;
+  touch-action: pan-y;
+}
+
+.stage canvas {
+  display: block;
+}
+
+.lit {
+  background: var(--logic-on);
+}
+
+.unlit {
+  background: var(--logic-off);
+}
+
+@media (pointer: fine) {
+  .stage { touch-action: none; }
+}

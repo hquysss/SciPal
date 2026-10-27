@@ -10,6 +10,7 @@ import { graph3dModule } from './graph3d';
 import { harmonic3dModule } from './harmonic3d';
 import { dampedPendulumModule } from './dampedPendulum';
 import { equilibriumModule } from './equilibrium';
+import { logicModule } from './logic';
 import { historyMapModule } from './historyMap';
 import { historyWorldModule } from './historyWorld';
 import { historyTimelineModule } from './historyTimeline';
@@ -44,6 +45,7 @@ export const simulationModules: { [K in BuiltInSimulationKind]: SimulationModule
   'graph-3d': graph3dModule,
   titration: titrationModule,
   'chemical-equilibrium': equilibriumModule,
+  'logic-gates': logicModule,
   motion: motionModule,
   pendulum: pendulumModule,
   'harmonic-3d': harmonic3dModule,

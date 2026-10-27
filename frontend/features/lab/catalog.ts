@@ -142,6 +142,13 @@ export const LAB_ITEMS: readonly LabItem[] = [
     grades: { en: 'Grade 11', vi: 'Lớp 11' },
   },
   {
+    kind: 'logic-gates',
+    name: { en: 'Logic gates and binary 3D', vi: 'Cổng logic và hệ nhị phân 3D' },
+    subject: 'informatics',
+    blurb: { en: 'Flip switches on a 3D circuit board: AND, OR, NOT, XOR, a half adder, and bits with their place values.', vi: 'Bật tắt công tắc trên bảng mạch 3D: AND, OR, NOT, XOR, bộ cộng bán phần và các bit với trọng số của chúng.' },
+    grades: { en: 'Grade 10', vi: 'Lớp 10' },
+  },
+  {
     kind: 'algorithm-sim',
     name: { en: 'Algorithm steps', vi: 'Thuật toán từng bước' },
     subject: 'informatics',
