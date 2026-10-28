@@ -1,7 +1,7 @@
 'use client';
 
 import { Component, lazy, Suspense, useEffect, useId, useRef, useState, type ReactNode } from 'react';
-import { Minus, Plus } from 'lucide-react';
+import { Cable, Cpu, Lightbulb, Minus, Plus, ToggleRight } from 'lucide-react';
 import { LOGIC_GATES, LOGIC_MODES } from '@scipal/types';
 import { BUTTON, CheckField, NumberField, PANEL, SelectField, SelfCheck, SelfCheckFields } from './controls';
 import { useReducedMotion } from './animation';
@@ -9,7 +9,19 @@ import { useOnScreen } from './useOnScreen';
 import { GATES, divisionSteps, evalGate, halfAdder, placeValueSentence, toBits, truthTable, type Bit, type Gate } from './engines/logic';
 import { binaryCircuit, gateCircuit, halfAdderCircuit } from './logicCircuit';
 import { pick, type Bilingual, type Lang, type SimulationEditorProps, type SimulationModule, type SimulationViewProps } from './types';
+import { PartLegend, type LegendItem } from './partLegend';
 import styles from './logic.module.css';
+
+const ICON = 'h-4 w-4 shrink-0';
+
+/** The key under the board: what each piece of the 3D circuit stands for. */
+const LEGEND: readonly LegendItem[] = [
+  { key: 'switch', icon: <ToggleRight aria-hidden="true" className={ICON} />, name: { vi: 'Công tắc (đầu vào)', en: 'Switch (input)' }, about: { vi: 'Mỗi công tắc là một đầu vào A, B… Nhãn trên công tắc cho biết giá trị (A = 1 là có điện, A = 0 là không). Bấm vào công tắc trong hình hoặc nút bên cạnh để đổi.', en: 'Each switch is an input A, B… The tag above it shows its value (A = 1 is on, A = 0 is off). Click a switch in the view or a button beside it to flip it.' } },
+  { key: 'gate', icon: <Cpu aria-hidden="true" className={ICON} />, name: { vi: 'Cổng logic', en: 'Logic gate' }, about: { vi: 'Khối màu xanh nhận các bit đầu vào và cho ra một bit theo quy tắc của cổng (AND, OR, XOR, NOT…). Vòng tròn nhỏ ở đầu ra nghĩa là đảo bit (NOT).', en: 'The blue block takes the input bits and gives one bit by the gate’s rule (AND, OR, XOR, NOT…). A small circle on the output means the bit is inverted (NOT).' } },
+  { key: 'wire', icon: <span aria-hidden="true" className="inline-flex shrink-0 items-center gap-0.5"><Cable className={ICON} /><span className={`h-2 w-2 rounded-full ${styles.lit}`} /><span className={`h-2 w-2 rounded-full ${styles.unlit}`} /></span>, name: { vi: 'Dây dẫn: sáng = 1, tối = 0', en: 'Wire: lit = 1, dark = 0' }, about: { vi: 'Dây màu vàng sáng và có chấm chạy là đang mang bit 1; dây xám tối mang bit 0.', en: 'A bright yellow wire with moving dots carries a 1; a dark grey wire carries a 0.' } },
+  { key: 'lamp', icon: <Lightbulb aria-hidden="true" className={ICON} />, name: { vi: 'Đèn (đầu ra)', en: 'Lamp (output)' }, about: { vi: 'Đèn cho biết kết quả: sáng là 1, tắt là 0. Ở bộ cộng, đèn S là bit tổng và đèn C là bit nhớ; ở chế độ nhị phân, mỗi đèn là một bit có trọng số 2ⁿ.', en: 'The lamp shows the result: on is 1, off is 0. In the adder, S is the sum bit and C the carry; in binary mode each lamp is one bit worth 2ⁿ.' } },
+];
+
 
 const LogicScene = lazy(() => import('./logicScene'));
 type Props = SimulationViewProps<'logic-gates'>;
@@ -114,6 +126,7 @@ function LogicExperiment({ config, lang }: Props) {
           </Suspense>
         </SceneBoundary>
       ) : fallback(t({ vi: 'Đang tải hình 3D…', en: 'Loading the 3D view…' }))}
+      <PartLegend items={LEGEND} lang={lang} />
       </div>
       <div className="flex flex-col gap-4">
 
