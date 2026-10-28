@@ -114,6 +114,13 @@ export const LAB_ITEMS: readonly LabItem[] = [
     grades: { en: 'Grade 11', vi: 'Lớp 11' },
   },
   {
+    kind: 'chemical-equilibrium',
+    name: { en: 'Chemical equilibrium 3D', vi: 'Cân bằng hoá học 3D' },
+    subject: 'chemistry',
+    blurb: { en: 'Change concentration, pressure or temperature in a 3D vessel, predict the shift, then watch the molecules follow Le Chatelier.', vi: 'Đổi nồng độ, áp suất, nhiệt độ trong bình 3D, dự đoán chiều chuyển dịch rồi xem các phân tử tuân theo nguyên lí Le Chatelier.' },
+    grades: { en: 'Grade 11', vi: 'Lớp 11' },
+  },
+  {
     kind: 'knee-reflex',
     name: { en: 'Knee-jerk reflex', vi: 'Phản xạ đầu gối' },
     subject: 'biology',
@@ -133,6 +140,13 @@ export const LAB_ITEMS: readonly LabItem[] = [
     subject: 'biology',
     blurb: { en: 'Prick, press, cool or warm a 3D slice of skin, watch its receptors fire, then follow the withdrawal reflex.', vi: 'Chạm, ấn, áp đá hay vật nóng lên lát cắt da 3D, xem thụ thể phát xung và theo dõi phản xạ rụt tay.' },
     grades: { en: 'Grade 11', vi: 'Lớp 11' },
+  },
+  {
+    kind: 'logic-gates',
+    name: { en: 'Logic gates and binary 3D', vi: 'Cổng logic và hệ nhị phân 3D' },
+    subject: 'informatics',
+    blurb: { en: 'Flip switches on a 3D circuit board: AND, OR, NOT, XOR, a half adder, and bits with their place values.', vi: 'Bật tắt công tắc trên bảng mạch 3D: AND, OR, NOT, XOR, bộ cộng bán phần và các bit với trọng số của chúng.' },
+    grades: { en: 'Grade 10', vi: 'Lớp 10' },
   },
   {
     kind: 'algorithm-sim',

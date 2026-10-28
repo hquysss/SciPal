@@ -1,0 +1,59 @@
+/* Physical illustration materials for the reaction vessel, not subject accents. Atoms use the
+   usual CPK model colours so the ball models read the way chemistry books draw them. */
+.palette {
+  --eq-background: #1f2a33;
+  --eq-floor: #2b3843;
+  --eq-glass: #cfe8f2;
+  --eq-metal: #9aa7b0;
+  --eq-plate: #4a545b;
+  --eq-hot: #ff7a2f;
+  --eq-gas: #b5481e;
+  --eq-liquid: #f3e6a2;
+  --eq-complex: #b3121f;
+  --eq-catalyst: #c9b27c;
+  --eq-flash: #fff3b0;
+  --eq-n: #3d6cf2;
+  --eq-o: #e8402f;
+  --eq-h: #f4f6f8;
+  --eq-i: #8c3fbf;
+  --eq-fe: #e07b24;
+  --eq-s: #f2d43a;
+  --eq-c: #6f7780;
+}
+
+.stage {
+  background: radial-gradient(ellipse at 50% 30%, var(--eq-floor), var(--eq-background));
+  aspect-ratio: 16 / 10;
+  min-height: 320px;
+  touch-action: pan-y;
+}
+
+.stage canvas {
+  display: block;
+}
+
+.fallback {
+  width: 100%;
+  height: 100%;
+  min-height: 320px;
+}
+
+.swatch {
+  display: inline-block;
+  width: 0.75rem;
+  height: 0.75rem;
+  border-radius: 9999px;
+  border: 1px solid var(--line);
+}
+
+.atomN { background: var(--eq-n); }
+.atomO { background: var(--eq-o); }
+.atomH { background: var(--eq-h); }
+.atomI { background: var(--eq-i); }
+.atomFe { background: var(--eq-fe); }
+.atomS { background: var(--eq-s); }
+.atomC { background: var(--eq-c); }
+
+@media (pointer: fine) {
+  .stage { touch-action: none; }
+}

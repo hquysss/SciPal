@@ -119,6 +119,61 @@ describe('physics views', () => {
   });
 });
 
+describe('informatics views', () => {
+  const { Renderer } = simulationModules['logic-gates']!;
+  const config = defaultSimulationConfig('logic-gates');
+
+  it('logic gates show the switches, the expression and a 4-row truth table', () => {
+    const html = renderToStaticMarkup(<Renderer config={config} lang="vi" />);
+    expect(html).toContain('Bảng chân lí của AND');
+    expect(html).toContain('Q = A AND B = 0');
+    expect(html.match(/<tr/g)).toHaveLength(5); // header + 4 rows
+    expect(html).toContain('aria-pressed="false"');
+    const not = renderToStaticMarkup(<Renderer config={{ ...config, gate: 'not' }} lang="vi" />);
+    expect(not).toContain('Q = NOT A = 1');
+    expect(not.match(/<tr/g)).toHaveLength(3);
+  });
+
+  it('logic gates add two bits and write a binary number out', () => {
+    expect(renderToStaticMarkup(<Renderer config={{ ...config, mode: 'half-adder' }} lang="vi" />)).toContain('S = A XOR B = 0 · C = A AND B = 0');
+    const binary = renderToStaticMarkup(<Renderer config={{ ...config, mode: 'binary' }} lang="vi" />);
+    expect(binary).toContain('00001101₂ = 13₁₀');
+    expect(binary).toContain('8 + 4 + 1 = 13');
+    expect(binary).toContain('13 : 2 = 6 dư');
+    const fixed = renderToStaticMarkup(<Renderer config={{ ...config, mode: 'binary', bits: 4, value: 20, adjustable: false }} lang="vi" />);
+    expect(fixed).toContain('0100₂ = 4₁₀');
+    expect(fixed).not.toContain('Chế độ');
+  });
+});
+
+describe('chemistry views', () => {
+  const { Renderer } = simulationModules['chemical-equilibrium']!;
+  const config = defaultSimulationConfig('chemical-equilibrium');
+
+  it('equilibrium shows the reaction, Kc and every control the reaction allows, in Vietnamese', () => {
+    const html = renderToStaticMarkup(<Renderer config={config} lang="vi" />);
+    expect(html).toContain('2NO₂ (g) ⇌ N₂O₄ (g)');
+    expect(html).toContain('Thêm NO₂');
+    expect(html).toContain('Nén (giảm thể tích)');
+    expect(html).toContain('Đun nóng (+25 °C)');
+    expect(html).toContain('L/mol');
+    // NO₂ ⇌ N₂O₄ needs no catalyst control.
+    expect(html).not.toContain('Thêm chất xúc tác');
+  });
+
+  it('equilibrium hides what the reaction or the teacher turned off', () => {
+    const solution = renderToStaticMarkup(<Renderer config={{ ...config, reaction: 'fescn' }} lang="vi" />);
+    expect(solution).toContain('Thêm SCN⁻');
+    expect(solution).not.toContain('Nén (giảm thể tích)');
+    expect(solution).not.toContain('Đun nóng');
+    const locked = renderToStaticMarkup(<Renderer config={{ ...config, reaction: 'haber', adjustable: false, controls: { concentration: false, pressure: true, temperature: false, catalyst: true } }} lang="vi" />);
+    expect(locked).toContain('Thêm chất xúc tác');
+    expect(locked).not.toContain('Thêm NH₃');
+    expect(locked).not.toContain('Đun nóng');
+    expect(locked).not.toContain('Phản ứng</label>');
+  });
+});
+
 describe('biology views', () => {
   const image = 'https://proj.supabase.co/storage/v1/object/public/lesson-media/t/cell.png';
   const labels = [
