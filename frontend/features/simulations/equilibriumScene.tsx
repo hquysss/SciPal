@@ -1,10 +1,12 @@
 'use client';
 
-import { memo, useEffect, useMemo, useRef } from 'react';
+import { memo, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import * as THREE from 'three';
 import { concentrations, drawCounts, REACTIONS, type Element, type ReactionId, type VesselState } from './engines/equilibrium';
-import { Rig, useOrbit, usePalette, ViewButtons, VIEW_CLASS } from './scene3d';
+import { Rig, useOrbit, usePalette, VIEW_CLASS } from './scene3d';
+import { SceneTools, useFullscreen } from './sceneChrome';
+import overlay from './simOverlay.module.css';
 import { pick, type Lang } from './types';
 import styles from './equilibrium.module.css';
 
@@ -270,16 +272,18 @@ function Refresh({ stamp }: { readonly stamp: number }) {
   return null;
 }
 
-export type EquilibriumSceneProps = { readonly reaction: ReactionId; readonly read: () => VesselState; readonly running: boolean; readonly reduced: boolean; readonly stamp: number; readonly description: string; readonly lang: Lang };
+export type EquilibriumSceneProps = { readonly reaction: ReactionId; readonly read: () => VesselState; readonly running: boolean; readonly reduced: boolean; readonly stamp: number; readonly description: string; readonly lang: Lang; readonly hud?: (expanded: boolean) => ReactNode };
 
-function EquilibriumScene({ reaction, read, running, reduced, stamp, description, lang }: EquilibriumSceneProps) {
+function EquilibriumScene({ reaction, read, running, reduced, stamp, description, lang, hud }: EquilibriumSceneProps) {
   const t = pick(lang);
   const { host, orbit, invalidate, handlers, reset, zoom } = useOrbit(HOME, LIMITS);
+  const { expanded, covering, toggle: toggleFullscreen } = useFullscreen(host);
+  const [panelsHidden, setPanelsHidden] = useState(false);
   const palette = usePalette(host, TOKENS);
   const labels = useMemo(() => ({ current: new Map<string, HTMLSpanElement>() }), []);
   return (
     <div className="flex flex-col gap-3">
-      <div ref={host} {...handlers} role="img" aria-label={description} tabIndex={0} className={`${VIEW_CLASS} ${styles.stage}`}>
+      <div ref={host} {...handlers} role="img" aria-label={description} tabIndex={0} className={`${VIEW_CLASS} ${styles.stage} ${covering ? styles.covering : ''}`}>
         {palette && (
           <Canvas dpr={[1, 1.5]} frameloop={running ? 'always' : 'demand'} camera={{ fov: 38, near: 0.1, far: 60 }} gl={{ antialias: true }}>
             <ambientLight intensity={0.9} />
@@ -292,8 +296,9 @@ function EquilibriumScene({ reaction, read, running, reduced, stamp, description
             <Refresh stamp={stamp} />
           </Canvas>
         )}
+        {hud && !panelsHidden && <div className={overlay.hud}>{hud(expanded)}</div>}
+        <SceneTools lang={lang} className={styles.toolsPos} onZoom={zoom} onReset={reset} panelsHidden={panelsHidden} onTogglePanels={() => setPanelsHidden((h) => !h)} expanded={expanded} onToggleFullscreen={() => void toggleFullscreen()} />
       </div>
-      <ViewButtons lang={lang} onReset={reset} onZoom={zoom} />
       <p className="text-xs text-ink-muted">{t({ vi: 'Kéo để xoay · Chụm hai ngón hoặc Ctrl + cuộn để zoom · Phím mũi tên, + / −, Home khi chọn khung.', en: 'Drag to turn · Pinch or Ctrl + wheel to zoom · Arrow keys, + / −, Home while the view is focused.' })}</p>
     </div>
   );
