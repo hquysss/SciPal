@@ -1,6 +1,7 @@
 'use client';
 
-import { Flame } from 'lucide-react';
+import { useState } from 'react';
+import { Flame, X } from 'lucide-react';
 import { useLanguage } from '@scipal/hooks';
 import { streakAtRisk, useHabit, type Habit } from './habitApi';
 
@@ -24,15 +25,18 @@ export function StreakRiskBanner({ habit }: { habit: Habit | null }) {
 
 /** The banner for pages that do not load the habit themselves (home). */
 export function HomeStreakBanner() {
+  const { t } = useLanguage();
   const { habit } = useHabit();
-  if (!streakAtRisk(habit)) return null;
-  // Floats over the full-bleed hero instead of taking a row: the hero pulls itself up under the
-  // nav bar, and a row here would push it down and leave a strip of page above the photo.
+  const [closed, setClosed] = useState(false);
+  if (closed || !streakAtRisk(habit)) return null;
+  // A toast at the bottom: the hero is full-bleed under the nav bar, so a row above it leaves a
+  // strip of page and anything laid over its top covers the hero cards.
   return (
-    <div className="relative z-30 h-0">
-      <div className="absolute inset-x-0 top-20 mx-auto w-full max-w-6xl px-4 sm:px-6">
-        <StreakRiskBanner habit={habit} />
-      </div>
+    <div className="fixed inset-x-4 bottom-4 z-40 mx-auto max-w-md rounded-xl shadow-lg [&>[role=status]]:pr-12">
+      <StreakRiskBanner habit={habit} />
+      <button type="button" onClick={() => setClosed(true)} aria-label={t({ en: 'Close', vi: 'Đóng' })} className="absolute right-1 top-1/2 inline-flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-lg text-ink-muted hover:text-ink focus-visible:outline focus-visible:outline-2 focus-visible:outline-focus">
+        <X aria-hidden="true" className="h-4 w-4" />
+      </button>
     </div>
   );
 }
