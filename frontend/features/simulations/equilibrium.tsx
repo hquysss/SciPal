@@ -1,7 +1,7 @@
 'use client';
 
 import { Component, lazy, Suspense, useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
-import { ChevronDown, RotateCcw } from 'lucide-react';
+import { Atom, ChevronDown, Flame, Grid3x3, MoveVertical, RotateCcw, Sparkles } from 'lucide-react';
 import { EQUILIBRIUM_REACTIONS } from '@scipal/types';
 import { BUTTON, CheckField, PANEL, SelectField, SelfCheck, SelfCheckFields } from './controls';
 import { useReducedMotion } from './animation';
@@ -26,7 +26,23 @@ import {
   type VesselState,
 } from './engines/equilibrium';
 import { pick, type Bilingual, type Lang, type SimulationEditorProps, type SimulationModule, type SimulationViewProps } from './types';
+import { PartLegend, type LegendItem } from './partLegend';
 import styles from './equilibrium.module.css';
+
+const ICON = 'h-4 w-4 shrink-0';
+
+/** The key under the vessel: what each thing in the 3D view stands for. Only the parts this reaction's vessel has. */
+function legendFor(info: (typeof REACTIONS)[keyof typeof REACTIONS]): LegendItem[] {
+  const gas = info.phase === 'gas';
+  return [
+    { key: 'molecule', icon: <Atom aria-hidden="true" className={ICON} />, name: { vi: 'Mô hình phân tử', en: 'Molecule model' }, about: { vi: 'Mỗi cụm quả cầu là một phân tử, mỗi quả cầu là một nguyên tử theo màu ở trên. Số mô hình tăng giảm theo nồng độ thật của từng chất.', en: 'Each cluster of balls is one molecule, each ball an atom coloured as above. The number of models follows each substance’s real concentration.' } },
+    { key: 'flash', icon: <Sparkles aria-hidden="true" className={ICON} />, name: { vi: 'Chớp sáng = phản ứng', en: 'Flash = a reaction' }, about: { vi: 'Phân tử loé sáng và phình ra là vừa được tạo thành. Ở trạng thái cân bằng, phản ứng thuận và nghịch vẫn xảy ra cùng lúc nên luôn có chớp sáng, nhưng số phân tử mỗi chất không đổi.', en: 'A molecule that flashes and swells has just formed. At equilibrium the forward and reverse reactions still run at once, so flashes go on while the counts stay put.' } },
+    ...(gas ? [{ key: 'piston', icon: <MoveVertical aria-hidden="true" className={ICON} />, name: { vi: 'Pít-tông: thể tích, áp suất', en: 'Piston: volume, pressure' }, about: { vi: 'Pít-tông hạ xuống làm thể tích giảm, áp suất tăng; nâng lên thì ngược lại. Cân bằng chuyển dịch về phía có ít phân tử khí hơn khi tăng áp suất.', en: 'Pushing the piston down shrinks the volume and raises the pressure; lifting it does the opposite. Raising the pressure shifts the equilibrium towards fewer gas molecules.' } } satisfies LegendItem] : []),
+    ...(info.temp[1] > info.temp[0] ? [{ key: 'plate', icon: <Flame aria-hidden="true" className={ICON} />, name: { vi: 'Bếp: nhiệt độ', en: 'Hot plate: temperature' }, about: { vi: 'Bếp đỏ dần khi nhiệt độ tăng. Tăng nhiệt độ làm cân bằng chuyển dịch theo chiều thu nhiệt, giảm nhiệt độ theo chiều toả nhiệt.', en: 'The plate glows redder as the temperature rises. Heating shifts the equilibrium in the endothermic direction, cooling in the exothermic one.' } } satisfies LegendItem] : []),
+    ...(info.catalyst ? [{ key: 'catalyst', icon: <Grid3x3 aria-hidden="true" className={ICON} />, name: { vi: 'Lưới xúc tác', en: 'Catalyst gauze' }, about: { vi: 'Lưới kim loại xuất hiện khi thêm chất xúc tác. Xúc tác giúp đạt cân bằng nhanh hơn nhưng không làm cân bằng chuyển dịch.', en: 'The metal gauze appears when a catalyst is added. A catalyst reaches equilibrium faster but does not shift it.' } } satisfies LegendItem] : []),
+  ];
+}
+
 
 const EquilibriumScene = lazy(() => import('./equilibriumScene'));
 type Props = SimulationViewProps<'chemical-equilibrium'>;
@@ -251,6 +267,7 @@ function EquilibriumExperiment({ config, lang }: Props) {
           <li key={el} className="inline-flex items-center gap-1.5"><span aria-hidden="true" className={`${styles.swatch} ${ATOM_CLASS[el]}`} />{el} ({t(ATOM_NAME[el])})</li>
         ))}
       </ul>
+      <PartLegend items={legendFor(r)} lang={lang} />
 
       <p className={`rounded-md border p-3 text-sm font-semibold ${heading ? 'border-warning bg-warning-surface text-ink' : 'border-success bg-success-surface text-ink'}`}>
         {heading
