@@ -77,12 +77,14 @@ export function SceneTools({ lang, className, onZoom, onReset, panelsHidden, onT
 }
 
 /** A label pinned on a part of the 3D view, as in the ripple tank: the scene's Rig moves it over
-    the part; pressing it opens (or closes) that part's explanation. */
-export function PartChip({ id, label, pressed, onPress, store }: {
+    the part; pressing it opens (or closes) that part's explanation; hovering it lets the scene light the part up. */
+export function PartChip({ id, label, pressed, onPress, onHover, store }: {
   readonly id: string;
   readonly label: string;
   readonly pressed: boolean;
   readonly onPress: () => void;
+  /** Pointer over or off the label, so the scene can light the part up. */
+  readonly onHover?: (on: boolean) => void;
   readonly store: RefObject<Map<string, HTMLElement>>;
 }) {
   return (
@@ -93,6 +95,10 @@ export function PartChip({ id, label, pressed, onPress, store }: {
       aria-pressed={pressed}
       onPointerDown={(e) => e.stopPropagation()}
       onClick={onPress}
+      onPointerEnter={() => onHover?.(true)}
+      onPointerLeave={() => onHover?.(false)}
+      onFocus={() => onHover?.(true)}
+      onBlur={() => onHover?.(false)}
     >
       {label}
     </button>

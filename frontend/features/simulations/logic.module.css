@@ -13,6 +13,8 @@
   --logic-base: #262c31;
   --logic-lamp-off: #6b5d52;
   --logic-lamp-on: #ffd24a;
+  /* Highlight on the part whose label is hovered or open. */
+  --logic-glow: #7fd4ff;
 }
 
 .stage {

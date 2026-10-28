@@ -19,6 +19,8 @@
   --eq-fe: #e07b24;
   --eq-s: #f2d43a;
   --eq-c: #6f7780;
+  /* Highlight on the part whose label is hovered or open. */
+  --eq-glow: #7fd4ff;
 }
 
 .stage {
