@@ -5,7 +5,7 @@ import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import * as THREE from 'three';
 import { concentrations, drawCounts, REACTIONS, type Element, type ReactionId, type VesselState } from './engines/equilibrium';
 import { Rig, useOrbit, usePalette, VIEW_CLASS } from './scene3d';
-import { PartChip, SceneTools, useFullscreen } from './sceneChrome';
+import { clickThrough, PartChip, partPointer, SceneTools, useFullscreen } from './sceneChrome';
 import overlay from './simOverlay.module.css';
 import { pick, type Lang } from './types';
 import styles from './equilibrium.module.css';
@@ -145,6 +145,7 @@ function Molecules({ reaction, read, palette, reduced, glow }: { readonly reacti
       if (!mesh) continue;
       mesh.count = counts[el] ?? 0;
       mesh.instanceMatrix.needsUpdate = true;
+      mesh.boundingSphere = null; // the balls move, so pointer picking recomputes it
     }
   });
 
@@ -189,7 +190,7 @@ function swapOnce(list: Particle[], nu: readonly number[], species: number) {
 }
 
 /** Glass, piston or beaker, hot plate and catalyst gauze, and the tint of the coloured species. */
-function Vessel({ reaction, read, palette, glow }: { readonly reaction: ReactionId; readonly read: () => VesselState; readonly palette: Palette; readonly glow: EquilibriumPart | null }) {
+function Vessel({ reaction, read, palette, glow, on }: { readonly reaction: ReactionId; readonly read: () => VesselState; readonly palette: Palette; readonly glow: EquilibriumPart | null; readonly on: (part: EquilibriumPart) => ReturnType<typeof partPointer<EquilibriumPart>> }) {
   const info = REACTIONS[reaction];
   const gas = info.phase === 'gas';
   const piston = useRef<THREE.Group>(null);
@@ -241,7 +242,7 @@ function Vessel({ reaction, read, palette, glow }: { readonly reaction: Reaction
         <meshBasicMaterial ref={tintMaterial} color={gas ? palette.gas : palette.liquid} transparent opacity={0} depthWrite={false} />
       </mesh>
       {gas && (
-        <group ref={piston}>
+        <group ref={piston} {...on('piston')}>
           <mesh position={[0, 0.07, 0]}>
             <cylinderGeometry args={[VESSEL_R - 0.03, VESSEL_R - 0.03, 0.14, 64]} />
             <meshStandardMaterial color={palette.metal} metalness={0.6} roughness={0.35} emissive={palette.glow} emissiveIntensity={glow === 'piston' ? GLOW : 0} />
@@ -253,13 +254,13 @@ function Vessel({ reaction, read, palette, glow }: { readonly reaction: Reaction
         </group>
       )}
       {info.temp[1] > info.temp[0] && (
-        <mesh position={[0, -0.22, 0]}>
+        <mesh position={[0, -0.22, 0]} {...on('plate')}>
           <cylinderGeometry args={[VESSEL_R + 0.3, VESSEL_R + 0.35, 0.2, 64]} />
           <meshStandardMaterial ref={plateMaterial} color={palette.plate} roughness={0.6} />
         </mesh>
       )}
       {info.catalyst && (
-        <mesh ref={gauze} position={[0, 0.06, 0]} rotation={[-Math.PI / 2, 0, 0]} visible={false}>
+        <mesh ref={gauze} position={[0, 0.06, 0]} rotation={[-Math.PI / 2, 0, 0]} visible={false} {...on('catalyst')}>
           <circleGeometry args={[INNER_R, 24]} />
           <meshStandardMaterial color={palette.catalyst} wireframe metalness={0.7} roughness={0.3} emissive={palette.glow} emissiveIntensity={glow === 'catalyst' ? GLOW + 0.4 : 0} />
         </mesh>
@@ -285,11 +286,14 @@ export type EquilibriumPart = 'molecule' | 'piston' | 'plate' | 'catalyst';
 
 function EquilibriumScene({ reaction, read, running, reduced, stamp, description, lang, hud, parts, part = null, onPart }: EquilibriumSceneProps) {
   const t = pick(lang);
-  const { host, orbit, invalidate, handlers, reset, zoom } = useOrbit(HOME, LIMITS);
+  const { host, orbit, invalidate, handlers: orbitHandlers, reset, zoom } = useOrbit(HOME, LIMITS);
+  const handlers = clickThrough(orbitHandlers);
   const { expanded, covering, toggle: toggleFullscreen } = useFullscreen(host);
   const [panelsHidden, setPanelsHidden] = useState(false);
   const [hover, setHover] = useState<EquilibriumPart | null>(null);
   const glow = hover ?? part;
+  // Hovering a part in the scene lights it like its label does; clicking it opens it.
+  const on = (k: EquilibriumPart) => partPointer(k, (p) => { setHover(p); if (host.current) host.current.style.cursor = p ? 'pointer' : ''; }, () => onPart?.(part === k ? null : k));
   const palette = usePalette(host, TOKENS);
   const labels = useMemo(() => ({ current: new Map<string, HTMLElement>() }), []);
   // Pinned part labels, as in the ripple tank; the piston label follows the piston.
@@ -309,8 +313,8 @@ function EquilibriumScene({ reaction, read, running, reduced, stamp, description
             <hemisphereLight args={[palette.glass, palette.plate, 0.6]} />
             <directionalLight position={[4, 8, 6]} intensity={1.8} />
             <directionalLight position={[-5, 3, -4]} intensity={0.5} />
-            <Vessel reaction={reaction} read={read} palette={palette} glow={glow} />
-            <Molecules reaction={reaction} read={read} palette={palette} reduced={reduced} glow={glow === 'molecule'} />
+            <Vessel reaction={reaction} read={read} palette={palette} glow={glow} on={on} />
+            <group {...on('molecule')}><Molecules reaction={reaction} read={read} palette={palette} reduced={reduced} glow={glow === 'molecule'} /></group>
             <Rig orbit={orbit} target={TARGET} labels={labels} points={stablePoints} onInvalidate={(fn) => { invalidate.current = fn; }} />
             <Refresh stamp={`${stamp}|${glow}`} />
           </Canvas>

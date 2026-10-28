@@ -1,7 +1,8 @@
 'use client';
 
-import { useEffect, useState, type ReactNode, type RefObject } from 'react';
+import { useEffect, useState, type PointerEvent as ReactPointerEvent, type ReactNode, type RefObject } from 'react';
 import { Eye, EyeOff, Maximize2, Minimize2, Minus, Plus, RotateCcw } from 'lucide-react';
+import type { ThreeEvent } from '@react-three/fiber';
 import { pick, type Lang } from './types';
 import overlay from './simOverlay.module.css';
 
@@ -103,4 +104,31 @@ export function PartChip({ id, label, pressed, onPress, onHover, store }: {
       {label}
     </button>
   );
+}
+
+/** Pointer props for a part's group in the scene: hovering lights it, a click (not a drag) opens it. */
+export function partPointer<P extends string>(key: P, onHover: (part: P | null) => void, onPress: (part: P) => void) {
+  return {
+    onPointerOver: (e: ThreeEvent<PointerEvent>) => { if (!e.object.visible) return; e.stopPropagation(); onHover(key); },
+    onPointerOut: () => onHover(null),
+    onClick: (e: ThreeEvent<MouseEvent>) => { if (e.delta > 6 || !e.object.visible) return; e.stopPropagation(); onPress(key); },
+  };
+}
+
+type OrbitHandlers = {
+  readonly onPointerDown: (e: ReactPointerEvent<HTMLDivElement>) => void;
+  readonly onPointerUp: (e: ReactPointerEvent<HTMLDivElement>) => void;
+};
+
+/** Orbit handlers that leave the pointer uncaptured, as in the ripple tank: a short press stays a
+    click on the canvas, so parts can be picked; a drag that leaves the view ends on pointerleave. */
+export function clickThrough<H extends OrbitHandlers>(handlers: H): H & { onPointerLeave: (e: ReactPointerEvent<HTMLDivElement>) => void } {
+  return {
+    ...handlers,
+    onPointerDown: (e: ReactPointerEvent<HTMLDivElement>) => {
+      handlers.onPointerDown(e);
+      try { e.currentTarget.releasePointerCapture(e.pointerId); } catch { /* not captured */ }
+    },
+    onPointerLeave: (e: ReactPointerEvent<HTMLDivElement>) => handlers.onPointerUp(e),
+  };
 }

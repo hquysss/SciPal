@@ -6,7 +6,7 @@ import * as THREE from 'three';
 import { GATES, type Bit, type Gate } from './engines/logic';
 import { BUBBLE, type Circuit, type Point } from './logicCircuit';
 import { LabelLayer, Rig, useOrbit, usePalette, VIEW_CLASS } from './scene3d';
-import { PartChip, SceneTools, useFullscreen } from './sceneChrome';
+import { clickThrough, PartChip, partPointer, SceneTools, useFullscreen } from './sceneChrome';
 import overlay from './simOverlay.module.css';
 import { pick, type Lang } from './types';
 import styles from './logic.module.css';
@@ -219,11 +219,15 @@ export type LogicPart = 'switch' | 'gate' | 'wire' | 'lamp';
 function LogicScene({ circuit, onToggle, running, reduced, description, lang, hud, parts, part = null, onPart }: LogicSceneProps) {
   const t = pick(lang);
   const home = useMemo(() => ({ theta: -Math.PI / 2, phi: 0.95, dist: Math.max(9.5, circuit.width * 1.15) }), [circuit.width]);
-  const { host, orbit, invalidate, handlers, reset, zoom } = useOrbit(home, LIMITS);
+  const { host, orbit, invalidate, handlers: orbitHandlers, reset, zoom } = useOrbit(home, LIMITS);
+  const handlers = clickThrough(orbitHandlers);
   const { expanded, covering, toggle: toggleFullscreen } = useFullscreen(host);
   const [panelsHidden, setPanelsHidden] = useState(false);
   const [hover, setHover] = useState<LogicPart | null>(null);
   const glow = hover ?? part;
+  const hovered = useRef(false);
+  // Hovering a part in the scene lights it like its label does; clicking it opens it (a switch also flips).
+  const on = (k: LogicPart) => partPointer(k, (p) => { hovered.current = p !== null; setHover(p); }, () => onPart?.(k));
   const palette = usePalette(host, TOKENS);
   const labelStore = useMemo(() => ({ current: new Map<string, HTMLElement>() }), []);
   const targets = useMemo(() => ({ current: new Map<string, THREE.Mesh>() }), []);
@@ -260,7 +264,7 @@ function LogicScene({ circuit, onToggle, running, reduced, description, lang, hu
     onPointerDown: (e: ReactPointerEvent<HTMLDivElement>) => { press.current = { x: e.clientX, y: e.clientY }; handlers.onPointerDown(e); },
     onPointerMove: (e: ReactPointerEvent<HTMLDivElement>) => {
       handlers.onPointerMove(e);
-      if (e.buttons === 0 && e.pointerType === 'mouse') e.currentTarget.style.cursor = picker.current(ndcOf(e)) ? 'pointer' : '';
+      if (e.buttons === 0 && e.pointerType === 'mouse') e.currentTarget.style.cursor = picker.current(ndcOf(e)) || hovered.current ? 'pointer' : '';
     },
     onPointerUp: (e: ReactPointerEvent<HTMLDivElement>) => {
       handlers.onPointerUp(e);
@@ -288,16 +292,16 @@ function LogicScene({ circuit, onToggle, running, reduced, description, lang, hu
               <boxGeometry args={[circuit.width + 0.12, 0.04, circuit.depth + 0.12]} />
               <meshStandardMaterial color={palette.edge} roughness={0.9} />
             </mesh>
-            {circuit.wires.map((w, i) => <Wire key={i} {...w} palette={palette} animate={running} glow={glow === 'wire'} />)}
+            <group {...on('wire')}>{circuit.wires.map((w, i) => <Wire key={i} {...w} palette={palette} animate={running} glow={glow === 'wire'} />)}</group>
             {circuit.dots.map((d, i) => (
               <mesh key={i} position={[d.x, WIRE_Y, d.z]}>
                 <sphereGeometry args={[0.09, 14, 10]} />
                 <meshStandardMaterial color={d.on ? palette.on : palette.off} emissive={d.on ? palette.on : palette.base} emissiveIntensity={d.on ? 0.9 : 0} />
               </mesh>
             ))}
-            {circuit.gates.map((g, i) => <GateBody key={`${g.gate}${i}`} {...g} palette={palette} glow={glow === 'gate'} />)}
-            {circuit.switches.map((s) => <Switch key={s.id} {...s} palette={palette} reduced={reduced} register={register} glow={glow === 'switch'} />)}
-            {circuit.lamps.map((l) => <Lamp key={l.id} {...l} palette={palette} glow={glow === 'lamp'} />)}
+            <group {...on('gate')}>{circuit.gates.map((g, i) => <GateBody key={`${g.gate}${i}`} {...g} palette={palette} glow={glow === 'gate'} />)}</group>
+            <group {...on('switch')}>{circuit.switches.map((s) => <Switch key={s.id} {...s} palette={palette} reduced={reduced} register={register} glow={glow === 'switch'} />)}</group>
+            <group {...on('lamp')}>{circuit.lamps.map((l) => <Lamp key={l.id} {...l} palette={palette} glow={glow === 'lamp'} />)}</group>
             <Picker targets={targets} onReady={onReady} />
             <FitBoard />
             <Rig orbit={orbit} target={TARGET} labels={labelStore} points={points} onInvalidate={(fn) => { invalidate.current = fn; }} />
