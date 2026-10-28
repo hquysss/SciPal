@@ -26,9 +26,13 @@ export function StreakRiskBanner({ habit }: { habit: Habit | null }) {
 export function HomeStreakBanner() {
   const { habit } = useHabit();
   if (!streakAtRisk(habit)) return null;
+  // Floats over the full-bleed hero instead of taking a row: the hero pulls itself up under the
+  // nav bar, and a row here would push it down and leave a strip of page above the photo.
   return (
-    <div className="mx-auto w-full max-w-6xl px-4 pt-4 sm:px-6">
-      <StreakRiskBanner habit={habit} />
+    <div className="relative z-30 h-0">
+      <div className="absolute inset-x-0 top-20 mx-auto w-full max-w-6xl px-4 sm:px-6">
+        <StreakRiskBanner habit={habit} />
+      </div>
     </div>
   );
 }
