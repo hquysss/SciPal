@@ -1,7 +1,7 @@
 'use client';
 
 import { Component, lazy, Suspense, useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
-import { Atom, ChevronDown, Flame, Grid3x3, MoveVertical, RotateCcw, Sparkles } from 'lucide-react';
+import { ChevronDown, RotateCcw, X } from 'lucide-react';
 import { EQUILIBRIUM_REACTIONS } from '@scipal/types';
 import { BUTTON, CheckField, PANEL, SelectField, SelfCheck, SelfCheckFields } from './controls';
 import { useReducedMotion } from './animation';
@@ -26,23 +26,25 @@ import {
   type VesselState,
 } from './engines/equilibrium';
 import { pick, type Bilingual, type Lang, type SimulationEditorProps, type SimulationModule, type SimulationViewProps } from './types';
-import { PartLegend, type LegendItem } from './partLegend';
+import type { EquilibriumPart } from './equilibriumScene';
 import overlay from './simOverlay.module.css';
 import styles from './equilibrium.module.css';
 
-const ICON = 'h-4 w-4 shrink-0';
+/** The parts pinned with a label in the 3D view, as in the ripple tank; pressing one explains it. */
+const PARTS: Record<EquilibriumPart, { readonly name: Bilingual; readonly about: Bilingual }> = {
+  molecule: { name: { vi: 'Mô hình phân tử', en: 'Molecule models' }, about: { vi: 'Mỗi cụm quả cầu là một phân tử, mỗi quả cầu là một nguyên tử theo màu ở trên. Số mô hình tăng giảm theo nồng độ thật của từng chất. Phân tử loé sáng và phình ra là vừa được tạo thành. Ở trạng thái cân bằng, phản ứng thuận và nghịch vẫn xảy ra cùng lúc nên luôn có chớp sáng, nhưng số phân tử mỗi chất không đổi.', en: 'Each cluster of balls is one molecule, each ball an atom coloured as above. The number of models follows each substance’s real concentration. A molecule that flashes and swells has just formed. At equilibrium the forward and reverse reactions still run at once, so flashes go on while the counts stay put.' } },
+  piston: { name: { vi: 'Pít-tông', en: 'Piston' }, about: { vi: 'Pít-tông hạ xuống làm thể tích giảm, áp suất tăng; nâng lên thì ngược lại. Cân bằng chuyển dịch về phía có ít phân tử khí hơn khi tăng áp suất.', en: 'Pushing the piston down shrinks the volume and raises the pressure; lifting it does the opposite. Raising the pressure shifts the equilibrium towards fewer gas molecules.' } },
+  plate: { name: { vi: 'Bếp', en: 'Hot plate' }, about: { vi: 'Bếp đỏ dần khi nhiệt độ tăng. Tăng nhiệt độ làm cân bằng chuyển dịch theo chiều thu nhiệt, giảm nhiệt độ theo chiều toả nhiệt.', en: 'The plate glows redder as the temperature rises. Heating shifts the equilibrium in the endothermic direction, cooling in the exothermic one.' } },
+  catalyst: { name: { vi: 'Lưới xúc tác', en: 'Catalyst gauze' }, about: { vi: 'Lưới kim loại xuất hiện khi thêm chất xúc tác. Xúc tác giúp đạt cân bằng nhanh hơn nhưng không làm cân bằng chuyển dịch.', en: 'The metal gauze appears when a catalyst is added. A catalyst reaches equilibrium faster but does not shift it.' } },
+};
 
-/** The key under the vessel: what each thing in the 3D view stands for. Only the parts this reaction's vessel has. */
-function legendFor(info: (typeof REACTIONS)[keyof typeof REACTIONS]): LegendItem[] {
-  const gas = info.phase === 'gas';
-  return [
-    { key: 'molecule', icon: <Atom aria-hidden="true" className={ICON} />, name: { vi: 'Mô hình phân tử', en: 'Molecule model' }, about: { vi: 'Mỗi cụm quả cầu là một phân tử, mỗi quả cầu là một nguyên tử theo màu ở trên. Số mô hình tăng giảm theo nồng độ thật của từng chất.', en: 'Each cluster of balls is one molecule, each ball an atom coloured as above. The number of models follows each substance’s real concentration.' } },
-    { key: 'flash', icon: <Sparkles aria-hidden="true" className={ICON} />, name: { vi: 'Chớp sáng = phản ứng', en: 'Flash = a reaction' }, about: { vi: 'Phân tử loé sáng và phình ra là vừa được tạo thành. Ở trạng thái cân bằng, phản ứng thuận và nghịch vẫn xảy ra cùng lúc nên luôn có chớp sáng, nhưng số phân tử mỗi chất không đổi.', en: 'A molecule that flashes and swells has just formed. At equilibrium the forward and reverse reactions still run at once, so flashes go on while the counts stay put.' } },
-    ...(gas ? [{ key: 'piston', icon: <MoveVertical aria-hidden="true" className={ICON} />, name: { vi: 'Pít-tông: thể tích, áp suất', en: 'Piston: volume, pressure' }, about: { vi: 'Pít-tông hạ xuống làm thể tích giảm, áp suất tăng; nâng lên thì ngược lại. Cân bằng chuyển dịch về phía có ít phân tử khí hơn khi tăng áp suất.', en: 'Pushing the piston down shrinks the volume and raises the pressure; lifting it does the opposite. Raising the pressure shifts the equilibrium towards fewer gas molecules.' } } satisfies LegendItem] : []),
-    ...(info.temp[1] > info.temp[0] ? [{ key: 'plate', icon: <Flame aria-hidden="true" className={ICON} />, name: { vi: 'Bếp: nhiệt độ', en: 'Hot plate: temperature' }, about: { vi: 'Bếp đỏ dần khi nhiệt độ tăng. Tăng nhiệt độ làm cân bằng chuyển dịch theo chiều thu nhiệt, giảm nhiệt độ theo chiều toả nhiệt.', en: 'The plate glows redder as the temperature rises. Heating shifts the equilibrium in the endothermic direction, cooling in the exothermic one.' } } satisfies LegendItem] : []),
-    ...(info.catalyst ? [{ key: 'catalyst', icon: <Grid3x3 aria-hidden="true" className={ICON} />, name: { vi: 'Lưới xúc tác', en: 'Catalyst gauze' }, about: { vi: 'Lưới kim loại xuất hiện khi thêm chất xúc tác. Xúc tác giúp đạt cân bằng nhanh hơn nhưng không làm cân bằng chuyển dịch.', en: 'The metal gauze appears when a catalyst is added. A catalyst reaches equilibrium faster but does not shift it.' } } satisfies LegendItem] : []),
-  ];
-}
+/** Only the parts this reaction's vessel has. */
+const partsOf = (info: (typeof REACTIONS)[keyof typeof REACTIONS]): EquilibriumPart[] => [
+  'molecule',
+  ...(info.phase === 'gas' ? ['piston' as const] : []),
+  ...(info.temp[1] > info.temp[0] ? ['plate' as const] : []),
+  ...(info.catalyst ? ['catalyst' as const] : []),
+];
 
 
 const EquilibriumScene = lazy(() => import('./equilibriumScene'));
@@ -199,6 +201,7 @@ function EquilibriumExperiment({ config, lang }: Props) {
   const [mounted, setMounted] = useState(false);
   const [reaction, setReaction] = useState<ReactionId>(config.reaction);
   const [pending, setPending] = useState<Change | null>(null);
+  const [part, setPart] = useState<EquilibriumPart | null>(null);
   const [feedback, setFeedback] = useState<{ predicted: Direction | null; direction: Direction; reason: Bilingual; label: string } | null>(null);
   const vessel = useVessel(reaction, reduced, active);
   useEffect(() => setMounted(true), []);
@@ -305,20 +308,34 @@ function EquilibriumExperiment({ config, lang }: Props) {
           </div>
         </div>
   );
-  // Drawn over the 3D view, like the ripple tank: the state on top, the key (and in full screen the controls) below.
+  // Drawn over the 3D view, like the ripple tank: readouts on top, the picked part's explanation
+  // (and in full screen the controls) at the bottom.
   const stop = (e: { stopPropagation: () => void }) => e.stopPropagation();
   const hud = (expanded: boolean) => (
     <>
-      <p aria-hidden="true" className={`${overlay.card} px-2.5 py-1.5 text-sm font-semibold`}>{heading ? t({ en: `Shifting ${heading}…`, vi: `Đang chuyển dịch theo ${heading === 'forward' ? 'chiều thuận' : 'chiều nghịch'}…` }) : t({ en: 'At equilibrium: Q = K', vi: 'Đã cân bằng: Q = K' })}</p>
+      <div className={`${overlay.card} flex flex-col gap-1 pb-1.5`}>
+        <dl className={overlay.readouts}>
+          <dt>{t({ en: 'State', vi: 'Trạng thái' })}</dt><dd>{heading ? t({ en: `shifting ${heading}`, vi: heading === 'forward' ? 'chuyển dịch thuận' : 'chuyển dịch nghịch' }) : t({ en: 'equilibrium', vi: 'cân bằng' })}</dd>
+          <dt>{t({ en: 'Temperature', vi: 'Nhiệt độ' })}</dt><dd>{fmt(now.tempC, lang)} °C</dd>
+          {pressureBar !== null && <><dt>{t({ en: 'Pressure', vi: 'Áp suất' })}</dt><dd>{fmt(pressureBar, lang)} bar</dd></>}
+          <dt>K<sub>C</sub> · Q<sub>C</sub></dt><dd>{sci(k, lang)} · {sci(q, lang)}</dd>
+        </dl>
+        <ul className="flex max-w-[16rem] flex-wrap gap-x-3 gap-y-0.5 px-2.5 text-xs text-ink-muted" aria-label={t({ en: 'Atom colours', vi: 'Màu các nguyên tử' })}>
+          {elements.map((el) => (
+            <li key={el} className="inline-flex items-center gap-1.5"><span aria-hidden="true" className={`${styles.swatch} ${ATOM_CLASS[el]}`} />{el} ({t(ATOM_NAME[el])})</li>
+          ))}
+        </ul>
+      </div>
       <div className={overlay.bottom}>
-        <div className={`${overlay.card} ${overlay.interactive} flex max-w-full flex-col gap-2 p-2`} onPointerDown={stop}>
-            <ul className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-ink-muted" aria-label={t({ en: 'Atom colours', vi: 'Màu các nguyên tử' })}>
-              {elements.map((el) => (
-                <li key={el} className="inline-flex items-center gap-1.5"><span aria-hidden="true" className={`${styles.swatch} ${ATOM_CLASS[el]}`} />{el} ({t(ATOM_NAME[el])})</li>
-              ))}
-            </ul>
-          <PartLegend items={legendFor(r)} lang={lang} />
-        </div>
+        {part && (
+          <div aria-live="polite" className={`${overlay.card} ${overlay.part} ${overlay.interactive}`} onPointerDown={stop}>
+            <div className="min-w-0 flex-1">
+              <p className="font-semibold">{t(PARTS[part].name)}</p>
+              <p className="mt-0.5 text-ink-muted">{t(PARTS[part].about)}</p>
+            </div>
+            <button type="button" className={overlay.tool} aria-label={t({ vi: 'Đóng', en: 'Close' })} onClick={() => setPart(null)}><X aria-hidden="true" className="h-4 w-4" /></button>
+          </div>
+        )}
         {expanded && (
           <div className={`${overlay.card} ${overlay.dock} ${overlay.interactive} max-h-[40vh] overflow-y-auto [&>div]:flex-row [&>div]:flex-wrap [&>div]:items-end [&>div]:gap-x-4`} onPointerDown={stop}>
             {prediction}
@@ -328,6 +345,7 @@ function EquilibriumExperiment({ config, lang }: Props) {
       </div>
     </>
   );
+  const partNames = Object.fromEntries(partsOf(r).map((p) => [p, t(PARTS[p].name)])) as Partial<Record<EquilibriumPart, string>>;
 
   return (
     <div ref={host} className={`${PANEL} ${styles.palette}`}>
@@ -337,7 +355,7 @@ function EquilibriumExperiment({ config, lang }: Props) {
       {mounted ? (
         <SceneBoundary fallback={fallback(t({ vi: 'Trình duyệt này không hiển thị được 3D.', en: 'This browser cannot display 3D.' }))}>
           <Suspense fallback={fallback(t({ vi: 'Đang tải hình 3D…', en: 'Loading the 3D view…' }))}>
-            <EquilibriumScene reaction={reaction} read={vessel.current} running={active && !reduced} reduced={reduced} stamp={vessel.now} description={summary} lang={lang} hud={hud} />
+            <EquilibriumScene reaction={reaction} read={vessel.current} running={active && !reduced} reduced={reduced} stamp={vessel.now} description={summary} lang={lang} hud={hud} parts={partNames} part={part} onPart={setPart} />
           </Suspense>
         </SceneBoundary>
       ) : fallback(t({ vi: 'Đang tải hình 3D…', en: 'Loading the 3D view…' }))}

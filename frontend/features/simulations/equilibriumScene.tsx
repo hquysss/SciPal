@@ -5,7 +5,7 @@ import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import * as THREE from 'three';
 import { concentrations, drawCounts, REACTIONS, type Element, type ReactionId, type VesselState } from './engines/equilibrium';
 import { Rig, useOrbit, usePalette, VIEW_CLASS } from './scene3d';
-import { SceneTools, useFullscreen } from './sceneChrome';
+import { PartChip, SceneTools, useFullscreen } from './sceneChrome';
 import overlay from './simOverlay.module.css';
 import { pick, type Lang } from './types';
 import styles from './equilibrium.module.css';
@@ -29,7 +29,6 @@ const CAPACITY = 1400; // atom instances per element
 const HOME = { theta: -Math.PI / 2, phi: 0.38, dist: 12.5 };
 const LIMITS = { min: 5, max: 16 };
 const TARGET = new THREE.Vector3(0, 1.5, 0);
-const EMPTY_POINTS: Array<[string, THREE.Vector3]> = [];
 
 /** Height of the gas under the piston for a volume in litres (a 1 L vessel stands 2.2 tall). */
 export const gasHeight = (volume: number) => 2.2 * volume ** 0.45;
@@ -272,15 +271,30 @@ function Refresh({ stamp }: { readonly stamp: number }) {
   return null;
 }
 
-export type EquilibriumSceneProps = { readonly reaction: ReactionId; readonly read: () => VesselState; readonly running: boolean; readonly reduced: boolean; readonly stamp: number; readonly description: string; readonly lang: Lang; readonly hud?: (expanded: boolean) => ReactNode };
+export type EquilibriumSceneProps = { readonly reaction: ReactionId; readonly read: () => VesselState; readonly running: boolean; readonly reduced: boolean; readonly stamp: number; readonly description: string; readonly lang: Lang; readonly hud?: (expanded: boolean) => ReactNode;
+  /** Names of the parts that get a pinned label (only the ones this vessel has); pressing one sets `part`. */
+  readonly parts?: Partial<Record<EquilibriumPart, string>>;
+  readonly part?: EquilibriumPart | null;
+  readonly onPart?: (part: EquilibriumPart | null) => void;
+};
 
-function EquilibriumScene({ reaction, read, running, reduced, stamp, description, lang, hud }: EquilibriumSceneProps) {
+export type EquilibriumPart = 'molecule' | 'piston' | 'plate' | 'catalyst';
+
+function EquilibriumScene({ reaction, read, running, reduced, stamp, description, lang, hud, parts, part = null, onPart }: EquilibriumSceneProps) {
   const t = pick(lang);
   const { host, orbit, invalidate, handlers, reset, zoom } = useOrbit(HOME, LIMITS);
   const { expanded, covering, toggle: toggleFullscreen } = useFullscreen(host);
   const [panelsHidden, setPanelsHidden] = useState(false);
   const palette = usePalette(host, TOKENS);
-  const labels = useMemo(() => ({ current: new Map<string, HTMLSpanElement>() }), []);
+  const labels = useMemo(() => ({ current: new Map<string, HTMLElement>() }), []);
+  // Pinned part labels, as in the ripple tank; the piston label follows the piston.
+  const state = read();
+  const height = REACTIONS[reaction].phase === 'gas' ? gasHeight(state.volume) : LIQUID_H;
+  const keys = (Object.keys(parts ?? {}) as EquilibriumPart[]).filter((k) => k !== 'catalyst' || state.catalyst);
+  const at: Record<EquilibriumPart, [number, number, number]> = { molecule: [-INNER_R * 0.55, Math.min(height, LIQUID_H) * 0.45, INNER_R * 0.5], piston: [0, height + 0.25, 0], plate: [VESSEL_R + 0.1, -0.22, VESSEL_R * 0.6], catalyst: [INNER_R * 0.5, 0.12, INNER_R * 0.5] };
+  const points = keys.map((k) => [`part-${k}`, new THREE.Vector3(...at[k])] as [string, THREE.Vector3]);
+  const pointsKey = points.map(([k, v]) => `${k}${v.y.toFixed(2)}`).join();
+  const stablePoints = useMemo(() => points, [pointsKey]);
   return (
     <div className="flex flex-col gap-3">
       <div ref={host} {...handlers} role="img" aria-label={description} tabIndex={0} className={`${VIEW_CLASS} ${styles.stage} ${covering ? styles.covering : ''}`}>
@@ -292,10 +306,11 @@ function EquilibriumScene({ reaction, read, running, reduced, stamp, description
             <directionalLight position={[-5, 3, -4]} intensity={0.5} />
             <Vessel reaction={reaction} read={read} palette={palette} />
             <Molecules reaction={reaction} read={read} palette={palette} reduced={reduced} />
-            <Rig orbit={orbit} target={TARGET} labels={labels} points={EMPTY_POINTS} onInvalidate={(fn) => { invalidate.current = fn; }} />
+            <Rig orbit={orbit} target={TARGET} labels={labels} points={stablePoints} onInvalidate={(fn) => { invalidate.current = fn; }} />
             <Refresh stamp={stamp} />
           </Canvas>
         )}
+        {parts && onPart && keys.map((k) => <PartChip key={k} id={`part-${k}`} label={parts[k]!} pressed={part === k} onPress={() => onPart(part === k ? null : k)} store={labels} />)}
         {hud && !panelsHidden && <div className={overlay.hud}>{hud(expanded)}</div>}
         <SceneTools lang={lang} className={styles.toolsPos} onZoom={zoom} onReset={reset} panelsHidden={panelsHidden} onTogglePanels={() => setPanelsHidden((h) => !h)} expanded={expanded} onToggleFullscreen={() => void toggleFullscreen()} />
       </div>

@@ -75,3 +75,26 @@ export function SceneTools({ lang, className, onZoom, onReset, panelsHidden, onT
     </div>
   );
 }
+
+/** A label pinned on a part of the 3D view, as in the ripple tank: the scene's Rig moves it over
+    the part; pressing it opens (or closes) that part's explanation. */
+export function PartChip({ id, label, pressed, onPress, store }: {
+  readonly id: string;
+  readonly label: string;
+  readonly pressed: boolean;
+  readonly onPress: () => void;
+  readonly store: RefObject<Map<string, HTMLElement>>;
+}) {
+  return (
+    <button
+      type="button"
+      ref={(el) => { if (el) store.current.set(id, el); else store.current.delete(id); }}
+      className={`${overlay.chip} ${overlay.anchor}`}
+      aria-pressed={pressed}
+      onPointerDown={(e) => e.stopPropagation()}
+      onClick={onPress}
+    >
+      {label}
+    </button>
+  );
+}

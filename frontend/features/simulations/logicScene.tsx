@@ -6,7 +6,7 @@ import * as THREE from 'three';
 import { GATES, type Bit, type Gate } from './engines/logic';
 import { BUBBLE, type Circuit, type Point } from './logicCircuit';
 import { LabelLayer, Rig, useOrbit, usePalette, VIEW_CLASS } from './scene3d';
-import { SceneTools, useFullscreen } from './sceneChrome';
+import { PartChip, SceneTools, useFullscreen } from './sceneChrome';
 import overlay from './simOverlay.module.css';
 import { pick, type Lang } from './types';
 import styles from './logic.module.css';
@@ -205,16 +205,23 @@ function Refresh({ stamp }: { readonly stamp: string }) {
   return null;
 }
 
-export type LogicSceneProps = { readonly circuit: Circuit; readonly onToggle: (id: string) => void; readonly running: boolean; readonly reduced: boolean; readonly description: string; readonly lang: Lang; readonly hud?: (expanded: boolean) => ReactNode };
+export type LogicSceneProps = { readonly circuit: Circuit; readonly onToggle: (id: string) => void; readonly running: boolean; readonly reduced: boolean; readonly description: string; readonly lang: Lang; readonly hud?: (expanded: boolean) => ReactNode;
+  /** Names of the parts that get a pinned label; pressing one sets `part`. */
+  readonly parts?: Readonly<Record<LogicPart, string>>;
+  readonly part?: LogicPart | null;
+  readonly onPart?: (part: LogicPart | null) => void;
+};
 
-function LogicScene({ circuit, onToggle, running, reduced, description, lang, hud }: LogicSceneProps) {
+export type LogicPart = 'switch' | 'gate' | 'wire' | 'lamp';
+
+function LogicScene({ circuit, onToggle, running, reduced, description, lang, hud, parts, part = null, onPart }: LogicSceneProps) {
   const t = pick(lang);
   const home = useMemo(() => ({ theta: -Math.PI / 2, phi: 0.95, dist: Math.max(9.5, circuit.width * 1.15) }), [circuit.width]);
   const { host, orbit, invalidate, handlers, reset, zoom } = useOrbit(home, LIMITS);
   const { expanded, covering, toggle: toggleFullscreen } = useFullscreen(host);
   const [panelsHidden, setPanelsHidden] = useState(false);
   const palette = usePalette(host, TOKENS);
-  const labelStore = useMemo(() => ({ current: new Map<string, HTMLSpanElement>() }), []);
+  const labelStore = useMemo(() => ({ current: new Map<string, HTMLElement>() }), []);
   const targets = useMemo(() => ({ current: new Map<string, THREE.Mesh>() }), []);
   const picker = useRef<(ndc: THREE.Vector2) => string | null>(() => null);
   const press = useRef<{ x: number; y: number } | null>(null);
@@ -227,7 +234,17 @@ function LogicScene({ circuit, onToggle, running, reduced, description, lang, hu
     ...circuit.gates.map((g, i) => ({ key: `g${i}`, text: GATES[g.gate].name.en, at: new THREE.Vector3(g.x, 0.75, g.z) })),
     ...circuit.labels.map((l) => ({ key: l.key, text: l.text, at: new THREE.Vector3(l.x, 0.2, l.z) })),
   ], [circuit]);
-  const points = useMemo(() => labels.map((l) => [l.key, l.at] as [string, THREE.Vector3]), [labels]);
+  // Pinned part labels sit just in front of the first switch, gate, wire and lamp.
+  const anchors = useMemo(() => {
+    const s = circuit.switches[0], g = circuit.gates[0], l = circuit.lamps[0], w = circuit.wires[0];
+    const list: Array<[LogicPart, THREE.Vector3]> = [];
+    if (s) list.push(['switch', new THREE.Vector3(s.x - 1.1, 0.1, s.z)]);
+    if (g) list.push(['gate', new THREE.Vector3(g.x, 0.1, g.z + 0.85)]);
+    if (w) list.push(['wire', new THREE.Vector3((w.from[0] + w.to[0]) / 2, 0.1, (w.from[1] + w.to[1]) / 2 + 0.3)]);
+    if (l) list.push(['lamp', new THREE.Vector3(l.x, 0.1, l.z + 0.75)]);
+    return parts ? list : [];
+  }, [circuit, parts]);
+  const points = useMemo(() => [...labels.map((l) => [l.key, l.at] as [string, THREE.Vector3]), ...anchors.map(([k, at]) => [`part-${k}`, at] as [string, THREE.Vector3])], [labels, anchors]);
   const stamp = JSON.stringify([circuit.switches.map((s) => s.on), circuit.lamps.map((l) => l.on), circuit.width]);
 
   const ndcOf = (e: ReactPointerEvent<HTMLDivElement>) => {
@@ -284,6 +301,7 @@ function LogicScene({ circuit, onToggle, running, reduced, description, lang, hu
           </Canvas>
         )}
         <LabelLayer labels={labels.map((l) => ({ key: l.key, text: l.text }))} store={labelStore} />
+        {parts && onPart && anchors.map(([k]) => <PartChip key={k} id={`part-${k}`} label={parts[k]} pressed={part === k} onPress={() => onPart(part === k ? null : k)} store={labelStore} />)}
         {hud && !panelsHidden && <div className={overlay.hud}>{hud(expanded)}</div>}
         <SceneTools lang={lang} className={styles.toolsPos} onZoom={zoom} onReset={reset} panelsHidden={panelsHidden} onTogglePanels={() => setPanelsHidden((h) => !h)} expanded={expanded} onToggleFullscreen={() => void toggleFullscreen()} />
       </div>

@@ -93,7 +93,15 @@
 .tool:hover { background: var(--surface-sunken, #eef2f3); }
 .tool:focus-visible { outline: 2px solid var(--focus, #ffd34d); outline-offset: 2px; }
 
-/* A label pinned over a part of the scene; pressed while its explanation is open. */
+/* A label pinned over a part of the scene; pressed while its explanation is open. The scene's
+   Rig moves it into place (`.anchor`) and hides it while the part is off screen. */
+.anchor {
+  position: absolute;
+  left: 0;
+  top: 0;
+  visibility: hidden;
+}
+
 .chip {
   padding: 4px 10px;
   border-radius: 999px;
