@@ -105,6 +105,8 @@ function LogicExperiment({ config, lang }: Props) {
           {mode === 'gate' && <SelectField label={t({ en: 'Gate', vi: 'Cổng logic' })} value={gate} options={LOGIC_GATES.map((g) => ({ value: g, label: t(GATES[g].name) }))} onChange={setGate} />}
         </div>
       )}
+      <div className="grid gap-4 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)] lg:items-start">
+      <div className="flex flex-col gap-3 lg:sticky lg:top-20">
       {mounted ? (
         <SceneBoundary fallback={fallback(t({ vi: 'Trình duyệt này không hiển thị được 3D.', en: 'This browser cannot display 3D.' }))}>
           <Suspense fallback={fallback(t({ vi: 'Đang tải hình 3D…', en: 'Loading the 3D view…' }))}>
@@ -112,9 +114,11 @@ function LogicExperiment({ config, lang }: Props) {
           </Suspense>
         </SceneBoundary>
       ) : fallback(t({ vi: 'Đang tải hình 3D…', en: 'Loading the 3D view…' }))}
+      </div>
+      <div className="flex flex-col gap-4">
 
       {mode === 'gate' && (
-        <div className="grid gap-4 sm:grid-cols-[minmax(0,1fr)_auto]">
+        <div className="grid gap-4 sm:grid-cols-[minmax(0,1fr)_auto] lg:grid-cols-1">
           <div className="flex flex-col gap-3">
             <div className="flex flex-wrap gap-2">
               <SwitchButton label="A" on={a} onToggle={() => toggle('A')} />
@@ -135,7 +139,7 @@ function LogicExperiment({ config, lang }: Props) {
       )}
 
       {mode === 'half-adder' && (
-        <div className="grid gap-4 sm:grid-cols-[minmax(0,1fr)_auto]">
+        <div className="grid gap-4 sm:grid-cols-[minmax(0,1fr)_auto] lg:grid-cols-1">
           <div className="flex flex-col gap-3">
             <div className="flex flex-wrap gap-2">
               <SwitchButton label="A" on={a} onToggle={() => toggle('A')} />
@@ -183,6 +187,8 @@ function LogicExperiment({ config, lang }: Props) {
           <p className="text-xs text-ink-muted">{t({ en: `With ${config.bits} bits the largest number is ${max}; adding 1 to it wraps round to 0.`, vi: `Với ${config.bits} bit, số lớn nhất là ${max}; cộng thêm 1 sẽ quay về 0.` })}</p>
         </div>
       )}
+      </div>
+      </div>
       <SelfCheck question={config.question} answer={config.answer} lang={lang} />
     </div>
   );

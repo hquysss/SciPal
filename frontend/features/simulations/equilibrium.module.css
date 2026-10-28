@@ -25,6 +25,7 @@
   background: radial-gradient(ellipse at 50% 30%, var(--eq-floor), var(--eq-background));
   aspect-ratio: 16 / 10;
   min-height: 320px;
+  max-height: 75dvh;
   touch-action: pan-y;
 }
 

@@ -1,7 +1,7 @@
 'use client';
 
 import { Component, lazy, Suspense, useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
-import { RotateCcw } from 'lucide-react';
+import { ChevronDown, RotateCcw } from 'lucide-react';
 import { EQUILIBRIUM_REACTIONS } from '@scipal/types';
 import { BUTTON, CheckField, PANEL, SelectField, SelfCheck, SelfCheckFields } from './controls';
 import { useReducedMotion } from './animation';
@@ -236,6 +236,8 @@ function EquilibriumExperiment({ config, lang }: Props) {
   return (
     <div ref={host} className={`${PANEL} ${styles.palette}`}>
       <p className="text-base font-semibold text-ink">{r.equation}</p>
+      <div className="grid gap-4 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)] lg:items-start">
+      <div className="flex flex-col gap-3 lg:sticky lg:top-20">
       {mounted ? (
         <SceneBoundary fallback={fallback(t({ vi: 'Trình duyệt này không hiển thị được 3D.', en: 'This browser cannot display 3D.' }))}>
           <Suspense fallback={fallback(t({ vi: 'Đang tải hình 3D…', en: 'Loading the 3D view…' }))}>
@@ -256,25 +258,8 @@ function EquilibriumExperiment({ config, lang }: Props) {
           : t({ en: 'At equilibrium: Q = K, both reactions run at the same rate.', vi: 'Đã cân bằng: Q = K, phản ứng thuận và nghịch có tốc độ bằng nhau.' })}
       </p>
 
-      <div className="grid gap-4 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
-        <dl className="grid grid-cols-2 gap-2 text-sm tabular-nums">
-          <div className="rounded-md bg-surface-sunken p-2"><dt className="text-xs text-ink-muted">{t({ en: 'Temperature', vi: 'Nhiệt độ' })}</dt><dd className="font-semibold text-ink">{fmt(now.tempC, lang)} °C</dd></div>
-          <div className="rounded-md bg-surface-sunken p-2">
-            <dt className="text-xs text-ink-muted">{r.phase === 'gas' ? t({ en: 'Volume · pressure', vi: 'Thể tích · áp suất' }) : t({ en: 'Solution', vi: 'Dung dịch' })}</dt>
-            <dd className="font-semibold text-ink">{fmt(now.volume, lang)} L{pressureBar !== null ? ` · ${fmt(pressureBar, lang)} bar` : ''}</dd>
-          </div>
-          <div className="rounded-md bg-surface-sunken p-2"><dt className="text-xs text-ink-muted">K<sub>C</sub></dt><dd className="font-semibold text-ink">{sci(k, lang)} {kcUnit(reaction)}</dd></div>
-          <div className="rounded-md bg-surface-sunken p-2"><dt className="text-xs text-ink-muted">Q<sub>C</sub></dt><dd className="font-semibold text-ink">{sci(q, lang)} {kcUnit(reaction)}</dd></div>
-          {r.species.map((s, i) => (
-            <div key={s.id} className="rounded-md bg-surface-sunken p-2">
-              <dt className="flex items-center gap-1.5 text-xs text-ink-muted"><span aria-hidden="true" className="inline-block h-0.5 w-4" style={{ background: LINE[i] }} />[{s.formula}]</dt>
-              <dd className="font-semibold text-ink">{sci(c[s.id] ?? 0, lang)} mol/L</dd>
-            </div>
-          ))}
-          {now.catalyst && <div className="col-span-2 rounded-md bg-surface-sunken p-2 text-xs text-ink">{t({ en: 'Catalyst in the vessel', vi: 'Có chất xúc tác trong bình' })}</div>}
-        </dl>
-        <Graph history={vessel.history.current} now={vessel.now} id={reaction} lang={lang} />
       </div>
+      <div className="flex flex-col gap-4">
 
       {pending && (
         <div role="group" aria-label={t({ en: 'Predict the shift', vi: 'Dự đoán chiều chuyển dịch' })} className="flex flex-col gap-2 rounded-md border border-line bg-surface-sunken p-3">
@@ -325,6 +310,35 @@ function EquilibriumExperiment({ config, lang }: Props) {
           )}
           <button type="button" className={BUTTON} onClick={() => restart(reaction)}><RotateCcw aria-hidden="true" className="h-4 w-4" />{t({ en: 'Start again', vi: 'Làm lại' })}</button>
         </div>
+      </div>
+      <details className="group rounded-md border border-line">
+        <summary className="flex min-h-11 cursor-pointer items-center gap-2 px-3 text-sm font-semibold text-ink focus-visible:outline focus-visible:outline-2 focus-visible:outline-focus">
+          <ChevronDown aria-hidden="true" className="h-4 w-4 transition-transform group-open:rotate-180" />
+          {t({ en: 'Numbers and graph', vi: 'Số liệu và đồ thị' })}
+        </summary>
+        <div className="p-3 pt-0">
+        <div className="grid gap-4 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] lg:grid-cols-1">
+          <dl className="grid grid-cols-2 gap-2 text-sm tabular-nums lg:grid-cols-3">
+            <div className="rounded-md bg-surface-sunken p-2"><dt className="text-xs text-ink-muted">{t({ en: 'Temperature', vi: 'Nhiệt độ' })}</dt><dd className="font-semibold text-ink">{fmt(now.tempC, lang)} °C</dd></div>
+            <div className="rounded-md bg-surface-sunken p-2">
+              <dt className="text-xs text-ink-muted">{r.phase === 'gas' ? t({ en: 'Volume · pressure', vi: 'Thể tích · áp suất' }) : t({ en: 'Solution', vi: 'Dung dịch' })}</dt>
+              <dd className="font-semibold text-ink">{fmt(now.volume, lang)} L{pressureBar !== null ? ` · ${fmt(pressureBar, lang)} bar` : ''}</dd>
+            </div>
+            <div className="rounded-md bg-surface-sunken p-2"><dt className="text-xs text-ink-muted">K<sub>C</sub></dt><dd className="font-semibold text-ink">{sci(k, lang)} {kcUnit(reaction)}</dd></div>
+            <div className="rounded-md bg-surface-sunken p-2"><dt className="text-xs text-ink-muted">Q<sub>C</sub></dt><dd className="font-semibold text-ink">{sci(q, lang)} {kcUnit(reaction)}</dd></div>
+            {r.species.map((s, i) => (
+              <div key={s.id} className="rounded-md bg-surface-sunken p-2">
+                <dt className="flex items-center gap-1.5 text-xs text-ink-muted"><span aria-hidden="true" className="inline-block h-0.5 w-4" style={{ background: LINE[i] }} />[{s.formula}]</dt>
+                <dd className="font-semibold text-ink">{sci(c[s.id] ?? 0, lang)} mol/L</dd>
+              </div>
+            ))}
+            {now.catalyst && <div className="col-span-2 rounded-md bg-surface-sunken p-2 text-xs text-ink">{t({ en: 'Catalyst in the vessel', vi: 'Có chất xúc tác trong bình' })}</div>}
+          </dl>
+          <Graph history={vessel.history.current} now={vessel.now} id={reaction} lang={lang} />
+        </div>
+        </div>
+      </details>
+      </div>
       </div>
       <p className="text-xs text-ink-muted">{t(r.source)} {t({ en: 'Each ball model stands for many molecules; the speed of the approach is only illustrative, the end state is exact.', vi: 'Mỗi mô hình phân tử đại diện cho nhiều phân tử; tốc độ tiến tới cân bằng chỉ minh hoạ, trạng thái cân bằng cuối được tính chính xác.' })}</p>
       <SelfCheck question={config.question} answer={config.answer} lang={lang} />
