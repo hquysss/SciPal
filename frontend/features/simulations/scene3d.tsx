@@ -162,7 +162,7 @@ export function Rig({
 }: {
   orbit: React.RefObject<Orbit>;
   target: THREE.Vector3;
-  labels: React.RefObject<Map<string, HTMLSpanElement>>;
+  labels: React.RefObject<Map<string, HTMLElement>>;
   points: Array<[string, THREE.Vector3]>;
   onInvalidate: (fn: () => void) => void;
 }) {
@@ -188,7 +188,7 @@ export function Rig({
 }
 
 /** Text that rides on the 3D view; positioned every frame by Rig. A halo keeps it readable on any colour. */
-export function LabelLayer({ labels, store }: { labels: Array<{ key: string; text: string; tone?: 'strong' | 'muted' | 'axis' }>; store: React.RefObject<Map<string, HTMLSpanElement>> }) {
+export function LabelLayer({ labels, store }: { labels: Array<{ key: string; text: string; tone?: 'strong' | 'muted' | 'axis' }>; store: React.RefObject<Map<string, HTMLElement>> }) {
   return (
     <>
       {labels.map(({ key, text, tone = 'strong' }) => (

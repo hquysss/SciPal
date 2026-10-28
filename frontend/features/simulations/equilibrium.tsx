@@ -1,7 +1,7 @@
 'use client';
 
 import { Component, lazy, Suspense, useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
-import { ChevronDown, RotateCcw } from 'lucide-react';
+import { ChevronDown, RotateCcw, X } from 'lucide-react';
 import { EQUILIBRIUM_REACTIONS } from '@scipal/types';
 import { BUTTON, CheckField, PANEL, SelectField, SelfCheck, SelfCheckFields } from './controls';
 import { useReducedMotion } from './animation';
@@ -26,7 +26,26 @@ import {
   type VesselState,
 } from './engines/equilibrium';
 import { pick, type Bilingual, type Lang, type SimulationEditorProps, type SimulationModule, type SimulationViewProps } from './types';
+import type { EquilibriumPart } from './equilibriumScene';
+import overlay from './simOverlay.module.css';
 import styles from './equilibrium.module.css';
+
+/** The parts pinned with a label in the 3D view, as in the ripple tank; pressing one explains it. */
+const PARTS: Record<EquilibriumPart, { readonly name: Bilingual; readonly about: Bilingual }> = {
+  molecule: { name: { vi: 'Mô hình phân tử', en: 'Molecule models' }, about: { vi: 'Mỗi cụm quả cầu là một phân tử, mỗi quả cầu là một nguyên tử theo màu ở trên. Số mô hình tăng giảm theo nồng độ thật của từng chất. Phân tử loé sáng và phình ra là vừa được tạo thành. Ở trạng thái cân bằng, phản ứng thuận và nghịch vẫn xảy ra cùng lúc nên luôn có chớp sáng, nhưng số phân tử mỗi chất không đổi.', en: 'Each cluster of balls is one molecule, each ball an atom coloured as above. The number of models follows each substance’s real concentration. A molecule that flashes and swells has just formed. At equilibrium the forward and reverse reactions still run at once, so flashes go on while the counts stay put.' } },
+  piston: { name: { vi: 'Pít-tông', en: 'Piston' }, about: { vi: 'Pít-tông hạ xuống làm thể tích giảm, áp suất tăng; nâng lên thì ngược lại. Cân bằng chuyển dịch về phía có ít phân tử khí hơn khi tăng áp suất.', en: 'Pushing the piston down shrinks the volume and raises the pressure; lifting it does the opposite. Raising the pressure shifts the equilibrium towards fewer gas molecules.' } },
+  plate: { name: { vi: 'Bếp', en: 'Hot plate' }, about: { vi: 'Bếp đỏ dần khi nhiệt độ tăng. Tăng nhiệt độ làm cân bằng chuyển dịch theo chiều thu nhiệt, giảm nhiệt độ theo chiều toả nhiệt.', en: 'The plate glows redder as the temperature rises. Heating shifts the equilibrium in the endothermic direction, cooling in the exothermic one.' } },
+  catalyst: { name: { vi: 'Lưới xúc tác', en: 'Catalyst gauze' }, about: { vi: 'Lưới kim loại xuất hiện khi thêm chất xúc tác. Xúc tác giúp đạt cân bằng nhanh hơn nhưng không làm cân bằng chuyển dịch.', en: 'The metal gauze appears when a catalyst is added. A catalyst reaches equilibrium faster but does not shift it.' } },
+};
+
+/** Only the parts this reaction's vessel has. */
+const partsOf = (info: (typeof REACTIONS)[keyof typeof REACTIONS]): EquilibriumPart[] => [
+  'molecule',
+  ...(info.phase === 'gas' ? ['piston' as const] : []),
+  ...(info.temp[1] > info.temp[0] ? ['plate' as const] : []),
+  ...(info.catalyst ? ['catalyst' as const] : []),
+];
+
 
 const EquilibriumScene = lazy(() => import('./equilibriumScene'));
 type Props = SimulationViewProps<'chemical-equilibrium'>;
@@ -182,6 +201,7 @@ function EquilibriumExperiment({ config, lang }: Props) {
   const [mounted, setMounted] = useState(false);
   const [reaction, setReaction] = useState<ReactionId>(config.reaction);
   const [pending, setPending] = useState<Change | null>(null);
+  const [part, setPart] = useState<EquilibriumPart | null>(null);
   const [feedback, setFeedback] = useState<{ predicted: Direction | null; direction: Direction; reason: Bilingual; label: string } | null>(null);
   const vessel = useVessel(reaction, reduced, active);
   useEffect(() => setMounted(true), []);
@@ -233,6 +253,100 @@ function EquilibriumExperiment({ config, lang }: Props) {
     </button>
   );
 
+  const prediction = (
+    <>
+        {pending && (
+          <div role="group" aria-label={t({ en: 'Predict the shift', vi: 'Dự đoán chiều chuyển dịch' })} className="flex flex-col gap-2 rounded-md border border-line bg-surface-sunken p-3">
+            <p className="text-sm font-semibold text-ink">{t({ en: `${changeLabel(pending, reaction, t)}: which way will the equilibrium shift?`, vi: `${changeLabel(pending, reaction, t)}: cân bằng sẽ chuyển dịch theo chiều nào?` })}</p>
+            <div className="flex flex-wrap gap-2">
+              {(['forward', 'reverse', 'none'] as const).map((d) => <button key={d} type="button" className={BUTTON} onClick={() => apply(pending, d)}>{t(DIRECTION[d])}</button>)}
+              <button type="button" className={`${BUTTON} text-ink-muted`} onClick={() => apply(pending, null)}>{t({ en: 'Skip and show me', vi: 'Bỏ qua, xem kết quả' })}</button>
+            </div>
+          </div>
+        )}
+        <div aria-live="polite">
+          {feedback && (
+            <p className={`rounded-md border p-3 text-sm text-ink ${feedback.predicted === null ? 'border-line' : feedback.predicted === feedback.direction ? 'border-success bg-success-surface' : 'border-warning bg-warning-surface'}`}>
+              <span className="font-semibold">
+                {feedback.predicted === null ? `${feedback.label}. ` : feedback.predicted === feedback.direction ? t({ en: 'Right! ', vi: 'Đúng rồi! ' }) : t({ en: `Not quite: it is “${DIRECTION[feedback.direction].en}”. `, vi: `Chưa đúng: kết quả là “${DIRECTION[feedback.direction].vi}”. ` })}
+              </span>
+              {t(feedback.reason)}
+            </p>
+          )}
+        </div>
+    </>
+  );
+  const controls = (
+        <div className="flex flex-col gap-3">
+          {show.concentration && (
+            <fieldset className="flex flex-col gap-2"><legend className="text-sm font-semibold text-ink">{t({ en: 'Concentration', vi: 'Nồng độ' })}</legend>
+              <div className="flex flex-wrap gap-2">{r.species.flatMap((s) => [button({ type: 'amount', species: s.id, delta: 1 }), button({ type: 'amount', species: s.id, delta: -1 })])}</div>
+            </fieldset>
+          )}
+          {show.pressure && (
+            <fieldset className="flex flex-col gap-2"><legend className="text-sm font-semibold text-ink">{t({ en: 'Pressure', vi: 'Áp suất' })}</legend>
+              <div className="flex flex-wrap gap-2">{button({ type: 'volume', direction: -1 })}{button({ type: 'volume', direction: 1 })}</div>
+            </fieldset>
+          )}
+          {show.temperature && (
+            <fieldset className="flex flex-col gap-2"><legend className="text-sm font-semibold text-ink">{t({ en: 'Temperature', vi: 'Nhiệt độ' })}</legend>
+              <div className="flex flex-wrap gap-2">{button({ type: 'temperature', direction: 1 })}{button({ type: 'temperature', direction: -1 })}</div>
+            </fieldset>
+          )}
+          {show.catalyst && (
+            <fieldset className="flex flex-col gap-2"><legend className="text-sm font-semibold text-ink">{t({ en: 'Catalyst', vi: 'Chất xúc tác' })}</legend>
+              <div className="flex flex-wrap gap-2">{button({ type: 'catalyst', on: !now.catalyst })}</div>
+            </fieldset>
+          )}
+          <div className="flex flex-wrap items-end gap-3">
+            {config.adjustable && (
+              <div className="min-w-0 flex-1 sm:max-w-sm">
+                <SelectField label={t({ en: 'Reaction', vi: 'Phản ứng' })} value={reaction} options={EQUILIBRIUM_REACTIONS.map((id) => ({ value: id, label: REACTIONS[id].equation }))} onChange={restart} />
+              </div>
+            )}
+            <button type="button" className={BUTTON} onClick={() => restart(reaction)}><RotateCcw aria-hidden="true" className="h-4 w-4" />{t({ en: 'Start again', vi: 'Làm lại' })}</button>
+          </div>
+        </div>
+  );
+  // Drawn over the 3D view, like the ripple tank: readouts on top, the picked part's explanation
+  // (and in full screen the controls) at the bottom.
+  const stop = (e: { stopPropagation: () => void }) => e.stopPropagation();
+  const hud = (expanded: boolean) => (
+    <>
+      <div className={`${overlay.card} flex flex-col gap-1 pb-1.5`}>
+        <dl className={overlay.readouts}>
+          <dt>{t({ en: 'State', vi: 'Trạng thái' })}</dt><dd>{heading ? t({ en: `shifting ${heading}`, vi: heading === 'forward' ? 'chuyển dịch thuận' : 'chuyển dịch nghịch' }) : t({ en: 'equilibrium', vi: 'cân bằng' })}</dd>
+          <dt>{t({ en: 'Temperature', vi: 'Nhiệt độ' })}</dt><dd>{fmt(now.tempC, lang)} °C</dd>
+          {pressureBar !== null && <><dt>{t({ en: 'Pressure', vi: 'Áp suất' })}</dt><dd>{fmt(pressureBar, lang)} bar</dd></>}
+          <dt>K<sub>C</sub> · Q<sub>C</sub></dt><dd>{sci(k, lang)} · {sci(q, lang)}</dd>
+        </dl>
+        <ul className="flex max-w-[16rem] flex-wrap gap-x-3 gap-y-0.5 px-2.5 text-xs text-ink-muted" aria-label={t({ en: 'Atom colours', vi: 'Màu các nguyên tử' })}>
+          {elements.map((el) => (
+            <li key={el} className="inline-flex items-center gap-1.5"><span aria-hidden="true" className={`${styles.swatch} ${ATOM_CLASS[el]}`} />{el} ({t(ATOM_NAME[el])})</li>
+          ))}
+        </ul>
+      </div>
+      <div className={overlay.bottom}>
+        {part && (
+          <div aria-live="polite" className={`${overlay.card} ${overlay.part} ${overlay.interactive}`} onPointerDown={stop}>
+            <div className="min-w-0 flex-1">
+              <p className="font-semibold">{t(PARTS[part].name)}</p>
+              <p className="mt-0.5 text-ink-muted">{t(PARTS[part].about)}</p>
+            </div>
+            <button type="button" className={overlay.tool} aria-label={t({ vi: 'Đóng', en: 'Close' })} onClick={() => setPart(null)}><X aria-hidden="true" className="h-4 w-4" /></button>
+          </div>
+        )}
+        {expanded && (
+          <div className={`${overlay.card} ${overlay.dock} ${overlay.interactive} max-h-[40vh] overflow-y-auto [&>div]:flex-row [&>div]:flex-wrap [&>div]:items-end [&>div]:gap-x-4`} onPointerDown={stop}>
+            {prediction}
+            {controls}
+          </div>
+        )}
+      </div>
+    </>
+  );
+  const partNames = Object.fromEntries(partsOf(r).map((p) => [p, t(PARTS[p].name)])) as Partial<Record<EquilibriumPart, string>>;
+
   return (
     <div ref={host} className={`${PANEL} ${styles.palette}`}>
       <p className="text-base font-semibold text-ink">{r.equation}</p>
@@ -241,16 +355,11 @@ function EquilibriumExperiment({ config, lang }: Props) {
       {mounted ? (
         <SceneBoundary fallback={fallback(t({ vi: 'Trình duyệt này không hiển thị được 3D.', en: 'This browser cannot display 3D.' }))}>
           <Suspense fallback={fallback(t({ vi: 'Đang tải hình 3D…', en: 'Loading the 3D view…' }))}>
-            <EquilibriumScene reaction={reaction} read={vessel.current} running={active && !reduced} reduced={reduced} stamp={vessel.now} description={summary} lang={lang} />
+            <EquilibriumScene reaction={reaction} read={vessel.current} running={active && !reduced} reduced={reduced} stamp={vessel.now} description={summary} lang={lang} hud={hud} parts={partNames} part={part} onPart={setPart} />
           </Suspense>
         </SceneBoundary>
       ) : fallback(t({ vi: 'Đang tải hình 3D…', en: 'Loading the 3D view…' }))}
 
-      <ul className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-ink-muted" aria-label={t({ en: 'Atom colours', vi: 'Màu các nguyên tử' })}>
-        {elements.map((el) => (
-          <li key={el} className="inline-flex items-center gap-1.5"><span aria-hidden="true" className={`${styles.swatch} ${ATOM_CLASS[el]}`} />{el} ({t(ATOM_NAME[el])})</li>
-        ))}
-      </ul>
 
       <p className={`rounded-md border p-3 text-sm font-semibold ${heading ? 'border-warning bg-warning-surface text-ink' : 'border-success bg-success-surface text-ink'}`}>
         {heading
@@ -261,56 +370,8 @@ function EquilibriumExperiment({ config, lang }: Props) {
       </div>
       <div className="flex flex-col gap-4">
 
-      {pending && (
-        <div role="group" aria-label={t({ en: 'Predict the shift', vi: 'Dự đoán chiều chuyển dịch' })} className="flex flex-col gap-2 rounded-md border border-line bg-surface-sunken p-3">
-          <p className="text-sm font-semibold text-ink">{t({ en: `${changeLabel(pending, reaction, t)}: which way will the equilibrium shift?`, vi: `${changeLabel(pending, reaction, t)}: cân bằng sẽ chuyển dịch theo chiều nào?` })}</p>
-          <div className="flex flex-wrap gap-2">
-            {(['forward', 'reverse', 'none'] as const).map((d) => <button key={d} type="button" className={BUTTON} onClick={() => apply(pending, d)}>{t(DIRECTION[d])}</button>)}
-            <button type="button" className={`${BUTTON} text-ink-muted`} onClick={() => apply(pending, null)}>{t({ en: 'Skip and show me', vi: 'Bỏ qua, xem kết quả' })}</button>
-          </div>
-        </div>
-      )}
-      <div aria-live="polite">
-        {feedback && (
-          <p className={`rounded-md border p-3 text-sm text-ink ${feedback.predicted === null ? 'border-line' : feedback.predicted === feedback.direction ? 'border-success bg-success-surface' : 'border-warning bg-warning-surface'}`}>
-            <span className="font-semibold">
-              {feedback.predicted === null ? `${feedback.label}. ` : feedback.predicted === feedback.direction ? t({ en: 'Right! ', vi: 'Đúng rồi! ' }) : t({ en: `Not quite: it is “${DIRECTION[feedback.direction].en}”. `, vi: `Chưa đúng: kết quả là “${DIRECTION[feedback.direction].vi}”. ` })}
-            </span>
-            {t(feedback.reason)}
-          </p>
-        )}
-      </div>
-
-      <div className="flex flex-col gap-3">
-        {show.concentration && (
-          <fieldset className="flex flex-col gap-2"><legend className="text-sm font-semibold text-ink">{t({ en: 'Concentration', vi: 'Nồng độ' })}</legend>
-            <div className="flex flex-wrap gap-2">{r.species.flatMap((s) => [button({ type: 'amount', species: s.id, delta: 1 }), button({ type: 'amount', species: s.id, delta: -1 })])}</div>
-          </fieldset>
-        )}
-        {show.pressure && (
-          <fieldset className="flex flex-col gap-2"><legend className="text-sm font-semibold text-ink">{t({ en: 'Pressure', vi: 'Áp suất' })}</legend>
-            <div className="flex flex-wrap gap-2">{button({ type: 'volume', direction: -1 })}{button({ type: 'volume', direction: 1 })}</div>
-          </fieldset>
-        )}
-        {show.temperature && (
-          <fieldset className="flex flex-col gap-2"><legend className="text-sm font-semibold text-ink">{t({ en: 'Temperature', vi: 'Nhiệt độ' })}</legend>
-            <div className="flex flex-wrap gap-2">{button({ type: 'temperature', direction: 1 })}{button({ type: 'temperature', direction: -1 })}</div>
-          </fieldset>
-        )}
-        {show.catalyst && (
-          <fieldset className="flex flex-col gap-2"><legend className="text-sm font-semibold text-ink">{t({ en: 'Catalyst', vi: 'Chất xúc tác' })}</legend>
-            <div className="flex flex-wrap gap-2">{button({ type: 'catalyst', on: !now.catalyst })}</div>
-          </fieldset>
-        )}
-        <div className="flex flex-wrap items-end gap-3">
-          {config.adjustable && (
-            <div className="min-w-0 flex-1 sm:max-w-sm">
-              <SelectField label={t({ en: 'Reaction', vi: 'Phản ứng' })} value={reaction} options={EQUILIBRIUM_REACTIONS.map((id) => ({ value: id, label: REACTIONS[id].equation }))} onChange={restart} />
-            </div>
-          )}
-          <button type="button" className={BUTTON} onClick={() => restart(reaction)}><RotateCcw aria-hidden="true" className="h-4 w-4" />{t({ en: 'Start again', vi: 'Làm lại' })}</button>
-        </div>
-      </div>
+      {prediction}
+      {controls}
       <details className="group rounded-md border border-line">
         <summary className="flex min-h-11 cursor-pointer items-center gap-2 px-3 text-sm font-semibold text-ink focus-visible:outline focus-visible:outline-2 focus-visible:outline-focus">
           <ChevronDown aria-hidden="true" className="h-4 w-4 transition-transform group-open:rotate-180" />

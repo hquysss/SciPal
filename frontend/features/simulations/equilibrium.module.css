@@ -19,6 +19,8 @@
   --eq-fe: #e07b24;
   --eq-s: #f2d43a;
   --eq-c: #6f7780;
+  /* Highlight on the part whose label is hovered or open. */
+  --eq-glow: #7fd4ff;
 }
 
 .stage {
@@ -54,6 +56,31 @@
 .atomFe { background: var(--eq-fe); }
 .atomS { background: var(--eq-s); }
 .atomC { background: var(--eq-c); }
+
+/* The tools sit in the top-right corner of the view. */
+.toolsPos {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  z-index: 2;
+}
+
+/* Full screen: the native element, or the whole page covered when the browser has none. */
+.stage:fullscreen,
+.stage.covering {
+  aspect-ratio: auto;
+  border-radius: 0;
+  width: 100vw;
+  height: 100vh;
+  max-height: none;
+}
+
+.stage.covering {
+  position: fixed;
+  inset: 0;
+  z-index: 70;
+  height: 100dvh;
+}
 
 @media (pointer: fine) {
   .stage { touch-action: none; }

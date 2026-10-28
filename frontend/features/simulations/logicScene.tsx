@@ -1,17 +1,19 @@
 'use client';
 
-import { memo, useEffect, useMemo, useRef, type PointerEvent as ReactPointerEvent, type RefObject } from 'react';
+import { memo, useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent, type ReactNode, type RefObject } from 'react';
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import * as THREE from 'three';
 import { GATES, type Bit, type Gate } from './engines/logic';
 import { BUBBLE, type Circuit, type Point } from './logicCircuit';
-import { LabelLayer, Rig, useOrbit, usePalette, ViewButtons, VIEW_CLASS } from './scene3d';
+import { LabelLayer, Rig, useOrbit, usePalette, VIEW_CLASS } from './scene3d';
+import { clickThrough, PartChip, partPointer, SceneTools, useFullscreen } from './sceneChrome';
+import overlay from './simOverlay.module.css';
 import { pick, type Lang } from './types';
 import styles from './logic.module.css';
 
 const TOKENS = {
   board: '--logic-board', edge: '--logic-board-edge', off: '--logic-off', on: '--logic-on', gate: '--logic-gate', gateTop: '--logic-gate-top',
-  metal: '--logic-metal', base: '--logic-base', lampOff: '--logic-lamp-off', lampOn: '--logic-lamp-on',
+  metal: '--logic-metal', base: '--logic-base', lampOff: '--logic-lamp-off', lampOn: '--logic-lamp-on', glow: '--logic-glow',
 } as const;
 type Palette = Record<keyof typeof TOKENS, string>;
 const WIRE_Y = 0.06;
@@ -20,6 +22,8 @@ const LIMITS = { min: 5, max: 20 };
 const TARGET = new THREE.Vector3(0, 0, 0.1);
 const CLICK_SLOP = 6; // px a press may move and still count as a click
 const ray = new THREE.Raycaster();
+/** Emissive strength on a part whose label is hovered or open. */
+const GLOW = 0.6;
 
 /** A gate's outline: the D of AND, the curved shield of OR (and XOR), the triangle of NOT. */
 function gateShape(gate: Gate): THREE.Shape {
@@ -45,7 +49,7 @@ function gateShape(gate: Gate): THREE.Shape {
   return s;
 }
 
-function GateBody({ gate, x, z, palette }: { readonly gate: Gate; readonly x: number; readonly z: number; readonly palette: Palette }) {
+function GateBody({ gate, x, z, palette, glow }: { readonly gate: Gate; readonly x: number; readonly z: number; readonly palette: Palette; readonly glow: boolean }) {
   const body = useMemo(() => new THREE.ExtrudeGeometry(gateShape(gate), { depth: GATE_DEPTH, bevelEnabled: true, bevelThickness: 0.04, bevelSize: 0.04, bevelSegments: 2, curveSegments: 28 }), [gate]);
   // XOR's second curve, just behind the shield.
   const arc = useMemo(() => (gate === 'xor' ? new THREE.TubeGeometry(new THREE.QuadraticBezierCurve3(new THREE.Vector3(-0.9, 0.6, GATE_DEPTH / 2), new THREE.Vector3(-0.55, 0, GATE_DEPTH / 2), new THREE.Vector3(-0.9, -0.6, GATE_DEPTH / 2)), 32, 0.05, 8, false) : null), [gate]);
@@ -54,13 +58,13 @@ function GateBody({ gate, x, z, palette }: { readonly gate: Gate; readonly x: nu
   return (
     <group position={[x, 0.02, z]} rotation={[-Math.PI / 2, 0, 0]}>
       <mesh geometry={body}>
-        <meshStandardMaterial color={palette.gate} roughness={0.45} metalness={0.15} />
+        <meshStandardMaterial color={palette.gate} roughness={0.45} metalness={0.15} emissive={palette.glow} emissiveIntensity={glow ? GLOW : 0} />
       </mesh>
-      {arc && <mesh geometry={arc}><meshStandardMaterial color={palette.gate} roughness={0.45} /></mesh>}
+      {arc && <mesh geometry={arc}><meshStandardMaterial color={palette.gate} roughness={0.45} emissive={palette.glow} emissiveIntensity={glow ? GLOW : 0} /></mesh>}
       {bubble !== undefined && (
         <mesh position={[bubble, 0, GATE_DEPTH / 2]}>
           <torusGeometry args={[0.1, 0.045, 12, 28]} />
-          <meshStandardMaterial color={palette.gateTop} roughness={0.4} />
+          <meshStandardMaterial color={palette.gateTop} roughness={0.4} emissive={palette.glow} emissiveIntensity={glow ? GLOW : 0} />
         </mesh>
       )}
     </group>
@@ -68,7 +72,7 @@ function GateBody({ gate, x, z, palette }: { readonly gate: Gate; readonly x: nu
 }
 
 /** A wire on the board; lit at 1 with pulses running from source to load. */
-function Wire({ from, to, on, lift = 0, palette, animate }: { readonly from: Point; readonly to: Point; readonly on: Bit; readonly lift?: number; readonly palette: Palette; readonly animate: boolean }) {
+function Wire({ from, to, on, lift = 0, palette, animate, glow }: { readonly from: Point; readonly to: Point; readonly on: Bit; readonly lift?: number; readonly palette: Palette; readonly animate: boolean; readonly glow: boolean }) {
   const curve = useMemo(() => {
     const a = new THREE.Vector3(from[0], WIRE_Y, from[1]);
     const b = new THREE.Vector3(to[0], WIRE_Y, to[1]);
@@ -94,7 +98,7 @@ function Wire({ from, to, on, lift = 0, palette, animate }: { readonly from: Poi
   return (
     <group>
       <mesh geometry={tube}>
-        <meshStandardMaterial color={on ? palette.on : palette.off} emissive={on ? palette.on : palette.base} emissiveIntensity={on ? 0.9 : 0} roughness={0.5} />
+        <meshStandardMaterial color={on ? palette.on : palette.off} emissive={glow ? palette.glow : on ? palette.on : palette.base} emissiveIntensity={glow ? GLOW + 0.3 : on ? 0.9 : 0} roughness={0.5} />
       </mesh>
       {[0, 1, 2].map((k) => (
         <mesh key={k} ref={(m) => { pulses.current[k] = m; }} visible={false}>
@@ -107,7 +111,7 @@ function Wire({ from, to, on, lift = 0, palette, animate }: { readonly from: Poi
 }
 
 /** A toggle switch: the lever tips towards the viewer for 1. Its invisible box is what a click hits. */
-function Switch({ id, x, z, on, palette, reduced, register }: { readonly id: string; readonly x: number; readonly z: number; readonly on: Bit; readonly palette: Palette; readonly reduced: boolean; readonly register: (id: string, mesh: THREE.Mesh | null) => void }) {
+function Switch({ id, x, z, on, palette, reduced, register, glow }: { readonly id: string; readonly x: number; readonly z: number; readonly on: Bit; readonly palette: Palette; readonly reduced: boolean; readonly register: (id: string, mesh: THREE.Mesh | null) => void; readonly glow: boolean }) {
   const lever = useRef<THREE.Group>(null);
   useFrame((_, delta) => {
     if (!lever.current) return;
@@ -119,7 +123,7 @@ function Switch({ id, x, z, on, palette, reduced, register }: { readonly id: str
     <group position={[x, 0, z]}>
       <mesh position={[0, 0.11, 0]}>
         <boxGeometry args={[0.8, 0.22, 0.9]} />
-        <meshStandardMaterial color={palette.base} roughness={0.6} />
+        <meshStandardMaterial color={palette.base} roughness={0.6} emissive={palette.glow} emissiveIntensity={glow ? GLOW : 0} />
       </mesh>
       <mesh position={[0, 0.225, 0]}>
         <boxGeometry args={[0.22, 0.02, 0.6]} />
@@ -128,7 +132,7 @@ function Switch({ id, x, z, on, palette, reduced, register }: { readonly id: str
       <group ref={lever} position={[0, 0.22, 0]}>
         <mesh position={[0, 0.26, 0]}>
           <cylinderGeometry args={[0.05, 0.06, 0.52, 12]} />
-          <meshStandardMaterial color={palette.metal} metalness={0.7} roughness={0.3} />
+          <meshStandardMaterial color={palette.metal} metalness={0.7} roughness={0.3} emissive={palette.glow} emissiveIntensity={glow ? GLOW : 0} />
         </mesh>
         <mesh position={[0, 0.54, 0]}>
           <sphereGeometry args={[0.12, 18, 14]} />
@@ -137,7 +141,7 @@ function Switch({ id, x, z, on, palette, reduced, register }: { readonly id: str
       </group>
       <mesh position={[0.45, 0.06, 0]}>
         <cylinderGeometry args={[0.08, 0.08, 0.12, 16]} />
-        <meshStandardMaterial color={palette.metal} metalness={0.7} roughness={0.3} />
+        <meshStandardMaterial color={palette.metal} metalness={0.7} roughness={0.3} emissive={palette.glow} emissiveIntensity={glow ? GLOW : 0} />
       </mesh>
       <mesh ref={(m) => register(id, m)} position={[0, 0.4, 0]} userData={{ toggle: id }}>
         <boxGeometry args={[1, 0.9, 1.1]} />
@@ -147,16 +151,16 @@ function Switch({ id, x, z, on, palette, reduced, register }: { readonly id: str
   );
 }
 
-function Lamp({ x, z, on, palette }: { readonly x: number; readonly z: number; readonly on: Bit; readonly palette: Palette }) {
+function Lamp({ x, z, on, palette, glow }: { readonly x: number; readonly z: number; readonly on: Bit; readonly palette: Palette; readonly glow: boolean }) {
   return (
     <group position={[x, 0, z]}>
       <mesh position={[0, 0.13, 0]}>
         <cylinderGeometry args={[0.22, 0.26, 0.26, 24]} />
-        <meshStandardMaterial color={palette.metal} metalness={0.6} roughness={0.35} />
+        <meshStandardMaterial color={palette.metal} metalness={0.6} roughness={0.35} emissive={palette.glow} emissiveIntensity={glow ? GLOW : 0} />
       </mesh>
       <mesh position={[0, 0.56, 0]}>
         <sphereGeometry args={[0.32, 28, 20]} />
-        <meshStandardMaterial color={on ? palette.lampOn : palette.lampOff} emissive={on ? palette.lampOn : palette.base} emissiveIntensity={on ? 1.6 : 0} transparent opacity={0.94} roughness={0.2} />
+        <meshStandardMaterial color={on ? palette.lampOn : palette.lampOff} emissive={on ? palette.lampOn : glow ? palette.glow : palette.base} emissiveIntensity={on ? 1.6 : glow ? GLOW : 0} transparent opacity={0.94} roughness={0.2} />
       </mesh>
       {on === 1 && (
         <>
@@ -203,14 +207,29 @@ function Refresh({ stamp }: { readonly stamp: string }) {
   return null;
 }
 
-export type LogicSceneProps = { readonly circuit: Circuit; readonly onToggle: (id: string) => void; readonly running: boolean; readonly reduced: boolean; readonly description: string; readonly lang: Lang };
+export type LogicSceneProps = { readonly circuit: Circuit; readonly onToggle: (id: string) => void; readonly running: boolean; readonly reduced: boolean; readonly description: string; readonly lang: Lang; readonly hud?: (expanded: boolean) => ReactNode;
+  /** Names of the parts that get a pinned label; pressing one sets `part`. */
+  readonly parts?: Readonly<Record<LogicPart, string>>;
+  readonly part?: LogicPart | null;
+  readonly onPart?: (part: LogicPart | null) => void;
+};
 
-function LogicScene({ circuit, onToggle, running, reduced, description, lang }: LogicSceneProps) {
+export type LogicPart = 'switch' | 'gate' | 'wire' | 'lamp';
+
+function LogicScene({ circuit, onToggle, running, reduced, description, lang, hud, parts, part = null, onPart }: LogicSceneProps) {
   const t = pick(lang);
   const home = useMemo(() => ({ theta: -Math.PI / 2, phi: 0.95, dist: Math.max(9.5, circuit.width * 1.15) }), [circuit.width]);
-  const { host, orbit, invalidate, handlers, reset, zoom } = useOrbit(home, LIMITS);
+  const { host, orbit, invalidate, handlers: orbitHandlers, reset, zoom } = useOrbit(home, LIMITS);
+  const handlers = clickThrough(orbitHandlers);
+  const { expanded, covering, toggle: toggleFullscreen } = useFullscreen(host);
+  const [panelsHidden, setPanelsHidden] = useState(false);
+  const [hover, setHover] = useState<LogicPart | null>(null);
+  const glow = hover ?? part;
+  const hovered = useRef(false);
+  // Hovering a part in the scene lights it like its label does; clicking it opens it (a switch also flips).
+  const on = (k: LogicPart) => partPointer(k, (p) => { hovered.current = p !== null; setHover(p); }, () => onPart?.(k));
   const palette = usePalette(host, TOKENS);
-  const labelStore = useMemo(() => ({ current: new Map<string, HTMLSpanElement>() }), []);
+  const labelStore = useMemo(() => ({ current: new Map<string, HTMLElement>() }), []);
   const targets = useMemo(() => ({ current: new Map<string, THREE.Mesh>() }), []);
   const picker = useRef<(ndc: THREE.Vector2) => string | null>(() => null);
   const press = useRef<{ x: number; y: number } | null>(null);
@@ -223,7 +242,17 @@ function LogicScene({ circuit, onToggle, running, reduced, description, lang }: 
     ...circuit.gates.map((g, i) => ({ key: `g${i}`, text: GATES[g.gate].name.en, at: new THREE.Vector3(g.x, 0.75, g.z) })),
     ...circuit.labels.map((l) => ({ key: l.key, text: l.text, at: new THREE.Vector3(l.x, 0.2, l.z) })),
   ], [circuit]);
-  const points = useMemo(() => labels.map((l) => [l.key, l.at] as [string, THREE.Vector3]), [labels]);
+  // Pinned part labels sit just in front of the first switch, gate, wire and lamp.
+  const anchors = useMemo(() => {
+    const s = circuit.switches[0], g = circuit.gates[0], l = circuit.lamps[0], w = circuit.wires[0];
+    const list: Array<[LogicPart, THREE.Vector3]> = [];
+    if (s) list.push(['switch', new THREE.Vector3(s.x - 1.1, 0.1, s.z)]);
+    if (g) list.push(['gate', new THREE.Vector3(g.x, 0.1, g.z + 0.85)]);
+    if (w) list.push(['wire', new THREE.Vector3((w.from[0] + w.to[0]) / 2, 0.1, (w.from[1] + w.to[1]) / 2 + 0.3)]);
+    if (l) list.push(['lamp', new THREE.Vector3(l.x, 0.1, l.z + 0.75)]);
+    return parts ? list : [];
+  }, [circuit, parts]);
+  const points = useMemo(() => [...labels.map((l) => [l.key, l.at] as [string, THREE.Vector3]), ...anchors.map(([k, at]) => [`part-${k}`, at] as [string, THREE.Vector3])], [labels, anchors]);
   const stamp = JSON.stringify([circuit.switches.map((s) => s.on), circuit.lamps.map((l) => l.on), circuit.width]);
 
   const ndcOf = (e: ReactPointerEvent<HTMLDivElement>) => {
@@ -235,7 +264,7 @@ function LogicScene({ circuit, onToggle, running, reduced, description, lang }: 
     onPointerDown: (e: ReactPointerEvent<HTMLDivElement>) => { press.current = { x: e.clientX, y: e.clientY }; handlers.onPointerDown(e); },
     onPointerMove: (e: ReactPointerEvent<HTMLDivElement>) => {
       handlers.onPointerMove(e);
-      if (e.buttons === 0 && e.pointerType === 'mouse') e.currentTarget.style.cursor = picker.current(ndcOf(e)) ? 'pointer' : '';
+      if (e.buttons === 0 && e.pointerType === 'mouse') e.currentTarget.style.cursor = picker.current(ndcOf(e)) || hovered.current ? 'pointer' : '';
     },
     onPointerUp: (e: ReactPointerEvent<HTMLDivElement>) => {
       handlers.onPointerUp(e);
@@ -249,7 +278,7 @@ function LogicScene({ circuit, onToggle, running, reduced, description, lang }: 
 
   return (
     <div className="flex flex-col gap-3">
-      <div ref={host} {...pointer} role="img" aria-label={description} tabIndex={0} className={`${VIEW_CLASS} ${styles.stage}`}>
+      <div ref={host} {...pointer} role="img" aria-label={description} tabIndex={0} className={`${VIEW_CLASS} ${styles.stage} ${covering ? styles.covering : ''}`}>
         {palette && (
           <Canvas dpr={[1, 1.5]} frameloop={running ? 'always' : 'demand'} camera={{ fov: 38, near: 0.1, far: 80 }} gl={{ antialias: true }}>
             <ambientLight intensity={0.85} />
@@ -263,25 +292,27 @@ function LogicScene({ circuit, onToggle, running, reduced, description, lang }: 
               <boxGeometry args={[circuit.width + 0.12, 0.04, circuit.depth + 0.12]} />
               <meshStandardMaterial color={palette.edge} roughness={0.9} />
             </mesh>
-            {circuit.wires.map((w, i) => <Wire key={i} {...w} palette={palette} animate={running} />)}
+            <group {...on('wire')}>{circuit.wires.map((w, i) => <Wire key={i} {...w} palette={palette} animate={running} glow={glow === 'wire'} />)}</group>
             {circuit.dots.map((d, i) => (
               <mesh key={i} position={[d.x, WIRE_Y, d.z]}>
                 <sphereGeometry args={[0.09, 14, 10]} />
                 <meshStandardMaterial color={d.on ? palette.on : palette.off} emissive={d.on ? palette.on : palette.base} emissiveIntensity={d.on ? 0.9 : 0} />
               </mesh>
             ))}
-            {circuit.gates.map((g, i) => <GateBody key={`${g.gate}${i}`} {...g} palette={palette} />)}
-            {circuit.switches.map((s) => <Switch key={s.id} {...s} palette={palette} reduced={reduced} register={register} />)}
-            {circuit.lamps.map((l) => <Lamp key={l.id} {...l} palette={palette} />)}
+            <group {...on('gate')}>{circuit.gates.map((g, i) => <GateBody key={`${g.gate}${i}`} {...g} palette={palette} glow={glow === 'gate'} />)}</group>
+            <group {...on('switch')}>{circuit.switches.map((s) => <Switch key={s.id} {...s} palette={palette} reduced={reduced} register={register} glow={glow === 'switch'} />)}</group>
+            <group {...on('lamp')}>{circuit.lamps.map((l) => <Lamp key={l.id} {...l} palette={palette} glow={glow === 'lamp'} />)}</group>
             <Picker targets={targets} onReady={onReady} />
             <FitBoard />
             <Rig orbit={orbit} target={TARGET} labels={labelStore} points={points} onInvalidate={(fn) => { invalidate.current = fn; }} />
-            <Refresh stamp={stamp} />
+            <Refresh stamp={`${stamp}|${glow}`} />
           </Canvas>
         )}
         <LabelLayer labels={labels.map((l) => ({ key: l.key, text: l.text }))} store={labelStore} />
+        {parts && onPart && anchors.map(([k]) => <PartChip key={k} id={`part-${k}`} label={parts[k]} pressed={part === k} onPress={() => onPart(part === k ? null : k)} onHover={(on) => setHover(on ? k : null)} store={labelStore} />)}
+        {hud && !panelsHidden && <div className={overlay.hud}>{hud(expanded)}</div>}
+        <SceneTools lang={lang} className={styles.toolsPos} onZoom={zoom} onReset={reset} panelsHidden={panelsHidden} onTogglePanels={() => setPanelsHidden((h) => !h)} expanded={expanded} onToggleFullscreen={() => void toggleFullscreen()} />
       </div>
-      <ViewButtons lang={lang} onReset={reset} onZoom={zoom} />
       <p className="text-xs text-ink-muted">{t({ vi: 'Bấm vào công tắc trong hình để bật/tắt · Kéo để xoay · Chụm hai ngón hoặc Ctrl + cuộn để zoom.', en: 'Click a switch in the view to flip it · Drag to turn · Pinch or Ctrl + wheel to zoom.' })}</p>
     </div>
   );

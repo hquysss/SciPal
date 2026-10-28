@@ -1,7 +1,7 @@
 'use client';
 
 import { Component, lazy, Suspense, useEffect, useId, useRef, useState, type ReactNode } from 'react';
-import { Minus, Plus } from 'lucide-react';
+import { Minus, Plus, X } from 'lucide-react';
 import { LOGIC_GATES, LOGIC_MODES } from '@scipal/types';
 import { BUTTON, CheckField, NumberField, PANEL, SelectField, SelfCheck, SelfCheckFields } from './controls';
 import { useReducedMotion } from './animation';
@@ -9,7 +9,18 @@ import { useOnScreen } from './useOnScreen';
 import { GATES, divisionSteps, evalGate, halfAdder, placeValueSentence, toBits, truthTable, type Bit, type Gate } from './engines/logic';
 import { binaryCircuit, gateCircuit, halfAdderCircuit } from './logicCircuit';
 import { pick, type Bilingual, type Lang, type SimulationEditorProps, type SimulationModule, type SimulationViewProps } from './types';
+import type { LogicPart } from './logicScene';
+import overlay from './simOverlay.module.css';
 import styles from './logic.module.css';
+
+/** The parts pinned with a label in the 3D view, as in the ripple tank; pressing one explains it. */
+const PARTS: Record<LogicPart, { readonly name: Bilingual; readonly about: Bilingual }> = {
+  switch: { name: { vi: 'Công tắc', en: 'Switch' }, about: { vi: 'Mỗi công tắc là một đầu vào A, B… Nhãn trên công tắc cho biết giá trị (A = 1 là có điện, A = 0 là không). Bấm vào công tắc trong hình hoặc nút bên cạnh để đổi.', en: 'Each switch is an input A, B… The tag above it shows its value (A = 1 is on, A = 0 is off). Click a switch in the view or a button beside it to flip it.' } },
+  gate: { name: { vi: 'Cổng logic', en: 'Logic gate' }, about: { vi: 'Khối màu xanh nhận các bit đầu vào và cho ra một bit theo quy tắc của cổng (AND, OR, XOR, NOT…). Vòng tròn nhỏ ở đầu ra nghĩa là đảo bit (NOT).', en: 'The blue block takes the input bits and gives one bit by the gate’s rule (AND, OR, XOR, NOT…). A small circle on the output means the bit is inverted (NOT).' } },
+  wire: { name: { vi: 'Dây dẫn', en: 'Wire' }, about: { vi: 'Dây màu vàng sáng và có chấm chạy là đang mang bit 1; dây xám tối mang bit 0.', en: 'A bright yellow wire with moving dots carries a 1; a dark grey wire carries a 0.' } },
+  lamp: { name: { vi: 'Đèn', en: 'Lamp' }, about: { vi: 'Đèn cho biết kết quả: sáng là 1, tắt là 0. Ở bộ cộng, đèn S là bit tổng và đèn C là bit nhớ; ở chế độ nhị phân, mỗi đèn là một bit có trọng số 2ⁿ.', en: 'The lamp shows the result: on is 1, off is 0. In the adder, S is the sum bit and C the carry; in binary mode each lamp is one bit worth 2ⁿ.' } },
+};
+
 
 const LogicScene = lazy(() => import('./logicScene'));
 type Props = SimulationViewProps<'logic-gates'>;
@@ -72,6 +83,7 @@ function LogicExperiment({ config, lang }: Props) {
   useEffect(() => setMounted(true), []);
 
   const bits = toBits(value, config.bits);
+  const [part, setPart] = useState<LogicPart | null>(null);
   const single = GATES[gate].inputs === 1;
   const out = evalGate(gate, a, single ? 0 : b);
   const sum = halfAdder(a, b);
@@ -96,6 +108,34 @@ function LogicExperiment({ config, lang }: Props) {
     </div>
   );
   const steps = divisionSteps(value);
+  const switches = mode === 'binary'
+    ? bits.map((bit, i) => { const k = config.bits - 1 - i; return <SwitchButton key={k} label={`2${SUPERSCRIPT[k]}`} on={bit} onToggle={() => toggle(`b${k}`)} />; })
+    : [<SwitchButton key="A" label="A" on={a} onToggle={() => toggle('A')} />, ...(mode === 'gate' && single ? [] : [<SwitchButton key="B" label="B" on={b} onToggle={() => toggle('B')} />])];
+  // Drawn over the 3D view, like the ripple tank: readouts on top, the picked part's explanation
+  // (and in full screen the switches) at the bottom.
+  const stop = (e: { stopPropagation: () => void }) => e.stopPropagation();
+  const hud = (expanded: boolean) => (
+    <>
+      <dl className={`${overlay.readouts} ${overlay.card}`}>
+        {mode === 'binary'
+          ? <><dt>{t({ vi: 'Nhị phân', en: 'Binary' })}</dt><dd>{bits.join('')}₂</dd><dt>{t({ vi: 'Thập phân', en: 'Decimal' })}</dt><dd>{value}</dd></>
+          : <><dt>A</dt><dd>{a}</dd>{!(mode === 'gate' && single) && <><dt>B</dt><dd>{b}</dd></>}{mode === 'gate' ? <><dt>Q = {GATES[gate].expression}</dt><dd>{out}</dd></> : <><dt>{t({ vi: 'Tổng S', en: 'Sum S' })}</dt><dd>{sum.s}</dd><dt>{t({ vi: 'Nhớ C', en: 'Carry C' })}</dt><dd>{sum.c}</dd></>}</>}
+      </dl>
+      <div className={overlay.bottom}>
+        {part && (
+          <div aria-live="polite" className={`${overlay.card} ${overlay.part} ${overlay.interactive}`} onPointerDown={stop}>
+            <div className="min-w-0 flex-1">
+              <p className="font-semibold">{t(PARTS[part].name)}</p>
+              <p className="mt-0.5 text-ink-muted">{t(PARTS[part].about)}</p>
+            </div>
+            <button type="button" className={overlay.tool} aria-label={t({ vi: 'Đóng', en: 'Close' })} onClick={() => setPart(null)}><X aria-hidden="true" className="h-4 w-4" /></button>
+          </div>
+        )}
+        {expanded && <div className={`${overlay.card} ${overlay.dock} ${overlay.interactive}`} onPointerDown={stop}>{switches}</div>}
+      </div>
+    </>
+  );
+  const partNames = { switch: t(PARTS.switch.name), gate: t(PARTS.gate.name), wire: t(PARTS.wire.name), lamp: t(PARTS.lamp.name) };
 
   return (
     <div ref={host} className={`${PANEL} ${styles.palette}`}>
@@ -110,7 +150,7 @@ function LogicExperiment({ config, lang }: Props) {
       {mounted ? (
         <SceneBoundary fallback={fallback(t({ vi: 'Trình duyệt này không hiển thị được 3D.', en: 'This browser cannot display 3D.' }))}>
           <Suspense fallback={fallback(t({ vi: 'Đang tải hình 3D…', en: 'Loading the 3D view…' }))}>
-            <LogicScene circuit={circuit} onToggle={toggle} running={active && !reduced} reduced={reduced} description={description} lang={lang} />
+            <LogicScene circuit={circuit} onToggle={toggle} running={active && !reduced} reduced={reduced} description={description} lang={lang} hud={hud} parts={partNames} part={part} onPart={setPart} />
           </Suspense>
         </SceneBoundary>
       ) : fallback(t({ vi: 'Đang tải hình 3D…', en: 'Loading the 3D view…' }))}
