@@ -1,11 +1,13 @@
 'use client';
 
-import { memo, useEffect, useMemo, useRef, type PointerEvent as ReactPointerEvent, type RefObject } from 'react';
+import { memo, useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent, type ReactNode, type RefObject } from 'react';
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import * as THREE from 'three';
 import { GATES, type Bit, type Gate } from './engines/logic';
 import { BUBBLE, type Circuit, type Point } from './logicCircuit';
-import { LabelLayer, Rig, useOrbit, usePalette, ViewButtons, VIEW_CLASS } from './scene3d';
+import { LabelLayer, Rig, useOrbit, usePalette, VIEW_CLASS } from './scene3d';
+import { SceneTools, useFullscreen } from './sceneChrome';
+import overlay from './simOverlay.module.css';
 import { pick, type Lang } from './types';
 import styles from './logic.module.css';
 
@@ -203,12 +205,14 @@ function Refresh({ stamp }: { readonly stamp: string }) {
   return null;
 }
 
-export type LogicSceneProps = { readonly circuit: Circuit; readonly onToggle: (id: string) => void; readonly running: boolean; readonly reduced: boolean; readonly description: string; readonly lang: Lang };
+export type LogicSceneProps = { readonly circuit: Circuit; readonly onToggle: (id: string) => void; readonly running: boolean; readonly reduced: boolean; readonly description: string; readonly lang: Lang; readonly hud?: (expanded: boolean) => ReactNode };
 
-function LogicScene({ circuit, onToggle, running, reduced, description, lang }: LogicSceneProps) {
+function LogicScene({ circuit, onToggle, running, reduced, description, lang, hud }: LogicSceneProps) {
   const t = pick(lang);
   const home = useMemo(() => ({ theta: -Math.PI / 2, phi: 0.95, dist: Math.max(9.5, circuit.width * 1.15) }), [circuit.width]);
   const { host, orbit, invalidate, handlers, reset, zoom } = useOrbit(home, LIMITS);
+  const { expanded, covering, toggle: toggleFullscreen } = useFullscreen(host);
+  const [panelsHidden, setPanelsHidden] = useState(false);
   const palette = usePalette(host, TOKENS);
   const labelStore = useMemo(() => ({ current: new Map<string, HTMLSpanElement>() }), []);
   const targets = useMemo(() => ({ current: new Map<string, THREE.Mesh>() }), []);
@@ -249,7 +253,7 @@ function LogicScene({ circuit, onToggle, running, reduced, description, lang }: 
 
   return (
     <div className="flex flex-col gap-3">
-      <div ref={host} {...pointer} role="img" aria-label={description} tabIndex={0} className={`${VIEW_CLASS} ${styles.stage}`}>
+      <div ref={host} {...pointer} role="img" aria-label={description} tabIndex={0} className={`${VIEW_CLASS} ${styles.stage} ${covering ? styles.covering : ''}`}>
         {palette && (
           <Canvas dpr={[1, 1.5]} frameloop={running ? 'always' : 'demand'} camera={{ fov: 38, near: 0.1, far: 80 }} gl={{ antialias: true }}>
             <ambientLight intensity={0.85} />
@@ -280,8 +284,9 @@ function LogicScene({ circuit, onToggle, running, reduced, description, lang }: 
           </Canvas>
         )}
         <LabelLayer labels={labels.map((l) => ({ key: l.key, text: l.text }))} store={labelStore} />
+        {hud && !panelsHidden && <div className={overlay.hud}>{hud(expanded)}</div>}
+        <SceneTools lang={lang} className={styles.toolsPos} onZoom={zoom} onReset={reset} panelsHidden={panelsHidden} onTogglePanels={() => setPanelsHidden((h) => !h)} expanded={expanded} onToggleFullscreen={() => void toggleFullscreen()} />
       </div>
-      <ViewButtons lang={lang} onReset={reset} onZoom={zoom} />
       <p className="text-xs text-ink-muted">{t({ vi: 'Bấm vào công tắc trong hình để bật/tắt · Kéo để xoay · Chụm hai ngón hoặc Ctrl + cuộn để zoom.', en: 'Click a switch in the view to flip it · Drag to turn · Pinch or Ctrl + wheel to zoom.' })}</p>
     </div>
   );

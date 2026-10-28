@@ -35,6 +35,31 @@
   background: var(--logic-off);
 }
 
+/* The tools sit in the top-right corner of the view. */
+.toolsPos {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  z-index: 2;
+}
+
+/* Full screen: the native element, or the whole page covered when the browser has none. */
+.stage:fullscreen,
+.stage.covering {
+  aspect-ratio: auto;
+  border-radius: 0;
+  width: 100vw;
+  height: 100vh;
+  max-height: none;
+}
+
+.stage.covering {
+  position: fixed;
+  inset: 0;
+  z-index: 70;
+  height: 100dvh;
+}
+
 @media (pointer: fine) {
   .stage { touch-action: none; }
 }

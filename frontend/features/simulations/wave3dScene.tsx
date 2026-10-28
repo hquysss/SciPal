@@ -1,7 +1,6 @@
 'use client';
 
 import { memo, useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent, type ReactNode, type RefObject } from 'react';
-import { Eye, EyeOff, Maximize2, Minimize2, Minus, Plus, RotateCcw } from 'lucide-react';
 import { Canvas, useFrame, useThree, type ThreeEvent } from '@react-three/fiber';
 import * as THREE from 'three';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
@@ -9,6 +8,7 @@ import { ABSORBER_START, autoSource, displacementAt, sampleProfile, TANK_LENGTH,
 import { Rig, useOrbit, usePalette, type Orbit } from './scene3d';
 import { pick, type Lang } from './types';
 import { WAVE_PARTS, type WavePart } from './wave3dParts';
+import { SceneTools, useFullscreen } from './sceneChrome';
 import overlay from './simOverlay.module.css';
 import styles from './wave3d.module.css';
 
@@ -543,10 +543,8 @@ function WaveScene({ settings, mode, time, running, stamp, lang, history, crank,
   const grab = useRef<{ id: number; last: number } | null>(null);
   const grabRequested = useRef(false);
   const pan = useRef<{ id: number; x: number; y: number } | null>(null);
-  const [fullscreen, setFullscreen] = useState(false);
-  const [covering, setCovering] = useState(false);
+  const { expanded, covering, toggle: toggleFullscreen } = useFullscreen(host);
   const [panelsHidden, setPanelsHidden] = useState(false);
-  const expanded = fullscreen || covering;
   const wheelScreen = useRef({ x: 0, y: 0, mirror: false });
   const anchors = useMemo(() => ({
     drive: new THREE.Vector3(WHEEL.x, WHEEL.y + WHEEL_RADIUS + 0.35, WHEEL.z),
@@ -568,41 +566,6 @@ function WaveScene({ settings, mode, time, running, stamp, lang, history, crank,
     goal.current = part ? { point: part === 'float' && floats[selectedFloat] !== undefined ? new THREE.Vector3(sceneX(floats[selectedFloat]!), WATER_Y, 0) : PART_FOCUS[part].point, dist: PART_FOCUS[part].dist } : null;
     invalidate.current();
   }, [part, floats, selectedFloat, invalidate]);
-
-  useEffect(() => {
-    const sync = () => {
-      const on = document.fullscreenElement !== null && document.fullscreenElement === host.current;
-      setFullscreen(on);
-      if (on) setCovering(false);
-    };
-    document.addEventListener('fullscreenchange', sync);
-    return () => document.removeEventListener('fullscreenchange', sync);
-  }, [host]);
-  // Browsers without the Fullscreen API (iPhone Safari) get the view stretched over the page instead.
-  useEffect(() => {
-    if (!covering) return;
-    const leave = (e: KeyboardEvent) => { if (e.key === 'Escape') setCovering(false); };
-    const html = document.documentElement;
-    const before = html.style.overflow;
-    html.style.overflow = 'hidden';
-    window.addEventListener('keydown', leave);
-    return () => { html.style.overflow = before; window.removeEventListener('keydown', leave); };
-  }, [covering]);
-  const toggleFullscreen = async () => {
-    const el = host.current;
-    if (!el) return;
-    if (document.fullscreenElement) { await document.exitFullscreen().catch(() => {}); return; }
-    if (covering) { setCovering(false); return; }
-    try {
-      if (!el.requestFullscreen) throw new Error('no fullscreen');
-      // Some embedded browsers leave the request pending forever; stop waiting and cover the page.
-      const slow = new Promise<'slow'>((resolve) => setTimeout(() => resolve('slow'), 700));
-      const outcome = await Promise.race([el.requestFullscreen().then(() => 'ok' as const), slow]);
-      if (outcome === 'slow' && !document.fullscreenElement) setCovering(true);
-    } catch {
-      setCovering(true);
-    }
-  };
 
   const setHover = (p: WavePart | null) => {
     hover.current = p;
@@ -752,17 +715,7 @@ function WaveScene({ settings, mode, time, running, stamp, lang, history, crank,
           measure('v', `v = ${format(settings.speed)} m/s`),
         ]}
         {!panelsHidden && <div className={overlay.hud}>{hud(expanded)}</div>}
-        <div className={`${overlay.tools} ${styles.toolsPos}`} onPointerDown={(e) => e.stopPropagation()}>
-          {([
-            [<Plus key="in" aria-hidden="true" className="h-4 w-4" />, t({ vi: 'Phóng to', en: 'Zoom in' }), () => zoom(0.85)],
-            [<Minus key="out" aria-hidden="true" className="h-4 w-4" />, t({ vi: 'Thu nhỏ', en: 'Zoom out' }), () => zoom(1 / 0.85)],
-            [<RotateCcw key="reset" aria-hidden="true" className="h-4 w-4" />, t({ vi: 'Góc nhìn ban đầu', en: 'Reset view' }), resetView],
-            [panelsHidden ? <EyeOff key="panels" aria-hidden="true" className="h-4 w-4" /> : <Eye key="panels" aria-hidden="true" className="h-4 w-4" />, panelsHidden ? t({ vi: 'Hiện bảng thông tin', en: 'Show info panels' }) : t({ vi: 'Ẩn bảng thông tin', en: 'Hide info panels' }), () => setPanelsHidden((hidden) => !hidden)],
-            [expanded ? <Minimize2 key="full" aria-hidden="true" className="h-4 w-4" /> : <Maximize2 key="full" aria-hidden="true" className="h-4 w-4" />, expanded ? t({ vi: 'Thoát toàn màn hình', en: 'Exit full screen' }) : t({ vi: 'Toàn màn hình', en: 'Full screen' }), toggleFullscreen],
-          ] as const).map(([icon, label, action]) => (
-            <button key={label} type="button" className={overlay.tool} aria-label={label} title={label} onClick={() => void action()}>{icon}</button>
-          ))}
-        </div>
+        <SceneTools lang={lang} className={styles.toolsPos} onZoom={zoom} onReset={resetView} panelsHidden={panelsHidden} onTogglePanels={() => setPanelsHidden((hidden) => !hidden)} expanded={expanded} onToggleFullscreen={() => void toggleFullscreen()} />
       </div>
       <p className="text-xs text-ink-muted">
         {mode === 'manual'

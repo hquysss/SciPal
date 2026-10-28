@@ -10,6 +10,7 @@ import { GATES, divisionSteps, evalGate, halfAdder, placeValueSentence, toBits, 
 import { binaryCircuit, gateCircuit, halfAdderCircuit } from './logicCircuit';
 import { pick, type Bilingual, type Lang, type SimulationEditorProps, type SimulationModule, type SimulationViewProps } from './types';
 import { PartLegend, type LegendItem } from './partLegend';
+import overlay from './simOverlay.module.css';
 import styles from './logic.module.css';
 
 const ICON = 'h-4 w-4 shrink-0';
@@ -108,6 +109,22 @@ function LogicExperiment({ config, lang }: Props) {
     </div>
   );
   const steps = divisionSteps(value);
+  const readout = mode === 'gate' ? `Q = ${GATES[gate].expression} = ${out}` : mode === 'half-adder' ? `${a} + ${b} = ${sum.c}${sum.s}₂ (C = ${sum.c}, S = ${sum.s})` : `${bits.join('')}₂ = ${value}₁₀`;
+  const switches = mode === 'binary'
+    ? bits.map((bit, i) => { const k = config.bits - 1 - i; return <SwitchButton key={k} label={`2${SUPERSCRIPT[k]}`} on={bit} onToggle={() => toggle(`b${k}`)} />; })
+    : [<SwitchButton key="A" label="A" on={a} onToggle={() => toggle('A')} />, ...(mode === 'gate' && single ? [] : [<SwitchButton key="B" label="B" on={b} onToggle={() => toggle('B')} />])];
+  // Drawn over the 3D view, like the ripple tank: the result on top, the key (and in full screen the switches) below.
+  const hud = (expanded: boolean) => (
+    <>
+      <p aria-hidden="true" className={`${overlay.card} px-2.5 py-1.5 text-sm font-semibold tabular-nums`}>{readout}</p>
+      <div className={overlay.bottom}>
+        <div className={`${overlay.card} ${overlay.interactive} max-w-full p-2`} onPointerDown={(e) => e.stopPropagation()}>
+          <PartLegend items={LEGEND} lang={lang} />
+        </div>
+        {expanded && <div className={`${overlay.card} ${overlay.dock} ${overlay.interactive}`} onPointerDown={(e) => e.stopPropagation()}>{switches}</div>}
+      </div>
+    </>
+  );
 
   return (
     <div ref={host} className={`${PANEL} ${styles.palette}`}>
@@ -122,11 +139,10 @@ function LogicExperiment({ config, lang }: Props) {
       {mounted ? (
         <SceneBoundary fallback={fallback(t({ vi: 'Trình duyệt này không hiển thị được 3D.', en: 'This browser cannot display 3D.' }))}>
           <Suspense fallback={fallback(t({ vi: 'Đang tải hình 3D…', en: 'Loading the 3D view…' }))}>
-            <LogicScene circuit={circuit} onToggle={toggle} running={active && !reduced} reduced={reduced} description={description} lang={lang} />
+            <LogicScene circuit={circuit} onToggle={toggle} running={active && !reduced} reduced={reduced} description={description} lang={lang} hud={hud} />
           </Suspense>
         </SceneBoundary>
       ) : fallback(t({ vi: 'Đang tải hình 3D…', en: 'Loading the 3D view…' }))}
-      <PartLegend items={LEGEND} lang={lang} />
       </div>
       <div className="flex flex-col gap-4">
 
